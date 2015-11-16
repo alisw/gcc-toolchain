@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/bash -e
 
 # Download some prerequisites needed by gcc.
 # Run this from the top level of the gcc source tree and the gcc
@@ -24,33 +24,57 @@
 # ISL Library and CLooG.
 GRAPHITE_LOOP_OPT=yes
 
+# Remove archives after import? (On by default.)
+REMOVE_ARCH=1
+[[ "$1" == '--no-remove-arch' ]] && REMOVE_ARCH=0
+
 # Necessary to build GCC.
-MPFR=mpfr-2.4.2
-GMP=gmp-4.3.2
-MPC=mpc-0.8.1
 
-wget ftp://gcc.gnu.org/pub/gcc/infrastructure/$MPFR.tar.bz2 || exit 1
-tar xjf $MPFR.tar.bz2 || exit 1
-ln -sf $MPFR mpfr || exit 1
+# Defaults in GCC
+#MPFR_VER=2.4.2
+#GMP_VER=4.3.2
+#MPC_VER=0.8.1
 
-wget ftp://gcc.gnu.org/pub/gcc/infrastructure/$GMP.tar.bz2 || exit 1
-tar xjf $GMP.tar.bz2  || exit 1
-ln -sf $GMP gmp || exit 1
+MPFR_VER=3.1.3
+GMP_VER=6.0.0a
+MPC_VER=1.0.3
 
-wget ftp://gcc.gnu.org/pub/gcc/infrastructure/$MPC.tar.gz || exit 1
-tar xzf $MPC.tar.gz || exit 1
-ln -sf $MPC mpc || exit 1
+[[ -e mpfr-${MPFR_VER}.tar.bz2 ]] || wget http://www.mpfr.org/mpfr-${MPFR_VER}/mpfr-${MPFR_VER}.tar.bz2
+rm -rf mpfr mpfr-${MPFR_VER}
+tar xjf mpfr-${MPFR_VER}.tar.bz2
+ln -nfs mpfr-${MPFR_VER} mpfr
+[[ $REMOVE_ARCH == 1 ]] && rm -f mpfr-${MPFR_VER}.tar.bz2
+
+[[ -e gmp-${GMP_VER}.tar.bz2 ]] || wget ftp://ftp.gnu.org/gnu/gmp/gmp-${GMP_VER}.tar.bz2
+rm -rf gmp gmp-${GMP_VER}
+tar xjf gmp-${GMP_VER}.tar.bz2
+ln -nfs gmp-$( echo ${GMP_VER} | sed -e 's|[a-z]\+$||' ) gmp
+[[ $REMOVE_ARCH == 1 ]] && rm -f gmp-${GMP_VER}.tar.bz2
+
+[[ -e mpc-${MPC_VER}.tar.gz ]] || wget http://www.multiprecision.org/mpc/download/mpc-${MPC_VER}.tar.gz
+rm -rf mpc mpc-${MPC_VER}
+tar xzf mpc-${MPC_VER}.tar.gz
+ln -nfs mpc-${MPC_VER} mpc
+[[ $REMOVE_ARCH == 1 ]] && rm -f mpc-${MPC_VER}.tar.gz
 
 # Necessary to build GCC with the Graphite loop optimizations.
-if [ "$GRAPHITE_LOOP_OPT" = "yes" ] ; then
-  ISL=isl-0.12.2
-  CLOOG=cloog-0.18.1
+if [[ "$GRAPHITE_LOOP_OPT" == 'yes' ]]; then
 
-  wget ftp://gcc.gnu.org/pub/gcc/infrastructure/$ISL.tar.bz2 || exit 1
-  tar xjf $ISL.tar.bz2  || exit 1
-  ln -sf $ISL isl || exit 1
+  ISL_VER=0.12.2
+  CLOOG_VER=0.18.1
 
-  wget ftp://gcc.gnu.org/pub/gcc/infrastructure/$CLOOG.tar.gz || exit 1
-  tar xzf $CLOOG.tar.gz || exit 1
-  ln -sf $CLOOG cloog || exit 1
+  [[ -e isl-${ISL_VER}.tar.bz2 ]] || wget ftp://gcc.gnu.org/pub/gcc/infrastructure/isl-${ISL_VER}.tar.bz2
+  rm -rf isl isl-${ISL_VER}
+  tar xjf isl-${ISL_VER}.tar.bz2
+  ln -nfs isl-${ISL_VER} isl
+  [[ $REMOVE_ARCH == 1 ]] && rm -f isl-${ISL_VER}.tar.bz2
+
+  [[ -e cloog-${CLOOG_VER}.tar.gz ]] || wget http://www.bastoul.net/cloog/pages/download/cloog-${CLOOG_VER}.tar.gz
+  rm -rf cloog cloog-${CLOOG_VER}
+  tar xzf cloog-${CLOOG_VER}.tar.gz
+  ln -nfs cloog-${CLOOG_VER} cloog
+  [[ $REMOVE_ARCH == 1 ]] && rm -f cloog-${CLOOG_VER}.tar.gz
+
 fi
+
+echo GCC externals unpacked OK
