@@ -1,0 +1,39 @@
+--- ld/ldlang.c
++++ ld/ldlang.c
+@@ -7112,36 +7066,7 @@ lang_process (void)
+ 	    lang_list_insert_after (&file_chain, &files, &file_chain.head);
+ 
+ 	  /* Rescan archives in case new undefined symbols have appeared.  */
+-	  files = file_chain;
+ 	  open_input_bfds (statement_list.head, OPEN_BFD_RESCAN);
+-	  lang_list_remove_tail (&file_chain, &files);
+-	  while (files.head != NULL)
+-	    {
+-	      lang_statement_union_type **insert;
+-	      lang_statement_union_type **iter, *temp;
+-	      bfd *my_arch;
+-
+-	      insert = find_rescan_insertion (&files.head->input_statement);
+-	      /* All elements from an archive can be added at once.  */
+-	      iter = &files.head->input_statement.next;
+-	      my_arch = files.head->input_statement.the_bfd->my_archive;
+-	      if (my_arch != NULL)
+-		for (; *iter != NULL; iter = &(*iter)->input_statement.next)
+-		  if ((*iter)->input_statement.the_bfd->my_archive != my_arch)
+-		    break;
+-	      temp = *insert;
+-	      *insert = files.head;
+-	      files.head = *iter;
+-	      *iter = temp;
+-	      if (my_arch != NULL)
+-		{
+-		  lang_input_statement_type *parent = my_arch->usrdata;
+-		  if (parent != NULL)
+-		    parent->next = (lang_statement_union_type *)
+-		      ((char *) iter
+-		       - offsetof (lang_input_statement_type, next));
+-		}
+-	    }
+ 	}
+     }
+ #endif /* ENABLE_PLUGINS */
