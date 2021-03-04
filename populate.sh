@@ -11,10 +11,10 @@ curl -l https://gmplib.org/download/gmp/gmp-6.2.0.tar.xz | tar xJf -
 ln -nfs binutils* binutils
 ln -nfs gcc* gcc
 ln -nfs gdb* gdb
-ln -nfs ../mpfr* gcc/mpfr
-ln -nfs ../isl* gcc/isl
-ln -nfs ../mpc* gcc/mpc
-ln -nfs ../gmp* gcc/gmp
+ln -nfs ../mpfr gcc/mpfr
+ln -nfs ../isl gcc/isl
+ln -nfs ../mpc gcc/mpc
+ln -nfs ../gmp gcc/gmp
 ln -nfs mpfr* mpfr
 ln -nfs isl* isl
 ln -nfs mpc* mpc
