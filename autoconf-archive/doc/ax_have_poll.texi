@@ -1,0 +1,46 @@
+@node ax_have_poll
+@unnumberedsec ax_have_poll
+
+@majorheading Synopsis
+
+@smallexample
+AX_HAVE_POLL([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+AX_HAVE_PPOLL([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+This macro determines whether the system supports the poll I/O event
+interface. A neat usage example would be:
+
+@smallexample
+  AX_HAVE_POLL(
+    [AX_CONFIG_FEATURE_ENABLE(poll)],
+    [AX_CONFIG_FEATURE_DISABLE(poll)])
+  AX_CONFIG_FEATURE(
+    [poll], [This platform supports poll(7)],
+    [HAVE_POLL], [This platform supports poll(7).])
+@end smallexample
+
+Some systems -- most notably Linux kernel 2.6.16 and later -- also have
+the variant ppoll(). The availability of that function can be tested
+with the second macro. Generally speaking, it is safe to assume that
+AX_HAVE_POLL would succeed if AX_HAVE_PPOLL has, but not the other way
+round.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_have_poll.m4,latest
+version of @file{ax_have_poll.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_have_poll.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Peter Simons @email{simons@@cryp.to}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

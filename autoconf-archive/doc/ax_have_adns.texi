@@ -1,0 +1,32 @@
+@node ax_have_adns
+@unnumberedsec ax_have_adns
+
+@majorheading Synopsis
+
+@smallexample
+AX_HAVE_ADNS([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+Check whether the GNU ADNS library available from
+http://www.chiark.greenend.org.uk/~ian/adns/ is installed on this
+system. The test is known to work with version 1.4 (or later). If the
+library is found, the flags necessary to link it are added to $LIBS.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_have_adns.m4,latest
+version of @file{ax_have_adns.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_have_adns.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Peter Simons @email{simons@@cryp.to}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,53 @@
+@node ax_check_enable_debug
+@unnumberedsec ax_check_enable_debug
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_ENABLE_DEBUG([enable by default=yes/info/profile/no], [ENABLE DEBUG VARIABLES ...], [DISABLE DEBUG VARIABLES NDEBUG ...], [IS-RELEASE])
+@end smallexample
+
+@majorheading Description
+
+Check for the presence of an --enable-debug option to configure, with
+the specified default value used when the option is not present.  Return
+the value in the variable $ax_enable_debug.
+
+Specifying 'yes' adds '-g -O0' to the compilation flags for all
+languages. Specifying 'info' adds '-g' to the compilation flags.
+Specifying 'profile' adds '-g -pg' to the compilation flags and '-pg' to
+the linking flags. Otherwise, nothing is added.
+
+Define the variables listed in the second argument if debug is enabled,
+defaulting to no variables.  Defines the variables listed in the third
+argument if debug is disabled, defaulting to NDEBUG.  All lists of
+variables should be space-separated.
+
+If debug is not enabled, ensure AC_PROG_* will not add debugging flags.
+Should be invoked prior to any AC_PROG_* compiler checks.
+
+IS-RELEASE can be used to change the default to 'no' when making a
+release.  Set IS-RELEASE to 'yes' or 'no' as appropriate. By default, it
+uses the value of $ax_is_release, so if you are using the AX_IS_RELEASE
+macro, there is no need to pass this parameter.
+
+@smallexample
+  AX_IS_RELEASE([git-directory])
+  AX_CHECK_ENABLE_DEBUG()
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_enable_debug.m4,latest
+version of @file{ax_check_enable_debug.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_enable_debug.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2011 Rhys Ulerich @email{rhys.ulerich@@gmail.com}} @* @w{Copyright @copyright{} 2014, 2015 Philip Withnall @email{philip@@tecnocode.co.uk}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.

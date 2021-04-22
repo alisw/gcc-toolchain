@@ -1,0 +1,30 @@
+@node ax_c_long_long
+@unnumberedsec ax_c_long_long
+
+@majorheading Synopsis
+
+@smallexample
+AX_C_LONG_LONG
+@end smallexample
+
+@majorheading Description
+
+Provides a test for the existence of the long long int type and defines
+HAVE_LONG_LONG if it is found.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_c_long_long.m4,latest
+version of @file{ax_c_long_long.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_c_long_long.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Caolan McNamara @email{caolan@@skynet.ie}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

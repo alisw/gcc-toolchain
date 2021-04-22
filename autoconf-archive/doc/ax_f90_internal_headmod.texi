@@ -1,0 +1,29 @@
+@node ax_f90_internal_headmod
+@unnumberedsec ax_f90_internal_headmod
+
+@majorheading Synopsis
+
+@smallexample
+AX_F90_INTERNAL_HEADMOD(MESSAGE, FILE-REGEXP, FLAG, FUNCTION-BODY, OUTPUT-VAR[, SEARCH-PATH [, ACTION-IF-FOUND[, ACTION-IF-NOT-FOUND]]])
+@end smallexample
+
+@majorheading Description
+
+Internal macro used by AX_F90_HEADER and AX_F90_MODULE.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_f90_internal_headmod.m4,latest
+version of @file{ax_f90_internal_headmod.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_f90_internal_headmod.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Luc Maisonobe @email{luc@@spaceroots.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

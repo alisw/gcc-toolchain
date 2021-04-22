@@ -1,0 +1,54 @@
+@node ax_cflags_hpux_option
+@unnumberedsec ax_cflags_hpux_option
+
+@majorheading Synopsis
+
+@smallexample
+AX_CFLAGS_HPUX_OPTION (optionflag [,[shellvar][,[A][,[NA]]])
+@end smallexample
+
+@majorheading Description
+
+AX_CFLAGS_HPUX_OPTION(-Afresh) would show a message as like "checking
+CFLAGS for hpux/cc -Afresh ... yes" and adds the optionflag to CFLAGS if
+it is understood. You can override the shellvar-default of CFLAGS of
+course. The order of arguments stems from the explicit macros like
+AX_CFLAGS_WARN_ALL.
+
+The cousin AX_CXXFLAGS_HPUX_OPTION would check for an option to add to
+CXXFLAGS - and it uses the autoconf setup for C++ instead of C (since it
+is possible to use different compilers for C and C++).
+
+The macro is a lot simpler than any special AX_CFLAGS_* macro (or
+ax_cxx_rtti.m4 macro) but allows to check for arbitrary options.
+However, if you use this macro in a few places, it would be great if you
+would make up a new function-macro and submit it to the ac-archive.
+
+@smallexample
+ - $1 option-to-check-for : required ("-option" as non-value)
+ - $2 shell-variable-to-add-to : CFLAGS (or CXXFLAGS in the other case)
+ - $3 action-if-found : add value to shellvariable
+ - $4 action-if-not-found : nothing
+@end smallexample
+
+note: in earlier versions, $1-$2 were swapped. We try to detect the
+situation and accept a $2=~/-/ as being the old option-to-check-for.
+
+see also: AX_CFLAGS_GCC_OPTION for the widely used original variant.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cflags_hpux_option.m4,latest
+version of @file{ax_cflags_hpux_option.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cflags_hpux_option.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

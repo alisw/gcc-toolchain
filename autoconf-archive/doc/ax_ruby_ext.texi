@@ -1,0 +1,70 @@
+@node ax_ruby_ext
+@unnumberedsec ax_ruby_ext
+
+@majorheading Synopsis
+
+@smallexample
+AX_RUBY_EXT
+@end smallexample
+
+@majorheading Description
+
+Fetches the linker flags and C compiler flags for compiling and linking
+Ruby binary extensions.  The macro substitutes RUBY_VERSION,
+RUBY_EXT_INC, RUBY_EXT_LIB, RUBY_EXT_CPPFLAGS, RUBY_EXT_LDFLAGS and
+RUBY_EXT_DLEXT variables if Ruby executable has been found.  It also
+checks the same variables before trying to retrieve them from the Ruby
+configuration.
+
+@smallexample
+  RUBY_VERSION: version of the Ruby interpreter
+  RUBY_EXT_INC: Ruby include directory
+  RUBY_EXT_LIB: Ruby extensions destination directory
+  RUBY_EXT_CPPFLAGS: C preprocessor flags to compile extensions
+  RUBY_EXT_LDFLAGS: linker flags to build extensions
+  RUBY_EXT_DLEXT: extensions suffix for ruby modules (e.g. "so")
+@end smallexample
+
+Examples:
+
+@smallexample
+  AX_RUBY_EXT
+  if test x"$RUBY" = x; then
+     AC_ERROR(["cannot find Ruby"])
+  fi
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_ruby_ext.m4,latest
+version of @file{ax_ruby_ext.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_ruby_ext.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2011 Stanislav Sedov @email{stas@@FreeBSD.org}}
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+1. Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+THE POSSIBILITY OF SUCH DAMAGE.

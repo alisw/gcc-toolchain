@@ -1,0 +1,31 @@
+@node ax_check_pathfind
+@unnumberedsec ax_check_pathfind
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_PATHFIND
+@end smallexample
+
+@majorheading Description
+
+Not all systems have pathfind(3). See if we need to substitute. To make
+this work, you have to do horrible things. See the doc for
+AX_CHECK_STRCSPN.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_pathfind.m4,latest
+version of @file{ax_check_pathfind.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_pathfind.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Bruce Korb @email{bkorb@@gnu.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

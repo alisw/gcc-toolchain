@@ -1,0 +1,45 @@
+@node ax_check_openssl
+@unnumberedsec ax_check_openssl
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_OPENSSL([action-if-found[, action-if-not-found]])
+@end smallexample
+
+@majorheading Description
+
+Look for OpenSSL in a number of default spots, or in a user-selected
+spot (via --with-openssl).  Sets
+
+@smallexample
+  OPENSSL_INCLUDES to the include directives required
+  OPENSSL_LIBS to the -l directives required
+  OPENSSL_LDFLAGS to the -L or -R flags required
+@end smallexample
+
+and calls ACTION-IF-FOUND or ACTION-IF-NOT-FOUND appropriately
+
+This macro sets OPENSSL_INCLUDES such that source files should use the
+openssl/ directory in include directives:
+
+@smallexample
+  #include <openssl/hmac.h>
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_openssl.m4,latest
+version of @file{ax_check_openssl.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_openssl.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009,2010 Zmanda Inc. @email{http://www.zmanda.com/}} @* @w{Copyright @copyright{} 2009,2010 Dustin J. Mitchell @email{dustin@@zmanda.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,38 @@
+@node ax_cxx_compile_stdcxx_17
+@unnumberedsec ax_cxx_compile_stdcxx_17
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_COMPILE_STDCXX_17([ext|noext], [mandatory|optional])
+@end smallexample
+
+@majorheading Description
+
+Check for baseline language coverage in the compiler for the C++17
+standard; if necessary, add switches to CXX and CXXCPP to enable
+support.
+
+This macro is a convenience alias for calling the AX_CXX_COMPILE_STDCXX
+macro with the version set to C++17.  The two optional arguments are
+forwarded literally as the second and third argument respectively.
+Please see the documentation for the AX_CXX_COMPILE_STDCXX macro for
+more information.  If you want to use this macro, you also need to
+download the ax_cxx_compile_stdcxx.m4 file.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_compile_stdcxx_17.m4,latest
+version of @file{ax_cxx_compile_stdcxx_17.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_compile_stdcxx_17.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2015 Moritz Klammler @email{moritz@@klammler.eu}} @* @w{Copyright @copyright{} 2016 Krzesimir Nowak @email{qdlacz@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

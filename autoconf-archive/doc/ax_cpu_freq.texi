@@ -1,0 +1,29 @@
+@node ax_cpu_freq
+@unnumberedsec ax_cpu_freq
+
+@majorheading Synopsis
+
+@smallexample
+AX_CPU_FREQ
+@end smallexample
+
+@majorheading Description
+
+Compute the CPU frequency and define CPU_FREQ accordingly.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cpu_freq.m4,latest
+version of @file{ax_cpu_freq.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cpu_freq.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Christophe Tournayre @email{turn3r@@users.sourceforge.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

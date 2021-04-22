@@ -1,0 +1,48 @@
+@node ax_prog_javadoc
+@unnumberedsec ax_prog_javadoc
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_JAVADOC
+@end smallexample
+
+@majorheading Description
+
+AX_PROG_JAVADOC tests for an existing javadoc generator. It uses the
+environment variable JAVADOC then tests in sequence various common
+javadoc generator.
+
+If you want to force a specific compiler:
+
+- at the configure.in level, set JAVADOC=yourgenerator before calling
+AX_PROG_JAVADOC
+
+- at the configure level, setenv JAVADOC
+
+You can use the JAVADOC variable in your Makefile.in, with @@JAVADOC@@.
+
+Note: This macro depends on the autoconf M4 macros for Java programs. It
+is VERY IMPORTANT that you download that whole set, some macros depend
+on other. Unfortunately, the autoconf archive does not support the
+concept of set of macros, so I had to break it for submission.
+
+The general documentation of those macros, as well as the sample
+configure.in, is included in the AX_PROG_JAVA macro.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_javadoc.m4,latest
+version of @file{ax_prog_javadoc.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_javadoc.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Egon Willighagen @email{e.willighagen@@science.ru.nl}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

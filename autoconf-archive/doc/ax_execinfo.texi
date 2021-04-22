@@ -1,0 +1,40 @@
+@node ax_execinfo
+@unnumberedsec ax_execinfo
+
+@majorheading Synopsis
+
+@smallexample
+AX_EXECINFO([ACTION-IF-EXECINFO-H-IS-FOUND], [ACTION-IF-EXECINFO-H-IS-NOT-FOUND], [ADDITIONAL-TYPES-LIST])
+@end smallexample
+
+@majorheading Description
+
+Checks for execinfo.h header and if the len parameter/return type can be
+found from a list, also define backtrace_size_t to that type.
+
+By default the list of types to try contains int and size_t, but should
+some yet undiscovered system use e.g. unsigned, the 3rd argument can be
+used for extensions. I'd like to hear of further suggestions.
+
+Executes ACTION-IF-EXECINFO-H-IS-FOUND when present and the execinfo.h
+header is found or ACTION-IF-EXECINFO-H-IS-NOT-FOUND in case the header
+seems unavailable.
+
+Also adds -lexecinfo to LIBS on BSD if needed.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_execinfo.m4,latest
+version of @file{ax_execinfo.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_execinfo.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2014 Thomas Jahns @email{jahns@@dkrz.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

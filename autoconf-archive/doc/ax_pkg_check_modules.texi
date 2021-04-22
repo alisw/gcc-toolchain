@@ -1,0 +1,66 @@
+@node ax_pkg_check_modules
+@unnumberedsec ax_pkg_check_modules
+
+@majorheading Synopsis
+
+@smallexample
+AX_PKG_CHECK_MODULES(PREFIX, PUBLIC-MODULES, PRIVATE-MODULES, [ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND], [PUBLIC-VARIABLE], [PRIVATE-VARIABLE])
+@end smallexample
+
+@majorheading Description
+
+A wrapper around PKG_CHECK_MODULES which splits the list of modules into
+public and private dependencies, and produces two variables listing the
+dependencies across all invocations of AX_PKG_CHECK_MODULES. These two
+variables are exposed via AC_SUBST, and should be used in a pkg-config
+file as the substituted values for Requires and Requires.private.
+
+The PREFIX, PUBLIC-MODULES and PRIVATE-MODULES arguments should be
+specified as for PKG_CHECK_MODULES, with the concatenation of
+PUBLIC-MODULES and PRIVATE-MODULES equaling the LIST-OF-MODULES from
+PKG_CHECK_MODULES.  The ACTION-IF-FOUND and ACTION-IF-NOT-FOUND
+arguments are optional, and should also be specified as for
+PKG_CHECK_MODULES.  ACTION-IF-FOUND is evaluated if the full
+LIST-OF-MODULES is found; ACTION-IF-NOT-FOUND similarly.
+
+PUBLIC-VARIABLE defaults to AX_PACKAGE_REQUIRES, and PRIVATE-VARIABLE
+defaults to AX_PACKAGE_REQUIRES_PRIVATE.  Both variables are AC_SUBST-ed
+by this macro.
+
+For example:
+
+@smallexample
+  AX_PKG_CHECK_MODULES([GLIB],[glib-2.0 gio-2.0],[gthread-2.0])
+  AX_PKG_CHECK_MODULES([DBUS],[],[dbus-glib-1 >= 0.98 dbus-1])
+@end smallexample
+
+results in the substitutions:
+
+@smallexample
+  AX_PACKAGE_REQUIRES="glib-2.0 gio-2.0"
+  AX_PACKAGE_REQUIRES_PRIVATE="gthread-2.0 dbus-glib-1 >= 0.98 dbus-1"
+@end smallexample
+
+and can be used with a template pkg-config file (.pc.in) using:
+
+@smallexample
+  Requires: @@AX_PACKAGE_REQUIRES@@
+  Requires.private: @@AX_PACKAGE_REQUIRES_PRIVATE@@
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_pkg_check_modules.m4,latest
+version of @file{ax_pkg_check_modules.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_pkg_check_modules.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2014 Philip Withnall @email{philip@@tecnocode.co.uk}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

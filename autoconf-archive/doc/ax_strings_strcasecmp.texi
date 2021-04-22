@@ -1,0 +1,30 @@
+@node ax_strings_strcasecmp
+@unnumberedsec ax_strings_strcasecmp
+
+@majorheading Synopsis
+
+@smallexample
+AX_STRINGS_STRCASECMP
+@end smallexample
+
+@majorheading Description
+
+This macro tries to find strcasecmp() in strings.h. See the
+AX_STRING_STRCASECMP macro's commentary for usage details.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_strings_strcasecmp.m4,latest
+version of @file{ax_strings_strcasecmp.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_strings_strcasecmp.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Warren Young @email{warren@@etr-usa.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

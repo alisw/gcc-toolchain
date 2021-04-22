@@ -1,0 +1,34 @@
+@node ax_func_snprintf
+@unnumberedsec ax_func_snprintf
+
+@majorheading Synopsis
+
+@smallexample
+AX_FUNC_SNPRINTF
+@end smallexample
+
+@majorheading Description
+
+Checks for a fully C99 compliant snprintf, in particular checks whether
+it does bounds checking and returns the correct string length; does the
+same check for vsnprintf. If no working snprintf or vsnprintf is found,
+request a replacement and warn the user about it. Note: the mentioned
+replacement is freely available and may be used in any project
+regardless of it's license.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_func_snprintf.m4,latest
+version of @file{ax_func_snprintf.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_func_snprintf.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Ruediger Kuhlmann @email{info@@ruediger-kuhlmann.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,34 @@
+@node ax_cxx_ldflags_std_lang
+@unnumberedsec ax_cxx_ldflags_std_lang
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_LDFLAGS_STD_LANG(LD-FLAGS)
+@end smallexample
+
+@majorheading Description
+
+Append to LD-FLAGS the set of link-time flags that should be passed to
+the C++ compiler in order to enable use of C++ features as defined in
+the ANSI C++ standard (eg. use of standard iostream classes in the `std'
+namespace, etc.). Note that if you use GNU Libtool you may need to
+prefix each of those switches with `-Xlinker' so that Libtool doesn't
+discard them (see Libtool's manual and `AC_LIBTOOLIZE_LDFLAGS').
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_ldflags_std_lang.m4,latest
+version of @file{ax_cxx_ldflags_std_lang.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_ldflags_std_lang.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Ludovic Courtes @email{ludo@@chbouib.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,34 @@
+@node ax_prog_modprobe
+@unnumberedsec ax_prog_modprobe
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_MODPROBE
+@end smallexample
+
+@majorheading Description
+
+This macro searches for a modprobe command, such as can be found on
+Linux systems with loadable kernel module support. PATH is checked
+first, then the default location(s).
+
+This is one of several autoconf macros intended to assist in configuring
+and installing loadable kernel modules.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_modprobe.m4,latest
+version of @file{ax_prog_modprobe.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_modprobe.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Kaelin Colclasure @email{kaelin@@acm.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

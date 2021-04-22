@@ -1,0 +1,69 @@
+@node ax_have_qt
+@unnumberedsec ax_have_qt
+
+@majorheading Synopsis
+
+@smallexample
+AX_HAVE_QT
+@end smallexample
+
+@majorheading Description
+
+Searches $PATH and queries qmake for Qt include files, libraries and Qt
+binary utilities. The macro only supports Qt5 or later.
+
+The following shell variable is set to either "yes" or "no":
+
+@smallexample
+  have_qt
+@end smallexample
+
+Additionally, the following variables are exported:
+
+@smallexample
+  QT_CXXFLAGS
+  QT_LIBS
+  QT_MOC
+  QT_UIC
+  QT_RCC
+  QT_LRELEASE
+  QT_LUPDATE
+  QT_DIR
+@end smallexample
+
+which respectively contain an "-I" flag pointing to the Qt include
+directory, link flags necessary to link with Qt and X, the full path to
+the meta object compiler and the user interface compiler both, and
+finally the variable QTDIR as Qt likes to see it defined.
+
+Example lines for Makefile.in:
+
+@smallexample
+  CXXFLAGS = @@QT_CXXFLAGS@@
+  MOC      = @@QT_MOC@@
+@end smallexample
+
+After the variables have been set, a trial compile and link is performed
+to check the correct functioning of the meta object compiler. This test
+may fail when the different detected elements stem from different
+releases of the Qt framework. In that case, an error message is emitted
+and configure stops.
+
+No common variables such as $LIBS or $CFLAGS are polluted.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_have_qt.m4,latest
+version of @file{ax_have_qt.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_have_qt.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Bastiaan Veelo @email{Bastiaan@@Veelo.net}} @* @w{Copyright @copyright{} 2014 Alex Henrie @email{alexhenrie24@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

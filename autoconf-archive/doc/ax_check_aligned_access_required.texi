@@ -1,0 +1,45 @@
+@node ax_check_aligned_access_required
+@unnumberedsec ax_check_aligned_access_required
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_ALIGNED_ACCESS_REQUIRED
+@end smallexample
+
+@majorheading Description
+
+While the x86 CPUs allow access to memory objects to be unaligned it
+happens that most of the modern designs require objects to be aligned -
+or they will fail with a buserror. That mode is quite known by
+big-endian machines (sparc, etc) however the alpha cpu is little-
+endian.
+
+The following function will test for aligned access to be required and
+set a config.h define HAVE_ALIGNED_ACCESS_REQUIRED (name derived by
+standard usage). Structures loaded from a file (or mmapped to memory)
+should be accessed per-byte in that case to avoid segfault type errors.
+
+The function checks if unaligned access would ignore the lowest bit of
+the address. If that happens or if the test binary crashes, aligned
+access is required.
+
+If cross-compiling, assume that aligned access is needed to be safe. Set
+ax_cv_have_aligned_access_required=no to override that assumption.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_aligned_access_required.m4,latest
+version of @file{ax_check_aligned_access_required.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_aligned_access_required.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

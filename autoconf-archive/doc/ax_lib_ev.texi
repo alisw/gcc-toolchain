@@ -1,0 +1,34 @@
+@node ax_lib_ev
+@unnumberedsec ax_lib_ev
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_EV([VERSION],[ACTION-IF-FOUND],[ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+Checks for libev mimicking pkg-config's way of doing things for as long
+as upstream doesn't provide a .pc file. If successful and provided
+expand ACTION-IF-FOUND, otherwise expand ACTION-IF-NOT-FOUND, or, if
+omitted, error out like pkg-config does.
+
+Defines libev_LIBS and libev_CFLAGS.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_ev.m4,latest
+version of @file{ax_lib_ev.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_ev.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2012 Sebastian Freundt @email{freundt@@fresse.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

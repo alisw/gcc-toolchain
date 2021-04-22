@@ -1,0 +1,33 @@
+@node ax_python_module_version
+@unnumberedsec ax_python_module_version
+
+@majorheading Synopsis
+
+@smallexample
+AX_PYTHON_MODULE_VERSION(modname, min_version[, python])
+@end smallexample
+
+@majorheading Description
+
+Checks for Python module with at least the given version.
+
+Triggers an error if module is absent or present but at a lower version.
+The third parameter can either be "python" for Python 2 or "python3" for
+Python 3; defaults to Python 3.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_python_module_version.m4,latest
+version of @file{ax_python_module_version.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_python_module_version.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2015 Endless Mobile, Inc.; contributed by Philip Chimento <philip@@endlessm.com> and Kurt von Laven @email{kurt@@endlessm.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

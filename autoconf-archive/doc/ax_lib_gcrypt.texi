@@ -1,0 +1,41 @@
+@node ax_lib_gcrypt
+@unnumberedsec ax_lib_gcrypt
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_GCRYPT([yes|no|auto])
+@end smallexample
+
+@majorheading Description
+
+Searches for the 'gcrypt' library with the --with... option.
+
+If found, define HAVE_GCRYPT and macro GCRYPT_LIBS and GCRYPT_CFLAGS.
+Also defines GCRYPT_WITH_<algo> for the algorithms found available.
+Possible algorithms are: AES ARCFOUR BLOWFISH CAST5 DES IDEA RFC2268
+SERPENT TWOFISH CRC HAVAL MD2 MD4 MD5 RMD160 SHA0 SHA1 SHA224 SHA256
+SHA384 SHA512 TIGER WHIRLPOOL DSA ELGAMAL RSA
+
+The argument is used if no --with...-gcrypt option is set. Value "yes"
+requires the configuration by default. Value "no" does not require it by
+default. Value "auto" configures the library only if available.
+
+See also AX_LIB_BEECRYPT and AX_LIB_CRYPTO.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_gcrypt.m4,latest
+version of @file{ax_lib_gcrypt.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_gcrypt.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Fabien Coelho @email{autoconf.archive@@coelho.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

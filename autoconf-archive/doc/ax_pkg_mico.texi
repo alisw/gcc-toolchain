@@ -1,0 +1,61 @@
+@node ax_pkg_mico
+@unnumberedsec ax_pkg_mico
+
+@majorheading Synopsis
+
+@smallexample
+AX_PKG_MICO([X.X.X optional required])
+@end smallexample
+
+@majorheading Description
+
+This macro searches for a MICO installation on your system. MICO (Mico
+Is COrba) installs the file 'mico-setup.sh' under MICO_INSTALL_BASE/lib,
+where MICO_INSTALL_BASE is probably /usr/local or /usr. If nothing was
+specified when calling configure or just --with-mico, it searches in
+$prefix/lib:/usr/local/lib:/usr/lib The argument of s--with-mico
+specifies the full pathname of the mico-setup.sh file. For instance
+--with-mico=/usr/local/mico-2.2.6/lib/mico-setup.sh.
+
+If the version argument is given (e.g. 2.2.6), AX_PKG_MICO checks that
+the mico package is this version number or higher.
+
+The other optional argument to AX_PKG_MICO are 'optional' and
+'required'. by default, placing AX_PKG_MICO in your configure.in does
+not enforce using mico, if it is not found on the system. If MICO
+existence is critical for the building of your package, then you
+probably want to specify something like "AX_PKG_MICO(2.2.6 required)".
+Then, even if the --with-mico was not specified on the command line of
+the configure script, an error will be raised if mico was not found.
+
+If the mico package is not found, abort configuration with error
+message.
+
+It defines the symbol MICOSETUP, MICOVERSION, MICOSHAREDDIR
+MICO_INCLUDE, MICO_LIB and MICO_CXX if mico is found. In addition, the
+mico script mico-c++ (set in (MICO_CXX) is scaned for a string match
+"-I.*ministl" and if foundMICO_USE_MINISTL is set to 1, otherwise to 0.
+
+Example of use of these variables in your Makefile.in:
+
+@smallexample
+  INCLUDES += @@MICO_INCLUDE@@
+  LDFLAGS += @@MICO_LIB@@
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_pkg_mico.m4,latest
+version of @file{ax_pkg_mico.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_pkg_mico.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Tal Shalif @email{tal@@shalif.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

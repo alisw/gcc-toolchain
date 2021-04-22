@@ -1,0 +1,33 @@
+@node ax_cxx_gcc_abi_demangle
+@unnumberedsec ax_cxx_gcc_abi_demangle
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_GCC_ABI_DEMANGLE
+@end smallexample
+
+@majorheading Description
+
+If the compiler supports GCC C++ ABI name demangling (has header
+cxxabi.h and abi::__cxa_demangle() function), define
+HAVE_GCC_ABI_DEMANGLE
+
+Adapted from AX_CXX_RTTI by Luc Maisonobe
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_gcc_abi_demangle.m4,latest
+version of @file{ax_cxx_gcc_abi_demangle.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_gcc_abi_demangle.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Neil Ferguson @email{nferguso@@eso.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

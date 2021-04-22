@@ -1,0 +1,31 @@
+@node ax_prog_md5sum
+@unnumberedsec ax_prog_md5sum
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_MD5SUM([ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+This macro find a md5sum application and set the variable md5sum to the
+name of the application or to no if not found if ACTION-IF-NOT-FOUND is
+not specified, configure fail when then application is not found.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_md5sum.m4,latest
+version of @file{ax_prog_md5sum.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_md5sum.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Gabriele Bartolini @email{gabriele.bartolini@@devise.it}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

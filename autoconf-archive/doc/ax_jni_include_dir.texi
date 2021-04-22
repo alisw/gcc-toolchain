@@ -1,0 +1,62 @@
+@node ax_jni_include_dir
+@unnumberedsec ax_jni_include_dir
+
+@majorheading Synopsis
+
+@smallexample
+AX_JNI_INCLUDE_DIR
+@end smallexample
+
+@majorheading Description
+
+AX_JNI_INCLUDE_DIR finds include directories needed for compiling
+programs using the JNI interface.
+
+JNI include directories are usually in the Java distribution. This is
+deduced from the value of $JAVA_HOME, $JAVAC, or the path to "javac", in
+that order. When this macro completes, a list of directories is left in
+the variable JNI_INCLUDE_DIRS.
+
+Example usage follows:
+
+@smallexample
+  AX_JNI_INCLUDE_DIR
+@end smallexample
+
+@smallexample
+  for JNI_INCLUDE_DIR in $JNI_INCLUDE_DIRS
+  do
+          CPPFLAGS="$CPPFLAGS -I$JNI_INCLUDE_DIR"
+  done
+@end smallexample
+
+If you want to force a specific compiler:
+
+- at the configure.in level, set JAVAC=yourcompiler before calling
+AX_JNI_INCLUDE_DIR
+
+- at the configure level, setenv JAVAC
+
+This macro depends on AC_CANONICAL_HOST which requires that config.guess
+and config.sub be distributed along with the source code.  See autoconf
+manual for details.
+
+Note: This macro can work with the autoconf M4 macros for Java programs.
+This particular macro is not part of the original set of macros.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_jni_include_dir.m4,latest
+version of @file{ax_jni_include_dir.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_jni_include_dir.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Don Anderson @email{dda@@sleepycat.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

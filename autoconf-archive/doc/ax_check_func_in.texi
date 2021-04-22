@@ -1,0 +1,29 @@
+@node ax_check_func_in
+@unnumberedsec ax_check_func_in
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_FUNC_IN(HEADER, FUNCTION [,ACTION-IF-FOUND [,ACTION-IF-NOT-FOUND]])
+@end smallexample
+
+@majorheading Description
+
+Checking for library functions in a given header file.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_func_in.m4,latest
+version of @file{ax_check_func_in.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_func_in.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

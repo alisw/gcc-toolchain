@@ -1,0 +1,73 @@
+@node ax_check_zlib
+@unnumberedsec ax_check_zlib
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_ZLIB([action-if-found], [action-if-not-found])
+@end smallexample
+
+@majorheading Description
+
+This macro searches for an installed zlib library. If nothing was
+specified when calling configure, it searches first in /usr/local and
+then in /usr, /opt/local and /sw. If the --with-zlib=DIR is specified,
+it will try to find it in DIR/include/zlib.h and DIR/lib/libz.a. If
+--without-zlib is specified, the library is not searched at all.
+
+If either the header file (zlib.h) or the library (libz) is not found,
+shell commands 'action-if-not-found' is run. If 'action-if-not-found' is
+not specified, the configuration exits on error, asking for a valid zlib
+installation directory or --without-zlib.
+
+If both header file and library are found, shell commands
+'action-if-found' is run. If 'action-if-found' is not specified, the
+default action appends '-I$@{ZLIB_HOME@}/include' to CPFLAGS, appends
+'-L$ZLIB_HOME@}/lib' to LDFLAGS, prepends '-lz' to LIBS, and calls
+AC_DEFINE(HAVE_LIBZ). You should use autoheader to include a definition
+for this symbol in a config.h file. Sample usage in a C/C++ source is as
+follows:
+
+@smallexample
+  #ifdef HAVE_LIBZ
+  #include <zlib.h>
+  #endif /* HAVE_LIBZ */
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_zlib.m4,latest
+version of @file{ax_check_zlib.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_zlib.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Loic Dachary @email{loic@@senga.org}} @* @w{Copyright @copyright{} 2010 Bastien Chevreux @email{bach@@chevreux.org}}
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+As a special exception, the respective Autoconf Macro's copyright owner
+gives unlimited permission to copy, distribute and modify the configure
+scripts that are the output of Autoconf when processing the Macro. You
+need not follow the terms of the GNU General Public License when using
+or distributing such scripts, even though portions of the text of the
+Macro appear in them. The GNU General Public License (GPL) does govern
+all other use of the material that constitutes the Autoconf Macro.
+
+This special exception to the GPL applies to versions of the Autoconf
+Macro released by the Autoconf Archive. When you make and distribute a
+modified version of the Autoconf Macro, you may extend this special
+exception to the GPL to apply to your modified version as well.

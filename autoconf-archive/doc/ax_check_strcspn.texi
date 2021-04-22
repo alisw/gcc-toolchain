@@ -1,0 +1,46 @@
+@node ax_check_strcspn
+@unnumberedsec ax_check_strcspn
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_STRCSPN
+@end smallexample
+
+@majorheading Description
+
+Not all systems have strcspn(3). See if we need to substitute. To make
+this work, you have to do horrible things. In one of your Makefile.am
+files, you must make an explicit rule to make this object. It should
+look like this:
+
+@smallexample
+  strcspn.lo : $(top_srcdir)/compat/strcspn.c
+      $(LTCOMPILE) -o $@@ -c $(top_srcdir)/compat/strcspn.c
+@end smallexample
+
+and you must include ``@@COMPATOBJ@@'' in a LIBADD somewhere and, finally,
+you must add another artificial dependency, something like:
+
+@smallexample
+  makeshell.lo : genshell.c @@COMPATOBJ@@
+@end smallexample
+
+It is all pretty horrific, but I have found nothing else that works.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_strcspn.m4,latest
+version of @file{ax_check_strcspn.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_strcspn.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Bruce Korb @email{bkorb@@gnu.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

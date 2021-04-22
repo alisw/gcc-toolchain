@@ -1,0 +1,83 @@
+@node ax_prog_apache
+@unnumberedsec ax_prog_apache
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_APACHE([version])
+@end smallexample
+
+@majorheading Description
+
+This macro searches for an installed apache server. If nothing was
+specified when calling configure or just --with-apache, it searches in
+/usr/local/apache/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin
+The argument of --with-apache specifies the full pathname of the httpd
+argument. For instance --with-apache=/usr/sbin/httpd.
+
+If the version argument is given, AX_PROG_APACHE checks that the apache
+server is this version number or higher.
+
+If the apache server is not found, abort configuration with error
+message.
+
+It defines the symbol APACHE if the server is found.
+
+Files using apache should do the following:
+
+@smallexample
+  @@APACHE@@ -d /etc/httpd
+@end smallexample
+
+It defines the symbol APACHE_MODULES if a directory containing mod_env.*
+is found in the default server root directory (obtained with httpd -V).
+
+The httpd.conf file listing modules to be loaded dynamically can use
+@@APACHE_MODULES@@ to grab them in the appropriate sub directory. For
+instance:
+
+@smallexample
+ ...
+ <IfModule mod_so.c>
+ LoadModule env_module         @@APACHE_MODULES@@/mod_env.so
+ LoadModule config_log_module  @@APACHE_MODULES@@/mod_log_config.so
+ ...
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_apache.m4,latest
+version of @file{ax_prog_apache.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_apache.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Loic Dachary @email{loic@@senga.org}}
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+As a special exception, the respective Autoconf Macro's copyright owner
+gives unlimited permission to copy, distribute and modify the configure
+scripts that are the output of Autoconf when processing the Macro. You
+need not follow the terms of the GNU General Public License when using
+or distributing such scripts, even though portions of the text of the
+Macro appear in them. The GNU General Public License (GPL) does govern
+all other use of the material that constitutes the Autoconf Macro.
+
+This special exception to the GPL applies to versions of the Autoconf
+Macro released by the Autoconf Archive. When you make and distribute a
+modified version of the Autoconf Macro, you may extend this special
+exception to the GPL to apply to your modified version as well.

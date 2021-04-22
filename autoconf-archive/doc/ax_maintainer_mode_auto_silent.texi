@@ -1,0 +1,38 @@
+@node ax_maintainer_mode_auto_silent
+@unnumberedsec ax_maintainer_mode_auto_silent
+
+@majorheading Synopsis
+
+@smallexample
+AX_MAINTAINER_MODE_AUTO_SILENT
+@end smallexample
+
+@majorheading Description
+
+Set autotools to error/sleep settings so that they are not run when
+being erroneously triggered. Likewise make libtool-silent when libtool
+has been used.
+
+I use the macro quite a lot since some automake versions have the
+tendency to try to rerun some autotools on a mere make even when not
+quite in --maintainer-mode. That is very annoying. Likewise, a user who
+installs from source does not want to see doubled compiler messages.
+
+I did not put an AC_REQUIRE(MAINTAINER_MODE) in here - should I?
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_maintainer_mode_auto_silent.m4,latest
+version of @file{ax_maintainer_mode_auto_silent.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_maintainer_mode_auto_silent.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

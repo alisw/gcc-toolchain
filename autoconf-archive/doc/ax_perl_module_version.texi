@@ -1,0 +1,39 @@
+@node ax_perl_module_version
+@unnumberedsec ax_perl_module_version
+
+@majorheading Synopsis
+
+@smallexample
+AX_PERL_MODULE_VERSION([MODULE VERSION], [ACTION-IF-TRUE], [ACTION-IF-FALSE])
+@end smallexample
+
+@majorheading Description
+
+Checks to see if the list of 'Module Version' are available in the
+system. If all the modules in the list are available ACTION-IF-TRUE is
+executed. Case one module is not available ACTION-IF-FALSE is executed
+and the macro execution is aborted. NOTE: Perl is needed.
+
+Example:
+
+@smallexample
+  AX_PERL_MODULE_VERSION(CGI::Test 0.104 CGI::Ajax 0.694, ,
+     AC_MSG_ERROR(Need some Perl modules))
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_perl_module_version.m4,latest
+version of @file{ax_perl_module_version.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_perl_module_version.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Marco Gomes @email{mpglesi@@gmail.com}} @* @w{Copyright @copyright{} 2009 Ruben Fonseca @email{fonseka@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

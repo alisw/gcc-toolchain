@@ -1,0 +1,29 @@
+@node ax_check_allocated_ctime
+@unnumberedsec ax_check_allocated_ctime
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_ALLOCATED_CTIME
+@end smallexample
+
+@majorheading Description
+
+Check whether we need to free the memory returned by ctime.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_allocated_ctime.m4,latest
+version of @file{ax_check_allocated_ctime.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_allocated_ctime.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Bruce Korb @email{bkorb@@gnu.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

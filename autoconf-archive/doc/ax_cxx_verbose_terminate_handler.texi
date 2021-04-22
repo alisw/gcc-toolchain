@@ -1,0 +1,42 @@
+@node ax_cxx_verbose_terminate_handler
+@unnumberedsec ax_cxx_verbose_terminate_handler
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_VERBOSE_TERMINATE_HANDLER
+@end smallexample
+
+@majorheading Description
+
+Check if the terminate handler for the current compiler/standard library
+prints useful information to stdout/stderr (i.e. the type of the
+uncaught exception and/or the what() string).
+
+The intended use case for this check is to help program authors decide
+if they need to add a top-level try-catch or custom terminate handler to
+print useful information if an uncaught exception occurs, or if this
+task can be left to the standard library implementation. Alternatively,
+it can be used to detect if such output needs to be silenced with a
+custom terminate handler.
+
+Output:
+
+Define HAVE_VERBOSE_TERMINATE_HANDLER if useful information is printed.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_verbose_terminate_handler.m4,latest
+version of @file{ax_cxx_verbose_terminate_handler.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_verbose_terminate_handler.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Kevin Locke @email{klocke@@digitalenginesoftware.com}} @* @w{Copyright @copyright{} 2008 Lapo Luchini @email{lapo@@lapo.it}}
+
+Copying and distribution of this file, with or without modification, is
+permitted in any medium, without royalty, provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.  This file is offered as-is, without any warranty.

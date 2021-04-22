@@ -1,0 +1,30 @@
+@node ax_cxx_template_keyword_qualifier
+@unnumberedsec ax_cxx_template_keyword_qualifier
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_TEMPLATE_KEYWORD_QUALIFIER
+@end smallexample
+
+@majorheading Description
+
+If the compiler supports use of the template keyword as a qualifier,
+define HAVE_TEMPLATE_KEYWORD_QUALIFIER.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_template_keyword_qualifier.m4,latest
+version of @file{ax_cxx_template_keyword_qualifier.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_template_keyword_qualifier.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Todd Veldhuizen} @* @w{Copyright @copyright{} 2008 Bernardo Innocenti} @* @w{Copyright @copyright{} 2008 Luc Maisonobe @email{luc@@spaceroots.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

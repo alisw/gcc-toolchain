@@ -1,0 +1,74 @@
+@node ax_check_mysql
+@unnumberedsec ax_check_mysql
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_MYSQL([MYSQL-PLUGIN-NEEDED],[MYSQL-REQUIRED],[MINIMUM-VERSION],[INCLUDES-REQUIRED])
+AX_SOURCE_MYSQL()
+AX_CHECK_MYSQL_INSTALL([ROOT-DIR],[IF-FOUND],[IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+Looks for a MySQL installation in typical locations, or can take in a
+flag designating where a MySQL installation is found. Sets the variables
+stated to various attributes of the desired MySQL installation.
+
+In detail, AX_CHECK_MYSQL will automatically look for a MySQL
+installation in the directories that a mysql source or binary install
+typically install to. AX_CHECK_MYSQL will throw an error if it cannot
+find one, and it is required.
+
+AX_CHECK_MYSQL can also check for specific variables passed regarding a
+location of a MySQL installation.
+
+If a MySQL installation is found, AX_CHECK_MYSQL sets variables
+regarding the version of MySQL, its architecture (32 or 64 bit), and
+whether the version supports Plugins.
+
+AX_CHECK_MYSQL_INSTALL will check a designated root directory for a
+command, plugin, and include directory. If a mysql binary is not found
+or not found, the IF-FOUND and IF-NOT-FOUND directive will be executed,
+respectively.
+
+AX_CHECK_MYSQL adds the following flags:
+
+@smallexample
+  --with-mysql, for the root of a desired MySQL installation
+  --with-mysql-plugin, for the path to the plugin directory of the MySQL installation
+  --with-mysql-include, for the path to the include directory of the MySQL installation
+  --with-mysql-command, for the path to the binary directory of the MySQL installation
+  --with-mysql-source, for the path to a directory containing the source of the MySQL installation
+@end smallexample
+
+AX_CHECK_MYSQL sets:
+
+@smallexample
+  MYSQL to indicate whether MySQL was found or not
+  MYSQL_INCLUDES to the include directory (if one exists)
+  MYSQL_PLUGINS  to the plugin directory
+  MYSQL_COMMANDS  to the mysql executable directory
+  MYSQL_ARCHITECTURE to whether MySQL is 32 or 64 bit (32 if 32, 64 if 64)
+  MYSQL_VERSION to what the MySQL version is (5.1,5.5, etc)
+  MYSQL_PLUGIN_OK to whether MySQL version supports plugins (5.1 or greater)
+  MYSQL_55 to whether the version of MySQL is 5.5 or greater
+  MYSQL_SOURCE  to the source directory passed by --with-mysql-source
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_mysql.m4,latest
+version of @file{ax_check_mysql.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_mysql.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2011 University of Washington} @* @w{Copyright @copyright{} 2011 Yusuke Tsutsumi @email{tsutsumi.yusuke@@gmail.com}} @* @w{Copyright @copyright{} 2011 Craig Stimmel @email{cstimmel@@uw.edu}} @* @w{Copyright @copyright{} 2011 Eric Wu}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

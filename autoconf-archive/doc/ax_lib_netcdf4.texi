@@ -1,0 +1,117 @@
+@node ax_lib_netcdf4
+@unnumberedsec ax_lib_netcdf4
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_NETCDF4([serial/parallel])
+@end smallexample
+
+@majorheading Description
+
+This macro provides tests of the availability of the NetCDF v4 library.
+
+The optional macro argument should be either 'serial' or 'parallel'. The
+macro will call nc-config to check the output of the '--has-pnetcdf'
+option and error out if the requested parallel isn't supported.
+
+If the optional argument is omitted, no check is made to see if NetCDF
+has parallel support.
+
+The macro adds a --with-netcdf4 option accepting one of three values:
+
+@smallexample
+  no   - do not check for the NetCDF4 library.
+  yes  - do check for NetCDF4 library in standard locations.
+  path - installation prefix for NetCDF version 4.
+@end smallexample
+
+If NetCDF4 is successfully found, this macro calls
+
+@smallexample
+  AC_SUBST(NETCDF4_VERSION)
+  AC_SUBST(NETCDF4_CC)
+  AC_SUBST(NETCDF4_CFLAGS)
+  AC_SUBST(NETCDF4_CPPFLAGS)
+  AC_SUBST(NETCDF4_LDFLAGS)
+  AC_SUBST(NETCDF4_LIBS)
+  AC_SUBST(NETCDF4_FC)
+  AC_SUBST(NETCDF4_FFLAGS)
+  AC_SUBST(NETCDF4_FLIBS)
+  AC_DEFINE(HAVE_NETCDF4)
+@end smallexample
+
+It also sets
+
+@smallexample
+  with_netcdf4="yes"
+  with_netcdf4_fortran="yes"    (if NetCDF has Fortran support)
+  with_netcdf4_parallel="yes"   (if NetCDF has MPI support)
+@end smallexample
+
+If NetCDF4 is disabled or not found, this macros sets
+
+@smallexample
+  with_netcdf4="no"
+  with_netcdf4_fortran="no"
+@end smallexample
+
+Note it does not set with_netcdf4_parallel in this case.
+
+Your configuration script can test $with_netcdf4 to take any further
+actions. NETCDF4_@{C,CPP,LD@}FLAGS may be used when building with C or
+C++. NETCDF4_F@{FLAGS,LIBS@} and NETCDF4_LDFLAGS should be used when
+building Fortran applications.
+
+To use the macro, one would code one of the following in "configure.ac"
+before AC_OUTPUT:
+
+@smallexample
+  1) dnl Check for NetCDF4 support
+     AX_LIB_NETCDF4()
+@end smallexample
+
+@smallexample
+  2) dnl Check for serial NetCDF4 support
+     AX_LIB_NETCDF4([serial])
+@end smallexample
+
+@smallexample
+  3) dnl Check for parallel NetCDF4 support
+     AX_LIB_NETCDF4([parallel])
+@end smallexample
+
+One could test $with_netcdf4 for the outcome or display it as follows
+
+@smallexample
+  echo "NetCDF v4 support:  $with_netcdf4"
+@end smallexample
+
+One could also for example, override the default CC in "configure.ac" to
+enforce compilation with the compiler that NetCDF v4 was built with:
+
+@smallexample
+  AX_LIB_NETCDF4([parallel])
+  if test "$with_netcdf4" = "yes"; then
+          CC="$NETCDF4_CC"
+  else
+          AC_MSG_ERROR([Unable to find NetCDF4, we need parallel NetCDF4.])
+  fi
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_netcdf4.m4,latest
+version of @file{ax_lib_netcdf4.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_netcdf4.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2016 Timothy Brown @email{tbrown@@freeshell.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

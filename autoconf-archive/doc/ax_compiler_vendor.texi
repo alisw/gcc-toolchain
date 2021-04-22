@@ -1,0 +1,68 @@
+@node ax_compiler_vendor
+@unnumberedsec ax_compiler_vendor
+
+@majorheading Synopsis
+
+@smallexample
+AX_COMPILER_VENDOR
+@end smallexample
+
+@majorheading Description
+
+Determine the vendor of the C, C++ or Fortran compiler.  The vendor is
+returned in the cache variable $ax_cv_c_compiler_vendor for C,
+$ax_cv_cxx_compiler_vendor for C++ or $ax_cv_fc_compiler_vendor for
+(modern) Fortran.  The value is one of "intel", "ibm", "pathscale",
+"clang" (LLVM), "cray", "fujitsu", "sdcc", "sx", "portland" (PGI), "gnu"
+(GCC), "sun" (Oracle Developer Studio), "hp", "dec", "borland",
+"comeau", "kai", "lcc", "sgi", "microsoft", "metrowerks", "watcom",
+"tcc" (Tiny CC) or "unknown" (if the compiler cannot be determined).
+
+To check for a Fortran compiler, you must first call AC_FC_PP_SRCEXT
+with an appropriate preprocessor-enabled extension.  For example:
+
+@smallexample
+  AC_LANG_PUSH([Fortran])
+  AC_PROG_FC
+  AC_FC_PP_SRCEXT([F])
+  AX_COMPILER_VENDOR
+  AC_LANG_POP([Fortran])
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_compiler_vendor.m4,latest
+version of @file{ax_compiler_vendor.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_compiler_vendor.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Steven G. Johnson @email{stevenj@@alum.mit.edu}} @* @w{Copyright @copyright{} 2008 Matteo Frigo} @* @w{Copyright @copyright{} 2018-19 John Zaitseff @email{J.Zaitseff@@zap.org.au}}
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+As a special exception, the respective Autoconf Macro's copyright owner
+gives unlimited permission to copy, distribute and modify the configure
+scripts that are the output of Autoconf when processing the Macro. You
+need not follow the terms of the GNU General Public License when using
+or distributing such scripts, even though portions of the text of the
+Macro appear in them. The GNU General Public License (GPL) does govern
+all other use of the material that constitutes the Autoconf Macro.
+
+This special exception to the GPL applies to versions of the Autoconf
+Macro released by the Autoconf Archive. When you make and distribute a
+modified version of the Autoconf Macro, you may extend this special
+exception to the GPL to apply to your modified version as well.

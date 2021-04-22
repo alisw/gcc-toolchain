@@ -1,0 +1,46 @@
+@node ax_cxx_delete_method
+@unnumberedsec ax_cxx_delete_method
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_DELETE_METHOD
+@end smallexample
+
+@majorheading Description
+
+Check whether the C++11 '= delete' syntax, for suppressing undesired
+implicit methods, is supported.  If it is, the macro DELETE_METHOD is
+defined to '= delete'; otherwise it is defined to nothing.  Thus, you
+can write
+
+@smallexample
+  class foo @{
+    ...
+  private:
+    foo(foo const&) DELETE_METHOD;
+  @};
+@end smallexample
+
+to delete the 'foo' copy constructor or fall back to the idiom of a
+private undefined method if the compiler doesn't support this.
+
+Does not test '= delete' on a template specialization. Does not ensure
+that the compiler is in C++11 mode.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_delete_method.m4,latest
+version of @file{ax_cxx_delete_method.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_delete_method.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2012 Zack Weinberg @email{zackw@@panix.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,35 @@
+@node ax_sys_dev_poll
+@unnumberedsec ax_sys_dev_poll
+
+@majorheading Synopsis
+
+@smallexample
+AX_SYS_DEV_POLL([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+This macro tests for the presence of /dev/poll support in the build
+environment. It checks that the needed structure (dvpoll) is available,
+with the standard fields. /dev/poll is most often seen under Solaris.
+
+Note that it does not attempt to actually open /dev/poll -- you should
+test for errors when you open it and then fall back to poll() if it is
+unavailable.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_sys_dev_poll.m4,latest
+version of @file{ax_sys_dev_poll.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_sys_dev_poll.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Dave Benson @email{daveb@@ffem.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

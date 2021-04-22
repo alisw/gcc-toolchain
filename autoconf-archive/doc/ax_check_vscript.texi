@@ -1,0 +1,81 @@
+@node ax_check_vscript
+@unnumberedsec ax_check_vscript
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_VSCRIPT
+@end smallexample
+
+@majorheading Description
+
+Check whether the linker supports version scripts.  Version scripts are
+used when building shared libraries to bind symbols to version nodes
+(helping to detect incompatibilities) or to limit the visibility of
+non-public symbols.
+
+Output:
+
+If version scripts are supported, VSCRIPT_LDFLAGS will contain the
+appropriate flag to pass to the linker.  On GNU systems this would
+typically be "-Wl,--version-script", and on Solaris it would typically
+be "-Wl,-M".
+
+Two Automake conditionals are also set:
+
+@smallexample
+ HAVE_VSCRIPT is true if the linker supports version scripts with
+ entries that use simple wildcards, like "local: *".
+@end smallexample
+
+@smallexample
+ HAVE_VSCRIPT_COMPLEX is true if the linker supports version scripts with
+ pattern matching wildcards, like "global: Java_*".
+@end smallexample
+
+On systems that do not support symbol versioning, such as Mac OS X, both
+conditionals will be false.  They will also be false if the user passes
+"--disable-symvers" on the configure command line.
+
+Example:
+
+@smallexample
+ configure.ac:
+@end smallexample
+
+@smallexample
+  AX_CHECK_VSCRIPT
+@end smallexample
+
+@smallexample
+ Makefile.am:
+@end smallexample
+
+@smallexample
+  if HAVE_VSCRIPT
+  libfoo_la_LDFLAGS += $(VSCRIPT_LDFLAGS),@@srcdir@@/libfoo.map
+  endif
+@end smallexample
+
+@smallexample
+  if HAVE_VSCRIPT_COMPLEX
+  libbar_la_LDFLAGS += $(VSCRIPT_LDFLAGS),@@srcdir@@/libbar.map
+  endif
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_vscript.m4,latest
+version of @file{ax_check_vscript.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_vscript.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2014 Kevin Cernekee @email{cernekee@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,48 @@
+@node ax_configure_args
+@unnumberedsec ax_configure_args
+
+@majorheading Synopsis
+
+@smallexample
+AX_CONFIGURE_ARGS
+@end smallexample
+
+@majorheading Description
+
+Helper macro for AX_ENABLE_BUILDDIR.
+
+The traditional way of starting a subdir-configure is running the script
+with $@{1+"$@@"@} but since autoconf 2.60 this is broken. Instead we have
+to rely on eval'ing $ac_configure_args however some old autoconf
+versions do not provide that. To ensure maximum portability of autoconf
+extension macros this helper can be AC_REQUIRE'd so that
+$ac_configure_args will always be present.
+
+Sadly, the traditional "exec $SHELL" of the enable_builddir macros is
+spoiled now and must be replaced by "eval + exit $?".
+
+Example:
+
+@smallexample
+  AC_DEFUN([AX_ENABLE_SUBDIR],[dnl
+    AC_REQUIRE([AX_CONFIGURE_ARGS])dnl
+    eval $SHELL $ac_configure_args || exit $?
+    ...])
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_configure_args.m4,latest
+version of @file{ax_configure_args.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_configure_args.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

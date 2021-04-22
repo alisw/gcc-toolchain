@@ -1,0 +1,112 @@
+@node ax_cvs
+@unnumberedsec ax_cvs
+
+@majorheading Synopsis
+
+@smallexample
+AX_CVS([ANON_CVSROOT])
+@end smallexample
+
+@majorheading Description
+
+Adds support cvs targets within your Makefile.
+
+Branching and releasing relies on you using the following version
+format:
+
+@smallexample
+  MAJOR.MINOR.POINT
+@end smallexample
+
+where MAJOR is the major version number, MINOR is the minor version
+number and POINT is the point release number.
+
+make update
+
+@smallexample
+  performs a cvs update
+@end smallexample
+
+make commitlog
+
+@smallexample
+  Generates a ChangeLog template with the modified, added
+  and removed files and opens it up for editing. This is
+  not normally used directly, but is instead called by
+  commit. It is useful however if you want to document
+  the work you have done, but don't want to commit just
+  yet.
+@end smallexample
+
+make commit
+
+@smallexample
+  performs a cvs commit after first performing a cvs
+  update and generating a commit log.
+@end smallexample
+
+make cvs-rm FILES="file1 file2 ..."
+
+@smallexample
+  removes a file or files specified by the FILES
+  variable from the file system and from cvs. It will
+  interactively ask you to confirm the file removal,
+  unless the file does not exist on the file system.
+@end smallexample
+
+make cvs-add FILES="file1 file2 ..."
+
+@smallexample
+  adds a file or files specified by the FILES variable
+  to cvs.
+@end smallexample
+
+make branch-major
+
+@smallexample
+  creates a branch based on the major version number,
+  increments the major version number, sets the minor
+  and point versions to zero and checks out the branch
+  into a new directory.
+@end smallexample
+
+make branch-minor
+
+@smallexample
+  creates a branch based on the minor version number,
+  increments the minor version, sets the point version
+  to zero number and checks out the branch into a new
+  directory.
+@end smallexample
+
+make release
+
+@smallexample
+  performs a cvs update, followed by a distcheck, then
+  creates a release for the current version, increments
+  the point release number and checks out the release
+  into a new directory
+@end smallexample
+
+make quick-release
+
+@smallexample
+  same as release, but distcheck is not performed
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cvs.m4,latest
+version of @file{ax_cvs.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cvs.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Tom Howard @email{tomhoward@@users.sf.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

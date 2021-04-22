@@ -1,0 +1,46 @@
+@node ax_subst_with
+@unnumberedsec ax_subst_with
+
+@majorheading Synopsis
+
+@smallexample
+AX_SUBST_WITH([varname])
+@end smallexample
+
+@majorheading Description
+
+a very simple macro but also very helpful - the varname is usually the
+one from an AC_ARG_ENABLE or AC_ARG_WITH option. it is transliterated
+into uppercase and a prefix WITH_ and WITHOUT_ that are both _SUBSTed.
+
+Only one of these is set to "#" while the other is empty. In other words
+a call like AC_WITHNONE(enable-call) will create two SUBST-symbols as
+WITH_ENABLE_CALL and WITHOUT_ENABLE_CALL. When the varname had been set
+to something not "no" or "0" or ":" or "false" then it results in
+
+@smallexample
+ WITH_ENABLE_CALL="" ; WITHOUT_ENABLE_CALL="#"
+@end smallexample
+
+which you can use in your Makefile quite easily as if using an
+AM_CONDITIONAL but which can be also parsed by normal make
+
+USE = @@WITH_ENABLE_CALL@@ -Denabled USE = @@WITHOUT_ENABLE_CALL@@
+-Dnot_enabled
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_subst_with.m4,latest
+version of @file{ax_subst_with.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_subst_with.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

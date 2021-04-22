@@ -1,0 +1,71 @@
+@node ax_open62541_path
+@unnumberedsec ax_open62541_path
+
+@majorheading Synopsis
+
+@smallexample
+AX_OPEN62541_PATH()
+@end smallexample
+
+@majorheading Description
+
+Sets pre-processor and linker search paths for the open62541 library
+[1].
+
+The open62541 library is a cmake-based project, that is not always
+installed to the system: it does not even provide an install target by
+default. In that case, the location of several directories need to be
+added to the pre-processor and linker search paths:
+
+@smallexample
+  * -I<src>/deps
+  * -I<src>/include
+  * -I<src>/plugins
+  * -I<build>/src_generated
+  * -I<build>
+  * -L<build>
+@end smallexample
+
+Here "src" indicates the location of the library source directory and
+"build" the location of the out-of-source build.
+
+This macro provides the configure options --with-open62541=dir and
+--with-open62541-build=dir to set the two directories. This macro will
+append to CPPFLAGS and LDFLAGS if a dir is supplied. It will also export
+LD_LIBRARY_PATH with the absolute path of the build dir for the rest of
+the configure script to use and define a Makefile variable
+OPEN62541_LDPATH, which contains
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<abs_path_to_build> : this is intended
+to be used for all commands that need to execute a program using the
+library (e.g. make check). If paths are set, they are forwarded to
+distcheck.
+
+For --with-open62541, the dir is optional: if either the values "no"
+(from --without-open62541) or "yes" (for no argument) are specified,
+this macro does nothing but these values may be used by other code. If
+--with-open62541 is not specified, the variable with_open62541 is not
+set.
+
+For --with-open62541-build, the dir is compulsory.
+--with-open62541-build must not be given without also specifying
+--with-open62541. If --with-open62541 is given but
+--with-open62541-build is not, the default value is "<src>/build".
+
+[1]: <http://open62541.org/>
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_open62541_path.m4,latest
+version of @file{ax_open62541_path.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_open62541_path.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2016,2017 Olaf Mandel @email{olaf@@mandel.name}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

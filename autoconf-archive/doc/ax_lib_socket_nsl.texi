@@ -1,0 +1,36 @@
+@node ax_lib_socket_nsl
+@unnumberedsec ax_lib_socket_nsl
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_SOCKET_NSL
+@end smallexample
+
+@majorheading Description
+
+This macro figures out what libraries are required on this platform to
+link sockets programs.
+
+The common cases are not to need any extra libraries, or to need
+-lsocket and -lnsl. We need to avoid linking with libnsl unless we need
+it, though, since on some OSes where it isn't necessary it will totally
+break networking. Unisys also includes gethostbyname() in libsocket but
+needs libnsl for socket().
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_socket_nsl.m4,latest
+version of @file{ax_lib_socket_nsl.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_socket_nsl.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Russ Allbery @email{rra@@stanford.edu}} @* @w{Copyright @copyright{} 2008 Stepan Kasal @email{kasal@@ucw.cz}} @* @w{Copyright @copyright{} 2008 Warren Young @email{warren@@etr-usa.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

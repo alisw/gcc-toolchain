@@ -1,0 +1,33 @@
+@node ax_dll_string
+@unnumberedsec ax_dll_string
+
+@majorheading Synopsis
+
+@smallexample
+AX_DLL_STRING
+@end smallexample
+
+@majorheading Description
+
+Tests for a bug currently in g++ 3.4.4 on Cygwin (maybe other targets
+with statically linked libstdc++?) where passing an empty std::string to
+a dll will cause a crash on destruction due to incorrect memory
+handling. See bug 24196 in gcc's bugzilla for more details:
+http://gcc.gnu.org/bugzilla/show_bug.cgi?id=24196
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_dll_string.m4,latest
+version of @file{ax_dll_string.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_dll_string.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Steven Brown @email{swbrown@@variadic.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

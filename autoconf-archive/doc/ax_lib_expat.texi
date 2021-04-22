@@ -1,0 +1,63 @@
+@node ax_lib_expat
+@unnumberedsec ax_lib_expat
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_EXPAT([MINIMUM-VERSION])
+@end smallexample
+
+@majorheading Description
+
+This macro provides tests of availability of Expat XML Parser of
+particular version or newer. This macro checks for Expat XML Parser
+headers and libraries and defines compilation flags
+
+Macro supports following options and their values:
+
+1) Single-option usage:
+
+@smallexample
+  --with-expat      -- yes, no, or path to Expat XML Parser
+                       installation prefix
+@end smallexample
+
+2) Three-options usage (all options are required):
+
+@smallexample
+  --with-expat=yes
+  --with-expat-inc  -- path to base directory with Expat headers
+  --with-expat-lib  -- linker flags for Expat
+@end smallexample
+
+This macro calls:
+
+@smallexample
+  AC_SUBST(EXPAT_CFLAGS)
+  AC_SUBST(EXPAT_LIBS)
+  AC_SUBST(EXPAT_LDFLAGS)
+  AC_SUBST(EXPAT_VERSION)  -- only if version requirement is used
+@end smallexample
+
+And sets:
+
+@smallexample
+  HAVE_EXPAT
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_expat.m4,latest
+version of @file{ax_lib_expat.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_expat.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Mateusz Loskot @email{mateusz@@loskot.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

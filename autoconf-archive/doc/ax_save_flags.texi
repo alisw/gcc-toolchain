@@ -1,0 +1,43 @@
+@node ax_save_flags
+@unnumberedsec ax_save_flags
+
+@majorheading Synopsis
+
+@smallexample
+AX_SAVE_FLAGS([NAMESPACE])
+@end smallexample
+
+@majorheading Description
+
+Save common compilation flags into temporary variables.
+
+Compilation flags includes: CPPFLAGS, CFLAGS, CXXFLAGS, LDFLAGS, LIBS,
+OBJCFLAGS.
+
+By default these flags are saved to a global (empty) namespace, but user
+could specify a specific NAMESPACE to AX_SAVE_FLAGS macro and latter
+restore it by using AX_RESTORE_FLAGS(NAMESPACE).
+
+@smallexample
+  AX_SAVE_FLAGS(mypackage)
+  CPPFLAGS="-Imypackagespath $@{CPPFLAGS@}"
+  dnl .. do some detection ...
+  AX_RESTORE_FLAGS(mypackage)
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_save_flags.m4,latest
+version of @file{ax_save_flags.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_save_flags.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Filippo Giunchedi @email{filippo@@esaurito.net}} @* @w{Copyright @copyright{} 2011 The Board of Trustees of the Leland Stanford Junior University} @* @w{Copyright @copyright{} 2011 Russ Allbery @email{rra@@stanford.edu}} @* @w{Copyright @copyright{} 2013 Bastien ROUCARIES @email{roucaries.bastien+autoconf@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

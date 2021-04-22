@@ -1,0 +1,31 @@
+@node ax_asm_inline
+@unnumberedsec ax_asm_inline
+
+@majorheading Synopsis
+
+@smallexample
+AX_ASM_INLINE()
+@end smallexample
+
+@majorheading Description
+
+Tests for C compiler support of inline assembly instructions. If inline
+assembly is supported, this macro #defines ASM_INLINE to be the
+appropriate keyword.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_asm_inline.m4,latest
+version of @file{ax_asm_inline.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_asm_inline.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Alan Woodland @email{ajw05@@aber.ac.uk}} @* @w{Copyright @copyright{} 2009 Rhys Ulerich @email{rhys.ulerich@@gmail.com}} @* @w{Copyright @copyright{} 2017 Reini Urban @email{rurban@@cpan.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

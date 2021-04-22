@@ -1,0 +1,60 @@
+@node ax_extra_dist
+@unnumberedsec ax_extra_dist
+
+@majorheading Synopsis
+
+@smallexample
+AX_EXTRA_DIST
+@end smallexample
+
+@majorheading Description
+
+Allow support for custom dist targets.
+
+To add custom dist targets, you must create a dist-<TYPE> target within
+your Makefile.am, where <TYPE> is the name of the dist and then add
+<TYPE> to EXTRA_SRC_DISTS or EXTRA_BIN_DISTS. For example:
+
+@smallexample
+  dist-foobar:
+   <rules for making the foobar dist>
+@end smallexample
+
+@smallexample
+  EXTRA_BIN_DISTS += foobar
+@end smallexample
+
+You can then build all the src dist targets by running:
+
+@smallexample
+  make dist-src
+@end smallexample
+
+You can build all the binary dist targets by running:
+
+@smallexample
+  make dist-bin
+@end smallexample
+
+and you can build both the src and dist targets by running:
+
+@smallexample
+  make all-dist
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_extra_dist.m4,latest
+version of @file{ax_extra_dist.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_extra_dist.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Tom Howard @email{tomhoward@@users.sf.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

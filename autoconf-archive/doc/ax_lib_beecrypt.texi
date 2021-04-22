@@ -1,0 +1,39 @@
+@node ax_lib_beecrypt
+@unnumberedsec ax_lib_beecrypt
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_BEECRYPT([yes|no|auto])
+@end smallexample
+
+@majorheading Description
+
+Searches for the 'beecrypt' library with the --with... option.
+
+If found, define HAVE_BEECRYPT and macro BEECRYPT_LIBS. Also defines
+BEECRYPT_WITH_<algo> for the algorithms found available. Possible
+algorithms: BASE64 AES BF MD5 SHA1 SHA256 SHA384 SHA512.
+
+The argument is used if no --with...-beecrypt option is set. Value "yes"
+requires the configuration by default. Value "no" does not require it by
+default. Value "auto" configures the library only if available.
+
+See also AX_LIB_CRYPTO and AX_LIB_GCRYPT.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_beecrypt.m4,latest
+version of @file{ax_lib_beecrypt.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_beecrypt.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Fabien Coelho @email{autoconf.archive@@coelho.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

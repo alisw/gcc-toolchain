@@ -1,0 +1,32 @@
+@node ax_cxx_bool
+@unnumberedsec ax_cxx_bool
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_BOOL
+@end smallexample
+
+@majorheading Description
+
+If the compiler recognizes bool as a separate built-in type, define
+HAVE_BOOL. Note that a typedef is not a separate type since you cannot
+overload a function such that it accepts either the basic type or the
+typedef.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_bool.m4,latest
+version of @file{ax_cxx_bool.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_bool.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Todd Veldhuizen} @* @w{Copyright @copyright{} 2008 Luc Maisonobe @email{luc@@spaceroots.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

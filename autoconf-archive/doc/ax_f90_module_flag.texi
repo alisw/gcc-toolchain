@@ -1,0 +1,32 @@
+@node ax_f90_module_flag
+@unnumberedsec ax_f90_module_flag
+
+@majorheading Synopsis
+
+@smallexample
+AX_F90_MODULE_FLAG
+@end smallexample
+
+@majorheading Description
+
+Find Fortran 90 modules inclusion flag. The module inclusion flag is
+stored in the cached variable ax_f90_modflag. An error is triggered if
+the flag cannot be found. Supported are the -I GNU compilers flag, the
+-M SUN compilers flag, and the -p Absoft Pro Fortran compiler flag.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_f90_module_flag.m4,latest
+version of @file{ax_f90_module_flag.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_f90_module_flag.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Luc Maisonobe @email{luc@@spaceroots.org}} @* @w{Copyright @copyright{} 2009 Julian C. Cummings @email{cummings@@cacr.caltech.edu}} @* @w{Copyright @copyright{} 2009 Alexander Pletzer @email{pletzer@@txcorp.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

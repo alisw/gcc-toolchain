@@ -1,0 +1,67 @@
+@node ax_generate_changelog
+@unnumberedsec ax_generate_changelog
+
+@majorheading Synopsis
+
+@smallexample
+AX_GENERATE_CHANGELOG()
+@end smallexample
+
+@majorheading Description
+
+Builds a rule for generating a ChangeLog file from version control
+system commit messages.  Currently, the only supported VCS is git, but
+support for others could be added in future.
+
+Defines GENERATE_CHANGELOG_RULES which should be substituted in your
+Makefile.
+
+Usage example:
+
+configure.ac:
+
+@smallexample
+  AX_GENERATE_CHANGELOG
+@end smallexample
+
+Makefile.am:
+
+@smallexample
+  @@GENERATE_CHANGELOG_RULES@@
+  CHANGELOG_START = 0.2.3^
+  dist-hook: dist-ChangeLog
+@end smallexample
+
+ChangeLog (stub committed to VCS):
+
+@smallexample
+  The ChangeLog is auto-generated when releasing.
+  If you are seeing this, use 'git log' for a detailed list of changes.
+@end smallexample
+
+This results in a "dist-ChangeLog" rule being added to the Makefile.
+When run, "dist-ChangeLog" will generate a ChangeLog in the
+$(top_distdir), using $(CHANGELOG_GIT_FLAGS) to format the output from
+"git log" being run in $(CHANGELOG_GIT_DIR).
+
+Unless Automake is initialised with the 'foreign' option, a dummy
+ChangeLog file must be committed to VCS in $(top_srcdir), containing the
+text above (for example).  It will be substituted by the automatically
+generated ChangeLog during "make dist".
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_generate_changelog.m4,latest
+version of @file{ax_generate_changelog.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_generate_changelog.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2015 David King @email{amigadave@@amigadave.com}} @* @w{Copyright @copyright{} 2015 Philip Withnall @email{philip.withnall@@collabora.co.uk}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

@@ -1,0 +1,30 @@
+@node ax_cxx_header_tr1_unordered_map
+@unnumberedsec ax_cxx_header_tr1_unordered_map
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_HEADER_TR1_UNORDERED_MAP
+@end smallexample
+
+@majorheading Description
+
+Check whether the TR1 include <unordered_map> exists and define
+HAVE_TR1_UNORDERED_MAP if it does.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_header_tr1_unordered_map.m4,latest
+version of @file{ax_cxx_header_tr1_unordered_map.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_header_tr1_unordered_map.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Benjamin Kosnik @email{bkoz@@redhat.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

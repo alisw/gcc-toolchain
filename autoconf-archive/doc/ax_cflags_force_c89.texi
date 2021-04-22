@@ -1,0 +1,46 @@
+@node ax_cflags_force_c89
+@unnumberedsec ax_cflags_force_c89
+
+@majorheading Synopsis
+
+@smallexample
+AX_CFLAGS_FORCE_C89 [(shellvar [,default, [A/NA]])]
+@end smallexample
+
+@majorheading Description
+
+Try to find a compiler option that enables strict C89 mode.
+
+For the GNU CC compiler it will be -ansi -pedantic.  The result is added
+to the shellvar being CFLAGS by default.
+
+Currently this macro knows about GCC, Solaris C compiler, Digital Unix C
+compiler, C for AIX Compiler, HP-UX C compiler, IRIX C compiler, NEC
+SX-5 (Super-UX 10) C compiler, and Cray J90 (Unicos 10.0.0.8) C
+compiler.
+
+@smallexample
+ - $1 shell-variable-to-add-to : CFLAGS
+ - $2 add-value-if-not-found : nothing
+ - $3 action-if-found : add value to shellvariable
+ - $4 action-if-not-found : nothing
+@end smallexample
+
+NOTE: These macros depend on AX_APPEND_FLAG.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cflags_force_c89.m4,latest
+version of @file{ax_cflags_force_c89.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cflags_force_c89.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

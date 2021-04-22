@@ -1,0 +1,31 @@
+@node ax_libtoolize_cflags
+@unnumberedsec ax_libtoolize_cflags
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIBTOOLIZE_CFLAGS(COMPILER-FLAGS-VAR)
+@end smallexample
+
+@majorheading Description
+
+Change the contents of variable COMPILER-FLAGS-VAR so that they are
+Libtool friendly, ie. prefix each of them with `-Xcompiler' so that
+Libtool doesn't remove them.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_libtoolize_cflags.m4,latest
+version of @file{ax_libtoolize_cflags.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_libtoolize_cflags.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Ludovic Courtes @email{ludo@@chbouib.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

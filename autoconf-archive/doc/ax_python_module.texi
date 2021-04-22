@@ -1,0 +1,33 @@
+@node ax_python_module
+@unnumberedsec ax_python_module
+
+@majorheading Synopsis
+
+@smallexample
+AX_PYTHON_MODULE(modname[, fatal, python])
+@end smallexample
+
+@majorheading Description
+
+Checks for Python module.
+
+If fatal is non-empty then absence of a module will trigger an error.
+The third parameter can either be "python" for Python 2 or "python3" for
+Python 3; defaults to Python 3.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_python_module.m4,latest
+version of @file{ax_python_module.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_python_module.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Andrew Collier}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,52 @@
+@node ax_printf_size_t
+@unnumberedsec ax_printf_size_t
+
+@majorheading Synopsis
+
+@smallexample
+AX_PRINTF_SIZE_T
+@end smallexample
+
+@majorheading Description
+
+Check for the appropriate printf() format string modifier to use with a
+size_t argument. If a suitable modifier is found, it is AC_DEFINE'd as
+PRI_SIZE_T_MODIFIER, and can be used in C code as e.g.
+
+@smallexample
+  printf("Size = %" PRI_SIZE_T_MODIFIER "u bytes.\n", sizeof(foo));
+@end smallexample
+
+If you use the PRIxNN macros from ISO C99's <inttypes.h>, you may wish
+to define a supplemental set of macros along similar lines:
+
+@smallexample
+  #define PRIdSIZE PRI_SIZE_T_MODIFIER "d"
+  #define PRIiSIZE PRI_SIZE_T_MODIFIER "i"
+  #define PRIoSIZE PRI_SIZE_T_MODIFIER "o"
+  #define PRIuSIZE PRI_SIZE_T_MODIFIER "u"
+  #define PRIxSIZE PRI_SIZE_T_MODIFIER "x"
+  #define PRIXSIZE PRI_SIZE_T_MODIFIER "X"
+@end smallexample
+
+Note: This macro invokes a test program to check whether a given format
+modifier is understood by the system's sprintf() function. If the user
+is cross-compiling, then this check cannot be performed, and thereby
+PRI_SIZE_T_MODIFIER will remain undefined.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_printf_size_t.m4,latest
+version of @file{ax_printf_size_t.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_printf_size_t.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2012 Daniel Richard G. @email{skunk@@iSKUNK.ORG}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,88 @@
+@node ax_check_gnu_make
+@unnumberedsec ax_check_gnu_make
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_GNU_MAKE([run-if-true],[run-if-false])
+@end smallexample
+
+@majorheading Description
+
+This macro searches for a GNU version of make. If a match is found:
+
+@smallexample
+  * The makefile variable `ifGNUmake' is set to the empty string, otherwise
+    it is set to "#". This is useful for including a special features in a
+    Makefile, which cannot be handled by other versions of make.
+  * The makefile variable `ifnGNUmake' is set to #, otherwise
+    it is set to the empty string. This is useful for including a special
+    features in a Makefile, which can be handled
+    by other versions of make or to specify else like clause.
+  * The variable `_cv_gnu_make_command` is set to the command to invoke
+    GNU make if it exists, the empty string otherwise.
+  * The variable `ax_cv_gnu_make_command` is set to the command to invoke
+    GNU make by copying `_cv_gnu_make_command`, otherwise it is unset.
+  * If GNU Make is found, its version is extracted from the output of
+    `make --version` as the last field of a record of space-separated
+    columns and saved into the variable `ax_check_gnu_make_version`.
+  * Additionally if GNU Make is found, run shell code run-if-true
+    else run shell code run-if-false.
+@end smallexample
+
+Here is an example of its use:
+
+Makefile.in might contain:
+
+@smallexample
+  # A failsafe way of putting a dependency rule into a makefile
+  $(DEPEND):
+          $(CC) -MM $(srcdir)/*.c > $(DEPEND)
+@end smallexample
+
+@smallexample
+  @@ifGNUmake@@ ifeq ($(DEPEND),$(wildcard $(DEPEND)))
+  @@ifGNUmake@@ include $(DEPEND)
+  @@ifGNUmake@@ else
+  fallback code
+  @@ifGNUmake@@ endif
+@end smallexample
+
+Then configure.in would normally contain:
+
+@smallexample
+  AX_CHECK_GNU_MAKE()
+  AC_OUTPUT(Makefile)
+@end smallexample
+
+Then perhaps to cause gnu make to override any other make, we could do
+something like this (note that GNU make always looks for GNUmakefile
+first):
+
+@smallexample
+  if  ! test x$_cv_gnu_make_command = x ; then
+          mv Makefile GNUmakefile
+          echo .DEFAULT: > Makefile ;
+          echo \  $_cv_gnu_make_command \$@@ >> Makefile;
+  fi
+@end smallexample
+
+Then, if any (well almost any) other make is called, and GNU make also
+exists, then the other make wraps the GNU make.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_gnu_make.m4,latest
+version of @file{ax_check_gnu_make.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_gnu_make.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 John Darrington @email{j.darrington@@elvis.murdoch.edu.au}} @* @w{Copyright @copyright{} 2015 Enrico M. Crisostomo @email{enrico.m.crisostomo@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

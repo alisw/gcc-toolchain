@@ -1,0 +1,111 @@
+@node ax_lib_hdf5
+@unnumberedsec ax_lib_hdf5
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_HDF5([serial/parallel])
+@end smallexample
+
+@majorheading Description
+
+This macro provides tests of the availability of HDF5 library.
+
+The optional macro argument should be either 'serial' or 'parallel'. The
+former only looks for serial HDF5 installations via h5cc. The latter
+only looks for parallel HDF5 installations via h5pcc. If the optional
+argument is omitted, serial installations will be preferred over
+parallel ones.
+
+The macro adds a --with-hdf5 option accepting one of three values:
+
+@smallexample
+  no   - do not check for the HDF5 library.
+  yes  - do check for HDF5 library in standard locations.
+  path - complete path to the HDF5 helper script h5cc or h5pcc.
+@end smallexample
+
+If HDF5 is successfully found, this macro calls
+
+@smallexample
+  AC_SUBST(HDF5_VERSION)
+  AC_SUBST(HDF5_CC)
+  AC_SUBST(HDF5_CFLAGS)
+  AC_SUBST(HDF5_CPPFLAGS)
+  AC_SUBST(HDF5_LDFLAGS)
+  AC_SUBST(HDF5_LIBS)
+  AC_SUBST(HDF5_FC)
+  AC_SUBST(HDF5_FFLAGS)
+  AC_SUBST(HDF5_FLIBS)
+  AC_SUBST(HDF5_TYPE)
+  AC_DEFINE(HAVE_HDF5)
+@end smallexample
+
+and sets with_hdf5="yes".  Additionally, the macro sets
+with_hdf5_fortran="yes" if a matching Fortran wrapper script is found.
+Note that Autoconf's Fortran support is not used to perform this check.
+H5CC and H5FC will contain the appropriate serial or parallel HDF5
+wrapper script locations.
+
+If HDF5 is disabled or not found, this macros sets with_hdf5="no" and
+with_hdf5_fortran="no".
+
+Your configuration script can test $with_hdf to take any further
+actions. HDF5_@{C,CPP,LD@}FLAGS may be used when building with C or C++.
+HDF5_F@{FLAGS,LIBS@} should be used when building Fortran applications.
+
+To use the macro, one would code one of the following in "configure.ac"
+before AC_OUTPUT:
+
+@smallexample
+  1) dnl Check for HDF5 support
+     AX_LIB_HDF5()
+@end smallexample
+
+@smallexample
+  2) dnl Check for serial HDF5 support
+     AX_LIB_HDF5([serial])
+@end smallexample
+
+@smallexample
+  3) dnl Check for parallel HDF5 support
+     AX_LIB_HDF5([parallel])
+@end smallexample
+
+One could test $with_hdf5 for the outcome or display it as follows
+
+@smallexample
+  echo "HDF5 support:  $with_hdf5"
+@end smallexample
+
+You could also for example, override the default CC in "configure.ac" to
+enforce compilation with the compiler that HDF5 uses:
+
+@smallexample
+  AX_LIB_HDF5([parallel])
+  if test "$with_hdf5" = "yes"; then
+          CC="$HDF5_CC"
+  else
+          AC_MSG_ERROR([Unable to find HDF5, we need parallel HDF5.])
+  fi
+@end smallexample
+
+The HDF5_TYPE environment variable returns "parallel" or "serial",
+depending on which type of library is found.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_hdf5.m4,latest
+version of @file{ax_lib_hdf5.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_hdf5.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Timothy Brown @email{tbrown@@freeshell.org}} @* @w{Copyright @copyright{} 2010 Rhys Ulerich @email{rhys.ulerich@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

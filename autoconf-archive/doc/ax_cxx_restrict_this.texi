@@ -1,0 +1,55 @@
+@node ax_cxx_restrict_this
+@unnumberedsec ax_cxx_restrict_this
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_RESTRICT_THIS
+@end smallexample
+
+@majorheading Description
+
+Determine whether the C++ compiler supports qualifying a member function
+with a restricted "this" pointer.  Define "restrict_this" to the correct
+spelling; use like this:
+
+@smallexample
+  T::fn() restrict_this @{ /* code */ @}
+@end smallexample
+
+Otherwise, define "restrict_this" to be empty.
+
+Note: the syntax above is a GCC extension. If your C++ compiler has a
+different way of applying the 'restricted' qualifier to the "this"
+pointer, please consider reporting it.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_restrict_this.m4,latest
+version of @file{ax_cxx_restrict_this.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_restrict_this.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2010 Riccardo Murri @email{riccardo.murri@@gmail.com}}
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+Under Section 7 of GPL version 3, you are granted additional permissions
+described in the Autoconf Configure Script Exception, version 3.0, as
+published by the Free Software Foundation.
+
+You should have received a copy of the GNU General Public License and a
+copy of the Autoconf Configure Script Exception along with this program;
+see the files COPYINGv3 and COPYING.EXCEPTION respectively. If not, see
+<https://www.gnu.org/licenses/>.

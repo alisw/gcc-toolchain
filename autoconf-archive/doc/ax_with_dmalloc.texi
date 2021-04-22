@@ -1,0 +1,44 @@
+@node ax_with_dmalloc
+@unnumberedsec ax_with_dmalloc
+
+@majorheading Synopsis
+
+@smallexample
+AX_WITH_DMALLOC
+@end smallexample
+
+@majorheading Description
+
+Let the user enable/disable support for the dmalloc library available
+from <http://www.dmalloc.org/>.
+
+The macro adds the command-line flag "--with-dmalloc". Furthermore,
+"-IPREFIX/include" will be added to "$CPPFLAGS", "-LPREFIX/lib" to
+"$LDFLAGS", and "-DDEBUG_DMALLOC" and "-DDMALLOC_FUNC_CHECK" to
+"$CPPFLAGS".
+
+To enable dmalloc support in your code, add the following snippet to
+your header files:
+
+@smallexample
+  #ifdef DEBUG_DMALLOC
+  #  include <dmalloc.h>
+  #endif
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_with_dmalloc.m4,latest
+version of @file{ax_with_dmalloc.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_with_dmalloc.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Peter Simons @email{simons@@cryp.to}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

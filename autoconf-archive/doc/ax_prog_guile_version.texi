@@ -1,0 +1,47 @@
+@node ax_prog_guile_version
+@unnumberedsec ax_prog_guile_version
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_GUILE_VERSION([VERSION],[ACTION-IF-TRUE],[ACTION-IF-FALSE])
+@end smallexample
+
+@majorheading Description
+
+Makes sure that guile supports the version indicated. If true the shell
+commands in ACTION-IF-TRUE are executed. If not the shell commands in
+ACTION-IF-FALSE are run. Note if $GUILE is not set (for example by
+running AC_CHECK_PROG or AC_PATH_PROG) the macro will fail.
+
+Example:
+
+@smallexample
+  AC_PATH_PROG([GUILE],[guile])
+  AC_PROG_GUILE_VERSION([1.6.0],[ ... ],[ ... ])
+@end smallexample
+
+This will check to make sure that the guile you have supports at least
+version 1.6.0.
+
+NOTE: This macro uses the $GUILE variable to perform the check.
+AX_WITH_GUILE can be used to set that variable prior to running this
+macro. The $GUILE_VERSION variable will be valorized with the detected
+version.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_guile_version.m4,latest
+version of @file{ax_prog_guile_version.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_guile_version.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Francesco Salvestrini @email{salvestrini@@users.sourceforge.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

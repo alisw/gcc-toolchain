@@ -1,0 +1,31 @@
+@node ax_trilinos_epetraext_hdf5
+@unnumberedsec ax_trilinos_epetraext_hdf5
+
+@majorheading Synopsis
+
+@smallexample
+AX_TRILINOS_EPETRAEXT_HDF5([, ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]])
+@end smallexample
+
+@majorheading Description
+
+Checks if EpetraExt was compiled with HDF5 support
+(--enable-epetraext-hdf5) enabled. When ACTION-IF-NOT-FOUND is not
+specified, the default behavior is for configure to fail.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_trilinos_epetraext_hdf5.m4,latest
+version of @file{ax_trilinos_epetraext_hdf5.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_trilinos_epetraext_hdf5.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Rhys Ulerich @email{rhys.ulerich@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

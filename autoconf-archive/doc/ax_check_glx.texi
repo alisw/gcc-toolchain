@@ -1,0 +1,72 @@
+@node ax_check_glx
+@unnumberedsec ax_check_glx
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_GLX
+@end smallexample
+
+@majorheading Description
+
+Check for GLX. If GLX is found, the required preprocessor and linker
+flags are included in the output variables "GLX_CFLAGS" and "GLX_LIBS",
+respectively. If no GLX implementation is found, "no_glx" is set to
+"yes".
+
+If the header "GL/glx.h" is found, "HAVE_GL_GLX_H" is defined. If the
+header "OpenGL/glx.h" is found, HAVE_OPENGL_GLX_H is defined. These
+preprocessor definitions may not be mutually exclusive.
+
+You should use something like this in your headers:
+
+@smallexample
+  # if defined(HAVE_WINDOWS_H) && defined(_WIN32)
+  #  include <windows.h>
+  # endif
+  # if defined(HAVE_GL_GLX_H)
+  #  include <GL/glx.h>
+  # elif defined(HAVE_OPENGL_GLX_H)
+  #  include <OpenGL/glx.h>
+  # else
+  #  error no glx.h
+  # endif
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_glx.m4,latest
+version of @file{ax_check_glx.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_glx.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Braden McDaniel @email{braden@@endoframe.com}} @* @w{Copyright @copyright{} 2013-2014 Bastien Roucaries @email{roucaries.bastien+autoconf@@gmail.com}}
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+As a special exception, the respective Autoconf Macro's copyright owner
+gives unlimited permission to copy, distribute and modify the configure
+scripts that are the output of Autoconf when processing the Macro. You
+need not follow the terms of the GNU General Public License when using
+or distributing such scripts, even though portions of the text of the
+Macro appear in them. The GNU General Public License (GPL) does govern
+all other use of the material that constitutes the Autoconf Macro.
+
+This special exception to the GPL applies to versions of the Autoconf
+Macro released by the Autoconf Archive. When you make and distribute a
+modified version of the Autoconf Macro, you may extend this special
+exception to the GPL to apply to your modified version as well.

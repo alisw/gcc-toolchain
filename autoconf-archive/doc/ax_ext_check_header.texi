@@ -1,0 +1,41 @@
+@node ax_ext_check_header
+@unnumberedsec ax_ext_check_header
+
+@majorheading Synopsis
+
+@smallexample
+AX_EXT_CHECK_HEADER(<header>, <paths>).
+@end smallexample
+
+@majorheading Description
+
+Check for <header> with -I<path> for each path in <paths> if need be.
+The first sucecssful path is chosen (eg if you say
+AX_EXT_CHECK_HEADER(foo.h, bar baz qux) and -Ibaz works then -Iqux will
+not be tested.
+
+Any -I flags that locate a header are added to CFLAGS and CPPFLAGS. AS
+with AC_CHECK_HEADERS it causes HAVE_<header>_H to be defined as 1.
+
+Example:
+
+@smallexample
+ AX_EXT_HAVE_HEADER(openssl/rsa.h, /usr/local/include /usr/local/ssl/include /usr/local/openssl/include)
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_ext_check_header.m4,latest
+version of @file{ax_ext_check_header.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_ext_check_header.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Duncan Simpson @email{dps@@simpson.demon.co.uk}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

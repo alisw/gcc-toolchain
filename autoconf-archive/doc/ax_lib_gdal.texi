@@ -1,0 +1,52 @@
+@node ax_lib_gdal
+@unnumberedsec ax_lib_gdal
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_GDAL([MINIMUM-VERSION])
+@end smallexample
+
+@majorheading Description
+
+This macro provides tests of availability of GDAL/OGR library of
+particular version or newer.
+
+AX_LIB_GDAL macro takes only one argument which is optional. If there is
+no required version passed, then macro does not run version test.
+
+The --with-gdal option takes complete path to gdal-config utility,
+
+This macro calls AC_SUBST for:
+
+@smallexample
+  GDAL_VERSION
+  GDAL_CFLAGS
+  GDAL_LDFLAGS
+  GDAL_DEP_LDFLAGS
+  GDAL_OGR_ENABLED
+@end smallexample
+
+and AC_DEFINE for:
+
+@smallexample
+  HAVE_GDAL
+  HAVE_GDAL_OGR
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_gdal.m4,latest
+version of @file{ax_lib_gdal.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_gdal.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2011 Mateusz Loskot @email{mateusz@@loskot.net}} @* @w{Copyright @copyright{} 2011 Alessandro Candini @email{candini@@meeo.it}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

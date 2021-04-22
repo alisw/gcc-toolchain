@@ -1,0 +1,36 @@
+@node ax_prog_cc_char_subscripts
+@unnumberedsec ax_prog_cc_char_subscripts
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_CC_CHAR_SUBSCRIPTS(substvar [,hard])
+@end smallexample
+
+@majorheading Description
+
+Try to find a compiler option that enables usage of char-type to index a
+value-field. This one needs unsigned-chars and it must suppress warnings
+about usage of chars for subscripting. for gcc -funsigned-char
+-Wno-char-subscripts
+
+Currently this macro knows about GCC. hopefully will evolve to use:
+Solaris C compiler, Digital Unix C compiler, C for AIX Compiler, HP-UX C
+compiler, and IRIX C compiler.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_cc_char_subscripts.m4,latest
+version of @file{ax_prog_cc_char_subscripts.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_cc_char_subscripts.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

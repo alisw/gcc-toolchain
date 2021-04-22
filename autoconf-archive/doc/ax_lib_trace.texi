@@ -1,0 +1,44 @@
+@node ax_lib_trace
+@unnumberedsec ax_lib_trace
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_TRACE([MINIMUM-VERSION], [ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+Test for the libtrace libraries of a particular version (or newer)
+
+If no path to the installed library is given the macro searches under
+/usr, /usr/local, /opt and /opt/local.
+
+This macro calls:
+
+@smallexample
+  AC_SUBST(LIBTRACE_CFLAGS) / AC_SUBST(LIBTRACE_LDFLAGS)
+@end smallexample
+
+And sets:
+
+@smallexample
+  HAVE_LIBTRACE
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_trace.m4,latest
+version of @file{ax_lib_trace.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_trace.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2011 Xiyue Deng @email{manphiz@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

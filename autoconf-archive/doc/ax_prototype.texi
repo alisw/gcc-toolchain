@@ -1,0 +1,138 @@
+@node ax_prototype
+@unnumberedsec ax_prototype
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROTOTYPE(function, includes, code, TAG1, values1 [, TAG2, values2 [...]])
+@end smallexample
+
+@majorheading Description
+
+Try all the combinations of <TAG1>, <TAG2>... to successfully compile
+<code>. <TAG1>, <TAG2>, ... are substituted in <code> and <include> with
+values found in <values1>, <values2>, ... respectively. <values1>,
+<values2>, ... contain a list of possible values for each corresponding
+tag and all combinations are tested. When AC_TRY_COMPILE(include, code)
+is successful for a given substitution, the macro stops and defines the
+following macros: FUNCTION_TAG1, FUNCTION_TAG2, ... using AC_DEFINE()
+with values set to the current values of <TAG1>, <TAG2>, ... If no
+combination is successful the configure script is aborted with a
+message.
+
+Intended purpose is to find which combination of argument types is
+acceptable for a given function <function>. It is recommended to list
+the most specific types first. For instance ARG1, [size_t, int] instead
+of ARG1, [int, size_t].
+
+Generic usage pattern:
+
+1) add a call in configure.in
+
+@smallexample
+ AX_PROTOTYPE(...)
+@end smallexample
+
+2) call autoheader to see which symbols are not covered
+
+3) add the lines in acconfig.h
+
+@smallexample
+ /* Type of Nth argument of function */
+ #undef FUNCTION_ARGN
+@end smallexample
+
+4) Within the code use FUNCTION_ARGN instead of an hardwired type
+
+Complete example:
+
+1) configure.in
+
+@smallexample
+ AX_PROTOTYPE(getpeername,
+ [
+  #include <sys/types.h>
+  #include <sys/socket.h>
+ ],
+ [
+  int a = 0;
+  ARG2 * b = 0;
+  ARG3 * c = 0;
+  getpeername(a, b, c);
+ ],
+ ARG2, [struct sockaddr, void],
+ ARG3, [socklen_t, size_t, int, unsigned int, long unsigned int])
+@end smallexample
+
+2) call autoheader
+
+@smallexample
+ autoheader: Symbol `GETPEERNAME_ARG2' is not covered by ./acconfig.h
+ autoheader: Symbol `GETPEERNAME_ARG3' is not covered by ./acconfig.h
+@end smallexample
+
+3) acconfig.h
+
+@smallexample
+ /* Type of second argument of getpeername */
+ #undef GETPEERNAME_ARG2
+@end smallexample
+
+@smallexample
+ /* Type of third argument of getpeername */
+ #undef GETPEERNAME_ARG3
+@end smallexample
+
+4) in the code
+
+@smallexample
+  ...
+  GETPEERNAME_ARG2 name;
+  GETPEERNAME_ARG3 namelen;
+  ...
+  ret = getpeername(socket, &name, &namelen);
+  ...
+@end smallexample
+
+Implementation notes: generating all possible permutations of the
+arguments is not easily done with the usual mixture of shell and m4,
+that is why this macro is almost 100% m4 code. It generates long but
+simple to read code.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prototype.m4,latest
+version of @file{ax_prototype.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prototype.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Loic Dachary @email{loic@@senga.org}}
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+As a special exception, the respective Autoconf Macro's copyright owner
+gives unlimited permission to copy, distribute and modify the configure
+scripts that are the output of Autoconf when processing the Macro. You
+need not follow the terms of the GNU General Public License when using
+or distributing such scripts, even though portions of the text of the
+Macro appear in them. The GNU General Public License (GPL) does govern
+all other use of the material that constitutes the Autoconf Macro.
+
+This special exception to the GPL applies to versions of the Autoconf
+Macro released by the Autoconf Archive. When you make and distribute a
+modified version of the Autoconf Macro, you may extend this special
+exception to the GPL to apply to your modified version as well.

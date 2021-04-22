@@ -1,0 +1,90 @@
+@node ax_gcc_func_attribute
+@unnumberedsec ax_gcc_func_attribute
+
+@majorheading Synopsis
+
+@smallexample
+AX_GCC_FUNC_ATTRIBUTE(ATTRIBUTE)
+@end smallexample
+
+@majorheading Description
+
+This macro checks if the compiler supports one of GCC's function
+attributes; many other compilers also provide function attributes with
+the same syntax. Compiler warnings are used to detect supported
+attributes as unsupported ones are ignored by default so quieting
+warnings when using this macro will yield false positives.
+
+The ATTRIBUTE parameter holds the name of the attribute to be checked.
+
+If ATTRIBUTE is supported define HAVE_FUNC_ATTRIBUTE_<ATTRIBUTE>.
+
+The macro caches its result in the ax_cv_have_func_attribute_<attribute>
+variable.
+
+The macro currently supports the following function attributes:
+
+@smallexample
+ alias
+ aligned
+ alloc_size
+ always_inline
+ artificial
+ cold
+ const
+ constructor
+ constructor_priority for constructor attribute with priority
+ deprecated
+ destructor
+ dllexport
+ dllimport
+ error
+ externally_visible
+ fallthrough
+ flatten
+ format
+ format_arg
+ gnu_format
+ gnu_inline
+ hot
+ ifunc
+ leaf
+ malloc
+ noclone
+ noinline
+ nonnull
+ noreturn
+ nothrow
+ optimize
+ pure
+ sentinel
+ sentinel_position
+ unused
+ used
+ visibility
+ warning
+ warn_unused_result
+ weak
+ weakref
+@end smallexample
+
+Unsupported function attributes will be tested with a prototype
+returning an int and not accepting any arguments and the result of the
+check might be wrong or meaningless so use with care.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_gcc_func_attribute.m4,latest
+version of @file{ax_gcc_func_attribute.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_gcc_func_attribute.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2013 Gabriele Svelto @email{gabriele.svelto@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

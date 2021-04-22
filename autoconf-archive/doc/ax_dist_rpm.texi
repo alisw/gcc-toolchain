@@ -1,0 +1,89 @@
+@node ax_dist_rpm
+@unnumberedsec ax_dist_rpm
+
+@majorheading Synopsis
+
+@smallexample
+AX_DIST_RPM([SPEC])
+@end smallexample
+
+@majorheading Description
+
+Adds support for a rpm dist target.
+
+You will need to create a spec template with everything except the files
+and the Changelog. Use @@PACKAGE@@ and @@VERSION@@ to refer to the package
+name and version respectively.  The files and ChangeLog will be filled
+in automatically. For instance:
+
+@smallexample
+  Summary: Foobar
+  Name: @@PACKAGE@@
+  Version: @@VERSION@@
+  Release: 0
+  License: GPL
+  Group: Productivity/Networking
+  Source0: http://somewhere/Foobar/%@{name@}-%@{version@}.tar.gz
+  URL: http://somewhere
+  BuildRoot: %@{_tmppath@}/%@{name@}-root
+  Prefix: %@{_prefix@}
+@end smallexample
+
+@smallexample
+  %description
+  Foobar does something
+@end smallexample
+
+@smallexample
+  %prep
+  %setup
+@end smallexample
+
+@smallexample
+  %build
+  %configure
+  make
+@end smallexample
+
+@smallexample
+  %install
+  %makeinstall
+@end smallexample
+
+@smallexample
+  %clean
+  rm -rf $RPM_BUILD_ROOT
+@end smallexample
+
+@smallexample
+  %files
+  %defattr(-,root,root)
+@end smallexample
+
+@smallexample
+  %doc AUTHORS BUGS COPYING INSTALL NEWS README
+@end smallexample
+
+@smallexample
+  %changelog
+@end smallexample
+
+Make sure ax_upload.am is added to aminclude_static.am and you have
+'include aminclude_static.am' in Makefile.am
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_dist_rpm.m4,latest
+version of @file{ax_dist_rpm.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_dist_rpm.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Tom Howard @email{tomhoward@@users.sf.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,71 @@
+@node ax_spec_package_version
+@unnumberedsec ax_spec_package_version
+
+@majorheading Synopsis
+
+@smallexample
+AX_SPEC_PACKAGE_AND_VERSION ([specfile])
+AX_SPEC_PACKAGE_NAME ([shellvar],[defaultvalue])
+AX_SPEC_PACKAGE_VERSION ([shellvar],[defaultvalue])
+AX_SPEC_PACKAGE_SUMMARY ([shellvar],[defaultvalue])
+AX_SPEC_PACKAGE_LICENSE ([shellvar],[defaultvalue])
+AX_SPEC_PACKAGE_CATEGORY ([shellvar],[defaultvalue])
+AX_SPEC_PACKAGE_ICON ([shellvar],[defaultvalue])
+AX_SPEC_DEFAULTS([specfile])
+@end smallexample
+
+@majorheading Description
+
+set PACKAGE from the given specfile - default to basename of the
+rpmspecfile if no "name:" could be found in the spec file.
+
+set VERSION from the given specfile - default to a date-derived value if
+no "version:" could be found in the spec file.
+
+this macro builds on top of AX_SPEC_FILE / AX_SPEC_EXTRACT
+
+more specific: if not "name:" or "%define name" was found in the
+myproject.spec file then the PACKAGE var is set to the basename
+"myproject". When no spec file was present then it will usually default
+to "TODO".
+
+The version spec looks for "version:" or "%define version" in the spec
+file. When no such value was seen or no spec file had been present then
+the value is set to `date +0.%y.%W%w`.
+
+the version value itself is sanitized somewhat with making it to always
+carry at least three digits (1.2.3) and cleansing superfluous "0" chars
+around from generating numbers elsewhere.
+
+additional macros are provided that extract a specific value from the
+spec file, among these:
+
+set PACKAGE_SUMMARY from the given specfile - default to package and try
+to detect a type suffix if "summary:" was not in the spec file
+
+set PACKAGE_LICENSE from the given specfile - if no "license:" tag was
+given in the spec file then various COPYING files are grepped to have a
+guess and the final fallback will be GNU GPL (or GNU LGPL).
+
+set PACKAGE_ICON from the given specfile - if no "icon:" tag was given
+in the spec file then we default to $PACKAGE-icon.png
+
+the final AX_SPEC_INIT(specfile) will initialize all variables to its
+defaults according to the spec file given.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_spec_package_version.m4,latest
+version of @file{ax_spec_package_version.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_spec_package_version.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

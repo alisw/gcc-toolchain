@@ -1,0 +1,29 @@
+@node ax_cxx_stlport_hashmap
+@unnumberedsec ax_cxx_stlport_hashmap
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_STLPORT_HASHMAP
+@end smallexample
+
+@majorheading Description
+
+Test for the presence of STLport's hashmap extension.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_stlport_hashmap.m4,latest
+version of @file{ax_cxx_stlport_hashmap.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_stlport_hashmap.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Patrick Mauritz @email{oxygene@@studentenbude.ath.cx}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

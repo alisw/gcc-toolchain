@@ -1,0 +1,31 @@
+@node ax_f90_module_extension
+@unnumberedsec ax_f90_module_extension
+
+@majorheading Synopsis
+
+@smallexample
+AX_F90_MODULE_EXTENSION
+@end smallexample
+
+@majorheading Description
+
+Find Fortran 90 modules file extension. The module extension is stored
+in the cached variable ax_f90_modext, or "unknown" if the extension
+cannot be found.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_f90_module_extension.m4,latest
+version of @file{ax_f90_module_extension.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_f90_module_extension.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Luc Maisonobe @email{luc@@spaceroots.org}} @* @w{Copyright @copyright{} 2009 Alexander Pletzer @email{pletzer@@txcorp.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

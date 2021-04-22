@@ -1,0 +1,33 @@
+@node ax_prog_scala
+@unnumberedsec ax_prog_scala
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_SCALA
+@end smallexample
+
+@majorheading Description
+
+AX_PROG_SCALA will check that scala is available. If it is SCALA will be
+set to its path and SCALA_VERSION will be set to its version.
+
+Hint: AX_COMPARE_VERSION can be used to check if SCALA_VERSION has an
+acceptable value.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_scala.m4,latest
+version of @file{ax_prog_scala.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_scala.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2013 Sveinung Kvilhaugsvik @email{sveinung84@@users.sourceforge.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

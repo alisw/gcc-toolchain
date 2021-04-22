@@ -1,0 +1,43 @@
+@node ax_boost_filesystem
+@unnumberedsec ax_boost_filesystem
+
+@majorheading Synopsis
+
+@smallexample
+AX_BOOST_FILESYSTEM
+@end smallexample
+
+@majorheading Description
+
+Test for Filesystem library from the Boost C++ libraries. The macro
+requires a preceding call to AX_BOOST_BASE. Further documentation is
+available at <http://randspringer.de/boost/index.html>.
+
+This macro calls:
+
+@smallexample
+  AC_SUBST(BOOST_FILESYSTEM_LIB)
+@end smallexample
+
+And sets:
+
+@smallexample
+  HAVE_BOOST_FILESYSTEM
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_boost_filesystem.m4,latest
+version of @file{ax_boost_filesystem.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_boost_filesystem.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Thomas Porschberg @email{thomas@@randspringer.de}} @* @w{Copyright @copyright{} 2009 Michael Tindal} @* @w{Copyright @copyright{} 2009 Roman Rybalko @email{libtorrent@@romanr.info}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,34 @@
+@node ax_cache_size
+@unnumberedsec ax_cache_size
+
+@majorheading Synopsis
+
+@smallexample
+AX_CACHE_SIZE
+@end smallexample
+
+@majorheading Description
+
+Find L1 and L2 caches size by reading the corresponding file on UNIX or
+by requesting cpuid. The results are available in the defines
+CPU_L1_CACHE and CPU_L2_CACHE.
+
+This macro depends on AX_GCC_X86_CPUID, AC_PROG_SED, AX_COUNT_CPUS, and
+AX_CPU_VENDOR.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cache_size.m4,latest
+version of @file{ax_cache_size.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cache_size.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Christophe Tournayre @email{turn3r@@users.sourceforge.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

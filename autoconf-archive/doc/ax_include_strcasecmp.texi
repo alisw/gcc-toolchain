@@ -1,0 +1,37 @@
+@node ax_include_strcasecmp
+@unnumberedsec ax_include_strcasecmp
+
+@majorheading Synopsis
+
+@smallexample
+AX_INCLUDE_STRCASECMP
+@end smallexample
+
+@majorheading Description
+
+This macro tries to find a header for strcasecmp() in strings.h, then
+string.h, and AC_DEFINEs AX_STRCASECMP_HEADER to the value it found. Use
+it in your source like so:
+
+@smallexample
+  #ifdef AX_STRCASECMP_HEADER
+  #include AX_STRCASECMP_HEADER
+  #endif
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_include_strcasecmp.m4,latest
+version of @file{ax_include_strcasecmp.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_include_strcasecmp.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2012 Leo Davis @email{ldavis@@speechfxinc.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

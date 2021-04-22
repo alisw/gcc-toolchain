@@ -1,0 +1,67 @@
+@node ax_create_stdint_h
+@unnumberedsec ax_create_stdint_h
+
+@majorheading Synopsis
+
+@smallexample
+AX_CREATE_STDINT_H [( HEADER-TO-GENERATE [, HEDERS-TO-CHECK])]
+@end smallexample
+
+@majorheading Description
+
+the "ISO C9X: 7.18 Integer types <stdint.h>" section requires the
+existence of an include file <stdint.h> that defines a set of typedefs,
+especially uint8_t,int32_t,uintptr_t. Many older installations will not
+provide this file, but some will have the very same definitions in
+<inttypes.h>. In other environments we can use the inet-types in
+<sys/types.h> which would define the typedefs int8_t and u_int8_t
+respectively.
+
+This macros will create a local "_stdint.h" or the headerfile given as
+an argument. In many cases that file will just "#include <stdint.h>" or
+"#include <inttypes.h>", while in other environments it will provide the
+set of basic 'stdint's definitions/typedefs:
+
+@smallexample
+  int8_t,uint8_t,int16_t,uint16_t,int32_t,uint32_t,intptr_t,uintptr_t
+  int_least32_t.. int_fast32_t.. intmax_t
+@end smallexample
+
+which may or may not rely on the definitions of other files, or using
+the AC_CHECK_SIZEOF macro to determine the actual sizeof each type.
+
+if your header files require the stdint-types you will want to create an
+installable file mylib-int.h that all your other installable header may
+include. So if you have a library package named "mylib", just use
+
+@smallexample
+  AX_CREATE_STDINT_H(mylib-int.h)
+@end smallexample
+
+in configure.ac and go to install that very header file in Makefile.am
+along with the other headers (mylib.h) - and the mylib-specific headers
+can simply use "#include <mylib-int.h>" to obtain the stdint-types.
+
+Remember, if the system already had a valid <stdint.h>, the generated
+file will include it directly. No need for fuzzy HAVE_STDINT_H things...
+(oops, GCC 4.2.x has deliberately disabled its stdint.h for non-c99
+compilation and the c99-mode is not the default. Therefore this macro
+will not use the compiler's stdint.h - please complain to the GCC
+developers).
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_create_stdint_h.m4,latest
+version of @file{ax_create_stdint_h.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_create_stdint_h.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

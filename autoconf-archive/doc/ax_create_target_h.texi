@@ -1,0 +1,117 @@
+@node ax_create_target_h
+@unnumberedsec ax_create_target_h
+
+@majorheading Synopsis
+
+@smallexample
+AX_CREATE_TARGET_H [(HEADER-FILE [,PREFIX)]
+@end smallexample
+
+@majorheading Description
+
+Create the header-file and let it contain '#defines' for the target
+platform. This macro is used for libraries that have platform-specific
+quirks. Instead of inventing a target-specific target.h.in files, just
+let it create a header file from the definitions of AC_CANONICAL_SYSTEM
+and put only ifdef's in the installed header-files.
+
+@smallexample
+ if the HEADER-FILE is absent, [target.h] is used.
+ if the PREFIX is absent, [TARGET] is used.
+ the prefix can be the packagename. (y:a-z-:A-Z_:)
+@end smallexample
+
+The defines look like...
+
+@smallexample
+ #ifndef TARGET_CPU_M68K
+ #define TARGET_CPU_M68K "m68k"
+ #endif
+@end smallexample
+
+@smallexample
+ #ifndef TARGET_OS_LINUX
+ #define TARGET_OS_LINUX "linux-gnu"
+ #endif
+@end smallexample
+
+@smallexample
+ #ifndef TARGET_OS_TYPE                     /* the string itself */
+ #define TARGET_OS_TYPE "linux-gnu"
+ #endif
+@end smallexample
+
+Detail: in the case of hppa1.1, the three idents "hppa1_1" "hppa1" and
+"hppa" are derived, for an m68k it just two, "m68k" and "m".
+
+The CREATE_TARGET_H__ variant is almost the same function, but
+everything is lowercased instead of uppercased, and there is a "__" in
+front of each prefix, so it looks like...
+
+@smallexample
+ #ifndef __target_os_linux
+ #define __target_os_linux "linux-gnulibc2"
+ #endif
+@end smallexample
+
+@smallexample
+ #ifndef __target_os__                     /* the string itself */
+ #define __target_os__ "linux-gnulibc2"
+ #endif
+@end smallexample
+
+@smallexample
+ #ifndef __target_cpu_i586
+ #define __target_cpu_i586 "i586"
+ #endif
+@end smallexample
+
+@smallexample
+ #ifndef __target_arch_i386
+ #define __target_arch_i386 "i386"
+ #endif
+@end smallexample
+
+@smallexample
+ #ifndef __target_arch__                   /* cpu family arch */
+ #define __target_arch__ "i386"
+ #endif
+@end smallexample
+
+Other differences: the default string-define is "__" instead of "_TYPE".
+
+Personally, I prefer the second variant (which had been the first in the
+devprocess of this file but I assume people will often fallback to the
+primary variant presented herein).
+
+NOTE: CREATE_TARGET_H does also fill HOST_OS-defines Functionality has
+been split over functions called CREATE_TARGET_H_UPPER,
+CREATE_TARGET_H_LOWER, CREATE_TARGET_HOST_UPPER, and
+CREATE_TARGET_HOST_LOWER.
+
+@smallexample
+ CREATE_TARGET_H  uses CREATE_TARGET_H_UPPER CREATE_TARGET_HOST_UPPER
+ CREATE_TARGET_H_ uses CREATE_TARGET_H_LOWER CREATE_TARGET_HOST_LOWER
+@end smallexample
+
+There is now a CREATE_PREFIX_TARGET_H in this file as a shorthand for
+PREFIX_CONFIG_H from a target.h file, however w/o the target.h ever
+created (the prefix is a bit different, since we add an extra -target-
+and -host-).
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_create_target_h.m4,latest
+version of @file{ax_create_target_h.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_create_target_h.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

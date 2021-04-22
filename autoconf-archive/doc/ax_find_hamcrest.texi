@@ -1,0 +1,32 @@
+@node ax_find_hamcrest
+@unnumberedsec ax_find_hamcrest
+
+@majorheading Synopsis
+
+@smallexample
+AX_FIND_HAMCREST
+@end smallexample
+
+@majorheading Description
+
+AX_FIND_HAMCREST will look for the Hamcrest java library. When found its
+path will be put in HAMCREST_CPF as a classpath fragment.
+
+To override the location define HAMCREST_JAR to the wanted path.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_find_hamcrest.m4,latest
+version of @file{ax_find_hamcrest.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_find_hamcrest.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2013 Sveinung Kvilhaugsvik @email{sveinung84@@users.sourceforge.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

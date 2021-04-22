@@ -1,0 +1,33 @@
+@node ax_prog_scalac
+@unnumberedsec ax_prog_scalac
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_SCALAC
+@end smallexample
+
+@majorheading Description
+
+AX_PROG_SCALAC will check that a scala compiler is available, that it
+works and set SCALAC for the Makefile.
+
+AX_PROG_SCALAC will search the path for a Scala compiler. To choose
+another compiler use the environment variable SCALAC.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_scalac.m4,latest
+version of @file{ax_prog_scalac.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_scalac.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2013 Sveinung Kvilhaugsvik @email{sveinung84@@users.sourceforge.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

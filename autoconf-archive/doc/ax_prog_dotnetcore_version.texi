@@ -1,0 +1,45 @@
+@node ax_prog_dotnetcore_version
+@unnumberedsec ax_prog_dotnetcore_version
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_DOTNETCORE_VERSION([VERSION],[ACTION-IF-TRUE],[ACTION-IF-FALSE])
+@end smallexample
+
+@majorheading Description
+
+Makes sure that .NET Core supports the version indicated. If true the
+shell commands in ACTION-IF-TRUE are executed. If not the shell commands
+in ACTION-IF-FALSE are run. The $dotnetcore_version variable will be
+filled with the detected version.
+
+This macro uses the $DOTNETCORE variable to perform the check. If
+$DOTNETCORE is not set prior to calling this macro, the macro will fail.
+
+Example:
+
+@smallexample
+  AC_PATH_PROG([DOTNETCORE],[dotnet])
+  AC_PROG_DOTNETCORE_VERSION([1.0.2],[ ... ],[ ... ])
+@end smallexample
+
+Searches for .NET Core, then checks if at least version 1.0.2 is
+present.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_dotnetcore_version.m4,latest
+version of @file{ax_prog_dotnetcore_version.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_dotnetcore_version.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2016 Jens Geyer @email{jensg@@apache.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

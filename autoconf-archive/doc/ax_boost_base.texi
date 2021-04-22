@@ -1,0 +1,46 @@
+@node ax_boost_base
+@unnumberedsec ax_boost_base
+
+@majorheading Synopsis
+
+@smallexample
+AX_BOOST_BASE([MINIMUM-VERSION], [ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+Test for the Boost C++ libraries of a particular version (or newer)
+
+If no path to the installed boost library is given the macro searchs
+under /usr, /usr/local, /opt and /opt/local and evaluates the
+$BOOST_ROOT environment variable. Further documentation is available at
+<http://randspringer.de/boost/index.html>.
+
+This macro calls:
+
+@smallexample
+  AC_SUBST(BOOST_CPPFLAGS) / AC_SUBST(BOOST_LDFLAGS)
+@end smallexample
+
+And sets:
+
+@smallexample
+  HAVE_BOOST
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_boost_base.m4,latest
+version of @file{ax_boost_base.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_boost_base.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Thomas Porschberg @email{thomas@@randspringer.de}} @* @w{Copyright @copyright{} 2009 Peter Adolphs}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

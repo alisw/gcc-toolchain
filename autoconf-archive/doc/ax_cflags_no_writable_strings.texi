@@ -1,0 +1,47 @@
+@node ax_cflags_no_writable_strings
+@unnumberedsec ax_cflags_no_writable_strings
+
+@majorheading Synopsis
+
+@smallexample
+AX_CFLAGS_NO_WRITABLE_STRINGS [(shellvar [,default, [A/NA]])]
+@end smallexample
+
+@majorheading Description
+
+Try to find a compiler option that makes all string literals readonly.
+
+The sanity check is done by looking at string.h which has a set of
+strcpy definitions that should be defined with const-modifiers to not
+emit a warning in all so many places.
+
+For the GNU CC compiler it will be -fno-writable-strings -Wwrite-strings
+The result is added to the shellvar being CFLAGS by default.
+
+DEFAULTS:
+
+@smallexample
+ - $1 shell-variable-to-add-to : CFLAGS
+ - $2 add-value-if-not-found : nothing
+ - $3 action-if-found : add value to shellvariable
+ - $4 action-if-not-found : nothing
+@end smallexample
+
+NOTE: These macros depend on AX_APPEND_FLAG.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cflags_no_writable_strings.m4,latest
+version of @file{ax_cflags_no_writable_strings.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cflags_no_writable_strings.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

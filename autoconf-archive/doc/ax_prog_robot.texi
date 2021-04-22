@@ -1,0 +1,35 @@
+@node ax_prog_robot
+@unnumberedsec ax_prog_robot
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_ROBOT([VERSION],[ACTION-IF-TRUE],[ACTION-IF-FALSE])
+@end smallexample
+
+@majorheading Description
+
+This macro searches for the "robot" command from the Robot Framework and
+sets the variable "ROBOT" to the name of the application and the
+"ROBOT_VERSION" variable to the version of the Robot Framework. When
+robot is found sets the "HAS_ROBOT" to "yes", otherwise to "no".
+
+Example:
+
+@smallexample
+  AX_PROG_ROBOT([3.1.0], [], [])
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_robot.m4,latest
+version of @file{ax_prog_robot.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_robot.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2020, Adam Chyla @email{adam@@chyla.org}}
+
+Distributed under the terms of the BSD 3-Clause License.

@@ -1,0 +1,44 @@
+@node ax_prog_perl_modules
+@unnumberedsec ax_prog_perl_modules
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_PERL_MODULES([MODULES], [ACTION-IF-TRUE], [ACTION-IF-FALSE])
+@end smallexample
+
+@majorheading Description
+
+Checks to see if the given perl modules are available. If true the shell
+commands in ACTION-IF-TRUE are executed. If not the shell commands in
+ACTION-IF-FALSE are run. Note if $PERL is not set (for example by
+calling AC_CHECK_PROG, or AC_PATH_PROG), AC_CHECK_PROG(PERL, perl, perl)
+will be run.
+
+MODULES is a space separated list of module names. To check for a
+minimum version of a module, append the version number to the module
+name, separated by an equals sign.
+
+Example:
+
+@smallexample
+  AX_PROG_PERL_MODULES( Text::Wrap Net::LDAP=1.0.3, ,
+                        AC_MSG_WARN(Need some Perl modules)
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_perl_modules.m4,latest
+version of @file{ax_prog_perl_modules.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_perl_modules.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Dean Povey @email{povey@@wedgetail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

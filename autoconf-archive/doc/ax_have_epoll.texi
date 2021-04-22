@@ -1,0 +1,54 @@
+@node ax_have_epoll
+@unnumberedsec ax_have_epoll
+
+@majorheading Synopsis
+
+@smallexample
+AX_HAVE_EPOLL([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+AX_HAVE_EPOLL_PWAIT([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+This macro determines whether the system supports the epoll I/O event
+interface. A neat usage example would be:
+
+@smallexample
+  AX_HAVE_EPOLL(
+    [AX_CONFIG_FEATURE_ENABLE(epoll)],
+    [AX_CONFIG_FEATURE_DISABLE(epoll)])
+  AX_CONFIG_FEATURE(
+    [epoll], [This platform supports epoll(7)],
+    [HAVE_EPOLL], [This platform supports epoll(7).])
+@end smallexample
+
+The epoll interface was added to the Linux kernel in version 2.5.45, and
+the macro verifies that a kernel newer than this is installed. This
+check is somewhat unreliable if <linux/version.h> doesn't match the
+running kernel, but it is necessary regardless, because glibc comes with
+stubs for the epoll_create(), epoll_wait(), etc. that allow programs to
+compile and link even if the kernel is too old; the problem would then
+be detected only at runtime.
+
+Linux kernel version 2.6.19 adds the epoll_pwait() call in addition to
+epoll_wait(). The availability of that function can be tested with the
+second macro. Generally speaking, it is safe to assume that
+AX_HAVE_EPOLL would succeed if AX_HAVE_EPOLL_PWAIT has, but not the
+other way round.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_have_epoll.m4,latest
+version of @file{ax_have_epoll.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_have_epoll.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Peter Simons @email{simons@@cryp.to}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

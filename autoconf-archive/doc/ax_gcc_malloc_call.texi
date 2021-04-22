@@ -1,0 +1,30 @@
+@node ax_gcc_malloc_call
+@unnumberedsec ax_gcc_malloc_call
+
+@majorheading Synopsis
+
+@smallexample
+AX_GCC_MALLOC_CALL
+@end smallexample
+
+@majorheading Description
+
+The macro will compile a test program to see whether the compiler does
+understand the per-function postfix pragma.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_gcc_malloc_call.m4,latest
+version of @file{ax_gcc_malloc_call.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_gcc_malloc_call.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

@@ -1,0 +1,36 @@
+@node ax_struct_semun
+@unnumberedsec ax_struct_semun
+
+@majorheading Synopsis
+
+@smallexample
+AX_STRUCT_SEMUN
+@end smallexample
+
+@majorheading Description
+
+This macro checks to see if sys/sem.h defines struct semun. Some systems
+do, some systems don't. Your code must be able to deal with this
+possibility; if HAVE_STRUCT_SEMUM isn't defined for a given system, you
+have to define this structure before you can call functions like
+semctl().
+
+You should call AX_SYSV_IPC before this macro, to separate the check for
+System V IPC headers from the check for struct semun.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_struct_semun.m4,latest
+version of @file{ax_struct_semun.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_struct_semun.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Warren Young @email{warren@@etr-usa.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

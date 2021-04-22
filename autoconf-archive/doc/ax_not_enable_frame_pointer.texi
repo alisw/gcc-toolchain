@@ -1,0 +1,32 @@
+@node ax_not_enable_frame_pointer
+@unnumberedsec ax_not_enable_frame_pointer
+
+@majorheading Synopsis
+
+@smallexample
+AX_NOT_ENABLE_FRAME_POINTER ([shellvar])
+@end smallexample
+
+@majorheading Description
+
+add --enable-frame-pointer option, the default will add the gcc
+-fomit-frame-pointer option to the shellvar (per default CFLAGS) and
+remove the " -g " debuginfo option from it. In other words, the default
+is "--disable-frame-pointer"
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_not_enable_frame_pointer.m4,latest
+version of @file{ax_not_enable_frame_pointer.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_not_enable_frame_pointer.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

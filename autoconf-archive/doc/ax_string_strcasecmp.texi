@@ -1,0 +1,43 @@
+@node ax_string_strcasecmp
+@unnumberedsec ax_string_strcasecmp
+
+@majorheading Synopsis
+
+@smallexample
+AX_STRING_STRCASECMP
+@end smallexample
+
+@majorheading Description
+
+This macro tries to find strcasecmp() in string.h.
+
+Use this macro in conjunction with AX_STRINGS_STRCASECMP in your
+configure.in like so:
+
+@smallexample
+  AX_STRING_STRCASECMP
+  if test x"$ac_cv_string_strcasecmp" = "xno" ; then
+      AX_STRINGS_STRCASECMP
+  fi
+@end smallexample
+
+This will cause either HAVE_STRING_STRCASECMP or HAVE_STRINGS_STRCASECMP
+to be defined in config.h, which will tell your code what header to
+include to get strcasecmp()'s prototype.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_string_strcasecmp.m4,latest
+version of @file{ax_string_strcasecmp.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_string_strcasecmp.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Warren Young @email{warren@@etr-usa.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

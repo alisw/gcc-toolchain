@@ -1,0 +1,78 @@
+@node ax_save_flags_with_prefix
+@unnumberedsec ax_save_flags_with_prefix
+
+@majorheading Synopsis
+
+@smallexample
+AX_SAVE_FLAGS_WITH_PREFIX(PREFIX, LIST-OF-FLAGS)
+@end smallexample
+
+@majorheading Description
+
+For each flag in LIST-OF-FLAGS, it expands to lower-cased shell variable
+with the prefix holding the flag original value.  The saved variables
+can be restored by AX_RESTORE_FLAGS_WITH_PREFIX
+
+As an example: AX_SAVE_FLAGS_WITH_PREFIX([GL], [[CFLAGS],[LIBS]])
+expands to
+
+@smallexample
+  gl_saved_flag_cflags="$CFLAGS"
+  gl_saved_flag_libs="$LIBS"
+  CFLAGS="$GL_CFLAGS $CFLAGS"
+  LIBS="$GL_LIBS $LIBS"
+@end smallexample
+
+One common use case is to define a package specific wrapper macro around
+this one, and also setup other variables if needed. For example:
+
+@smallexample
+  AC_DEFUN([_AX_CHECK_GL_SAVE_FLAGS], [
+    AX_SAVE_FLAGS_WITH_PREFIX([GL],[$1])
+    AC_LANG_PUSH([C])
+  ])
+@end smallexample
+
+@smallexample
+  # pushes GL_CFLAGS and GL_LIBS to CFLAGS and LIBS
+  # also set the current language to test to C
+  _AX_CHECK_GL_SAVE_FLAGS([[CFLAGS],[LIBS]])
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_save_flags_with_prefix.m4,latest
+version of @file{ax_save_flags_with_prefix.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_save_flags_with_prefix.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2016 Felix Chern @email{idryman@@gmail.com}}
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+As a special exception, the respective Autoconf Macro's copyright owner
+gives unlimited permission to copy, distribute and modify the configure
+scripts that are the output of Autoconf when processing the Macro. You
+need not follow the terms of the GNU General Public License when using
+or distributing such scripts, even though portions of the text of the
+Macro appear in them. The GNU General Public License (GPL) does govern
+all other use of the material that constitutes the Autoconf Macro.
+
+This special exception to the GPL applies to versions of the Autoconf
+Macro released by the Autoconf Archive. When you make and distribute a
+modified version of the Autoconf Macro, you may extend this special
+exception to the GPL to apply to your modified version as well.

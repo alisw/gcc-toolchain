@@ -1,0 +1,56 @@
+@node ax_ext
+@unnumberedsec ax_ext
+
+@majorheading Synopsis
+
+@smallexample
+AX_EXT
+@end smallexample
+
+@majorheading Description
+
+Find supported SIMD extensions by requesting cpuid. When a SIMD
+extension is found, the -m"simdextensionname" is added to SIMD_FLAGS if
+compiler supports it. For example, if "sse2" is available then "-msse2"
+is added to SIMD_FLAGS.
+
+Find other supported CPU extensions by requesting cpuid. When a
+processor extension is found, the -m"extensionname" is added to
+CPUEXT_FLAGS if compiler supports it. For example, if "bmi2" is
+available then "-mbmi2" is added to CPUEXT_FLAGS.
+
+This macro calls:
+
+@smallexample
+  AC_SUBST(SIMD_FLAGS)
+  AC_SUBST(CPUEXT_FLAGS)
+@end smallexample
+
+And defines:
+
+@smallexample
+  HAVE_RDRND / HAVE_BMI1 / HAVE_BMI2 / HAVE_ADX / HAVE_MPX
+  HAVE_PREFETCHWT1 / HAVE_ABM / HAVE_MMX / HAVE_SSE / HAVE_SSE2
+  HAVE_SSE3 / HAVE_SSSE3 / HAVE_SSE4_1 / HAVE_SSE4_2 / HAVE_SSE4a
+  HAVE_SHA / HAVE_AES / HAVE_AVX / HAVE_FMA3 / HAVE_FMA4 / HAVE_XOP
+  HAVE_AVX2 / HAVE_AVX512_F / HAVE_AVX512_CD / HAVE_AVX512_PF
+  HAVE_AVX512_ER / HAVE_AVX512_VL / HAVE_AVX512_BW / HAVE_AVX512_DQ
+  HAVE_AVX512_IFMA / HAVE_AVX512_VBMI / HAVE_ALTIVEC / HAVE_VSX
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_ext.m4,latest
+version of @file{ax_ext.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_ext.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2007 Christophe Tournayre @email{turn3r@@users.sourceforge.net}} @* @w{Copyright @copyright{} 2013,2015 Michael Petch @email{mpetch@@capp-sysware.com}} @* @w{Copyright @copyright{} 2017 Rafael de Lucena Valle @email{rafaeldelucena@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,31 @@
+@node ax_c_arithmetic_rshift
+@unnumberedsec ax_c_arithmetic_rshift
+
+@majorheading Synopsis
+
+@smallexample
+AX_C_ARITHMETIC_RSHIFT
+@end smallexample
+
+@majorheading Description
+
+Checks if the right shift operation is arithmetic.
+
+This macro uses compile-time detection and so is cross-compile ready.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_c_arithmetic_rshift.m4,latest
+version of @file{ax_c_arithmetic_rshift.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_c_arithmetic_rshift.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 YAMAMOTO Kengo @email{yamaken@@bp.iij4u.or.jp}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

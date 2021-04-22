@@ -1,0 +1,39 @@
+@node ax_require_one_func
+@unnumberedsec ax_require_one_func
+
+@majorheading Synopsis
+
+@smallexample
+AX_REQUIRE_ONE_FUNC (FUNCTION..., [ACTION-IF-ANY-FOUND], [ACTION-IF-NONE-FOUND])
+@end smallexample
+
+@majorheading Description
+
+AX_REQUIRE_ONE_FUNC is a simple wrapper for AC_CHECK_FUNCS. It calls
+AC_CHECK_FUNCS on the list of functions named in the first argument,
+then invokes ACTION-IF-ANY-FOUND if at least one of the functions exists
+or ACTION-IF-NONE-FOUND if none of the functions exist.
+
+Here's an example:
+
+@smallexample
+  AX_REQUIRE_ONE_FUNC([posix_memalign memalign valloc], ,
+    [AC_MSG_ERROR([unable to allocate page-aligned memory])])
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_require_one_func.m4,latest
+version of @file{ax_require_one_func.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_require_one_func.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Scott Pakin @email{pakin@@uiuc.edu}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

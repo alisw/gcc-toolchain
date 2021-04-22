@@ -1,0 +1,47 @@
+@node ax_check_sign
+@unnumberedsec ax_check_sign
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_SIGN (TYPE, [ACTION-IF-SIGNED], [ACTION-IF-UNSIGNED], [INCLUDES])
+@end smallexample
+
+@majorheading Description
+
+Checks whether TYPE is signed or not. If no INCLUDES are specified, the
+default includes are used. If ACTION-IF-SIGNED is given, it is
+additional shell code to execute when the type is signed. If
+ACTION-IF-UNSIGNED is given, it is executed when the type is unsigned.
+
+This macro assumes that the type exists. Therefore the existence of the
+type should be checked before calling this macro. For example:
+
+@smallexample
+  AC_CHECK_HEADERS([wchar.h])
+  AC_CHECK_TYPE([wchar_t],,[ AC_MSG_ERROR([Type wchar_t not found.]) ])
+  AX_CHECK_SIGN([wchar_t],
+    [ AC_DEFINE(WCHAR_T_SIGNED, 1, [Define if wchar_t is signed]) ],
+    [ AC_DEFINE(WCHAR_T_UNSIGNED, 1, [Define if wchar_t is unsigned]) ], [
+  #ifdef HAVE_WCHAR_H
+  #include <wchar.h>
+  #endif
+  ])
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_sign.m4,latest
+version of @file{ax_check_sign.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_sign.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Ville Laurikari @email{vl@@iki.fi}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

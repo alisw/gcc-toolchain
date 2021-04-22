@@ -1,0 +1,45 @@
+@node ax_am_jobserver
+@unnumberedsec ax_am_jobserver
+
+@majorheading Synopsis
+
+@smallexample
+AX_AM_JOBSERVER([default_value])
+@end smallexample
+
+@majorheading Description
+
+Enables the use of make's jobserver for the purpose of parallel building
+by passing the -j option to make.
+
+The option --enable-jobserver is added to configure which can accept a
+yes, no, or an integer. The integer is the number of separate jobs to
+allow. If 'yes' is given, then the is assumed to be one more than the
+number of CPUs (determined through AX_COUNT_CPUS). If the value of no is
+given, then the jobserver is disabled. The default value is given by the
+first argument of the macro, or 'yes' if the argument is omitted.
+
+This macro makes use of AX_AM_MACROS, so you must add the following line
+
+@smallexample
+  @@INC_AMINCLUDE@@
+@end smallexample
+
+to your Makefile.am files.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_am_jobserver.m4,latest
+version of @file{ax_am_jobserver.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_am_jobserver.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Michael Paul Bailey @email{jinxidoru@@byu.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

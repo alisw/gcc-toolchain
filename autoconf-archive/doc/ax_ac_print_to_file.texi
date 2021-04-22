@@ -1,0 +1,31 @@
+@node ax_ac_print_to_file
+@unnumberedsec ax_ac_print_to_file
+
+@majorheading Synopsis
+
+@smallexample
+AX_AC_PRINT_TO_FILE([FILE],[DATA])
+@end smallexample
+
+@majorheading Description
+
+Writes the specified data to the specified file when Autoconf is run. If
+you want to print to a file when configure is run use AX_PRINT_TO_FILE
+instead.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_ac_print_to_file.m4,latest
+version of @file{ax_ac_print_to_file.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_ac_print_to_file.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Allan Caffee @email{allan.caffee@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

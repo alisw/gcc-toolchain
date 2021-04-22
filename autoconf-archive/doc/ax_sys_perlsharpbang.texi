@@ -1,0 +1,76 @@
+@node ax_sys_perlsharpbang
+@unnumberedsec ax_sys_perlsharpbang
+
+@majorheading Synopsis
+
+@smallexample
+AX_SYS_PERLSHARPBANG
+@end smallexample
+
+@majorheading Description
+
+Determine how the perl interpreter is located by the OS kernel and make
+substitution variable PERL_SHEBANG available. Does AC_PATH_PROG to find
+the path to perl. As a side-effect, that sets PERLINTERP and makes it
+available as a substitution variable.
+
+Note: The macro allows for the possibility (expected to be seldom used)
+of an explicit user override (the "user" being the operator executing
+the final 'configure' script, in this context) by making the option
+argument like:
+
+@smallexample
+  --with-perl-shebang='#! /my/funky/perlpath' # OR
+  --with-perl-shebang='/my/funky/perlpath'  # we just throw away the #! anyway
+                                            # bec it must be absent in Makefile
+@end smallexample
+
+Rationale: The are various ways of starting an interpreter on different
+*nix-like systems. Many use the simple
+
+@smallexample
+  #!/usr/bin/perl
+@end smallexample
+
+but it could be instead
+
+@smallexample
+  #!/usr/local/bin/perl
+@end smallexample
+
+and there is even the possibility that the user wants
+
+@smallexample
+  #!/usr/bin/env perl
+@end smallexample
+
+to find whichever perl comes first in the current $PATH. This is
+preferred by some of us because we run multiple perl installations on
+the same box. Adjusting our $PATH then allows us to set precedence over
+other perls, even whatever the "house" version is.
+
+Users on very non-unix systems like MS Windows do not have a kernel that
+does this kind of thing from the first line of script files, but instead
+the perl on their machine is started and merely notices whatever comes
+after the interpreter path on this first line of the script (options
+like "-w").
+
+Acknowledgement: this macro was in part inspired by Dean Povey's
+AC_PROG_PERL_VERSION.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_sys_perlsharpbang.m4,latest
+version of @file{ax_sys_perlsharpbang.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_sys_perlsharpbang.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Soren Andersen @email{somian@@pobox.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,49 @@
+@node ax_lib_mysqlcppconn
+@unnumberedsec ax_lib_mysqlcppconn
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_MYSQLCPPCONN([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+Test for the MySQL Connector/C++ libraries
+
+If no path to the installed library is given the macro searches under
+/usr, /usr/local, /opt and /opt/local.
+
+This macro calls:
+
+@smallexample
+  AC_SUBST(LIBMYSQLCPPCONN_CXXFLAGS) / AC_SUBST(LIBMYSQLCPPCONN_LDFLAGS)
+@end smallexample
+
+And sets:
+
+@smallexample
+  HAVE_LIBMYSQLCPPCONN
+@end smallexample
+
+Note that this library needs to link with either MySQL client library or
+MySQL Connector/C to work. The macros defined here don't take care of
+external dependencies so you have to do it on your own. See also
+AX_LIB_MYSQL macro.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_mysqlcppconn.m4,latest
+version of @file{ax_lib_mysqlcppconn.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_mysqlcppconn.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2011 Xiyue Deng @email{manphiz@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

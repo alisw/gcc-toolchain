@@ -1,0 +1,29 @@
+@node ax_check_icu
+@unnumberedsec ax_check_icu
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_ICU(version, action-if, action-if-not)
+@end smallexample
+
+@majorheading Description
+
+Defines ICU_LIBS, ICU_CFLAGS, ICU_CXXFLAGS. See icu-config(1) man page.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_icu.m4,latest
+version of @file{ax_check_icu.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_icu.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Akos Maroy @email{darkeye@@tyrell.hu}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

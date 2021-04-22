@@ -1,0 +1,42 @@
+@node ax_path_missing
+@unnumberedsec ax_path_missing
+
+@majorheading Synopsis
+
+@smallexample
+AX_PATH_MISSING(VARIABLE, PROG-TO-CHECK-FOR, WARNING-IF-NOT-FOUND, PATH)
+@end smallexample
+
+@majorheading Description
+
+Check whether program PROG-TO-CHECK-FOR exists in path. If it is found,
+set VARIABLE to the full path of PROG-TO-CHECK-FOR, otherwise warn using
+the string WARNING-IF-NOT-FOUND and set VARIABLE to the full path of the
+Automake missing script with PROG-TO-CHECK-FOR as the command to run.
+
+A typical use is the following:
+
+@smallexample
+  AX_PATH_MISSING([AUTOGEN],[autogen],[autogen seems missing ...])
+@end smallexample
+
+This macro is the combination of AC_PATH_PROG and AX_MISSING_PROG. If
+you do not want to run AC_PATH_PROG, simply use AX_MISSING_PROG or
+AM_MISSING.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_path_missing.m4,latest
+version of @file{ax_path_missing.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_path_missing.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Noah Slater @email{nslater@@bytesexual.org}} @* @w{Copyright @copyright{} 2008 Francesco Salvestrini @email{salvestrini@@sourceforge.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

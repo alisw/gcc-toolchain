@@ -1,0 +1,31 @@
+@node ax_check_off64_t
+@unnumberedsec ax_check_off64_t
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_OFF64_T
+@end smallexample
+
+@majorheading Description
+
+Check if off64_t is defined. On true define HAVE_OFF64_T, also define
+__LARGEFILE64_SOURCE where one is needed. (Note that an appropriative
+entry must be in config.h.in.)
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_off64_t.m4,latest
+version of @file{ax_check_off64_t.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_off64_t.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Ruslan Shevchenko @email{Ruslan@@Shevchenko.Kiev.UA}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,36 @@
+@node ax_llvm
+@unnumberedsec ax_llvm
+
+@majorheading Synopsis
+
+@smallexample
+AX_LLVM([llvm-libs])
+@end smallexample
+
+@majorheading Description
+
+Test for the existence of llvm, and make sure that it can be linked with
+the llvm-libs argument that is passed on to llvm-config i.e.:
+
+@smallexample
+  llvm --libs <llvm-libs>
+@end smallexample
+
+llvm-config will also include any libraries that are depended upon.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_llvm.m4,latest
+version of @file{ax_llvm.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_llvm.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Andy Kitchen @email{agimbleinthewabe@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

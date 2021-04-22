@@ -1,0 +1,233 @@
+@node ax_rpm_init
+@unnumberedsec ax_rpm_init
+
+@majorheading Synopsis
+
+@smallexample
+AX_RPM_INIT
+@end smallexample
+
+@majorheading Description
+
+Setup variables for creation of rpms. It will define several variables
+useful for creating rpms on a system where rpms are supported.
+Currently, I requires changes to Makefile.am to function properly (see
+the example below).
+
+Also note that I do not use any non-UNIX OSs (and for the most part, I
+only use RedHat), so this is probably generally not useful for other
+systems.
+
+Required setup:
+
+In configure.in:
+
+@smallexample
+  dnl For my rpm.m4 macros
+  RPM_RELEASE=1
+  AC_SUBST(RPM_RELEASE)
+@end smallexample
+
+@smallexample
+  AX_RPM_INIT
+  dnl Enable or disable the rpm making rules in Makefile.am
+  AM_CONDITIONAL(MAKE_RPMS, test x$make_rpms = xtrue)
+@end smallexample
+
+Furthermore, the %GNUconfigure rpm macro has a problem in that it does
+not define CXXFLAGS for the target system correctly, so for compiling
+C++ code, add the following line _before_ calling AC_PROG_CXX:
+
+@smallexample
+  dnl This is a little hack to make this work with rpm better (see mysql++.spec.in)
+  test -z "$CXXFLAGS" && CXXFLAGS="$@{CFLAGS@}"
+@end smallexample
+
+Changes to Makefile.am (I am trying to get rid of this step; suggestions
+invited):
+
+@smallexample
+  if MAKE_RPMS
+  rpm: @@RPM_TARGET@@
+@end smallexample
+
+@smallexample
+  .PHONY: rpm
+@end smallexample
+
+@smallexample
+  $(RPM_TARGET): $(DISTFILES)
+    $@{MAKE@} dist
+    -mkdir -p $(RPM_DIR)/SRPMS
+    -mkdir -p `dirname $(RPM_TARGET)`
+    $(RPM_PROG) $(RPM_ARGS) $(RPM_TARBALL)
+    @@echo Congratulations, $(RPM_TARGET) "(and friends)" should now exist.
+  else
+  endif
+@end smallexample
+
+Also, it works best with a XXXX.spec.in file like the following (this is
+way down on the wishlist, but a program to generate the skeleton spec.in
+much like autoscan would just kick butt!):
+
+@smallexample
+  ---------- 8< ----------
+  # -*- Mode:rpm-spec -*-
+  # mysql++.spec.in
+  Summary: Your package description goes here
+  %define rel @@RPM_RELEASE@@
+@end smallexample
+
+@smallexample
+  %define version @@VERSION@@
+  %define pkgname @@PACKAGE@@
+  %define prefix /usr
+@end smallexample
+
+@smallexample
+  %define lt_release @@LT_RELEASE@@
+  %define lt_version @@LT_CURRENT@@.@@LT_REVISION@@.@@LT_AGE@@
+@end smallexample
+
+@smallexample
+  # This is a hack until I can figure out how to better handle replacing
+  # autoconf macros... (gotta love autoconf...)
+  %define __aclocal   aclocal || aclocal -I ./macros
+  %define configure_args  @@RPM_CONFIGURE_ARGS@@
+@end smallexample
+
+@smallexample
+  Name: %@{pkgname@}
+  Version: %@{version@}
+  Release: %@{rel@}
+@end smallexample
+
+@smallexample
+  Copyright: LGPL
+  Group: # your group name goes here
+  Source: %@{pkgname@}-%@{version@}.tar.gz
+  Requires: # additional requirements
+  Buildroot: /tmp/%@{pkgname@}-root
+  URL: http://yoururl.go.here
+  Prefix: %@{prefix@}
+  BuildArchitectures: # Target platforms, i.e., i586
+  Packager: Your Name <youremail@@your.address>
+@end smallexample
+
+@smallexample
+  %description
+  Your package description
+@end smallexample
+
+@smallexample
+  %changelog
+@end smallexample
+
+@smallexample
+  %prep
+  %setup
+  #%patch
+@end smallexample
+
+@smallexample
+  %build
+  %GNUconfigure %@{configure_args@}
+  # This is why we copy the CFLAGS to the CXXFLAGS in configure.in
+  # CFLAGS="%@{optflags@}" CXXFLAGS="%@{optflags@}" ./configure %@{_target_platform@} --prefix=%@{prefix@}
+  make
+@end smallexample
+
+@smallexample
+  %install
+  # To make things work with BUILDROOT
+  if [ "$RPM_BUILD_ROOT" != "/tmp/%@{pkgname@}-root" ]
+  then
+    echo
+    echo @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    echo @@                                                                    @@
+    echo @@  RPM_BUILD_ROOT is not what I expected.  Please clean it yourself. @@
+    echo @@                                                                    @@
+    echo @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    echo
+  else
+    echo Cleaning RPM_BUILD_ROOT: "$RPM_BUILD_ROOT"
+    rm -rf "$RPM_BUILD_ROOT"
+  fi
+  make DESTDIR="$RPM_BUILD_ROOT" install
+@end smallexample
+
+@smallexample
+  %clean
+  # Call me paranoid, but I do not want to be responsible for nuking
+  # someone's harddrive!
+  if [ "$RPM_BUILD_ROOT" != "/tmp/%@{pkgname@}-root" ]
+  then
+    echo
+    echo @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    echo @@                                                                    @@
+    echo @@  RPM_BUILD_ROOT is not what I expected.  Please clean it yourself. @@
+    echo @@                                                                    @@
+    echo @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    echo
+  else
+    echo Cleaning RPM_BUILD_ROOT: "$RPM_BUILD_ROOT"
+    rm -rf "$RPM_BUILD_ROOT"
+  fi
+@end smallexample
+
+@smallexample
+  %files
+  %defattr(-, root, root)
+  # Your application file list goes here
+  # %@{prefix@}/lib/lib*.so*
+  %doc COPYRIGHT ChangeLog README AUTHORS NEWS
+  %doc doc/*
+@end smallexample
+
+@smallexample
+  # If you install a library
+  %post -p /sbin/ldconfig
+@end smallexample
+
+@smallexample
+  # If you install a library
+  %postun -p /sbin/ldconfig
+@end smallexample
+
+@smallexample
+  %package devel
+  Summary: Development files for %@{pkgname@}
+  Group: Applications/Databases
+  %description devel
+  Development files for %@{pkgname@}.
+@end smallexample
+
+@smallexample
+  %files devel
+  %defattr(-, root, root)
+  # Your development files go here
+  # Programmers documentation goes here
+  %doc doc
+@end smallexample
+
+@smallexample
+  # end of file
+  ---------- >8 ----------
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_rpm_init.m4,latest
+version of @file{ax_rpm_init.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_rpm_init.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Dale K. Hawkins @email{dhawkins@@cdrgts.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,51 @@
+@node ax_sip_devel
+@unnumberedsec ax_sip_devel
+
+@majorheading Synopsis
+
+@smallexample
+AX_SIP_DEVEL([<min_version>])
+@end smallexample
+
+@majorheading Description
+
+Searches for the sip executable and the sip include path. The sip
+include path consists of two components, one which contains the file
+qt/qtmod.sip and the other one the path to sip.h, which should be found
+in the include/pythonX.Y directory.
+
+The macro bails out if the executable or the file cannot be located.
+Otherwise it defines:
+
+@smallexample
+  SIP           the path to the sip executable
+  SIP_CPPFLAGS  include path: -I<path-to-qt/qtmod.sip> -I<path-to-sip.h-dir>
+@end smallexample
+
+Example:
+
+@smallexample
+  AX_SIP_DEVEL
+  AX_SIP_DEVEL([4.1])
+@end smallexample
+
+Requires: perl (for version string comparison)
+
+FIXME: Use AX_COMPARE_VERSION instead.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_sip_devel.m4,latest
+version of @file{ax_sip_devel.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_sip_devel.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Uwe Mayer @email{merkosh@@hadiko.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

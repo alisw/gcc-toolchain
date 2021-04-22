@@ -1,0 +1,36 @@
+@node ax_compiler_flags_gir
+@unnumberedsec ax_compiler_flags_gir
+
+@majorheading Synopsis
+
+@smallexample
+AX_COMPILER_FLAGS_GIR([VARIABLE], [IS-RELEASE], [EXTRA-BASE-FLAGS], [EXTRA-YES-FLAGS])
+@end smallexample
+
+@majorheading Description
+
+Add warning flags for the g-ir-scanner (from GObject Introspection) to
+VARIABLE, which defaults to WARN_SCANNERFLAGS.  VARIABLE is AC_SUBST-ed
+by this macro, but must be manually added to the SCANNERFLAGS variable
+for each GIR target in the code base.
+
+This macro depends on the environment set up by AX_COMPILER_FLAGS.
+Specifically, it uses the value of $ax_enable_compile_warnings to decide
+which flags to enable.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_compiler_flags_gir.m4,latest
+version of @file{ax_compiler_flags_gir.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_compiler_flags_gir.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2015 Philip Withnall @email{philip@@tecnocode.co.uk}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

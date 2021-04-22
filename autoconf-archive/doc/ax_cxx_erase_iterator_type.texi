@@ -1,0 +1,35 @@
+@node ax_cxx_erase_iterator_type
+@unnumberedsec ax_cxx_erase_iterator_type
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_ERASE_ITERATOR_TYPE
+@end smallexample
+
+@majorheading Description
+
+If the compiler supports define erase with constant iterator or with
+classical iterator.
+
+Define autoconfigured_erase_iterator to const_iterator if supported and
+iterator if not supported.
+
+Define HAVE_ERASE_CONSTANT_ITERATOR if supported
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_erase_iterator_type.m4,latest
+version of @file{ax_cxx_erase_iterator_type.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_erase_iterator_type.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2015 Bastien ROUCARIES}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

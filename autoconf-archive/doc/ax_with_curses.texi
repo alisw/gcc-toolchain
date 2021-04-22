@@ -1,0 +1,217 @@
+@node ax_with_curses
+@unnumberedsec ax_with_curses
+
+@majorheading Synopsis
+
+@smallexample
+AX_WITH_CURSES
+@end smallexample
+
+@majorheading Description
+
+This macro checks whether a SysV or X/Open-compatible Curses library is
+present, along with the associated header file.  The NcursesW
+(wide-character) library is searched for first, followed by Ncurses,
+then the system-default plain Curses.  The first library found is the
+one returned. Finding libraries will first be attempted by using
+pkg-config, and should the pkg-config files not be available, will
+fallback to combinations of known flags itself.
+
+The following options are understood: --with-ncursesw, --with-ncurses,
+--without-ncursesw, --without-ncurses.  The "--with" options force the
+macro to use that particular library, terminating with an error if not
+found.  The "--without" options simply skip the check for that library.
+The effect on the search pattern is:
+
+@smallexample
+  (no options)                           - NcursesW, Ncurses, Curses
+  --with-ncurses     --with-ncursesw     - NcursesW only [*]
+  --without-ncurses  --with-ncursesw     - NcursesW only [*]
+                     --with-ncursesw     - NcursesW only [*]
+  --with-ncurses     --without-ncursesw  - Ncurses only [*]
+  --with-ncurses                         - NcursesW, Ncurses [**]
+  --without-ncurses  --without-ncursesw  - Curses only
+                     --without-ncursesw  - Ncurses, Curses
+  --without-ncurses                      - NcursesW, Curses
+@end smallexample
+
+[*]  If the library is not found, abort the configure script.
+
+[**] If the second library (Ncurses) is not found, abort configure.
+
+The following preprocessor symbols may be defined by this macro if the
+appropriate conditions are met:
+
+@smallexample
+  HAVE_CURSES             - if any SysV or X/Open Curses library found
+  HAVE_CURSES_ENHANCED    - if library supports X/Open Enhanced functions
+  HAVE_CURSES_COLOR       - if library supports color (enhanced functions)
+  HAVE_CURSES_OBSOLETE    - if library supports certain obsolete features
+  HAVE_NCURSESW           - if NcursesW (wide char) library is to be used
+  HAVE_NCURSES            - if the Ncurses library is to be used
+@end smallexample
+
+@smallexample
+  HAVE_CURSES_H           - if <curses.h> is present and should be used
+  HAVE_NCURSESW_H         - if <ncursesw.h> should be used
+  HAVE_NCURSES_H          - if <ncurses.h> should be used
+  HAVE_NCURSESW_CURSES_H  - if <ncursesw/curses.h> should be used
+  HAVE_NCURSES_CURSES_H   - if <ncurses/curses.h> should be used
+@end smallexample
+
+(These preprocessor symbols are discussed later in this document.)
+
+The following output variables are defined by this macro; they are
+precious and may be overridden on the ./configure command line:
+
+@smallexample
+  CURSES_LIBS  - library to add to xxx_LDADD
+  CURSES_CFLAGS  - include paths to add to xxx_CPPFLAGS
+@end smallexample
+
+In previous versions of this macro, the flags CURSES_LIB and
+CURSES_CPPFLAGS were defined. These have been renamed, in keeping with
+AX_WITH_CURSES's close bigger brother, PKG_CHECK_MODULES, which should
+eventually supersede the use of AX_WITH_CURSES. Neither the library
+listed in CURSES_LIBS, nor the flags in CURSES_CFLAGS are added to LIBS,
+respectively CPPFLAGS, by default. You need to add both to the
+appropriate xxx_LDADD/xxx_CPPFLAGS line in your Makefile.am. For
+example:
+
+@smallexample
+  prog_LDADD = @@CURSES_LIBS@@
+  prog_CPPFLAGS = @@CURSES_CFLAGS@@
+@end smallexample
+
+If CURSES_LIBS is set on the configure command line (such as by running
+"./configure CURSES_LIBS=-lmycurses"), then the only header searched for
+is <curses.h>. If the user needs to specify an alternative path for a
+library (such as for a non-standard NcurseW), the user should use the
+LDFLAGS variable.
+
+The following shell variables may be defined by this macro:
+
+@smallexample
+  ax_cv_curses           - set to "yes" if any Curses library found
+  ax_cv_curses_enhanced  - set to "yes" if Enhanced functions present
+  ax_cv_curses_color     - set to "yes" if color functions present
+  ax_cv_curses_obsolete  - set to "yes" if obsolete features present
+@end smallexample
+
+@smallexample
+  ax_cv_ncursesw      - set to "yes" if NcursesW library found
+  ax_cv_ncurses       - set to "yes" if Ncurses library found
+  ax_cv_plaincurses   - set to "yes" if plain Curses library found
+  ax_cv_curses_which  - set to "ncursesw", "ncurses", "plaincurses" or "no"
+@end smallexample
+
+These variables can be used in your configure.ac to determine the level
+of support you need from the Curses library.  For example, if you must
+have either Ncurses or NcursesW, you could include:
+
+@smallexample
+  AX_WITH_CURSES
+  if test "x$ax_cv_ncursesw" != xyes && test "x$ax_cv_ncurses" != xyes; then
+      AC_MSG_ERROR([requires either NcursesW or Ncurses library])
+  fi
+@end smallexample
+
+If any Curses library will do (but one must be present and must support
+color), you could use:
+
+@smallexample
+  AX_WITH_CURSES
+  if test "x$ax_cv_curses" != xyes || test "x$ax_cv_curses_color" != xyes; then
+      AC_MSG_ERROR([requires an X/Open-compatible Curses library with color])
+  fi
+@end smallexample
+
+Certain preprocessor symbols and shell variables defined by this macro
+can be used to determine various features of the Curses library.  In
+particular, HAVE_CURSES and ax_cv_curses are defined if the Curses
+library found conforms to the traditional SysV and/or X/Open Base Curses
+definition.  Any working Curses library conforms to this level.
+
+HAVE_CURSES_ENHANCED and ax_cv_curses_enhanced are defined if the
+library supports the X/Open Enhanced Curses definition.  In particular,
+the wide-character types attr_t, cchar_t and wint_t, the functions
+wattr_set() and wget_wch() and the macros WA_NORMAL and _XOPEN_CURSES
+are checked.  The Ncurses library does NOT conform to this definition,
+although NcursesW does.
+
+HAVE_CURSES_COLOR and ax_cv_curses_color are defined if the library
+supports color functions and macros such as COLOR_PAIR, A_COLOR,
+COLOR_WHITE, COLOR_RED and init_pair().  These are NOT part of the
+X/Open Base Curses definition, but are part of the Enhanced set of
+functions.  The Ncurses library DOES support these functions, as does
+NcursesW.
+
+HAVE_CURSES_OBSOLETE and ax_cv_curses_obsolete are defined if the
+library supports certain features present in SysV and BSD Curses but not
+defined in the X/Open definition.  In particular, the functions
+getattrs(), getcurx() and getmaxx() are checked.
+
+To use the HAVE_xxx_H preprocessor symbols, insert the following into
+your system.h (or equivalent) header file:
+
+@smallexample
+  #if defined HAVE_NCURSESW_CURSES_H
+  #  include <ncursesw/curses.h>
+  #elif defined HAVE_NCURSESW_H
+  #  include <ncursesw.h>
+  #elif defined HAVE_NCURSES_CURSES_H
+  #  include <ncurses/curses.h>
+  #elif defined HAVE_NCURSES_H
+  #  include <ncurses.h>
+  #elif defined HAVE_CURSES_H
+  #  include <curses.h>
+  #else
+  #  error "SysV or X/Open-compatible Curses header file required"
+  #endif
+@end smallexample
+
+For previous users of this macro: you should not need to change anything
+in your configure.ac or Makefile.am, as the previous (serial 10)
+semantics are still valid.  However, you should update your system.h (or
+equivalent) header file to the fragment shown above. You are encouraged
+also to make use of the extended functionality provided by this version
+of AX_WITH_CURSES, as well as in the additional macros
+AX_WITH_CURSES_PANEL, AX_WITH_CURSES_MENU and AX_WITH_CURSES_FORM.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_with_curses.m4,latest
+version of @file{ax_with_curses.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_with_curses.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Mark Pulford @email{mark@@kyne.com.au}} @* @w{Copyright @copyright{} 2009 Damian Pietras @email{daper@@daper.net}} @* @w{Copyright @copyright{} 2012 Reuben Thomas @email{rrt@@sc3d.org}} @* @w{Copyright @copyright{} 2011 John Zaitseff @email{J.Zaitseff@@zap.org.au}}
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+As a special exception, the respective Autoconf Macro's copyright owner
+gives unlimited permission to copy, distribute and modify the configure
+scripts that are the output of Autoconf when processing the Macro. You
+need not follow the terms of the GNU General Public License when using
+or distributing such scripts, even though portions of the text of the
+Macro appear in them. The GNU General Public License (GPL) does govern
+all other use of the material that constitutes the Autoconf Macro.
+
+This special exception to the GPL applies to versions of the Autoconf
+Macro released by the Autoconf Archive. When you make and distribute a
+modified version of the Autoconf Macro, you may extend this special
+exception to the GPL to apply to your modified version as well.

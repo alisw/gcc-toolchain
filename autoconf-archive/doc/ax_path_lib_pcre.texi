@@ -1,0 +1,36 @@
+@node ax_path_lib_pcre
+@unnumberedsec ax_path_lib_pcre
+
+@majorheading Synopsis
+
+@smallexample
+AX_PATH_LIB_PCRE [(A/NA)]
+@end smallexample
+
+@majorheading Description
+
+check for pcre lib and set PCRE_LIBS and PCRE_CFLAGS accordingly.
+
+also provide --with-pcre option that may point to the $prefix of the
+pcre installation - the macro will check $pcre/include and $pcre/lib to
+contain the necessary files.
+
+the usual two ACTION-IF-FOUND / ACTION-IF-NOT-FOUND are supported and
+they can take advantage of the LIBS/CFLAGS additions.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_path_lib_pcre.m4,latest
+version of @file{ax_path_lib_pcre.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_path_lib_pcre.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

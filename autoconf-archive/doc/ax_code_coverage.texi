@@ -1,0 +1,87 @@
+@node ax_code_coverage
+@unnumberedsec ax_code_coverage
+
+@majorheading Synopsis
+
+@smallexample
+AX_CODE_COVERAGE()
+@end smallexample
+
+@majorheading Description
+
+Defines CODE_COVERAGE_CPPFLAGS, CODE_COVERAGE_CFLAGS,
+CODE_COVERAGE_CXXFLAGS and CODE_COVERAGE_LIBS which should be included
+in the CPPFLAGS, CFLAGS CXXFLAGS and LIBS/LIBADD variables of every
+build target (program or library) which should be built with code
+coverage support. Also add rules using AX_ADD_AM_MACRO_STATIC; and
+$enable_code_coverage which can be used in subsequent configure output.
+CODE_COVERAGE_ENABLED is defined and substituted, and corresponds to the
+value of the --enable-code-coverage option, which defaults to being
+disabled.
+
+Test also for gcov program and create GCOV variable that could be
+substituted.
+
+Note that all optimization flags in CFLAGS must be disabled when code
+coverage is enabled.
+
+Usage example:
+
+configure.ac:
+
+@smallexample
+  AX_CODE_COVERAGE
+@end smallexample
+
+Makefile.am:
+
+@smallexample
+  include $(top_srcdir)/aminclude_static.am
+@end smallexample
+
+@smallexample
+  my_program_LIBS = ... $(CODE_COVERAGE_LIBS) ...
+  my_program_CPPFLAGS = ... $(CODE_COVERAGE_CPPFLAGS) ...
+  my_program_CFLAGS = ... $(CODE_COVERAGE_CFLAGS) ...
+  my_program_CXXFLAGS = ... $(CODE_COVERAGE_CXXFLAGS) ...
+@end smallexample
+
+@smallexample
+  clean-local: code-coverage-clean
+  distclean-local: code-coverage-dist-clean
+@end smallexample
+
+This results in a "check-code-coverage" rule being added to any
+Makefile.am which do "include $(top_srcdir)/aminclude_static.am"
+(assuming the module has been configured with --enable-code-coverage).
+Running `make check-code-coverage` in that directory will run the
+module's test suite (`make check`) and build a code coverage report
+detailing the code which was touched, then print the URI for the report.
+
+This code was derived from Makefile.decl in GLib, originally licensed
+under LGPLv2.1+.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_code_coverage.m4,latest
+version of @file{ax_code_coverage.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_code_coverage.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2012, 2016 Philip Withnall} @* @w{Copyright @copyright{} 2012 Xan Lopez} @* @w{Copyright @copyright{} 2012 Christian Persch} @* @w{Copyright @copyright{} 2012 Paolo Borelli} @* @w{Copyright @copyright{} 2012 Dan Winship} @* @w{Copyright @copyright{} 2015,2018 Bastien ROUCARIES}
+
+This library is free software; you can redistribute it and/or modify it
+under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation; either version 2.1 of the License, or (at
+your option) any later version.
+
+This library is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser
+General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.

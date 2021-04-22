@@ -1,0 +1,31 @@
+@node ax_check_posix_regcomp
+@unnumberedsec ax_check_posix_regcomp
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_POSIX_REGCOMP
+@end smallexample
+
+@majorheading Description
+
+Check that the POSIX compliant regular expression compiler is available
+in the POSIX specified manner, and it works. If it fails, we have a
+backup -- use gnu-regex.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_posix_regcomp.m4,latest
+version of @file{ax_check_posix_regcomp.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_posix_regcomp.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Bruce Korb @email{bkorb@@gnu.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

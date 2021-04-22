@@ -1,0 +1,44 @@
+@node ax_require_defined
+@unnumberedsec ax_require_defined
+
+@majorheading Synopsis
+
+@smallexample
+AX_REQUIRE_DEFINED(MACRO)
+@end smallexample
+
+@majorheading Description
+
+AX_REQUIRE_DEFINED is a simple helper for making sure other macros have
+been defined and thus are available for use.  This avoids random issues
+where a macro isn't expanded.  Instead the configure script emits a
+non-fatal:
+
+@smallexample
+  ./configure: line 1673: AX_CFLAGS_WARN_ALL: command not found
+@end smallexample
+
+It's like AC_REQUIRE except it doesn't expand the required macro.
+
+Here's an example:
+
+@smallexample
+  AX_REQUIRE_DEFINED([AX_CHECK_LINK_FLAG])
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_require_defined.m4,latest
+version of @file{ax_require_defined.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_require_defined.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2014 Mike Frysinger @email{vapier@@gentoo.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

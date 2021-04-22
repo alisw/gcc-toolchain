@@ -1,0 +1,52 @@
+@node ax_lib_firebird
+@unnumberedsec ax_lib_firebird
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_FIREBIRD([MINIMUM-VERSION])
+@end smallexample
+
+@majorheading Description
+
+Test for the Firebird client library of a particular version (or newer).
+This macro takes only one optional argument, the required version of
+Firebird library. If required version is not passed, then 1.5.0 is used
+in test of existence of Firebird client library.
+
+For more information about Firebird API versioning check: API Identifies
+Client Version http://www.firebirdsql.org/rlsnotes20/rnfbtwo-apiods.html
+
+If no installation prefix to the installed Firebird library is given the
+macro searches under /usr, /usr/local, and /opt.
+
+This macro calls:
+
+@smallexample
+  AC_SUBST(FIREBIRD_CFLAGS)
+  AC_SUBST(FIREBIRD_LDFLAGS)
+  AC_SUBST(FIREBIRD_VERSION)
+@end smallexample
+
+And sets:
+
+@smallexample
+  HAVE_FIREBIRD
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_firebird.m4,latest
+version of @file{ax_lib_firebird.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_firebird.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Mateusz Loskot @email{mateusz@@loskot.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

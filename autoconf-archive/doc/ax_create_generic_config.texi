@@ -1,0 +1,52 @@
+@node ax_create_generic_config
+@unnumberedsec ax_create_generic_config
+
+@majorheading Synopsis
+
+@smallexample
+AX_CREATE_GENERIC_CONFIG [(PACKAGEnlibs [, VERSION])]
+@end smallexample
+
+@majorheading Description
+
+Creates a generic PACKAGE-config file that has all the things that you
+want, hmm, well, at least it has --cflags, --version, --libs. Ahhm, did
+you see ax_path_generic in the autoconf-archive? ;-)
+
+this macros saves you all the typing for a pkg-config.in script, you
+don't even need to distribute one along. Place this macro in your
+configure.ac, et voila, you got one that you want to install.
+
+oh, btw, if the first arg looks like "mylib -lwhat' then it will go to
+be added to the --libs, and mylib is extracted.
+
+the defaults: $1 = $PACKAGE $LIBS $2 = $VERSION there is also an
+AC_SUBST(GENERIC_CONFIG) that will be set to the name of the file that
+we did output in this macro. Use as:
+
+@smallexample
+ install-exec-local:    install-generic-config
+@end smallexample
+
+@smallexample
+ install-generic-config:
+    $(mkinstalldirs) $(DESTDIR)$(bindir)
+    $(INSTALL_SCRIPT) @@GENERIC_CONFIG@@ $(DESTDIR)$(bindir)
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_create_generic_config.m4,latest
+version of @file{ax_create_generic_config.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_create_generic_config.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

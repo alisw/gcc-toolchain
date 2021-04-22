@@ -1,0 +1,60 @@
+@node ax_lib_libkml
+@unnumberedsec ax_lib_libkml
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_LIBKML([MINIMUM-VERSION])
+@end smallexample
+
+@majorheading Description
+
+This macro tests whether Google's libkml library
+<http://code.google.com/p/libkml/> is available in particular version or
+newer. The generated configure script will support the following
+options:
+
+1) Single-option usage:
+
+@smallexample
+  --with-libkml - yes, no or path to Google libkml installation prefix
+@end smallexample
+
+2) Three-options usage (all options are required):
+
+@smallexample
+  --with-libkml=yes
+  --with-libkml-inc - path to base directory with  headers
+  --with-libkml-lib - linker flags for
+@end smallexample
+
+This macro calls:
+
+@smallexample
+  AC_SUBST(LIBKML_CFLAGS)
+  AC_SUBST(LIBKML_LDFLAGS)
+  AC_SUBST(LIBKML_VERSION) - only if version requirement is used
+@end smallexample
+
+And sets:
+
+@smallexample
+  HAVE_LIBKML
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_libkml.m4,latest
+version of @file{ax_lib_libkml.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_libkml.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2010 Mateusz Loskot @email{mateusz@@loskot.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

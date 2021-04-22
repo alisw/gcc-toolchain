@@ -1,0 +1,42 @@
+@node ax_lib_taglib
+@unnumberedsec ax_lib_taglib
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_TAGLIB([VERSION],[ACTION-IF-SUCCESS],[ACTION-IF-FAILURE])
+@end smallexample
+
+@majorheading Description
+
+Checks for minimum taglib library version VERSION. If successful
+executes ACTION-IF-SUCCESS otherwise ACTION-IF-FAILURE.
+
+Defines TAGLIB_LIBS and TAGLIB_CFLAGS.
+
+A simple example:
+
+@smallexample
+  AX_LIB_TAGLIB([1.5],,[
+    AC_MSG_ERROR([Your system lacks of taglib >= 1.5])
+  ])
+@end smallexample
+
+This macro is a rearranged version of AC_LIB_TAGLIB from Akos Maroy.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_taglib.m4,latest
+version of @file{ax_lib_taglib.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_taglib.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Francesco Salvestrini @email{salvestrini@@users.sourceforge.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

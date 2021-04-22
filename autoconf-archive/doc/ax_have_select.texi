@@ -1,0 +1,45 @@
+@node ax_have_select
+@unnumberedsec ax_have_select
+
+@majorheading Synopsis
+
+@smallexample
+AX_HAVE_SELECT([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+AX_HAVE_PSELECT([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+This macro determines whether the system supports the select I/O event
+interface. A neat usage example would be:
+
+@smallexample
+  AX_HAVE_SELECT(
+    [AX_CONFIG_FEATURE_ENABLE(select)],
+    [AX_CONFIG_FEATURE_DISABLE(select)])
+  AX_CONFIG_FEATURE(
+    [select], [This platform supports select(7)],
+    [HAVE_SELECT], [This platform supports select(7).])
+@end smallexample
+
+Some systems also have the variant pselect(). The availability of that
+function can be tested with the second macro. Generally speaking, it is
+safe to assume that AX_HAVE_SELECT would succeed if AX_HAVE_SELECT_PWAIT
+has, but not the other way round.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_have_select.m4,latest
+version of @file{ax_have_select.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_have_select.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Peter Simons @email{simons@@cryp.to}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

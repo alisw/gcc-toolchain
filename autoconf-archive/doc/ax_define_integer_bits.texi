@@ -1,0 +1,60 @@
+@node ax_define_integer_bits
+@unnumberedsec ax_define_integer_bits
+
+@majorheading Synopsis
+
+@smallexample
+AX_DEFINE_INTEGER_BITS (TYPE [, CANDIDATE-TYPE]...)
+@end smallexample
+
+@majorheading Description
+
+Given a TYPE of the form "int##_t" or "uint##_t", see if the datatype
+TYPE is predefined. If not, then define TYPE -- both with AC_DEFINE and
+as a shell variable -- to the first datatype of exactly ## bits in a
+list of CANDIDATE-TYPEs. If none of the CANDIDATE-TYPEs contains exactly
+## bits, then set the TYPE shell variable to "no".
+
+For example, the following ensures that uint64_t is defined as a 64-bit
+datatype:
+
+@smallexample
+  AX_DEFINE_INTEGER_BITS(uint64_t, unsigned long long, unsigned __int64, long)
+  if test "$uint64_t" = no; then
+    AC_MSG_ERROR([unable to continue without a 64-bit datatype])
+  fi
+@end smallexample
+
+You should then put the following in your C code to ensure that all
+datatypes defined by AX_DEFINE_INTEGER_BITS are visible to your program:
+
+@smallexample
+  #include "config.h"
+@end smallexample
+
+@smallexample
+  #if HAVE_INTTYPES_H
+  # include <inttypes.h>
+  #else
+  # if HAVE_STDINT_H
+  #  include <stdint.h>
+  # endif
+  #endif
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_define_integer_bits.m4,latest
+version of @file{ax_define_integer_bits.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_define_integer_bits.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Scott Pakin @email{pakin@@uiuc.edu}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

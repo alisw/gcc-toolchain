@@ -1,0 +1,31 @@
+@node ax_sysv_ipc
+@unnumberedsec ax_sysv_ipc
+
+@majorheading Synopsis
+
+@smallexample
+AX_SYSV_IPC
+@end smallexample
+
+@majorheading Description
+
+This macro checks for the SysV IPC header files. It only checks that you
+can compile a program with them, not whether the system actually
+implements working SysV IPC.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_sysv_ipc.m4,latest
+version of @file{ax_sysv_ipc.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_sysv_ipc.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Warren Young @email{warren@@etr-usa.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

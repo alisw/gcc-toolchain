@@ -1,0 +1,33 @@
+@node ax_add_am_trilinos_makefile_export
+@unnumberedsec ax_add_am_trilinos_makefile_export
+
+@majorheading Synopsis
+
+@smallexample
+AX_ADD_AM_TRILINOS_MAKEFILE_EXPORT(EXPORT_SUFFIX [, ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+Checks if a file named <Makefile.export.EXPORT_SUFFIX> appears in the
+$TRILINOS_INCLUDE directory. If so, adds an include for it using the
+AX_AM_MACROS framework.
+
+If ACTION-IF-NOT-FOUND is not provided, configure fails.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_add_am_trilinos_makefile_export.m4,latest
+version of @file{ax_add_am_trilinos_makefile_export.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_add_am_trilinos_makefile_export.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Rhys Ulerich @email{rhys.ulerich@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

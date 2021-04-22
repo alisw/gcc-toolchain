@@ -1,0 +1,43 @@
+@node ax_check_gd
+@unnumberedsec ax_check_gd
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_GD
+@end smallexample
+
+@majorheading Description
+
+Check for the gd library. (See http://www.boutell.com/gd/) If gd is
+found, the output variables GD_CFLAGS, GD_LDFLAGS and GD_LIBS will
+contain the compiler flags, linker flags and libraries necessary to use
+gd; otherwise, those variables will be empty. In addition, the symbol
+HAVE_GD is defined if the library is found, and the symbols HAVE_GD_GIF,
+HAVE_GD_JPEG and HAVE_GD_PNG are defined if the library supports
+creating images in gif, jpeg and png formats, respectively.
+
+The user may use --with-gd=no or --without-gd to skip checking for the
+library. (The default is --with-gd=yes.) If the library is installed in
+an unusual location, --with-gd=DIR will cause the macro to look for
+gdlib-config in DIR/bin or, failing that, for the headers and libraries
+in DIR/include and DIR/lib.
+
+Feedback welcome!
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_gd.m4,latest
+version of @file{ax_check_gd.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_gd.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Nick Markham @email{markhn@@rpi.edu}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

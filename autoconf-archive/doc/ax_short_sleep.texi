@@ -1,0 +1,33 @@
+@node ax_short_sleep
+@unnumberedsec ax_short_sleep
+
+@majorheading Synopsis
+
+@smallexample
+AX_SHORT_SLEEP
+@end smallexample
+
+@majorheading Description
+
+This macro searches for a "sleep" function that has 1/1000 of a second
+accuracy. On some systems, this is known as nap() and on others usleep()
+/ 1000. There are probably other functions like this defined in other
+system libraries, but we don't know how to search for them yet.
+Contributions joyously accepted. :)
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_short_sleep.m4,latest
+version of @file{ax_short_sleep.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_short_sleep.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Warren Young @email{warren@@etr-usa.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

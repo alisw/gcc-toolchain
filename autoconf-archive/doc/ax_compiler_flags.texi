@@ -1,0 +1,116 @@
+@node ax_compiler_flags
+@unnumberedsec ax_compiler_flags
+
+@majorheading Synopsis
+
+@smallexample
+AX_COMPILER_FLAGS([CFLAGS-VARIABLE], [LDFLAGS-VARIABLE], [IS-RELEASE], [EXTRA-BASE-CFLAGS], [EXTRA-YES-CFLAGS], [UNUSED], [UNUSED], [UNUSED], [EXTRA-BASE-LDFLAGS], [EXTRA-YES-LDFLAGS], [UNUSED], [UNUSED], [UNUSED])
+@end smallexample
+
+@majorheading Description
+
+Check for the presence of an --enable-compile-warnings option to
+configure, defaulting to "error" in normal operation, or "yes" if
+IS-RELEASE is equal to "yes".  Return the value in the variable
+$ax_enable_compile_warnings.
+
+Depending on the value of --enable-compile-warnings, different compiler
+warnings are checked to see if they work with the current compiler and,
+if so, are appended to CFLAGS-VARIABLE and LDFLAGS-VARIABLE.  This
+allows a consistent set of baseline compiler warnings to be used across
+a code base, irrespective of any warnings enabled locally by individual
+developers.  By standardising the warnings used by all developers of a
+project, the project can commit to a zero-warnings policy, using -Werror
+to prevent compilation if new warnings are introduced.  This makes
+catching bugs which are flagged by warnings a lot easier.
+
+By providing a consistent --enable-compile-warnings argument across all
+projects using this macro, continuous integration systems can easily be
+configured the same for all projects.  Automated systems or build
+systems aimed at beginners may want to pass the --disable-Werror
+argument to unconditionally prevent warnings being fatal.
+
+--enable-compile-warnings can take the values:
+
+@smallexample
+ * no:      Base compiler warnings only; not even -Wall.
+ * yes:     The above, plus a broad range of useful warnings.
+ * error:   The above, plus -Werror so that all warnings are fatal.
+            Use --disable-Werror to override this and disable fatal
+            warnings.
+@end smallexample
+
+The set of base and enabled flags can be augmented using the
+EXTRA-*-CFLAGS and EXTRA-*-LDFLAGS variables, which are tested and
+appended to the output variable if --enable-compile-warnings is not
+"no". Flags should not be disabled using these arguments, as the entire
+point of AX_COMPILER_FLAGS is to enforce a consistent set of useful
+compiler warnings on code, using warnings which have been chosen for low
+false positive rates.  If a compiler emits false positives for a
+warning, a #pragma should be used in the code to disable the warning
+locally. See:
+
+@smallexample
+  https://gcc.gnu.org/onlinedocs/gcc-4.9.2/gcc/Diagnostic-Pragmas.html#Diagnostic-Pragmas
+@end smallexample
+
+The EXTRA-* variables should only be used to supply extra warning flags,
+and not general purpose compiler flags, as they are controlled by
+configure options such as --disable-Werror.
+
+IS-RELEASE can be used to disable -Werror when making a release, which
+is useful for those hairy moments when you just want to get the release
+done as quickly as possible.  Set it to "yes" to disable -Werror. By
+default, it uses the value of $ax_is_release, so if you are using the
+AX_IS_RELEASE macro, there is no need to pass this parameter. For
+example:
+
+@smallexample
+  AX_IS_RELEASE([git-directory])
+  AX_COMPILER_FLAGS()
+@end smallexample
+
+CFLAGS-VARIABLE defaults to WARN_CFLAGS, and LDFLAGS-VARIABLE defaults
+to WARN_LDFLAGS.  Both variables are AC_SUBST-ed by this macro, but must
+be manually added to the CFLAGS and LDFLAGS variables for each target in
+the code base.
+
+If C++ language support is enabled with AC_PROG_CXX, which must occur
+before this macro in configure.ac, warning flags for the C++ compiler
+are AC_SUBST-ed as WARN_CXXFLAGS, and must be manually added to the
+CXXFLAGS variables for each target in the code base.  EXTRA-*-CFLAGS can
+be used to augment the base and enabled flags.
+
+Warning flags for g-ir-scanner (from GObject Introspection) are
+AC_SUBST-ed as WARN_SCANNERFLAGS.  This variable must be manually added
+to the SCANNERFLAGS variable for each GIR target in the code base.  If
+extra g-ir-scanner flags need to be enabled, the AX_COMPILER_FLAGS_GIR
+macro must be invoked manually.
+
+AX_COMPILER_FLAGS may add support for other tools in future, in addition
+to the compiler and linker.  No extra EXTRA-* variables will be added
+for those tools, and all extra support will still use the single
+--enable-compile-warnings configure option.  For finer grained control
+over the flags for individual tools, use AX_COMPILER_FLAGS_CFLAGS,
+AX_COMPILER_FLAGS_LDFLAGS and AX_COMPILER_FLAGS_* for new tools.
+
+The UNUSED variables date from a previous version of this macro, and are
+automatically appended to the preceding non-UNUSED variable. They should
+be left empty in new uses of the macro.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_compiler_flags.m4,latest
+version of @file{ax_compiler_flags.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_compiler_flags.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2014, 2015 Philip Withnall @email{philip@@tecnocode.co.uk}} @* @w{Copyright @copyright{} 2015 David King @email{amigadave@@amigadave.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

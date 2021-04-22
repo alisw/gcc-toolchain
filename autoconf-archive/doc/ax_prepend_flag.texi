@@ -1,0 +1,37 @@
+@node ax_prepend_flag
+@unnumberedsec ax_prepend_flag
+
+@majorheading Synopsis
+
+@smallexample
+AX_PREPEND_FLAG(FLAG, [FLAGS-VARIABLE])
+@end smallexample
+
+@majorheading Description
+
+FLAG is added to the front of the FLAGS-VARIABLE shell variable, with a
+space added in between.
+
+If FLAGS-VARIABLE is not specified, the current language's flags (e.g.
+CFLAGS) is used.  FLAGS-VARIABLE is not changed if it already contains
+FLAG.  If FLAGS-VARIABLE is unset in the shell, it is set to exactly
+FLAG.
+
+NOTE: Implementation based on AX_APPEND_FLAG.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prepend_flag.m4,latest
+version of @file{ax_prepend_flag.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prepend_flag.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}} @* @w{Copyright @copyright{} 2011 Maarten Bosmans @email{mkbosmans@@gmail.com}} @* @w{Copyright @copyright{} 2018 John Zaitseff @email{J.Zaitseff@@zap.org.au}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

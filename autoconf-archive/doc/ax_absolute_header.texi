@@ -1,0 +1,36 @@
+@node ax_absolute_header
+@unnumberedsec ax_absolute_header
+
+@majorheading Synopsis
+
+@smallexample
+AX_ABSOLUTE_HEADER(HEADER1 HEADER2 ...)
+@end smallexample
+
+@majorheading Description
+
+Find the absolute name of a header file, assuming the header exists. If
+the header were sys/inttypes.h, this macro would define
+ABSOLUTE_SYS_INTTYPES_H to the `""' quoted absolute name of
+sys/inttypes.h in config.h (e.g. `#define ABSOLUTE_SYS_INTTYPES_H
+"///usr/include/sys/inttypes.h"'). The three "///" are to pacify Sun C
+5.8, which otherwise would say "warning: #include of /usr/include/...
+may be non-portable". Use `""', not `<>', so that the /// cannot be
+confused with a C99 comment.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_absolute_header.m4,latest
+version of @file{ax_absolute_header.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_absolute_header.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Derek Price} @* @w{Copyright @copyright{} 2009 Rhys Ulerich @email{rhys.ulerich@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

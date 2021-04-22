@@ -1,0 +1,62 @@
+@node ax_lib_postgresql
+@unnumberedsec ax_lib_postgresql
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_POSTGRESQL([MINIMUM-VERSION],[ACTION-IF-FOUND],[ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+This macro provides tests of availability of PostgreSQL 'libpq' library
+of particular version or newer.
+
+AX_LIB_POSTGRESQL macro takes only one argument which is optional. If
+there is no required version passed, then macro does not run version
+test.
+
+The --with-postgresql option takes one of three possible values:
+
+no - do not check for PostgreSQL client library
+
+yes - do check for PostgreSQL library in standard locations (pg_config
+should be in the PATH)
+
+path - complete path to pg_config utility, use this option if pg_config
+can't be found in the PATH (You could set also PG_CONFIG variable)
+
+This macro calls:
+
+@smallexample
+  AC_SUBST(POSTGRESQL_CPPFLAGS)
+  AC_SUBST(POSTGRESQL_LDFLAGS)
+  AC_SUBST(POSTGRESQL_LIBS)
+  AC_SUBST(POSTGRESQL_VERSION)
+@end smallexample
+
+And sets:
+
+@smallexample
+  HAVE_POSTGRESQL
+@end smallexample
+
+It execute if found ACTION-IF-FOUND (empty by default) and
+ACTION-IF-NOT-FOUND (AC_MSG_FAILURE by default) if not found.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_postgresql.m4,latest
+version of @file{ax_lib_postgresql.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_postgresql.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Mateusz Loskot @email{mateusz@@loskot.net}} @* @w{Copyright @copyright{} 2014 Sree Harsha Totakura @email{sreeharsha@@totakura.in}} @* @w{Copyright @copyright{} 2018 Bastien Roucaries @email{rouca@@debian.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

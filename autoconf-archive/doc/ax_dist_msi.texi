@@ -1,0 +1,34 @@
+@node ax_dist_msi
+@unnumberedsec ax_dist_msi
+
+@majorheading Synopsis
+
+@smallexample
+AX_DIST_MSI([File])
+@end smallexample
+
+@majorheading Description
+
+Adds support for a msi (Microsoft Installer) dist target.
+
+You must manually build the msi file yourself (probably from another
+computer). But it will be added to the list of extra bin dists and
+flagged for uploading (see ax_extra_dist.m4 and ax_upload.m4 for
+details).
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_dist_msi.m4,latest
+version of @file{ax_dist_msi.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_dist_msi.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Tom Howard @email{tomhoward@@users.sf.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

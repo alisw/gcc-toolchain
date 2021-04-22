@@ -1,0 +1,40 @@
+@node ax_luarocks_rock
+@unnumberedsec ax_luarocks_rock
+
+@majorheading Synopsis
+
+@smallexample
+AX_LUAROCKS_ROCK([ROCK])
+@end smallexample
+
+@majorheading Description
+
+Checks for a rock, and fails if it is not installed.
+
+Example usage:
+
+@smallexample
+  AX_LUAROCKS_ROCK(stdlib)
+@end smallexample
+
+Note: use of this macro is not normally recommended. Normally, LuaRocks
+should be used to drive the build system, and it takes care of rock
+dependencies. Use this macro only if LuaRocks cannot be used at the top
+level, for example, in a build system that uses Lua only incidentally.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_luarocks_rock.m4,latest
+version of @file{ax_luarocks_rock.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_luarocks_rock.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2016 Reuben Thomas @email{rrt@@sc3d.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

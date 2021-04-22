@@ -1,0 +1,30 @@
+@node ax_cxx_namespaces
+@unnumberedsec ax_cxx_namespaces
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_NAMESPACES
+@end smallexample
+
+@majorheading Description
+
+If the compiler can prevent names clashes using namespaces, define
+HAVE_NAMESPACES.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_namespaces.m4,latest
+version of @file{ax_cxx_namespaces.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_namespaces.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Todd Veldhuizen} @* @w{Copyright @copyright{} 2008 Luc Maisonobe @email{luc@@spaceroots.org}} @* @w{Copyright @copyright{} 2013 Bastien Roucaries @email{roucaries.bastien+autoconf@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

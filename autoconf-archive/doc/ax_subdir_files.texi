@@ -1,0 +1,34 @@
+@node ax_subdir_files
+@unnumberedsec ax_subdir_files
+
+@majorheading Synopsis
+
+@smallexample
+AX_SUBDIR_FILES [(SUBDIRS [, CASEPATTERN])]
+@end smallexample
+
+@majorheading Description
+
+Look into subdirs and copy the (real) files that match pattern into the
+local directory. Preferably we use a symbolic link of course. existing
+local files are not overwritten.
+
+The default casepattern is "*.?|*.cc|*.cpp", the default subdir-list
+contains all subdirs available.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_subdir_files.m4,latest
+version of @file{ax_subdir_files.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_subdir_files.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

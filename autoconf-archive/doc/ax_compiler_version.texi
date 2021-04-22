@@ -1,0 +1,48 @@
+@node ax_compiler_version
+@unnumberedsec ax_compiler_version
+
+@majorheading Synopsis
+
+@smallexample
+AX_COMPILER_VERSION
+@end smallexample
+
+@majorheading Description
+
+This macro retrieves the compiler version and returns it in the cache
+variable $ax_cv_c_compiler_version for C and $ax_cv_cxx_compiler_version
+for C++.
+
+Version is returned as epoch:major.minor.patchversion
+
+Epoch is used in order to have an increasing version number in case of
+marketing change.
+
+Epoch use: * borland compiler use chronologically 0turboc for turboc
+era,
+
+@smallexample
+  1borlanc BORLANDC++ before 5, 2cppbuilder for cppbuilder era,
+  3borlancpp for return of BORLANDC++ (after version 5.5),
+  4cppbuilder for cppbuilder with year version,
+  and 5xe for XE era.
+@end smallexample
+
+An empty string is returned otherwise.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_compiler_version.m4,latest
+version of @file{ax_compiler_version.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_compiler_version.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2014 Bastien ROUCARIES @email{roucaries.bastien+autoconf@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

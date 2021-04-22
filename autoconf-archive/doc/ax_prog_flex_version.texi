@@ -1,0 +1,46 @@
+@node ax_prog_flex_version
+@unnumberedsec ax_prog_flex_version
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_FLEX_VERSION([VERSION],[ACTION-IF-TRUE],[ACTION-IF-FALSE])
+@end smallexample
+
+@majorheading Description
+
+Makes sure that flex version is greater or equal to the version
+indicated. If true the shell commands in ACTION-IF-TRUE are executed. If
+not the shell commands in commands in ACTION-IF-TRUE are executed. If
+not the shell commands in ACTION-IF-FALSE are run. Note if $FLEX is not
+set (for example by running AC_CHECK_PROG or AC_PATH_PROG) the macro
+will fail.
+
+Example:
+
+@smallexample
+  AC_PATH_PROG([FLEX],[flex])
+  AX_PROG_FLEX_VERSION([2.5.39],[ ... ],[ ... ])
+@end smallexample
+
+This will check to make sure that the flex you have is at least version
+2.5.39 or greater.
+
+NOTE: This macro uses the $FLEX variable to perform the check.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_flex_version.m4,latest
+version of @file{ax_prog_flex_version.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_flex_version.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2015 Jonathan Rajotte-Julien @email{jonathan.rajotte-julien@@efficios.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

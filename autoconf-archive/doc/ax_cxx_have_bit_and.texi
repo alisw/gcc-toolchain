@@ -1,0 +1,33 @@
+@node ax_cxx_have_bit_and
+@unnumberedsec ax_cxx_have_bit_and
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_HAVE_BIT_AND()
+@end smallexample
+
+@majorheading Description
+
+This macro checks if std::bit_and, added in C++11, is defined in the
+<functional> header.
+
+If it is, define the ax_cv_cxx_have_bit_and environment variable to
+"yes" and define HAVE_CXX_BIT_AND.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_have_bit_and.m4,latest
+version of @file{ax_cxx_have_bit_and.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_have_bit_and.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2014 Enrico M. Crisostomo @email{enrico.m.crisostomo@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

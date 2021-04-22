@@ -1,0 +1,49 @@
+@node ax_lib_upnp
+@unnumberedsec ax_lib_upnp
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_UPNP([ACTION-IF-TRUE], [ACTION-IF-FALSE])
+@end smallexample
+
+@majorheading Description
+
+This macro will check for the existence of libupnp
+(http://upnp.sourceforge.net/). It does this by checking for the header
+file upnp.h and the upnp library object file. A --with-libupnp option is
+supported as well. The following output variables are set with AC_SUBST:
+
+@smallexample
+  UPNP_CPPFLAGS
+  UPNP_LDFLAGS
+  UPNP_LIBS
+@end smallexample
+
+You can use them like this in Makefile.am:
+
+@smallexample
+  AM_CPPFLAGS = $(UPNP_CPPFLAGS)
+  AM_LDFLAGS = $(UPNP_LDFLAGS)
+  program_LDADD = $(UPNP_LIBS)
+@end smallexample
+
+Additionally, the C preprocessor symbol HAVE_LIBUPNP will be defined
+with AC_DEFINE if libupnp is available.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_upnp.m4,latest
+version of @file{ax_lib_upnp.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_upnp.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Oskar Liljeblad @email{oskar@@osk.mine.nu}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

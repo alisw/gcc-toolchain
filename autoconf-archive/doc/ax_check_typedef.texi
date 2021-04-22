@@ -1,0 +1,36 @@
+@node ax_check_typedef
+@unnumberedsec ax_check_typedef
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_TYPEDEF(TYPEDEF, HEADER [, ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND ]])
+@end smallexample
+
+@majorheading Description
+
+Check if the given typedef-name is recognized as a type. The trick is to
+use a sizeof(TYPEDEF) and see if the compiler is happy with that.
+
+This can be thought of as a mixture of AC_CHECK_TYPE(TYPEDEF,DEFAULT)
+and AC_CHECK_LIB(LIBRARY,FUNCTION,ACTION-IF-FOUND,ACTION-IF-NOT-FOUND).
+
+A convenience macro AX_CHECK_TYPEDEF_ is provided that will not emit any
+message to the user - it just executes one of the actions.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_typedef.m4,latest
+version of @file{ax_check_typedef.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_typedef.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

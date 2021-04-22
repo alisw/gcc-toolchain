@@ -1,0 +1,49 @@
+@node ax_lib_cgal_core
+@unnumberedsec ax_lib_cgal_core
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_CGAL_CORE([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+Test for the CGAL_Core library.
+
+By using the "--with-cgal=" option, define a special installation
+directory. If CGAL is not found there, the script will fail immediately.
+Otherwise, $CGAL_HOME is searched, then standard system locations.
+
+NOTE: This script depends on BOOST_CPPFLAGS, so be sure to run
+AX_BOOST_BASE in advance.
+
+This macro calls:
+
+@smallexample
+  AC_SUBST(CGAL_CPPFLAGS)
+  AC_SUBST(CGAL_LDFLAGS)
+@end smallexample
+
+And sets:
+
+@smallexample
+  HAVE_CGAL
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_cgal_core.m4,latest
+version of @file{ax_lib_cgal_core.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_cgal_core.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2010 Sebastian Hegler @email{sebastian.hegler@@tu-dresden.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,65 @@
+@node ax_c_referenceable_passed_va_list
+@unnumberedsec ax_c_referenceable_passed_va_list
+
+@majorheading Synopsis
+
+@smallexample
+AX_C_REFERENCEABLE_PASSED_VA_LIST
+@end smallexample
+
+@majorheading Description
+
+Checks whether f(va_list va)@{ &va; @} works as expected.
+
+This macro uses compile-time detection and so is cross-compile ready.
+
+C99 mentioned passing a pointer to va_list to other functions (footnote
+212 of "7.15 Variable arguments <stdarg.h>"). However, f(va_list va) @{
+&va; @} produces broken pointer on some environments such as gcc on
+x86_64, although @{ va_list va; &va; @} works as expected. See the
+detection code of this file and any of pages
+https://www.gnu.org/software/autoconf/manual/html_node/Function-Portability.html,
+http://gcc.gnu.org/bugzilla/show_bug.cgi?id=14557, and
+http://gcc.gnu.org/bugzilla/show_bug.cgi?id=20951 for further
+information.
+
+Although C99 does not define the operations f(va_list va) @{ &va; @} and
+&va itself as standard (footnotes are declared as "normative part,
+information only"), certain situations need it. This macro provides a
+type detection about va_list implementation to deal with the operation.
+
+Following workaround will probably work on such environments although it
+does not ensure to be safe and portable. At least it is working on
+x86_64-unknown-linux-gnu:
+
+@smallexample
+ f(va_list va)
+ @{
+   va_list *vap;
+@end smallexample
+
+@smallexample
+ #if HAVE_REFERENCEABLE_PASSED_VA_LIST
+     vap = &va;
+ #else
+     vap = (va_list *)va;
+ #endif
+ @}
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_c_referenceable_passed_va_list.m4,latest
+version of @file{ax_c_referenceable_passed_va_list.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_c_referenceable_passed_va_list.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 YAMAMOTO Kengo @email{yamaken@@bp.iij4u.or.jp}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

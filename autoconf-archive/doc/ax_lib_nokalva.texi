@@ -1,0 +1,50 @@
+@node ax_lib_nokalva
+@unnumberedsec ax_lib_nokalva
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_NOKALVA([ACTION-IF-TRUE], [ACTION-IF-FALSE])
+@end smallexample
+
+@majorheading Description
+
+This macro will check for the existence of OSS Nokalva
+(http://www.oss.com/products/). It does this by checking for the header
+file asn1.h and the cppsoed library object file. A --with-nokalva option
+is supported as well. The following output variables are set with
+AC_SUBST:
+
+@smallexample
+  NOKALVA_CPPFLAGS
+  NOKALVA_LDFLAGS
+  NOKALVA_LIBS
+@end smallexample
+
+You can use them like this in Makefile.am:
+
+@smallexample
+  AM_CPPFLAGS = $(NOKALVA_CPPFLAGS)
+  AM_LDFLAGS = $(NOKALVA_LDFLAGS)
+  program_LDADD = $(NOKALVA_LIBS)
+@end smallexample
+
+Additionally, the C preprocessor symbol HAVE_NOKALVA will be defined
+with AC_DEFINE if Nokalva is available.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_nokalva.m4,latest
+version of @file{ax_lib_nokalva.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_nokalva.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Krzysztof Burghardt @email{krzysztof@@burghardt.pl}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,44 @@
+@node ax_cxx_compile_stdcxx
+@unnumberedsec ax_cxx_compile_stdcxx
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_COMPILE_STDCXX(VERSION, [ext|noext], [mandatory|optional])
+@end smallexample
+
+@majorheading Description
+
+Check for baseline language coverage in the compiler for the specified
+version of the C++ standard.  If necessary, add switches to CXX and
+CXXCPP to enable support.  VERSION may be '11' (for the C++11 standard)
+or '14' (for the C++14 standard).
+
+The second argument, if specified, indicates whether you insist on an
+extended mode (e.g. -std=gnu++11) or a strict conformance mode (e.g.
+-std=c++11).  If neither is specified, you get whatever works, with
+preference for no added switch, and then for an extended mode.
+
+The third argument, if specified 'mandatory' or if left unspecified,
+indicates that baseline support for the specified C++ standard is
+required and that the macro should error out if no mode with that
+support is found.  If specified 'optional', then configuration proceeds
+regardless, after defining HAVE_CXX$@{VERSION@} if and only if a
+supporting mode is found.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_compile_stdcxx.m4,latest
+version of @file{ax_cxx_compile_stdcxx.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_compile_stdcxx.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Benjamin Kosnik @email{bkoz@@redhat.com}} @* @w{Copyright @copyright{} 2012 Zack Weinberg @email{zackw@@panix.com}} @* @w{Copyright @copyright{} 2013 Roy Stogner @email{roystgnr@@ices.utexas.edu}} @* @w{Copyright @copyright{} 2014, 2015 Google Inc.; contributed by Alexey Sokolov @email{sokolov@@google.com}} @* @w{Copyright @copyright{} 2015 Paul Norman @email{penorman@@mac.com}} @* @w{Copyright @copyright{} 2015 Moritz Klammler @email{moritz@@klammler.eu}} @* @w{Copyright @copyright{} 2016, 2018 Krzesimir Nowak @email{qdlacz@@gmail.com}} @* @w{Copyright @copyright{} 2019 Enji Cooper @email{yaneurabeya@@gmail.com}} @* @w{Copyright @copyright{} 2020 Jason Merrill @email{jason@@redhat.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

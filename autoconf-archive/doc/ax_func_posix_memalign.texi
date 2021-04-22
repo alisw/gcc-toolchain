@@ -1,0 +1,32 @@
+@node ax_func_posix_memalign
+@unnumberedsec ax_func_posix_memalign
+
+@majorheading Synopsis
+
+@smallexample
+AX_FUNC_POSIX_MEMALIGN
+@end smallexample
+
+@majorheading Description
+
+Some versions of posix_memalign (notably glibc 2.2.5) incorrectly apply
+their power-of-two check to the size argument, not the alignment
+argument. AX_FUNC_POSIX_MEMALIGN defines HAVE_POSIX_MEMALIGN if the
+power-of-two check is correctly applied to the alignment argument.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_func_posix_memalign.m4,latest
+version of @file{ax_func_posix_memalign.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_func_posix_memalign.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Scott Pakin @email{pakin@@uiuc.edu}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

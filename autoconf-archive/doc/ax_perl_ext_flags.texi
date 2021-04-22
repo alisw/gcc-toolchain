@@ -1,0 +1,72 @@
+@node ax_perl_ext_flags
+@unnumberedsec ax_perl_ext_flags
+
+@majorheading Synopsis
+
+@smallexample
+AX_PERL_EXT_FLAGS([CFLAGS-VARIABLE], [LDFLAGS-VARIABLE], [EXTRA-MODULES])
+AX_PERL_EXT_CFLAGS([CFLAGS-VARIABLE])
+AX_PERL_EXT_LDFLAGS([LDFLAGS-VARIABLE], [EXTRA-MODULES])
+@end smallexample
+
+@majorheading Description
+
+Fetches the linker flags and C compiler flags for compiling and linking
+programs that embed a Perl interpreter. If the EXTRA-MODULES argument is
+submitted, it is a space separated list of extra modules to link. The
+flags will be stored in the provided variables.
+
+Examples:
+
+@smallexample
+  AX_PERL_EXT_FLAGS([PERLXS_CFLAGS], [PERLXS_LDFLAGS])
+  AC_SUBST([PERLXS_CFLAGS])
+  AC_SUBST([PERLXS_LDFLAGS])
+@end smallexample
+
+@smallexample
+  AX_PERL_EXT_CFLAGS([PERLXS_CFLAGS])
+  AC_SUBST([PERLXS_CFLAGS])
+@end smallexample
+
+@smallexample
+  AX_PERL_EXT_LDFLAGS([PERLXS_LDFLAGS], [-std Socket])
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_perl_ext_flags.m4,latest
+version of @file{ax_perl_ext_flags.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_perl_ext_flags.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Mats Kindahl of Sun Microsystems @email{mats@@sun.com}}
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+1. Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+
+3. The name of the author may not be used to endorse or promote products
+derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.

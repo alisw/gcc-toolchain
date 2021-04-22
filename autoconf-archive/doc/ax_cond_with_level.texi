@@ -1,0 +1,54 @@
+@node ax_cond_with_level
+@unnumberedsec ax_cond_with_level
+
+@majorheading Synopsis
+
+@smallexample
+AX_COND_WITH_LEVEL(PACKAGE [,DEFAULT [,YESLEVEL]])
+@end smallexample
+
+@majorheading Description
+
+Actually used after an AC_ARG_WITH(PKG,...) option-directive, where
+AC_ARG_WITH is a part of the standard autoconf to define a `configure`
+--with-PKG option.
+
+This macros works almost like AC_COND_WITH(PACKAGE [,DEFAULT]), but the
+definition is set to a numeric value. The level of a simple "yes" is
+given (or assumed "2" if absent), otherwise the level can be given in
+mnemonic names, being:
+
+@smallexample
+ 1 = some
+ 2 = many
+ 3 = all
+ 4 = extra
+ 5 = extrasome more
+ 6 = extramany muchmore much
+ 7 = super everything
+ 8 = ultra experimental
+ 9 = insane
+@end smallexample
+
+this macro is most handily it making Makefile.in/Makefile.am that have a
+set of with-level declarations, especially optimization-levels
+
+the $withval shell-variable is set for further examination (it carries
+the numeric value of the various mnemonics above)
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cond_with_level.m4,latest
+version of @file{ax_cond_with_level.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cond_with_level.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

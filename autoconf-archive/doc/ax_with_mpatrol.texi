@@ -1,0 +1,38 @@
+@node ax_with_mpatrol
+@unnumberedsec ax_with_mpatrol
+
+@majorheading Synopsis
+
+@smallexample
+AX_WITH_MPATROL(DEFAULT)
+@end smallexample
+
+@majorheading Description
+
+Integrates the mpatrol malloc debugging library into a new or existing
+project and also attempts to determine the support libraries that need
+to be linked in when libmpatrol is used.
+
+It takes one optional parameter specifying whether mpatrol should be
+included in the project (`yes') or not (`no'). This can also be
+specified as `threads' if you wish to use the threadsafe version of the
+mpatrol library. You can override the value of the optional parameter
+with the `--with-mpatrol' option to the resulting `configure' shell
+script.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_with_mpatrol.m4,latest
+version of @file{ax_with_mpatrol.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_with_mpatrol.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Graeme S. Roy @email{graeme@@epc.co.uk}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

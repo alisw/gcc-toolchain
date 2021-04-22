@@ -1,0 +1,32 @@
+@node ax_decl_wchar_max
+@unnumberedsec ax_decl_wchar_max
+
+@majorheading Synopsis
+
+@smallexample
+AX_DECL_WCHAR_MAX
+@end smallexample
+
+@majorheading Description
+
+Checks whether the system headers define WCHAR_MAX or not. If it is
+already defined, does nothing. Otherwise checks the size and signedness
+of `wchar_t', and defines WCHAR_MAX to the maximum value that can be
+stored in a variable of type `wchar_t'.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_decl_wchar_max.m4,latest
+version of @file{ax_decl_wchar_max.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_decl_wchar_max.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Ville Laurikari @email{vl@@iki.fi}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

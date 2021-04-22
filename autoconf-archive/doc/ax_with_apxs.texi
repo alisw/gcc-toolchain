@@ -1,0 +1,39 @@
+@node ax_with_apxs
+@unnumberedsec ax_with_apxs
+
+@majorheading Synopsis
+
+@smallexample
+AX_WITH_APXS([value-if-not-found], [path])
+@end smallexample
+
+@majorheading Description
+
+Locates an installed apxs binary, placing the result in the precious
+variable $APXS. Accepts a preset $APXS, then --with-apxs, and failing
+that searches for apxs in the given path (which defaults to the system
+path). If apxs is found, $APXS is set to the full path of the binary;
+otherwise it is set to VALUE-IF-NOT-FOUND, which defaults to apxs.
+
+Example:
+
+@smallexample
+  AX_WITH_APXS(missing)
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_with_apxs.m4,latest
+version of @file{ax_with_apxs.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_with_apxs.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Dustin J. Mitchell @email{dustin@@cs.uchicago.edu}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

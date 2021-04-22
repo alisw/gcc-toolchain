@@ -1,0 +1,57 @@
+@node ax_prog_splint
+@unnumberedsec ax_prog_splint
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_SPLINT([AX_SPLINTFLAGS])
+@end smallexample
+
+@majorheading Description
+
+Check for program splint, the static C code checking tool. The splint
+URL is given by http://www.splint.org. This macro should be use together
+with automake.
+
+Enables following environment variables:
+
+@smallexample
+  SPLINT
+  SPLINTFLAGS
+@end smallexample
+
+and AX_SPLINTFLAGS is given by AC_SUBST. If AX_SPLINTFLAGS is not given
+by AX_PROG_SPLINT it defaults to "-weak".
+
+Enables the following make target:
+
+@smallexample
+  splint-check
+@end smallexample
+
+which runs splint per PROGRAMS and LIBRARIES. Output from splint run is
+collected in file ***_splint.log where *** is given by the PROGRAMS or
+LIBRARIES name.
+
+The following line is required in Makefile.am:
+
+@smallexample
+  include aminclude_static.am
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_splint.m4,latest
+version of @file{ax_prog_splint.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_splint.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2011 Henrik Uhrenholt}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

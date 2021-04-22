@@ -1,0 +1,36 @@
+@node ax_am_macros
+@unnumberedsec ax_am_macros
+
+@majorheading Synopsis
+
+@smallexample
+AX_AM_MACROS
+@end smallexample
+
+@majorheading Description
+
+Adds support for macros that create Make rules. You must manually add
+the following line
+
+@smallexample
+  @@INC_AMINCLUDE@@
+@end smallexample
+
+to your Makefile.in (or Makefile.am if you use Automake) files.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_am_macros.m4,latest
+version of @file{ax_am_macros.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_am_macros.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Tom Howard @email{tomhoward@@users.sf.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

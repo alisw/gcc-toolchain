@@ -1,0 +1,33 @@
+@node ax_cxx_old_for_scoping
+@unnumberedsec ax_cxx_old_for_scoping
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_OLD_FOR_SCOPING
+@end smallexample
+
+@majorheading Description
+
+If the compiler accepts the old for scoping rules (the scope of a
+variable declared inside the parentheses extends outside the for-body),
+define HAVE_OLD_FOR_SCOPING. Note that some compilers (notably g++ and
+egcs) support both new and old rules since they accept the old rules and
+only generate a warning.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_old_for_scoping.m4,latest
+version of @file{ax_cxx_old_for_scoping.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_old_for_scoping.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Todd Veldhuizen} @* @w{Copyright @copyright{} 2008 Luc Maisonobe @email{luc@@spaceroots.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

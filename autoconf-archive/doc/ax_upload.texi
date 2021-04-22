@@ -1,0 +1,62 @@
+@node ax_upload
+@unnumberedsec ax_upload
+
+@majorheading Synopsis
+
+@smallexample
+AX_UPLOAD([command])
+@end smallexample
+
+@majorheading Description
+
+Adds support for uploading dist files. %%s in the command will be
+substituted with the name of the file. e.g:
+
+@smallexample
+  AX_UPLOAD([ncftpput -v upload.sourceforge.net /incoming %%s])
+@end smallexample
+
+To add upload support for other custom dists add upload-<TYPE> to
+UPLOAD_BIN or UPLOAD_SRC, where <TYPE> is the type of dist that is being
+uploaded and add a mapping from <TYPE> to the dist file name in the
+format '@{<TYPE>=><FILENAME>@}' to UPLOAD_TARGETS. For example:
+
+@smallexample
+  UPLOAD_BIN += upload-foobar
+  UPLOAD_TARGETS += @{foobar=>@@PACKAGE@@-@@VERSION@@.fb@}
+@end smallexample
+
+You can then upload of the src distribution files by running:
+
+@smallexample
+  make upload-src
+@end smallexample
+
+all the binary distribution files by running:
+
+@smallexample
+  make upload-bin
+@end smallexample
+
+or both by running:
+
+@smallexample
+  make upload
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_upload.m4,latest
+version of @file{ax_upload.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_upload.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Tom Howard @email{tomhoward@@users.sf.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

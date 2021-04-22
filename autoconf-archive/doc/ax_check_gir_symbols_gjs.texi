@@ -1,0 +1,52 @@
+@node ax_check_gir_symbols_gjs
+@unnumberedsec ax_check_gir_symbols_gjs
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_GIR_SYMBOLS_GJS(MODULE, APIVERSION, SYMBOLS)
+@end smallexample
+
+@majorheading Description
+
+Check that each symbol from the whitespace-separated list of $SYMBOLS is
+defined inside the GObject Introspection module $MODULE with API version
+$APIVERSION, and is importable in GJS, GNOME's JavaScript engine
+(https://wiki.gnome.org/Projects/Gjs).
+
+GObject Introspection
+(https://wiki.gnome.org/Projects/GObjectIntrospection) is a tool for
+generating bindings from C libraries to higher-level languages. The
+bindings live in a GObject Introspection repository (GIR) file, which is
+what this macro checks.
+
+Note that for the purposes of GObject Introspection, the API version is
+different from the release version. For example, GTK currently has API
+version 3.0, but that could mean any release from the 3.0, 3.2, 3.4,...
+series.
+
+Example:
+
+@smallexample
+  AX_CHECK_GIR_SYMBOLS_GJS([Gtk], [3.0], [ListBox FlowBox
+                                          Widget.get_action_group])
+@end smallexample
+
+NOTE: This macro depends on AX_PROG_GJS.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_gir_symbols_gjs.m4,latest
+version of @file{ax_check_gir_symbols_gjs.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_gir_symbols_gjs.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2013, 2016 Endless Mobile, Inc.; contributed by Philip Chimento @email{philip@@endlessm.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

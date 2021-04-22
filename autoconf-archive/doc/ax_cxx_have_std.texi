@@ -1,0 +1,30 @@
+@node ax_cxx_have_std
+@unnumberedsec ax_cxx_have_std
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_HAVE_STD
+@end smallexample
+
+@majorheading Description
+
+If the compiler supports ISO C++ standard library (i.e., can include the
+files iostream, map, iomanip and cmath), define HAVE_STD.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_have_std.m4,latest
+version of @file{ax_cxx_have_std.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_have_std.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Todd Veldhuizen} @* @w{Copyright @copyright{} 2008 Luc Maisonobe @email{luc@@spaceroots.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

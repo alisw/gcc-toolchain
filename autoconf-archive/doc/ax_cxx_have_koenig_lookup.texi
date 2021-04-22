@@ -1,0 +1,30 @@
+@node ax_cxx_have_koenig_lookup
+@unnumberedsec ax_cxx_have_koenig_lookup
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_HAVE_KOENIG_LOOKUP
+@end smallexample
+
+@majorheading Description
+
+Define CXX_HAVE_KOENIG_LOOKUP if the C++ compiler has argument-dependent
+name lookup (a.k.a. Koenig lookup).
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_have_koenig_lookup.m4,latest
+version of @file{ax_cxx_have_koenig_lookup.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_have_koenig_lookup.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Steve M. Robbins @email{smr@@debian.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

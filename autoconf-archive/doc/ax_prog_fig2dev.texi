@@ -1,0 +1,33 @@
+@node ax_prog_fig2dev
+@unnumberedsec ax_prog_fig2dev
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_FIG2DEV
+@end smallexample
+
+@majorheading Description
+
+If `fig2dev' is found, sets the output variable `FIG2DEV' to `fig2dev',
+and `FIG2DEV_ESPLANG' to the graphics language which can be used to
+produce Encapsulated PostScript. Older versions of `fig2dev' produce EPS
+with `-Lps' and new versions with `-Leps', this macro finds out the
+correct language option automatically.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_fig2dev.m4,latest
+version of @file{ax_prog_fig2dev.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_fig2dev.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Ville Laurikari @email{vl@@iki.fi}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

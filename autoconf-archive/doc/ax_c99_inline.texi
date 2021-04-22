@@ -1,0 +1,31 @@
+@node ax_c99_inline
+@unnumberedsec ax_c99_inline
+
+@majorheading Synopsis
+
+@smallexample
+AX_C99_INLINE
+@end smallexample
+
+@majorheading Description
+
+This macro defines HAVE_C99_INLINE if the C compiler supports "inline"
+and "extern inline" correctly. An application may replace "inline" with
+"static inline" as a workaround for older compilers.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_c99_inline.m4,latest
+version of @file{ax_c99_inline.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_c99_inline.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Michael McMaster @email{email@@michaelmcmaster.name}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

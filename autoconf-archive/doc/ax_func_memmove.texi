@@ -1,0 +1,30 @@
+@node ax_func_memmove
+@unnumberedsec ax_func_memmove
+
+@majorheading Synopsis
+
+@smallexample
+AX_FUNC_MEMMOVE
+@end smallexample
+
+@majorheading Description
+
+Checks for a memmove that can handle overlaps correctly. If no working
+memmove is found, request a replacement and warn the user about it.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_func_memmove.m4,latest
+version of @file{ax_func_memmove.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_func_memmove.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Ruediger Kuhlmann @email{info@@ruediger-kuhlmann.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

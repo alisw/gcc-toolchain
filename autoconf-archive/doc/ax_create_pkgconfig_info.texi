@@ -1,0 +1,71 @@
+@node ax_create_pkgconfig_info
+@unnumberedsec ax_create_pkgconfig_info
+
+@majorheading Synopsis
+
+@smallexample
+AX_CREATE_PKGCONFIG_INFO [(outputfile, [requires [,libs [,summary [,cflags [, ldflags]]]]])]
+@end smallexample
+
+@majorheading Description
+
+Defaults:
+
+@smallexample
+  $1 = $PACKAGE_NAME.pc
+  $2 = (empty)
+  $3 = $PACKAGE_LIBS $LIBS (as set at that point in configure.ac)
+  $4 = $PACKAGE_SUMMARY (or $1 Library)
+  $5 = $PACKAGE_CFLAGS (as set at the point in configure.ac)
+  $6 = $PACKAGE_LDFLAGS (as set at the point in configure.ac)
+@end smallexample
+
+@smallexample
+  PACKAGE_NAME defaults to $PACKAGE if not set.
+  PACKAGE_LIBS defaults to -l$PACKAGE_NAME if not set.
+@end smallexample
+
+The resulting file is called $PACKAGE.pc.in / $PACKAGE.pc
+
+You will find this macro most useful in conjunction with
+ax_spec_defaults that can read good initializers from the .spec file. In
+consequence, most of the generatable installable stuff can be made from
+information being updated in a single place for the whole project.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_create_pkgconfig_info.m4,latest
+version of @file{ax_create_pkgconfig_info.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_create_pkgconfig_info.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}} @* @w{Copyright @copyright{} 2008 Sven Verdoolaege @email{skimo@@kotnet.org}}
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+As a special exception, the respective Autoconf Macro's copyright owner
+gives unlimited permission to copy, distribute and modify the configure
+scripts that are the output of Autoconf when processing the Macro. You
+need not follow the terms of the GNU General Public License when using
+or distributing such scripts, even though portions of the text of the
+Macro appear in them. The GNU General Public License (GPL) does govern
+all other use of the material that constitutes the Autoconf Macro.
+
+This special exception to the GPL applies to versions of the Autoconf
+Macro released by the Autoconf Archive. When you make and distribute a
+modified version of the Autoconf Macro, you may extend this special
+exception to the GPL to apply to your modified version as well.

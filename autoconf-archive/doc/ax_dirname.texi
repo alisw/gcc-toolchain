@@ -1,0 +1,34 @@
+@node ax_dirname
+@unnumberedsec ax_dirname
+
+@majorheading Synopsis
+
+@smallexample
+AX_DIRNAME(PATHNAME)
+@end smallexample
+
+@majorheading Description
+
+Parts of the implementation have been taken from AS_DIRNAME from the
+main autoconf package in generation 2.5x. However, we do only use "sed"
+to cut out the dirname, and we do additionally clean up some dir/..
+parts in the resulting pattern.
+
+this macro may be used in autoconf 2.13 scripts as well.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_dirname.m4,latest
+version of @file{ax_dirname.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_dirname.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

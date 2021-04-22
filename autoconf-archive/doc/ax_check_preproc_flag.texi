@@ -1,0 +1,43 @@
+@node ax_check_preproc_flag
+@unnumberedsec ax_check_preproc_flag
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_PREPROC_FLAG(FLAG, [ACTION-SUCCESS], [ACTION-FAILURE], [EXTRA-FLAGS], [INPUT])
+@end smallexample
+
+@majorheading Description
+
+Check whether the given FLAG works with the current language's
+preprocessor or gives an error.  (Warnings, however, are ignored)
+
+ACTION-SUCCESS/ACTION-FAILURE are shell commands to execute on
+success/failure.
+
+If EXTRA-FLAGS is defined, it is added to the preprocessor's default
+flags when the check is done.  The check is thus made with the flags:
+"CPPFLAGS EXTRA-FLAGS FLAG".  This can for example be used to force the
+preprocessor to issue an error when a bad flag is given.
+
+INPUT gives an alternative input source to AC_PREPROC_IFELSE.
+
+NOTE: Implementation based on AX_CFLAGS_GCC_OPTION. Please keep this
+macro in sync with AX_CHECK_@{COMPILE,LINK@}_FLAG.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_preproc_flag.m4,latest
+version of @file{ax_check_preproc_flag.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_preproc_flag.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}} @* @w{Copyright @copyright{} 2011 Maarten Bosmans @email{mkbosmans@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

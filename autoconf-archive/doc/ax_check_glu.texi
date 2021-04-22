@@ -1,0 +1,95 @@
+@node ax_check_glu
+@unnumberedsec ax_check_glu
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_GLU([ACTION-IF-FOUND],[ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+Checks for GLUT. If a valid GLU implementation is found, the configure
+script would export the C preprocessor symbol "HAVE_GLU=1".
+
+If either a valid GLU header or library was not found, by default the
+configure script would exit on error. This behavior can be overwritten
+by providing a custom "ACTION-IF-NOT-FOUND" hook.
+
+If the header, library was found, and been tested for compiling and
+linking the configuration would export the required compiler flags to
+"GLU_CFLAGS" and "GLU_LIBS" environment variables. These two variables
+can also be overwritten by defining the environment variables before
+executing the configure program. If it was predefined, configure would
+not try to overwrite it, but it would still perform the compile and link
+test. Only when the tests succeeded does the configure script to export
+"HAVE_GLU=1" and to run "ACTION-IF-FOUND" hook.
+
+If user didn't specify the "ACTION-IF-FOUND" hook, the configuration
+would prepend "GLU_CFLAGS" and "GLU_LIBS" to "CFLAGS" and "LIBS", like
+many other autoconf macros do.
+
+If the header "GL/glu.h" is found, "HAVE_GL_GLU_H" is defined. If the
+header "OpenGL/glu.h" is found, HAVE_OPENGL_GLU_H is defined.
+
+You should use something like this in your headers:
+
+@smallexample
+  # if defined(HAVE_WINDOWS_H) && defined(_WIN32)
+  #  include <windows.h>
+  # endif
+  # if defined(HAVE_GL_GLU_H)
+  #  include <GL/glu.h>
+  # elif defined(HAVE_OPENGL_GLU_H)
+  #  include <OpenGL/glu.h>
+  # else
+  #  error no glu.h
+  # endif
+@end smallexample
+
+On the OSX platform, you can use the option --with-xquartz-gl to use
+X11/Xquartz GLU implementation instead of the system built in GLU
+framework.
+
+Some implementations (in particular, some versions of Mac OS X) are
+known to treat the GLU tesselator callback function type as "GLvoid
+(*)(...)" rather than the standard "GLvoid (*)()". If the former
+condition is detected, this macro defines "HAVE_VARARGS_GLU_TESSCB".
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_glu.m4,latest
+version of @file{ax_check_glu.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_glu.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Braden McDaniel @email{braden@@endoframe.com}} @* @w{Copyright @copyright{} 2013 Bastien Roucaries @email{roucaries.bastien+autoconf@@gmail.com}} @* @w{Copyright @copyright{} 2016 Felix Chern @email{idryman@@gmail.com}}
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+As a special exception, the respective Autoconf Macro's copyright owner
+gives unlimited permission to copy, distribute and modify the configure
+scripts that are the output of Autoconf when processing the Macro. You
+need not follow the terms of the GNU General Public License when using
+or distributing such scripts, even though portions of the text of the
+Macro appear in them. The GNU General Public License (GPL) does govern
+all other use of the material that constitutes the Autoconf Macro.
+
+This special exception to the GPL applies to versions of the Autoconf
+Macro released by the Autoconf Archive. When you make and distribute a
+modified version of the Autoconf Macro, you may extend this special
+exception to the GPL to apply to your modified version as well.

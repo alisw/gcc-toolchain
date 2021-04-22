@@ -1,0 +1,31 @@
+@node ax_prog_javah
+@unnumberedsec ax_prog_javah
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_JAVAH
+@end smallexample
+
+@majorheading Description
+
+AX_PROG_JAVAH tests the availability of the javah header generator and
+looks for the jni.h header file. If available, JAVAH is set to the full
+path of javah and CPPFLAGS is updated accordingly.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_javah.m4,latest
+version of @file{ax_prog_javah.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_javah.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Luc Maisonobe @email{luc@@spaceroots.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

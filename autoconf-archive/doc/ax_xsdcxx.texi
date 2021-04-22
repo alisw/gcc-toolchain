@@ -1,0 +1,51 @@
+@node ax_xsdcxx
+@unnumberedsec ax_xsdcxx
+
+@majorheading Synopsis
+
+@smallexample
+AX_XSDCXX
+@end smallexample
+
+@majorheading Description
+
+This macro tries to find the CodeSynthesis XSD executable and the
+corresponding headers.
+
+Supported options:
+
+@smallexample
+  --with-xsdcxx
+      use CodeSynthesis XSD from given prefix (ARG=path);
+      check PATH (ARG=yes); disable (ARG=no)
+@end smallexample
+
+@smallexample
+  --with-xsdcxx-inc
+      path to CodeSynthesis XSD headers (ARG=path); use standard prefix
+      (ARG=yes); disable (ARG=no)
+@end smallexample
+
+Output variables:
+
+@smallexample
+  XSDCXX
+  XSDCXX_CPPFLAGS
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_xsdcxx.m4,latest
+version of @file{ax_xsdcxx.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_xsdcxx.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2013 Laszlo Kajan @email{lkajan@@rostlab.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

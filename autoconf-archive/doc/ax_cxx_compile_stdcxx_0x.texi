@@ -1,0 +1,33 @@
+@node ax_cxx_compile_stdcxx_0x
+@unnumberedsec ax_cxx_compile_stdcxx_0x
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_COMPILE_STDCXX_0X
+@end smallexample
+
+@majorheading Description
+
+Check for baseline language coverage in the compiler for the C++0x
+standard.
+
+This macro is deprecated and has been superseded by the
+AX_CXX_COMPILE_STDCXX_11 macro which should be used instead.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_compile_stdcxx_0x.m4,latest
+version of @file{ax_cxx_compile_stdcxx_0x.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_compile_stdcxx_0x.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Benjamin Kosnik @email{bkoz@@redhat.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,30 @@
+@node ax_cxx_have_string_push_back
+@unnumberedsec ax_cxx_have_string_push_back
+
+@majorheading Synopsis
+
+@smallexample
+AX_CXX_HAVE_STRING_PUSH_BACK
+@end smallexample
+
+@majorheading Description
+
+If the implementation of the C++ library provides the method
+std::string::push_back (char), define HAVE_STRING_PUSH_BACK.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cxx_have_string_push_back.m4,latest
+version of @file{ax_cxx_have_string_push_back.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cxx_have_string_push_back.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Jan Langer @email{jan@@langernetz.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

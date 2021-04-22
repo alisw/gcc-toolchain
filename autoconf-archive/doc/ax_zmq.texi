@@ -1,0 +1,45 @@
+@node ax_zmq
+@unnumberedsec ax_zmq
+
+@majorheading Synopsis
+
+@smallexample
+AX_ZMQ([MINIMUM-VERSION], [ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+Test for the ZMQ libraries of a particular version (or newer). The
+default version tested for is 4.0.0.
+
+The macro tests for ZMQ libraries in the library/include path, and, when
+provided, also in the path given by --with-zmq.
+
+This macro calls:
+
+@smallexample
+  AC_SUBST(ZMQ_CPPFLAGS) / AC_SUBST(ZMQ_LDFLAGS) / AC_SUBST(ZMQ_LIBS)
+@end smallexample
+
+And sets:
+
+@smallexample
+  HAVE_ZMQ
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_zmq.m4,latest
+version of @file{ax_zmq.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_zmq.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2016 Jeroen Meijer @email{jjgmeijer@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

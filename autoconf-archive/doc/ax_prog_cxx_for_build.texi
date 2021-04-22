@@ -1,0 +1,40 @@
+@node ax_prog_cxx_for_build
+@unnumberedsec ax_prog_cxx_for_build
+
+@majorheading Synopsis
+
+@smallexample
+AX_PROG_CXX_FOR_BUILD
+@end smallexample
+
+@majorheading Description
+
+This macro searches for a C++ compiler that generates native
+executables, that is a C++ compiler that surely is not a cross-compiler.
+This can be useful if you have to generate source code at compile-time
+like for example GCC does.
+
+The macro sets the CXX_FOR_BUILD and CXXCPP_FOR_BUILD macros to anything
+needed to compile or link (CXX_FOR_BUILD) and preprocess
+(CXXCPP_FOR_BUILD). The value of these variables can be overridden by
+the user by specifying a compiler with an environment variable (like you
+do for standard CXX).
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_prog_cxx_for_build.m4,latest
+version of @file{ax_prog_cxx_for_build.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_prog_cxx_for_build.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Paolo Bonzini @email{bonzini@@gnu.org}} @* @w{Copyright @copyright{} 2012 Avionic Design GmbH}
+
+Based on the AX_PROG_CC_FOR_BUILD macro by Paolo Bonzini.
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

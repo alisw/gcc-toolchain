@@ -1,0 +1,62 @@
+@node ax_lib_xalan
+@unnumberedsec ax_lib_xalan
+
+@majorheading Synopsis
+
+@smallexample
+AX_LIB_XALAN([MINIMUM-VERSION])
+@end smallexample
+
+@majorheading Description
+
+This macro provides tests of availability of Apache Xalan C++ XSLT
+processor of a particular version or newer. This macros checks for
+Apache Xalan C++ XSLT processor headers and libraries and defines
+compilation flags
+
+Macro supports following options and their values:
+
+1) Single-option usage:
+
+@smallexample
+  --with-xalan - yes, no or path to Xalan installation prefix
+@end smallexample
+
+2) Three-options usage (all options are required):
+
+@smallexample
+  --with-xalan=yes
+  --with-xalan-inc - path to base directory with Xalan headers
+  --with-xalan-lib - linker flags for Xalan
+@end smallexample
+
+This macro calls:
+
+@smallexample
+  AC_SUBST(XALAN_CPPFLAGS)
+  AC_SUBST(XALAN_LDFLAGS)
+  AC_SUBST(XALAN_VERSION) - only if version requirement is used
+@end smallexample
+
+And sets:
+
+@smallexample
+  HAVE_XALAN
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_lib_xalan.m4,latest
+version of @file{ax_lib_xalan.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_lib_xalan.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Mateusz Loskot @email{mateusz@@loskot.net}} @* @w{Copyright @copyright{} 2009 Bill Blough @email{bblough@@gmail.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

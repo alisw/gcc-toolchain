@@ -1,0 +1,35 @@
+@node ax_count_cpus
+@unnumberedsec ax_count_cpus
+
+@majorheading Synopsis
+
+@smallexample
+AX_COUNT_CPUS([ACTION-IF-DETECTED],[ACTION-IF-NOT-DETECTED])
+@end smallexample
+
+@majorheading Description
+
+Attempt to count the number of logical processor cores (including
+virtual and HT cores) currently available to use on the machine and
+place detected value in CPU_COUNT variable.
+
+On successful detection, ACTION-IF-DETECTED is executed if present. If
+the detection fails, then ACTION-IF-NOT-DETECTED is triggered. The
+default ACTION-IF-NOT-DETECTED is to set CPU_COUNT to 1.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_count_cpus.m4,latest
+version of @file{ax_count_cpus.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_count_cpus.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2014,2016 Karlson2k (Evgeny Grin) @email{k2k@@narod.ru}} @* @w{Copyright @copyright{} 2012 Brian Aker @email{brian@@tangent.org}} @* @w{Copyright @copyright{} 2008 Michael Paul Bailey @email{jinxidoru@@byu.net}} @* @w{Copyright @copyright{} 2008 Christophe Tournayre @email{turn3r@@users.sourceforge.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

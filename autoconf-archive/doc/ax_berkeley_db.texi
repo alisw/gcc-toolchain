@@ -1,0 +1,49 @@
+@node ax_berkeley_db
+@unnumberedsec ax_berkeley_db
+
+@majorheading Synopsis
+
+@smallexample
+AX_BERKELEY_DB([MINIMUM-VERSION [, ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]]])
+@end smallexample
+
+@majorheading Description
+
+This macro tries to find Berkeley DB. It honors MINIMUM-VERSION if
+given.
+
+If libdb is found, DB_HEADER and DB_LIBS variables are set and
+ACTION-IF-FOUND shell code is executed if specified. DB_HEADER is set to
+location of db.h header in quotes (e.g. "db3/db.h") and
+AC_DEFINE_UNQUOTED is called on it, so that you can type
+
+@smallexample
+  #include DB_HEADER
+@end smallexample
+
+in your C/C++ code. DB_LIBS is set to linker flags needed to link
+against the library (e.g. -ldb3.1) and AC_SUBST is called on it.
+
+when specified user-selected spot (via --with-libdb) also sets
+
+@smallexample
+  DB_CPPFLAGS to the include directives required
+  DB_LDFLAGS to the -L flags required
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_berkeley_db.m4,latest
+version of @file{ax_berkeley_db.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_berkeley_db.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Vaclav Slavik @email{vaclav.slavik@@matfyz.cz}} @* @w{Copyright @copyright{} 2014 Kirill A. Korinskiy @email{catap@@catap.ru}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

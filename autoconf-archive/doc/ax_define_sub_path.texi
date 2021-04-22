@@ -1,0 +1,72 @@
+@node ax_define_sub_path
+@unnumberedsec ax_define_sub_path
+
+@majorheading Synopsis
+
+@smallexample
+AX_DEFINE_SUB_PATH(DEFNAME, varname, description)
+@end smallexample
+
+@majorheading Description
+
+Look at varname and detect the subpath that it contains relative to
+$prefix/$exec_prefix. If the path is indeed relative to
+$prefix/$exec_prefix, then a single "./" (dotslash) is prepended,
+otherwise it can be seen as an absolute path that cannot be moved, which
+you possibly do for "/etc" files, or even those ending up in
+"/lib/modules" or "/winnt/system".
+
+This macro is not very intelligent, it's just a first try in this
+direction. It does currently just look into the current patterns, and
+replaces a $@{prefix@} with a simple dot. Amazingly, it works quite well
+for most packages.
+
+Example (configure.ac):
+
+@smallexample
+  AX_DEFINE_DIR([EPREFIX], [exec_prefix], [--exec-prefix or default])
+  AX_DEFINE_SUB_PATH([PATH_LIBDIR], [libdir], [--bindir subdir])
+  AC_DEFINE_UNQUOTED([PACKAGE],"$PACKAGE", [Name of package])
+@end smallexample
+
+Example (in C):
+
+@smallexample
+  static const char _libdir[] = PATH_LIBDIR; /* configure default */
+  char* libdir;
+  char* eprefix = getenv (PACKAGE "DIR");
+  if (! eprefix) eprefix = EPREFIX; /* default */
+  if (*_libdir != '.') libdir = strdup(_libdir);
+  else @{
+     libdir = malloc(strlen(eprefix) + strlen(_libdir) + 2);
+     strcpy(libdir, eprefix);
+     strcat(libdir, PATH_DELIMITER_STRING);
+     strcat(libdir, _libdir);
+  @}
+  ...
+  free (libdir);
+@end smallexample
+
+The AX_DEFINE_SUB_PATHS(varnames) macro looks for the given various
+install-paths that largely depend on either $@{prefix@} or $@{exec_prefix@}.
+Just cut out the prefix and ac_define the value. The value is uppercased
+and PATH_ prepended ie. ax_define_sub_paths(bindir libdir pkgdatadir)
+will create the defines PATH_BINDIR PATH_LIBDIR PATH_PKGDATADIR - see
+posix' include/paths.h that creates _PATH_DEV and friends.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_define_sub_path.m4,latest
+version of @file{ax_define_sub_path.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_define_sub_path.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

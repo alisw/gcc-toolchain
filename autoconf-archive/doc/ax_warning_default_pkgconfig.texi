@@ -1,0 +1,54 @@
+@node ax_warning_default_pkgconfig
+@unnumberedsec ax_warning_default_pkgconfig
+
+@majorheading Synopsis
+
+@smallexample
+AX_WARNING_DEFAULT_PKGCONFIGDIR [(dirvariable [,[defsetting][,[A][,[N/A]]]])]
+AX_ENABLE_DEFAULT_PKGCONFIGDIR [(dirvariable [,defsetting])]
+@end smallexample
+
+@majorheading Description
+
+print a warning message if the $(datadir)/aclocal directory is not in
+the dirlist searched by the aclocal tool. This macro is useful if some
+`make install` would target $(datadir)/aclocal to install an autoconf m4
+file of your project to be picked up by other projects.
+
+@smallexample
+ default $1 dirvariable = pkgconfigdir
+ default $2 defsetting  = $@{libdir@}/pkgconfig
+ default $3 action = nothing to do
+ default $4 action = warn the user about mismatch
+@end smallexample
+
+In the _WARNING_ variant, the defsetting is not placed in dirvariable
+nor is it ac_subst'ed in any way. The default fail-action $4 is to send
+a warning message to the user, and the default accept-action $3 is
+nothing. It is expected that a Makefile is generated with
+pkgconfigdir=$@{libdir@}/pkgconfig
+
+The _ENABLE_ variant however will set not only the $pkgconfigdir shell
+var of the script, but it is also AC-SUBST'ed on default - and
+furthermore a configure option "--enable-default-pkgconfigdir" is
+provided. Only if that option is set then $2 default is not set to the
+canonic default in the a $prefix subpath but instead $2 default is set
+to the primary path where `pkg-config` looks for .pc files. The user may
+also override the default on the command line.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_warning_default_pkgconfig.m4,latest
+version of @file{ax_warning_default_pkgconfig.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_warning_default_pkgconfig.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

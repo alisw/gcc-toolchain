@@ -1,0 +1,69 @@
+@node ax_check_junit
+@unnumberedsec ax_check_junit
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_JUNIT
+@end smallexample
+
+@majorheading Description
+
+AX_CHECK_JUNIT tests the availability of the Junit testing framework,
+and set some variables for conditional compilation of the test suite by
+automake.
+
+If available, JUNIT is set to a command launching the text based user
+interface of Junit, @@JAVA_JUNIT@@ is set to $JAVA_JUNIT and @@TESTS_JUNIT@@
+is set to $TESTS_JUNIT, otherwise they are set to empty values.
+
+You can use these variables in your Makefile.am file like this :
+
+@smallexample
+ # Some of the following classes are built only if junit is available
+ JAVA_JUNIT  = Class1Test.java Class2Test.java AllJunitTests.java
+@end smallexample
+
+@smallexample
+ noinst_JAVA = Example1.java Example2.java @@JAVA_JUNIT@@
+@end smallexample
+
+@smallexample
+ EXTRA_JAVA  = $(JAVA_JUNIT)
+@end smallexample
+
+@smallexample
+ TESTS_JUNIT = AllJunitTests
+@end smallexample
+
+@smallexample
+ TESTS       = StandaloneTest1 StandaloneTest2 @@TESTS_JUNIT@@
+@end smallexample
+
+@smallexample
+ EXTRA_TESTS = $(TESTS_JUNIT)
+@end smallexample
+
+@smallexample
+ AllJunitTests :
+    echo "#! /bin/sh" > $@@
+    echo "exec @@JUNIT@@ my.package.name.AllJunitTests" >> $@@
+    chmod +x $@@
+@end smallexample
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_junit.m4,latest
+version of @file{ax_check_junit.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_junit.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Luc Maisonobe @email{luc@@spaceroots.org}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

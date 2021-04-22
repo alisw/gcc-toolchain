@@ -1,0 +1,39 @@
+@node ax_try_compile_java
+@unnumberedsec ax_try_compile_java
+
+@majorheading Synopsis
+
+@smallexample
+AX_TRY_COMPILE_JAVA
+@end smallexample
+
+@majorheading Description
+
+AX_TRY_COMPILE_JAVA attempt to compile user given source.
+
+*Warning*: its success or failure can depend on a proper setting of the
+CLASSPATH env. variable.
+
+Note: This is part of the set of autoconf M4 macros for Java programs.
+It is VERY IMPORTANT that you download the whole set, some macros depend
+on other. Unfortunately, the autoconf archive does not support the
+concept of set of macros, so I had to break it for submission. The
+general documentation, as well as the sample configure.in, is included
+in the AX_PROG_JAVA macro.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_try_compile_java.m4,latest
+version of @file{ax_try_compile_java.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_try_compile_java.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Devin Weaver @email{ktohg@@tritarget.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,37 @@
+@node ax_spec_file
+@unnumberedsec ax_spec_file
+
+@majorheading Synopsis
+
+@smallexample
+AX_SPEC_FILE [(rpmspecfile [,subdirpath])]
+@end smallexample
+
+@majorheading Description
+
+set the specfile - if no argument has been given then check whether the
+ac_unique_file looks like a .spec file and use it. This macro is
+ac_REQUIRED by many AX_SPEC_ routines.
+
+the AX_SPEC_EXTRACT macro is a helper used by many AX_SPEC_ routines and
+therefore placed here to be automatically included in the macro set of
+(older) aclocal/acinclude.
+
+AX_SPEC_EXTRACT(shellvar [,specvar [,defaultvalue]])
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_spec_file.m4,latest
+version of @file{ax_spec_file.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_spec_file.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2008 Guido U. Draheim @email{guidod@@gmx.de}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

@@ -1,0 +1,51 @@
+@node ax_open62541_check_lib
+@unnumberedsec ax_open62541_check_lib
+
+@majorheading Synopsis
+
+@smallexample
+AX_OPEN62541_CHECK_LIB([STATIC-FIRST = `no'], [ACTION-IF-FOUND],
+                       [ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+Searches for the library file of the open62541 library [1].
+
+The open62541 library is a cmake-based project, that supplies both a
+shared and a static library (with different names). The
+AX_OPEN62541_CHECK_LIB macro can search for both and adds the first one
+found to the LIBS Makefile variable. The search can be in either order
+(shared first or static first), which is selectable on macro invocation
+with the STATIC-FIRST parameter. The user can change this default by
+invoking configure with either the --with-open62541-shared or
+--with-open62541-static option (the named one is checked first).
+
+Either shared or static library can be excluded from checking completely
+with the options --without-open62541-shared and
+--without-open62541-static.
+
+If the with_open62541 shell variable is set to "no" (e.g. from running
+the AX_OPEN62541_PATH macro and the user giving configure the option
+"--without-open62541"), then expands ACTION-IF-NOT-FOUND without any
+checks. The same is true if both --without-open62541-shared and
+--without-open62541-static are given.
+
+[1]: <http://open62541.org/>
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_open62541_check_lib.m4,latest
+version of @file{ax_open62541_check_lib.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_open62541_check_lib.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2016 Olaf Mandel @email{olaf@@mandel.name}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

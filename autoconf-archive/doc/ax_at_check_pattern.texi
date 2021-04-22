@@ -1,0 +1,44 @@
+@node ax_at_check_pattern
+@unnumberedsec ax_at_check_pattern
+
+@majorheading Synopsis
+
+@smallexample
+AX_AT_CHECK_PATTERN(COMMANDS, [STATUS], [STDOUT-RE], [STDERR-RE], [RUN-IF-FAIL], [RUN-IF-PASS])
+AX_AT_DIFF_PATTERN(PATTERN-FILE, TEST-FILE, [STATUS=0], [DIFFERENCES])
+@end smallexample
+
+@majorheading Description
+
+AX_AT_CHECK_PATTERN() executes a test similar to AT_CHECK(), except that
+stdout and stderr are awk regular expressions (REs).
+
+NOTE: as autoconf uses [] for quoting, the use of [brackets] in the RE
+arguments STDOUT-RE and STDERR-RE can be awkward and require careful
+extra quoting, or quadrigraphs '@@<:@@' (for '[') and '@@:>@@' (for ']').
+
+awk is invoked via $AWK, which defaults to "awk" if unset or empty.
+
+Implemented using AT_CHECK() with a custom value for $at_diff that
+invokes diff with an awk post-processor.
+
+AX_AT_DIFF_PATTERN() checks that the PATTERN-FILE applies to TEST-FILE.
+If there are differences, STATUS will be 1 and they should be
+DIFFERENCES.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_at_check_pattern.m4,latest
+version of @file{ax_at_check_pattern.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_at_check_pattern.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2013-2014 Luke Mewburn @email{luke@@mewburn.net}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.

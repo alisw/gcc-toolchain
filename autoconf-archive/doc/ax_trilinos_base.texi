@@ -1,0 +1,45 @@
+@node ax_trilinos_base
+@unnumberedsec ax_trilinos_base
+
+@majorheading Synopsis
+
+@smallexample
+AX_TRILINOS_BASE([, MINIMUM-VERSION [, ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]]])
+@end smallexample
+
+@majorheading Description
+
+Test for the Trilinos (http://trilinos.sandia.gov/) libraries.
+
+Provides a --with-trilinos=DIR option. Searches --with-trilinos,
+$TRILINOS_HOME, and the usual places for Trilinos installation headers.
+
+Requires that a development branch or released version greater than
+MINIMUM-VERSION be found. If not specified, the default minimum version
+is 8.0.0.
+
+Supports separately specifying --with-trilinos-include or
+--with-trilinos-libdir to override default locations underneath either
+--with-trilinos or $TRILINOS_HOME.
+
+On success, adds -Ipath to CPPFLAGS, -Lpath to LDFLAGS, sets the
+variable TRILINOS_INCLUDE based on the discovered location of
+Trilinos_version.h, and #defines HAVE_TRILINOS. When ACTION-IF-NOT-FOUND
+is not specified, the default behavior is for configure to fail.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_trilinos_base.m4,latest
+version of @file{ax_trilinos_base.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_trilinos_base.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Rhys Ulerich @email{rhys.ulerich@@gmail.com}} @* @w{Copyright @copyright{} 2009 Thomas Porschberg @email{thomas@@randspringer.de}} @* @w{Copyright @copyright{} 2009 Caolan McNamara @email{caolan@@skynet.ie}} @* @w{Copyright @copyright{} 2009 Alexandre Duret-Lutz @email{adl@@gnu.org}} @* @w{Copyright @copyright{} 2009 Matthew Mueller @email{donut@@azstarnet.com}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

@@ -1,0 +1,32 @@
+@node ax_r_package
+@unnumberedsec ax_r_package
+
+@majorheading Synopsis
+
+@smallexample
+AX_R_PACKAGE(pkgname[, version, R])
+@end smallexample
+
+@majorheading Description
+
+Checks for an R package.
+
+Optionally checks for the version when a second argument is given. A
+different R can be used by providing a third argument.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_r_package.m4,latest
+version of @file{ax_r_package.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_r_package.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2017 Ricardo Wurmus}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

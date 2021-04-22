@@ -1,0 +1,95 @@
+@node ax_check_gl
+@unnumberedsec ax_check_gl
+
+@majorheading Synopsis
+
+@smallexample
+AX_CHECK_GL([ACTION-IF-FOUND],[ACTION-IF-NOT-FOUND])
+@end smallexample
+
+@majorheading Description
+
+Checks for an OpenGL implementation. If a valid OpenGL implementation is
+found, this macro would set C preprocessor symbol HAVE_GL to 1.
+
+If either a valid OpenGL header or library was not found, by default the
+configuration would exits on error. This behavior can be overwritten by
+providing a custom "ACTION-IF-NOT-FOUND" hook.
+
+If the header, library was found, and been tested for compiling and
+linking the configuration would export the required compiler flags to
+"GL_CFLAGS" and "GL_LIBS". These two variables can also be overwritten
+by user from the command line if they want to link against the library
+they specified instead of having the configuration script to detect the
+flags automatically. Note that having "GL_CFLAGS" or "GL_LIBS" set
+doesn't mean it can compile or link with the flags, since it could be
+overwritten by user. However the "HAVE_GL" symbol and "ACTION-IF-FOUND"
+hook is always guaranteed to reflect a valid OpenGL implementation.
+
+If user didn't specify the "ACTION-IF-FOUND" hook, the configuration
+would prepend "GL_CFLAGS" and "GL_LIBS" to "CFLAGS" and "LIBS", like
+many other autoconf macros do.
+
+OpenGL is one of the libraries that has different header names on
+different platforms. This macro does the header detection, and will
+export the following symbol: "HAVE_GL_GL_H" for having "GL/gl.h" or
+"HAVE_OPENGL_GL_H" for having "OpenGL/gl.h". To write a portable OpenGL
+code, you should include OpenGL header like so:
+
+@smallexample
+  #if defined(HAVE_WINDOWS_H) && defined(_WIN32)
+  # include <windows.h>
+  #endif
+  #ifdef HAVE_GL_GL_H
+  # include <GL/gl.h>
+  #elif defined(HAVE_OPENGL_GL_H)
+  # include <OpenGL/gl.h>
+  #else
+  # error no gl.h
+  #endif
+@end smallexample
+
+On the OSX platform, there's two possible OpenGL implementation. One is
+the OpenGL that ships with OSX, the other comes with X11/XQuartz
+(http://www.xquartz.org). To use the xquartz variant, user can use the
+option --with-xquartz-gl[=path to xquartz root]. By default the
+configuration will check "/opt/X11", which is the default X11 install
+location on OSX.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_check_gl.m4,latest
+version of @file{ax_check_gl.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_check_gl.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2009 Braden McDaniel @email{braden@@endoframe.com}} @* @w{Copyright @copyright{} 2012 Bastien Roucaries @email{roucaries.bastien+autoconf@@gmail.com}} @* @w{Copyright @copyright{} 2016 Felix Chern @email{idryman@@gmail.com}}
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+As a special exception, the respective Autoconf Macro's copyright owner
+gives unlimited permission to copy, distribute and modify the configure
+scripts that are the output of Autoconf when processing the Macro. You
+need not follow the terms of the GNU General Public License when using
+or distributing such scripts, even though portions of the text of the
+Macro appear in them. The GNU General Public License (GPL) does govern
+all other use of the material that constitutes the Autoconf Macro.
+
+This special exception to the GPL applies to versions of the Autoconf
+Macro released by the Autoconf Archive. When you make and distribute a
+modified version of the Autoconf Macro, you may extend this special
+exception to the GPL to apply to your modified version as well.

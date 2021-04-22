@@ -1,0 +1,128 @@
+@node ax_am_override_var
+@unnumberedsec ax_am_override_var
+
+@majorheading Synopsis
+
+@smallexample
+AX_AM_OVERRIDE_VAR([varname1 varname ... ])
+AX_AM_OVERRIDE_FINALIZE
+@end smallexample
+
+@majorheading Description
+
+This autoconf macro generalizes the approach given in
+<http://lists.gnu.org/archive/html/automake/2005-09/msg00108.html> which
+moves user specified values for variable 'varname' given at configure
+time into the corresponding AM_$@{varname@} variable and clears out
+'varname', allowing further manipulation by the configure script so that
+target specific variables can be given specialized versions.  'varname
+may still be specified on the make command line and will be appended as
+usual.
+
+As an example usage, consider a project which might benefit from
+different compiler flags for different components. Typically this is
+done via target specific flags, e.g.
+
+@smallexample
+ libgtest_la_CXXFLAGS    =                        \
+                  -I $(top_srcdir)/tests          \
+                  -I $(top_builddir)/tests        \
+                  $(GTEST_CXXFLAGS)
+@end smallexample
+
+automake will automatically append $(CXXFLAGS) -- provided by the user
+-- to the build rule for libgtest_la.  That might be problematic, as
+CXXFLAGS may contain compiler options which are inappropriate for
+libgtest_la.
+
+The approach laid out in the referenced mailing list message is to
+supply a base value for a variable during _configure_ time, during which
+it is possible to amend it for specific targets. The user may
+subsequently specify a value for the variable during _build_ time, which
+make will apply (via the standard automake rules) to all appropriate
+targets.
+
+For example,
+
+@smallexample
+ AX_AM_OVERRIDE_VAR([CXXFLAGS])
+@end smallexample
+
+will store the value of CXXFLAGS specified at configure time into the
+AM_CXXFLAGS variable, AC_SUBST it, and clear CXXFLAGS. configure may
+then create a target specific set of flags based upon AM_CXXFLAGS, e.g.
+
+@smallexample
+ # googletest uses variadic macros, which g++ -pedantic-errors
+ # is very unhappy about
+ AC_SUBST([GTEST_CXXFLAGS],
+    [`AS_ECHO_N(["$AM_CXXFLAGS"]) \
+          | sed s/-pedantic-errors/-pedantic/`
+     ]
+  )
+@end smallexample
+
+which would be used in a Makefile.am as above.  Since CXXFLAGS is
+cleared, the configure time value will not affect the build for
+libgtest_la.
+
+Prior to _any other command_ which may set $@{varname@}, call
+
+@smallexample
+ AX_AM_OVERRIDE_VAR([varname])
+@end smallexample
+
+This will preserve the value (if any) passed to configure in
+AM_$@{varname@} and AC_SUBST([AM_$@{varname@}).  You may pass a space
+separated list of variable names, or may call AX_AM_OVERRIDE_VAR
+multiple times for the same effect.
+
+If any subsequent configure commands set $@{varname@} and you wish to
+capture the resultant value into AM_$@{varname@} in the case where
+$@{varname@} was _not_ provided at configure time,  call
+
+@smallexample
+ AX_AM_OVERRIDE_FINALIZE
+@end smallexample
+
+after _all_ commands which might affect any of the variables specified
+in calls to AX_AM_OVERRIDE_VAR.  This need be done only once, but
+repeated calls will not cause harm.
+
+There is a bit of trickery required to allow further manipulation of the
+AM_$@{varname@} in a Makefile.am file.  If AM_CFLAGS is used as is in a
+Makefile.am, e.g.
+
+@smallexample
+ libfoo_la_CFLAGS = $(AM_CFLAGS)
+@end smallexample
+
+then automake will emit code in Makefile.in which sets AM_CFLAGS from
+the configure'd value.
+
+If however, AM_CFLAGS is manipulated (i.e. appended to), you will have
+to explicitly arrange for the configure'd value to be substituted:
+
+@smallexample
+ AM_CFLAGS = @@AM_CFLAGS@@
+ AM_CFLAGS += -lfoo
+@end smallexample
+
+or else automake will complain about using += before =.
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_am_override_var.m4,latest
+version of @file{ax_am_override_var.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_am_override_var.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2013 Smithsonian Astrophysical Observatory} @* @w{Copyright @copyright{} 2013 Diab Jerius @email{djerius@@cfa.harvard.edu}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved. This file is offered as-is, without any
+warranty.

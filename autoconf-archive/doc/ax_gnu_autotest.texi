@@ -1,0 +1,291 @@
+@node ax_gnu_autotest
+@unnumberedsec ax_gnu_autotest
+
+@majorheading Synopsis
+
+@smallexample
+AX_GNU_AUTOTEST([testdir = `tests'], [testsuites = `testsuite'],
+                [atlocal-sources = `'], [gen-package = `yes'],
+                [force = `no'])
+@end smallexample
+
+@majorheading Description
+
+Sets up one or multiple GNU Autotest test suites [1].
+
+TL;DR:
+
+@smallexample
+  * Write tests/testsuite.at as normal
+  * Add to configure.ac: AX_GNU_AUTOTEST
+  * Add to Makefile.am or Makefile.in in top_srcdir:
+    @@AX_GNU_AUTOTEST_DEFAULT@@
+  * autoreconf && ./configure && make check
+@end smallexample
+
+GNU Autotest is a very powerful testing framework to script executing
+binaries, observing their output and logging failures, all in the same
+portable manner as configure itself. But the only help given the
+developer in setting up the framework is the AC_CONFIG_TESTDIR()
+command, which leaves several additional steps up to the developer
+copying examples from the manual:
+
+@smallexample
+  * generating the "package.m4" file used in generating the "testsuite"
+  * generating the "testsuite" executable by calling autom4te
+  * adding Makefile rules to keep both "package.m4" and "testsuite"
+    current
+  * figuring out how to do all the above if the Makefile does not reside
+    in the testdir
+@end smallexample
+
+This command takes care of all of the above. It is designed to be called
+multiple times for different testdir directories, to have multiple
+testsuites scripts per directory and to handle the optional "package.m4"
+and "atlocal" (re)generation.
+
+The various actions taken by this command happen in different phases of
+the build process:
+
+@smallexample
+  1) During the autoconf execution, generate the testsuites and any
+     "package.m4" files. So these are already available before configure
+     ran. The reasoning for deviating from the examples in [1] is that
+     these files are distributed and must be placed in the srcdir: it
+     seems cleaner to not generate anything in srcdir during any of the
+     later phases.
+  2) During the config.status execution (following the configure
+     execution), generate "atconfig" and any "atlocal" files in the
+     buildir. The "atconfig" generation is handled by calling
+     AC_CONFIG_TESTDIR() so the developer does not have to do so
+     themselves.
+  3) During the execution of make, several additional rules and file
+     lists are made available via AC_SUBST(). The rules are intended
+     to be called where appropriate (e.g. make check can depend on
+     check-autotest) and the file lists are intended to be added
+     to the appropriate lists (i.e. to DISTCLEANFILES and EXTRA_DIST).
+@end smallexample
+
+Description of AX_GNU_AUTOTEST() arguments:
+
+@smallexample
+  * testdir: directory-name containing the testsuites. AX_GNU_AUTOTEST()
+    must be called exactly once for each directory containing testsuites.
+    If empty, defaults to "tests".
+  * testsuites: space-separated list of words, where each word is the
+    name of a test suite script optionally followed by a colon and the
+    name of the scripts source file. If the source file is not given,
+    it defaults to the script name suffixed by ".at". So these words
+    are all equivalent: "foo", "foo:" and "foo:foo.at". If the argument
+    is empty, it defaults to "testsuite". The script filenames must not
+    contain any path, but that is allowed for the source filenames.
+  * atlocal-sources: space- or colon-separated list of filenames, which
+    are registered with AC_CONFIG_FILES() as the sources of atlocal.
+    If empty, no atlocal file is generated.
+  * gen-package: boolean ("yes" or "no") indicating whether "package.m4"
+    should be generated. If empty, defaults to "yes".
+  * force: boolean ("yes" or "no") whether to treat errors in arguments
+    as errors and abort (for "no") or whether to ignore any such errors
+    (for "yes"). If empty, defaults to "no".
+@end smallexample
+
+All filenames above must be relative. The testdir name is interpreted
+relative to top_srcdir. All other names are interpreted relative to the
+testdir. The boolean values are interpreted as "yes" for any non-empty
+value except "0", "n", "no" and their mixed-case variants.
+
+Description of Makefile.am / Makefile.in substitutions:
+
+@smallexample
+  * AX_GNU_AUTOTEST_RULES: the make rules provided here. Substitute this
+    in a separate line.
+  * AX_GNU_AUTOTEST_DCLEAN: the list of files to be added to
+    DISTCLEANFILES.
+  * AX_GNU_AUTOTEST_DIST: the list of files to be added to EXTRA_DIST.
+  * AX_GNU_AUTOTEST_DEFAULT: includes all other substitutions and uses
+    them in a "default" way.
+@end smallexample
+
+All must be used as a substitution (@@...@@) instead of as a variable
+($(...) or $@{...@}). These substitutions are generated multiple times,
+once for each directory where an affected Makefile may be located. All
+substitutions start with the base as given above but may have suffixes
+for the directories. Assuming this example in configure.ac:
+
+@smallexample
+  AX_GNU_AUTOTEST([foo/bar])
+  AX_GNU_AUTOTEST([baz])
+@end smallexample
+
+Then the following substitutions are available (where <base> stands for
+one of the above prefixes):
+
+@smallexample
+  * <base>         : for use in top_srcdir/Makefile
+  * <base>_foo     : for use in top_srcdir/foo/Makefile
+  * <base>_foo_bar : for use in top_srcdir/foo/bar/Makefile
+  * <base>_baz     : for use in top_srcdir/baz/Makefile
+@end smallexample
+
+The <base> substitutions cover both foo/bar and baz, so none of the
+other substitutions should be used. Indeed, no Makefiles are needed in
+the other directories. But if sub-directory Makefiles are used, then
+both <base>_baz and either of <base>_foo or <base>_foo_bar must be used
+in their respective Makefiles.
+
+Description of Makefile targets defined by AX_GNU_AUTOTEST_RULES*:
+
+@smallexample
+  * check-autotest: The equivalent of check.
+  * installcheck-autotest: The equivalent of installcheck.
+  * clean-autotest: The equivalent of clean.
+@end smallexample
+
+The developer can either define the above targets as dependencies of
+their appropriate equivalent rule or of their *-local equivalent rule
+for automake or they can define a rule with a sub-make call as they
+wish.
+
+All rules are dependent on like-named rules for each sub-directory and
+for each testsuite. Only the testsuite rules actually do any work, the
+rest are just collectors and convenience names. Assuming this example in
+configure.ac:
+
+@smallexample
+  AX_GNU_AUTOTEST([foo], [testsuite bar])
+  AX_GNU_AUTOTEST([baz])
+@end smallexample
+
+Then AX_GNU_AUTOTEST_RULES defines these check rules (likewise for
+installcheck and clean):
+
+@smallexample
+  check-autotest: check-autotest-foo check-autotest-baz
+  check-autotest-foo: check-autotest-foo-testsuite check-autotest-foo-bar
+  check-autotest-baz: check-autotest-baz-testsuite
+  check-autotest-foo-testsuite  # Executes foo/testsuite -C foo
+  check-autotest-foo-bar        # Executes foo/bar -C foo
+  check-autotest-baz-testsuite  # Executes baz/testsuite -C baz
+@end smallexample
+
+And AX_GNU_AUTOTEST_RULES_baz defines these check rules:
+
+@smallexample
+  check-autotest: check-autotest-testsuite
+  check-autotest-testsuite  # Executes testsuite (which is baz/testsuite)
+@end smallexample
+
+Note how the rule names only contain the directory and testsuite paths
+relative to the Makefile location. Also note how each testsuite is
+executed in its respective testdir.
+
+In addition to the above, AX_GNU_AUTOTEST_RULES* also contains the rules
+to keep the testsuites, "package.m4" and "atconfig" updated. The
+matching rules to keep "atlocal" updated are generated by automake if
+that is used or are the responsibility of the developer.
+
+All testsuite executions (except for clean) use variables
+AX_GNU_AUTOTEST_FLAGS, AX_GNU_AUTOTEST_CHECK_FLAGS,
+AX_GNU_AUTOTEST_INSTALLCHECK_FLAGS and more path-and-script-specific
+variants for additional command line options. These variables can be
+defined by the developer to pass options to the testsuite. In the
+example above, the rule check-autotest-foo-bar would look like this:
+
+@smallexample
+  check-autotest-foo-bar:
+      foo/bar -C foo $(AX_GNU_AUTOTEST_FLAGS)               \
+                     $(AX_GNU_AUTOTEST_CHECK_FLAGS)         \
+                     $(AX_GNU_AUTOTEST_FLAGS_foo)           \
+                     $(AX_GNU_AUTOTEST_CHECK_FLAGS_foo)     \
+                     $(AX_GNU_AUTOTEST_FLAGS_foo_bar)       \
+                     $(AX_GNU_AUTOTEST_CHECK_FLAGS_foo_bar)
+@end smallexample
+
+Description of Makefile file lists:
+
+These lists are intended to be added to DISTCLEANFILES and EXTRA_DIST.
+The *_DCLEAN list contains all "atconfig" files and the *_DIST list
+contains all testsuites and "package.m4" files. The lists are again
+generated per directory: so AX_GNU_AUTOTEST_DCLEAN contains all
+"atconfig" files while e.g. AX_GNU_AUTOTEST_DIST_foo contains only files
+below the "foo" directory. These file lists are prevented from becoming
+Makefile variables by calling AM_SUBST_NOTMAKE(): that way, only the
+single version used by the Makefile is substituted, not all lists for
+all other paths as well. So use either like this:
+
+@smallexample
+  DISTCLEANFILES = @@AX_GNU_AUTOTEST_DCLEAN@@
+  EXTRA_DIST = @@AX_GNU_AUTOTEST_DIST_foo@@
+@end smallexample
+
+Or like this:
+
+@smallexample
+  AX_GNU_AUTOTEST_DCLEAN_foo = @@AX_GNU_AUTOTEST_DCLEAN_foo@@
+  AX_GNU_AUTOTEST_DIST_foo = @@AX_GNU_AUTOTEST_DIST_foo@@
+  DISTCLEANFILES = $@{AX_GNU_AUTOTEST_DCLEAN_foo@}
+  EXTRA_DIST = $@{AX_GNU_AUTOTEST_DIST_foo@}
+@end smallexample
+
+Description of shorthand default Makefile contents defined by
+AX_GNU_AUTOTEST_DEFAULT*:
+
+This shorthand defines the appropriate rules, adds the file lists to the
+proper variables and makes the new targets dependencies of the standard
+"check", "installcheck" and "clean" targets. AX_GNU_AUTOTEST_DEFAULT is
+for example equivalent to:
+
+@smallexample
+  @@AX_GNU_AUTOTEST_RULES@@
+  check: check-autotest
+  installcheck: installcheck-autotest
+  clean: clean-autotest
+  distclean: distclean-autotest
+  distclean-autotest: clean-autotest
+      -rm -f @@AX_GNU_AUTOTEST_DCLEAN@@
+  .PHONY: distclean-autotest
+  EXTRA_DIST += @@AX_GNU_AUTOTEST_DIST@@
+@end smallexample
+
+Note that this is copied verbatim into the Makefile (after expansion of
+the contained @@...@@ substitutions): it does not shadow the default
+targets as would happen if the same lines were written in a Makefile.am
+file. And also note the use of the += operator: this will not be
+compatible with all versions of Make. Finally, the DISTCLEANFILES list
+is not used because automake only uses that list if it saw the variable
+in the Makefile.am file: in a substitution, it gets ignored unless the
+user already used the list.
+
+Alternative standard GNU test suites not supported here:
+
+@smallexample
+  * Automake test suites configured by the TESTS variable [2]
+  * DejaGnu test suites [3,4]
+@end smallexample
+
+[1]:
+<https://www.gnu.org/software/autoconf/manual/html_node/Using-Autotest.html>
+
+[2]: <https://www.gnu.org/software/automake/manual/html_node/Tests.html>
+
+[3]: <https://www.gnu.org/software/dejagnu/>
+
+[4]:
+<https://www.gnu.org/software/automake/manual/html_node/DejaGnu-Tests.html>
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_gnu_autotest.m4,latest
+version of @file{ax_gnu_autotest.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_gnu_autotest.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 2015 Olaf Mandel @email{olaf@@mandel.name}}
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.  This file is offered as-is, without any
+warranty.
