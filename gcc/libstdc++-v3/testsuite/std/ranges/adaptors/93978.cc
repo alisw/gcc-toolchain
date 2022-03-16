@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Free Software Foundation, Inc.
+// Copyright (C) 2020-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -16,7 +16,7 @@
 // <http://www.gnu.org/licenses/>.
 
 // { dg-options "-std=gnu++2a" }
-// { dg-additional-options "-O" }
+// { dg-additional-options "-O -Wall" }
 // { dg-do compile { target c++2a } }
 
 #include <ranges>
@@ -25,11 +25,12 @@
 namespace ranges = std::ranges;
 namespace views = std::views;
 
-void
+auto
 test()
 {
   std::vector<std::string> x = {""};
   auto i = std::counted_iterator(x.begin(), 1);
   auto r = ranges::subrange{i, std::default_sentinel};
   auto v = r | views::join;
+  return v;
 }

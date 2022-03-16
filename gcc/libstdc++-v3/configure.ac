@@ -90,7 +90,7 @@ AC_SYS_LARGEFILE
 GLIBCXX_CONFIGURE
 
 # Libtool setup.
-if test "x${with_newlib}" != "xyes"; then
+if test "x${with_newlib}" != "xyes" && test "x${with_avrlibc}" != "xyes"; then
   AC_LIBTOOL_DLOPEN
 fi
 AM_PROG_LIBTOOL
@@ -183,7 +183,6 @@ GLIBCXX_ENABLE_VTABLE_VERIFY([no])
 # Checks for operating systems support that doesn't require linking.
 GLIBCXX_CHECK_STDIO_PROTO
 GLIBCXX_CHECK_MATH11_PROTO
-GLIBCXX_CHECK_SYSTEM_ERROR
 GLIBCXX_CHECK_UCHAR_H
 
 # For the streamoff typedef.
@@ -256,6 +255,8 @@ AC_CHECK_HEADERS([linux/random.h], [], [],
 #endif
 ]])
 
+AC_CHECK_HEADERS([xlocale.h])
+
 # Only do link tests if native. Else, hardcode.
 if $GLIBCXX_IS_NATIVE; then
 
@@ -281,6 +282,9 @@ if $GLIBCXX_IS_NATIVE; then
 
   # For Networking TS.
   AC_CHECK_FUNCS(sockatmark)
+
+  # Non-standard functions used by C++17 std::from_chars
+  AC_CHECK_FUNCS(uselocale)
 
   # For iconv support.
   AM_ICONV
@@ -399,7 +403,11 @@ GLIBCXX_ENABLE_LIBSTDCXX_DUAL_ABI([yes])
 GLIBCXX_DEFAULT_ABI
 
 ac_ldbl_compat=no
+ac_ldbl_alt128_compat=no
+ac_ldbl_ieee128_default=no
 LONG_DOUBLE_COMPAT_FLAGS="-mlong-double-64"
+LONG_DOUBLE_128_FLAGS=
+LONG_DOUBLE_ALT128_COMPAT_FLAGS=
 case "$target" in
   powerpc*-*-linux* | \
   sparc*-*-linux* | \
@@ -416,12 +424,43 @@ case "$target" in
     port_specific_symbol_files="\$(top_srcdir)/config/os/gnu-linux/ldbl-extra.ver"
     case "$target" in
       powerpc*-*-linux*)
-	LONG_DOUBLE_COMPAT_FLAGS="$LONG_DOUBLE_COMPAT_FLAGS -mno-gnu-attribute" ;;
+	LONG_DOUBLE_COMPAT_FLAGS="$LONG_DOUBLE_COMPAT_FLAGS -mno-gnu-attribute"
+        # Check for IEEE128 support in libm:
+        AC_CHECK_LIB(m, __frexpieee128,
+                     [ac_ldbl_ieee128_in_libc=yes],
+                     [ac_ldbl_ieee128_in_libc=no])
+        if test $ac_ldbl_ieee128_in_libc = yes; then
+          # Determine which long double format is the compiler's default:
+          AC_TRY_COMPILE(, [
+            #ifndef __LONG_DOUBLE_IEEE128__
+            #error compiler defaults to ibm128
+            #endif
+          ], [ac_ldbl_ieee128_default=yes], [ac_ldbl_ieee128_default=no])
+          # Library objects should use default long double format.
+          if test "$ac_ldbl_ieee128_default" = yes; then
+            LONG_DOUBLE_128_FLAGS="-mno-gnu-attribute"
+            # Except for the ones that explicitly use these flags:
+            LONG_DOUBLE_ALT128_COMPAT_FLAGS="-mabi=ibmlongdouble -mno-gnu-attribute -Wno-psabi"
+          else
+            LONG_DOUBLE_128_FLAGS="-mno-gnu-attribute"
+            LONG_DOUBLE_ALT128_COMPAT_FLAGS="-mabi=ieeelongdouble -mno-gnu-attribute -Wno-psabi"
+          fi
+          AC_DEFINE([_GLIBCXX_LONG_DOUBLE_ALT128_COMPAT],1,
+                [Define if compatibility should be provided for alternative 128-bit long double formats.])
+          port_specific_symbol_files="$port_specific_symbol_files \$(top_srcdir)/config/os/gnu-linux/ldbl-ieee128-extra.ver"
+          ac_ldbl_alt128_compat=yes
+        else
+          ac_ldbl_alt128_compat=no
+        fi
+	;;
     esac
   fi
 esac
 AC_SUBST(LONG_DOUBLE_COMPAT_FLAGS)
+AC_SUBST(LONG_DOUBLE_128_FLAGS)
+AC_SUBST(LONG_DOUBLE_ALT128_COMPAT_FLAGS)
 GLIBCXX_CONDITIONAL(GLIBCXX_LDBL_COMPAT, test $ac_ldbl_compat = yes)
+GLIBCXX_CONDITIONAL(GLIBCXX_LDBL_ALT128_COMPAT, test $ac_ldbl_alt128_compat = yes)
 
 # Check if assembler supports disabling hardware capability support.
 GCC_CHECK_ASSEMBLER_HWCAP
@@ -528,6 +567,17 @@ AC_SUBST(ERROR_CONSTANTS_SRCDIR)
 AC_SUBST(CPU_OPT_EXT_RANDOM)
 AC_SUBST(CPU_OPT_BITS_RANDOM)
 
+# Conditionalize the makefile for this target machine.
+tmake_file_=
+for f in ${tmake_file}
+do
+	if test -f ${srcdir}/config/$f
+	then
+		tmake_file_="${tmake_file_} \$(srcdir)/config/$f"
+	fi
+done
+tmake_file="${tmake_file_}"
+AC_SUBST(tmake_file)
 
 # Add CET specific flags if Intel CET is enabled.
 GCC_CET_FLAGS(CET_FLAGS)

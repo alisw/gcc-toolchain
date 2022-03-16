@@ -6,7 +6,7 @@
  *                                                                          *
  *                          C Implementation File                           *
  *                                                                          *
- *                     Copyright (C) 2001-2019, AdaCore                     *
+ *                     Copyright (C) 2001-2020, AdaCore                     *
  *                                                                          *
  * GNAT is free software;  you can  redistribute it  and/or modify it under *
  * terms of the  GNU General Public License as published  by the Free Soft- *
@@ -39,6 +39,7 @@
 #include "system.h"
 #endif
 
+#include "adaint.h"
 #include <sys/types.h>
 
 #ifdef __MINGW32__
@@ -85,11 +86,10 @@ __gnat_waitpid (int pid)
 {
   HANDLE h = OpenProcess (PROCESS_ALL_ACCESS, FALSE, pid);
   DWORD exitcode = 1;
-  DWORD res;
 
   if (h != NULL)
     {
-      res = WaitForSingleObject (h, INFINITE);
+      (void) WaitForSingleObject (h, INFINITE);
       GetExitCodeProcess (h, &exitcode);
       CloseHandle (h);
     }
@@ -105,7 +105,8 @@ __gnat_expect_fork (void)
 }
 
 void
-__gnat_expect_portable_execvp (int *pid, char *cmd, char *argv[])
+__gnat_expect_portable_execvp (int *pid, char *cmd ATTRIBUTE_UNUSED,
+                               char *argv[])
 {
   *pid = __gnat_portable_no_block_spawn (argv);
 }
@@ -359,7 +360,11 @@ __gnat_pipe (int *fd)
 int
 __gnat_expect_fork (void)
 {
-  return fork ();
+  int pid = fork();
+  if (pid == 0) {
+    __gnat_in_child_after_fork = 1;
+  }
+  return pid;
 }
 
 void

@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (C) 1999-2019 by The D Language Foundation, All Rights Reserved
+ * Copyright (C) 1999-2021 by The D Language Foundation, All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -23,6 +23,8 @@
 #include "template.h"
 #include "tokens.h"
 #include "target.h"
+#include "utf.h"
+#include "root/ctfloat.h"
 
 Type *getTypeInfoType(Loc loc, Type *t, Scope *sc);
 void unSpeculative(Scope *sc, RootObject *o);
@@ -45,7 +47,7 @@ FuncDeclaration *search_toString(StructDeclaration *sd)
         static TypeFunction *tftostring;
         if (!tftostring)
         {
-            tftostring = new TypeFunction(NULL, Type::tstring, 0, LINKd);
+            tftostring = new TypeFunction(ParameterList(), Type::tstring, LINKd);
             tftostring = tftostring->merge()->toTypeFunction();
         }
 
@@ -154,7 +156,7 @@ void semanticTypeInfo(Scope *sc, Type *t)
         {
             if (t->arguments)
             {
-                for (size_t i = 0; i < t->arguments->dim; i++)
+                for (size_t i = 0; i < t->arguments->length; i++)
                 {
                     Type *tprm = (*t->arguments)[i]->type;
                     if (tprm)
@@ -187,7 +189,7 @@ AggregateDeclaration::AggregateDeclaration(Loc loc, Identifier *id)
     this->loc = loc;
 
     storage_class = 0;
-    protection = Prot(PROTpublic);
+    protection = Prot(Prot::public_);
     type = NULL;
     structsize = 0;             // size of struct
     alignsize = 0;              // size of struct for alignment purposes
@@ -228,7 +230,7 @@ Scope *AggregateDeclaration::newScope(Scope *sc)
     sc2->parent = this;
     if (isUnionDeclaration())
         sc2->inunion = 1;
-    sc2->protection = Prot(PROTpublic);
+    sc2->protection = Prot(Prot::public_);
     sc2->explicitProtection = 0;
     sc2->aligndecl = NULL;
     sc2->userAttribDecl = NULL;
@@ -245,89 +247,6 @@ void AggregateDeclaration::setScope(Scope *sc)
         ScopeDsymbol::setScope(sc);
 }
 
-void AggregateDeclaration::semantic2(Scope *sc)
-{
-    //printf("AggregateDeclaration::semantic2(%s) type = %s, errors = %d\n", toChars(), type->toChars(), errors);
-    if (!members)
-        return;
-
-    if (_scope)
-    {
-        error("has forward references");
-        return;
-    }
-
-    Scope *sc2 = newScope(sc);
-
-    determineSize(loc);
-
-    for (size_t i = 0; i < members->dim; i++)
-    {
-        Dsymbol *s = (*members)[i];
-        //printf("\t[%d] %s\n", i, s->toChars());
-        s->semantic2(sc2);
-    }
-
-    sc2->pop();
-}
-
-void AggregateDeclaration::semantic3(Scope *sc)
-{
-    //printf("AggregateDeclaration::semantic3(%s) type = %s, errors = %d\n", toChars(), type->toChars(), errors);
-    if (!members)
-        return;
-
-    StructDeclaration *sd = isStructDeclaration();
-    if (!sc)    // from runDeferredSemantic3 for TypeInfo generation
-    {
-        assert(sd);
-        sd->semanticTypeInfoMembers();
-        return;
-    }
-
-    Scope *sc2 = newScope(sc);
-
-    for (size_t i = 0; i < members->dim; i++)
-    {
-        Dsymbol *s = (*members)[i];
-        s->semantic3(sc2);
-    }
-
-    sc2->pop();
-
-    // don't do it for unused deprecated types
-    // or error types
-    if (!getRTInfo && Type::rtinfo &&
-        (!isDeprecated() || global.params.useDeprecated != DIAGNOSTICerror) &&
-        (type && type->ty != Terror))
-    {
-        // Evaluate: RTinfo!type
-        Objects *tiargs = new Objects();
-        tiargs->push(type);
-        TemplateInstance *ti = new TemplateInstance(loc, Type::rtinfo, tiargs);
-
-        Scope *sc3 = ti->tempdecl->_scope->startCTFE();
-        sc3->tinst = sc->tinst;
-        sc3->minst = sc->minst;
-        if (isDeprecated())
-            sc3->stc |= STCdeprecated;
-
-        ti->semantic(sc3);
-        ti->semantic2(sc3);
-        ti->semantic3(sc3);
-        Expression *e = resolve(Loc(), sc3, ti->toAlias(), false);
-
-        sc3->endCTFE();
-
-        e = e->ctfeInterpret();
-        getRTInfo = e;
-    }
-
-    if (sd)
-        sd->semanticTypeInfoMembers();
-    semanticRun = PASSsemantic3done;
-}
-
 /***************************************
  * Find all instance fields, then push them into `fields`.
  *
@@ -341,10 +260,12 @@ void AggregateDeclaration::semantic3(Scope *sc)
  */
 bool AggregateDeclaration::determineFields()
 {
+    if (_scope)
+        dsymbolSemantic(this, NULL);
     if (sizeok != SIZEOKnone)
         return true;
 
-    //printf("determineFields() %s, fields.dim = %d\n", toChars(), fields.dim);
+    //printf("determineFields() %s, fields.length = %d\n", toChars(), fields.length);
     fields.setDim(0);
 
     struct SV
@@ -362,7 +283,7 @@ bool AggregateDeclaration::determineFields()
             AggregateDeclaration *ad = ((SV *)param)->agg;
 
             if (v->semanticRun < PASSsemanticdone)
-                v->semantic(NULL);
+                dsymbolSemantic(v, NULL);
             // Note: Aggregate fields or size could have determined during v->semantic.
             if (ad->sizeok != SIZEOKnone)
                 return 1;
@@ -396,7 +317,7 @@ bool AggregateDeclaration::determineFields()
     SV sv;
     sv.agg = this;
 
-    for (size_t i = 0; i < members->dim; i++)
+    for (size_t i = 0; i < members->length; i++)
     {
         Dsymbol *s = (*members)[i];
         if (s->apply(&SV::func, &sv))
@@ -435,7 +356,7 @@ bool AggregateDeclaration::determineSize(Loc loc)
     }
 
     if (_scope)
-        semantic(NULL);
+        dsymbolSemantic(this, NULL);
 
     // Determine the instance size of base class first.
     if (ClassDeclaration *cd = isClassDeclaration())
@@ -478,7 +399,7 @@ void StructDeclaration::semanticTypeInfoMembers()
         xeq->semanticRun < PASSsemantic3done)
     {
         unsigned errors = global.startGagging();
-        xeq->semantic3(xeq->_scope);
+        semantic3(xeq, xeq->_scope);
         if (global.endGagging(errors))
             xeq = xerreq;
     }
@@ -488,7 +409,7 @@ void StructDeclaration::semanticTypeInfoMembers()
         xcmp->semanticRun < PASSsemantic3done)
     {
         unsigned errors = global.startGagging();
-        xcmp->semantic3(xcmp->_scope);
+        semantic3(xcmp, xcmp->_scope);
         if (global.endGagging(errors))
             xcmp = xerrcmp;
     }
@@ -498,28 +419,28 @@ void StructDeclaration::semanticTypeInfoMembers()
         ftostr->_scope &&
         ftostr->semanticRun < PASSsemantic3done)
     {
-        ftostr->semantic3(ftostr->_scope);
+        semantic3(ftostr, ftostr->_scope);
     }
 
     if (xhash &&
         xhash->_scope &&
         xhash->semanticRun < PASSsemantic3done)
     {
-        xhash->semantic3(xhash->_scope);
+        semantic3(xhash, xhash->_scope);
     }
 
     if (postblit &&
         postblit->_scope &&
         postblit->semanticRun < PASSsemantic3done)
     {
-        postblit->semantic3(postblit->_scope);
+        semantic3(postblit, postblit->_scope);
     }
 
     if (dtor &&
         dtor->_scope &&
         dtor->semanticRun < PASSsemantic3done)
     {
-        dtor->semantic3(dtor->_scope);
+        semantic3(dtor, dtor->_scope);
     }
 }
 
@@ -543,7 +464,7 @@ bool AggregateDeclaration::isDeprecated()
 
 bool AggregateDeclaration::isExport() const
 {
-    return protection.kind == PROTexport;
+    return protection.kind == Prot::export_;
 }
 
 /***************************************
@@ -557,7 +478,7 @@ bool AggregateDeclaration::checkOverlappedFields()
 {
     //printf("AggregateDeclaration::checkOverlappedFields() %s\n", toChars());
     assert(sizeok == SIZEOKdone);
-    size_t nfields = fields.dim;
+    size_t nfields = fields.length;
     if (isNested())
     {
         ClassDeclaration *cd = isClassDeclaration();
@@ -633,10 +554,10 @@ bool AggregateDeclaration::fill(Loc loc, Expressions *elements, bool ctorinit)
     //printf("AggregateDeclaration::fill() %s\n", toChars());
     assert(sizeok == SIZEOKdone);
     assert(elements);
-    size_t nfields = fields.dim - isNested();
+    size_t nfields = fields.length - isNested();
     bool errors = false;
 
-    size_t dim = elements->dim;
+    size_t dim = elements->length;
     elements->setDim(nfields);
     for (size_t i = dim; i < nfields; i++)
         (*elements)[i] = NULL;
@@ -768,7 +689,7 @@ bool AggregateDeclaration::fill(Loc loc, Expressions *elements, bool ctorinit)
         }
     }
 
-    for (size_t i = 0; i < elements->dim; i++)
+    for (size_t i = 0; i < elements->length; i++)
     {
         Expression *e = (*elements)[i];
         if (e && e->op == TOKerror)
@@ -799,7 +720,7 @@ void AggregateDeclaration::alignmember(
             break;
 
         case (structalign_t) STRUCTALIGN_DEFAULT:
-            // Alignment in Target::fieldalignsize must match what the
+            // Alignment in target.fieldalignsize must match what the
             // corresponding C compiler's default alignment behavior is.
             assert(size > 0 && !(size & (size - 1)));
             *poffset = (*poffset + size - 1) & ~(size - 1);
@@ -925,7 +846,7 @@ void AggregateDeclaration::makeNested()
         // Emulate vthis->semantic()
         vthis->storage_class |= STCfield;
         vthis->parent = this;
-        vthis->protection = Prot(PROTpublic);
+        vthis->protection = Prot(Prot::public_);
         vthis->alignment = t->alignment();
         vthis->semanticRun = PASSsemanticdone;
 
@@ -962,12 +883,12 @@ Dsymbol *AggregateDeclaration::searchCtor()
             {
                 CtorDeclaration *f = s->isCtorDeclaration();
                 if (f && f->semanticRun == PASSinit)
-                    f->semantic(NULL);
+                    dsymbolSemantic(f, NULL);
                 return 0;
             }
         };
 
-        for (size_t i = 0; i < members->dim; i++)
+        for (size_t i = 0; i < members->length; i++)
         {
             Dsymbol *sm = (*members)[i];
             sm->apply(&SearchCtor::fp, NULL);
@@ -1018,226 +939,116 @@ Dsymbol *StructDeclaration::syntaxCopy(Dsymbol *s)
     return ScopeDsymbol::syntaxCopy(sd);
 }
 
-void StructDeclaration::semantic(Scope *sc)
-{
-    //printf("StructDeclaration::semantic(this=%p, %s '%s', sizeok = %d)\n", this, parent->toChars(), toChars(), sizeok);
-
-    //static int count; if (++count == 20) halt();
-
-    if (semanticRun >= PASSsemanticdone)
-        return;
-    unsigned errors = global.errors;
-
-    //printf("+StructDeclaration::semantic(this=%p, %s '%s', sizeok = %d)\n", this, parent->toChars(), toChars(), sizeok);
-    Scope *scx = NULL;
-    if (_scope)
-    {
-        sc = _scope;
-        scx = _scope;            // save so we don't make redundant copies
-        _scope = NULL;
-    }
-
-    if (!parent)
-    {
-        assert(sc->parent && sc->func);
-        parent = sc->parent;
-    }
-    assert(parent && !isAnonymous());
-
-    if (this->errors)
-        type = Type::terror;
-    if (semanticRun == PASSinit)
-        type = type->addSTC(sc->stc | storage_class);
-    type = type->semantic(loc, sc);
-
-    if (type->ty == Tstruct && ((TypeStruct *)type)->sym != this)
-    {
-        TemplateInstance *ti = ((TypeStruct *)type)->sym->isInstantiated();
-        if (ti && isError(ti))
-            ((TypeStruct *)type)->sym = this;
-    }
-
-    // Ungag errors when not speculative
-    Ungag ungag = ungagSpeculative();
-
-    if (semanticRun == PASSinit)
-    {
-        protection = sc->protection;
-
-        alignment = sc->alignment();
-
-        storage_class |= sc->stc;
-        if (storage_class & STCdeprecated)
-            isdeprecated = true;
-        if (storage_class & STCabstract)
-            error("structs, unions cannot be abstract");
-        userAttribDecl = sc->userAttribDecl;
-
-        if (sc->linkage == LINKcpp)
-            classKind = ClassKind::cpp;
-    }
-    else if (symtab && !scx)
-    {
-        return;
-    }
-    semanticRun = PASSsemantic;
-
-    if (!members)               // if opaque declaration
-    {
-        semanticRun = PASSsemanticdone;
-        return;
-    }
-    if (!symtab)
-    {
-        symtab = new DsymbolTable();
-
-        for (size_t i = 0; i < members->dim; i++)
-        {
-            Dsymbol *s = (*members)[i];
-            //printf("adding member '%s' to '%s'\n", s->toChars(), this->toChars());
-            s->addMember(sc, this);
-        }
-    }
-
-    Scope *sc2 = newScope(sc);
-
-    /* Set scope so if there are forward references, we still might be able to
-     * resolve individual members like enums.
-     */
-    for (size_t i = 0; i < members->dim; i++)
-    {
-        Dsymbol *s = (*members)[i];
-        //printf("struct: setScope %s %s\n", s->kind(), s->toChars());
-        s->setScope(sc2);
-    }
-
-    for (size_t i = 0; i < members->dim; i++)
-    {
-        Dsymbol *s = (*members)[i];
-        s->importAll(sc2);
-    }
-
-    for (size_t i = 0; i < members->dim; i++)
-    {
-        Dsymbol *s = (*members)[i];
-        s->semantic(sc2);
-    }
-
-    if (!determineFields())
-    {
-        assert(type->ty == Terror);
-        sc2->pop();
-        semanticRun = PASSsemanticdone;
-        return;
-    }
-
-    /* Following special member functions creation needs semantic analysis
-     * completion of sub-structs in each field types. For example, buildDtor
-     * needs to check existence of elaborate dtor in type of each fields.
-     * See the case in compilable/test14838.d
-     */
-    for (size_t i = 0; i < fields.dim; i++)
-    {
-        VarDeclaration *v = fields[i];
-        Type *tb = v->type->baseElemOf();
-        if (tb->ty != Tstruct)
-            continue;
-        StructDeclaration *sd = ((TypeStruct *)tb)->sym;
-        if (sd->semanticRun >= PASSsemanticdone)
-            continue;
-
-        sc2->pop();
-
-        _scope = scx ? scx : sc->copy();
-        _scope->setNoFree();
-        _scope->_module->addDeferredSemantic(this);
-
-        //printf("\tdeferring %s\n", toChars());
-        return;
-    }
-
-    /* Look for special member functions.
-     */
-    aggNew =       (NewDeclaration *)search(Loc(), Id::classNew);
-    aggDelete = (DeleteDeclaration *)search(Loc(), Id::classDelete);
-
-    // Look for the constructor
-    ctor = searchCtor();
-
-    dtor = buildDtor(this, sc2);
-    postblit = buildPostBlit(this, sc2);
-
-    buildOpAssign(this, sc2);
-    buildOpEquals(this, sc2);
-
-    if (global.params.useTypeInfo && Type::dtypeinfo)  // these functions are used for TypeInfo
-    {
-        xeq = buildXopEquals(this, sc2);
-        xcmp = buildXopCmp(this, sc2);
-        xhash = buildXtoHash(this, sc2);
-    }
-
-    inv = buildInv(this, sc2);
-
-    Module::dprogress++;
-    semanticRun = PASSsemanticdone;
-    //printf("-StructDeclaration::semantic(this=%p, '%s')\n", this, toChars());
-
-    sc2->pop();
-
-    if (ctor)
-    {
-        Dsymbol *scall = search(Loc(), Id::call);
-        if (scall)
-        {
-            unsigned xerrors = global.startGagging();
-            sc = sc->push();
-            sc->tinst = NULL;
-            sc->minst = NULL;
-            FuncDeclaration *fcall = resolveFuncCall(loc, sc, scall, NULL, NULL, NULL, 1);
-            sc = sc->pop();
-            global.endGagging(xerrors);
-
-            if (fcall && fcall->isStatic())
-            {
-                error(fcall->loc, "static opCall is hidden by constructors and can never be called");
-                errorSupplemental(fcall->loc, "Please use a factory method instead, or replace all constructors with static opCall.");
-            }
-        }
-    }
-
-    if (global.errors != errors)
-    {
-        // The type is no good.
-        type = Type::terror;
-        this->errors = true;
-        if (deferred)
-            deferred->errors = true;
-    }
-
-    if (deferred && !global.gag)
-    {
-        deferred->semantic2(sc);
-        deferred->semantic3(sc);
-    }
-
-    assert(type->ty != Tstruct || ((TypeStruct *)type)->sym == this);
-}
-
 Dsymbol *StructDeclaration::search(const Loc &loc, Identifier *ident, int flags)
 {
     //printf("%s.StructDeclaration::search('%s', flags = x%x)\n", toChars(), ident->toChars(), flags);
 
     if (_scope && !symtab)
-        semantic(_scope);
+        dsymbolSemantic(this, _scope);
 
     if (!members || !symtab)    // opaque or semantic() is not yet called
     {
-        error("is forward referenced when looking for '%s'", ident->toChars());
+        error("is forward referenced when looking for `%s`", ident->toChars());
         return NULL;
     }
 
     return ScopeDsymbol::search(loc, ident, flags);
+}
+
+/**********************************
+ * Determine if exp is all binary zeros.
+ * Params:
+ *      exp = expression to check
+ * Returns:
+ *      true if it's all binary 0
+ */
+static bool isZeroInit(Expression *exp)
+{
+    switch (exp->op)
+    {
+        case TOKint64:
+            return exp->toInteger() == 0;
+
+        case TOKnull:
+        case TOKfalse:
+            return true;
+
+        case TOKstructliteral:
+        {
+            StructLiteralExp *sle = (StructLiteralExp *) exp;
+            for (size_t i = 0; i < sle->sd->fields.length; i++)
+            {
+                VarDeclaration *field = sle->sd->fields[i];
+                if (field->type->size(field->loc))
+                {
+                    Expression *e = (*sle->elements)[i];
+                    if (e ? !isZeroInit(e)
+                          : !field->type->isZeroInit(field->loc))
+                        return false;
+                }
+            }
+            return true;
+        }
+
+        case TOKarrayliteral:
+        {
+            ArrayLiteralExp *ale = (ArrayLiteralExp *) exp;
+
+            const size_t dim = ale->elements ? ale->elements->length : 0;
+
+            if (ale->type->toBasetype()->ty == Tarray) // if initializing a dynamic array
+                return dim == 0;
+
+            for (size_t i = 0; i < dim; i++)
+            {
+                if (!isZeroInit(ale->getElement(i)))
+                    return false;
+            }
+            /* Note that true is returned for all T[0]
+             */
+            return true;
+        }
+
+        case TOKstring:
+        {
+            StringExp *se = exp->toStringExp();
+
+            if (se->type->toBasetype()->ty == Tarray) // if initializing a dynamic array
+                return se->len == 0;
+
+            void *s = se->string;
+            for (size_t i = 0; i < se->len; i++)
+            {
+                dinteger_t val;
+                switch (se->sz)
+                {
+                    case 1:     val = (( utf8_t *)s)[i];    break;
+                    case 2:     val = ((utf16_t *)s)[i];    break;
+                    case 4:     val = ((utf32_t *)s)[i];    break;
+                    default:    assert(0);                  break;
+                }
+                if (val)
+                    return false;
+            }
+            return true;
+        }
+
+        case TOKvector:
+        {
+            VectorExp *ve = (VectorExp *) exp;
+            return isZeroInit(ve->e1);
+        }
+
+        case TOKfloat64:
+        case TOKcomplex80:
+        {
+            return (exp->toReal() == CTFloat::zero) &&
+                   (exp->toImaginary() == CTFloat::zero);
+        }
+
+        default:
+            return false;
+    }
 }
 
 void StructDeclaration::finalizeSize()
@@ -1245,14 +1056,14 @@ void StructDeclaration::finalizeSize()
     //printf("StructDeclaration::finalizeSize() %s, sizeok = %d\n", toChars(), sizeok);
     assert(sizeok != SIZEOKdone);
 
-    //printf("+StructDeclaration::finalizeSize() %s, fields.dim = %d, sizeok = %d\n", toChars(), fields.dim, sizeok);
+    //printf("+StructDeclaration::finalizeSize() %s, fields.length = %d, sizeok = %d\n", toChars(), fields.length, sizeok);
 
     fields.setDim(0);   // workaround
 
     // Set the offsets of the fields and determine the size of the struct
     unsigned offset = 0;
     bool isunion = isUnionDeclaration() != NULL;
-    for (size_t i = 0; i < members->dim; i++)
+    for (size_t i = 0; i < members->length; i++)
     {
         Dsymbol *s = (*members)[i];
         s->setFieldOffset(this, &offset, isunion);
@@ -1277,7 +1088,7 @@ void StructDeclaration::finalizeSize()
 
     sizeok = SIZEOKdone;
 
-    //printf("-StructDeclaration::finalizeSize() %s, fields.dim = %d, structsize = %d\n", toChars(), fields.dim, structsize);
+    //printf("-StructDeclaration::finalizeSize() %s, fields.length = %d, structsize = %d\n", toChars(), fields.length, structsize);
 
     if (errors)
         return;
@@ -1291,14 +1102,28 @@ void StructDeclaration::finalizeSize()
 
     // Determine if struct is all zeros or not
     zeroInit = 1;
-    for (size_t i = 0; i < fields.dim; i++)
+    for (size_t i = 0; i < fields.length; i++)
     {
         VarDeclaration *vd = fields[i];
         if (vd->_init)
         {
-            // Should examine init to see if it is really all 0's
-            zeroInit = 0;
-            break;
+            if (vd->_init->isVoidInitializer())
+                /* Treat as 0 for the purposes of putting the initializer
+                 * in the BSS segment, or doing a mass set to 0
+                 */
+                continue;
+
+            // Zero size fields are zero initialized
+            if (vd->type->size(vd->loc) == 0)
+                continue;
+
+            // Examine init to see if it is all 0s.
+            Expression *exp = vd->getConstInitializer();
+            if (!exp || !isZeroInit(exp))
+            {
+                zeroInit = 0;
+                break;
+            }
         }
         else if (!vd->type->isZeroInit(loc))
         {
@@ -1307,8 +1132,8 @@ void StructDeclaration::finalizeSize()
         }
     }
 
-    TypeTuple *tt = Target::toArgTypes(type);
-    size_t dim = tt ? tt->arguments->dim : 0;
+    TypeTuple *tt = target.toArgTypes(type);
+    size_t dim = tt ? tt->arguments->length : 0;
     if (dim >= 1)
     {
         assert(dim <= 2);
@@ -1333,9 +1158,9 @@ bool StructDeclaration::fit(Loc loc, Scope *sc, Expressions *elements, Type *sty
     if (!elements)
         return true;
 
-    size_t nfields = fields.dim - isNested();
+    size_t nfields = fields.length - isNested();
     size_t offset = 0;
-    for (size_t i = 0; i < elements->dim; i++)
+    for (size_t i = 0; i < elements->length; i++)
     {
         Expression *e = (*elements)[i];
         if (!e)
@@ -1344,7 +1169,7 @@ bool StructDeclaration::fit(Loc loc, Scope *sc, Expressions *elements, Type *sty
         e = resolveProperties(sc, e);
         if (i >= nfields)
         {
-            if (i == fields.dim - 1 && isNested() && e->op == TOKnull)
+            if (i == fields.length - 1 && isNested() && e->op == TOKnull)
             {
                 // CTFE sometimes creates null as hidden pointer; we'll allow this.
                 continue;
@@ -1428,7 +1253,7 @@ bool StructDeclaration::isPOD()
         ispod = ISPODno;
 
     // Recursively check all fields are POD.
-    for (size_t i = 0; i < fields.dim; i++)
+    for (size_t i = 0; i < fields.length; i++)
     {
         VarDeclaration *v = fields[i];
         if (v->storage_class & STCref)

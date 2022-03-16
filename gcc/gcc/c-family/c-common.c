@@ -1,5 +1,5 @@
 /* Subroutines shared by all languages that are variants of C.
-   Copyright (C) 1992-2020 Free Software Foundation, Inc.
+   Copyright (C) 1992-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -50,6 +50,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "spellcheck.h"
 #include "c-spellcheck.h"
 #include "selftest.h"
+#include "debug.h"
 
 cpp_reader *parse_in;		/* Declared in c-pragma.h.  */
 
@@ -324,7 +325,7 @@ static bool nonnull_check_p (tree, unsigned HOST_WIDE_INT);
    ObjC is like C except that D_OBJC and D_CXX_OBJC are not set
    C++ --std=c++98: D_CONLY | D_CXX11 | D_CXX20 | D_OBJC
    C++ --std=c++11: D_CONLY | D_CXX20 | D_OBJC
-   C++ --std=c++2a: D_CONLY | D_OBJC
+   C++ --std=c++20: D_CONLY | D_OBJC
    ObjC++ is like C++ except that D_OBJC is not set
 
    If -fno-asm is used, D_ASM is added to the mask.  If
@@ -373,6 +374,7 @@ const struct c_common_resword c_common_reswords[] =
   { "__auto_type",	RID_AUTO_TYPE,	D_CONLY },
   { "__bases",          RID_BASES, D_CXXONLY },
   { "__builtin_addressof", RID_ADDRESSOF, D_CXXONLY },
+  { "__builtin_bit_cast", RID_BUILTIN_BIT_CAST, D_CXXONLY },
   { "__builtin_call_with_static_chain",
     RID_BUILTIN_CALL_WITH_STATIC_CHAIN, D_CONLY },
   { "__builtin_choose_expr", RID_CHOOSE_EXPR, D_CONLY },
@@ -526,6 +528,8 @@ const struct c_common_resword c_common_reswords[] =
   { "while",		RID_WHILE,	0 },
   { "__is_assignable", RID_IS_ASSIGNABLE, D_CXXONLY },
   { "__is_constructible", RID_IS_CONSTRUCTIBLE, D_CXXONLY },
+  { "__is_nothrow_assignable", RID_IS_NOTHROW_ASSIGNABLE, D_CXXONLY },
+  { "__is_nothrow_constructible", RID_IS_NOTHROW_CONSTRUCTIBLE, D_CXXONLY },
 
   /* C++ transactional memory.  */
   { "synchronized",	RID_SYNCHRONIZED, D_CXX_OBJC | D_TRANSMEM },
@@ -536,6 +540,12 @@ const struct c_common_resword c_common_reswords[] =
   /* Concepts-related keywords */
   { "concept",		RID_CONCEPT,	D_CXX_CONCEPTS_FLAGS | D_CXXWARN },
   { "requires", 	RID_REQUIRES,	D_CXX_CONCEPTS_FLAGS | D_CXXWARN },
+
+  /* Modules-related keywords, these are internal unspellable tokens,
+     created by the preprocessor.  */
+  { "module ",		RID__MODULE,	D_CXX_MODULES_FLAGS | D_CXXWARN },
+  { "import ",		RID__IMPORT,	D_CXX_MODULES_FLAGS | D_CXXWARN },
+  { "export ",		RID__EXPORT,	D_CXX_MODULES_FLAGS | D_CXXWARN },
 
   /* Coroutines-related keywords */
   { "co_await",		RID_CO_AWAIT,	D_CXX_COROUTINES_FLAGS | D_CXXWARN },
@@ -568,14 +578,21 @@ const struct c_common_resword c_common_reswords[] =
   { "oneway",		RID_ONEWAY,		D_OBJC },
   { "out",		RID_OUT,		D_OBJC },
   /* These are recognized inside a property attribute list */
-  { "assign",	        RID_ASSIGN,		D_OBJC }, 
-  { "copy",	        RID_COPY,		D_OBJC }, 
-  { "getter",		RID_GETTER,		D_OBJC }, 
-  { "nonatomic",	RID_NONATOMIC,		D_OBJC }, 
-  { "readonly",		RID_READONLY,		D_OBJC }, 
-  { "readwrite",	RID_READWRITE,		D_OBJC }, 
-  { "retain",	        RID_RETAIN,		D_OBJC }, 
-  { "setter",		RID_SETTER,		D_OBJC }, 
+  { "assign",		RID_ASSIGN,		D_OBJC },
+  { "atomic",		RID_PROPATOMIC,		D_OBJC },
+  { "copy",		RID_COPY,		D_OBJC },
+  { "getter",		RID_GETTER,		D_OBJC },
+  { "nonatomic",	RID_NONATOMIC,		D_OBJC },
+  { "readonly",		RID_READONLY,		D_OBJC },
+  { "readwrite",	RID_READWRITE,		D_OBJC },
+  { "retain",		RID_RETAIN,		D_OBJC },
+  { "setter",		RID_SETTER,		D_OBJC },
+  /* These are Objective C implementation of nullability, accepted only in
+     specific contexts.  */
+  { "null_unspecified", RID_NULL_UNSPECIFIED,	D_OBJC },
+  { "nullable",		RID_NULLABLE,		D_OBJC },
+  { "nonnull",		RID_NONNULL,		D_OBJC },
+  { "null_resettable",	RID_NULL_RESETTABLE,	D_OBJC },
 };
 
 const unsigned int num_c_common_reswords =
@@ -1853,6 +1870,7 @@ verify_tree (tree x, struct tlist **pbefore_sp, struct tlist **pno_sp,
     {
     case CONSTRUCTOR:
     case SIZEOF_EXPR:
+    case PAREN_SIZEOF_EXPR:
       return;
 
     case COMPOUND_EXPR:
@@ -2038,23 +2056,45 @@ verify_tree (tree x, struct tlist **pbefore_sp, struct tlist **pno_sp,
     }
 }
 
+static constexpr size_t verify_sequence_points_limit = 1024;
+
+/* Called from verify_sequence_points via walk_tree.  */
+
+static tree
+verify_tree_lim_r (tree *tp, int *walk_subtrees, void *data)
+{
+  if (++*((size_t *) data) > verify_sequence_points_limit)
+    return integer_zero_node;
+
+  if (TYPE_P (*tp))
+    *walk_subtrees = 0;
+
+  return NULL_TREE;
+}
+
 /* Try to warn for undefined behavior in EXPR due to missing sequence
    points.  */
 
-DEBUG_FUNCTION void
+void
 verify_sequence_points (tree expr)
 {
-  struct tlist *before_sp = 0, *after_sp = 0;
+  tlist *before_sp = nullptr, *after_sp = nullptr;
 
-  warned_ids = 0;
-  save_expr_cache = 0;
-  if (tlist_firstobj == 0)
+  /* verify_tree is highly recursive, and merge_tlist is O(n^2),
+     so we return early if the expression is too big.  */
+  size_t n = 0;
+  if (walk_tree (&expr, verify_tree_lim_r, &n, nullptr))
+    return;
+
+  warned_ids = nullptr;
+  save_expr_cache = nullptr;
+  if (!tlist_firstobj)
     {
       gcc_obstack_init (&tlist_obstack);
       tlist_firstobj = (char *) obstack_alloc (&tlist_obstack, 0);
     }
 
-  verify_tree (expr, &before_sp, &after_sp, 0);
+  verify_tree (expr, &before_sp, &after_sp, NULL_TREE);
   warn_for_collisions (after_sp);
   obstack_free (&tlist_obstack, tlist_firstobj);
 }
@@ -4513,7 +4553,7 @@ build_va_arg (location_t loc, tree expr, tree type)
       if (canon_va_type == NULL_TREE)
 	error_at (loc, "first argument to %<va_arg%> not of type %<va_list%>");
 
-      /* Let's handle things neutrallly, if expr:
+      /* Let's handle things neutrally, if expr:
 	 - has undeclared type, or
 	 - is not an va_list type.  */
       return build_va_arg_1 (loc, type, error_mark_node);
@@ -4525,7 +4565,7 @@ build_va_arg (location_t loc, tree expr, tree type)
 
       /* Take the address, to get '&ap'.  Note that &ap is not a va_list
 	 type.  */
-      mark_addressable (expr);
+      c_common_mark_addressable_vec (expr);
       expr = build1 (ADDR_EXPR, build_pointer_type (TREE_TYPE (expr)), expr);
 
       return build_va_arg_1 (loc, type, expr);
@@ -4587,7 +4627,7 @@ build_va_arg (location_t loc, tree expr, tree type)
 
       /* Take the address, to get '&ap'.  Make sure it's a pointer to array
 	 elem type.  */
-      mark_addressable (expr);
+      c_common_mark_addressable_vec (expr);
       expr = build1 (ADDR_EXPR, build_pointer_type (TREE_TYPE (canon_va_type)),
 		     expr);
 
@@ -5006,6 +5046,24 @@ c_switch_covers_all_cases_p (splay_tree cases, tree type)
   return true;
 }
 
+/* Return true if stmt can fall through.  Used by block_may_fallthru
+   default case.  */
+
+bool
+c_block_may_fallthru (const_tree stmt)
+{
+  switch (TREE_CODE (stmt))
+    {
+    case SWITCH_STMT:
+      return (!SWITCH_STMT_ALL_CASES_P (stmt)
+	      || !SWITCH_STMT_NO_BREAK_P (stmt)
+	      || block_may_fallthru (SWITCH_STMT_BODY (stmt)));
+
+    default:
+      return true;
+    }
+}
+
 /* Finish an expression taking the address of LABEL (an
    IDENTIFIER_NODE).  Returns an expression for the address.
 
@@ -5288,26 +5346,53 @@ c_determine_visibility (tree decl)
 
 struct nonnull_arg_ctx
 {
+  /* Location of the call.  */
   location_t loc;
+  /* The function whose arguments are being checked and its type (used
+     for calls through function pointers).  */
+  const_tree fndecl, fntype;
+  /* True if a warning has been issued.  */
   bool warned_p;
 };
 
-/* Check the argument list of a function call for null in argument slots
-   that are marked as requiring a non-null pointer argument.  The NARGS
-   arguments are passed in the array ARGARRAY.  Return true if we have
-   warned.  */
+/* Check the argument list of a function call to CTX.FNDECL of CTX.FNTYPE
+   for null in argument slots that are marked as requiring a non-null
+   pointer argument.  The NARGS arguments are passed in the array ARGARRAY.
+   Return true if we have warned.  */
 
 static bool
-check_function_nonnull (location_t loc, tree attrs, int nargs, tree *argarray)
+check_function_nonnull (nonnull_arg_ctx &ctx, int nargs, tree *argarray)
 {
-  tree a;
-  int i;
+  int firstarg = 0;
+  if (TREE_CODE (ctx.fntype) == METHOD_TYPE)
+    {
+      bool closure = false;
+      if (ctx.fndecl)
+	{
+	  /* For certain lambda expressions the C++ front end emits calls
+	     that pass a null this pointer as an argument named __closure
+	     to the member operator() of empty function.  Detect those
+	     and avoid checking them, but proceed to check the remaining
+	     arguments.  */
+	  tree arg0 = DECL_ARGUMENTS (ctx.fndecl);
+	  if (tree arg0name = DECL_NAME (arg0))
+	    closure = id_equal (arg0name, "__closure");
+	}
 
-  attrs = lookup_attribute ("nonnull", attrs);
+      /* In calls to C++ non-static member functions check the this
+	 pointer regardless of whether the function is declared with
+	 attribute nonnull.  */
+      firstarg = 1;
+      if (!closure)
+	check_function_arguments_recurse (check_nonnull_arg, &ctx, argarray[0],
+					  firstarg);
+    }
+
+  tree attrs = lookup_attribute ("nonnull", TYPE_ATTRIBUTES (ctx.fntype));
   if (attrs == NULL_TREE)
-    return false;
+    return ctx.warned_p;
 
-  a = attrs;
+  tree a = attrs;
   /* See if any of the nonnull attributes has no arguments.  If so,
      then every pointer argument is checked (in which case the check
      for pointer type is done in check_nonnull_arg).  */
@@ -5316,16 +5401,15 @@ check_function_nonnull (location_t loc, tree attrs, int nargs, tree *argarray)
       a = lookup_attribute ("nonnull", TREE_CHAIN (a));
     while (a != NULL_TREE && TREE_VALUE (a) != NULL_TREE);
 
-  struct nonnull_arg_ctx ctx = { loc, false };
   if (a != NULL_TREE)
-    for (i = 0; i < nargs; i++)
+    for (int i = firstarg; i < nargs; i++)
       check_function_arguments_recurse (check_nonnull_arg, &ctx, argarray[i],
 					i + 1);
   else
     {
       /* Walk the argument list.  If we encounter an argument number we
 	 should check for non-null, do it.  */
-      for (i = 0; i < nargs; i++)
+      for (int i = firstarg; i < nargs; i++)
 	{
 	  for (a = attrs; ; a = TREE_CHAIN (a))
 	    {
@@ -5491,16 +5575,45 @@ check_nonnull_arg (void *ctx, tree param, unsigned HOST_WIDE_INT param_num)
      happen if the "nonnull" attribute was given without an operand
      list (which means to check every pointer argument).  */
 
-  if (TREE_CODE (TREE_TYPE (param)) != POINTER_TYPE)
+  tree paramtype = TREE_TYPE (param);
+  if (TREE_CODE (paramtype) != POINTER_TYPE
+      && TREE_CODE (paramtype) != NULLPTR_TYPE)
     return;
 
   /* Diagnose the simple cases of null arguments.  */
-  if (integer_zerop (fold_for_warn (param)))
+  if (!integer_zerop (fold_for_warn (param)))
+    return;
+
+  auto_diagnostic_group adg;
+
+  const location_t loc = EXPR_LOC_OR_LOC (param, pctx->loc);
+
+  if (TREE_CODE (pctx->fntype) == METHOD_TYPE)
+    --param_num;
+
+  bool warned;
+  if (param_num == 0)
     {
-      warning_at (pctx->loc, OPT_Wnonnull, "null argument where non-null "
-		  "required (argument %lu)", (unsigned long) param_num);
-      pctx->warned_p = true;
+      warned = warning_at (loc, OPT_Wnonnull,
+			   "%qs pointer is null", "this");
+      if (warned && pctx->fndecl)
+	inform (DECL_SOURCE_LOCATION (pctx->fndecl),
+		"in a call to non-static member function %qD",
+		pctx->fndecl);
     }
+  else
+    {
+      warned = warning_at (loc, OPT_Wnonnull,
+			   "argument %u null where non-null expected",
+			   (unsigned) param_num);
+      if (warned && pctx->fndecl)
+	inform (DECL_SOURCE_LOCATION (pctx->fndecl),
+		"in a call to function %qD declared %qs",
+		pctx->fndecl, "nonnull");
+    }
+
+  if (warned)
+    pctx->warned_p = true;
 }
 
 /* Helper for attribute handling; fetch the operand number from
@@ -5657,6 +5770,7 @@ parse_optimize_options (tree args, bool attr_p)
   decode_options (&global_options, &global_options_set,
 		  decoded_options, decoded_options_count,
 		  input_location, global_dc, NULL);
+  free (decoded_options);
 
   targetm.override_options_after_change();
 
@@ -5674,9 +5788,10 @@ attribute_fallthrough_p (tree attr)
   tree t = lookup_attribute ("fallthrough", attr);
   if (t == NULL_TREE)
     return false;
-  /* This attribute shall appear at most once in each attribute-list.  */
+  /* It is no longer true that "this attribute shall appear at most once in
+     each attribute-list", but we still give a warning.  */
   if (lookup_attribute ("fallthrough", TREE_CHAIN (t)))
-    warning (OPT_Wattributes, "%<fallthrough%> attribute specified multiple "
+    warning (OPT_Wattributes, "attribute %<fallthrough%> specified multiple "
 	     "times");
   /* No attribute-argument-clause shall be present.  */
   else if (TREE_VALUE (t) != NULL_TREE)
@@ -5717,11 +5832,13 @@ check_function_arguments (location_t loc, const_tree fndecl, const_tree fntype,
   bool warned_p = false;
 
   /* Check for null being passed in a pointer argument that must be
-     non-null.  We also need to do this if format checking is enabled.  */
-
+     non-null.  In C++, this includes the this pointer.  We also need
+     to do this if format checking is enabled.  */
   if (warn_nonnull)
-    warned_p = check_function_nonnull (loc, TYPE_ATTRIBUTES (fntype),
-				       nargs, argarray);
+    {
+      nonnull_arg_ctx ctx = { loc, fndecl, fntype, false };
+      warned_p = check_function_nonnull (ctx, nargs, argarray);
+    }
 
   /* Check for errors in format strings.  */
 
@@ -5764,6 +5881,9 @@ check_function_arguments_recurse (void (*callback)
 				  void *ctx, tree param,
 				  unsigned HOST_WIDE_INT param_num)
 {
+  if (TREE_NO_WARNING (param))
+    return;
+
   if (CONVERT_EXPR_P (param)
       && (TYPE_PRECISION (TREE_TYPE (param))
 	  == TYPE_PRECISION (TREE_TYPE (TREE_OPERAND (param, 0)))))
@@ -5774,7 +5894,7 @@ check_function_arguments_recurse (void (*callback)
       return;
     }
 
-  if (TREE_CODE (param) == CALL_EXPR)
+  if (TREE_CODE (param) == CALL_EXPR && CALL_EXPR_FN (param))
     {
       tree type = TREE_TYPE (TREE_TYPE (CALL_EXPR_FN (param)));
       tree attrs;
@@ -6043,9 +6163,16 @@ check_builtin_function_arguments (location_t loc, vec<location_t> arg_loc,
 	    }
 	  else if (TYPE_READONLY (TREE_TYPE (TREE_TYPE (args[2]))))
 	    {
-	      error_at (ARG_LOCATION (2), "argument 3 in call to function %qE "
-			"has pointer to %<const%> type (%qT)", fndecl,
+	      error_at (ARG_LOCATION (2), "argument %u in call to function %qE "
+			"has pointer to %qs type (%qT)", 3, fndecl, "const",
 			TREE_TYPE (args[2]));
+	      return false;
+	    }
+	  else if (TYPE_ATOMIC (TREE_TYPE (TREE_TYPE (args[2]))))
+	    {
+	      error_at (ARG_LOCATION (2), "argument %u in call to function %qE "
+			"has pointer to %qs type (%qT)", 3, fndecl,
+			"_Atomic", TREE_TYPE (args[2]));
 	      return false;
 	    }
 	  return true;
@@ -6075,6 +6202,39 @@ check_builtin_function_arguments (location_t loc, vec<location_t> arg_loc,
 	    {
 	      error_at (ARG_LOCATION (2), "argument 3 in call to function "
 			"%qE has boolean type", fndecl);
+	      return false;
+	    }
+	  return true;
+	}
+      return false;
+
+    case BUILT_IN_CLEAR_PADDING:
+      if (builtin_function_validate_nargs (loc, fndecl, nargs, 1))
+	{
+	  if (!POINTER_TYPE_P (TREE_TYPE (args[0])))
+	    {
+	      error_at (ARG_LOCATION (0), "argument %u in call to function "
+			"%qE does not have pointer type", 1, fndecl);
+	      return false;
+	    }
+	  else if (!COMPLETE_TYPE_P (TREE_TYPE (TREE_TYPE (args[0]))))
+	    {
+	      error_at (ARG_LOCATION (0), "argument %u in call to function "
+			"%qE points to incomplete type", 1, fndecl);
+	      return false;
+	    }
+	  else if (TYPE_READONLY (TREE_TYPE (TREE_TYPE (args[0]))))
+	    {
+	      error_at (ARG_LOCATION (0), "argument %u in call to function %qE "
+			"has pointer to %qs type (%qT)", 1, fndecl, "const",
+			TREE_TYPE (args[0]));
+	      return false;
+	    }
+	  else if (TYPE_ATOMIC (TREE_TYPE (TREE_TYPE (args[0]))))
+	    {
+	      error_at (ARG_LOCATION (0), "argument %u in call to function %qE "
+			"has pointer to %qs type (%qT)", 1, fndecl,
+			"_Atomic", TREE_TYPE (args[0]));
 	      return false;
 	    }
 	  return true;
@@ -6903,6 +7063,7 @@ get_atomic_generic_size (location_t loc, tree function,
 {
   unsigned int n_param;
   unsigned int n_model;
+  unsigned int outputs = 0; // bitset of output parameters
   unsigned int x;
   int size_0;
   tree type_0;
@@ -6913,15 +7074,22 @@ get_atomic_generic_size (location_t loc, tree function,
     case BUILT_IN_ATOMIC_EXCHANGE:
       n_param = 4;
       n_model = 1;
+      outputs = 5;
       break;
     case BUILT_IN_ATOMIC_LOAD:
+      n_param = 3;
+      n_model = 1;
+      outputs = 2;
+      break;
     case BUILT_IN_ATOMIC_STORE:
       n_param = 3;
       n_model = 1;
+      outputs = 1;
       break;
     case BUILT_IN_ATOMIC_COMPARE_EXCHANGE:
       n_param = 6;
       n_model = 2;
+      outputs = 3;
       break;
     default:
       gcc_unreachable ();
@@ -6948,8 +7116,15 @@ get_atomic_generic_size (location_t loc, tree function,
       return 0;
     }
 
+  if (!COMPLETE_TYPE_P (TREE_TYPE (type_0)))
+    {
+      error_at (loc, "argument 1 of %qE must be a pointer to a complete type",
+		function);
+      return 0;
+    }
+
   /* Types must be compile time constant sizes. */
-  if (TREE_CODE ((TYPE_SIZE_UNIT (TREE_TYPE (type_0)))) != INTEGER_CST)
+  if (!tree_fits_uhwi_p ((TYPE_SIZE_UNIT (TREE_TYPE (type_0)))))
     {
       error_at (loc, 
 		"argument 1 of %qE must be a pointer to a constant size type",
@@ -7010,6 +7185,39 @@ get_atomic_generic_size (location_t loc, tree function,
 		    function);
 	  return 0;
 	}
+
+      {
+	auto_diagnostic_group d;
+	int quals = TYPE_QUALS (TREE_TYPE (type));
+	/* Must not write to an argument of a const-qualified type.  */
+	if (outputs & (1 << x) && quals & TYPE_QUAL_CONST)
+	  {
+	    if (c_dialect_cxx ())
+	      {
+		error_at (loc, "argument %d of %qE must not be a pointer to "
+			  "a %<const%> type", x + 1, function);
+		return 0;
+	      }
+	    else
+	      pedwarn (loc, OPT_Wincompatible_pointer_types, "argument %d "
+		       "of %qE discards %<const%> qualifier", x + 1,
+		       function);
+	  }
+	/* Only the first argument is allowed to be volatile.  */
+	if (x > 0 && quals & TYPE_QUAL_VOLATILE)
+	  {
+	    if (c_dialect_cxx ())
+	      {
+		error_at (loc, "argument %d of %qE must not be a pointer to "
+			  "a %<volatile%> type", x + 1, function);
+		return 0;
+	      }
+	    else
+	      pedwarn (loc, OPT_Wincompatible_pointer_types, "argument %d "
+		       "of %qE discards %<volatile%> qualifier", x + 1,
+		       function);
+	  }
+      }
     }
 
   /* Check memory model parameters for validity.  */
@@ -7709,7 +7917,7 @@ set_underlying_type (tree x)
 {
   if (x == error_mark_node)
     return;
-  if (DECL_IS_BUILTIN (x) && TREE_CODE (TREE_TYPE (x)) != ARRAY_TYPE)
+  if (DECL_IS_UNDECLARED_BUILTIN (x) && TREE_CODE (TREE_TYPE (x)) != ARRAY_TYPE)
     {
       if (TYPE_NAME (TREE_TYPE (x)) == 0)
 	TYPE_NAME (TREE_TYPE (x)) = x;
@@ -7743,7 +7951,7 @@ user_facing_original_type_p (const_tree type)
   tree decl = TYPE_NAME (type);
 
   /* Look through any typedef in "user" code.  */
-  if (!DECL_IN_SYSTEM_HEADER (decl) && !DECL_IS_BUILTIN (decl))
+  if (!DECL_IN_SYSTEM_HEADER (decl) && !DECL_IS_UNDECLARED_BUILTIN (decl))
     return true;
 
   /* If the original type is also named and is in the user namespace,
@@ -8015,8 +8223,15 @@ void
 c_common_init_ts (void)
 {
   MARK_TS_EXP (SIZEOF_EXPR);
+  MARK_TS_EXP (PAREN_SIZEOF_EXPR);
   MARK_TS_EXP (C_MAYBE_CONST_EXPR);
   MARK_TS_EXP (EXCESS_PRECISION_EXPR);
+  MARK_TS_EXP (BREAK_STMT);
+  MARK_TS_EXP (CONTINUE_STMT);
+  MARK_TS_EXP (DO_STMT);
+  MARK_TS_EXP (FOR_STMT);
+  MARK_TS_EXP (SWITCH_STMT);
+  MARK_TS_EXP (WHILE_STMT);
 }
 
 /* Build a user-defined numeric literal out of an integer constant type VALUE
@@ -8232,13 +8447,13 @@ reject_gcc_builtin (const_tree expr, location_t loc /* = UNKNOWN_LOCATION */)
   if (TREE_TYPE (expr)
       && TREE_CODE (TREE_TYPE (expr)) == FUNCTION_TYPE
       && TREE_CODE (expr) == FUNCTION_DECL
-      /* The intersection of DECL_BUILT_IN and DECL_IS_BUILTIN avoids
+      /* The intersection of DECL_BUILT_IN and DECL_IS_UNDECLARED_BUILTIN avoids
 	 false positives for user-declared built-ins such as abs or
 	 strlen, and for C++ operators new and delete.
 	 The c_decl_implicit() test avoids false positives for implicitly
 	 declared built-ins with library fallbacks (such as abs).  */
       && fndecl_built_in_p (expr)
-      && DECL_IS_BUILTIN (expr)
+      && DECL_IS_UNDECLARED_BUILTIN (expr)
       && !c_decl_implicit (expr)
       && !DECL_ASSEMBLER_NAME_SET_P (expr))
     {
@@ -8666,8 +8881,7 @@ c_family_tests (void)
 #endif /* #if CHECKING_P */
 
 /* Attempt to locate a suitable location within FILE for a
-   #include directive to be inserted before.  FILE should
-   be a string from libcpp (pointer equality is used).
+   #include directive to be inserted before.  
    LOC is the location of the relevant diagnostic.
 
    Attempt to return the location within FILE immediately
@@ -8702,13 +8916,17 @@ try_to_locate_new_include_insertion_point (const char *file, location_t loc)
 
       if (const line_map_ordinary *from
 	  = linemap_included_from_linemap (line_table, ord_map))
-	if (from->to_file == file)
+	/* We cannot use pointer equality, because with preprocessed
+	   input all filename strings are unique.  */
+	if (0 == strcmp (from->to_file, file))
 	  {
 	    last_include_ord_map = from;
 	    last_ord_map_after_include = NULL;
 	  }
 
-      if (ord_map->to_file == file)
+      /* Likewise, use strcmp, and reject any line-zero introductory
+	 map.  */
+      if (ord_map->to_line && 0 == strcmp (ord_map->to_file, file))
 	{
 	  if (!first_ord_map_in_file)
 	    first_ord_map_in_file = ord_map;
@@ -8983,6 +9201,23 @@ tree
 braced_lists_to_strings (tree type, tree ctor)
 {
   return braced_lists_to_strings (type, ctor, false);
+}
+
+
+/* Emit debug for functions before finalizing early debug.  */
+
+void
+c_common_finalize_early_debug (void)
+{
+  /* Emit early debug for reachable functions, and by consequence,
+     locally scoped symbols.  Also emit debug for extern declared
+     functions that are still reachable at this point.  */
+  struct cgraph_node *cnode;
+  FOR_EACH_FUNCTION (cnode)
+    if (!cnode->alias && !cnode->thunk
+	&& (cnode->has_gimple_body_p ()
+	    || !DECL_IS_UNDECLARED_BUILTIN (cnode->decl)))
+      (*debug_hooks->early_global_decl) (cnode->decl);
 }
 
 #include "gt-c-family-c-common.h"

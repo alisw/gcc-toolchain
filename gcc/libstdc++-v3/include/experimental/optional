@@ -1,6 +1,6 @@
 // <optional> -*- C++ -*-
 
-// Copyright (C) 2013-2020 Free Software Foundation, Inc.
+// Copyright (C) 2013-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -910,8 +910,8 @@ inline namespace fundamentals_v1
     make_optional(_Tp&& __t)
     { return optional<decay_t<_Tp>> { std::forward<_Tp>(__t) }; }
 
-  // @} relates experimental::optional
-  // @} group optional
+  /// @} relates experimental::optional
+  /// @} group optional
 } // namespace fundamentals_v1
 } // namespace experimental
 

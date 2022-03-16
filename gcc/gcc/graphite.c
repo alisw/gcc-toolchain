@@ -1,5 +1,5 @@
 /* Gimple Represented as Polyhedra.
-   Copyright (C) 2006-2020 Free Software Foundation, Inc.
+   Copyright (C) 2006-2021 Free Software Foundation, Inc.
    Contributed by Sebastian Pop <sebastian.pop@inria.fr>.
 
 This file is part of GCC.
@@ -27,7 +27,7 @@ along with GCC; see the file COPYING3.  If not see
    The wiki page http://gcc.gnu.org/wiki/Graphite contains pointers to
    the related work.  */
 
-#define USES_ISL
+#define INCLUDE_ISL
 
 #include "config.h"
 #include "system.h"

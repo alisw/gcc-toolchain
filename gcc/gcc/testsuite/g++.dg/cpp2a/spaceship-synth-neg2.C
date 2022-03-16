@@ -1,5 +1,5 @@
 // PR c++/92774
-// { dg-do compile { target c++2a } }
+// { dg-do compile { target c++20 } }
 
 #include <compare>
 
@@ -14,9 +14,9 @@ bool operator<(const X<T>&, const X<T>&) { return true; }
 struct Y
 {
   int a;
-  X<int> c;
+  X<int> c;			// { dg-error "no match" }
 
-  auto operator <=>(Y const&) const = default; // { dg-error "no match" }
+  auto operator <=>(Y const&) const = default;
 };
 
 void f()

@@ -1,6 +1,6 @@
 // The template and inlines for the -*- C++ -*- complex number classes.
 
-// Copyright (C) 1997-2020 Free Software Foundation, Inc.
+// Copyright (C) 1997-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -124,8 +124,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
    *  @param  Tp  Type of real and imaginary values.
   */
   template<typename _Tp>
-    struct complex
+    class complex
     {
+    public:
       /// Value typedef.
       typedef _Tp value_type;
 
@@ -324,7 +325,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   // Operators:
-  //@{
+  ///@{
   ///  Return new complex value @a x plus @a y.
   template<typename _Tp>
     inline _GLIBCXX20_CONSTEXPR complex<_Tp>
@@ -352,9 +353,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       __r += __x;
       return __r;
     }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   ///  Return new complex value @a x minus @a y.
   template<typename _Tp>
     inline _GLIBCXX20_CONSTEXPR complex<_Tp>
@@ -382,9 +383,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       __r += __x;
       return __r;
     }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   ///  Return new complex value @a x times @a y.
   template<typename _Tp>
     inline _GLIBCXX20_CONSTEXPR complex<_Tp>
@@ -412,9 +413,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       __r *= __x;
       return __r;
     }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   ///  Return new complex value @a x divided by @a y.
   template<typename _Tp>
     inline _GLIBCXX20_CONSTEXPR complex<_Tp>
@@ -442,7 +443,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       __r /= __y;
       return __r;
     }
-  //@}
+  ///@}
 
   ///  Return @a x.
   template<typename _Tp>
@@ -456,7 +457,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     operator-(const complex<_Tp>& __x)
     { return complex<_Tp>(-__x.real(), -__x.imag()); }
 
-  //@{
+  ///@{
   ///  Return true if @a x is equal to @a y.
   template<typename _Tp>
     inline _GLIBCXX_CONSTEXPR bool
@@ -473,9 +474,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline _GLIBCXX_CONSTEXPR bool
     operator==(const _Tp& __x, const complex<_Tp>& __y)
     { return __x == __y.real() && _Tp() == __y.imag(); }
-  //@}
+  ///@}
 
-  //@{
+  ///@{
   ///  Return false if @a x is equal to @a y.
   template<typename _Tp>
     inline _GLIBCXX_CONSTEXPR bool
@@ -492,7 +493,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     operator!=(const _Tp& __x, const complex<_Tp>& __y)
     { return __x != __y.real() || _Tp() != __y.imag(); }
 #endif
-  //@}
+  ///@}
 
   ///  Extraction operator for complex values.
   template<typename _Tp, typename _CharT, class _Traits>
@@ -1079,8 +1080,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// 26.2.3  complex specializations
   /// complex<float> specialization
   template<>
-    struct complex<float>
+    class complex<float>
     {
+    public:
       typedef float value_type;
       typedef __complex__ float _ComplexT;
 
@@ -1224,8 +1226,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// 26.2.3  complex specializations
   /// complex<double> specialization
   template<>
-    struct complex<double>
+    class complex<double>
     {
+    public:
       typedef double value_type;
       typedef __complex__ double _ComplexT;
 
@@ -1369,8 +1372,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// 26.2.3  complex specializations
   /// complex<long double> specialization
   template<>
-    struct complex<long double>
+    class complex<long double>
     {
+    public:
       typedef long double value_type;
       typedef __complex__ long double _ComplexT;
 
@@ -1548,7 +1552,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #endif
 #endif
 
-  // @} group complex_numbers
+  /// @} group complex_numbers
 
 _GLIBCXX_END_NAMESPACE_VERSION
 } // namespace

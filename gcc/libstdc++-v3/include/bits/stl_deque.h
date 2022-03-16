@@ -1,6 +1,6 @@
 // Deque implementation -*- C++ -*-
 
-// Copyright (C) 2001-2020 Free Software Foundation, Inc.
+// Copyright (C) 2001-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -353,7 +353,8 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
       operator-(const _Self& __x, const _Self& __y) _GLIBCXX_NOEXCEPT
       {
 	return difference_type(_S_buffer_size())
-	  * (__x._M_node - __y._M_node - 1) + (__x._M_cur - __x._M_first)
+	  * (__x._M_node - __y._M_node - int(__x._M_node != 0))
+	  + (__x._M_cur - __x._M_first)
 	  + (__y._M_last - __y._M_cur);
       }
 
@@ -367,7 +368,8 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
 		  const _Deque_iterator<_Tp, _RefR, _PtrR>& __y) _GLIBCXX_NOEXCEPT
 	{
 	  return difference_type(_S_buffer_size())
-	    * (__x._M_node - __y._M_node - 1) + (__x._M_cur - __x._M_first)
+	    * (__x._M_node - __y._M_node - int(__x._M_node != 0))
+	    + (__x._M_cur - __x._M_first)
 	    + (__y._M_last - __y._M_cur);
 	}
 
@@ -1836,7 +1838,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
       }
 
       // called by the second initialize_dispatch above
-      //@{
+      ///@{
       /**
        *  @brief Fills the deque with whatever is in [first,last).
        *  @param  __first  An input iterator.
@@ -1857,7 +1859,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
 	void
 	_M_range_initialize(_ForwardIterator __first, _ForwardIterator __last,
 			    std::forward_iterator_tag);
-      //@}
+      ///@}
 
       /**
        *  @brief Fills the %deque with copies of value.
@@ -1941,7 +1943,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
 	  }
       }
 
-      //@{
+      ///@{
       /// Helper functions for push_* and pop_*.
 #if __cplusplus < 201103L
       void _M_push_back_aux(const value_type&);
@@ -1958,7 +1960,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
       void _M_pop_back_aux();
 
       void _M_pop_front_aux();
-      //@}
+      ///@}
 
       // Internal insert functions follow.  The *_aux functions do the actual
       // insertion work when all shortcuts fail.
@@ -2081,7 +2083,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
       _M_shrink_to_fit();
 #endif
 
-      //@{
+      ///@{
       /// Memory-handling helpers for the previous internal insert functions.
       iterator
       _M_reserve_elements_at_front(size_type __n)
@@ -2108,10 +2110,10 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
 
       void
       _M_new_elements_at_back(size_type __new_elements);
-      //@}
+      ///@}
 
 
-      //@{
+      ///@{
       /**
        *  @brief Memory-handling helpers for the major %map.
        *
@@ -2137,7 +2139,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
 
       void
       _M_reallocate_map(size_type __nodes_to_add, bool __add_at_front);
-      //@}
+      ///@}
 
 #if __cplusplus >= 201103L
       // Constant-time, nothrow move assignment when source object's memory
@@ -2156,6 +2158,9 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
       void
       _M_move_assign1(deque&& __x, /* always equal: */ false_type)
       {
+	if (_M_get_Tp_allocator() == __x._M_get_Tp_allocator())
+	  return _M_move_assign1(std::move(__x), true_type());
+
 	constexpr bool __move_storage =
 	  _Alloc_traits::_S_propagate_on_move_assign();
 	_M_move_assign2(std::move(__x), __bool_constant<__move_storage>());

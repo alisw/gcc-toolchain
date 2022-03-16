@@ -1,5 +1,5 @@
 /* bucomm.c -- Bin Utils COMmon code.
-   Copyright (C) 1991-2020 Free Software Foundation, Inc.
+   Copyright (C) 1991-2022 Free Software Foundation, Inc.
 
    This file is part of GNU Binutils.
 
@@ -25,16 +25,9 @@
 #include "bfd.h"
 #include "libiberty.h"
 #include "filenames.h"
-
-#include <time.h>		/* ctime, maybe time_t */
+#include <time.h>
 #include <assert.h>
 #include "bucomm.h"
-
-#ifndef HAVE_TIME_T_IN_TIME_H
-#ifndef HAVE_TIME_T_IN_TYPES_H
-typedef long time_t;
-#endif
-#endif
 
 /* Error reporting.  */
 
@@ -77,7 +70,6 @@ bfd_nonfatal_message (const char *filename,
 {
   const char *errmsg;
   const char *section_name;
-  va_list args;
   enum bfd_error err = bfd_get_error ();
 
   if (err == bfd_error_no_error)
@@ -86,7 +78,6 @@ bfd_nonfatal_message (const char *filename,
     errmsg = bfd_errmsg (err);
   fflush (stdout);
   section_name = NULL;
-  va_start (args, format);
   fprintf (stderr, "%s", program_name);
 
   if (abfd)
@@ -103,11 +94,13 @@ bfd_nonfatal_message (const char *filename,
 
   if (format)
     {
+      va_list args;
+      va_start (args, format);
       fprintf (stderr, ": ");
       vfprintf (stderr, format, args);
+      va_end (args);
     }
   fprintf (stderr, ": %s\n", errmsg);
-  va_end (args);
 }
 
 void
@@ -435,7 +428,7 @@ display_info (void)
    Mode       User\tGroup\tSize\tDate               Name */
 
 void
-print_arelt_descr (FILE *file, bfd *abfd, bfd_boolean verbose, bfd_boolean offsets)
+print_arelt_descr (FILE *file, bfd *abfd, bool verbose, bool offsets)
 {
   struct stat buf;
 
@@ -532,7 +525,7 @@ template_in_dir (const char *path)
    as FILENAME.  */
 
 char *
-make_tempname (const char *filename)
+make_tempname (const char *filename, int *ofd)
 {
   char *tmpname = template_in_dir (filename);
   int fd;
@@ -550,7 +543,7 @@ make_tempname (const char *filename)
       free (tmpname);
       return NULL;
     }
-  close (fd);
+  *ofd = fd;
   return tmpname;
 }
 
@@ -623,6 +616,21 @@ get_file_size (const char * file_name)
   else if (statbuf.st_size < 0)
     non_fatal (_("Warning: '%s' has negative size, probably it is too large"),
                file_name);
+#if defined (_WIN32) && !defined (__CYGWIN__)
+  else if (statbuf.st_size == 0)
+    {
+      /* MS-Windows 'stat' reports the null device as a regular file;
+	 fix that.  */
+      int fd = open (file_name, O_RDONLY | O_BINARY);
+      if (isatty (fd))
+	{
+	  close (fd);
+	  non_fatal (_("Warning: '%s' is not an ordinary file"),
+		     /* libtool wants to see /dev/null in the output.  */
+		     strcasecmp (file_name, "nul") ? file_name : "/dev/null");
+	}
+    }
+#endif
   else
     return statbuf.st_size;
 
@@ -662,18 +670,18 @@ bfd_get_archive_filename (const bfd *abfd)
    is valid for writing.  For security reasons absolute paths
    and paths containing /../ are not allowed.  See PR 17533.  */
 
-bfd_boolean
+bool
 is_valid_archive_path (char const * pathname)
 {
   const char * n = pathname;
 
   if (IS_ABSOLUTE_PATH (n))
-    return FALSE;
+    return false;
 
   while (*n)
     {
       if (*n == '.' && *++n == '.' && ( ! *++n || IS_DIR_SEPARATOR (*n)))
-	return FALSE;
+	return false;
 
       while (*n && ! IS_DIR_SEPARATOR (*n))
 	n++;
@@ -681,5 +689,5 @@ is_valid_archive_path (char const * pathname)
 	n++;
     }
 
-  return TRUE;
+  return true;
 }

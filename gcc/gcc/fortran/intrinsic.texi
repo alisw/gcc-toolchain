@@ -1,5 +1,5 @@
 @ignore
-Copyright (C) 2005-2020 Free Software Foundation, Inc.
+Copyright (C) 2005-2021 Free Software Foundation, Inc.
 This is part of the GNU Fortran manual.   
 For copying conditions, see the file gfortran.texi.
 
@@ -1232,7 +1232,7 @@ end program test_anint
 @item @emph{Specific names}:
 @multitable @columnfractions .20 .20 .20 .25
 @item Name            @tab Argument         @tab Return type      @tab Standard
-@item @code{AINT(A)}  @tab @code{REAL(4) A} @tab @code{REAL(4)}   @tab Fortran 77 and later
+@item @code{ANINT(A)}  @tab @code{REAL(4) A} @tab @code{REAL(4)}   @tab Fortran 77 and later
 @item @code{DNINT(A)} @tab @code{REAL(8) A} @tab @code{REAL(8)}   @tab Fortran 77 and later
 @end multitable
 @end table
@@ -1870,7 +1870,7 @@ Inverse function: @gol
 
 @table @asis
 @item @emph{Description}:
-@code{ATOMIC_ADD(ATOM, VALUE)} atomically adds the value of @var{VAR} to the
+@code{ATOMIC_ADD(ATOM, VALUE)} atomically adds the value of @var{VALUE} to the
 variable @var{ATOM}. When @var{STAT} is present and the invocation was
 successful, it is assigned the value 0. If it is present and the invocation
 has failed, it is assigned a positive value; in particular, for a coindexed
@@ -2090,7 +2090,7 @@ end program atomic
 @table @asis
 @item @emph{Description}:
 @code{ATOMIC_FETCH_ADD(ATOM, VALUE, OLD)} atomically stores the value of
-@var{ATOM} in @var{OLD} and adds the value of @var{VAR} to the
+@var{ATOM} in @var{OLD} and adds the value of @var{VALUE} to the
 variable @var{ATOM}. When @var{STAT} is present and the invocation was
 successful, it is assigned the value 0. If it is present and the invocation
 has failed, it is assigned a positive value; in particular, for a coindexed
@@ -3696,7 +3696,7 @@ Collective subroutine
 dynamic type and type parameters on all images of the current team. If it
 is an array, it shall have the same shape on all images.
 @item @var{SOURCE_IMAGE} @tab a scalar integer expression.
-It shall have the same the same value on all images and refer to an
+It shall have the same value on all images and refer to an
 image of the current team.
 @item @var{STAT}         @tab (optional) a scalar integer variable
 @item @var{ERRMSG}       @tab (optional) a scalar character variable
@@ -3753,7 +3753,7 @@ Collective subroutine
 @item @var{A}            @tab shall be an integer, real or character variable,
 which has the same type and type parameters on all images of the team.
 @item @var{RESULT_IMAGE} @tab (optional) a scalar integer expression; if
-present, it shall have the same the same value on all images and refer to an
+present, it shall have the same value on all images and refer to an
 image of the current team.
 @item @var{STAT}         @tab (optional) a scalar integer variable
 @item @var{ERRMSG}       @tab (optional) a scalar character variable
@@ -3810,7 +3810,7 @@ Collective subroutine
 @item @var{A}            @tab shall be an integer, real or character variable,
 which has the same type and type parameters on all images of the team.
 @item @var{RESULT_IMAGE} @tab (optional) a scalar integer expression; if
-present, it shall have the same the same value on all images and refer to an
+present, it shall have the same value on all images and refer to an
 image of the current team.
 @item @var{STAT}         @tab (optional) a scalar integer variable
 @item @var{ERRMSG}       @tab (optional) a scalar character variable
@@ -3881,7 +3881,7 @@ all images and with regards to the arguments mathematically commutative and
 associative.  Note that @var{OPERATOR} may not be an elemental function, unless
 it is an intrisic function.
 @item @var{RESULT_IMAGE} @tab (optional) a scalar integer expression; if
-present, it shall have the same the same value on all images and refer to an
+present, it shall have the same value on all images and refer to an
 image of the current team.
 @item @var{STAT}         @tab (optional) a scalar integer variable
 @item @var{ERRMSG}       @tab (optional) a scalar character variable
@@ -3943,14 +3943,14 @@ Technical Specification (TS) 18508 or later
 Collective subroutine
 
 @item @emph{Syntax}:
-@code{CALL CO_MIN(A [, RESULT_IMAGE, STAT, ERRMSG])}
+@code{CALL CO_SUM(A [, RESULT_IMAGE, STAT, ERRMSG])}
 
 @item @emph{Arguments}:
 @multitable @columnfractions .20 .65
 @item @var{A}            @tab shall be an integer, real or complex variable,
 which has the same type and type parameters on all images of the team.
 @item @var{RESULT_IMAGE} @tab (optional) a scalar integer expression; if
-present, it shall have the same the same value on all images and refer to an
+present, it shall have the same value on all images and refer to an
 image of the current team.
 @item @var{STAT}         @tab (optional) a scalar integer variable
 @item @var{ERRMSG}       @tab (optional) a scalar character variable
@@ -4764,15 +4764,15 @@ Unavailable time and date parameters return blanks.
 
 @var{VALUES} is @code{INTENT(OUT)} and provides the following:
 
-@multitable @columnfractions .15 .30 .40
-@item @tab @code{VALUE(1)}: @tab The year
-@item @tab @code{VALUE(2)}: @tab The month
-@item @tab @code{VALUE(3)}: @tab The day of the month
-@item @tab @code{VALUE(4)}: @tab Time difference with UTC in minutes
-@item @tab @code{VALUE(5)}: @tab The hour of the day
-@item @tab @code{VALUE(6)}: @tab The minutes of the hour
-@item @tab @code{VALUE(7)}: @tab The seconds of the minute
-@item @tab @code{VALUE(8)}: @tab The milliseconds of the second
+@multitable @columnfractions .15 .70
+@item @code{VALUE(1)}: @tab The year
+@item @code{VALUE(2)}: @tab The month
+@item @code{VALUE(3)}: @tab The day of the month
+@item @code{VALUE(4)}: @tab Time difference with UTC in minutes
+@item @code{VALUE(5)}: @tab The hour of the day
+@item @code{VALUE(6)}: @tab The minutes of the hour
+@item @code{VALUE(7)}: @tab The seconds of the minute
+@item @code{VALUE(8)}: @tab The milliseconds of the second
 @end multitable
 
 @item @emph{Standard}:
@@ -5278,10 +5278,10 @@ only one form can be used in any given program unit.
 
 @var{VALUES} and @var{TIME} are @code{INTENT(OUT)} and provide the following:
 
-@multitable @columnfractions .15 .30 .40
-@item @tab @code{VALUES(1)}: @tab User time in seconds.
-@item @tab @code{VALUES(2)}: @tab System time in seconds.
-@item @tab @code{TIME}: @tab Run time since start in seconds.
+@multitable @columnfractions .15 .70
+@item @code{VALUES(1)}: @tab User time in seconds.
+@item @code{VALUES(2)}: @tab System time in seconds.
+@item @code{TIME}: @tab Run time since start in seconds.
 @end multitable
 
 @item @emph{Standard}:
@@ -5587,10 +5587,10 @@ only one form can be used in any given program unit.
 
 @var{VALUES} and @var{TIME} are @code{INTENT(OUT)} and provide the following:
 
-@multitable @columnfractions .15 .30 .60
-@item @tab @code{VALUES(1)}: @tab User time in seconds.
-@item @tab @code{VALUES(2)}: @tab System time in seconds.
-@item @tab @code{TIME}: @tab Run time since start in seconds.
+@multitable @columnfractions .15 .70
+@item @code{VALUES(1)}: @tab User time in seconds.
+@item @code{VALUES(2)}: @tab System time in seconds.
+@item @code{TIME}: @tab Run time since start in seconds.
 @end multitable
 
 @item @emph{Standard}:
@@ -6154,7 +6154,8 @@ END PROGRAM
 @item @emph{Description}:
 Determines the location of the element in the array with the value
 given in the @var{VALUE} argument, or, if the @var{DIM} argument is
-supplied, determines the locations of the maximum element along each
+supplied, determines the locations of the elements equal to the
+@var{VALUE} argument element along each
 row of the array in the @var{DIM} direction.  If @var{MASK} is
 present, only the elements for which @var{MASK} is @code{.TRUE.} are
 considered.  If more than one element in the array has the value
@@ -6187,6 +6188,8 @@ conformance with @var{ARRAY}.
 @item @var{DIM} @tab (Optional) Shall be a scalar of type
 @code{INTEGER}, with a value between one and the rank of @var{ARRAY},
 inclusive.  It may not be an optional dummy argument.
+@item @var{MASK} @tab (Optional) Shall be of type @code{LOGICAL},
+and conformable with @var{ARRAY}.
 @item @var{KIND} @tab (Optional) An @code{INTEGER} initialization
 expression indicating the kind parameter of the result.
 @item @var{BACK} @tab (Optional) A scalar of type @code{LOGICAL}.
@@ -6832,7 +6835,7 @@ Subroutine
 
 @item @emph{Arguments}:
 @multitable @columnfractions .15 .70
-@item @var{RESULT}  @tab Shall of type @code{CHARACTER} and of default
+@item @var{RESULT}  @tab Shall be of type @code{CHARACTER} and of default kind.
 @end multitable
 
 @item @emph{Example}:
@@ -6882,7 +6885,6 @@ Subroutine
 the default integer kind; @math{@var{POS} \geq 0}
 @item @var{VALUE} @tab Shall be of type @code{CHARACTER} and of default
 kind.
-@item @var{VALUE} @tab Shall be of type @code{CHARACTER}. 
 @end multitable
 
 @item @emph{Return value}:
@@ -7256,7 +7258,7 @@ Subroutine
 @end multitable
 
 @item @emph{Return value}:
-Stores the current user name in @var{LOGIN}.  (On systems where POSIX
+Stores the current user name in @var{C}.  (On systems where POSIX
 functions @code{geteuid} and @code{getpwuid} are not available, and 
 the @code{getlogin} function is not implemented either, this will
 return a blank string.)
@@ -8325,7 +8327,7 @@ Elemental function
 @item @emph{Arguments}:
 @multitable @columnfractions .15 .70
 @item @var{A}    @tab Shall be of type @code{INTEGER},
-@code{REAL}, or @code{COMPLEX} or or a boz-literal-constant.
+@code{REAL}, or @code{COMPLEX} or a boz-literal-constant.
 @item @var{KIND} @tab (Optional) An @code{INTEGER} initialization
 expression indicating the kind parameter of the result.
 @end multitable
@@ -10355,7 +10357,7 @@ Transformational function
 @item @var{DIM}   @tab (Optional) Shall be a scalar of type
 @code{INTEGER}, with a value between one and the rank of @var{ARRAY},
 inclusive.  It may not be an optional dummy argument.
-@item @var{MASK}  @tab Shall be an array of type @code{LOGICAL},
+@item @var{MASK}  @tab Shall be of type @code{LOGICAL},
 and conformable with @var{ARRAY}.
 @item @var{KIND} @tab (Optional) An @code{INTEGER} initialization
 expression indicating the kind parameter of the result.
@@ -10416,7 +10418,7 @@ Transformational function
 @item @var{DIM}   @tab (Optional) Shall be a scalar of type
 @code{INTEGER}, with a value between one and the rank of @var{ARRAY},
 inclusive.  It may not be an optional dummy argument.
-@item @var{MASK}  @tab (Opional) Shall be an array of type @code{LOGICAL},
+@item @var{MASK}  @tab (Optional) Shall be of type @code{LOGICAL},
 and conformable with @var{ARRAY}.
 @end multitable
 
@@ -10625,7 +10627,7 @@ permitted.)
 @end multitable
 
 @item @emph{Return value}:
-The return value corresponds to the maximum value among the arguments,
+The return value corresponds to the minimum value among the arguments,
 and has the same type and kind as the first argument.
 
 @item @emph{Specific names}:
@@ -10722,7 +10724,7 @@ Transformational function
 @item @var{DIM}   @tab (Optional) Shall be a scalar of type
 @code{INTEGER}, with a value between one and the rank of @var{ARRAY},
 inclusive.  It may not be an optional dummy argument.
-@item @var{MASK}  @tab Shall be an array of type @code{LOGICAL},
+@item @var{MASK}  @tab Shall be of type @code{LOGICAL},
 and conformable with @var{ARRAY}.
 @item @var{KIND} @tab (Optional) An @code{INTEGER} initialization
 expression indicating the kind parameter of the result.
@@ -10783,7 +10785,7 @@ Transformational function
 @item @var{DIM}   @tab (Optional) Shall be a scalar of type
 @code{INTEGER}, with a value between one and the rank of @var{ARRAY},
 inclusive.  It may not be an optional dummy argument.
-@item @var{MASK}  @tab Shall be an array of type @code{LOGICAL},
+@item @var{MASK}  @tab Shall be of type @code{LOGICAL},
 and conformable with @var{ARRAY}.
 @end multitable
 
@@ -11199,7 +11201,7 @@ end program test_nint
 
 @table @asis
 @item @emph{Description}:
-Calculates the Euclidean vector norm (@math{L_2} norm) of
+Calculates the Euclidean vector norm (@math{L_2} norm)
 of @var{ARRAY} along dimension @var{DIM}.
 
 @item @emph{Standard}:
@@ -11552,7 +11554,7 @@ Transformational function
 
 @item @emph{Arguments}:
 @multitable @columnfractions .15 .70
-@item @var{LOGICAL} @tab Shall be an array of type @code{LOGICAL}
+@item @var{MASK} @tab Shall be an array of type @code{LOGICAL}
 @item @var{DIM}   @tab (Optional) shall be a scalar of type 
 @code{INTEGER} with a value in the range from 1 to n, where n 
 equals the rank of @var{MASK}.
@@ -12002,7 +12004,7 @@ is set to a processor-dependent value.
 @code{LOGICAL} type, and it is @code{INTENT(IN)}.  If it is @code{.true.},
 the seed is set to a processor-dependent value that is distinct from th
 seed set by a call to @code{RANDOM_INIT} in another image.  If it is
-@code{.false.}, the seed is set value that does depend which image called
+@code{.false.}, the seed is set to a value that does depend which image called
 @code{RANDOM_INIT}.
 @end multitable
 
@@ -12054,7 +12056,7 @@ Fortran 90 and later
 Subroutine
 
 @item @emph{Syntax}:
-@code{RANDOM_NUMBER(HARVEST)}
+@code{CALL RANDOM_NUMBER(HARVEST)}
 
 @item @emph{Arguments}:
 @multitable @columnfractions .15 .70
@@ -15291,12 +15293,12 @@ with the following options: @code{-fno-unsafe-math-optimizations
 @section OpenMP Modules @code{OMP_LIB} and @code{OMP_LIB_KINDS}
 @table @asis
 @item @emph{Standard}:
-OpenMP Application Program Interface v4.5
+OpenMP Application Program Interface v4.5 and
+OpenMP Application Program Interface v5.0 (partially supported).
 @end table
 
-
 The OpenMP Fortran runtime library routines are provided both in
-a form of two Fortran 90 modules, named @code{OMP_LIB} and 
+a form of two Fortran modules, named @code{OMP_LIB} and
 @code{OMP_LIB_KINDS}, and in a form of a Fortran @code{include} file named
 @file{omp_lib.h}. The procedures provided by @code{OMP_LIB} can be found
 in the @ref{Top,,Introduction,libgomp,GNU Offloading and Multi
@@ -15306,25 +15308,38 @@ below.
 
 For details refer to the actual
 @uref{http://www.openmp.org/wp-content/uploads/openmp-4.5.pdf,
-OpenMP Application Program Interface v4.5}.
-And for the @code{pause}-related constants to the OpenMP 5.0 specification.
+OpenMP Application Program Interface v4.5} and
+@uref{https://www.openmp.org/wp-content/uploads/OpenMP-API-Specification-5.0.pdf,
+OpenMP Application Program Interface v5.0}.
 
 @code{OMP_LIB_KINDS} provides the following scalar default-integer
 named constants:
 
 @table @asis
+@item @code{omp_allocator_handle_kind}
+@item @code{omp_alloctrait_key_kind}
+@item @code{omp_alloctrait_val_kind}
+@item @code{omp_depend_kind}
 @item @code{omp_lock_kind}
 @item @code{omp_lock_hint_kind}
 @item @code{omp_nest_lock_kind}
 @item @code{omp_pause_resource_kind}
+@item @code{omp_memspace_handle_kind}
 @item @code{omp_proc_bind_kind}
 @item @code{omp_sched_kind}
+@item @code{omp_sync_hint_kind}
 @end table
 
 @code{OMP_LIB} provides the scalar default-integer
 named constant @code{openmp_version} with a value of the form
 @var{yyyymm}, where @code{yyyy} is the year and @var{mm} the month
 of the OpenMP version; for OpenMP v4.5 the value is @code{201511}.
+
+The following derived type:
+
+@table @asis
+@item @code{omp_alloctrait}
+@end table
 
 The following scalar integer named constants of the
 kind @code{omp_sched_kind}:
@@ -15336,7 +15351,7 @@ kind @code{omp_sched_kind}:
 @item @code{omp_sched_auto}
 @end table
 
-And the following scalar integer named constants of the 
+And the following scalar integer named constants of the
 kind @code{omp_proc_bind_kind}:
 
 @table @asis
@@ -15356,6 +15371,11 @@ kind @code{omp_lock_hint_kind}:
 @item @code{omp_lock_hint_contended}
 @item @code{omp_lock_hint_nonspeculative}
 @item @code{omp_lock_hint_speculative}
+@item @code{omp_sync_hint_none}
+@item @code{omp_sync_hint_uncontended}
+@item @code{omp_sync_hint_contended}
+@item @code{omp_sync_hint_nonspeculative}
+@item @code{omp_sync_hint_speculative}
 @end table
 
 And the following two scalar integer named constants are of the
@@ -15365,6 +15385,73 @@ kind @code{omp_pause_resource_kind}:
 @item @code{omp_pause_soft}
 @item @code{omp_pause_hard}
 @end table
+
+The following scalar integer named constants are of the kind
+@code{omp_alloctrait_key_kind}:
+
+@table @asis
+@item @code{omp_atk_sync_hint}
+@item @code{omp_atk_alignment}
+@item @code{omp_atk_access}
+@item @code{omp_atk_pool_size}
+@item @code{omp_atk_fallback}
+@item @code{omp_atk_fb_data}
+@item @code{omp_atk_pinned}
+@item @code{omp_atk_partition}
+@end table
+
+The following scalar integer named constants are of the kind
+@code{omp_alloctrait_val_kind}:
+
+@table @asis
+@code{omp_alloctrait_key_kind}:
+@item @code{omp_atv_default}
+@item @code{omp_atv_false}
+@item @code{omp_atv_true}
+@item @code{omp_atv_contended}
+@item @code{omp_atv_uncontended}
+@item @code{omp_atv_serialized}
+@item @code{omp_atv_sequential}
+@item @code{omp_atv_private}
+@item @code{omp_atv_all}
+@item @code{omp_atv_thread}
+@item @code{omp_atv_pteam}
+@item @code{omp_atv_cgroup}
+@item @code{omp_atv_default_mem_fb}
+@item @code{omp_atv_null_fb}
+@item @code{omp_atv_abort_fb}
+@item @code{omp_atv_allocator_fb}
+@item @code{omp_atv_environment}
+@item @code{omp_atv_nearest}
+@item @code{omp_atv_blocked}
+@end table
+
+The following scalar integer named constants are of the kind
+@code{omp_allocator_handle_kind}:
+
+@table @asis
+@item @code{omp_null_allocator}
+@item @code{omp_default_mem_alloc}
+@item @code{omp_large_cap_mem_alloc}
+@item @code{omp_const_mem_alloc}
+@item @code{omp_high_bw_mem_alloc}
+@item @code{omp_low_lat_mem_alloc}
+@item @code{omp_cgroup_mem_alloc}
+@item @code{omp_pteam_mem_alloc}
+@item @code{omp_thread_mem_alloc}
+@end table
+
+The following scalar integer named constants are of the kind
+@code{omp_memspace_handle_kind}:
+
+@table @asis
+@item @code{omp_default_mem_space}
+@item @code{omp_large_cap_mem_space}
+@item @code{omp_const_mem_space}
+@item @code{omp_high_bw_mem_space}
+@item @code{omp_low_lat_mem_space}
+@end table
+
 
 
 @node OpenACC Module OPENACC

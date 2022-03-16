@@ -1,5 +1,5 @@
 /* ELF emulation code for targets using elf.em.
-   Copyright (C) 1991-2020 Free Software Foundation, Inc.
+   Copyright (C) 1991-2022 Free Software Foundation, Inc.
 
    This file is part of the GNU Binutils.
 
@@ -56,7 +56,7 @@ static struct bfd_link_needed_list *global_needed;
 static lang_input_statement_type *global_found;
 static struct stat global_stat;
 static struct bfd_link_needed_list *global_vercheck_needed;
-static bfd_boolean global_vercheck_failed;
+static bool global_vercheck_failed;
 
 void
 ldelf_after_parse (void)
@@ -71,12 +71,31 @@ ldelf_after_parse (void)
 	einfo (_("%P: warning: -z dynamic-undefined-weak ignored\n"));
       link_info.dynamic_undefined_weak = 0;
     }
+
+  /* Disable DT_RELR if not building PIE nor shared library.  */
+  if (!bfd_link_pic (&link_info))
+    link_info.enable_dt_relr = 0;
+
+  /* Add 3 spare tags for DT_RELR, DT_RELRSZ and DT_RELRENT.  */
+  if (link_info.enable_dt_relr)
+    link_info.spare_dynamic_tags += 3;
+
   after_parse_default ();
+  if (link_info.commonpagesize > link_info.maxpagesize)
+    {
+      if (!link_info.commonpagesize_is_set)
+	link_info.commonpagesize = link_info.maxpagesize;
+      else if (!link_info.maxpagesize_is_set)
+	link_info.maxpagesize = link_info.commonpagesize;
+      else
+	einfo (_("%F%P: common page size (0x%v) > maximum page size (0x%v)\n"),
+	       link_info.commonpagesize, link_info.maxpagesize);
+    }
 }
 
 /* Handle the generation of DT_NEEDED tags.  */
 
-bfd_boolean
+bool
 ldelf_load_symbols (lang_input_statement_type *entry)
 {
   int link_class = 0;
@@ -100,13 +119,13 @@ ldelf_load_symbols (lang_input_statement_type *entry)
 
   if (link_class == 0
       || (bfd_get_file_flags (entry->the_bfd) & DYNAMIC) == 0)
-    return FALSE;
+    return false;
 
   bfd_elf_set_dyn_lib_class (entry->the_bfd,
 			     (enum dynamic_lib_link_class) link_class);
 
   /* Continue on with normal load_symbols processing.  */
-  return FALSE;
+  return false;
 }
 
 /* On Linux, it's possible to have different versions of the same
@@ -168,7 +187,7 @@ ldelf_vercheck (lang_input_statement_type *s)
 	     FOO.SO.VER2, and VER1 and VER2 are different.  This
 	     appears to be a version mismatch, so we tell the caller
 	     to try a different version of this library.  */
-	  global_vercheck_failed = TRUE;
+	  global_vercheck_failed = true;
 	  return;
 	}
     }
@@ -246,7 +265,7 @@ ldelf_stat_needed (lang_input_statement_type *s)
    named by a DT_NEEDED entry.  The FORCE parameter indicates whether
    to skip the check for a conflicting version.  */
 
-static bfd_boolean
+static bool
 ldelf_try_needed (struct dt_needed *needed, int force, int is_linux)
 {
   bfd *abfd;
@@ -259,7 +278,7 @@ ldelf_try_needed (struct dt_needed *needed, int force, int is_linux)
     {
       if (verbose)
 	info_msg (_("attempt to open %s failed\n"), name);
-      return FALSE;
+      return false;
     }
 
   track_dependency_files (name);
@@ -270,19 +289,19 @@ ldelf_try_needed (struct dt_needed *needed, int force, int is_linux)
   if (! bfd_check_format (abfd, bfd_object))
     {
       bfd_close (abfd);
-      return FALSE;
+      return false;
     }
   if ((bfd_get_file_flags (abfd) & DYNAMIC) == 0)
     {
       bfd_close (abfd);
-      return FALSE;
+      return false;
     }
 
   /* For DT_NEEDED, they have to match.  */
   if (abfd->xvec != link_info.output_bfd->xvec)
     {
       bfd_close (abfd);
-      return FALSE;
+      return false;
     }
 
   /* Check whether this object would include any conflicting library
@@ -300,14 +319,14 @@ ldelf_try_needed (struct dt_needed *needed, int force, int is_linux)
       if (needs != NULL)
 	{
 	  global_vercheck_needed = needs;
-	  global_vercheck_failed = FALSE;
+	  global_vercheck_failed = false;
 	  lang_for_each_input_file (ldelf_vercheck);
 	  if (global_vercheck_failed)
 	    {
 	      bfd_close (abfd);
 	      /* Return FALSE to force the caller to move on to try
 		 another file on the search path.  */
-	      return FALSE;
+	      return false;
 	    }
 
 	  /* But wait!  It gets much worse.  On Linux, if a shared
@@ -321,12 +340,12 @@ ldelf_try_needed (struct dt_needed *needed, int force, int is_linux)
 	      struct bfd_link_needed_list *l;
 
 	      for (l = needs; l != NULL; l = l->next)
-		if (CONST_STRNEQ (l->name, "libc.so"))
+		if (startswith (l->name, "libc.so"))
 		  break;
 	      if (l == NULL)
 		{
 		  bfd_close (abfd);
-		  return FALSE;
+		  return false;
 		}
 	    }
 	}
@@ -357,7 +376,7 @@ ldelf_try_needed (struct dt_needed *needed, int force, int is_linux)
     {
       /* Return TRUE to indicate that we found the file, even though
 	 we aren't going to do anything with it.  */
-      return TRUE;
+      return true;
     }
 
   /* Specify the soname to use.  */
@@ -384,12 +403,12 @@ ldelf_try_needed (struct dt_needed *needed, int force, int is_linux)
   if (! bfd_link_add_symbols (abfd, &link_info))
     einfo (_("%F%P: %pB: error adding symbols: %E\n"), abfd);
 
-  return TRUE;
+  return true;
 }
 
 /* Search for a needed file in a path.  */
 
-static bfd_boolean
+static bool
 ldelf_search_needed (const char *path, struct dt_needed *n, int force,
 		     int is_linux, int elfsize)
 {
@@ -402,7 +421,7 @@ ldelf_search_needed (const char *path, struct dt_needed *n, int force,
     return ldelf_try_needed (n, force, is_linux);
 
   if (path == NULL || *path == '\0')
-    return FALSE;
+    return false;
 
   needed.by = n->by;
   needed.name = n->name;
@@ -586,7 +605,7 @@ ldelf_search_needed (const char *path, struct dt_needed *n, int force,
       needed.name = filename;
 
       if (ldelf_try_needed (&needed, force, is_linux))
-	return TRUE;
+	return true;
 
       free (filename);
 
@@ -595,7 +614,7 @@ ldelf_search_needed (const char *path, struct dt_needed *n, int force,
       path = s + 1;
     }
 
-  return FALSE;
+  return false;
 }
 
 /* Prefix the sysroot to absolute paths in PATH, a string containing
@@ -687,11 +706,11 @@ ldelf_add_sysroot (const char *path)
 #include "elf-hints-local.h"
 #endif
 
-static bfd_boolean
+static bool
 ldelf_check_ld_elf_hints (const struct bfd_link_needed_list *l, int force,
 			  int elfsize)
 {
-  static bfd_boolean initialized;
+  static bool initialized;
   static const char *ld_elf_hints;
   struct dt_needed needed;
 
@@ -726,15 +745,15 @@ ldelf_check_ld_elf_hints (const struct bfd_link_needed_list *l, int force,
 	  fclose (f);
 	}
 
-      initialized = TRUE;
+      initialized = true;
     }
 
   if (ld_elf_hints == NULL)
-    return FALSE;
+    return false;
 
   needed.by = l->by;
   needed.name = l->name;
-  return ldelf_search_needed (ld_elf_hints, &needed, force, FALSE, elfsize);
+  return ldelf_search_needed (ld_elf_hints, &needed, force, false, elfsize);
 }
 
 /* For a native linker, check the file /etc/ld.so.conf for directories
@@ -747,7 +766,7 @@ struct ldelf_ld_so_conf
   size_t len, alloc;
 };
 
-static bfd_boolean
+static bool
 ldelf_parse_ld_so_conf (struct ldelf_ld_so_conf *, const char *);
 
 static void
@@ -788,7 +807,7 @@ ldelf_parse_ld_so_conf_include (struct ldelf_ld_so_conf *info,
   free (newp);
 }
 
-static bfd_boolean
+static bool
 ldelf_parse_ld_so_conf (struct ldelf_ld_so_conf *info, const char *filename)
 {
   FILE *f = fopen (filename, FOPEN_RT);
@@ -796,7 +815,7 @@ ldelf_parse_ld_so_conf (struct ldelf_ld_so_conf *info, const char *filename)
   size_t linelen;
 
   if (f == NULL)
-    return FALSE;
+    return false;
 
   linelen = 256;
   line = xmalloc (linelen);
@@ -837,7 +856,7 @@ ldelf_parse_ld_so_conf (struct ldelf_ld_so_conf *info, const char *filename)
       if (p[0] == '\0')
 	continue;
 
-      if (CONST_STRNEQ (p, "include") && (p[7] == ' ' || p[7] == '\t'))
+      if (startswith (p, "include") && (p[7] == ' ' || p[7] == '\t'))
 	{
 	  char *dir, c;
 	  p += 8;
@@ -893,14 +912,14 @@ ldelf_parse_ld_so_conf (struct ldelf_ld_so_conf *info, const char *filename)
   while (! feof (f));
   free (line);
   fclose (f);
-  return TRUE;
+  return true;
 }
 
-static bfd_boolean
+static bool
 ldelf_check_ld_so_conf (const struct bfd_link_needed_list *l, int force,
 			int elfsize, const char *prefix)
 {
-  static bfd_boolean initialized;
+  static bool initialized;
   static const char *ld_so_conf;
   struct dt_needed needed;
 
@@ -927,16 +946,16 @@ ldelf_check_ld_so_conf (const struct bfd_link_needed_list *l, int force,
 	  ld_so_conf = ldelf_add_sysroot (info.path);
 	  free (info.path);
 	}
-      initialized = TRUE;
+      initialized = true;
     }
 
   if (ld_so_conf == NULL)
-    return FALSE;
+    return false;
 
 
   needed.by = l->by;
   needed.name = l->name;
-  return ldelf_search_needed (ld_so_conf, &needed, force, TRUE, elfsize);
+  return ldelf_search_needed (ld_so_conf, &needed, force, true, elfsize);
 }
 
 /* See if an input file matches a DT_NEEDED entry by name.  */
@@ -1001,7 +1020,7 @@ ldelf_after_open (int use_libpath, int native, int is_linux, int is_freebsd,
   after_open_default ();
 
   htab = elf_hash_table (&link_info);
-  if (!is_elf_hash_table (htab))
+  if (!is_elf_hash_table (&htab->root))
     return;
 
   if (command_line.out_implib_filename)
@@ -1043,12 +1062,23 @@ ldelf_after_open (int use_libpath, int native, int is_linux, int is_freebsd,
   /* Do not allow executable files to be used as inputs to the link.  */
   for (abfd = link_info.input_bfds; abfd; abfd = abfd->link.next)
     {
-      if (!bfd_input_just_syms (abfd)
+      /* Discard input .note.gnu.build-id sections.  */
+      s = bfd_get_section_by_name (abfd, ".note.gnu.build-id");
+      while (s != NULL)
+	{
+	  if (s != elf_tdata (link_info.output_bfd)->o->build_id.sec)
+	    s->flags |= SEC_EXCLUDE;
+	  s = bfd_get_next_section_by_name (NULL, s);
+	}
+
+      if (abfd->xvec->flavour == bfd_target_elf_flavour
+	  && !bfd_input_just_syms (abfd)
 	  && elf_tdata (abfd) != NULL
-	  && elf_tdata (abfd)->elf_header != NULL
 	  /* FIXME: Maybe check for other non-supportable types as well ?  */
-	  && elf_tdata (abfd)->elf_header->e_type == ET_EXEC)
-	einfo (_("%P: Using an executable file (%pB) as input to a link is deprecated - support is likely to be removed in the future\n"),
+	  && (elf_tdata (abfd)->elf_header->e_type == ET_EXEC
+	      || (elf_tdata (abfd)->elf_header->e_type == ET_DYN
+		  && elf_tdata (abfd)->is_pie)))
+	einfo (_("%F%P: cannot use executable file '%pB' as input to a link\n"),
 	       abfd);
     }
 
@@ -1072,7 +1102,7 @@ ldelf_after_open (int use_libpath, int native, int is_linux, int is_freebsd,
   if (!link_info.traditional_format)
     {
       bfd *elfbfd = NULL;
-      bfd_boolean warn_eh_frame = FALSE;
+      bool warn_eh_frame = false;
       int seen_type = 0;
 
       for (abfd = link_info.input_bfds; abfd; abfd = abfd->link.next)
@@ -1088,7 +1118,7 @@ ldelf_after_open (int use_libpath, int native, int is_linux, int is_freebsd,
 
 	      if (bfd_is_abs_section (s->output_section))
 		continue;
-	      if (CONST_STRNEQ (name, ".eh_frame_entry"))
+	      if (startswith (name, ".eh_frame_entry"))
 		type = COMPACT_EH_HDR;
 	      else if (strcmp (name, ".eh_frame") == 0 && s->size > 8)
 		type = DWARF2_EH_HDR;
@@ -1115,7 +1145,7 @@ ldelf_after_open (int use_libpath, int native, int is_linux, int is_freebsd,
 		  if (bfd_get_flavour (abfd) == bfd_target_elf_flavour)
 		    elfbfd = abfd;
 
-		  warn_eh_frame = TRUE;
+		  warn_eh_frame = true;
 		}
 	    }
 
@@ -1134,7 +1164,7 @@ ldelf_after_open (int use_libpath, int native, int is_linux, int is_freebsd,
 	      && bfd_set_section_alignment (s, 2))
 	    {
 	      htab->eh_info.hdr_sec = s;
-	      warn_eh_frame = FALSE;
+	      warn_eh_frame = false;
 	    }
 	}
       if (warn_eh_frame)
@@ -1201,7 +1231,7 @@ ldelf_after_open (int use_libpath, int native, int is_linux, int is_freebsd,
       if (global_found != NULL)
 	{
 	  nn.name = global_found->filename;
-	  if (ldelf_try_needed (&nn, TRUE, is_linux))
+	  if (ldelf_try_needed (&nn, true, is_linux))
 	    continue;
 	}
 
@@ -1346,7 +1376,7 @@ id_note_section_size (bfd *abfd ATTRIBUTE_UNUSED)
   return size;
 }
 
-static bfd_boolean
+static bool
 write_build_id (bfd *abfd)
 {
   const struct elf_backend_data *bed = get_elf_backend_data (abfd);
@@ -1365,7 +1395,7 @@ write_build_id (bfd *abfd)
     {
       einfo (_("%P: warning: .note.gnu.build-id section discarded,"
 	       " --build-id ignored\n"));
-      return TRUE;
+      return true;
     }
   i_shdr = &elf_section_data (asec->output_section)->this_hdr;
 
@@ -1384,6 +1414,9 @@ write_build_id (bfd *abfd)
   id_bits = contents + size;
   size = asec->size - size;
 
+  /* Clear the build ID field.  */
+  memset (id_bits, 0, size);
+
   bfd_h_put_32 (abfd, sizeof "GNU", &e_note->namesz);
   bfd_h_put_32 (abfd, size, &e_note->descsz);
   bfd_h_put_32 (abfd, NT_GNU_BUILD_ID, &e_note->type);
@@ -1399,7 +1432,7 @@ write_build_id (bfd *abfd)
 
 /* Make .note.gnu.build-id section, and set up elf_tdata->build_id.  */
 
-bfd_boolean
+bool
 ldelf_setup_build_id (bfd *ibfd)
 {
   asection *s;
@@ -1410,12 +1443,13 @@ ldelf_setup_build_id (bfd *ibfd)
   if (size == 0)
     {
       einfo (_("%P: warning: unrecognized --build-id style ignored\n"));
-      return FALSE;
+      return false;
     }
 
   flags = (SEC_ALLOC | SEC_LOAD | SEC_IN_MEMORY
 	   | SEC_LINKER_CREATED | SEC_READONLY | SEC_DATA);
-  s = bfd_make_section_with_flags (ibfd, ".note.gnu.build-id", flags);
+  s = bfd_make_section_anyway_with_flags (ibfd, ".note.gnu.build-id",
+					  flags);
   if (s != NULL && bfd_set_section_alignment (s, 2))
     {
       struct elf_obj_tdata *t = elf_tdata (link_info.output_bfd);
@@ -1424,12 +1458,12 @@ ldelf_setup_build_id (bfd *ibfd)
       t->o->build_id.sec = s;
       elf_section_type (s) = SHT_NOTE;
       s->size = size;
-      return TRUE;
+      return true;
     }
 
   einfo (_("%P: warning: cannot create .note.gnu.build-id section,"
 	   " --build-id ignored\n"));
-  return FALSE;
+  return false;
 }
 
 /* Look through an expression for an assignment statement.  */
@@ -1437,13 +1471,13 @@ ldelf_setup_build_id (bfd *ibfd)
 static void
 ldelf_find_exp_assignment (etree_type *exp)
 {
-  bfd_boolean provide = FALSE;
+  bool provide = false;
 
   switch (exp->type.node_class)
     {
     case etree_provide:
     case etree_provided:
-      provide = TRUE;
+      provide = true;
       /* Fallthru */
     case etree_assign:
       /* We call record_link_assignment even if the symbol is defined.
@@ -1563,7 +1597,7 @@ ldelf_before_allocation (char *audit, char *depaudit,
 	{
 	  struct elf_link_hash_table *htab = elf_hash_table (&link_info);
 	  struct elf_link_hash_entry *h
-	    = elf_link_hash_lookup (htab, "__ehdr_start", FALSE, FALSE, TRUE);
+	    = elf_link_hash_lookup (htab, "__ehdr_start", false, false, true);
 
 	  /* Only adjust the export class if the symbol was referenced
 	     and not defined, otherwise leave it alone.  */
@@ -1573,11 +1607,6 @@ ldelf_before_allocation (char *audit, char *depaudit,
 		  || h->root.type == bfd_link_hash_undefweak
 		  || h->root.type == bfd_link_hash_common))
 	    {
-	      const struct elf_backend_data *bed;
-	      bed = get_elf_backend_data (link_info.output_bfd);
-	      (*bed->elf_backend_hide_symbol) (&link_info, h, TRUE);
-	      if (ELF_ST_VISIBILITY (h->other) != STV_INTERNAL)
-		h->other = (h->other & ~ELF_ST_VISIBILITY (-1)) | STV_HIDDEN;
 	      /* Don't leave the symbol undefined.  Undefined hidden
 		 symbols typically won't have dynamic relocations, but
 		 we most likely will need dynamic relocations for
@@ -1589,6 +1618,8 @@ ldelf_before_allocation (char *audit, char *depaudit,
 		      (char *) &ehdr_start->u + sizeof ehdr_start->u.def.next,
 		      sizeof ehdr_start_save_u);
 	      ehdr_start->type = bfd_link_hash_defined;
+	      /* It will be converted to section-relative later.  */
+	      ehdr_start->rel_from_abs = 1;
 	      ehdr_start->u.def.section = bfd_abs_section_ptr;
 	      ehdr_start->u.def.value = 0;
 	    }
@@ -1722,17 +1753,17 @@ ldelf_before_allocation (char *audit, char *depaudit,
    dynamic libraries have an extension of .so (or .sl on oddball systems
    like hpux).  */
 
-bfd_boolean
+bool
 ldelf_open_dynamic_archive (const char *arch, search_dirs_type *search,
 			    lang_input_statement_type *entry)
 {
   const char *filename;
   char *string;
   size_t len;
-  bfd_boolean opened = FALSE;
+  bool opened = false;
 
   if (! entry->flags.maybe_archive)
-    return FALSE;
+    return false;
 
   filename = entry->filename;
   len = strlen (search->name) + strlen (filename);
@@ -1766,7 +1797,7 @@ ldelf_open_dynamic_archive (const char *arch, search_dirs_type *search,
   if (!opened && !ldfile_try_open_bfd (string, entry))
     {
       free (string);
-      return FALSE;
+      return false;
     }
 
   entry->filename = string;
@@ -1797,7 +1828,7 @@ ldelf_open_dynamic_archive (const char *arch, search_dirs_type *search,
       bfd_elf_set_dt_needed_name (entry->the_bfd, filename);
     }
 
-  return TRUE;
+  return true;
 }
 
 /* A variant of lang_output_section_find used by place_orphan.  */
@@ -1817,7 +1848,7 @@ output_rel_find (int isdyn, int rela)
        lookup = lookup->next)
     {
       if (lookup->constraint >= 0
-	  && CONST_STRNEQ (lookup->name, ".rel"))
+	  && startswith (lookup->name, ".rel"))
 	{
 	  int lookrela = lookup->name[4] == 'a';
 
@@ -1866,7 +1897,7 @@ output_rel_find (int isdyn, int rela)
 
 /* Return whether IN is suitable to be part of OUT.  */
 
-static bfd_boolean
+static bool
 elf_orphan_compatible (asection *in, asection *out)
 {
   /* Non-zero sh_info implies a section with SHF_INFO_LINK with
@@ -1877,7 +1908,7 @@ elf_orphan_compatible (asection *in, asection *out)
      shouldn't merge sections with differing unknown semantics.  */
   if (elf_section_data (out)->this_hdr.sh_info
       != elf_section_data (in)->this_hdr.sh_info)
-    return FALSE;
+    return false;
   /* We can't merge with a member of an output section group or merge
      two sections with differing SHF_EXCLUDE or other processor and OS
      specific flags when doing a relocatable link.  */
@@ -1885,7 +1916,7 @@ elf_orphan_compatible (asection *in, asection *out)
       && (elf_next_in_group (out) != NULL
 	  || ((elf_section_flags (out) ^ elf_section_flags (in))
 	      & (SHF_MASKPROC | SHF_MASKOS)) != 0))
-    return FALSE;
+    return false;
   return _bfd_elf_match_sections_by_type (link_info.output_bfd, out,
 					  in->owner, in);
 }
@@ -1968,7 +1999,7 @@ ldelf_place_orphan (asection *s, const char *secname, int constraint)
 	  default:
 	    break;
 	  }
-      else if (CONST_STRNEQ (secname, ".rel"))
+      else if (startswith (secname, ".rel"))
 	{
 	  secname = secname[4] == 'a' ? ".rela.dyn" : ".rel.dyn";
 	  isdyn = 1;
@@ -2003,7 +2034,7 @@ ldelf_place_orphan (asection *s, const char *secname, int constraint)
 	    && (elf_section_data (os->bfd_section)->this_hdr.sh_info
 		== elf_section_data (s)->this_hdr.sh_info))
 	    {
-	      lang_add_section (&os->children, s, NULL, os);
+	      lang_add_section (&os->children, s, NULL, NULL, os);
 	      return os;
 	    }
 
@@ -2046,7 +2077,7 @@ ldelf_place_orphan (asection *s, const char *secname, int constraint)
 			|| !elfoutput
 			|| elf_orphan_compatible (s, os->bfd_section)))))
 	  {
-	    lang_add_section (&os->children, s, NULL, os);
+	    lang_add_section (&os->children, s, NULL, NULL, os);
 	    return os;
 	  }
 
@@ -2060,7 +2091,7 @@ ldelf_place_orphan (asection *s, const char *secname, int constraint)
      unused one and use that.  */
   if (match_by_name)
     {
-      lang_add_section (&match_by_name->children, s, NULL, match_by_name);
+      lang_add_section (&match_by_name->children, s, NULL, NULL, match_by_name);
       return match_by_name;
     }
 
@@ -2081,11 +2112,11 @@ ldelf_place_orphan (asection *s, const char *secname, int constraint)
   /* If this is a final link, then always put .gnu.warning.SYMBOL
      sections into the .text section to get them out of the way.  */
   if (bfd_link_executable (&link_info)
-      && CONST_STRNEQ (s->name, ".gnu.warning.")
+      && startswith (s->name, ".gnu.warning.")
       && hold[orphan_text].os != NULL)
     {
       os = hold[orphan_text].os;
-      lang_add_section (&os->children, s, NULL, os);
+      lang_add_section (&os->children, s, NULL, NULL, os);
       return os;
     }
 
@@ -2121,7 +2152,7 @@ ldelf_place_orphan (asection *s, const char *secname, int constraint)
   else if ((flags & SEC_LOAD) != 0
 	   && (elfinput
 	       ? sh_type == SHT_NOTE
-	       : CONST_STRNEQ (secname, ".note")))
+	       : startswith (secname, ".note")))
     place = &hold[orphan_interp];
   else if ((flags & (SEC_LOAD | SEC_HAS_CONTENTS | SEC_THREAD_LOCAL)) == 0)
     place = &hold[orphan_bss];
@@ -2134,7 +2165,7 @@ ldelf_place_orphan (asection *s, const char *secname, int constraint)
   else if ((flags & SEC_LOAD) != 0
 	   && (elfinput
 	       ? sh_type == SHT_RELA || sh_type == SHT_REL
-	       : CONST_STRNEQ (secname, ".rel")))
+	       : startswith (secname, ".rel")))
     place = &hold[orphan_rel];
   else if ((flags & SEC_CODE) == 0)
     place = &hold[orphan_rodata];
@@ -2185,13 +2216,29 @@ ldelf_before_place_orphans (void)
 	       been discarded.  */
 	    asection *linked_to_sec;
 	    for (linked_to_sec = elf_linked_to_section (isec);
-		 linked_to_sec != NULL;
+		 linked_to_sec != NULL && !linked_to_sec->linker_mark;
 		 linked_to_sec = elf_linked_to_section (linked_to_sec))
-	      if (discarded_section (linked_to_sec))
-		{
-		  isec->output_section = bfd_abs_section_ptr;
-		  break;
-		}
+	      {
+		if (discarded_section (linked_to_sec))
+		  {
+		    isec->output_section = bfd_abs_section_ptr;
+		    isec->flags |= SEC_EXCLUDE;
+		    break;
+		  }
+		linked_to_sec->linker_mark = 1;
+	      }
+	    for (linked_to_sec = elf_linked_to_section (isec);
+		 linked_to_sec != NULL && linked_to_sec->linker_mark;
+		 linked_to_sec = elf_linked_to_section (linked_to_sec))
+	      linked_to_sec->linker_mark = 0;
 	  }
       }
+}
+
+void
+ldelf_set_output_arch (void)
+{
+  set_output_arch_default ();
+  if (link_info.output_bfd->xvec->flavour == bfd_target_elf_flavour)
+    elf_link_info (link_info.output_bfd) = &link_info;
 }

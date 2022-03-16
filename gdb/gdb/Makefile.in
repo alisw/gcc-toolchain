@@ -1,4 +1,4 @@
-# Copyright (C) 1989-2020 Free Software Foundation, Inc.
+# Copyright (C) 1989-2022 Free Software Foundation, Inc.
 
 # This file is part of GDB.
 
@@ -118,8 +118,12 @@ include $(srcdir)/silent-rules.mk
 # GNU make is used.  The overrides implement dependency tracking.
 COMPILE.pre = $(CXX) -x c++ $(CXX_DIALECT)
 COMPILE.post = -c -o $@
-COMPILE = $(ECHO_CXX) $(COMPILE.pre) $(INTERNAL_CFLAGS) $(COMPILE.post)
 POSTCOMPILE = @true
+
+# CXXFLAGS is at the very end on purpose, so that user-supplied flags can
+# override internal flags.
+COMPILE = $(ECHO_CXX) $(COMPILE.pre) $(INTERNAL_CFLAGS) $(CXXFLAGS) \
+	$(COMPILE.post)
 
 YACC = @YACC@
 
@@ -199,6 +203,9 @@ LIBXXHASH = @LIBXXHASH@
 # Where is libipt?  This will be empty if libipt was not available.
 LIBIPT = @LIBIPT@
 
+# Where is libgmp?
+LIBGMP = @LIBGMP@
+
 # Where is libmpfr?  This will be empty if libmpfr was not available.
 LIBMPFR = @LIBMPFR@
 
@@ -238,9 +245,8 @@ CODESIGN_CERT = @CODESIGN_CERT@
 GDBFLAGS =
 
 # Helper code from gnulib.
-GNULIB_BUILDDIR = ../gnulib
-LIBGNU = $(GNULIB_BUILDDIR)/import/libgnu.a
-INCGNU = -I$(srcdir)/../gnulib/import -I$(GNULIB_BUILDDIR)/import
+GNULIB_PARENT_DIR = ..
+include $(GNULIB_PARENT_DIR)/gnulib/Makefile.gnulib.inc
 
 SUPPORT = ../gdbsupport
 LIBSUPPORT = $(SUPPORT)/libgdbsupport.a
@@ -304,6 +310,7 @@ SUBDIR_TUI_SRCS = \
 	tui/tui-interp.c \
 	tui/tui-io.c \
 	tui/tui-layout.c \
+	tui/tui-location.c \
 	tui/tui-out.c \
 	tui/tui-regs.c \
 	tui/tui-source.c \
@@ -435,10 +442,13 @@ SELFTESTS_SRCS = \
 	unittests/command-def-selftests.c \
 	unittests/common-utils-selftests.c \
 	unittests/copy_bitwise-selftests.c \
+	unittests/enum-flags-selftests.c \
 	unittests/environ-selftests.c \
 	unittests/filtered_iterator-selftests.c \
 	unittests/format_pieces-selftests.c \
 	unittests/function-view-selftests.c \
+	unittests/gdb_tilde_expand-selftests.c \
+	unittests/gmp-utils-selftests.c \
 	unittests/lookup_name_info-selftests.c \
 	unittests/memory-map-selftests.c \
 	unittests/memrange-selftests.c \
@@ -451,8 +461,10 @@ SELFTESTS_SRCS = \
 	unittests/mkdir-recursive-selftests.c \
 	unittests/rsp-low-selftests.c \
 	unittests/scoped_fd-selftests.c \
+	unittests/scoped_ignore_signal-selftests.c \
 	unittests/scoped_mmap-selftests.c \
 	unittests/scoped_restore-selftests.c \
+	unittests/search-memory-selftests.c \
 	unittests/string_view-selftests.c \
 	unittests/style-selftests.c \
 	unittests/tracepoint-selftests.c \
@@ -597,7 +609,7 @@ INTERNAL_CPPFLAGS = $(CPPFLAGS) @GUILE_CPPFLAGS@ @PYTHON_CPPFLAGS@ \
 
 # INTERNAL_CFLAGS is the aggregate of all other *CFLAGS macros.
 INTERNAL_CFLAGS_BASE = \
-	$(CXXFLAGS) $(GLOBAL_CFLAGS) $(PROFILE_CFLAGS) \
+	$(GLOBAL_CFLAGS) $(PROFILE_CFLAGS) \
 	$(GDB_CFLAGS) $(OPCODES_CFLAGS) $(READLINE_CFLAGS) $(ZLIBINC) \
 	$(BFD_CFLAGS) $(INCLUDE_CFLAGS) $(LIBDECNUMBER_CFLAGS) \
 	$(INTL_CFLAGS) $(INCGNU) $(INCSUPPORT) $(ENABLE_CFLAGS) \
@@ -626,8 +638,8 @@ CLIBS = $(SIM) $(READLINE) $(OPCODES) $(LIBCTF) $(BFD) $(ZLIB) \
 	$(XM_CLIBS) $(GDBTKLIBS) \
 	@LIBS@ @GUILE_LIBS@ @PYTHON_LIBS@ \
 	$(LIBEXPAT) $(LIBLZMA) $(LIBBABELTRACE) $(LIBIPT) \
-	$(WIN32LIBS) $(LIBGNU) $(LIBICONV) \
-	$(LIBMPFR) $(SRCHIGH_LIBS) $(LIBXXHASH) $(PTHREAD_LIBS) \
+	$(WIN32LIBS) $(LIBGNU) $(LIBGNU_EXTRA_LIBS) $(LIBICONV) \
+	$(LIBMPFR) $(LIBGMP) $(SRCHIGH_LIBS) $(LIBXXHASH) $(PTHREAD_LIBS) \
 	$(DEBUGINFOD_LIBS)
 CDEPS = $(NAT_CDEPS) $(SIM) $(BFD) $(READLINE_DEPS) $(CTF_DEPS) \
 	$(OPCODES) $(INTL_DEPS) $(LIBIBERTY) $(CONFIG_DEPS) $(LIBGNU) \
@@ -673,20 +685,22 @@ ALL_64_TARGET_OBS = \
 	alpha-bsd-tdep.o \
 	alpha-linux-tdep.o \
 	alpha-mdebug-tdep.o \
-	alpha-nbsd-tdep.o \
+	alpha-netbsd-tdep.o \
 	alpha-obsd-tdep.o \
 	alpha-tdep.o \
 	amd64-darwin-tdep.o \
 	amd64-dicos-tdep.o \
 	amd64-fbsd-tdep.o \
 	amd64-linux-tdep.o \
-	amd64-nbsd-tdep.o \
+	amd64-netbsd-tdep.o \
 	amd64-obsd-tdep.o \
+	amd64-ravenscar-thread.o \
 	amd64-sol2-tdep.o \
 	amd64-tdep.o \
 	amd64-windows-tdep.o \
 	arch/aarch64.o \
 	arch/aarch64-insn.o \
+	arch/aarch64-mte-linux.o \
 	arch/amd64.o \
 	ia64-linux-tdep.o \
 	ia64-tdep.o \
@@ -694,7 +708,7 @@ ALL_64_TARGET_OBS = \
 	mips64-obsd-tdep.o \
 	sparc64-fbsd-tdep.o \
 	sparc64-linux-tdep.o \
-	sparc64-nbsd-tdep.o \
+	sparc64-netbsd-tdep.o \
 	sparc64-obsd-tdep.o \
 	sparc64-sol2-tdep.o \
 	sparc64-tdep.o
@@ -715,10 +729,10 @@ ALL_TARGET_OBS = \
 	arm-bsd-tdep.o \
 	arm-fbsd-tdep.o \
 	arm-linux-tdep.o \
-	arm-nbsd-tdep.o \
+	arm-netbsd-tdep.o \
+	arm-none-tdep.o \
 	arm-obsd-tdep.o \
 	arm-pikeos-tdep.o \
-	arm-symbian-tdep.o \
 	arm-tdep.o \
 	arm-wince-tdep.o \
 	avr-tdep.o \
@@ -739,7 +753,7 @@ ALL_TARGET_OBS = \
 	h8300-tdep.o \
 	hppa-bsd-tdep.o \
 	hppa-linux-tdep.o \
-	hppa-nbsd-tdep.o \
+	hppa-netbsd-tdep.o \
 	hppa-obsd-tdep.o \
 	hppa-tdep.o \
 	i386-bsd-tdep.o \
@@ -749,7 +763,7 @@ ALL_TARGET_OBS = \
 	i386-gnu-tdep.o \
 	i386-go32-tdep.o \
 	i386-linux-tdep.o \
-	i386-nbsd-tdep.o \
+	i386-netbsd-tdep.o \
 	i386-nto-tdep.o \
 	i386-obsd-tdep.o \
 	i386-sol2-tdep.o \
@@ -772,14 +786,14 @@ ALL_TARGET_OBS = \
 	microblaze-tdep.o \
 	mips-fbsd-tdep.o \
 	mips-linux-tdep.o \
-	mips-nbsd-tdep.o \
+	mips-netbsd-tdep.o \
 	mips-sde-tdep.o \
 	mips-tdep.o \
 	mn10300-linux-tdep.o \
 	mn10300-tdep.o \
 	moxie-tdep.o \
 	msp430-tdep.o \
-	nbsd-tdep.o \
+	netbsd-tdep.o \
 	nds32-tdep.o \
 	nios2-linux-tdep.o \
 	nios2-tdep.o \
@@ -789,7 +803,7 @@ ALL_TARGET_OBS = \
 	or1k-tdep.o \
 	ppc-fbsd-tdep.o \
 	ppc-linux-tdep.o \
-	ppc-nbsd-tdep.o \
+	ppc-netbsd-tdep.o \
 	ppc-obsd-tdep.o \
 	ppc-ravenscar-thread.o \
 	ppc-sysv-tdep.o \
@@ -797,6 +811,7 @@ ALL_TARGET_OBS = \
 	ravenscar-thread.o \
 	riscv-fbsd-tdep.o \
 	riscv-linux-tdep.o \
+	riscv-none-tdep.o \
 	riscv-ravenscar-thread.o \
 	riscv-tdep.o \
 	rl78-tdep.o \
@@ -809,7 +824,7 @@ ALL_TARGET_OBS = \
 	s390-tdep.o \
 	score-tdep.o \
 	sh-linux-tdep.o \
-	sh-nbsd-tdep.o \
+	sh-netbsd-tdep.o \
 	sh-tdep.o \
 	sol2-tdep.o \
 	solib-aix.o \
@@ -818,7 +833,7 @@ ALL_TARGET_OBS = \
 	solib-frv.o \
 	solib-svr4.o \
 	sparc-linux-tdep.o \
-	sparc-nbsd-tdep.o \
+	sparc-netbsd-tdep.o \
 	sparc-obsd-tdep.o \
 	sparc-ravenscar-thread.o \
 	sparc-sol2-tdep.o \
@@ -829,7 +844,7 @@ ALL_TARGET_OBS = \
 	tilegx-linux-tdep.o \
 	tilegx-tdep.o \
 	v850-tdep.o \
-	vax-nbsd-tdep.o \
+	vax-netbsd-tdep.o \
 	vax-tdep.o \
 	windows-tdep.o \
 	x86-tdep.o \
@@ -837,7 +852,8 @@ ALL_TARGET_OBS = \
 	xstormy16-tdep.o \
 	xtensa-config.o \
 	xtensa-linux-tdep.o \
-	xtensa-tdep.o
+	xtensa-tdep.o \
+	z80-tdep.o
 
 # The following native-target dependent variables are defined on
 # configure.nat.
@@ -991,7 +1007,6 @@ COMMON_SFILES = \
 	coffread.c \
 	complaints.c \
 	completer.c \
-	continuations.c \
 	copying.c \
 	corefile.c \
 	corelow.c \
@@ -1009,10 +1024,12 @@ COMMON_SFILES = \
 	debuginfod-support.c \
 	dictionary.c \
 	disasm.c \
+	displaced-stepping.c \
 	dummy-frame.c \
 	dwarf2/abbrev.c \
 	dwarf2/attribute.c \
-	dwarf2/comp-unit.c \
+	dwarf2/comp-unit-head.c \
+	dwarf2/cu.c \
 	dwarf2/dwz.c \
 	dwarf2/expr.c \
 	dwarf2/frame-tailcall.c \
@@ -1050,6 +1067,7 @@ COMMON_SFILES = \
 	gdb_regex.c \
 	gdbarch.c \
 	gdbtypes.c \
+	gmp-utils.c \
 	gnu-v2-abi.c \
 	gnu-v3-abi.c \
 	go-lang.c \
@@ -1119,6 +1137,7 @@ COMMON_SFILES = \
 	reverse.c \
 	run-on-main-thread.c \
 	rust-lang.c \
+	rust-parse.c \
 	sentinel-frame.c \
 	ser-event.c \
 	serial.c \
@@ -1176,14 +1195,15 @@ SFILES = \
 	cp-name-parser.y \
 	d-exp.y \
 	dtrace-probe.c \
+	elf-none-tdep.c \
 	elfread.c \
 	f-exp.y \
+	gcore-elf.c \
 	gdb.c \
 	go-exp.y \
 	m2-exp.y \
 	p-exp.y \
 	proc-service.list \
-	rust-exp.y \
 	ser-base.c \
 	ser-unix.c \
 	sol-thread.c \
@@ -1214,12 +1234,13 @@ HFILES_NO_SRCDIR = \
 	amd64-darwin-tdep.h \
 	amd64-linux-tdep.h \
 	amd64-nat.h \
+	amd64-ravenscar-thread.h \
 	amd64-tdep.h \
 	annotate.h \
 	arc-tdep.h \
 	arch-utils.h \
 	arm-linux-tdep.h \
-	arm-nbsd-tdep.h \
+	arm-netbsd-tdep.h \
 	arm-tdep.h \
 	async-event.h \
 	auto-load.h \
@@ -1255,6 +1276,7 @@ HFILES_NO_SRCDIR = \
 	dictionary.h \
 	disasm.h \
 	dummy-frame.h \
+	dwarf2/cu.h \
 	dwarf2/frame-tailcall.h \
 	dwarf2/frame.h \
 	dwarf2/expr.h \
@@ -1268,6 +1290,7 @@ HFILES_NO_SRCDIR = \
 	expression.h \
 	extension.h \
 	extension-priv.h \
+	f-array-walker.h \
 	f-lang.h \
 	fbsd-nat.h \
 	fbsd-tdep.h \
@@ -1277,6 +1300,7 @@ HFILES_NO_SRCDIR = \
 	frame-unwind.h \
 	frv-tdep.h \
 	ft32-tdep.h \
+	gcore-elf.h \
 	gcore.h \
 	gdb_bfd.h \
 	gdb_curses.h \
@@ -1294,6 +1318,7 @@ HFILES_NO_SRCDIR = \
 	gdbthread.h \
 	gdbtypes.h \
 	glibc-tdep.h \
+	gmp-utils.h \
 	gnu-nat.h \
 	go-lang.h \
 	gregset.h \
@@ -1313,7 +1338,6 @@ HFILES_NO_SRCDIR = \
 	inf-ptrace.h \
 	infcall.h \
 	inferior.h \
-	inflow.h \
 	inline-frame.h \
 	interps.h \
 	jit.h \
@@ -1337,14 +1361,15 @@ HFILES_NO_SRCDIR = \
 	memrange.h \
 	microblaze-tdep.h \
 	mips-linux-tdep.h \
-	mips-nbsd-tdep.h \
+	mips-netbsd-tdep.h \
 	mips-tdep.h \
 	mn10300-tdep.h \
 	moxie-tdep.h \
-	nbsd-nat.h \
-	nbsd-tdep.h \
+	netbsd-nat.h \
+	netbsd-tdep.h \
 	nds32-tdep.h \
 	nios2-tdep.h \
+	elf-none-tdep.h \
 	nto-tdep.h \
 	objc-lang.h \
 	objfiles.h \
@@ -1356,7 +1381,7 @@ HFILES_NO_SRCDIR = \
 	parser-defs.h \
 	ppc-fbsd-tdep.h \
 	ppc-linux-tdep.h \
-	ppc-nbsd-tdep.h \
+	ppc-netbsd-tdep.h \
 	ppc-obsd-tdep.h \
 	ppc-ravenscar-thread.h \
 	ppc-tdep.h \
@@ -1453,6 +1478,7 @@ HFILES_NO_SRCDIR = \
 	arch/aarch32.h \
 	arch/aarch64.h \
 	arch/aarch64-insn.h \
+	arch/aarch64-mte-linux.h \
 	arch/arc.h \
 	arch/arm.h \
 	arch/i386.h \
@@ -1488,6 +1514,7 @@ HFILES_NO_SRCDIR = \
 	mi/mi-parse.h \
 	nat/aarch64-linux.h \
 	nat/aarch64-linux-hw-point.h \
+	nat/aarch64-mte-linux-ptrace.h \
 	nat/aarch64-sve-linux-ptrace.h \
 	nat/amd64-linux-siginfo.h \
 	nat/gdb_ptrace.h \
@@ -1525,11 +1552,12 @@ HFILES_NO_SRCDIR = \
 	tui/tui-hooks.h \
 	tui/tui-io.h \
 	tui/tui-layout.h \
+	tui/tui-location.h \
+	tui/tui-out.h \
 	tui/tui-regs.h \
 	tui/tui-source.h \
 	tui/tui-stack.h \
 	tui/tui-win.h \
-	tui/tui-windata.h \
 	tui/tui-wingeneral.h \
 	tui/tui-winsource.h \
 	x86-tdep.h
@@ -1583,8 +1611,7 @@ YYFILES = \
 	f-exp.c \
 	go-exp.c \
 	m2-exp.c \
-	p-exp.c \
-	rust-exp.c
+	p-exp.c
 
 # ada-lex.c is included by another file, so it shouldn't wind up as a
 # .o itself.
@@ -1607,7 +1634,7 @@ generated_files = \
 PYTHON_CFLAGS = @PYTHON_CFLAGS@
 
 all: gdb$(EXEEXT) $(CONFIG_ALL) gdb-gdb.py gdb-gdb.gdb
-	@$(MAKE) $(FLAGS_TO_PASS) DO=all "DODIRS=`echo $(SUBDIRS) | sed 's/testsuite//'`" subdir_do
+	@$(MAKE) $(FLAGS_TO_PASS) DO=all "DODIRS=$(SUBDIRS)" subdir_do
 
 # Rule for compiling .c files in the top-level gdb directory.
 # The order-only dependencies ensure that we create the build subdirectories.
@@ -1711,7 +1738,7 @@ check-headers:
 	@echo Checking headers.
 	for i in $(CHECK_HEADERS) ; do \
 		$(CXX) $(CXX_DIALECT) -x c++-header -c -fsyntax-only \
-		$(INTERNAL_CFLAGS) -include defs.h $(srcdir)/$$i ; \
+		$(INTERNAL_CFLAGS) $(CXXFLAGS) -include defs.h $(srcdir)/$$i ; \
 	done
 .PHONY: check-headers
 
@@ -1812,42 +1839,31 @@ test-cp-name-parser$(EXEEXT): test-cp-name-parser.o $(LIBIBERTY)
 # maybe we could just require every .o file to have an initialization routine
 # of a given name (top.o -> _initialize_top, etc.).
 #
-# Formatting conventions:  The name of the _initialize_* routines must start
-# in column zero, and must not be inside #if.
-#
 # Note that the set of files with init functions might change, or the names
 # of the functions might change, so this files needs to depend on all the
 # source files that will be linked into gdb.  However, due to the way
 # this Makefile has generally been written, we do this indirectly, by
 # computing the list of source files from the list of object files.
 
+INIT_FILES_FILTER_OUT = \
+	cp-name-parser.o \
+	init.o \
+	version.o \
+	xml-builtin.o \
+	%_S.o \
+	%_U.o
+
 INIT_FILES = \
 	$(patsubst %.o,%.c, \
 	  $(patsubst %-exp.o,%-exp.y, \
-	    $(filter-out init.o version.o %_S.o %_U.o,\
-	      $(COMMON_OBS))))
+	    $(filter-out $(INIT_FILES_FILTER_OUT), $(COMMON_OBS))))
 
 init.c: stamp-init; @true
-stamp-init: $(INIT_FILES)
-	@$(ECHO_INIT_C) echo "Making init.c"
-	@rm -f init.c-tmp init.l-tmp
-	@touch init.c-tmp
-	@-for f in $(INIT_FILES); do \
-	    sed -n -e 's/^_initialize_\([a-z_0-9A-Z]*\).*/\1/p' \
-	        $(srcdir)/$$f 2>/dev/null; \
-	done > init.l-tmp
-	@echo '/* Do not modify this file.  */' >>init.c-tmp
-	@echo '/* It is created automatically by the Makefile.  */'>>init.c-tmp
-	@echo '#include "defs.h"      /* For initialize_file_ftype.  */' >>init.c-tmp
-	@echo 'extern void initialize_all_files(void);' >>init.c-tmp
-	@sed -e 's/\(.*\)/extern initialize_file_ftype _initialize_\1;/' <init.l-tmp >>init.c-tmp
-	@echo 'void' >>init.c-tmp
-	@echo 'initialize_all_files (void)' >>init.c-tmp
-	@echo '{' >>init.c-tmp
-	@sed -e 's/\(.*\)/  _initialize_\1 ();/' <init.l-tmp >>init.c-tmp
-	@echo '}' >>init.c-tmp
-	@$(SHELL) $(srcdir)/../move-if-change init.c-tmp init.c
-	@echo stamp > stamp-init
+stamp-init: $(INIT_FILES) config.status $(srcdir)/make-init-c
+	$(ECHO_INIT_C)
+	$(SILENCE) $(srcdir)/make-init-c $(addprefix $(srcdir)/,$(INIT_FILES)) > init.c-tmp
+	$(SILENCE) $(SHELL) $(srcdir)/../move-if-change init.c-tmp init.c
+	$(SILENCE) echo stamp > stamp-init
 
 .PRECIOUS: init.c
 
@@ -1870,11 +1886,6 @@ gdb$(EXEEXT): gdb.o $(LIBGDB_OBS) $(CDEPS) $(TDEPLIBS)
 ifneq ($(CODESIGN_CERT),)
 	$(ECHO_SIGN) $(CODESIGN) -s $(CODESIGN_CERT) gdb$(EXEEXT)
 endif
-
-# Convenience rule to handle recursion.
-.PHONY: all-data-directory
-all-data-directory: data-directory/Makefile
-	@$(MAKE) $(FLAGS_TO_PASS) DO=all DODIRS=data-directory subdir_do
 
 # This is useful when debugging GDB, because some Unix's don't let you run GDB
 # on itself without copying the executable.  So "make gdb1" will make
@@ -1944,7 +1955,7 @@ local-maintainer-clean:
 	rm -f c-exp.c \
 		cp-name-parser.c \
 		ada-lex.c ada-exp.c \
-		d-exp.c f-exp.c go-exp.c m2-exp.c p-exp.c rust-exp.c
+		d-exp.c f-exp.c go-exp.c m2-exp.c p-exp.c
 	rm -f TAGS
 	rm -f $(YYFILES)
 	rm -f nm.h config.status
@@ -1973,9 +1984,6 @@ subdir_do: force
 	done
 
 Makefile: Makefile.in config.status
-	$(SHELL) config.status $@
-
-data-directory/Makefile: data-directory/Makefile.in config.status
 	$(SHELL) config.status $@
 
 .PHONY: run
@@ -2119,7 +2127,7 @@ ALLDEPFILES = \
 	alpha-linux-nat.c \
 	alpha-linux-tdep.c \
 	alpha-mdebug-tdep.c \
-	alpha-nbsd-tdep.c \
+	alpha-netbsd-tdep.c \
 	alpha-obsd-tdep.c \
 	alpha-tdep.c \
 	amd64-bsd-nat.c \
@@ -2130,12 +2138,14 @@ ALLDEPFILES = \
 	amd64-linux-nat.c \
 	amd64-linux-tdep.c \
 	amd64-nat.c \
-	amd64-nbsd-nat.c \
-	amd64-nbsd-tdep.c \
+	amd64-netbsd-nat.c \
+	amd64-netbsd-tdep.c \
 	amd64-obsd-nat.c \
 	amd64-obsd-tdep.c \
+	amd64-ravenscar-thread.c \
 	amd64-sol2-tdep.c \
 	amd64-tdep.c \
+	arc-linux-nat.c \
 	arc-tdep.c \
 	arm.c \
 	arm-bsd-tdep.c \
@@ -2145,10 +2155,10 @@ ALLDEPFILES = \
 	arm-linux.c \
 	arm-linux-nat.c \
 	arm-linux-tdep.c \
-	arm-nbsd-nat.c \
-	arm-nbsd-tdep.c \
+	arm-netbsd-nat.c \
+	arm-netbsd-tdep.c \
+	arm-none-tdep.c \
 	arm-obsd-tdep.c \
-	arm-symbian-tdep.c \
 	arm-tdep.c \
 	avr-tdep.c \
 	bfin-linux-tdep.c \
@@ -2170,8 +2180,8 @@ ALLDEPFILES = \
 	hppa-bsd-tdep.c \
 	hppa-linux-nat.c \
 	hppa-linux-tdep.c \
-	hppa-nbsd-nat.c \
-	hppa-nbsd-tdep.c \
+	hppa-netbsd-nat.c \
+	hppa-netbsd-tdep.c \
 	hppa-obsd-nat.c \
 	hppa-obsd-tdep.c \
 	hppa-tdep.c \
@@ -2186,8 +2196,8 @@ ALLDEPFILES = \
 	i386-gnu-tdep.c \
 	i386-linux-nat.c \
 	i386-linux-tdep.c \
-	i386-nbsd-nat.c \
-	i386-nbsd-tdep.c \
+	i386-netbsd-nat.c \
+	i386-netbsd-tdep.c \
 	i386-obsd-nat.c \
 	i386-obsd-tdep.c \
 	i386-sol2-nat.c \
@@ -2221,15 +2231,15 @@ ALLDEPFILES = \
 	mips-fbsd-tdep.c \
 	mips-linux-nat.c \
 	mips-linux-tdep.c \
-	mips-nbsd-nat.c \
-	mips-nbsd-tdep.c \
+	mips-netbsd-nat.c \
+	mips-netbsd-tdep.c \
 	mips-sde-tdep.c \
 	mips-tdep.c \
 	mips64-obsd-nat.c \
 	mips64-obsd-tdep.c \
 	msp430-tdep.c \
-	nbsd-nat.c \
-	nbsd-tdep.c \
+	netbsd-nat.c \
+	netbsd-tdep.c \
 	nds32-tdep.c \
 	nios2-linux-tdep.c \
 	nios2-tdep.c \
@@ -2240,8 +2250,8 @@ ALLDEPFILES = \
 	ppc-fbsd-tdep.c \
 	ppc-linux-nat.c \
 	ppc-linux-tdep.c \
-	ppc-nbsd-nat.c \
-	ppc-nbsd-tdep.c \
+	ppc-netbsd-nat.c \
+	ppc-netbsd-tdep.c \
 	ppc-obsd-nat.c \
 	ppc-obsd-tdep.c \
 	ppc-ravenscar-thread.c \
@@ -2254,6 +2264,7 @@ ALLDEPFILES = \
 	riscv-fbsd-tdep.c \
 	riscv-linux-nat.c \
 	riscv-linux-tdep.c \
+	riscv-none-tdep.c \
 	riscv-ravenscar-thread.c \
 	riscv-tdep.c \
 	rl78-tdep.c \
@@ -2270,8 +2281,8 @@ ALLDEPFILES = \
 	ser-pipe.c \
 	ser-tcp.c \
 	ser-uds.c \
-	sh-nbsd-nat.c \
-	sh-nbsd-tdep.c \
+	sh-netbsd-nat.c \
+	sh-netbsd-tdep.c \
 	sh-tdep.c \
 	sol2-tdep.c \
 	solib-aix.c \
@@ -2279,8 +2290,8 @@ ALLDEPFILES = \
 	sparc-linux-nat.c \
 	sparc-linux-tdep.c \
 	sparc-nat.c \
-	sparc-nbsd-nat.c \
-	sparc-nbsd-tdep.c \
+	sparc-netbsd-nat.c \
+	sparc-netbsd-tdep.c \
 	sparc-obsd-tdep.c \
 	sparc-ravenscar-thread.c \
 	sparc-sol2-nat.c \
@@ -2291,8 +2302,8 @@ ALLDEPFILES = \
 	sparc64-linux-nat.c \
 	sparc64-linux-tdep.c \
 	sparc64-nat.c \
-	sparc64-nbsd-nat.c \
-	sparc64-nbsd-tdep.c \
+	sparc64-netbsd-nat.c \
+	sparc64-netbsd-tdep.c \
 	sparc64-obsd-nat.c \
 	sparc64-obsd-tdep.c \
 	sparc64-sol2-tdep.c \
@@ -2302,7 +2313,7 @@ ALLDEPFILES = \
 	tilegx-tdep.c \
 	v850-tdep.c \
 	vax-bsd-nat.c \
-	vax-nbsd-tdep.c \
+	vax-netbsd-tdep.c \
 	vax-tdep.c \
 	windows-nat.c \
 	windows-tdep.c \

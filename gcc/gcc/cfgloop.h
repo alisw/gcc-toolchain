@@ -1,5 +1,5 @@
 /* Natural loop functions
-   Copyright (C) 1987-2020 Free Software Foundation, Inc.
+   Copyright (C) 1987-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -60,9 +60,9 @@ public:
      b) it is consistent with the result of number_of_iterations_exit.  */
   widest_int bound;
 
-  /* True if the statement will cause the loop to be leaved the (at most)
-     BOUND + 1-st time it is executed, that is, all the statements after it
-     are executed at most BOUND times.  */
+  /* True if, after executing the statement BOUND + 1 times, we will
+     leave the loop; that is, all the statements after it are executed at most
+     BOUND times.  */
   bool is_exit;
 
   /* The next bound in the list.  */
@@ -383,7 +383,7 @@ extern basic_block *get_loop_body_in_custom_order (const class loop *,
 extern basic_block *get_loop_body_in_custom_order (const class loop *, void *,
 			       int (*) (const void *, const void *, void *));
 
-extern vec<edge> get_loop_exit_edges (const class loop *, basic_block * = NULL);
+extern auto_vec<edge> get_loop_exit_edges (const class loop *, basic_block * = NULL);
 extern edge single_exit (const class loop *);
 extern edge single_likely_exit (class loop *loop, vec<edge>);
 extern unsigned num_loop_branches (const class loop *);
@@ -824,7 +824,7 @@ extern void init_set_costs (void);
 
 /* Loop optimizer initialization.  */
 extern void loop_optimizer_init (unsigned);
-extern void loop_optimizer_finalize (function *);
+extern void loop_optimizer_finalize (function *, bool = false);
 inline void
 loop_optimizer_finalize ()
 {

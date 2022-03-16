@@ -1,5 +1,5 @@
 /* tc-arc.h - Macros and type defines for the ARC.
-   Copyright (C) 2014-2020 Free Software Foundation, Inc.
+   Copyright (C) 2014-2022 Free Software Foundation, Inc.
 
    Contributed by Claudiu Zissulescu (claziss@synopsys.com)
 
@@ -202,7 +202,7 @@ extern int arc_convert_symbolic_attribute (const char *);
 extern void arc_md_end (void);
 extern void arc_adjust_symtab (void);
 extern int arc_pcrel_adjust (fragS *);
-extern bfd_boolean arc_parse_name (const char *, struct expressionS *);
+extern bool arc_parse_name (const char *, struct expressionS *);
 extern int tc_arc_fix_adjustable (struct fix *);
 extern void arc_handle_align (fragS *);
 extern void arc_cons_fix_new (fragS *, int, int, expressionS *,

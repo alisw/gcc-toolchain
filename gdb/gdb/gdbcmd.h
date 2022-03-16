@@ -6,7 +6,7 @@
    fnasser@redhat.com    */
 
 /* Header file for GDB-specific command-line stuff.
-   Copyright (C) 1986-2020 Free Software Foundation, Inc.
+   Copyright (C) 1986-2022 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -134,9 +134,12 @@ extern struct cmd_list_element *save_cmdlist;
 
 extern void execute_command (const char *, int);
 
-/* Execute command P and returns its output.  If TERM_OUT,
-   the output is built using terminal output behaviour such
-   as cli_styling.  */
+/* Run execute_command for P and FROM_TTY.  Capture its output into the
+   returned string, do not display it to the screen.  The global BATCH_FLAG
+   will temporarily be set to true.  When TERM_OUT is true the output is
+   collected with terminal behaviour (e.g. with styling).  When TERM_OUT is
+   false raw output will be collected (e.g. no styling).  */
+
 extern std::string execute_command_to_string (const char *p, int from_tty,
 					      bool term_out);
 extern void execute_command_to_ui_file (struct ui_file *file,

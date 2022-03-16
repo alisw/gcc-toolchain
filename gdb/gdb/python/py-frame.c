@@ -1,6 +1,6 @@
 /* Python interface to stack frames
 
-   Copyright (C) 2008-2020 Free Software Foundation, Inc.
+   Copyright (C) 2008-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -28,7 +28,7 @@
 #include "symfile.h"
 #include "objfiles.h"
 
-typedef struct {
+struct frame_object {
   PyObject_HEAD
   struct frame_id frame_id;
   struct gdbarch *gdbarch;
@@ -42,7 +42,7 @@ typedef struct {
      ID as the  previous frame).  Whenever get_prev_frame returns NULL, we
      record the frame_id of the next frame and set FRAME_ID_IS_NEXT to 1.  */
   int frame_id_is_next;
-} frame_object;
+};
 
 /* Require a valid frame.  This must be called inside a TRY_CATCH, or
    another context in which a gdb exception is allowed.  */
@@ -79,10 +79,8 @@ frame_object_to_frame_info (PyObject *obj)
 static PyObject *
 frapy_str (PyObject *self)
 {
-  string_file strfile;
-
-  fprint_frame_id (&strfile, ((frame_object *) self)->frame_id);
-  return PyString_FromString (strfile.c_str ());
+  const frame_id &fid = ((frame_object *) self)->frame_id;
+  return PyString_FromString (fid.to_string ().c_str ());
 }
 
 /* Implementation of gdb.Frame.is_valid (self) -> Boolean.
@@ -165,7 +163,7 @@ frapy_type (PyObject *self, PyObject *args)
       GDB_PY_HANDLE_EXCEPTION (except);
     }
 
-  return PyInt_FromLong (type);
+  return gdb_py_object_from_longest (type).release ();
 }
 
 /* Implementation of gdb.Frame.architecture (self) -> gdb.Architecture.
@@ -209,7 +207,7 @@ frapy_unwind_stop_reason (PyObject *self, PyObject *args)
 
   stop_reason = get_frame_unwind_stop_reason (frame);
 
-  return PyInt_FromLong (stop_reason);
+  return gdb_py_object_from_longest (stop_reason).release ();
 }
 
 /* Implementation of gdb.Frame.pc (self) -> Long.
@@ -232,7 +230,7 @@ frapy_pc (PyObject *self, PyObject *args)
       GDB_PY_HANDLE_EXCEPTION (except);
     }
 
-  return gdb_py_long_from_ulongest (pc);
+  return gdb_py_object_from_ulongest (pc).release ();
 }
 
 /* Implementation of gdb.Frame.read_register (self, register) -> gdb.Value.
@@ -264,7 +262,7 @@ frapy_read_register (PyObject *self, PyObject *args)
       val = value_of_register (regnum, frame);
 
       if (val == NULL)
-        PyErr_SetString (PyExc_ValueError, _("Can't read register."));
+	PyErr_SetString (PyExc_ValueError, _("Can't read register."));
     }
   catch (const gdb_exception &except)
     {
@@ -579,6 +577,27 @@ frapy_select (PyObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
+/* The stack frame level for this frame.  */
+
+static PyObject *
+frapy_level (PyObject *self, PyObject *args)
+{
+  struct frame_info *fi;
+
+  try
+    {
+      FRAPY_REQUIRE_VALID (self, fi);
+
+      return gdb_py_object_from_longest (frame_relative_level (fi)).release ();
+    }
+  catch (const gdb_exception &except)
+    {
+      GDB_PY_HANDLE_EXCEPTION (except);
+    }
+
+  Py_RETURN_NONE;
+}
+
 /* Implementation of gdb.newest_frame () -> gdb.Frame.
    Returns the newest frame object.  */
 
@@ -658,8 +677,11 @@ frapy_richcompare (PyObject *self, PyObject *other, int op)
       return Py_NotImplemented;
     }
 
-  if (frame_id_eq (((frame_object *) self)->frame_id,
-		   ((frame_object *) other)->frame_id))
+  frame_object *self_frame = (frame_object *) self;
+  frame_object *other_frame = (frame_object *) other;
+
+  if (self_frame->frame_id_is_next == other_frame->frame_id_is_next
+      && frame_id_eq (self_frame->frame_id, other_frame->frame_id))
     result = Py_EQ;
   else
     result = Py_NE;
@@ -747,6 +769,8 @@ Return the frame's symtab and line." },
 Return the value of the variable in this frame." },
   { "select", frapy_select, METH_NOARGS,
     "Select this frame as the user's current frame." },
+  { "level", frapy_level, METH_NOARGS,
+    "The stack level of this frame." },
   {NULL}  /* Sentinel */
 };
 

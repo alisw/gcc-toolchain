@@ -1,10 +1,17 @@
-2020-07-23  Release Manager
+2021-07-28  Release Manager
 
-	* GCC 10.2.0 released.
+	* GCC 11.2.0 released.
 
-2020-05-07  Release Manager
+2021-04-27  Release Manager
 
-	* GCC 10.1.0 released.
+	* GCC 11.1.0 released.
+
+2021-04-16  Jakub Jelinek  <jakub@redhat.com>
+
+	PR jit/100096
+	* configure.ac: Add --enable-host-shared support.
+	* Makefile.in: Update copyright.  Add @PICFLAG@ to CFLAGS.
+	* configure: Regenerated.
 
 2020-04-16  Jakub Jelinek  <jakub@redhat.com>
 

@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (C) 2013-2019 by The D Language Foundation, All Rights Reserved
+ * Copyright (C) 2013-2021 by The D Language Foundation, All Rights Reserved
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
@@ -46,7 +46,7 @@ class SynchronizedStatement;
 class WithStatement;
 class TryCatchStatement;
 class TryFinallyStatement;
-class OnScopeStatement;
+class ScopeGuardStatement;
 class ThrowStatement;
 class DebugStatement;
 class GotoStatement;
@@ -81,7 +81,9 @@ class TypeClass;
 class TypeTuple;
 class TypeSlice;
 class TypeNull;
+class TypeNoreturn;
 class TypeTraits;
+class TypeMixin;
 
 class Dsymbol;
 
@@ -269,8 +271,7 @@ class UshrExp;
 class AndExp;
 class OrExp;
 class XorExp;
-class OrOrExp;
-class AndAndExp;
+class LogicalExp;
 class CmpExp;
 class InExp;
 class RemoveExp;
@@ -340,7 +341,7 @@ public:
     virtual void visit(WithStatement *s) { visit((Statement *)s); }
     virtual void visit(TryCatchStatement *s) { visit((Statement *)s); }
     virtual void visit(TryFinallyStatement *s) { visit((Statement *)s); }
-    virtual void visit(OnScopeStatement *s) { visit((Statement *)s); }
+    virtual void visit(ScopeGuardStatement *s) { visit((Statement *)s); }
     virtual void visit(ThrowStatement *s) { visit((Statement *)s); }
     virtual void visit(DebugStatement *s) { visit((Statement *)s); }
     virtual void visit(GotoStatement *s) { visit((Statement *)s); }
@@ -375,7 +376,9 @@ public:
     virtual void visit(TypeTuple *t) { visit((Type *)t); }
     virtual void visit(TypeSlice *t) { visit((TypeNext *)t); }
     virtual void visit(TypeNull *t) { visit((Type *)t); }
+    virtual void visit(TypeNoreturn *t) { visit((Type *)t); }
     virtual void visit(TypeTraits *t) { visit((Type *)t); }
+    virtual void visit(TypeMixin *t) { visit((Type *)t); }
 
     virtual void visit(Dsymbol *) { assert(0); }
 
@@ -563,8 +566,7 @@ public:
     virtual void visit(AndExp *e) { visit((BinExp *)e); }
     virtual void visit(OrExp *e) { visit((BinExp *)e); }
     virtual void visit(XorExp *e) { visit((BinExp *)e); }
-    virtual void visit(OrOrExp *e) { visit((BinExp *)e); }
-    virtual void visit(AndAndExp *e) { visit((BinExp *)e); }
+    virtual void visit(LogicalExp *e) { visit((BinExp *)e); }
     virtual void visit(CmpExp *e) { visit((BinExp *)e); }
     virtual void visit(InExp *e) { visit((BinExp *)e); }
     virtual void visit(RemoveExp *e) { visit((BinExp *)e); }

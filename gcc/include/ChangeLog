@@ -1,27 +1,83 @@
-2020-07-23  Release Manager
+2021-07-28  Release Manager
 
-	* GCC 10.2.0 released.
+	* GCC 11.2.0 released.
 
-2020-07-13  Julian Brown  <julian@codesourcery.com>
+2021-04-27  Release Manager
 
-	Backported from master:
-	2020-07-09  Julian Brown  <julian@codesourcery.com>
-		    Thomas Schwinge  <thomas@codesourcery.com>
+	* GCC 11.1.0 released.
+
+2021-03-31  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/88115
+	* demangle.h (enum demangle_component_type): Add
+	DEMANGLE_COMPONENT_VENDOR_EXPR.
+
+2021-01-16  Kwok Cheung Yeung  <kcy@codesourcery.com>
+
+	* gomp-constants.h (GOMP_TASK_FLAG_DETACH): New.
+
+2021-01-03  Mike Frysinger  <vapier@gentoo.org>
+
+	* libiberty.h (strverscmp): Delete duplicate prototype.
+
+2020-12-09  Andrew Stubbs  <ams@codesourcery.com>
+
+	* hsa.h: Replace whole file.
+	* hsa_ext_amd.h: New file.
+	* hsa_ext_image.h: New file.
+
+2020-09-24  Mark Wielaard  <mark@klomp.org>
+
+	* dwarf2.def: Add DWARF5 Unit type header encoding macros
+	DW_UT_FIRST, DW_UT and DW_UT_END.
+	* dwarf2.h (enum dwarf_unit_type): Removed and define using
+	DW_UT_FIRST, DW_UT and DW_UT_END macros.
+	(DW_CIE_VERSION): Removed.
+	(get_DW_UT_name): New function declaration.
+
+2020-09-15  Tobias Burnus  <tobias@codesourcery.com>
+
+	PR fortran/96668
+	* gomp-constants.h (GOMP_MAP_ALWAYS_POINTER_P): Define.
+
+2020-09-09  Caroline Tice  <cmtice@google.com>
+
+	* dwarf2.h (enum dwarf_sect_v5): A new enum section for the
+	sections in a DWARF 5 DWP file (DWP version 5).
+
+2020-09-09  Caroline Tice  <cmtice@google.com>
+
+	* dwarf2.h (enum dwarf_sect_v5): A new enum section for the
+	sections in a DWARF 5 DWP file (DWP version 5).
+
+2020-09-08  Felix Willgerodt  <felix.willgerodt@intel.com>
+
+	* floatformat.h (floatformat_bfloat16_big): New.
+	(floatformat_bfloat16_little): New.
+
+2020-08-03  Martin Jambor  <mjambor@suse.cz>
+
+	* gomp-constants.h (GOMP_VERSION_HSA): Remove.
+
+2020-07-09  Julian Brown  <julian@codesourcery.com>
+	    Thomas Schwinge  <thomas@codesourcery.com>
 
 	PR middle-end/95270
 	* gomp-constants.h (gomp_map_kind): Expand comment for attach/detach
 	mapping kinds.
 
-2020-07-13  Julian Brown  <julian@codesourcery.com>
-
-	Backported from master:
-	2020-07-09  Julian Brown  <julian@codesourcery.com>
+2020-07-09  Julian Brown  <julian@codesourcery.com>
 
 	* gomp-constants.h (gomp_map_kind): Update comment for GOMP_MAP_TO_PSET.
 
-2020-05-07  Release Manager
+2020-06-26  Nick Clifton  <nickc@redhat.com>
 
-	* GCC 10.1.0 released.
+	* libiberty.h (bsearch_r): Remove use of the register keyword from
+	the prototype.
+
+2020-06-23  Nick Alcock  <nick.alcock@oracle.com>
+
+	* libiberty.h (bsearch_r): New.
 
 2020-04-17  Martin Liska  <mliska@suse.cz>
 	    Jonathan Yong <10walls@gmail.com>

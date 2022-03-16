@@ -1,5 +1,5 @@
 /* Hardware event manager.
-   Copyright (C) 1998-2020 Free Software Foundation, Inc.
+   Copyright (C) 1998-2022 Free Software Foundation, Inc.
    Contributed by Cygnus Support.
 
 This file is part of GDB, the GNU debugger.
@@ -17,15 +17,15 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
+/* This must come before any other includes.  */
+#include "defs.h"
 
 #include "hw-main.h"
 #include "hw-base.h"
 
 #include "sim-events.h"
 
-#if HAVE_STRING_H
 #include <string.h>
-#endif
 
 /* The hw-events object is implemented using sim-events */
 
@@ -90,12 +90,7 @@ hw_event_queue_schedule (struct hw *me,
 			 hw_event_callback *callback,
 			 void *data)
 {
-  struct hw_event *event;
-  va_list dummy;
-  memset (&dummy, 0, sizeof dummy);
-  event = hw_event_queue_schedule_vtracef (me, delta_time, callback, data,
-					   NULL, dummy);
-  return event;
+  return hw_event_queue_schedule_tracef (me, delta_time, callback, data, NULL);
 }
 
 struct hw_event *
@@ -187,6 +182,7 @@ hw_event_remain_time (struct hw *me, struct hw_event *event)
 #include "sim-main.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static void
 test_handler (struct hw *me,

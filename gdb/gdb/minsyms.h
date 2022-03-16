@@ -1,6 +1,6 @@
 /* Minimal symbol table definitions for GDB.
 
-   Copyright (C) 2011-2020 Free Software Foundation, Inc.
+   Copyright (C) 2011-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -37,6 +37,13 @@ struct bound_minimal_symbol
      symbol is defined.  */
 
   struct objfile *objfile;
+
+  /* Return the obj_section from OBJFILE for MINSYM.  */
+
+  struct obj_section *obj_section () const
+  {
+    return minsym->obj_section (objfile);
+  }
 };
 
 /* This header declares most of the API for dealing with minimal

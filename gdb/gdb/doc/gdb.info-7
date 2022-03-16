@@ -1,6 +1,6 @@
 This is gdb.info, produced by makeinfo version 6.7 from gdb.texinfo.
 
-Copyright (C) 1988-2020 Free Software Foundation, Inc.
+Copyright (C) 1988-2022 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -21,9 +21,9 @@ END-INFO-DIR-ENTRY
    This file documents the GNU debugger GDB.
 
    This is the Tenth Edition, of 'Debugging with GDB: the GNU
-Source-Level Debugger' for GDB (GDB) Version 10.1.
+Source-Level Debugger' for GDB (GDB) Version 11.2.
 
-   Copyright (C) 1988-2020 Free Software Foundation, Inc.
+   Copyright (C) 1988-2022 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -35,6 +35,921 @@ with the Back-Cover Texts as in (a) below.
    (a) The FSF's Back-Cover Text is: "You are free to copy and modify
 this GNU Manual.  Buying copies from GNU Press supports the FSF in
 developing GNU and promoting software freedom."
+
+
+File: gdb.info,  Node: Packets,  Next: Stop Reply Packets,  Prev: Overview,  Up: Remote Protocol
+
+E.2 Packets
+===========
+
+The following table provides a complete list of all currently defined
+COMMANDs and their corresponding response DATA.  *Note File-I/O Remote
+Protocol Extension::, for details about the File I/O extension of the
+remote protocol.
+
+   Each packet's description has a template showing the packet's overall
+syntax, followed by an explanation of the packet's meaning.  We include
+spaces in some of the templates for clarity; these are not part of the
+packet's syntax.  No GDB packet uses spaces to separate its components.
+For example, a template like 'foo BAR BAZ' describes a packet beginning
+with the three ASCII bytes 'foo', followed by a BAR, followed directly
+by a BAZ.  GDB does not transmit a space character between the 'foo' and
+the BAR, or between the BAR and the BAZ.
+
+   Several packets and replies include a THREAD-ID field to identify a
+thread.  Normally these are positive numbers with a target-specific
+interpretation, formatted as big-endian hex strings.  A THREAD-ID can
+also be a literal '-1' to indicate all threads, or '0' to pick any
+thread.
+
+   In addition, the remote protocol supports a multiprocess feature in
+which the THREAD-ID syntax is extended to optionally include both
+process and thread ID fields, as 'pPID.TID'.  The PID (process) and TID
+(thread) components each have the format described above: a positive
+number with target-specific interpretation formatted as a big-endian hex
+string, literal '-1' to indicate all processes or threads
+(respectively), or '0' to indicate an arbitrary process or thread.
+Specifying just a process, as 'pPID', is equivalent to 'pPID.-1'.  It is
+an error to specify all processes but a specific thread, such as
+'p-1.TID'.  Note that the 'p' prefix is _not_ used for those packets and
+replies explicitly documented to include a process ID, rather than a
+THREAD-ID.
+
+   The multiprocess THREAD-ID syntax extensions are only used if both
+GDB and the stub report support for the 'multiprocess' feature using
+'qSupported'.  *Note multiprocess extensions::, for more information.
+
+   Note that all packet forms beginning with an upper- or lower-case
+letter, other than those described here, are reserved for future use.
+
+   Here are the packet descriptions.
+
+'!'
+     Enable extended mode.  In extended mode, the remote server is made
+     persistent.  The 'R' packet is used to restart the program being
+     debugged.
+
+     Reply:
+     'OK'
+          The remote target both supports and has enabled extended mode.
+
+'?'
+     This is sent when connection is first established to query the
+     reason the target halted.  The reply is the same as for step and
+     continue.  This packet has a special interpretation when the target
+     is in non-stop mode; see *note Remote Non-Stop::.
+
+     Reply: *Note Stop Reply Packets::, for the reply specifications.
+
+'A ARGLEN,ARGNUM,ARG,...'
+     Initialized 'argv[]' array passed into program.  ARGLEN specifies
+     the number of bytes in the hex encoded byte stream ARG.  See
+     'gdbserver' for more details.
+
+     Reply:
+     'OK'
+          The arguments were set.
+     'E NN'
+          An error occurred.
+
+'b BAUD'
+     (Don't use this packet; its behavior is not well-defined.)  Change
+     the serial line speed to BAUD.
+
+     JTC: _When does the transport layer state change?  When it's
+     received, or after the ACK is transmitted.  In either case, there
+     are problems if the command or the acknowledgment packet is
+     dropped._
+
+     Stan: _If people really wanted to add something like this, and get
+     it working for the first time, they ought to modify ser-unix.c to
+     send some kind of out-of-band message to a specially-setup stub and
+     have the switch happen "in between" packets, so that from remote
+     protocol's point of view, nothing actually happened._
+
+'B ADDR,MODE'
+     Set (MODE is 'S') or clear (MODE is 'C') a breakpoint at ADDR.
+
+     Don't use this packet.  Use the 'Z' and 'z' packets instead (*note
+     insert breakpoint or watchpoint packet::).
+
+'bc'
+     Backward continue.  Execute the target system in reverse.  No
+     parameter.  *Note Reverse Execution::, for more information.
+
+     Reply: *Note Stop Reply Packets::, for the reply specifications.
+
+'bs'
+     Backward single step.  Execute one instruction in reverse.  No
+     parameter.  *Note Reverse Execution::, for more information.
+
+     Reply: *Note Stop Reply Packets::, for the reply specifications.
+
+'c [ADDR]'
+     Continue at ADDR, which is the address to resume.  If ADDR is
+     omitted, resume at current address.
+
+     This packet is deprecated for multi-threading support.  *Note vCont
+     packet::.
+
+     Reply: *Note Stop Reply Packets::, for the reply specifications.
+
+'C SIG[;ADDR]'
+     Continue with signal SIG (hex signal number).  If ';ADDR' is
+     omitted, resume at same address.
+
+     This packet is deprecated for multi-threading support.  *Note vCont
+     packet::.
+
+     Reply: *Note Stop Reply Packets::, for the reply specifications.
+
+'d'
+     Toggle debug flag.
+
+     Don't use this packet; instead, define a general set packet (*note
+     General Query Packets::).
+
+'D'
+'D;PID'
+     The first form of the packet is used to detach GDB from the remote
+     system.  It is sent to the remote target before GDB disconnects via
+     the 'detach' command.
+
+     The second form, including a process ID, is used when multiprocess
+     protocol extensions are enabled (*note multiprocess extensions::),
+     to detach only a specific process.  The PID is specified as a
+     big-endian hex string.
+
+     Reply:
+     'OK'
+          for success
+     'E NN'
+          for an error
+
+'F RC,EE,CF;XX'
+     A reply from GDB to an 'F' packet sent by the target.  This is part
+     of the File-I/O protocol extension.  *Note File-I/O Remote Protocol
+     Extension::, for the specification.
+
+'g'
+     Read general registers.
+
+     Reply:
+     'XX...'
+          Each byte of register data is described by two hex digits.
+          The bytes with the register are transmitted in target byte
+          order.  The size of each register and their position within
+          the 'g' packet are determined by the GDB internal gdbarch
+          functions 'DEPRECATED_REGISTER_RAW_SIZE' and
+          'gdbarch_register_name'.
+
+          When reading registers from a trace frame (*note Using the
+          Collected Data: Analyze Collected Data.), the stub may also
+          return a string of literal 'x''s in place of the register data
+          digits, to indicate that the corresponding register has not
+          been collected, thus its value is unavailable.  For example,
+          for an architecture with 4 registers of 4 bytes each, the
+          following reply indicates to GDB that registers 0 and 2 have
+          not been collected, while registers 1 and 3 have been
+          collected, and both have zero value:
+
+               -> g
+               <- xxxxxxxx00000000xxxxxxxx00000000
+
+     'E NN'
+          for an error.
+
+'G XX...'
+     Write general registers.  *Note read registers packet::, for a
+     description of the XX... data.
+
+     Reply:
+     'OK'
+          for success
+     'E NN'
+          for an error
+
+'H OP THREAD-ID'
+     Set thread for subsequent operations ('m', 'M', 'g', 'G', et.al.).
+     Depending on the operation to be performed, OP should be 'c' for
+     step and continue operations (note that this is deprecated,
+     supporting the 'vCont' command is a better option), and 'g' for
+     other operations.  The thread designator THREAD-ID has the format
+     and interpretation described in *note thread-id syntax::.
+
+     Reply:
+     'OK'
+          for success
+     'E NN'
+          for an error
+
+'i [ADDR[,NNN]]'
+     Step the remote target by a single clock cycle.  If ',NNN' is
+     present, cycle step NNN cycles.  If ADDR is present, cycle step
+     starting at that address.
+
+'I'
+     Signal, then cycle step.  *Note step with signal packet::.  *Note
+     cycle step packet::.
+
+'k'
+     Kill request.
+
+     The exact effect of this packet is not specified.
+
+     For a bare-metal target, it may power cycle or reset the target
+     system.  For that reason, the 'k' packet has no reply.
+
+     For a single-process target, it may kill that process if possible.
+
+     A multiple-process target may choose to kill just one process, or
+     all that are under GDB's control.  For more precise control, use
+     the vKill packet (*note vKill packet::).
+
+     If the target system immediately closes the connection in response
+     to 'k', GDB does not consider the lack of packet acknowledgment to
+     be an error, and assumes the kill was successful.
+
+     If connected using 'target extended-remote', and the target does
+     not close the connection in response to a kill request, GDB probes
+     the target state as if a new connection was opened (*note ?
+     packet::).
+
+'m ADDR,LENGTH'
+     Read LENGTH addressable memory units starting at address ADDR
+     (*note addressable memory unit::).  Note that ADDR may not be
+     aligned to any particular boundary.
+
+     The stub need not use any particular size or alignment when
+     gathering data from memory for the response; even if ADDR is
+     word-aligned and LENGTH is a multiple of the word size, the stub is
+     free to use byte accesses, or not.  For this reason, this packet
+     may not be suitable for accessing memory-mapped I/O devices.
+
+     Reply:
+     'XX...'
+          Memory contents; each byte is transmitted as a two-digit
+          hexadecimal number.  The reply may contain fewer addressable
+          memory units than requested if the server was able to read
+          only part of the region of memory.
+     'E NN'
+          NN is errno
+
+'M ADDR,LENGTH:XX...'
+     Write LENGTH addressable memory units starting at address ADDR
+     (*note addressable memory unit::).  The data is given by XX...;
+     each byte is transmitted as a two-digit hexadecimal number.
+
+     Reply:
+     'OK'
+          for success
+     'E NN'
+          for an error (this includes the case where only part of the
+          data was written).
+
+'p N'
+     Read the value of register N; N is in hex.  *Note read registers
+     packet::, for a description of how the returned register value is
+     encoded.
+
+     Reply:
+     'XX...'
+          the register's value
+     'E NN'
+          for an error
+     ''
+          Indicating an unrecognized QUERY.
+
+'P N...=R...'
+     Write register N... with value R....  The register number N is in
+     hexadecimal, and R... contains two hex digits for each byte in the
+     register (target byte order).
+
+     Reply:
+     'OK'
+          for success
+     'E NN'
+          for an error
+
+'q NAME PARAMS...'
+'Q NAME PARAMS...'
+     General query ('q') and set ('Q').  These packets are described
+     fully in *note General Query Packets::.
+
+'r'
+     Reset the entire system.
+
+     Don't use this packet; use the 'R' packet instead.
+
+'R XX'
+     Restart the program being debugged.  The XX, while needed, is
+     ignored.  This packet is only available in extended mode (*note
+     extended mode::).
+
+     The 'R' packet has no reply.
+
+'s [ADDR]'
+     Single step, resuming at ADDR.  If ADDR is omitted, resume at same
+     address.
+
+     This packet is deprecated for multi-threading support.  *Note vCont
+     packet::.
+
+     Reply: *Note Stop Reply Packets::, for the reply specifications.
+
+'S SIG[;ADDR]'
+     Step with signal.  This is analogous to the 'C' packet, but
+     requests a single-step, rather than a normal resumption of
+     execution.
+
+     This packet is deprecated for multi-threading support.  *Note vCont
+     packet::.
+
+     Reply: *Note Stop Reply Packets::, for the reply specifications.
+
+'t ADDR:PP,MM'
+     Search backwards starting at address ADDR for a match with pattern
+     PP and mask MM, both of which are are 4 byte long.  There must be
+     at least 3 digits in ADDR.
+
+'T THREAD-ID'
+     Find out if the thread THREAD-ID is alive.  *Note thread-id
+     syntax::.
+
+     Reply:
+     'OK'
+          thread is still alive
+     'E NN'
+          thread is dead
+
+'v'
+     Packets starting with 'v' are identified by a multi-letter name, up
+     to the first ';' or '?' (or the end of the packet).
+
+'vAttach;PID'
+     Attach to a new process with the specified process ID PID.  The
+     process ID is a hexadecimal integer identifying the process.  In
+     all-stop mode, all threads in the attached process are stopped; in
+     non-stop mode, it may be attached without being stopped if that is
+     supported by the target.
+
+     This packet is only available in extended mode (*note extended
+     mode::).
+
+     Reply:
+     'E NN'
+          for an error
+     'Any stop packet'
+          for success in all-stop mode (*note Stop Reply Packets::)
+     'OK'
+          for success in non-stop mode (*note Remote Non-Stop::)
+
+'vCont[;ACTION[:THREAD-ID]]...'
+     Resume the inferior, specifying different actions for each thread.
+
+     For each inferior thread, the leftmost action with a matching
+     THREAD-ID is applied.  Threads that don't match any action remain
+     in their current state.  Thread IDs are specified using the syntax
+     described in *note thread-id syntax::.  If multiprocess extensions
+     (*note multiprocess extensions::) are supported, actions can be
+     specified to match all threads in a process by using the 'pPID.-1'
+     form of the THREAD-ID.  An action with no THREAD-ID matches all
+     threads.  Specifying no actions is an error.
+
+     Currently supported actions are:
+
+     'c'
+          Continue.
+     'C SIG'
+          Continue with signal SIG.  The signal SIG should be two hex
+          digits.
+     's'
+          Step.
+     'S SIG'
+          Step with signal SIG.  The signal SIG should be two hex
+          digits.
+     't'
+          Stop.
+     'r START,END'
+          Step once, and then keep stepping as long as the thread stops
+          at addresses between START (inclusive) and END (exclusive).
+          The remote stub reports a stop reply when either the thread
+          goes out of the range or is stopped due to an unrelated
+          reason, such as hitting a breakpoint.  *Note range stepping::.
+
+          If the range is empty (START == END), then the action becomes
+          equivalent to the 's' action.  In other words, single-step
+          once, and report the stop (even if the stepped instruction
+          jumps to START).
+
+          (A stop reply may be sent at any point even if the PC is still
+          within the stepping range; for example, it is valid to
+          implement this packet in a degenerate way as a single
+          instruction step operation.)
+
+     The optional argument ADDR normally associated with the 'c', 'C',
+     's', and 'S' packets is not supported in 'vCont'.
+
+     The 't' action is only relevant in non-stop mode (*note Remote
+     Non-Stop::) and may be ignored by the stub otherwise.  A stop reply
+     should be generated for any affected thread not already stopped.
+     When a thread is stopped by means of a 't' action, the
+     corresponding stop reply should indicate that the thread has
+     stopped with signal '0', regardless of whether the target uses some
+     other signal as an implementation detail.
+
+     The server must ignore 'c', 'C', 's', 'S', and 'r' actions for
+     threads that are already running.  Conversely, the server must
+     ignore 't' actions for threads that are already stopped.
+
+     _Note:_ In non-stop mode, a thread is considered running until GDB
+     acknowledges an asynchronous stop notification for it with the
+     'vStopped' packet (*note Remote Non-Stop::).
+
+     The stub must support 'vCont' if it reports support for
+     multiprocess extensions (*note multiprocess extensions::).
+
+     Reply: *Note Stop Reply Packets::, for the reply specifications.
+
+'vCont?'
+     Request a list of actions supported by the 'vCont' packet.
+
+     Reply:
+     'vCont[;ACTION...]'
+          The 'vCont' packet is supported.  Each ACTION is a supported
+          command in the 'vCont' packet.
+     ''
+          The 'vCont' packet is not supported.
+
+'vCtrlC'
+     Interrupt remote target as if a control-C was pressed on the remote
+     terminal.  This is the equivalent to reacting to the '^C' ('\003',
+     the control-C character) character in all-stop mode while the
+     target is running, except this works in non-stop mode.  *Note
+     interrupting remote targets::, for more info on the all-stop
+     variant.
+
+     Reply:
+     'E NN'
+          for an error
+     'OK'
+          for success
+
+'vFile:OPERATION:PARAMETER...'
+     Perform a file operation on the target system.  For details, see
+     *note Host I/O Packets::.
+
+'vFlashErase:ADDR,LENGTH'
+     Direct the stub to erase LENGTH bytes of flash starting at ADDR.
+     The region may enclose any number of flash blocks, but its start
+     and end must fall on block boundaries, as indicated by the flash
+     block size appearing in the memory map (*note Memory Map Format::).
+     GDB groups flash memory programming operations together, and sends
+     a 'vFlashDone' request after each group; the stub is allowed to
+     delay erase operation until the 'vFlashDone' packet is received.
+
+     Reply:
+     'OK'
+          for success
+     'E NN'
+          for an error
+
+'vFlashWrite:ADDR:XX...'
+     Direct the stub to write data to flash address ADDR.  The data is
+     passed in binary form using the same encoding as for the 'X' packet
+     (*note Binary Data::).  The memory ranges specified by
+     'vFlashWrite' packets preceding a 'vFlashDone' packet must not
+     overlap, and must appear in order of increasing addresses (although
+     'vFlashErase' packets for higher addresses may already have been
+     received; the ordering is guaranteed only between 'vFlashWrite'
+     packets).  If a packet writes to an address that was neither erased
+     by a preceding 'vFlashErase' packet nor by some other
+     target-specific method, the results are unpredictable.
+
+     Reply:
+     'OK'
+          for success
+     'E.memtype'
+          for vFlashWrite addressing non-flash memory
+     'E NN'
+          for an error
+
+'vFlashDone'
+     Indicate to the stub that flash programming operation is finished.
+     The stub is permitted to delay or batch the effects of a group of
+     'vFlashErase' and 'vFlashWrite' packets until a 'vFlashDone' packet
+     is received.  The contents of the affected regions of flash memory
+     are unpredictable until the 'vFlashDone' request is completed.
+
+'vKill;PID'
+     Kill the process with the specified process ID PID, which is a
+     hexadecimal integer identifying the process.  This packet is used
+     in preference to 'k' when multiprocess protocol extensions are
+     supported; see *note multiprocess extensions::.
+
+     Reply:
+     'E NN'
+          for an error
+     'OK'
+          for success
+
+'vMustReplyEmpty'
+     The correct reply to an unknown 'v' packet is to return the empty
+     string, however, some older versions of 'gdbserver' would
+     incorrectly return 'OK' for unknown 'v' packets.
+
+     The 'vMustReplyEmpty' is used as a feature test to check how
+     'gdbserver' handles unknown packets, it is important that this
+     packet be handled in the same way as other unknown 'v' packets.  If
+     this packet is handled differently to other unknown 'v' packets
+     then it is possible that GDB may run into problems in other areas,
+     specifically around use of 'vFile:setfs:'.
+
+'vRun;FILENAME[;ARGUMENT]...'
+     Run the program FILENAME, passing it each ARGUMENT on its command
+     line.  The file and arguments are hex-encoded strings.  If FILENAME
+     is an empty string, the stub may use a default program (e.g. the
+     last program run).  The program is created in the stopped state.
+
+     This packet is only available in extended mode (*note extended
+     mode::).
+
+     Reply:
+     'E NN'
+          for an error
+     'Any stop packet'
+          for success (*note Stop Reply Packets::)
+
+'vStopped'
+     *Note Notification Packets::.
+
+'X ADDR,LENGTH:XX...'
+     Write data to memory, where the data is transmitted in binary.
+     Memory is specified by its address ADDR and number of addressable
+     memory units LENGTH (*note addressable memory unit::); 'XX...' is
+     binary data (*note Binary Data::).
+
+     Reply:
+     'OK'
+          for success
+     'E NN'
+          for an error
+
+'z TYPE,ADDR,KIND'
+'Z TYPE,ADDR,KIND'
+     Insert ('Z') or remove ('z') a TYPE breakpoint or watchpoint
+     starting at address ADDRESS of kind KIND.
+
+     Each breakpoint and watchpoint packet TYPE is documented
+     separately.
+
+     _Implementation notes: A remote target shall return an empty string
+     for an unrecognized breakpoint or watchpoint packet TYPE.  A remote
+     target shall support either both or neither of a given 'ZTYPE...'
+     and 'zTYPE...' packet pair.  To avoid potential problems with
+     duplicate packets, the operations should be implemented in an
+     idempotent way._
+
+'z0,ADDR,KIND'
+'Z0,ADDR,KIND[;COND_LIST...][;cmds:PERSIST,CMD_LIST...]'
+     Insert ('Z0') or remove ('z0') a software breakpoint at address
+     ADDR of type KIND.
+
+     A software breakpoint is implemented by replacing the instruction
+     at ADDR with a software breakpoint or trap instruction.  The KIND
+     is target-specific and typically indicates the size of the
+     breakpoint in bytes that should be inserted.  E.g., the ARM and
+     MIPS can insert either a 2 or 4 byte breakpoint.  Some
+     architectures have additional meanings for KIND (*note
+     Architecture-Specific Protocol Details::); if no
+     architecture-specific value is being used, it should be '0'.  KIND
+     is hex-encoded.  COND_LIST is an optional list of conditional
+     expressions in bytecode form that should be evaluated on the
+     target's side.  These are the conditions that should be taken into
+     consideration when deciding if the breakpoint trigger should be
+     reported back to GDB.
+
+     See also the 'swbreak' stop reason (*note swbreak stop reason::)
+     for how to best report a software breakpoint event to GDB.
+
+     The COND_LIST parameter is comprised of a series of expressions,
+     concatenated without separators.  Each expression has the following
+     form:
+
+     'X LEN,EXPR'
+          LEN is the length of the bytecode expression and EXPR is the
+          actual conditional expression in bytecode form.
+
+     The optional CMD_LIST parameter introduces commands that may be run
+     on the target, rather than being reported back to GDB.  The
+     parameter starts with a numeric flag PERSIST; if the flag is
+     nonzero, then the breakpoint may remain active and the commands
+     continue to be run even when GDB disconnects from the target.
+     Following this flag is a series of expressions concatenated with no
+     separators.  Each expression has the following form:
+
+     'X LEN,EXPR'
+          LEN is the length of the bytecode expression and EXPR is the
+          actual commands expression in bytecode form.
+
+     _Implementation note: It is possible for a target to copy or move
+     code that contains software breakpoints (e.g., when implementing
+     overlays).  The behavior of this packet, in the presence of such a
+     target, is not defined._
+
+     Reply:
+     'OK'
+          success
+     ''
+          not supported
+     'E NN'
+          for an error
+
+'z1,ADDR,KIND'
+'Z1,ADDR,KIND[;COND_LIST...][;cmds:PERSIST,CMD_LIST...]'
+     Insert ('Z1') or remove ('z1') a hardware breakpoint at address
+     ADDR.
+
+     A hardware breakpoint is implemented using a mechanism that is not
+     dependent on being able to modify the target's memory.  The KIND,
+     COND_LIST, and CMD_LIST arguments have the same meaning as in 'Z0'
+     packets.
+
+     _Implementation note: A hardware breakpoint is not affected by code
+     movement._
+
+     Reply:
+     'OK'
+          success
+     ''
+          not supported
+     'E NN'
+          for an error
+
+'z2,ADDR,KIND'
+'Z2,ADDR,KIND'
+     Insert ('Z2') or remove ('z2') a write watchpoint at ADDR.  The
+     number of bytes to watch is specified by KIND.
+
+     Reply:
+     'OK'
+          success
+     ''
+          not supported
+     'E NN'
+          for an error
+
+'z3,ADDR,KIND'
+'Z3,ADDR,KIND'
+     Insert ('Z3') or remove ('z3') a read watchpoint at ADDR.  The
+     number of bytes to watch is specified by KIND.
+
+     Reply:
+     'OK'
+          success
+     ''
+          not supported
+     'E NN'
+          for an error
+
+'z4,ADDR,KIND'
+'Z4,ADDR,KIND'
+     Insert ('Z4') or remove ('z4') an access watchpoint at ADDR.  The
+     number of bytes to watch is specified by KIND.
+
+     Reply:
+     'OK'
+          success
+     ''
+          not supported
+     'E NN'
+          for an error
+
+
+File: gdb.info,  Node: Stop Reply Packets,  Next: General Query Packets,  Prev: Packets,  Up: Remote Protocol
+
+E.3 Stop Reply Packets
+======================
+
+The 'C', 'c', 'S', 's', 'vCont', 'vAttach', 'vRun', 'vStopped', and '?'
+packets can receive any of the below as a reply.  Except for '?' and
+'vStopped', that reply is only returned when the target halts.  In the
+below the exact meaning of "signal number" is defined by the header
+'include/gdb/signals.h' in the GDB source code.
+
+   In non-stop mode, the server will simply reply 'OK' to commands such
+as 'vCont'; any stop will be the subject of a future notification.
+*Note Remote Non-Stop::.
+
+   As in the description of request packets, we include spaces in the
+reply templates for clarity; these are not part of the reply packet's
+syntax.  No GDB stop reply packet uses spaces to separate its
+components.
+
+'S AA'
+     The program received signal number AA (a two-digit hexadecimal
+     number).  This is equivalent to a 'T' response with no N:R pairs.
+
+'T AA N1:R1;N2:R2;...'
+     The program received signal number AA (a two-digit hexadecimal
+     number).  This is equivalent to an 'S' response, except that the
+     'N:R' pairs can carry values of important registers and other
+     information directly in the stop reply packet, reducing round-trip
+     latency.  Single-step and breakpoint traps are reported this way.
+     Each 'N:R' pair is interpreted as follows:
+
+        * If N is a hexadecimal number, it is a register number, and the
+          corresponding R gives that register's value.  The data R is a
+          series of bytes in target byte order, with each byte given by
+          a two-digit hex number.
+
+        * If N is 'thread', then R is the THREAD-ID of the stopped
+          thread, as specified in *note thread-id syntax::.
+
+        * If N is 'core', then R is the hexadecimal number of the core
+          on which the stop event was detected.
+
+        * If N is a recognized "stop reason", it describes a more
+          specific event that stopped the target.  The currently defined
+          stop reasons are listed below.  The AA should be '05', the
+          trap signal.  At most one stop reason should be present.
+
+        * Otherwise, GDB should ignore this 'N:R' pair and go on to the
+          next; this allows us to extend the protocol in the future.
+
+     The currently defined stop reasons are:
+
+     'watch'
+     'rwatch'
+     'awatch'
+          The packet indicates a watchpoint hit, and R is the data
+          address, in hex.
+
+     'syscall_entry'
+     'syscall_return'
+          The packet indicates a syscall entry or return, and R is the
+          syscall number, in hex.
+
+     'library'
+          The packet indicates that the loaded libraries have changed.
+          GDB should use 'qXfer:libraries:read' to fetch a new list of
+          loaded libraries.  The R part is ignored.
+
+     'replaylog'
+          The packet indicates that the target cannot continue replaying
+          logged execution events, because it has reached the end (or
+          the beginning when executing backward) of the log.  The value
+          of R will be either 'begin' or 'end'.  *Note Reverse
+          Execution::, for more information.
+
+     'swbreak'
+          The packet indicates a software breakpoint instruction was
+          executed, irrespective of whether it was GDB that planted the
+          breakpoint or the breakpoint is hardcoded in the program.  The
+          R part must be left empty.
+
+          On some architectures, such as x86, at the architecture level,
+          when a breakpoint instruction executes the program counter
+          points at the breakpoint address plus an offset.  On such
+          targets, the stub is responsible for adjusting the PC to point
+          back at the breakpoint address.
+
+          This packet should not be sent by default; older GDB versions
+          did not support it.  GDB requests it, by supplying an
+          appropriate 'qSupported' feature (*note qSupported::).  The
+          remote stub must also supply the appropriate 'qSupported'
+          feature indicating support.
+
+          This packet is required for correct non-stop mode operation.
+
+     'hwbreak'
+          The packet indicates the target stopped for a hardware
+          breakpoint.  The R part must be left empty.
+
+          The same remarks about 'qSupported' and non-stop mode above
+          apply.
+
+     'fork'
+          The packet indicates that 'fork' was called, and R is the
+          thread ID of the new child process.  Refer to *note thread-id
+          syntax:: for the format of the THREAD-ID field.  This packet
+          is only applicable to targets that support fork events.
+
+          This packet should not be sent by default; older GDB versions
+          did not support it.  GDB requests it, by supplying an
+          appropriate 'qSupported' feature (*note qSupported::).  The
+          remote stub must also supply the appropriate 'qSupported'
+          feature indicating support.
+
+     'vfork'
+          The packet indicates that 'vfork' was called, and R is the
+          thread ID of the new child process.  Refer to *note thread-id
+          syntax:: for the format of the THREAD-ID field.  This packet
+          is only applicable to targets that support vfork events.
+
+          This packet should not be sent by default; older GDB versions
+          did not support it.  GDB requests it, by supplying an
+          appropriate 'qSupported' feature (*note qSupported::).  The
+          remote stub must also supply the appropriate 'qSupported'
+          feature indicating support.
+
+     'vforkdone'
+          The packet indicates that a child process created by a vfork
+          has either called 'exec' or terminated, so that the address
+          spaces of the parent and child process are no longer shared.
+          The R part is ignored.  This packet is only applicable to
+          targets that support vforkdone events.
+
+          This packet should not be sent by default; older GDB versions
+          did not support it.  GDB requests it, by supplying an
+          appropriate 'qSupported' feature (*note qSupported::).  The
+          remote stub must also supply the appropriate 'qSupported'
+          feature indicating support.
+
+     'exec'
+          The packet indicates that 'execve' was called, and R is the
+          absolute pathname of the file that was executed, in hex.  This
+          packet is only applicable to targets that support exec events.
+
+          This packet should not be sent by default; older GDB versions
+          did not support it.  GDB requests it, by supplying an
+          appropriate 'qSupported' feature (*note qSupported::).  The
+          remote stub must also supply the appropriate 'qSupported'
+          feature indicating support.
+
+     'create'
+          The packet indicates that the thread was just created.  The
+          new thread is stopped until GDB sets it running with a
+          resumption packet (*note vCont packet::).  This packet should
+          not be sent by default; GDB requests it with the *note
+          QThreadEvents:: packet.  See also the 'w' (*note thread exit
+          event::) remote reply below.  The R part is ignored.
+
+'W AA'
+'W AA ; process:PID'
+     The process exited, and AA is the exit status.  This is only
+     applicable to certain targets.
+
+     The second form of the response, including the process ID of the
+     exited process, can be used only when GDB has reported support for
+     multiprocess protocol extensions; see *note multiprocess
+     extensions::.  Both AA and PID are formatted as big-endian hex
+     strings.
+
+'X AA'
+'X AA ; process:PID'
+     The process terminated with signal AA.
+
+     The second form of the response, including the process ID of the
+     terminated process, can be used only when GDB has reported support
+     for multiprocess protocol extensions; see *note multiprocess
+     extensions::.  Both AA and PID are formatted as big-endian hex
+     strings.
+
+'w AA ; TID'
+
+     The thread exited, and AA is the exit status.  This response should
+     not be sent by default; GDB requests it with the *note
+     QThreadEvents:: packet.  See also *note thread create event::
+     above.  AA is formatted as a big-endian hex string.
+
+'N'
+     There are no resumed threads left in the target.  In other words,
+     even though the process is alive, the last resumed thread has
+     exited.  For example, say the target process has two threads:
+     thread 1 and thread 2.  The client leaves thread 1 stopped, and
+     resumes thread 2, which subsequently exits.  At this point, even
+     though the process is still alive, and thus no 'W' stop reply is
+     sent, no thread is actually executing either.  The 'N' stop reply
+     thus informs the client that it can stop waiting for stop replies.
+     This packet should not be sent by default; older GDB versions did
+     not support it.  GDB requests it, by supplying an appropriate
+     'qSupported' feature (*note qSupported::).  The remote stub must
+     also supply the appropriate 'qSupported' feature indicating
+     support.
+
+'O XX...'
+     'XX...' is hex encoding of ASCII data, to be written as the
+     program's console output.  This can happen at any time while the
+     program is running and the debugger should continue to wait for
+     'W', 'T', etc.  This reply is not permitted in non-stop mode.
+
+'F CALL-ID,PARAMETER...'
+     CALL-ID is the identifier which says which host system call should
+     be called.  This is just the name of the function.  Translation
+     into the correct system call is only applicable as it's defined in
+     GDB.  *Note File-I/O Remote Protocol Extension::, for a list of
+     implemented system calls.
+
+     'PARAMETER...' is a list of parameters as defined for this very
+     system call.
+
+     The target replies with this packet when it expects GDB to call a
+     host system call on behalf of the target.  GDB replies with an
+     appropriate 'F' packet and keeps up waiting for the next reply
+     packet from the target.  The latest 'C', 'c', 'S' or 's' action is
+     expected to be continued.  *Note File-I/O Remote Protocol
+     Extension::, for more details.
 
 
 File: gdb.info,  Node: General Query Packets,  Next: Architecture-Specific Protocol Details,  Prev: Stop Reply Packets,  Up: Remote Protocol
@@ -376,6 +1291,79 @@ GDB packet uses spaces to separate its components.
           THREAD... is a sequence of thread IDs, THREADID (eight hex
           digits), from the target.  See
           'remote.c:parse_threadlist_response()'.
+
+'qMemTags:START ADDRESS,LENGTH:TYPE'
+     Fetch memory tags of type TYPE from the address range
+     [START ADDRESS, START ADDRESS + LENGTH).  The target is responsible
+     for calculating how many tags will be returned, as this is
+     architecture-specific.
+
+     START ADDRESS is the starting address of the memory range.
+
+     LENGTH is the length, in bytes, of the memory range.
+
+     TYPE is the type of tag the request wants to fetch.  The type is a
+     signed integer.
+
+     Reply:
+     'MXX...'
+          Hex encoded sequence of uninterpreted bytes, XX...,
+          representing the tags found in the requested memory range.
+
+     'E NN'
+          An error occured.  This means that fetching of memory tags
+          failed for some reason.
+
+     ''
+          An empty reply indicates that 'qMemTags' is not supported by
+          the stub, although this should not happen given GDB will only
+          send this packet if the stub has advertised support for memory
+          tagging via 'qSupported'.
+
+'QMemTags:START ADDRESS,LENGTH:TYPE:TAG BYTES'
+     Store memory tags of type TYPE to the address range
+     [START ADDRESS, START ADDRESS + LENGTH).  The target is responsible
+     for interpreting the type, the tag bytes and modifying the memory
+     tag granules accordingly, given this is architecture-specific.
+
+     The interpretation of how many tags (NT) should be written to how
+     many memory tag granules (NG) is also architecture-specific.  The
+     behavior is implementation-specific, but the following is
+     suggested.
+
+     If the number of memory tags, NT, is greater than or equal to the
+     number of memory tag granules, NG, only NG tags will be stored.
+
+     If NT is less than NG, the behavior is that of a fill operation,
+     and the tag bytes will be used as a pattern that will get repeated
+     until NG tags are stored.
+
+     START ADDRESS is the starting address of the memory range.  The
+     address does not have any restriction on alignment or size.
+
+     LENGTH is the length, in bytes, of the memory range.
+
+     TYPE is the type of tag the request wants to fetch.  The type is a
+     signed integer.
+
+     TAG BYTES is a sequence of hex encoded uninterpreted bytes which
+     will be interpreted by the target.  Each pair of hex digits is
+     interpreted as a single byte.
+
+     Reply:
+     'OK'
+          The request was successful and the memory tag granules were
+          modified accordingly.
+
+     'E NN'
+          An error occured.  This means that modifying the memory tag
+          granules failed for some reason.
+
+     ''
+          An empty reply indicates that 'QMemTags' is not supported by
+          the stub, although this should not happen given GDB will only
+          send this packet if the stub has advertised support for memory
+          tagging via 'qSupported'.
 
 'qOffsets'
      Get section offsets that the target used when relocating the
@@ -852,6 +1840,8 @@ GDB packet uses spaces to separate its components.
                                                         
      'no-resumed'              No             '-'       No
                                                         
+     'memory-tagging'          No             '-'       No
+                                                        
 
      These are the currently defined stub features, in more detail:
 
@@ -1067,6 +2057,16 @@ GDB packet uses spaces to separate its components.
 
      'no-resumed'
           The remote stub reports the 'N' stop reply.
+
+     'memory-tagging'
+          The remote stub supports and implements the required memory
+          tagging functionality and understands the 'qMemTags' (*note
+          qMemTags::) and 'QMemTags' (*note QMemTags::) packets.
+
+          For AArch64 GNU/Linux systems, this feature also requires
+          access to the '/proc/PID/smaps' file so memory mapping page
+          flags can be inspected.  This is done via the 'vFile'
+          requests.
 
 'qSymbol::'
      Notify the target that GDB is prepared to serve symbol lookup
@@ -1517,9 +2517,10 @@ E.5.1 ARM-specific Protocol Details
 * Menu:
 
 * ARM Breakpoint Kinds::
+* ARM Memory Tag Types::
 
 
-File: gdb.info,  Node: ARM Breakpoint Kinds,  Up: ARM-Specific Protocol Details
+File: gdb.info,  Node: ARM Breakpoint Kinds,  Next: ARM Memory Tag Types,  Up: ARM-Specific Protocol Details
 
 E.5.1.1 ARM Breakpoint Kinds
 ............................
@@ -1534,6 +2535,21 @@ These breakpoint kinds are defined for the 'Z0' and 'Z1' packets.
 
 4
      32-bit ARM mode breakpoint.
+
+
+File: gdb.info,  Node: ARM Memory Tag Types,  Prev: ARM Breakpoint Kinds,  Up: ARM-Specific Protocol Details
+
+E.5.1.2 ARM Memory Tag Types
+............................
+
+These memory tag types are defined for the 'qMemTag' and 'QMemTag'
+packets.
+
+0
+     MTE logical tag
+
+1
+     MTE allocation tag
 
 
 File: gdb.info,  Node: MIPS-Specific Protocol Details,  Prev: ARM-Specific Protocol Details,  Up: Architecture-Specific Protocol Details
@@ -5098,7 +6114,7 @@ The 'org.gnu.gdb.arm.core' feature is required for non-M-profile ARM
 targets.  It should contain registers 'r0' through 'r13', 'sp', 'lr',
 'pc', and 'cpsr'.
 
-   For M-profile targets (e.g.  Cortex-M3), the 'org.gnu.gdb.arm.core'
+   For M-profile targets (e.g. Cortex-M3), the 'org.gnu.gdb.arm.core'
 feature is replaced by 'org.gnu.gdb.arm.m-profile'.  It should contain
 registers 'r0' through 'r13', 'sp', 'lr', 'pc', and 'xpsr'.
 
@@ -5420,6 +6436,14 @@ floating point hardware, but can be moved into the csr feature if the
 target has the floating point control registers, but no other floating
 point hardware.
 
+   The 'org.gnu.gdb.riscv.vector' feature is optional.  If present, it
+should contain registers 'v0' through 'v31', all of which must be the
+same size.  These requirements are based on the v0.10 draft vector
+extension, as the vector extension is not yet final.  In the event that
+the register set of the vector extension changes for the final
+specification, the requirements given here could change for future
+releases of GDB.
+
 
 File: gdb.info,  Node: RX Features,  Next: S/390 and System z Features,  Prev: RISC-V Features,  Up: Standard Target Features
 
@@ -5526,10 +6550,6 @@ File: gdb.info,  Node: Operating System Information,  Next: Trace File Format,  
 Appendix H Operating System Information
 ***************************************
 
-* Menu:
-
-* Process list::
-
 Users of GDB often wish to obtain information about the state of the
 operating system running on the target--for example the list of
 processes, or the list of open files.  This section describes the
@@ -5541,6 +6561,10 @@ a different aspect of target.
 remote protocol, using 'qXfer' requests (*note qXfer osdata read::).
 The object name in the request should be 'osdata', and the ANNEX
 identifies the data to be fetched.
+
+* Menu:
+
+* Process list::
 
 
 File: gdb.info,  Node: Process list,  Up: Operating System Information
@@ -5935,7 +6959,7 @@ PROGRAM filename.
      Display the value of an expression.
 
 'c'
-     Continue running your program (after stopping, e.g.  at a
+     Continue running your program (after stopping, e.g. at a
      breakpoint).
 
 'next'
@@ -6009,11 +7033,13 @@ used.
      Add DIRECTORY to the path to search for source files.
 
 '-nh'
-     Do not execute commands from '~/.gdbinit'.
+     Do not execute commands from '~/.config/gdb/gdbinit', '~/.gdbinit',
+     '~/.config/gdb/gdbearlyinit', or '~/.gdbearlyinit'
 
 '-nx'
 '-n'
-     Do not execute commands from any '.gdbinit' initialization files.
+     Do not execute commands from any '.gdbinit' or '.gdbearlyinit'
+     initialization files.
 
 '-quiet'
 '-q'
@@ -6285,6 +7311,8 @@ gdbinit
 
 
 
+~/.config/gdb/gdbinit
+
 ~/.gdbinit
 
 ./.gdbinit
@@ -6304,11 +7332,11 @@ described in *note Sequences::.
      '-n', as long as they have a recognized file extension.  See more
      in *note System-wide configuration::.
 
-'~/.gdbinit'
+'~/.config/gdb/gdbinit or ~/.gdbinit'
      User initialization file.  It is executed unless user specified GDB
      options '-nx', '-n' or '-nh'.
 
-'./.gdbinit'
+'.gdbinit'
      Initialization file for current directory.  It may need to be
      enabled with GDB security command 'set auto-load local-gdbinit'.
      See more in *note Init File in the Current Directory::.
@@ -7055,486 +8083,4 @@ library, you may consider it more useful to permit linking proprietary
 applications with the library.  If this is what you want to do, use the
 GNU Lesser General Public License instead of this License.  But first,
 please read <http://www.gnu.org/philosophy/why-not-lgpl.html>.
-
-
-File: gdb.info,  Node: GNU Free Documentation License,  Next: Concept Index,  Prev: Copying,  Up: Top
-
-Appendix M GNU Free Documentation License
-*****************************************
-
-                     Version 1.3, 3 November 2008
-
-     Copyright (C) 2000, 2001, 2002, 2007, 2008 Free Software Foundation, Inc.
-     <http://fsf.org/>
-
-     Everyone is permitted to copy and distribute verbatim copies
-     of this license document, but changing it is not allowed.
-
-  0. PREAMBLE
-
-     The purpose of this License is to make a manual, textbook, or other
-     functional and useful document "free" in the sense of freedom: to
-     assure everyone the effective freedom to copy and redistribute it,
-     with or without modifying it, either commercially or
-     noncommercially.  Secondarily, this License preserves for the
-     author and publisher a way to get credit for their work, while not
-     being considered responsible for modifications made by others.
-
-     This License is a kind of "copyleft", which means that derivative
-     works of the document must themselves be free in the same sense.
-     It complements the GNU General Public License, which is a copyleft
-     license designed for free software.
-
-     We have designed this License in order to use it for manuals for
-     free software, because free software needs free documentation: a
-     free program should come with manuals providing the same freedoms
-     that the software does.  But this License is not limited to
-     software manuals; it can be used for any textual work, regardless
-     of subject matter or whether it is published as a printed book.  We
-     recommend this License principally for works whose purpose is
-     instruction or reference.
-
-  1. APPLICABILITY AND DEFINITIONS
-
-     This License applies to any manual or other work, in any medium,
-     that contains a notice placed by the copyright holder saying it can
-     be distributed under the terms of this License.  Such a notice
-     grants a world-wide, royalty-free license, unlimited in duration,
-     to use that work under the conditions stated herein.  The
-     "Document", below, refers to any such manual or work.  Any member
-     of the public is a licensee, and is addressed as "you".  You accept
-     the license if you copy, modify or distribute the work in a way
-     requiring permission under copyright law.
-
-     A "Modified Version" of the Document means any work containing the
-     Document or a portion of it, either copied verbatim, or with
-     modifications and/or translated into another language.
-
-     A "Secondary Section" is a named appendix or a front-matter section
-     of the Document that deals exclusively with the relationship of the
-     publishers or authors of the Document to the Document's overall
-     subject (or to related matters) and contains nothing that could
-     fall directly within that overall subject.  (Thus, if the Document
-     is in part a textbook of mathematics, a Secondary Section may not
-     explain any mathematics.)  The relationship could be a matter of
-     historical connection with the subject or with related matters, or
-     of legal, commercial, philosophical, ethical or political position
-     regarding them.
-
-     The "Invariant Sections" are certain Secondary Sections whose
-     titles are designated, as being those of Invariant Sections, in the
-     notice that says that the Document is released under this License.
-     If a section does not fit the above definition of Secondary then it
-     is not allowed to be designated as Invariant.  The Document may
-     contain zero Invariant Sections.  If the Document does not identify
-     any Invariant Sections then there are none.
-
-     The "Cover Texts" are certain short passages of text that are
-     listed, as Front-Cover Texts or Back-Cover Texts, in the notice
-     that says that the Document is released under this License.  A
-     Front-Cover Text may be at most 5 words, and a Back-Cover Text may
-     be at most 25 words.
-
-     A "Transparent" copy of the Document means a machine-readable copy,
-     represented in a format whose specification is available to the
-     general public, that is suitable for revising the document
-     straightforwardly with generic text editors or (for images composed
-     of pixels) generic paint programs or (for drawings) some widely
-     available drawing editor, and that is suitable for input to text
-     formatters or for automatic translation to a variety of formats
-     suitable for input to text formatters.  A copy made in an otherwise
-     Transparent file format whose markup, or absence of markup, has
-     been arranged to thwart or discourage subsequent modification by
-     readers is not Transparent.  An image format is not Transparent if
-     used for any substantial amount of text.  A copy that is not
-     "Transparent" is called "Opaque".
-
-     Examples of suitable formats for Transparent copies include plain
-     ASCII without markup, Texinfo input format, LaTeX input format,
-     SGML or XML using a publicly available DTD, and standard-conforming
-     simple HTML, PostScript or PDF designed for human modification.
-     Examples of transparent image formats include PNG, XCF and JPG.
-     Opaque formats include proprietary formats that can be read and
-     edited only by proprietary word processors, SGML or XML for which
-     the DTD and/or processing tools are not generally available, and
-     the machine-generated HTML, PostScript or PDF produced by some word
-     processors for output purposes only.
-
-     The "Title Page" means, for a printed book, the title page itself,
-     plus such following pages as are needed to hold, legibly, the
-     material this License requires to appear in the title page.  For
-     works in formats which do not have any title page as such, "Title
-     Page" means the text near the most prominent appearance of the
-     work's title, preceding the beginning of the body of the text.
-
-     The "publisher" means any person or entity that distributes copies
-     of the Document to the public.
-
-     A section "Entitled XYZ" means a named subunit of the Document
-     whose title either is precisely XYZ or contains XYZ in parentheses
-     following text that translates XYZ in another language.  (Here XYZ
-     stands for a specific section name mentioned below, such as
-     "Acknowledgements", "Dedications", "Endorsements", or "History".)
-     To "Preserve the Title" of such a section when you modify the
-     Document means that it remains a section "Entitled XYZ" according
-     to this definition.
-
-     The Document may include Warranty Disclaimers next to the notice
-     which states that this License applies to the Document.  These
-     Warranty Disclaimers are considered to be included by reference in
-     this License, but only as regards disclaiming warranties: any other
-     implication that these Warranty Disclaimers may have is void and
-     has no effect on the meaning of this License.
-
-  2. VERBATIM COPYING
-
-     You may copy and distribute the Document in any medium, either
-     commercially or noncommercially, provided that this License, the
-     copyright notices, and the license notice saying this License
-     applies to the Document are reproduced in all copies, and that you
-     add no other conditions whatsoever to those of this License.  You
-     may not use technical measures to obstruct or control the reading
-     or further copying of the copies you make or distribute.  However,
-     you may accept compensation in exchange for copies.  If you
-     distribute a large enough number of copies you must also follow the
-     conditions in section 3.
-
-     You may also lend copies, under the same conditions stated above,
-     and you may publicly display copies.
-
-  3. COPYING IN QUANTITY
-
-     If you publish printed copies (or copies in media that commonly
-     have printed covers) of the Document, numbering more than 100, and
-     the Document's license notice requires Cover Texts, you must
-     enclose the copies in covers that carry, clearly and legibly, all
-     these Cover Texts: Front-Cover Texts on the front cover, and
-     Back-Cover Texts on the back cover.  Both covers must also clearly
-     and legibly identify you as the publisher of these copies.  The
-     front cover must present the full title with all words of the title
-     equally prominent and visible.  You may add other material on the
-     covers in addition.  Copying with changes limited to the covers, as
-     long as they preserve the title of the Document and satisfy these
-     conditions, can be treated as verbatim copying in other respects.
-
-     If the required texts for either cover are too voluminous to fit
-     legibly, you should put the first ones listed (as many as fit
-     reasonably) on the actual cover, and continue the rest onto
-     adjacent pages.
-
-     If you publish or distribute Opaque copies of the Document
-     numbering more than 100, you must either include a machine-readable
-     Transparent copy along with each Opaque copy, or state in or with
-     each Opaque copy a computer-network location from which the general
-     network-using public has access to download using public-standard
-     network protocols a complete Transparent copy of the Document, free
-     of added material.  If you use the latter option, you must take
-     reasonably prudent steps, when you begin distribution of Opaque
-     copies in quantity, to ensure that this Transparent copy will
-     remain thus accessible at the stated location until at least one
-     year after the last time you distribute an Opaque copy (directly or
-     through your agents or retailers) of that edition to the public.
-
-     It is requested, but not required, that you contact the authors of
-     the Document well before redistributing any large number of copies,
-     to give them a chance to provide you with an updated version of the
-     Document.
-
-  4. MODIFICATIONS
-
-     You may copy and distribute a Modified Version of the Document
-     under the conditions of sections 2 and 3 above, provided that you
-     release the Modified Version under precisely this License, with the
-     Modified Version filling the role of the Document, thus licensing
-     distribution and modification of the Modified Version to whoever
-     possesses a copy of it.  In addition, you must do these things in
-     the Modified Version:
-
-       A. Use in the Title Page (and on the covers, if any) a title
-          distinct from that of the Document, and from those of previous
-          versions (which should, if there were any, be listed in the
-          History section of the Document).  You may use the same title
-          as a previous version if the original publisher of that
-          version gives permission.
-
-       B. List on the Title Page, as authors, one or more persons or
-          entities responsible for authorship of the modifications in
-          the Modified Version, together with at least five of the
-          principal authors of the Document (all of its principal
-          authors, if it has fewer than five), unless they release you
-          from this requirement.
-
-       C. State on the Title page the name of the publisher of the
-          Modified Version, as the publisher.
-
-       D. Preserve all the copyright notices of the Document.
-
-       E. Add an appropriate copyright notice for your modifications
-          adjacent to the other copyright notices.
-
-       F. Include, immediately after the copyright notices, a license
-          notice giving the public permission to use the Modified
-          Version under the terms of this License, in the form shown in
-          the Addendum below.
-
-       G. Preserve in that license notice the full lists of Invariant
-          Sections and required Cover Texts given in the Document's
-          license notice.
-
-       H. Include an unaltered copy of this License.
-
-       I. Preserve the section Entitled "History", Preserve its Title,
-          and add to it an item stating at least the title, year, new
-          authors, and publisher of the Modified Version as given on the
-          Title Page.  If there is no section Entitled "History" in the
-          Document, create one stating the title, year, authors, and
-          publisher of the Document as given on its Title Page, then add
-          an item describing the Modified Version as stated in the
-          previous sentence.
-
-       J. Preserve the network location, if any, given in the Document
-          for public access to a Transparent copy of the Document, and
-          likewise the network locations given in the Document for
-          previous versions it was based on.  These may be placed in the
-          "History" section.  You may omit a network location for a work
-          that was published at least four years before the Document
-          itself, or if the original publisher of the version it refers
-          to gives permission.
-
-       K. For any section Entitled "Acknowledgements" or "Dedications",
-          Preserve the Title of the section, and preserve in the section
-          all the substance and tone of each of the contributor
-          acknowledgements and/or dedications given therein.
-
-       L. Preserve all the Invariant Sections of the Document, unaltered
-          in their text and in their titles.  Section numbers or the
-          equivalent are not considered part of the section titles.
-
-       M. Delete any section Entitled "Endorsements".  Such a section
-          may not be included in the Modified Version.
-
-       N. Do not retitle any existing section to be Entitled
-          "Endorsements" or to conflict in title with any Invariant
-          Section.
-
-       O. Preserve any Warranty Disclaimers.
-
-     If the Modified Version includes new front-matter sections or
-     appendices that qualify as Secondary Sections and contain no
-     material copied from the Document, you may at your option designate
-     some or all of these sections as invariant.  To do this, add their
-     titles to the list of Invariant Sections in the Modified Version's
-     license notice.  These titles must be distinct from any other
-     section titles.
-
-     You may add a section Entitled "Endorsements", provided it contains
-     nothing but endorsements of your Modified Version by various
-     parties--for example, statements of peer review or that the text
-     has been approved by an organization as the authoritative
-     definition of a standard.
-
-     You may add a passage of up to five words as a Front-Cover Text,
-     and a passage of up to 25 words as a Back-Cover Text, to the end of
-     the list of Cover Texts in the Modified Version.  Only one passage
-     of Front-Cover Text and one of Back-Cover Text may be added by (or
-     through arrangements made by) any one entity.  If the Document
-     already includes a cover text for the same cover, previously added
-     by you or by arrangement made by the same entity you are acting on
-     behalf of, you may not add another; but you may replace the old
-     one, on explicit permission from the previous publisher that added
-     the old one.
-
-     The author(s) and publisher(s) of the Document do not by this
-     License give permission to use their names for publicity for or to
-     assert or imply endorsement of any Modified Version.
-
-  5. COMBINING DOCUMENTS
-
-     You may combine the Document with other documents released under
-     this License, under the terms defined in section 4 above for
-     modified versions, provided that you include in the combination all
-     of the Invariant Sections of all of the original documents,
-     unmodified, and list them all as Invariant Sections of your
-     combined work in its license notice, and that you preserve all
-     their Warranty Disclaimers.
-
-     The combined work need only contain one copy of this License, and
-     multiple identical Invariant Sections may be replaced with a single
-     copy.  If there are multiple Invariant Sections with the same name
-     but different contents, make the title of each such section unique
-     by adding at the end of it, in parentheses, the name of the
-     original author or publisher of that section if known, or else a
-     unique number.  Make the same adjustment to the section titles in
-     the list of Invariant Sections in the license notice of the
-     combined work.
-
-     In the combination, you must combine any sections Entitled
-     "History" in the various original documents, forming one section
-     Entitled "History"; likewise combine any sections Entitled
-     "Acknowledgements", and any sections Entitled "Dedications".  You
-     must delete all sections Entitled "Endorsements."
-
-  6. COLLECTIONS OF DOCUMENTS
-
-     You may make a collection consisting of the Document and other
-     documents released under this License, and replace the individual
-     copies of this License in the various documents with a single copy
-     that is included in the collection, provided that you follow the
-     rules of this License for verbatim copying of each of the documents
-     in all other respects.
-
-     You may extract a single document from such a collection, and
-     distribute it individually under this License, provided you insert
-     a copy of this License into the extracted document, and follow this
-     License in all other respects regarding verbatim copying of that
-     document.
-
-  7. AGGREGATION WITH INDEPENDENT WORKS
-
-     A compilation of the Document or its derivatives with other
-     separate and independent documents or works, in or on a volume of a
-     storage or distribution medium, is called an "aggregate" if the
-     copyright resulting from the compilation is not used to limit the
-     legal rights of the compilation's users beyond what the individual
-     works permit.  When the Document is included in an aggregate, this
-     License does not apply to the other works in the aggregate which
-     are not themselves derivative works of the Document.
-
-     If the Cover Text requirement of section 3 is applicable to these
-     copies of the Document, then if the Document is less than one half
-     of the entire aggregate, the Document's Cover Texts may be placed
-     on covers that bracket the Document within the aggregate, or the
-     electronic equivalent of covers if the Document is in electronic
-     form.  Otherwise they must appear on printed covers that bracket
-     the whole aggregate.
-
-  8. TRANSLATION
-
-     Translation is considered a kind of modification, so you may
-     distribute translations of the Document under the terms of section
-     4.  Replacing Invariant Sections with translations requires special
-     permission from their copyright holders, but you may include
-     translations of some or all Invariant Sections in addition to the
-     original versions of these Invariant Sections.  You may include a
-     translation of this License, and all the license notices in the
-     Document, and any Warranty Disclaimers, provided that you also
-     include the original English version of this License and the
-     original versions of those notices and disclaimers.  In case of a
-     disagreement between the translation and the original version of
-     this License or a notice or disclaimer, the original version will
-     prevail.
-
-     If a section in the Document is Entitled "Acknowledgements",
-     "Dedications", or "History", the requirement (section 4) to
-     Preserve its Title (section 1) will typically require changing the
-     actual title.
-
-  9. TERMINATION
-
-     You may not copy, modify, sublicense, or distribute the Document
-     except as expressly provided under this License.  Any attempt
-     otherwise to copy, modify, sublicense, or distribute it is void,
-     and will automatically terminate your rights under this License.
-
-     However, if you cease all violation of this License, then your
-     license from a particular copyright holder is reinstated (a)
-     provisionally, unless and until the copyright holder explicitly and
-     finally terminates your license, and (b) permanently, if the
-     copyright holder fails to notify you of the violation by some
-     reasonable means prior to 60 days after the cessation.
-
-     Moreover, your license from a particular copyright holder is
-     reinstated permanently if the copyright holder notifies you of the
-     violation by some reasonable means, this is the first time you have
-     received notice of violation of this License (for any work) from
-     that copyright holder, and you cure the violation prior to 30 days
-     after your receipt of the notice.
-
-     Termination of your rights under this section does not terminate
-     the licenses of parties who have received copies or rights from you
-     under this License.  If your rights have been terminated and not
-     permanently reinstated, receipt of a copy of some or all of the
-     same material does not give you any rights to use it.
-
-  10. FUTURE REVISIONS OF THIS LICENSE
-
-     The Free Software Foundation may publish new, revised versions of
-     the GNU Free Documentation License from time to time.  Such new
-     versions will be similar in spirit to the present version, but may
-     differ in detail to address new problems or concerns.  See
-     <http://www.gnu.org/copyleft/>.
-
-     Each version of the License is given a distinguishing version
-     number.  If the Document specifies that a particular numbered
-     version of this License "or any later version" applies to it, you
-     have the option of following the terms and conditions either of
-     that specified version or of any later version that has been
-     published (not as a draft) by the Free Software Foundation.  If the
-     Document does not specify a version number of this License, you may
-     choose any version ever published (not as a draft) by the Free
-     Software Foundation.  If the Document specifies that a proxy can
-     decide which future versions of this License can be used, that
-     proxy's public statement of acceptance of a version permanently
-     authorizes you to choose that version for the Document.
-
-  11. RELICENSING
-
-     "Massive Multiauthor Collaboration Site" (or "MMC Site") means any
-     World Wide Web server that publishes copyrightable works and also
-     provides prominent facilities for anybody to edit those works.  A
-     public wiki that anybody can edit is an example of such a server.
-     A "Massive Multiauthor Collaboration" (or "MMC") contained in the
-     site means any set of copyrightable works thus published on the MMC
-     site.
-
-     "CC-BY-SA" means the Creative Commons Attribution-Share Alike 3.0
-     license published by Creative Commons Corporation, a not-for-profit
-     corporation with a principal place of business in San Francisco,
-     California, as well as future copyleft versions of that license
-     published by that same organization.
-
-     "Incorporate" means to publish or republish a Document, in whole or
-     in part, as part of another Document.
-
-     An MMC is "eligible for relicensing" if it is licensed under this
-     License, and if all works that were first published under this
-     License somewhere other than this MMC, and subsequently
-     incorporated in whole or in part into the MMC, (1) had no cover
-     texts or invariant sections, and (2) were thus incorporated prior
-     to November 1, 2008.
-
-     The operator of an MMC Site may republish an MMC contained in the
-     site under CC-BY-SA on the same site at any time before August 1,
-     2009, provided the MMC is eligible for relicensing.
-
-ADDENDUM: How to use this License for your documents
-====================================================
-
-To use this License in a document you have written, include a copy of
-the License in the document and put the following copyright and license
-notices just after the title page:
-
-       Copyright (C)  YEAR  YOUR NAME.
-       Permission is granted to copy, distribute and/or modify this document
-       under the terms of the GNU Free Documentation License, Version 1.3
-       or any later version published by the Free Software Foundation;
-       with no Invariant Sections, no Front-Cover Texts, and no Back-Cover
-       Texts.  A copy of the license is included in the section entitled ``GNU
-       Free Documentation License''.
-
-   If you have Invariant Sections, Front-Cover Texts and Back-Cover
-Texts, replace the "with...Texts."  line with this:
-
-         with the Invariant Sections being LIST THEIR TITLES, with
-         the Front-Cover Texts being LIST, and with the Back-Cover Texts
-         being LIST.
-
-   If you have Invariant Sections without Cover Texts, or some other
-combination of the three, merge those two alternatives to suit the
-situation.
-
-   If your document contains nontrivial examples of program code, we
-recommend releasing these examples in parallel under your choice of free
-software license, such as the GNU General Public License, to permit
-their use in free software.
 

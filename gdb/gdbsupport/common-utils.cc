@@ -1,6 +1,6 @@
 /* Shared general utility routines for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2020 Free Software Foundation, Inc.
+   Copyright (C) 1986-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,7 +20,7 @@
 #include "common-defs.h"
 #include "common-utils.h"
 #include "host-defs.h"
-#include <ctype.h>
+#include "safe-ctype.h"
 
 void *
 xzalloc (size_t size)
@@ -177,7 +177,7 @@ extract_string_maybe_quoted (const char **arg)
   /* Parse p similarly to gdb_argv buildargv function.  */
   while (*p != '\0')
     {
-      if (isspace (*p) && !squote && !dquote && !bsquote)
+      if (ISSPACE (*p) && !squote && !dquote && !bsquote)
 	break;
       else
 	{
@@ -230,21 +230,21 @@ extract_string_maybe_quoted (const char **arg)
 static int
 is_digit_in_base (unsigned char digit, int base)
 {
-  if (!isalnum (digit))
+  if (!ISALNUM (digit))
     return 0;
   if (base <= 10)
-    return (isdigit (digit) && digit < base + '0');
+    return (ISDIGIT (digit) && digit < base + '0');
   else
-    return (isdigit (digit) || tolower (digit) < base - 10 + 'a');
+    return (ISDIGIT (digit) || TOLOWER (digit) < base - 10 + 'a');
 }
 
 static int
 digit_to_int (unsigned char c)
 {
-  if (isdigit (c))
+  if (ISDIGIT (c))
     return c - '0';
   else
-    return tolower (c) - 'a' + 10;
+    return TOLOWER (c) - 'a' + 10;
 }
 
 /* As for strtoul, but for ULONGEST results.  */
@@ -258,7 +258,7 @@ strtoulst (const char *num, const char **trailer, int base)
   int i = 0;
 
   /* Skip leading whitespace.  */
-  while (isspace (num[i]))
+  while (ISSPACE (num[i]))
     i++;
 
   /* Handle prefixes.  */
@@ -325,7 +325,7 @@ skip_spaces (char *chp)
 {
   if (chp == NULL)
     return NULL;
-  while (*chp && isspace (*chp))
+  while (*chp && ISSPACE (*chp))
     chp++;
   return chp;
 }
@@ -337,7 +337,7 @@ skip_spaces (const char *chp)
 {
   if (chp == NULL)
     return NULL;
-  while (*chp && isspace (*chp))
+  while (*chp && ISSPACE (*chp))
     chp++;
   return chp;
 }
@@ -349,7 +349,7 @@ skip_to_space (const char *chp)
 {
   if (chp == NULL)
     return NULL;
-  while (*chp && !isspace (*chp))
+  while (*chp && !ISSPACE (*chp))
     chp++;
   return chp;
 }
@@ -391,4 +391,53 @@ align_down (ULONGEST v, int n)
   /* Check that N is really a power of two.  */
   gdb_assert (n && (n & (n-1)) == 0);
   return (v & -n);
+}
+
+/* See gdbsupport/common-utils.h.  */
+
+int
+fromhex (int a)
+{
+  if (a >= '0' && a <= '9')
+    return a - '0';
+  else if (a >= 'a' && a <= 'f')
+    return a - 'a' + 10;
+  else if (a >= 'A' && a <= 'F')
+    return a - 'A' + 10;
+  else
+    error (_("Invalid hex digit %d"), a);
+}
+
+/* See gdbsupport/common-utils.h.  */
+
+int
+hex2bin (const char *hex, gdb_byte *bin, int count)
+{
+  int i;
+
+  for (i = 0; i < count; i++)
+    {
+      if (hex[0] == 0 || hex[1] == 0)
+	{
+	  /* Hex string is short, or of uneven length.
+	     Return the count that has been converted so far.  */
+	  return i;
+	}
+      *bin++ = fromhex (hex[0]) * 16 + fromhex (hex[1]);
+      hex += 2;
+    }
+  return i;
+}
+
+/* See gdbsupport/common-utils.h.  */
+
+gdb::byte_vector
+hex2bin (const char *hex)
+{
+  size_t bin_len = strlen (hex) / 2;
+  gdb::byte_vector bin (bin_len);
+
+  hex2bin (hex, bin.data (), bin_len);
+
+  return bin;
 }

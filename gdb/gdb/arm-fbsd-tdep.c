@@ -1,6 +1,6 @@
 /* Target-dependent code for FreeBSD/arm.
 
-   Copyright (C) 2017-2020 Free Software Foundation, Inc.
+   Copyright (C) 2017-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -187,10 +187,10 @@ arm_fbsd_read_description_auxv (struct target_ops *target)
       if (arm_hwcap & HWCAP_NEON)
 	return aarch32_read_description ();
       else if ((arm_hwcap & (HWCAP_VFPv3 | HWCAP_VFPD32))
-	  == (HWCAP_VFPv3 | HWCAP_VFPD32))
+	       == (HWCAP_VFPv3 | HWCAP_VFPD32))
 	return arm_read_description (ARM_FP_TYPE_VFPV3);
       else
-      return arm_read_description (ARM_FP_TYPE_VFPV2);
+	return arm_read_description (ARM_FP_TYPE_VFPV2);
     }
 
   return nullptr;

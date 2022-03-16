@@ -1,6 +1,6 @@
 // 2006-03-20  Paolo Carlini  <pcarlini@suse.de>
 
-// Copyright (C) 2006-2020 Free Software Foundation, Inc.
+// Copyright (C) 2006-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cstring>
 #include <vector>
+#include <deque>
 
 #include <testsuite_hooks.h>
 
@@ -76,9 +77,34 @@ void test02()
   VERIFY( !memcmp(buffer.data(), buffer_ref, 16500) );
 }
 
+void test03()
+{
+  using namespace std;
+
+  typedef istreambuf_iterator<char> in_iterator_type;
+
+  ifstream fbuf_ref("istream_unformatted-1.txt"),
+	   fbuf("istream_unformatted-1.txt");
+
+  char buffer_ref[16500];
+  std::deque<char> buffer(16500, 'a');
+
+  fbuf_ref.read(buffer_ref, 16500);
+
+  in_iterator_type beg(fbuf);
+  in_iterator_type end;
+  copy(beg, end, buffer.begin());
+
+  VERIFY( fbuf_ref.good() );
+  VERIFY( fbuf.good() );
+
+  VERIFY( std::equal(buffer.begin(), buffer.end(), buffer_ref) );
+}
+
 int main()
 {
   test01();
   test02();
+  test03();
   return 0;
 }

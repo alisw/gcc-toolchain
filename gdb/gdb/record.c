@@ -1,6 +1,6 @@
 /* Process record and replay target for GDB, the GNU debugger.
 
-   Copyright (C) 2008-2020 Free Software Foundation, Inc.
+   Copyright (C) 2008-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -48,7 +48,7 @@ static unsigned int record_call_history_size = 10;
 static unsigned int record_call_history_size_setshow_var;
 
 struct cmd_list_element *record_cmdlist = NULL;
-struct cmd_list_element *record_goto_cmdlist = NULL;
+static struct cmd_list_element *record_goto_cmdlist = NULL;
 struct cmd_list_element *set_record_cmdlist = NULL;
 struct cmd_list_element *show_record_cmdlist = NULL;
 struct cmd_list_element *info_record_cmdlist = NULL;
@@ -74,8 +74,8 @@ require_record_target (void)
 
   t = find_record_target ();
   if (t == NULL)
-    error (_("No record target is currently active.\n"
-	     "Use one of the \"target record-<TAB><TAB>\" commands first."));
+    error (_("No recording is currently active.\n"
+	     "Use the \"record full\" or \"record btrace\" command first."));
 
   return t;
 }
@@ -166,7 +166,7 @@ record_unpush (struct target_ops *t)
 {
   DEBUG ("unpush %s", t->shortname ());
 
-  unpush_target (t);
+  current_inferior ()->unpush_target (t);
 }
 
 /* See record.h.  */
@@ -325,7 +325,7 @@ info_record_command (const char *args, int from_tty)
   t = find_record_target ();
   if (t == NULL)
     {
-      printf_filtered (_("No record target is currently active.\n"));
+      printf_filtered (_("No recording is currently active.\n"));
       return;
     }
 
@@ -349,7 +349,7 @@ cmd_record_save (const char *args, int from_tty)
     {
       /* Default recfile name is "gdb_record.PID".  */
       xsnprintf (recfilename_buffer, sizeof (recfilename_buffer),
-                "gdb_record.%d", inferior_ptid.pid ());
+		"gdb_record.%d", inferior_ptid.pid ());
       recfilename = recfilename_buffer;
     }
 
@@ -785,24 +785,31 @@ A size of \"unlimited\" means unlimited lines.  The default is 10."),
 			    set_record_call_history_size, NULL,
 			    &set_record_cmdlist, &show_record_cmdlist);
 
-  c = add_prefix_cmd ("record", class_obscure, cmd_record_start,
+  cmd_list_element *record_cmd
+    = add_prefix_cmd ("record", class_obscure, cmd_record_start,
 		      _("Start recording."),
-		      &record_cmdlist, "record ", 0, &cmdlist);
-  set_cmd_completer (c, filename_completer);
+		      &record_cmdlist, 0, &cmdlist);
+  set_cmd_completer (record_cmd, filename_completer);
 
-  add_com_alias ("rec", "record", class_obscure, 1);
-  add_basic_prefix_cmd ("record", class_support,
-			_("Set record options."), &set_record_cmdlist,
-			"set record ", 0, &setlist);
-  add_alias_cmd ("rec", "record", class_obscure, 1, &setlist);
-  add_show_prefix_cmd ("record", class_support,
-		       _("Show record options."), &show_record_cmdlist,
-		       "show record ", 0, &showlist);
-  add_alias_cmd ("rec", "record", class_obscure, 1, &showlist);
-  add_prefix_cmd ("record", class_support, info_record_command,
-		  _("Info record options."), &info_record_cmdlist,
-		  "info record ", 0, &infolist);
-  add_alias_cmd ("rec", "record", class_obscure, 1, &infolist);
+  add_com_alias ("rec", record_cmd, class_obscure, 1);
+
+  cmd_list_element *set_record_cmd
+    = add_basic_prefix_cmd ("record", class_support,
+			    _("Set record options."), &set_record_cmdlist,
+			    0, &setlist);
+  add_alias_cmd ("rec", set_record_cmd, class_obscure, 1, &setlist);
+
+  cmd_list_element *show_record_cmd
+    = add_show_prefix_cmd ("record", class_support,
+			   _("Show record options."), &show_record_cmdlist,
+			   0, &showlist);
+  add_alias_cmd ("rec", show_record_cmd, class_obscure, 1, &showlist);
+
+  cmd_list_element *info_record_cmd
+    = add_prefix_cmd ("record", class_support, info_record_command,
+		      _("Info record options."), &info_record_cmdlist,
+		      0, &infolist);
+  add_alias_cmd ("rec", info_record_cmd, class_obscure, 1, &infolist);
 
   c = add_cmd ("save", class_obscure, cmd_record_save,
 	       _("Save the execution log to a file.\n\
@@ -811,26 +818,31 @@ Default filename is 'gdb_record.PROCESS_ID'."),
 	       &record_cmdlist);
   set_cmd_completer (c, filename_completer);
 
-  add_cmd ("delete", class_obscure, cmd_record_delete,
-	   _("Delete the rest of execution log and start recording it anew."),
-           &record_cmdlist);
-  add_alias_cmd ("d", "delete", class_obscure, 1, &record_cmdlist);
-  add_alias_cmd ("del", "delete", class_obscure, 1, &record_cmdlist);
+  cmd_list_element *record_delete_cmd
+    =  add_cmd ("delete", class_obscure, cmd_record_delete,
+		_("Delete the rest of execution log and start recording it \
+anew."),
+	    &record_cmdlist);
+  add_alias_cmd ("d", record_delete_cmd, class_obscure, 1, &record_cmdlist);
+  add_alias_cmd ("del", record_delete_cmd, class_obscure, 1, &record_cmdlist);
 
-  add_cmd ("stop", class_obscure, cmd_record_stop,
-	   _("Stop the record/replay target."),
-           &record_cmdlist);
-  add_alias_cmd ("s", "stop", class_obscure, 1, &record_cmdlist);
+  cmd_list_element *record_stop_cmd
+    = add_cmd ("stop", class_obscure, cmd_record_stop,
+	       _("Stop the record/replay target."),
+	       &record_cmdlist);
+  add_alias_cmd ("s", record_stop_cmd, class_obscure, 1, &record_cmdlist);
 
   add_prefix_cmd ("goto", class_obscure, cmd_record_goto, _("\
 Restore the program to its state at instruction number N.\n\
 Argument is instruction number, as shown by 'info record'."),
-		  &record_goto_cmdlist, "record goto ", 1, &record_cmdlist);
+		  &record_goto_cmdlist, 1, &record_cmdlist);
 
-  add_cmd ("begin", class_obscure, cmd_record_goto_begin,
-	   _("Go to the beginning of the execution log."),
-	   &record_goto_cmdlist);
-  add_alias_cmd ("start", "begin", class_obscure, 1, &record_goto_cmdlist);
+  cmd_list_element *record_goto_begin_cmd
+    = add_cmd ("begin", class_obscure, cmd_record_goto_begin,
+	       _("Go to the beginning of the execution log."),
+	       &record_goto_cmdlist);
+  add_alias_cmd ("start", record_goto_begin_cmd, class_obscure, 1,
+		 &record_goto_cmdlist);
 
   add_cmd ("end", class_obscure, cmd_record_goto_end,
 	   _("Go to the end of the execution log."),
@@ -854,7 +866,7 @@ If the second argument is preceded by '+' or '-', it specifies the distance \
 from the first argument.\n\
 The number of instructions to disassemble can be defined with \"set record \
 instruction-history-size\"."),
-           &record_cmdlist);
+	   &record_cmdlist);
 
   add_cmd ("function-call-history", class_obscure, cmd_record_call_history, _("\
 Prints the execution history at function granularity.\n\
@@ -874,7 +886,7 @@ If the second argument is preceded by '+' or '-', it specifies the distance \
 from the first argument.\n\
 The number of functions to print can be defined with \"set record \
 function-call-history-size\"."),
-           &record_cmdlist);
+	   &record_cmdlist);
 
   /* Sync command control variables.  */
   record_insn_history_size_setshow_var = record_insn_history_size;

@@ -67,6 +67,16 @@
 #undef create_code
 #undef verify_code
 
+/* test-builtin-memcpy.c */
+#define create_code create_code_builtin_memcpy
+#define verify_code verify_code_builtin_memcpy
+#include "test-builtin-memcpy.c"
+#undef create_code
+#undef verify_code
+
+/* test-builtin-unreachable.c: We don't add this one, since it touches
+   the optimization level of the context as a whole.  */
+
 /* test-calling-external-function.c */
 #define create_code create_code_calling_external_function
 #define verify_code verify_code_calling_external_function
@@ -164,6 +174,13 @@
 #undef create_code
 #undef verify_code
 
+/* test-global-set-initializer.c */
+#define create_code create_code_global_set_initializer
+#define verify_code verify_code_global_set_initializer
+#include "test-global-set-initializer.c"
+#undef create_code
+#undef verify_code
+
 /* test-hello-world.c */
 #define create_code create_code_hello_world
 #define verify_code verify_code_hello_world
@@ -217,6 +234,20 @@
 #define create_code create_code_pr66779
 #define verify_code verify_code_pr66779
 #include "test-pr66779.c"
+#undef create_code
+#undef verify_code
+
+/* test-pr95306-builtin-types.c.  */
+#define create_code create_code_pr95306_builtin_types
+#define verify_code verify_code_pr95306_builtin_types
+#include "test-pr95306-builtin-types.c"
+#undef create_code
+#undef verify_code
+
+/* test-pr95314-rvalue-reuse.c.  */
+#define create_code create_code_pr95314_rvalue_reuse
+#define verify_code verify_code_pr95314_rvalue_reuse
+#include "test-pr95314-rvalue-reuse.c"
 #undef create_code
 #undef verify_code
 
@@ -318,6 +349,9 @@ const struct testcase testcases[] = {
   {"autovectorize",
    create_code_autovectorize,
    verify_code_autovectorize},
+  {"builtin-memcpy",
+   create_code_builtin_memcpy,
+   verify_code_builtin_memcpy},
   {"calling_external_function",
    create_code_calling_external_function,
    verify_code_calling_external_function},
@@ -381,6 +415,12 @@ const struct testcase testcases[] = {
   {"pr66779",
    create_code_pr66779,
    verify_code_pr66779},
+  {"pr95306_builtin_types",
+   create_code_pr95306_builtin_types,
+   verify_code_pr95306_builtin_types},
+  {"pr95314_rvalue_reuse",
+   create_code_pr95314_rvalue_reuse,
+   verify_code_pr95314_rvalue_reuse},
   {"reading_struct ",
    create_code_reading_struct ,
    verify_code_reading_struct },

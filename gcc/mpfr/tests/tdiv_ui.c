@@ -1,6 +1,6 @@
 /* Test file for mpfr_div_ui.
 
-Copyright 1999-2019 Free Software Foundation, Inc.
+Copyright 1999-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -172,7 +172,13 @@ check_inexact (void)
         {
           mpfr_set_prec (y, py);
           mpfr_set_prec (z, py + mp_bits_per_limb);
-          for (rnd = 0; rnd < MPFR_RND_MAX; rnd++)
+          /* The following test fails with MPFR_RNDF ("Wrong ternary value")
+             when building with CFLAGS="-Wall -Werror -std=c90 -pedantic
+             -Wno-error=overlength-strings -Wno-error=format" so that
+             MPFR_LONG_WITHIN_LIMB is not defined (the implementation
+             is not the same in this case). But the ternary value is not
+             specified for MPFR_RNDF. Thus use RND_LOOP_NO_RNDF. */
+          RND_LOOP_NO_RNDF (rnd)
             {
               inexact = mpfr_div_ui (y, x, u, (mpfr_rnd_t) rnd);
               if (mpfr_mul_ui (z, y, u, (mpfr_rnd_t) rnd))
@@ -187,7 +193,7 @@ check_inexact (void)
                   ((inexact > 0) && (cmp <= 0)) ||
                   ((inexact < 0) && (cmp >= 0)))
                 {
-                  printf ("Wrong inexact flag for u=%lu, rnd=%s\n", u,
+                  printf ("Wrong ternary value for u=%lu, rnd=%s\n", u,
                           mpfr_print_rnd_mode ((mpfr_rnd_t) rnd));
                   printf ("x="); mpfr_dump (x);
                   printf ("y="); mpfr_dump (y);
@@ -202,7 +208,12 @@ check_inexact (void)
   mpfr_clear (z);
 }
 
-#if GMP_NUMB_BITS == 64
+/* Note the the preprocessor test and the if test in the function are
+   complementary. If the size of an unsigned long is a power of 2 and
+   this type has no padding bits, the test on ULONG_MAX and the if test
+   are equivalent. The preprocessor test can avoid compiler warnings
+   about the large shifts. */
+#if GMP_NUMB_BITS == 64 && ULONG_MAX > 4294967295
 /* With r11140, on a 64-bit machine with GMP_CHECK_RANDOMIZE=1484406128:
    Consistency error for i = 2577
 */
@@ -211,7 +222,7 @@ test_20170105 (void)
 {
   mpfr_t x,z, t;
 
-  if (sizeof (unsigned long) * CHAR_BIT == 64)
+  if (sizeof (unsigned long) * CHAR_BIT >= 64)
     {
       mpfr_init2 (x, 138);
       mpfr_init2 (z, 128);
@@ -445,6 +456,8 @@ midpoint_exact (void)
                     py--;
                   else if (ky > 1)
                     py += randlimb () % (4 * GMP_NUMB_BITS);
+                  if (py < MPFR_PREC_MIN)
+                    break;
                   mpfr_inits2 (py, y1, y2, (mpfr_ptr) 0);
                   RND_LOOP_NO_RNDF (r)
                     {
@@ -524,7 +537,7 @@ main (int argc, char **argv)
   check("1.0", 3, MPFR_RNDD, "3.3333333333333331483e-1");
   check("1.0", 2116118, MPFR_RNDN, "4.7256343927890600483e-7");
   check("1.098612288668109782", 5, MPFR_RNDN, "0.21972245773362195087");
-#if GMP_NUMB_BITS == 64
+#if GMP_NUMB_BITS == 64 && ULONG_MAX > 4294967295
   test_20170105 ();
 #endif
 

@@ -1,6 +1,6 @@
 /* Maintenance commands for testing the settings framework.
 
-   Copyright (C) 2019-2020 Free Software Foundation, Inc.
+   Copyright (C) 2019-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -89,7 +89,6 @@ _initialize_maint_test_settings ()
 			_("\
 Set GDB internal variables used for set/show command infrastructure testing."),
 			&maintenance_set_test_settings_list,
-			"maintenance set test-settings ",
 			0/*allow-unknown*/,
 			&maintenance_set_cmdlist);
 
@@ -97,7 +96,6 @@ Set GDB internal variables used for set/show command infrastructure testing."),
 		       _("\
 Show GDB internal variables used for set/show command infrastructure testing."),
 		       &maintenance_show_test_settings_list,
-		       "maintenance show test-settings ",
 		       0/*allow-unknown*/,
 		       &maintenance_show_cmdlist);
 

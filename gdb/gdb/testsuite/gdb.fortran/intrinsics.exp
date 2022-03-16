@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Free Software Foundation, Inc.
+# Copyright 2019-2022 Free Software Foundation, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -84,3 +84,8 @@ gdb_test "ptype MODULO (3.0,2.0)" "type = real\\*8"
 # Test CMPLX
 
 gdb_test "p CMPLX (4.1, 2.0)" " = \\(4.$decimal,2\\)"
+
+# Test LOC
+
+gdb_test "p/x LOC(l)" "= $hex"
+gdb_test "ptype loc(l)" "type = integer(\\*$decimal)?"

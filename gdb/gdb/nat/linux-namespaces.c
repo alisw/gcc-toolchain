@@ -1,6 +1,6 @@
 /* Linux namespaces(7) support.
 
-   Copyright (C) 2015-2020 Free Software Foundation, Inc.
+   Copyright (C) 2015-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -207,12 +207,12 @@ linux_ns_same (pid_t pid, enum linux_ns_type type)
    - TYPE (enum mnsh_msg_type, always sent) - the message type.
    - INT1 and
    - INT2 (int, always sent, though not always used) - two
-           values whose meaning is message-type-dependent.
+	   values whose meaning is message-type-dependent.
 	   See enum mnsh_msg_type documentation below.
    - FD (int, optional, sent using SCM_RIGHTS) - an open file
-         descriptor.
+	 descriptor.
    - BUF (unstructured data, optional) - some data with message-
-          type-dependent meaning.
+	  type-dependent meaning.
 
    Note that the helper process is the child of a call to fork,
    so all code in the helper must be async-signal-safe.  */
@@ -771,15 +771,15 @@ mnsh_maybe_mourn_peer (void)
 
 #define mnsh_send_open(helper, filename, flags, mode) \
   mnsh_send_message (helper->sock, MNSH_REQ_OPEN, -1, flags, mode, \
-    		     filename, strlen (filename) + 1)
+		     filename, strlen (filename) + 1)
 
 #define mnsh_send_unlink(helper, filename) \
   mnsh_send_message (helper->sock, MNSH_REQ_UNLINK, -1, 0, 0, \
-    		     filename, strlen (filename) + 1)
+		     filename, strlen (filename) + 1)
 
 #define mnsh_send_readlink(helper, filename) \
   mnsh_send_message (helper->sock, MNSH_REQ_READLINK, -1, 0, 0, \
-    		     filename, strlen (filename) + 1)
+		     filename, strlen (filename) + 1)
 
 /* Receive a message from the helper.  Issue an assertion failure if
    the message isn't a correctly-formatted MNSH_RET_INT.  Set RESULT

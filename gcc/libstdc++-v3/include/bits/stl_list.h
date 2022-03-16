@@ -1,6 +1,6 @@
 // List implementation -*- C++ -*-
 
-// Copyright (C) 2001-2020 Free Software Foundation, Inc.
+// Copyright (C) 2001-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -1947,7 +1947,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
       void
       _M_move_assign(list&& __x, true_type) noexcept
       {
-	this->_M_clear();
+	this->clear();
 	this->_M_move_nodes(std::move(__x));
 	std::__alloc_on_move(this->_M_get_Node_allocator(),
 			     __x._M_get_Node_allocator());

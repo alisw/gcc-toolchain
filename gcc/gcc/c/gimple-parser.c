@@ -1,5 +1,5 @@
 /* Parser for GIMPLE.
-   Copyright (C) 2016-2020 Free Software Foundation, Inc.
+   Copyright (C) 2016-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -590,7 +590,7 @@ c_parser_gimple_compound_statement (gimple_parser &parser, gimple_seq *seq)
 			       : ENTRY_BLOCK_PTR_FOR_FN (cfun)));
 	      if (basic_block_info_for_fn (cfun)->length () <= (size_t)index)
 		vec_safe_grow_cleared (basic_block_info_for_fn (cfun),
-				       index + 1);
+				       index + 1, true);
 	      SET_BASIC_BLOCK_FOR_FN (cfun, index, bb);
 	      if (last_basic_block_for_fn (cfun) <= index)
 		last_basic_block_for_fn (cfun) = index + 1;
@@ -616,8 +616,9 @@ c_parser_gimple_compound_statement (gimple_parser &parser, gimple_seq *seq)
 		      class loop *loop = alloc_loop ();
 		      loop->num = is_loop_header_of;
 		      loop->header = bb;
-		      vec_safe_grow_cleared (loops_for_fn (cfun)->larray,
-					     is_loop_header_of + 1);
+		      if (number_of_loops (cfun) <= (unsigned)is_loop_header_of)
+			vec_safe_grow_cleared (loops_for_fn (cfun)->larray,
+					       is_loop_header_of + 1, true);
 		      (*loops_for_fn (cfun)->larray)[is_loop_header_of] = loop;
 		      flow_loop_tree_node_add (loops_for_fn (cfun)->tree_root,
 					       loop);
@@ -1272,9 +1273,6 @@ c_parser_parse_ssa_name (gimple_parser &parser,
 	      error ("invalid base %qE for SSA name", parent);
 	      return error_mark_node;
 	    }
-	  if (VECTOR_TYPE_P (TREE_TYPE (parent))
-	      || TREE_CODE (TREE_TYPE (parent)) == COMPLEX_TYPE)
-	    DECL_GIMPLE_REG_P (parent) = 1;
 	  name = make_ssa_name_fn (cfun, parent,
 				   gimple_build_nop (), version);
 	}
@@ -1703,6 +1701,8 @@ c_parser_gimple_postfix_expression (gimple_parser &parser)
       expr.set_error ();
       break;
     }
+  if (expr.value == error_mark_node)
+    return expr;
   return c_parser_gimple_postfix_expression_after_primary
     (parser, EXPR_LOC_OR_LOC (expr.value, loc), expr);
 }

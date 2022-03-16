@@ -10,7 +10,7 @@ import (
 	"fmt"
 	internalcpu "internal/cpu"
 	"io"
-	"io/ioutil"
+	"os"
 	"runtime"
 	"strconv"
 	"time"
@@ -474,7 +474,7 @@ func (b *profileBuilder) appendLocsForStack(locs []uint64, stk []uintptr) (newLo
 // have the following properties:
 //   Frame's Func is nil (note: also true for non-Go functions), and
 //   Frame's Entry matches its entry function frame's Entry (note: could also be true for recursive calls and non-Go functions), and
-//   Frame's Name does not match its entry function frame's name (note: inlined functions cannot be recursive).
+//   Frame's Name does not match its entry function frame's name (note: inlined functions cannot be directly recursive).
 //
 // As reading and processing the pcs in a stack trace one by one (from leaf to the root),
 // we use pcDeck to temporarily hold the observed pcs and their expanded frames
@@ -588,7 +588,7 @@ func (b *profileBuilder) emitLocation() uint64 {
 // It saves the address ranges of the mappings in b.mem for use
 // when emitting locations.
 func (b *profileBuilder) readMapping() {
-	data, _ := ioutil.ReadFile("/proc/self/maps")
+	data, _ := os.ReadFile("/proc/self/maps")
 	parseProcSelfMaps(data, b.addMapping)
 	if len(b.mem) == 0 { // pprof expects a map entry, so fake one.
 		b.addMappingEntry(0, 0, 0, "", "", true)

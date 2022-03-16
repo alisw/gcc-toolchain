@@ -1,5 +1,5 @@
 /* Native-dependent code for GNU/Linux RISC-V.
-   Copyright (C) 2018-2020 Free Software Foundation, Inc.
+   Copyright (C) 2018-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -202,7 +202,7 @@ const struct target_desc *
 riscv_linux_nat_target::read_description ()
 {
   const struct riscv_gdbarch_features features
-    = riscv_linux_read_features (inferior_ptid.lwp ());
+    = riscv_linux_read_features (inferior_ptid.pid ());
   return riscv_lookup_target_description (features);
 }
 

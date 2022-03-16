@@ -1,6 +1,6 @@
 /* Scheme interface to blocks.
 
-   Copyright (C) 2008-2020 Free Software Foundation, Inc.
+   Copyright (C) 2008-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -30,7 +30,7 @@
 
 /* A smob describing a gdb block.  */
 
-typedef struct _block_smob
+struct block_smob
 {
   /* This always appears first.
      We want blocks to be eq?-able.  And we need to be able to invalidate
@@ -44,7 +44,7 @@ typedef struct _block_smob
      between a block and an object file.  When a block is created also
      store a pointer to the object file for later use.  */
   struct objfile *objfile;
-} block_smob;
+};
 
 /* To iterate over block symbols from Scheme we need to store
    struct block_iterator somewhere.  This is stored in the "progress" field
@@ -54,7 +54,7 @@ typedef struct _block_smob
    Remember: While iterating over block symbols, you must continually check
    whether the block is still valid.  */
 
-typedef struct
+struct block_syms_progress_smob
 {
   /* This always appears first.  */
   gdb_smob base;
@@ -64,7 +64,7 @@ typedef struct
 
   /* Has the iterator been initialized flag.  */
   int initialized_p;
-} block_syms_progress_smob;
+};
 
 static const char block_smob_name[] = "gdb:block";
 static const char block_syms_progress_smob_name[] = "gdb:block-symbols-iterator";
@@ -799,7 +799,12 @@ gdbscm_initialize_blocks (void)
 				gdbscm_documentation_symbol,
 				gdbscm_scm_from_c_string ("\
 Internal function to assist the block symbols iterator."));
+}
 
+void _initialize_scm_block ();
+void
+_initialize_scm_block ()
+{
   /* Register an objfile "free" callback so we can properly
      invalidate blocks when an object file is about to be deleted.  */
   bkscm_objfile_data_key

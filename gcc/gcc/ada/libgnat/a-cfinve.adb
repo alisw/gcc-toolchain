@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 2010-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 2010-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -40,7 +40,7 @@ is
    --  When growing a container, multiply current capacity by this. Doubling
    --  leads to amortized linear-time copying.
 
-   type Int is range System.Min_Int .. System.Max_Int;
+   subtype Int is Long_Long_Integer;
 
    procedure Free is
      new Ada.Unchecked_Deallocation (Elements_Array, Elements_Array_Ptr);

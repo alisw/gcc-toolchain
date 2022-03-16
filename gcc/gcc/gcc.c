@@ -1,5 +1,5 @@
 /* Compiler driver program that can handle many languages.
-   Copyright (C) 1987-2020 Free Software Foundation, Inc.
+   Copyright (C) 1987-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -270,12 +270,36 @@ static const char *target_sysroot_hdrs_suffix = 0;
 static enum save_temps {
   SAVE_TEMPS_NONE,		/* no -save-temps */
   SAVE_TEMPS_CWD,		/* -save-temps in current directory */
+  SAVE_TEMPS_DUMP,              /* -save-temps in dumpdir */
   SAVE_TEMPS_OBJ		/* -save-temps in object directory */
 } save_temps_flag;
 
-/* Output file to use to get the object directory for -save-temps=obj  */
-static char *save_temps_prefix = 0;
-static size_t save_temps_length = 0;
+/* Set this iff the dumppfx implied by a -save-temps=* option is to
+   override a -dumpdir option, if any.  */
+static bool save_temps_overrides_dumpdir = false;
+
+/* -dumpdir, -dumpbase and -dumpbase-ext flags passed in, possibly
+   rearranged as they are to be passed down, e.g., dumpbase and
+   dumpbase_ext may be cleared if integrated with dumpdir or
+   dropped.  */
+static char *dumpdir, *dumpbase, *dumpbase_ext;
+
+/* Usually the length of the string in dumpdir.  However, during
+   linking, it may be shortened to omit a driver-added trailing dash,
+   by then replaced with a trailing period, that is still to be passed
+   to sub-processes in -dumpdir, but not to be generally used in spec
+   filename expansions.  See maybe_run_linker.  */
+static size_t dumpdir_length = 0;
+
+/* Set if the last character in dumpdir is (or was) a dash that the
+   driver added to dumpdir after dumpbase or linker output name.  */
+static bool dumpdir_trailing_dash_added = false;
+
+/* Basename of dump and aux outputs, computed from dumpbase (given or
+   derived from output name), to override input_basename in non-%w %b
+   et al.  */
+static char *outbase;
+static size_t outbase_length = 0;
 
 /* The compiler version.  */
 
@@ -364,7 +388,7 @@ static void do_option_spec (const char *, const char *);
 static void do_self_spec (const char *);
 static const char *find_file (const char *);
 static int is_directory (const char *, bool);
-static const char *validate_switches (const char *, bool);
+static const char *validate_switches (const char *, bool, bool);
 static void validate_all_switches (void);
 static inline void validate_switches_from_spec (const char *, bool);
 static void give_switch (int, int);
@@ -392,6 +416,7 @@ static void try_generate_repro (const char **argv);
 static const char *getenv_spec_function (int, const char **);
 static const char *if_exists_spec_function (int, const char **);
 static const char *if_exists_else_spec_function (int, const char **);
+static const char *if_exists_then_else_spec_function (int, const char **);
 static const char *sanitize_spec_function (int, const char **);
 static const char *replace_outfile_spec_function (int, const char **);
 static const char *remove_outfile_spec_function (int, const char **);
@@ -402,13 +427,17 @@ static const char *find_plugindir_spec_function (int, const char **);
 static const char *print_asm_header_spec_function (int, const char **);
 static const char *compare_debug_dump_opt_spec_function (int, const char **);
 static const char *compare_debug_self_opt_spec_function (int, const char **);
-static const char *compare_debug_auxbase_opt_spec_function (int, const char **);
 static const char *pass_through_libs_spec_func (int, const char **);
-static const char *replace_extension_spec_func (int, const char **);
+static const char *dumps_spec_func (int, const char **);
 static const char *greater_than_spec_func (int, const char **);
 static const char *debug_level_greater_than_spec_func (int, const char **);
+static const char *dwarf_version_greater_than_spec_func (int, const char **);
 static const char *find_fortran_preinclude_file (int, const char **);
 static char *convert_white_space (char *);
+static char *quote_spec (char *);
+static char *quote_spec_arg (char *);
+static bool not_actual_file_p (const char *);
+
 
 /* The Specs Language
 
@@ -426,12 +455,19 @@ expanding these sequences; therefore, you can concatenate them together
 or with constant text in a single argument.
 
  %%	substitute one % into the program name or argument.
+ %"     substitute an empty argument.
  %i     substitute the name of the input file being processed.
- %b     substitute the basename of the input file being processed.
-	This is the substring up to (and not including) the last period
-	and not including the directory unless -save-temps was specified
-	to put temporaries in a different location.
- %B	same as %b, but include the file suffix (text after the last period).
+ %b     substitute the basename for outputs related with the input file
+	being processed.  This is often a substring of the input file name,
+	up to (and not including) the last period but, unless %w is active,
+	it is affected by the directory selected by -save-temps=*, by
+	-dumpdir, and, in case of multiple compilations, even by -dumpbase
+	and -dumpbase-ext and, in case of linking, by the linker output
+	name.  When %w is active, it derives the main output name only from
+	the input file base name; when it is not, it names aux/dump output
+	file.
+ %B	same as %b, but include the input file suffix (text after the last
+	period).
  %gSUFFIX
 	substitute a file name that has suffix SUFFIX and is chosen
 	once per compilation, and mark the argument a la %d.  To reduce
@@ -506,6 +542,12 @@ or with constant text in a single argument.
  %s     current argument is the name of a library or startup file of some sort.
         Search for that file in a standard list of directories
 	and substitute the full name found.
+ %T	current argument is the name of a linker script.
+	Search for that file in the current list of directories to scan for
+	libraries.  If the file is located, insert a --script option into the
+	command line followed by the full path name found.  If the file is
+	not found then generate an error message.
+	Note: the current working directory is not searched.
  %eSTR  Print STR as an error message.  STR is terminated by a newline.
         Use this when inconsistent options are detected.
  %nSTR  Print STR as a notice.  STR is terminated by a newline.
@@ -641,10 +683,10 @@ proper position among the other output files.  */
 #define ASM_FINAL_SPEC \
   "%{gsplit-dwarf: \n\
        objcopy --extract-dwo \
-	 %{c:%{o*:%*}%{!o*:%b%O}}%{!c:%U%O} \
-	 %{c:%{o*:%:replace-extension(%{o*:%*} .dwo)}%{!o*:%b.dwo}}%{!c:%b.dwo} \n\
+	 %{c:%{o*:%*}%{!o*:%w%b%O}}%{!c:%U%O} \
+	 %b.dwo \n\
        objcopy --strip-dwo \
-	 %{c:%{o*:%*}%{!o*:%b%O}}%{!c:%U%O} \
+	 %{c:%{o*:%*}%{!o*:%w%b%O}}%{!c:%U%O} \
     }"
 #endif
 
@@ -705,6 +747,24 @@ proper position among the other output files.  */
 
 #ifndef LIBASAN_EARLY_SPEC
 #define LIBASAN_EARLY_SPEC ""
+#endif
+
+#ifndef LIBHWASAN_SPEC
+#define STATIC_LIBHWASAN_LIBS \
+  " %{static-libhwasan|static:%:include(libsanitizer.spec)%(link_libhwasan)}"
+#ifdef LIBHWASAN_EARLY_SPEC
+#define LIBHWASAN_SPEC STATIC_LIBHWASAN_LIBS
+#elif defined(HAVE_LD_STATIC_DYNAMIC)
+#define LIBHWASAN_SPEC "%{static-libhwasan:" LD_STATIC_OPTION \
+		     "} -lhwasan %{static-libhwasan:" LD_DYNAMIC_OPTION "}" \
+		     STATIC_LIBHWASAN_LIBS
+#else
+#define LIBHWASAN_SPEC "-lhwasan" STATIC_LIBHWASAN_LIBS
+#endif
+#endif
+
+#ifndef LIBHWASAN_EARLY_SPEC
+#define LIBHWASAN_EARLY_SPEC ""
 #endif
 
 #ifndef LIBTSAN_SPEC
@@ -842,27 +902,70 @@ proper position among the other output files.  */
 #endif /* HAVE_LD_COMPRESS_DEBUG >= 2 */
 
 /* Define ASM_DEBUG_SPEC to be a spec suitable for translating '-g'
-   to the assembler.  */
+   to the assembler, when compiling assembly sources only.  */
 #ifndef ASM_DEBUG_SPEC
+# if defined(HAVE_AS_GDWARF_5_DEBUG_FLAG) && defined(HAVE_AS_WORKING_DWARF_N_FLAG)
+/* If --gdwarf-N is supported and as can handle even compiler generated
+   .debug_line with it, supply --gdwarf-N in ASM_DEBUG_OPTION_SPEC rather
+   than in ASM_DEBUG_SPEC, so that it applies to both .s and .c etc.
+   compilations.  */
+#  define ASM_DEBUG_DWARF_OPTION ""
+# elif defined(HAVE_AS_GDWARF_5_DEBUG_FLAG) && !defined(HAVE_LD_BROKEN_PE_DWARF5)
+#  define ASM_DEBUG_DWARF_OPTION "%{%:dwarf-version-gt(4):--gdwarf-5;" \
+	"%:dwarf-version-gt(3):--gdwarf-4;"				\
+	"%:dwarf-version-gt(2):--gdwarf-3;"				\
+	":--gdwarf2}"
+# else
+#  define ASM_DEBUG_DWARF_OPTION "--gdwarf2"
+# endif
 # if defined(DBX_DEBUGGING_INFO) && defined(DWARF2_DEBUGGING_INFO) \
      && defined(HAVE_AS_GDWARF2_DEBUG_FLAG) && defined(HAVE_AS_GSTABS_DEBUG_FLAG)
 #  define ASM_DEBUG_SPEC						\
       (PREFERRED_DEBUGGING_TYPE == DBX_DEBUG				\
        ? "%{%:debug-level-gt(0):"					\
-	 "%{gdwarf*:--gdwarf2}%{!gdwarf*:%{g*:--gstabs}}}" ASM_MAP	\
+	 "%{gdwarf*:" ASM_DEBUG_DWARF_OPTION "};"			\
+	 ":%{g*:--gstabs}}" ASM_MAP					\
        : "%{%:debug-level-gt(0):"					\
-	 "%{gstabs*:--gstabs}%{!gstabs*:%{g*:--gdwarf2}}}" ASM_MAP)
+	 "%{gstabs*:--gstabs;"						\
+	 ":%{g*:" ASM_DEBUG_DWARF_OPTION "}}}" ASM_MAP)
 # else
 #  if defined(DBX_DEBUGGING_INFO) && defined(HAVE_AS_GSTABS_DEBUG_FLAG)
 #   define ASM_DEBUG_SPEC "%{g*:%{%:debug-level-gt(0):--gstabs}}" ASM_MAP
 #  endif
 #  if defined(DWARF2_DEBUGGING_INFO) && defined(HAVE_AS_GDWARF2_DEBUG_FLAG)
-#   define ASM_DEBUG_SPEC "%{g*:%{%:debug-level-gt(0):--gdwarf2}}" ASM_MAP
+#   define ASM_DEBUG_SPEC "%{g*:%{%:debug-level-gt(0):" \
+	ASM_DEBUG_DWARF_OPTION "}}" ASM_MAP
 #  endif
 # endif
 #endif
 #ifndef ASM_DEBUG_SPEC
 # define ASM_DEBUG_SPEC ""
+#endif
+
+/* Define ASM_DEBUG_OPTION_SPEC to be a spec suitable for translating '-g'
+   to the assembler when compiling all sources.  */
+#ifndef ASM_DEBUG_OPTION_SPEC
+# if defined(HAVE_AS_GDWARF_5_DEBUG_FLAG) && defined(HAVE_AS_WORKING_DWARF_N_FLAG)
+#  define ASM_DEBUG_OPTION_DWARF_OPT					\
+	"%{%:dwarf-version-gt(4):--gdwarf-5 ;"				\
+	"%:dwarf-version-gt(3):--gdwarf-4 ;"				\
+	"%:dwarf-version-gt(2):--gdwarf-3 ;"				\
+	":--gdwarf2 }"
+#  if defined(DBX_DEBUGGING_INFO) && defined(DWARF2_DEBUGGING_INFO)
+#  define ASM_DEBUG_OPTION_SPEC						\
+      (PREFERRED_DEBUGGING_TYPE == DBX_DEBUG				\
+       ? "%{%:debug-level-gt(0):"					\
+	 "%{gdwarf*:" ASM_DEBUG_OPTION_DWARF_OPT "}}" 			\
+       : "%{%:debug-level-gt(0):"					\
+	 "%{!gstabs*:%{g*:" ASM_DEBUG_OPTION_DWARF_OPT "}}}")
+# elif defined(DWARF2_DEBUGGING_INFO)
+#   define ASM_DEBUG_OPTION_SPEC "%{g*:%{%:debug-level-gt(0):" \
+	ASM_DEBUG_OPTION_DWARF_OPT "}}"
+#  endif
+# endif
+#endif
+#ifndef ASM_DEBUG_OPTION_SPEC
+# define ASM_DEBUG_OPTION_SPEC ""
 #endif
 
 /* Here is the spec for running the linker, after compiling all files.  */
@@ -944,6 +1047,10 @@ proper position among the other output files.  */
 # endif
 #endif
 
+#ifndef LTO_PLUGIN_SPEC
+#define LTO_PLUGIN_SPEC ""
+#endif
+
 /* Conditional to test whether the LTO plugin is used or not.
    FIXME: For slim LTO we will need to enable plugin unconditionally.  This
    still cause problems with PLUGIN_LD != LD and when plugin is built but
@@ -968,6 +1075,7 @@ proper position among the other output files.  */
     -plugin %(linker_plugin_file) \
     -plugin-opt=%(lto_wrapper) \
     -plugin-opt=-fresolution=%u.res \
+    " LTO_PLUGIN_SPEC "\
     %{flinker-output=*:-plugin-opt=-linker-output-known} \
     %{!nostdlib:%{!nodefaultlibs:%:pass-through-libs(%(link_gcc_c_sequence))}} \
     }" PLUGIN_COND_CLOSE
@@ -981,6 +1089,7 @@ proper position among the other output files.  */
 #ifndef SANITIZER_EARLY_SPEC
 #define SANITIZER_EARLY_SPEC "\
 %{!nostdlib:%{!r:%{!nodefaultlibs:%{%:sanitize(address):" LIBASAN_EARLY_SPEC "} \
+    %{%:sanitize(hwaddress):" LIBHWASAN_EARLY_SPEC "} \
     %{%:sanitize(thread):" LIBTSAN_EARLY_SPEC "} \
     %{%:sanitize(leak):" LIBLSAN_EARLY_SPEC "}}}}"
 #endif
@@ -990,6 +1099,8 @@ proper position among the other output files.  */
 #define SANITIZER_SPEC "\
 %{!nostdlib:%{!r:%{!nodefaultlibs:%{%:sanitize(address):" LIBASAN_SPEC "\
     %{static:%ecannot specify -static with -fsanitize=address}}\
+    %{%:sanitize(hwaddress):" LIBHWASAN_SPEC "\
+	%{static:%ecannot specify -static with -fsanitize=hwaddress}}\
     %{%:sanitize(thread):" LIBTSAN_SPEC "\
     %{static:%ecannot specify -static with -fsanitize=thread}}\
     %{%:sanitize(undefined):" LIBUBSAN_SPEC "}\
@@ -1074,6 +1185,7 @@ proper position among the other output files.  */
 #endif
 
 static const char *asm_debug = ASM_DEBUG_SPEC;
+static const char *asm_debug_option = ASM_DEBUG_OPTION_SPEC;
 static const char *cpp_spec = CPP_SPEC;
 static const char *cc1_spec = CC1_SPEC;
 static const char *cc1plus_spec = CC1PLUS_SPEC;
@@ -1120,8 +1232,9 @@ static const char *cpp_unique_options =
  %{MD:-MD %{!o:%b.d}%{o*:%.d%*}}\
  %{MMD:-MMD %{!o:%b.d}%{o*:%.d%*}}\
  %{M} %{MM} %{MF*} %{MG} %{MP} %{MQ*} %{MT*}\
+ %{Mmodules} %{Mno-modules}\
  %{!E:%{!M:%{!MM:%{!MT:%{!MQ:%{MD|MMD:%{o*:-MQ %*}}}}}}}\
- %{remap} %{g3|ggdb3|gstabs3|gxcoff3|gvms3:-dD}\
+ %{remap} %{%:debug-level-gt(2):-dD}\
  %{!iplugindir*:%{fplugin*:%:find-plugindir()}}\
  %{H} %C %{D*&U*&A*} %{i*} %Z %i\
  %{E|M|MM:%W{o*}}";
@@ -1137,24 +1250,29 @@ static const char *cpp_options =
  %{!fno-working-directory:-fworking-directory}}} %{O*}\
  %{undef} %{save-temps*:-fpch-preprocess}";
 
+/* Pass -d* flags, possibly modifying -dumpdir, -dumpbase et al.
+
+   Make it easy for a language to override the argument for the
+   %:dumps specs function call.  */
+#define DUMPS_OPTIONS(EXTS) \
+  "%<dumpdir %<dumpbase %<dumpbase-ext %{d*} %:dumps(" EXTS ")"
+
 /* This contains cpp options which are not passed when the preprocessor
    output will be used by another program.  */
-static const char *cpp_debug_options = "%{d*}";
+static const char *cpp_debug_options = DUMPS_OPTIONS ("");
 
 /* NB: This is shared amongst all front-ends, except for Ada.  */
 static const char *cc1_options =
 "%{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}}\
  %{!iplugindir*:%{fplugin*:%:find-plugindir()}}\
- %1 %{!Q:-quiet} %{!dumpbase:-dumpbase %B} %{d*} %{m*} %{aux-info*}\
- %{fcompare-debug-second:%:compare-debug-auxbase-opt(%b)} \
- %{!fcompare-debug-second:%{c|S:%{o*:-auxbase-strip %*}%{!o*:-auxbase %b}}}%{!c:%{!S:-auxbase %b}} \
+ %1 %{!Q:-quiet} %(cpp_debug_options) %{m*} %{aux-info*}\
  %{g*} %{O*} %{W*&pedantic*} %{w} %{std*&ansi&trigraphs}\
  %{v:-version} %{pg:-p} %{p} %{f*} %{undef}\
  %{Qn:-fno-ident} %{Qy:} %{-help:--help}\
  %{-target-help:--target-help}\
  %{-version:--version}\
  %{-help=*:--help=%*}\
- %{!fsyntax-only:%{S:%W{o*}%{!o*:-o %b.s}}}\
+ %{!fsyntax-only:%{S:%W{o*}%{!o*:-o %w%b.s}}}\
  %{fsyntax-only:-o %j} %{-param*}\
  %{coverage:-fprofile-arcs -ftest-coverage}\
  %{fprofile-arcs|fprofile-generate*|coverage:\
@@ -1168,6 +1286,7 @@ static const char *asm_options =
    to the assembler equivalents.  */
 "%{v} %{w:-W} %{I*} "
 #endif
+"%(asm_debug_option)"
 ASM_COMPRESS_DEBUG_SPEC
 "%a %Y %{c:%W{o*}%{!o*:-o %w%b%O}}%{!c:-o %d%w%u%O}";
 
@@ -1564,6 +1683,7 @@ static struct spec_list static_specs[] =
 {
   INIT_STATIC_SPEC ("asm",			&asm_spec),
   INIT_STATIC_SPEC ("asm_debug",		&asm_debug),
+  INIT_STATIC_SPEC ("asm_debug_option",		&asm_debug_option),
   INIT_STATIC_SPEC ("asm_final",		&asm_final_spec),
   INIT_STATIC_SPEC ("asm_options",		&asm_options),
   INIT_STATIC_SPEC ("invoke_as",		&invoke_as),
@@ -1632,6 +1752,7 @@ static const struct spec_function static_spec_functions[] =
   { "getenv",                   getenv_spec_function },
   { "if-exists",		if_exists_spec_function },
   { "if-exists-else",		if_exists_else_spec_function },
+  { "if-exists-then-else",	if_exists_then_else_spec_function },
   { "sanitize",			sanitize_spec_function },
   { "replace-outfile",		replace_outfile_spec_function },
   { "remove-outfile",		remove_outfile_spec_function },
@@ -1642,11 +1763,11 @@ static const struct spec_function static_spec_functions[] =
   { "print-asm-header",		print_asm_header_spec_function },
   { "compare-debug-dump-opt",	compare_debug_dump_opt_spec_function },
   { "compare-debug-self-opt",	compare_debug_self_opt_spec_function },
-  { "compare-debug-auxbase-opt", compare_debug_auxbase_opt_spec_function },
   { "pass-through-libs",	pass_through_libs_spec_func },
-  { "replace-extension",	replace_extension_spec_func },
+  { "dumps",                    dumps_spec_func },
   { "gt",			greater_than_spec_func },
   { "debug-level-gt",		debug_level_greater_than_spec_func },
+  { "dwarf-version-gt",		dwarf_version_greater_than_spec_func },
   { "fortran-preinclude-file",	find_fortran_preinclude_file},
 #ifdef EXTRA_SPEC_FUNCTIONS
   EXTRA_SPEC_FUNCTIONS
@@ -1865,6 +1986,51 @@ init_spec (void)
 
   specs = sl;
 }
+
+/* Update the entry for SPEC in the static_specs table to point to VALUE,
+   ensuring that we free the previous value if necessary.  Set alloc_p for the
+   entry to ALLOC_P: this determines whether we take ownership of VALUE (i.e.
+   whether we need to free it later on).  */
+static void
+set_static_spec (const char **spec, const char *value, bool alloc_p)
+{
+  struct spec_list *sl = NULL;
+
+  for (unsigned i = 0; i < ARRAY_SIZE (static_specs); i++)
+    {
+      if (static_specs[i].ptr_spec == spec)
+	{
+	  sl = static_specs + i;
+	  break;
+	}
+    }
+
+  gcc_assert (sl);
+
+  if (sl->alloc_p)
+    {
+      const char *old = *spec;
+      free (const_cast <char *> (old));
+    }
+
+  *spec = value;
+  sl->alloc_p = alloc_p;
+}
+
+/* Update a static spec to a new string, taking ownership of that
+   string's memory.  */
+static void set_static_spec_owned (const char **spec, const char *val)
+{
+  return set_static_spec (spec, val, true);
+}
+
+/* Update a static spec to point to a new value, but don't take
+   ownership of (i.e. don't free) that string.  */
+static void set_static_spec_shared (const char **spec, const char *val)
+{
+  return set_static_spec (spec, val, false);
+}
+
 
 /* Change the value of spec NAME to SPEC.  If SPEC is empty, then the spec is
    removed; If the spec starts with a + then SPEC is added to the end of the
@@ -2030,6 +2196,32 @@ open_at_file (void)
      in_at_file = true;
 }
 
+/* Create a temporary @file name.  */
+
+static char *make_at_file (void)
+{
+  static int fileno = 0;
+  char filename[20];
+  const char *base, *ext;
+
+  if (!save_temps_flag)
+    return make_temp_file ("");
+
+  base = dumpbase;
+  if (!(base && *base))
+    base = dumpdir;
+  if (!(base && *base))
+    base = "a";
+
+  sprintf (filename, ".args.%d", fileno++);
+  ext = filename;
+
+  if (base == dumpdir && dumpdir_trailing_dash_added)
+    ext++;
+
+  return concat (base, ext, NULL);
+}
+
 /* Close the temporary @file and add @file to the argument list.  */
 
 static void
@@ -2045,7 +2237,7 @@ close_at_file (void)
     return;
 
   char **argv = (char **) alloca (sizeof (char *) * (n_args + 1));
-  char *temp_file = make_temp_file ("");
+  char *temp_file = make_at_file ();
   char *at_argument = concat ("@", temp_file, NULL);
   FILE *f = fopen (temp_file, "w");
   int status;
@@ -3515,7 +3707,7 @@ convert_filename (const char *name, int do_exe ATTRIBUTE_UNUSED,
 #if defined(HAVE_TARGET_EXECUTABLE_SUFFIX)
   /* If there is no filetype, make it the executable suffix (which includes
      the ".").  But don't get confused if we have just "-o".  */
-  if (! do_exe || TARGET_EXECUTABLE_SUFFIX[0] == 0 || (len == 2 && name[0] == '-'))
+  if (! do_exe || TARGET_EXECUTABLE_SUFFIX[0] == 0 || not_actual_file_p (name))
     return name;
 
   for (i = len - 1; i >= 0; i--)
@@ -4140,7 +4332,8 @@ driver_handle_option (struct gcc_options *opts,
       return true;
 
     case OPT_save_temps:
-      save_temps_flag = SAVE_TEMPS_CWD;
+      if (!save_temps_flag)
+	save_temps_flag = SAVE_TEMPS_DUMP;
       validated = true;
       break;
 
@@ -4153,6 +4346,23 @@ driver_handle_option (struct gcc_options *opts,
       else
 	fatal_error (input_location, "%qs is an unknown %<-save-temps%> option",
 		     decoded->orig_option_with_args_text);
+      save_temps_overrides_dumpdir = true;
+      break;
+
+    case OPT_dumpdir:
+      free (dumpdir);
+      dumpdir = xstrdup (arg);
+      save_temps_overrides_dumpdir = false;
+      break;
+
+    case OPT_dumpbase:
+      free (dumpbase);
+      dumpbase = xstrdup (arg);
+      break;
+
+    case OPT_dumpbase_ext:
+      free (dumpbase_ext);
+      dumpbase_ext = xstrdup (arg);
       break;
 
     case OPT_no_canonical_prefixes:
@@ -4259,8 +4469,6 @@ driver_handle_option (struct gcc_options *opts,
       arg = convert_filename (arg, ! have_c, 0);
 #endif
       output_file = arg;
-      /* Save the output name in case -save-temps=obj was used.  */
-      save_temps_prefix = xstrdup (arg);
       /* On some systems, ld cannot handle "-o" without a space.  So
 	 split the option from its argument.  */
       save_switch ("-o", 1, &arg, validated, true);
@@ -4303,6 +4511,19 @@ driver_handle_option (struct gcc_options *opts,
   return true;
 }
 
+/* Return true if F2 is F1 followed by a single suffix, i.e., by a
+   period and additional characters other than a period.  */
+
+static inline bool
+adds_single_suffix_p (const char *f2, const char *f1)
+{
+  size_t len = strlen (f1);
+
+  return (strncmp (f1, f2, len) == 0
+	  && f2[len] == '.'
+	  && strchr (f2 + len + 1, '.') == NULL);
+}
+
 /* Put the driver's standard set of option handlers in *HANDLERS.  */
 
 static void
@@ -4317,6 +4538,32 @@ set_option_handlers (struct cl_option_handlers *handlers)
   handlers->handlers[1].mask = CL_COMMON;
   handlers->handlers[2].handler = target_handle_option;
   handlers->handlers[2].mask = CL_TARGET;
+}
+
+
+/* Return the index into infiles for the single non-library
+   non-lto-wpa input file, -1 if there isn't any, or -2 if there is
+   more than one.  */
+static inline int
+single_input_file_index ()
+{
+  int ret = -1;
+
+  for (int i = 0; i < n_infiles; i++)
+    {
+      if (infiles[i].language
+	  && (infiles[i].language[0] == '*'
+	      || (flag_wpa
+		  && strcmp (infiles[i].language, "lto") == 0)))
+	continue;
+
+      if (ret != -1)
+	return -2;
+
+      ret = i;
+    }
+
+  return ret;
 }
 
 /* Create the vector `switches' and its contents.
@@ -4564,44 +4811,12 @@ process_command (unsigned int decoded_options_count,
       if (decoded_options[j].opt_index == OPT_SPECIAL_input_file)
 	{
 	  const char *arg = decoded_options[j].arg;
-          const char *p = strrchr (arg, '@');
-          char *fname;
-	  long offset;
-	  int consumed;
+
 #ifdef HAVE_TARGET_OBJECT_SUFFIX
 	  arg = convert_filename (arg, 0, access (arg, F_OK));
 #endif
-	  /* For LTO static archive support we handle input file
-	     specifications that are composed of a filename and
-	     an offset like FNAME@OFFSET.  */
-	  if (p
-	      && p != arg
-	      && sscanf (p, "@%li%n", &offset, &consumed) >= 1
-	      && strlen (p) == (unsigned int)consumed)
-	    {
-              fname = (char *)xmalloc (p - arg + 1);
-              memcpy (fname, arg, p - arg);
-              fname[p - arg] = '\0';
-	      /* Only accept non-stdin and existing FNAME parts, otherwise
-		 try with the full name.  */
-	      if (strcmp (fname, "-") == 0 || access (fname, F_OK) < 0)
-		{
-		  free (fname);
-		  fname = xstrdup (arg);
-		}
-	    }
-	  else
-	    fname = xstrdup (arg);
+	  add_infile (arg, spec_lang);
 
-          if (strcmp (fname, "-") != 0 && access (fname, F_OK) < 0)
-	    {
-	      bool resp = fname[0] == '@' && access (fname + 1, F_OK) < 0;
-	      error ("%s: %m", fname + resp);
-	    }
-          else
-	    add_infile (arg, spec_lang);
-
-          free (fname);
 	  continue;
 	}
 
@@ -4614,6 +4829,16 @@ process_command (unsigned int decoded_options_count,
      targets.  */
   if (ENABLE_OFFLOADING && offload_targets == NULL)
     handle_foffload_option (OFFLOAD_TARGETS);
+
+  /* Handle -gtoggle as it would later in toplev.c:process_options to
+     make the debug-level-gt spec function work as expected.  */
+  if (flag_gtoggle)
+    {
+      if (debug_info_level == DINFO_LEVEL_NONE)
+	debug_info_level = DINFO_LEVEL_NORMAL;
+      else
+	debug_info_level = DINFO_LEVEL_NONE;
+    }
 
   if (output_file
       && strcmp (output_file, "-") != 0
@@ -4631,23 +4856,382 @@ process_command (unsigned int decoded_options_count,
   if (output_file != NULL && output_file[0] == '\0')
     fatal_error (input_location, "output filename may not be empty");
 
+  /* -dumpdir and -save-temps=* both specify the location of aux/dump
+     outputs; the one that appears last prevails.  When compiling
+     multiple sources, an explicit dumpbase (minus -ext) may be
+     combined with an explicit or implicit dumpdir, whereas when
+     linking, a specified or implied link output name (minus
+     extension) may be combined with a prevailing -save-temps=* or an
+     otherwise implied dumpdir, but not override a prevailing
+     -dumpdir.  Primary outputs (e.g., linker output when linking
+     without -o, or .i, .s or .o outputs when processing multiple
+     inputs with -E, -S or -c, respectively) are NOT affected by these
+     -save-temps=/-dump* options, always landing in the current
+     directory and with the same basename as the input when an output
+     name is not given, but when they're intermediate outputs, they
+     are named like other aux outputs, so the options affect their
+     location and name.
+
+     Here are some examples.  There are several more in the
+     documentation of -o and -dump*, and some quite exhaustive tests
+     in gcc.misc-tests/outputs.exp.
+
+     When compiling any number of sources, no -dump* nor
+     -save-temps=*, all outputs in cwd without prefix:
+
+     # gcc -c b.c -gsplit-dwarf
+     -> cc1 [-dumpdir ./] -dumpbase b.c -dumpbase-ext .c # b.o b.dwo
+
+     # gcc -c b.c d.c -gsplit-dwarf
+     -> cc1 [-dumpdir ./] -dumpbase b.c -dumpbase-ext .c # b.o b.dwo
+     && cc1 [-dumpdir ./] -dumpbase d.c -dumpbase-ext .c # d.o d.dwo
+
+     When compiling and linking, no -dump* nor -save-temps=*, .o
+     outputs are temporary, aux outputs land in the dir of the output,
+     prefixed with the basename of the linker output:
+
+     # gcc b.c d.c -o ab -gsplit-dwarf
+     -> cc1 -dumpdir ab- -dumpbase b.c -dumpbase-ext .c # ab-b.dwo
+     && cc1 -dumpdir ab- -dumpbase d.c -dumpbase-ext .c # ab-d.dwo
+     && link ... -o ab
+
+     # gcc b.c d.c [-o a.out] -gsplit-dwarf
+     -> cc1 -dumpdir a- -dumpbase b.c -dumpbase-ext .c # a-b.dwo
+     && cc1 -dumpdir a- -dumpbase d.c -dumpbase-ext .c # a-d.dwo
+     && link ... [-o a.out]
+
+     When compiling and linking, a prevailing -dumpdir fully overrides
+     the prefix of aux outputs given by the output name:
+
+     # gcc -dumpdir f b.c d.c -gsplit-dwarf [-o [dir/]whatever]
+     -> cc1 -dumpdir f -dumpbase b.c -dumpbase-ext .c # fb.dwo
+     && cc1 -dumpdir f -dumpbase d.c -dumpbase-ext .c # fd.dwo
+     && link ... [-o whatever]
+
+     When compiling multiple inputs, an explicit -dumpbase is combined
+     with -dumpdir, affecting aux outputs, but not the .o outputs:
+
+     # gcc -dumpdir f -dumpbase g- b.c d.c -gsplit-dwarf -c
+     -> cc1 -dumpdir fg- -dumpbase b.c -dumpbase-ext .c # b.o fg-b.dwo
+     && cc1 -dumpdir fg- -dumpbase d.c -dumpbase-ext .c # d.o fg-d.dwo
+
+     When compiling and linking with -save-temps, the .o outputs that
+     would have been temporary become aux outputs, so they get
+     affected by -dump* flags:
+
+     # gcc -dumpdir f -dumpbase g- -save-temps b.c d.c
+     -> cc1 -dumpdir fg- -dumpbase b.c -dumpbase-ext .c # fg-b.o
+     && cc1 -dumpdir fg- -dumpbase d.c -dumpbase-ext .c # fg-d.o
+     && link
+
+     If -save-temps=* prevails over -dumpdir, however, the explicit
+     -dumpdir is discarded, as if it wasn't there.  The basename of
+     the implicit linker output, a.out or a.exe, becomes a- as the aux
+     output prefix for all compilations:
+
+     # gcc [-dumpdir f] -save-temps=cwd b.c d.c
+     -> cc1 -dumpdir a- -dumpbase b.c -dumpbase-ext .c # a-b.o
+     && cc1 -dumpdir a- -dumpbase d.c -dumpbase-ext .c # a-d.o
+     && link
+
+     A single -dumpbase, applying to multiple inputs, overrides the
+     linker output name, implied or explicit, as the aux output prefix:
+
+     # gcc [-dumpdir f] -dumpbase g- -save-temps=cwd b.c d.c
+     -> cc1 -dumpdir g- -dumpbase b.c -dumpbase-ext .c # g-b.o
+     && cc1 -dumpdir g- -dumpbase d.c -dumpbase-ext .c # g-d.o
+     && link
+
+     # gcc [-dumpdir f] -dumpbase g- -save-temps=cwd b.c d.c -o dir/h.out
+     -> cc1 -dumpdir g- -dumpbase b.c -dumpbase-ext .c # g-b.o
+     && cc1 -dumpdir g- -dumpbase d.c -dumpbase-ext .c # g-d.o
+     && link -o dir/h.out
+
+     Now, if the linker output is NOT overridden as a prefix, but
+     -save-temps=* overrides implicit or explicit -dumpdir, the
+     effective dump dir combines the dir selected by the -save-temps=*
+     option with the basename of the specified or implied link output:
+
+     # gcc [-dumpdir f] -save-temps=cwd b.c d.c -o dir/h.out
+     -> cc1 -dumpdir h- -dumpbase b.c -dumpbase-ext .c # h-b.o
+     && cc1 -dumpdir h- -dumpbase d.c -dumpbase-ext .c # h-d.o
+     && link -o dir/h.out
+
+     # gcc [-dumpdir f] -save-temps=obj b.c d.c -o dir/h.out
+     -> cc1 -dumpdir dir/h- -dumpbase b.c -dumpbase-ext .c # dir/h-b.o
+     && cc1 -dumpdir dir/h- -dumpbase d.c -dumpbase-ext .c # dir/h-d.o
+     && link -o dir/h.out
+
+     But then again, a single -dumpbase applying to multiple inputs
+     gets used instead of the linker output basename in the combined
+     dumpdir:
+
+     # gcc [-dumpdir f] -dumpbase g- -save-temps=obj b.c d.c -o dir/h.out
+     -> cc1 -dumpdir dir/g- -dumpbase b.c -dumpbase-ext .c # dir/g-b.o
+     && cc1 -dumpdir dir/g- -dumpbase d.c -dumpbase-ext .c # dir/g-d.o
+     && link -o dir/h.out
+
+     With a single input being compiled, the output basename does NOT
+     affect the dumpdir prefix.
+
+     # gcc -save-temps=obj b.c -gsplit-dwarf -c -o dir/b.o
+     -> cc1 -dumpdir dir/ -dumpbase b.c -dumpbase-ext .c # dir/b.o dir/b.dwo
+
+     but when compiling and linking even a single file, it does:
+
+     # gcc -save-temps=obj b.c -o dir/h.out
+     -> cc1 -dumpdir dir/h- -dumpbase b.c -dumpbase-ext .c # dir/h-b.o
+
+     unless an explicit -dumpdir prevails:
+
+     # gcc -save-temps[=obj] -dumpdir g- b.c -o dir/h.out
+     -> cc1 -dumpdir g- -dumpbase b.c -dumpbase-ext .c # g-b.o
+
+  */
+
+  bool explicit_dumpdir = dumpdir;
+
+  if (!save_temps_overrides_dumpdir && explicit_dumpdir)
+    {
+      /* Do nothing.  */
+    }
+
   /* If -save-temps=obj and -o name, create the prefix to use for %b.
      Otherwise just make -save-temps=obj the same as -save-temps=cwd.  */
-  if (save_temps_flag == SAVE_TEMPS_OBJ && save_temps_prefix != NULL)
+  else if (save_temps_flag != SAVE_TEMPS_CWD && output_file != NULL)
     {
-      save_temps_length = strlen (save_temps_prefix);
-      temp = strrchr (lbasename (save_temps_prefix), '.');
-      if (temp)
+      free (dumpdir);
+      dumpdir = NULL;
+      temp = lbasename (output_file);
+      if (temp != output_file)
+	dumpdir = xstrndup (output_file,
+			    strlen (output_file) - strlen (temp));
+    }
+  else if (dumpdir)
+    {
+      free (dumpdir);
+      dumpdir = NULL;
+    }
+
+  if (save_temps_flag)
+    save_temps_flag = SAVE_TEMPS_DUMP;
+
+  /* If there is any pathname component in an explicit -dumpbase, it
+     overrides dumpdir entirely, so discard it right away.  Although
+     the presence of an explicit -dumpdir matters for the driver, it
+     shouldn't matter for other processes, that get all that's needed
+     from the -dumpdir and -dumpbase always passed to them.  */
+  if (dumpdir && dumpbase && lbasename (dumpbase) != dumpbase)
+    {
+      free (dumpdir);
+      dumpdir = NULL;
+    }
+
+  /* Check that dumpbase_ext matches the end of dumpbase, drop it
+     otherwise.  */
+  if (dumpbase_ext && dumpbase && *dumpbase)
+    {
+      int lendb = strlen (dumpbase);
+      int lendbx = strlen (dumpbase_ext);
+
+      /* -dumpbase-ext must be a suffix proper; discard it if it
+	  matches all of -dumpbase, as that would make for an empty
+	  basename.  */
+      if (lendbx >= lendb
+	  || strcmp (dumpbase + lendb - lendbx, dumpbase_ext) != 0)
 	{
-	  save_temps_length -= strlen (temp);
-	  save_temps_prefix[save_temps_length] = '\0';
+	  free (dumpbase_ext);
+	  dumpbase_ext = NULL;
+	}
+    }
+
+  /* -dumpbase with multiple sources goes into dumpdir.  With a single
+     source, it does only if linking and if dumpdir was not explicitly
+     specified.  */
+  if (dumpbase && *dumpbase
+      && (single_input_file_index () == -2
+	  || (!have_c && !explicit_dumpdir)))
+    {
+      char *prefix;
+
+      if (dumpbase_ext)
+	/* We checked that they match above.  */
+	dumpbase[strlen (dumpbase) - strlen (dumpbase_ext)] = '\0';
+
+      if (dumpdir)
+	prefix = concat (dumpdir, dumpbase, "-", NULL);
+      else
+	prefix = concat (dumpbase, "-", NULL);
+
+      free (dumpdir);
+      free (dumpbase);
+      free (dumpbase_ext);
+      dumpbase = dumpbase_ext = NULL;
+      dumpdir = prefix;
+      dumpdir_trailing_dash_added = true;
+    }
+
+  /* If dumpbase was not brought into dumpdir but we're linking, bring
+     output_file into dumpdir unless dumpdir was explicitly specified.
+     The test for !explicit_dumpdir is further below, because we want
+     to use the obase computation for a ghost outbase, passed to
+     GCC_COLLECT_OPTIONS.  */
+  else if (!have_c && (!explicit_dumpdir || (dumpbase && !*dumpbase)))
+    {
+      /* If we get here, we know dumpbase was not specified, or it was
+	 specified as an empty string.  If it was anything else, it
+	 would have combined with dumpdir above, because the condition
+	 for dumpbase to be used when present is broader than the
+	 condition that gets us here.  */
+      gcc_assert (!dumpbase || !*dumpbase);
+
+      const char *obase;
+      char *tofree = NULL;
+      if (!output_file || not_actual_file_p (output_file))
+	obase = "a";
+      else
+	{
+	  obase = lbasename (output_file);
+	  size_t blen = strlen (obase), xlen;
+	  /* Drop the suffix if it's dumpbase_ext, if given,
+	     otherwise .exe or the target executable suffix, or if the
+	     output was explicitly named a.out, but not otherwise.  */
+	  if (dumpbase_ext
+	      ? (blen > (xlen = strlen (dumpbase_ext))
+		 && strcmp ((temp = (obase + blen - xlen)),
+			    dumpbase_ext) == 0)
+	      : ((temp = strrchr (obase + 1, '.'))
+		 && (xlen = strlen (temp))
+		 && (strcmp (temp, ".exe") == 0
+#if defined(HAVE_TARGET_EXECUTABLE_SUFFIX)
+		     || strcmp (temp, TARGET_EXECUTABLE_SUFFIX) == 0
+#endif
+		     || strcmp (obase, "a.out") == 0)))
+	    {
+	      tofree = xstrndup (obase, blen - xlen);
+	      obase = tofree;
+	    }
 	}
 
+      /* We wish to save this basename to the -dumpdir passed through
+	 GCC_COLLECT_OPTIONS within maybe_run_linker, for e.g. LTO,
+	 but we do NOT wish to add it to e.g. %b, so we keep
+	 outbase_length as zero.  */
+      gcc_assert (!outbase);
+      outbase_length = 0;
+
+      /* If we're building [dir1/]foo[.exe] out of a single input
+	 [dir2/]foo.c that shares the same basename, dump to
+	 [dir2/]foo.c.* rather than duplicating the basename into
+	 [dir2/]foo-foo.c.*.  */
+      int idxin;
+      if (dumpbase
+	  || ((idxin = single_input_file_index ()) >= 0
+	      && adds_single_suffix_p (lbasename (infiles[idxin].name),
+				       obase)))
+	{
+	  if (obase == tofree)
+	    outbase = tofree;
+	  else
+	    {
+	      outbase = xstrdup (obase);
+	      free (tofree);
+	    }
+	  obase = tofree = NULL;
+	}
+      else
+	{
+	  if (dumpdir)
+	    {
+	      char *p = concat (dumpdir, obase, "-", NULL);
+	      free (dumpdir);
+	      dumpdir = p;
+	    }
+	  else
+	    dumpdir = concat (obase, "-", NULL);
+
+	  dumpdir_trailing_dash_added = true;
+
+	  free (tofree);
+	  obase = tofree = NULL;
+	}
+
+      if (!explicit_dumpdir || dumpbase)
+	{
+	  /* Absent -dumpbase and present -dumpbase-ext have been applied
+	     to the linker output name, so compute fresh defaults for each
+	     compilation.  */
+	  free (dumpbase_ext);
+	  dumpbase_ext = NULL;
+	}
     }
-  else if (save_temps_prefix != NULL)
+
+  /* Now, if we're compiling, or if we haven't used the dumpbase
+     above, then outbase (%B) is derived from dumpbase, if given, or
+     from the output name, given or implied.  We can't precompute
+     implied output names, but that's ok, since they're derived from
+     input names.  Just make sure we skip this if dumpbase is the
+     empty string: we want to use input names then, so don't set
+     outbase.  */
+  if ((dumpbase || have_c)
+      && !(dumpbase && !*dumpbase))
     {
-      free (save_temps_prefix);
-      save_temps_prefix = NULL;
+      gcc_assert (!outbase);
+
+      if (dumpbase)
+	{
+	  gcc_assert (single_input_file_index () != -2);
+	  /* We do not want lbasename here; dumpbase with dirnames
+	     overrides dumpdir entirely, even if dumpdir is
+	     specified.  */
+	  if (dumpbase_ext)
+	    /* We've already checked above that the suffix matches.  */
+	    outbase = xstrndup (dumpbase,
+				strlen (dumpbase) - strlen (dumpbase_ext));
+	  else
+	    outbase = xstrdup (dumpbase);
+	}
+      else if (output_file && !not_actual_file_p (output_file))
+	{
+	  outbase = xstrdup (lbasename (output_file));
+	  char *p = strrchr (outbase + 1, '.');
+	  if (p)
+	    *p = '\0';
+	}
+
+      if (outbase)
+	outbase_length = strlen (outbase);
+    }
+
+  /* If there is any pathname component in an explicit -dumpbase, do
+     not use dumpdir, but retain it to pass it on to the compiler.  */
+  if (dumpdir)
+    dumpdir_length = strlen (dumpdir);
+  else
+    dumpdir_length = 0;
+
+  /* Check that dumpbase_ext, if still present, still matches the end
+     of dumpbase, if present, and drop it otherwise.  We only retained
+     it above when dumpbase was absent to maybe use it to drop the
+     extension from output_name before combining it with dumpdir.  We
+     won't deal with -dumpbase-ext when -dumpbase is not explicitly
+     given, even if just to activate backward-compatible dumpbase:
+     dropping it on the floor is correct, expected and documented
+     behavior.  Attempting to deal with a -dumpbase-ext that might
+     match the end of some input filename, or of the combination of
+     the output basename with the suffix of the input filename,
+     possible with an intermediate .gk extension for -fcompare-debug,
+     is just calling for trouble.  */
+  if (dumpbase_ext)
+    {
+      if (!dumpbase || !*dumpbase)
+	{
+	  free (dumpbase_ext);
+	  dumpbase_ext = NULL;
+	}
+      else
+	gcc_assert (strcmp (dumpbase + strlen (dumpbase)
+			    - strlen (dumpbase_ext), dumpbase_ext) == 0);
     }
 
   if (save_temps_flag && use_pipes)
@@ -4843,6 +5427,28 @@ set_collect_gcc_options (void)
 	  obstack_grow (&collect_obstack, "'", 1);
 	}
     }
+
+  if (dumpdir)
+    {
+      if (!first_time)
+	obstack_grow (&collect_obstack, " ", 1);
+      first_time = FALSE;
+
+      obstack_grow (&collect_obstack, "'-dumpdir' '", 12);
+      const char *p, *q;
+
+      q = dumpdir;
+      while ((p = strchr (q, '\'')))
+	{
+	  obstack_grow (&collect_obstack, q, p - q);
+	  obstack_grow (&collect_obstack, "'\\''", 4);
+	  q = ++p;
+	}
+      obstack_grow (&collect_obstack, q, strlen (q));
+
+      obstack_grow (&collect_obstack, "'", 1);
+    }
+
   obstack_grow (&collect_obstack, "\0", 1);
   xputenv (XOBFINISH (&collect_obstack, char *));
 }
@@ -4958,7 +5564,7 @@ insert_wrapper (const char *wrapper)
     }
   while ((p = strchr (p, ',')) != NULL);
 
-  argbuf.safe_grow (old_length + n);
+  argbuf.safe_grow (old_length + n, true);
   memmove (argbuf.address () + n,
 	   argbuf.address (),
 	   old_length * sizeof (const_char_p));
@@ -5361,22 +5967,33 @@ do_spec_1 (const char *spec, int inswitch, const char *soft_matched_part)
 	    fatal_error (input_location, "spec %qs invalid", spec);
 
 	  case 'b':
-	    if (save_temps_length)
-	      obstack_grow (&obstack, save_temps_prefix, save_temps_length);
-	    else
+	    /* Don't use %b in the linker command.  */
+	    gcc_assert (suffixed_basename_length);
+	    if (!this_is_output_file && dumpdir_length)
+	      obstack_grow (&obstack, dumpdir, dumpdir_length);
+	    if (this_is_output_file || !outbase_length)
 	      obstack_grow (&obstack, input_basename, basename_length);
+	    else
+	      obstack_grow (&obstack, outbase, outbase_length);
 	    if (compare_debug < 0)
 	      obstack_grow (&obstack, ".gk", 3);
 	    arg_going = 1;
 	    break;
 
 	  case 'B':
-	    if (save_temps_length)
-	      obstack_grow (&obstack, save_temps_prefix, save_temps_length);
+	    /* Don't use %B in the linker command.  */
+	    gcc_assert (suffixed_basename_length);
+	    if (!this_is_output_file && dumpdir_length)
+	      obstack_grow (&obstack, dumpdir, dumpdir_length);
+	    if (this_is_output_file || !outbase_length)
+	      obstack_grow (&obstack, input_basename, basename_length);
 	    else
-	      obstack_grow (&obstack, input_basename, suffixed_basename_length);
+	      obstack_grow (&obstack, outbase, outbase_length);
 	    if (compare_debug < 0)
 	      obstack_grow (&obstack, ".gk", 3);
+	    obstack_grow (&obstack, input_basename + basename_length,
+			  suffixed_basename_length - basename_length);
+
 	    arg_going = 1;
 	    break;
 
@@ -5529,42 +6146,44 @@ do_spec_1 (const char *spec, int inswitch, const char *soft_matched_part)
 		    suffix_length += 3;
 		  }
 
-		/* If -save-temps=obj and -o were specified, use that for the
+		/* If -save-temps was specified, use that for the
 		   temp file.  */
-		if (save_temps_length)
-		  {
-		    char *tmp;
-		    temp_filename_length
-		      = save_temps_length + suffix_length + 1;
-		    tmp = (char *) alloca (temp_filename_length);
-		    memcpy (tmp, save_temps_prefix, save_temps_length);
-		    memcpy (tmp + save_temps_length, suffix, suffix_length);
-		    tmp[save_temps_length + suffix_length] = '\0';
-		    temp_filename = save_string (tmp, save_temps_length
-						      + suffix_length);
-		    obstack_grow (&obstack, temp_filename,
-				  temp_filename_length);
-		    arg_going = 1;
-		    delete_this_arg = 0;
-		    break;
-		  }
-
-		/* If the gcc_input_filename has the same suffix specified
-		   for the %g, %u, or %U, and -save-temps is specified,
-		   we could end up using that file as an intermediate
-		   thus clobbering the user's source file (.e.g.,
-		   gcc -save-temps foo.s would clobber foo.s with the
-		   output of cpp0).  So check for this condition and
-		   generate a temp file as the intermediate.  */
-
 		if (save_temps_flag)
 		  {
 		    char *tmp;
-		    temp_filename_length = basename_length + suffix_length + 1;
+		    bool adjusted_suffix = false;
+		    if (suffix_length
+			&& !outbase_length && !basename_length
+			&& !dumpdir_trailing_dash_added)
+		      {
+			adjusted_suffix = true;
+			suffix++;
+			suffix_length--;
+		      }
+		    temp_filename_length
+		      = dumpdir_length + suffix_length + 1;
+		    if (outbase_length)
+		      temp_filename_length += outbase_length;
+		    else
+		      temp_filename_length += basename_length;
 		    tmp = (char *) alloca (temp_filename_length);
-		    memcpy (tmp, input_basename, basename_length);
-		    memcpy (tmp + basename_length, suffix, suffix_length);
-		    tmp[basename_length + suffix_length] = '\0';
+		    if (dumpdir_length)
+		      memcpy (tmp, dumpdir, dumpdir_length);
+		    if (outbase_length)
+		      memcpy (tmp + dumpdir_length, outbase,
+			      outbase_length);
+		    else if (basename_length)
+		      memcpy (tmp + dumpdir_length, input_basename,
+			      basename_length);
+		    memcpy (tmp + temp_filename_length - suffix_length - 1,
+			    suffix, suffix_length);
+		    if (adjusted_suffix)
+		      {
+			adjusted_suffix = false;
+			suffix--;
+			suffix_length++;
+		      }
+		    tmp[temp_filename_length - 1] = '\0';
 		    temp_filename = tmp;
 
 		    if (filename_cmp (temp_filename, gcc_input_filename) != 0)
@@ -6075,6 +6694,14 @@ do_spec_1 (const char *spec, int inswitch, const char *soft_matched_part)
 	    }
 	    break;
 
+	  case '"':
+	    /* End a previous argument, if there is one, then issue an
+	       empty argument.  */
+	    end_going_arg ();
+	    arg_going = 1;
+	    end_going_arg ();
+	    break;
+
 	  default:
 	    error ("spec failure: unrecognized spec option %qc", c);
 	    break;
@@ -6084,6 +6711,9 @@ do_spec_1 (const char *spec, int inswitch, const char *soft_matched_part)
       case '\\':
 	/* Backslash: treat next character as ordinary.  */
 	c = *p++;
+
+	/* When adding more cases that previously matched default, make
+	   sure to adjust quote_spec_char_p as well.  */
 
 	/* Fall through.  */
       default:
@@ -7841,7 +8471,7 @@ driver::maybe_putenv_COLLECT_LTO_WRAPPER () const
   if (lto_wrapper_file)
     {
       lto_wrapper_file = convert_white_space (lto_wrapper_file);
-      lto_wrapper_spec = lto_wrapper_file;
+      set_static_spec_owned (&lto_wrapper_spec, lto_wrapper_file);
       obstack_init (&collect_obstack);
       obstack_grow (&collect_obstack, "COLLECT_LTO_WRAPPER=",
 		    sizeof ("COLLECT_LTO_WRAPPER=") - 1);
@@ -8037,7 +8667,7 @@ driver::maybe_print_and_exit () const
     {
       printf (_("%s %s%s\n"), progname, pkgversion_string,
 	      version_string);
-      printf ("Copyright %s 2020 Free Software Foundation, Inc.\n",
+      printf ("Copyright %s 2021 Free Software Foundation, Inc.\n",
 	      _("(C)"));
       fputs (_("This is free software; see the source for copying conditions.  There is NO\n\
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"),
@@ -8291,6 +8921,40 @@ driver::maybe_run_linker (const char *argv0) const
     if (explicit_link_files[i] || outfiles[i] != NULL)
       num_linker_inputs++;
 
+  /* Arrange for temporary file names created during linking to take
+     on names related with the linker output rather than with the
+     inputs when appropriate.  */
+  if (outbase && *outbase)
+    {
+      if (dumpdir)
+	{
+	  char *tofree = dumpdir;
+	  gcc_checking_assert (strlen (dumpdir) == dumpdir_length);
+	  dumpdir = concat (dumpdir, outbase, ".", NULL);
+	  free (tofree);
+	}
+      else
+	dumpdir = concat (outbase, ".", NULL);
+      dumpdir_length += strlen (outbase) + 1;
+      dumpdir_trailing_dash_added = true;
+    }
+  else if (dumpdir_trailing_dash_added)
+    {
+      gcc_assert (dumpdir[dumpdir_length - 1] == '-');
+      dumpdir[dumpdir_length - 1] = '.';
+    }
+
+  if (dumpdir_trailing_dash_added)
+    {
+      gcc_assert (dumpdir_length > 0);
+      gcc_assert (dumpdir[dumpdir_length - 1] == '.');
+      dumpdir_length--;
+    }
+
+  free (outbase);
+  input_basename = outbase = NULL;
+  outbase_length = suffixed_basename_length = basename_length = 0;
+
   /* Run ld to link all the compiler output files.  */
 
   if (num_linker_inputs > 0 && !seen_error () && print_subprocess_help < 2)
@@ -8314,7 +8978,7 @@ driver::maybe_run_linker (const char *argv0) const
 	    {
 	      char *s = find_a_file (&exec_prefixes, "collect2", X_OK, false);
 	      if (s == NULL)
-		linker_name_spec = "ld";
+		set_static_spec_shared (&linker_name_spec, "ld");
 	    }
 
 #if HAVE_LTO_PLUGIN > 0
@@ -8338,7 +9002,7 @@ driver::maybe_run_linker (const char *argv0) const
 	      linker_plugin_file_spec = convert_white_space (temp_spec);
 	    }
 #endif
-	  lto_gcc_spec = argv0;
+	  set_static_spec_shared (&lto_gcc_spec, argv0);
 	}
 
       /* Rebuild the COMPILER_PATH and LIBRARY_PATH environment variables
@@ -8366,8 +9030,15 @@ driver::maybe_run_linker (const char *argv0) const
     for (i = 0; (int) i < n_infiles; i++)
       if (explicit_link_files[i]
 	  && !(infiles[i].language && infiles[i].language[0] == '*'))
-	warning (0, "%s: linker input file unused because linking not done",
-		 outfiles[i]);
+	{
+	  warning (0, "%s: linker input file unused because linking not done",
+		   outfiles[i]);
+	  if (access (outfiles[i], F_OK) < 0)
+	    /* This is can be an indication the user specifed an errorneous
+	       separated option value, (or used the wrong prefix for an
+	       option).  */
+	    error ("%s: linker input file not found: %m", outfiles[i]);
+	}
 }
 
 /* The end of "main".  */
@@ -8542,7 +9213,7 @@ validate_switches_from_spec (const char *spec, bool user)
 	    || (*p == 'W' && *++p == '{')
 	    || (*p == '@' && *++p == '{')))
       /* We have a switch spec.  */
-      p = validate_switches (p + 1, user);
+      p = validate_switches (p + 1, user, *p == '{');
 }
 
 static void
@@ -8561,11 +9232,15 @@ validate_all_switches (void)
   validate_switches_from_spec (link_command_spec, false);
 }
 
-/* Look at the switch-name that comes after START
-   and mark as valid all supplied switches that match it.  */
+/* Look at the switch-name that comes after START and mark as valid
+   all supplied switches that match it.  If BRACED, handle other
+   switches after '|' and '&', and specs after ':' until ';' or '}',
+   going back for more switches after ';'.  Without BRACED, handle
+   only one atom.  Return a pointer to whatever follows the handled
+   items, after the closing brace if BRACED.  */
 
 static const char *
-validate_switches (const char *start, bool user_spec)
+validate_switches (const char *start, bool user_spec, bool braced)
 {
   const char *p = start;
   const char *atom;
@@ -8607,6 +9282,9 @@ next_member:
 	      switches[i].validated = true;
     }
 
+  if (!braced)
+    return p;
+
   if (*p) p++;
   if (*p && (p[-1] == '|' || p[-1] == '&'))
     goto next_member;
@@ -8619,11 +9297,11 @@ next_member:
 	    {
 	      p++;
 	      if (*p == '{' || *p == '<')
-		p = validate_switches (p+1, user_spec);
+		p = validate_switches (p+1, user_spec, *p == '{');
 	      else if (p[0] == 'W' && p[1] == '{')
-		p = validate_switches (p+2, user_spec);
+		p = validate_switches (p+2, user_spec, true);
 	      else if (p[0] == '@' && p[1] == '{')
-		p = validate_switches (p+2, user_spec);
+		p = validate_switches (p+2, user_spec, true);
 	    }
 	  else
 	    p++;
@@ -9109,6 +9787,7 @@ print_multilib_info (void)
   const char *p = multilib_select;
   const char *last_path = 0, *this_path;
   int skip;
+  int not_arg;
   unsigned int last_path_len = 0;
 
   while (*p != '\0')
@@ -9247,12 +9926,14 @@ print_multilib_info (void)
 	  last_path_len = p - this_path;
 	}
 
-      /* If this directory requires any default arguments, we can skip
-	 it.  We will already have printed a directory identical to
-	 this one which does not require that default argument.  */
+      /* If all required arguments are default arguments, and no default
+	 arguments appear in the ! argument list, then we can skip it.
+	 We will already have printed a directory identical to this one
+	 which does not require that default argument.  */
       if (! skip)
 	{
 	  const char *q;
+	  bool default_arg_ok = false;
 
 	  q = p + 1;
 	  while (*q != ';')
@@ -9263,9 +9944,13 @@ print_multilib_info (void)
 		goto invalid_select;
 
 	      if (*q == '!')
-		arg = NULL;
+		{
+		  not_arg = 1;
+		  q++;
+		}
 	      else
-		arg = q;
+		not_arg = 0;
+	      arg = q;
 
 	      while (*q != ' ' && *q != ';')
 		{
@@ -9274,16 +9959,35 @@ print_multilib_info (void)
 		  ++q;
 		}
 
-	      if (arg != NULL
-		  && default_arg (arg, q - arg))
+	      if (default_arg (arg, q - arg))
 		{
-		  skip = 1;
+		  /* Stop checking if any default arguments appeared in not
+		     list.  */
+		  if (not_arg)
+		    {
+		      default_arg_ok = false;
+		      break;
+		    }
+
+		  default_arg_ok = true;
+		}
+	      else if (!not_arg)
+		{
+		  /* Stop checking if any required argument is not provided by
+		     default arguments.  */
+		  default_arg_ok = false;
 		  break;
 		}
 
 	      if (*q == ' ')
 		++q;
 	    }
+
+	  /* Make sure all default argument is OK for this multi-lib set.  */
+	  if (default_arg_ok)
+	    skip = 1;
+	  else
+	    skip = 0;
 	}
 
       if (! skip)
@@ -9450,6 +10154,29 @@ if_exists_else_spec_function (int argc, const char **argv)
   return argv[1];
 }
 
+/* if-exists-then-else built-in spec function.
+
+   Checks to see if the file specified by the absolute pathname in
+   the first arg exists.  Returns the second arg if so, otherwise returns
+   the third arg if it is present.  */
+
+static const char *
+if_exists_then_else_spec_function (int argc, const char **argv)
+{
+
+  /* Must have two or three arguments.  */
+  if (argc != 2 && argc != 3)
+    return NULL;
+
+  if (IS_ABSOLUTE_PATH (argv[0]) && ! access (argv[0], R_OK))
+    return argv[1];
+
+  if (argc == 3)
+    return argv[2];
+
+  return NULL;
+}
+
 /* sanitize built-in spec function.
 
    This returns non-NULL, if sanitizing address, thread or
@@ -9463,8 +10190,12 @@ sanitize_spec_function (int argc, const char **argv)
 
   if (strcmp (argv[0], "address") == 0)
     return (flag_sanitize & SANITIZE_USER_ADDRESS) ? "" : NULL;
+  if (strcmp (argv[0], "hwaddress") == 0)
+    return (flag_sanitize & SANITIZE_USER_HWADDRESS) ? "" : NULL;
   if (strcmp (argv[0], "kernel-address") == 0)
     return (flag_sanitize & SANITIZE_KERNEL_ADDRESS) ? "" : NULL;
+  if (strcmp (argv[0], "kernel-hwaddress") == 0)
+    return (flag_sanitize & SANITIZE_KERNEL_HWADDRESS) ? "" : NULL;
   if (strcmp (argv[0], "thread") == 0)
     return (flag_sanitize & SANITIZE_THREAD) ? "" : NULL;
   if (strcmp (argv[0], "undefined") == 0)
@@ -9761,7 +10492,7 @@ compare_debug_dump_opt_spec_function (int arg,
   do_spec_1 (" ", 0, NULL);
 
   if (argbuf.length () > 0
-      && strcmp (argv[argbuf.length () - 1], "."))
+      && strcmp (argv[argbuf.length () - 1], ".") != 0)
     {
       if (!compare_debug)
 	return NULL;
@@ -9771,25 +10502,22 @@ compare_debug_dump_opt_spec_function (int arg,
     }
   else
     {
-      const char *ext = NULL;
-
       if (argbuf.length () > 0)
-	{
-	  do_spec_2 ("%{o*:%*}%{!o:%{!S:%b%O}%{S:%b.s}}", NULL);
-	  ext = ".gkd";
-	}
+	do_spec_2 ("%B.gkd", NULL);
       else if (!compare_debug)
 	return NULL;
       else
-	do_spec_2 ("%g.gkd", NULL);
+	do_spec_2 ("%{!save-temps*:%g.gkd}%{save-temps*:%B.gkd}", NULL);
 
       do_spec_1 (" ", 0, NULL);
 
       gcc_assert (argbuf.length () > 0);
 
-      name = concat (argbuf.last (), ext, NULL);
+      name = xstrdup (argbuf.last ());
 
-      ret = concat ("-fdump-final-insns=", name, NULL);
+      char *arg = quote_spec (xstrdup (name));
+      ret = concat ("-fdump-final-insns=", arg, NULL);
+      free (arg);
     }
 
   which = compare_debug < 0;
@@ -9816,8 +10544,6 @@ compare_debug_dump_opt_spec_function (int arg,
   return ret;
 }
 
-static const char *debug_auxbase_opt;
-
 /* %:compare-debug-self-opt spec function.  Expands to the options
     that are to be passed in the second compilation of
     compare-debug.  */
@@ -9833,65 +10559,11 @@ compare_debug_self_opt_spec_function (int arg,
   if (compare_debug >= 0)
     return NULL;
 
-  do_spec_2 ("%{c|S:%{o*:%*}}", NULL);
-  do_spec_1 (" ", 0, NULL);
-
-  if (argbuf.length () > 0)
-    debug_auxbase_opt = concat ("-auxbase-strip ",
-				argbuf.last (),
-				NULL);
-  else
-    debug_auxbase_opt = NULL;
-
   return concat ("\
 %<o %<MD %<MMD %<MF* %<MG %<MP %<MQ* %<MT* \
 %<fdump-final-insns=* -w -S -o %j \
 %{!fcompare-debug-second:-fcompare-debug-second} \
 ", compare_debug_opt, NULL);
-}
-
-/* %:compare-debug-auxbase-opt spec function.  Expands to the auxbase
-    options that are to be passed in the second compilation of
-    compare-debug.  It expects, as an argument, the basename of the
-    current input file name, with the .gk suffix appended to it.  */
-
-static const char *
-compare_debug_auxbase_opt_spec_function (int arg,
-					 const char **argv)
-{
-  char *name;
-  int len;
-
-  if (arg == 0)
-    fatal_error (input_location,
-		 "too few arguments to %%:compare-debug-auxbase-opt");
-
-  if (arg != 1)
-    fatal_error (input_location,
-		 "too many arguments to %%:compare-debug-auxbase-opt");
-
-  if (compare_debug >= 0)
-    return NULL;
-
-  len = strlen (argv[0]);
-  if (len < 3 || strcmp (argv[0] + len - 3, ".gk") != 0)
-    fatal_error (input_location, "argument to %%:compare-debug-auxbase-opt "
-		 "does not end in %<.gk%>");
-
-  if (debug_auxbase_opt)
-    return debug_auxbase_opt;
-
-#define OPT "-auxbase "
-
-  len -= 3;
-  name = (char*) xmalloc (sizeof (OPT) + len);
-  memcpy (name, OPT, sizeof (OPT) - 1);
-  memcpy (name + sizeof (OPT) - 1, argv[0], len);
-  name[sizeof (OPT) - 1 + len] = '\0';
-
-#undef OPT
-
-  return name;
 }
 
 /* %:pass-through-libs spec function.  Finds all -l options and input
@@ -9937,34 +10609,105 @@ pass_through_libs_spec_func (int argc, const char **argv)
   return prepended;
 }
 
-/* %:replace-extension spec function.  Replaces the extension of the
-   first argument with the second argument.  */
-
-const char *
-replace_extension_spec_func (int argc, const char **argv)
+static bool
+not_actual_file_p (const char *name)
 {
-  char *name;
+  return (strcmp (name, "-") == 0
+	  || strcmp (name, HOST_BIT_BUCKET) == 0);
+}
+
+/* %:dumps spec function.  Take an optional argument that overrides
+   the default extension for -dumpbase and -dumpbase-ext.
+   Return -dumpdir, -dumpbase and -dumpbase-ext, if needed.  */
+const char *
+dumps_spec_func (int argc, const char **argv ATTRIBUTE_UNUSED)
+{
+  const char *ext = dumpbase_ext;
   char *p;
-  char *result;
-  int i;
 
-  if (argc != 2)
-    fatal_error (input_location, "too few arguments to %%:replace-extension");
+  char *args[3] = { NULL, NULL, NULL };
+  int nargs = 0;
 
-  name = xstrdup (argv[0]);
+  /* Do not compute a default for -dumpbase-ext when -dumpbase was
+     given explicitly.  */
+  if (dumpbase && *dumpbase && !ext)
+    ext = "";
 
-  for (i = strlen (name) - 1; i >= 0; i--)
-    if (IS_DIR_SEPARATOR (name[i]))
-      break;
+  if (argc == 1)
+    {
+      /* Do not override the explicitly-specified -dumpbase-ext with
+	 the specs-provided overrider.  */
+      if (!ext)
+	ext = argv[0];
+    }
+  else if (argc != 0)
+    fatal_error (input_location, "too many arguments for %%:dumps");
 
-  p = strrchr (name + i + 1, '.');
-  if (p != NULL)
-      *p = '\0';
+  if (dumpdir)
+    {
+      p = quote_spec_arg (xstrdup (dumpdir));
+      args[nargs++] = concat (" -dumpdir ", p, NULL);
+      free (p);
+    }
 
-  result = concat (name, argv[1], NULL);
+  if (!ext)
+    ext = input_basename + basename_length;
 
-  free (name);
-  return result;
+  /* Use the precomputed outbase, or compute dumpbase from
+     input_basename, just like %b would.  */
+  char *base;
+
+  if (dumpbase && *dumpbase)
+    {
+      base = xstrdup (dumpbase);
+      p = base + outbase_length;
+      gcc_checking_assert (strncmp (base, outbase, outbase_length) == 0);
+      gcc_checking_assert (strcmp (p, ext) == 0);
+    }
+  else if (outbase_length)
+    {
+      base = xstrndup (outbase, outbase_length);
+      p = NULL;
+    }
+  else
+    {
+      base = xstrndup (input_basename, suffixed_basename_length);
+      p = base + basename_length;
+    }
+
+  if (compare_debug < 0 || !p || strcmp (p, ext) != 0)
+    {
+      if (p)
+	*p = '\0';
+
+      const char *gk;
+      if (compare_debug < 0)
+	gk = ".gk";
+      else
+	gk = "";
+
+      p = concat (base, gk, ext, NULL);
+
+      free (base);
+      base = p;
+    }
+
+  base = quote_spec_arg (base);
+  args[nargs++] = concat (" -dumpbase ", base, NULL);
+  free (base);
+
+  if (*ext)
+    {
+      p = quote_spec_arg (xstrdup (ext));
+      args[nargs++] = concat (" -dumpbase-ext ", p, NULL);
+      free (p);
+    }
+
+  const char *ret = concat (args[0], args[1], args[2], NULL);
+  while (nargs > 0)
+    free (args[--nargs]);
+
+  return ret;
 }
 
 /* Returns "" if ARGV[ARGC - 2] is greater than ARGV[ARGC-1].
@@ -10008,6 +10751,27 @@ debug_level_greater_than_spec_func (int argc, const char **argv)
   gcc_assert (converted != argv[0]);
 
   if (debug_info_level > arg)
+    return "";
+
+  return NULL;
+}
+
+/* Returns "" if dwarf_version is greater than ARGV[ARGC-1].
+   Otherwise, return NULL.  */
+
+static const char *
+dwarf_version_greater_than_spec_func (int argc, const char **argv)
+{
+  char *converted;
+
+  if (argc != 1)
+    fatal_error (input_location,
+		 "wrong number of arguments to %%:dwarf-version-gt");
+
+  long arg = strtol (argv[0], &converted, 10);
+  gcc_assert (converted != argv[0]);
+
+  if (dwarf_version > arg)
     return "";
 
   return NULL;
@@ -10070,6 +10834,44 @@ find_fortran_preinclude_file (int argc, const char **argv)
   return result;
 }
 
+/* If any character in ORIG fits QUOTE_P (_, P), reallocate the string
+   so as to precede every one of them with a backslash.  Return the
+   original string or the reallocated one.  */
+
+static inline char *
+quote_string (char *orig, bool (*quote_p)(char, void *), void *p)
+{
+  int len, number_of_space = 0;
+
+  for (len = 0; orig[len]; len++)
+    if (quote_p (orig[len], p))
+      number_of_space++;
+
+  if (number_of_space)
+    {
+      char *new_spec = (char *) xmalloc (len + number_of_space + 1);
+      int j, k;
+      for (j = 0, k = 0; j <= len; j++, k++)
+	{
+	  if (quote_p (orig[j], p))
+	    new_spec[k++] = '\\';
+	  new_spec[k] = orig[j];
+	}
+      free (orig);
+      return new_spec;
+    }
+  else
+    return orig;
+}
+
+/* Return true iff C is any of the characters convert_white_space
+   should quote.  */
+
+static inline bool
+whitespace_to_convert_p (char c, void *)
+{
+  return (c == ' ' || c == '\t');
+}
 
 /* Insert backslash before spaces in ORIG (usually a file path), to 
    avoid being broken by spec parser.
@@ -10097,26 +10899,50 @@ find_fortran_preinclude_file (int argc, const char **argv)
 static char *
 convert_white_space (char *orig)
 {
-  int len, number_of_space = 0;
+  return quote_string (orig, whitespace_to_convert_p, NULL);
+}
 
-  for (len = 0; orig[len]; len++)
-    if (orig[len] == ' ' || orig[len] == '\t') number_of_space++;
-
-  if (number_of_space)
+/* Return true iff C matches any of the spec active characters.  */
+static inline bool
+quote_spec_char_p (char c, void *)
+{
+  switch (c)
     {
-      char *new_spec = (char *) xmalloc (len + number_of_space + 1);
-      int j, k;
-      for (j = 0, k = 0; j <= len; j++, k++)
-	{
-	  if (orig[j] == ' ' || orig[j] == '\t')
-	    new_spec[k++] = '\\';
-	  new_spec[k] = orig[j];
-	}
+    case ' ':
+    case '\t':
+    case '\n':
+    case '|':
+    case '%':
+    case '\\':
+      return true;
+
+    default:
+      return false;
+    }
+}
+
+/* Like convert_white_space, but deactivate all active spec chars by
+   quoting them.  */
+
+static inline char *
+quote_spec (char *orig)
+{
+  return quote_string (orig, quote_spec_char_p, NULL);
+}
+
+/* Like quote_spec, but also turn an empty string into the spec for an
+   empty argument.  */
+
+static inline char *
+quote_spec_arg (char *orig)
+{
+  if (!*orig)
+    {
       free (orig);
-      return new_spec;
-  }
-  else
-    return orig;
+      return xstrdup ("%\"");
+    }
+
+  return quote_spec (orig);
 }
 
 /* Restore all state within gcc.c to the initial state, so that the driver
@@ -10153,8 +10979,14 @@ driver::finalize ()
   target_sysroot_suffix = 0;
   target_sysroot_hdrs_suffix = 0;
   save_temps_flag = SAVE_TEMPS_NONE;
-  save_temps_prefix = 0;
-  save_temps_length = 0;
+  save_temps_overrides_dumpdir = false;
+  dumpdir_trailing_dash_added = false;
+  free (dumpdir);
+  free (dumpbase);
+  free (dumpbase_ext);
+  free (outbase);
+  dumpdir = dumpbase = dumpbase_ext = outbase = NULL;
+  dumpdir_length = outbase_length = 0;
   spec_machine = DEFAULT_TARGET_MACHINE;
   greatest_status = 1;
 
@@ -10193,9 +11025,9 @@ driver::finalize ()
   just_machine_suffix = 0;
   gcc_exec_prefix = 0;
   gcc_libexec_prefix = 0;
-  md_exec_prefix = MD_EXEC_PREFIX;
-  md_startfile_prefix = MD_STARTFILE_PREFIX;
-  md_startfile_prefix_1 = MD_STARTFILE_PREFIX_1;
+  set_static_spec_shared (&md_exec_prefix, MD_EXEC_PREFIX);
+  set_static_spec_shared (&md_startfile_prefix, MD_STARTFILE_PREFIX);
+  set_static_spec_shared (&md_startfile_prefix_1, MD_STARTFILE_PREFIX_1);
   multilib_dir = 0;
   multilib_os_dir = 0;
   multiarch_dir = 0;
@@ -10219,8 +11051,7 @@ driver::finalize ()
       spec_list *sl = &static_specs[i];
       if (sl->alloc_p)
 	{
-	  if (0)
-	    free (const_cast <char *> (*(sl->ptr_spec)));
+	  free (const_cast <char *> (*(sl->ptr_spec)));
 	  sl->alloc_p = false;
 	}
       *(sl->ptr_spec) = sl->default_ptr;
@@ -10292,8 +11123,6 @@ driver::finalize ()
 
   mdswitches = NULL;
   n_mdswitches = 0;
-
-  debug_auxbase_opt = NULL;
 
   used_arg.finalize ();
 }

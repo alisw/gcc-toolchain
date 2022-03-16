@@ -93,8 +93,8 @@ Attribute Bit
 ``obj'Bit``, where ``obj`` is any object, yields the bit
 offset within the storage unit (byte) that contains the first bit of
 storage allocated for the object.  The value of this attribute is of the
-type *universal_integer*, and is always a non-negative number not
-exceeding the value of ``System.Storage_Unit``.
+type *universal_integer* and is always a nonnegative number smaller
+than ``System.Storage_Unit``.
 
 For an object that is a variable or a constant allocated in a register,
 the value is zero.  (The use of this attribute does not force the
@@ -241,14 +241,16 @@ the first element of the array.
 
 .. code-block:: ada
 
-  type Unconstr_Array is array (Positive range <>) of Boolean;
+  type Unconstr_Array is array (Short_Short_Integer range <>) of Positive;
   Put_Line ("Descriptor size = " & Unconstr_Array'Descriptor_Size'Img);
 
 
-The attribute takes into account any additional padding due to type alignment.
-In the example above, the descriptor contains two values of type
-``Positive`` representing the low and high bound.  Since ``Positive`` has
-a size of 31 bits and an alignment of 4, the descriptor size is ``2 * Positive'Size + 2`` or 64 bits.
+The attribute takes into account any padding due to the alignment of the
+component type. In the example above, the descriptor contains two values
+of type ``Short_Short_Integer`` representing the low and high bound. But,
+since ``Positive`` has an alignment of 4, the size of the descriptor is
+``2 * Short_Short_Integer'Size`` rounded up to the next multiple of 32,
+which yields a size of 32 bits, i.e. including 16 bits of padding.
 
 Attribute Elaborated
 ====================
@@ -336,6 +338,9 @@ Attribute Enum_Rep
 
 .. index:: Enum_Rep
 
+Note that this attribute is now standard in Ada 202x and is available
+as an implementation defined attribute for earlier Ada versions.
+
 For every enumeration subtype ``S``, ``S'Enum_Rep`` denotes a
 function with the following spec:
 
@@ -353,7 +358,7 @@ enumeration literal or object.
 The function returns the representation value for the given enumeration
 value.  This will be equal to value of the ``Pos`` attribute in the
 absence of an enumeration representation clause.  This is a static
-attribute (i.e.,:the result is static if the argument is static).
+attribute (i.e., the result is static if the argument is static).
 
 ``S'Enum_Rep`` can also be used with integer types and objects,
 in which case it simply returns the integer value.  The reason for this
@@ -370,6 +375,9 @@ Attribute Enum_Val
 .. index:: Representation of enums
 
 .. index:: Enum_Val
+
+Note that this attribute is now standard in Ada 202x and is available
+as an implementation defined attribute for earlier Ada versions.
 
 For every enumeration subtype ``S``, ``S'Enum_Val`` denotes a
 function with the following spec:
@@ -475,6 +483,19 @@ otherwise.  The intended use of this attribute is in conjunction with generic
 definitions.  If the attribute is applied to a generic private type, it
 indicates whether or not the corresponding actual type has discriminants.
 
+Attribute Has_Tagged_Values
+===========================
+.. index:: Tagged values, testing for
+
+.. index:: Has_Tagged_Values
+
+The prefix of the ``Has_Tagged_Values`` attribute is a type. The result is a
+Boolean value which is True if the type is a composite type (array or record)
+that is either a tagged type or has a subcomponent that is tagged, and is False
+otherwise. The intended use of this attribute is in conjunction with generic
+definitions. If the attribute is applied to a generic private type, it
+indicates whether or not the corresponding actual type has access values.
+
 Attribute Img
 =============
 .. index:: Img
@@ -502,6 +523,13 @@ Note that technically, in analogy to ``Image``,
 that returns the appropriate string when called. This means that
 ``X'Img`` can be renamed as a function-returning-string, or used
 in an instantiation as a function parameter.
+
+Attribute Initialized
+=====================
+.. index:: Initialized
+
+For the syntax and semantics of this attribute, see the SPARK 2014 Reference
+Manual, section 6.10.
 
 Attribute Integer_Value
 =======================
@@ -642,6 +670,14 @@ target.  This is a static value that can be used to specify the alignment
 for an object, guaranteeing that it is properly aligned in all
 cases.
 
+Attribute Max_Integer_Size
+==========================
+.. index:: Max_Integer_Size
+
+``Standard'Max_Integer_Size`` (``Standard`` is the only permissible
+prefix) provides the size of the largest supported integer type for
+the target. The result is a static constant.
+
 Attribute Mechanism_Code
 ========================
 .. index:: Return values, passing mechanism
@@ -781,8 +817,6 @@ and is static.  For non-scalar types, the result is nonstatic.
 
 Attribute Pool_Address
 ======================
-.. index:: Parameters, when passed by reference
-
 .. index:: Pool_Address
 
 ``X'Pool_Address`` for any object ``X`` returns the address
@@ -1105,6 +1139,26 @@ GNAT also allows this attribute to be applied to floating-point types
 for compatibility with Ada 83.  See
 the Ada 83 reference manual for an exact description of the semantics of
 this attribute when applied to floating-point types.
+
+Attribute Small_Denominator
+===========================
+.. index:: Small
+
+.. index:: Small_Denominator
+
+``typ'Small_Denominator`` for any fixed-point subtype `typ` yields the
+denominator in the representation of ``typ'Small`` as a rational number
+with coprime factors (i.e. as an irreducible fraction).
+
+Attribute Small_Numerator
+=========================
+.. index:: Small
+
+.. index:: Small_Numerator
+
+``typ'Small_Numerator`` for any fixed-point subtype `typ` yields the
+numerator in the representation of ``typ'Small`` as a rational number
+with coprime factors (i.e. as an irreducible fraction).
 
 Attribute Storage_Unit
 ======================
@@ -1608,4 +1662,3 @@ Attribute Word_Size
 ``Standard'Word_Size`` (``Standard`` is the only permissible
 prefix) provides the value ``System.Word_Size``. The result is
 a static constant.
-

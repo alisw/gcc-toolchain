@@ -226,19 +226,18 @@ void test_strncpy_ptr (char *d, const char* s, const char *t, int i)
   }
 
   {
-    /* The following is likely buggy but there's no apparent truncation
-       so it's not diagnosed by -Wstringop-truncation.  Instead, it is
-       diagnosed by -Wstringop-overflow (tested elsewhere).  */
+    /* The following truncates the terminating nul.  The warning should
+       say that but doesn't.  */
     int n;
     n = strlen (s) - 1;
-    CPY (d, s, n);
+    CPY (d, s, n);                  /* { dg-warning "\\\[-Wstringop-truncation" } */
   }
 
   {
     /* Same as above.  */
     size_t n;
     n = strlen (s) - 1;
-    CPY (d, s, n);
+    CPY (d, s, n);                  /* { dg-warning "\\\[-Wstringop-truncation" } */
   }
 
   {
@@ -269,7 +268,7 @@ void test_strncpy_array (Dest *pd, int i, const char* s)
   CPY (dst7, s, 7);                 /* { dg-warning "specified bound 7 equals destination size" } */
   CPY (dst7, s, sizeof dst7);       /* { dg-warning "specified bound 7 equals destination size" } */
 
-  CPY (dst2_5[0], s, sizeof dst2_5[0]); /* { dg-warning "specified bound 5 equals destination size" "bug 77293" { xfail *-*-* } } */
+  CPY (dst2_5[0], s, sizeof dst2_5[0]); /* { dg-warning "specified bound 5 equals destination size" "bug 77293" } */
   CPY (dst2_5[1], s, sizeof dst2_5[1]); /* { dg-warning "specified bound 5 equals destination size" } */
 
   /* Verify that copies that nul-terminate are not diagnosed.  */

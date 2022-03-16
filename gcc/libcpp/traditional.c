@@ -1,5 +1,5 @@
 /* CPP Library - traditional lexical analysis and macro expansion.
-   Copyright (C) 2002-2020 Free Software Foundation, Inc.
+   Copyright (C) 2002-2021 Free Software Foundation, Inc.
    Contributed by Neil Booth, May 2002
 
 This program is free software; you can redistribute it and/or modify it
@@ -312,7 +312,11 @@ _cpp_read_logical_line_trad (cpp_reader *pfile)
   do
     {
       if (pfile->buffer->need_line && !_cpp_get_fresh_line (pfile))
-	return false;
+	{
+	  /* Now pop the buffer that _cpp_get_fresh_line did not.  */
+	  _cpp_pop_buffer (pfile);
+	  return false;
+	}
     }
   while (!_cpp_scan_out_logical_line (pfile, NULL, false)
 	 || pfile->state.skipping);
@@ -326,7 +330,10 @@ fun_like_macro (cpp_hashnode *node)
 {
   if (cpp_builtin_macro_p (node))
     return (node->value.builtin == BT_HAS_ATTRIBUTE
-	    || node->value.builtin == BT_HAS_BUILTIN);
+	    || node->value.builtin == BT_HAS_STD_ATTRIBUTE
+	    || node->value.builtin == BT_HAS_BUILTIN
+	    || node->value.builtin == BT_HAS_INCLUDE
+	    || node->value.builtin == BT_HAS_INCLUDE_NEXT);
   return node->value.macro->fun_like;
 }
 

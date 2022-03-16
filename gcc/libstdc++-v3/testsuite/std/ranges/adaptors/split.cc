@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Free Software Foundation, Inc.
+// Copyright (C) 2020-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -39,7 +39,7 @@ test01()
 {
   auto x = "the  quick  brown  fox"sv;
   auto p = std::string{"  "};
-  auto v = x | views::split(p);
+  auto v = x | views::split(views::all(p)); // views::all is needed here after P2281.
   auto i = v.begin();
   VERIFY( ranges::equal(*i++, "the"sv) );
   VERIFY( ranges::equal(*i++, "quick"sv) );
@@ -83,7 +83,7 @@ test04()
   static_assert(!ranges::view<decltype(p)>);
   static_assert(std::same_as<decltype(p | views::all),
 			     ranges::ref_view<decltype(p)>>);
-  auto v = x | views::split(p);
+  auto v = x | views::split(views::all(p)); // views::all is needed here after P2281.
   auto i = v.begin();
   VERIFY( ranges::equal(*i++, "the"sv) );
   VERIFY( ranges::equal(*i++, "quick"sv) );
@@ -152,6 +152,47 @@ test08()
   VERIFY( i == v.end() );
 }
 
+template<auto split = views::split>
+void
+test09()
+{
+  // Verify SFINAE behavior.
+  std::string s, p;
+  static_assert(!requires { split(); });
+  static_assert(!requires { split(s, p, 0); });
+  static_assert(!requires { split(p)(); });
+  static_assert(!requires { s | split; });
+
+  static_assert(!requires { s | split(p); });
+  static_assert(!requires { split(p)(s); });
+  static_assert(!requires { s | (split(p) | views::all); });
+  static_assert(!requires { (split(p) | views::all)(s); });
+
+  static_assert(requires { s | split(views::all(p)); });
+  static_assert(requires { split(views::all(p))(s); });
+  static_assert(requires { s | (split(views::all(p)) | views::all); });
+  static_assert(requires { (split(views::all(p)) | views::all)(s); });
+
+  auto adapt = split(p);
+  static_assert(requires { s | adapt; });
+  static_assert(requires { adapt(s); });
+
+  auto adapt2 = split(p) | views::all;
+  static_assert(requires { s | adapt2; });
+  static_assert(requires { adapt2(s); });
+}
+
+void
+test10()
+{
+  // LWG 3505
+  auto to_string = [] (auto r) {
+    return std::string(r.begin(), ranges::next(r.begin(), r.end()));
+  };
+  auto v = "xxyx"sv | views::split("xy"sv) | views::transform(to_string);
+  VERIFY( ranges::equal(v, (std::string_view[]){"x", "x"}) );
+}
+
 int
 main()
 {
@@ -163,4 +204,6 @@ main()
   test06();
   test07();
   test08();
+  test09();
+  test10();
 }

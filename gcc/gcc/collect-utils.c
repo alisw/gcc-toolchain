@@ -1,5 +1,5 @@
 /* Utility functions used by tools like collect2 and lto-wrapper.
-   Copyright (C) 2009-2020 Free Software Foundation, Inc.
+   Copyright (C) 2009-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -34,6 +34,7 @@ static char *response_file;
 bool debug;
 bool verbose;
 bool save_temps;
+const char *dumppfx;
 
 
 /* Notify user of a non-error.  */
@@ -103,7 +104,8 @@ do_wait (const char *prog, struct pex_obj *pex)
 
 struct pex_obj *
 collect_execute (const char *prog, char **argv, const char *outname,
-		 const char *errname, int flags, bool use_atfile)
+		 const char *errname, int flags, bool use_atfile,
+		 const char *atsuffix)
 {
   struct pex_obj *pex;
   const char *errmsg;
@@ -125,7 +127,10 @@ collect_execute (const char *prog, char **argv, const char *outname,
       /* Note: we assume argv contains at least one element; this is
          checked above.  */
 
-      response_file = make_temp_file ("");
+      if (!save_temps || !atsuffix || !dumppfx)
+	response_file = make_temp_file ("");
+      else
+	response_file = concat (dumppfx, atsuffix, NULL);
 
       f = fopen (response_file, "w");
 
@@ -201,12 +206,13 @@ collect_execute (const char *prog, char **argv, const char *outname,
 }
 
 void
-fork_execute (const char *prog, char **argv, bool use_atfile)
+fork_execute (const char *prog, char **argv, bool use_atfile,
+	      const char *atsuffix)
 {
   struct pex_obj *pex;
 
   pex = collect_execute (prog, argv, NULL, NULL,
-			 PEX_LAST | PEX_SEARCH, use_atfile);
+			 PEX_LAST | PEX_SEARCH, use_atfile, atsuffix);
   do_wait (prog, pex);
 }
 

@@ -1,6 +1,6 @@
 /* Dynamic architecture support for GDB, the GNU debugger.
 
-   Copyright (C) 1998-2020 Free Software Foundation, Inc.
+   Copyright (C) 1998-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -75,9 +75,7 @@ struct bp_manipulation_endian
   BREAK_INSN_LITTLE, BREAK_INSN_BIG>
 
 /* Default implementation of gdbarch_displaced_hw_singlestep.  */
-extern int
-  default_displaced_step_hw_singlestep (struct gdbarch *,
-					struct displaced_step_closure *);
+extern bool default_displaced_step_hw_singlestep (struct gdbarch *);
 
 /* Possible value for gdbarch_displaced_step_location:
    Place displaced instructions at the program's entry point,
@@ -134,6 +132,28 @@ extern const struct floatformat **
   default_floatformat_for_type (struct gdbarch *gdbarch,
 				const char *name, int len);
 
+/* Default implementation of gdbarch_memtag_to_string.  */
+extern std::string default_memtag_to_string (struct gdbarch *gdbarch,
+					     struct value *tag);
+
+/* Default implementation of gdbarch_tagged_address_p.  */
+bool default_tagged_address_p (struct gdbarch *gdbarch, struct value *address);
+
+/* Default implementation of gdbarch_memtag_matches_p.  */
+extern bool default_memtag_matches_p (struct gdbarch *gdbarch,
+				       struct value *address);
+
+/* Default implementation of gdbarch_set_memtags.  */
+bool default_set_memtags (struct gdbarch *gdbarch,
+			  struct value *address, size_t length,
+			  const gdb::byte_vector &tags,
+			  memtag_type tag_type);
+
+/* Default implementation of gdbarch_get_memtag.  */
+struct value *default_get_memtag (struct gdbarch *gdbarch,
+				  struct value *address,
+				  memtag_type tag_type);
+
 extern CORE_ADDR generic_skip_trampoline_code (struct frame_info *frame,
 					       CORE_ADDR pc);
 
@@ -175,12 +195,6 @@ extern enum bfd_endian selected_byte_order (void);
 /* Return the selected architecture's name, or NULL if no architecture
    was explicitly selected.  */
 extern const char *selected_architecture_name (void);
-
-/* Initialize a ``struct info''.  Can't use memset(0) since some
-   default values are not zero.  "fill" takes all available
-   information and fills in any unspecified fields.  */
-
-extern void gdbarch_info_init (struct gdbarch_info *info);
 
 /* Similar to init, but this time fill in the blanks.  Information is
    obtained from the global "set ..." options and explicitly
@@ -289,7 +303,6 @@ extern void default_read_core_file_mappings (struct gdbarch *gdbarch,
 								      ULONGEST start,
 								      ULONGEST end,
 								      ULONGEST file_ofs,
-								      const char *filename,
-								      const void *other)>
+								      const char *filename)>
 					       loop_cb);
 #endif /* ARCH_UTILS_H */

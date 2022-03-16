@@ -1,5 +1,5 @@
 /* Function splitting pass
-   Copyright (C) 2010-2020 Free Software Foundation, Inc.
+   Copyright (C) 2010-2021 Free Software Foundation, Inc.
    Contributed by Jan Hubicka  <jh@suse.cz>
 
 This file is part of GCC.
@@ -1802,7 +1802,7 @@ execute_split_functions (void)
   calculate_dominance_info (CDI_DOMINATORS);
 
   /* Compute local info about basic blocks and determine function size/time.  */
-  bb_info_vec.safe_grow_cleared (last_basic_block_for_fn (cfun) + 1);
+  bb_info_vec.safe_grow_cleared (last_basic_block_for_fn (cfun) + 1, true);
   best_split_point.split_bbs = NULL;
   basic_block return_bb = find_return_bb ();
   int tsan_exit_found = -1;

@@ -1,6 +1,6 @@
 /* Virtual tail call frames unwinder for GDB.
 
-   Copyright (C) 2010-2020 Free Software Foundation, Inc.
+   Copyright (C) 2010-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -468,6 +468,7 @@ tailcall_frame_prev_arch (struct frame_info *this_frame,
 
 const struct frame_unwind dwarf2_tailcall_frame_unwind =
 {
+  "dwarf2 tailcall",
   TAILCALL_FRAME,
   default_frame_unwind_stop_reason,
   tailcall_frame_this_id,

@@ -1,10 +1,46 @@
-2020-07-23  Release Manager
+2021-07-28  Release Manager
 
-	* GCC 10.2.0 released.
+	* GCC 11.2.0 released.
 
-2020-05-07  Release Manager
+2021-06-17  Jakub Jelinek  <jakub@redhat.com>
 
-	* GCC 10.1.0 released.
+	Backported from master:
+	2021-06-16  Jakub Jelinek  <jakub@redhat.com>
+
+	* src/x86/ffi64.c (classify_argument): For FFI_TYPE_STRUCT set words
+	to number of words needed for type->size + byte_offset bytes rather
+	than just type->size bytes.  Compute pos before the loop and check
+	total size of the structure.
+	* testsuite/libffi.call/nested_struct12.c: New test.
+
+2021-04-27  Release Manager
+
+	* GCC 11.1.0 released.
+
+2021-01-05  Samuel Thibault  <samuel.thibault@ens-lyon.org>
+
+	* configure: Re-generate.
+
+2020-12-05  Iain Sandoe  <iain@sandoe.co.uk>
+
+	PR target/97865
+	* configure: Regenerate.
+
+2020-11-29  John David Anglin  <danglin@gcc.gnu.org>
+
+	* configure: Regenerate.
+
+2020-09-24  Alan Modra  <amodra@gmail.com>
+
+	* src/powerpc/linux64_closure.S (ffi_closure_LINUX64): Correct
+	location of .Lret.
+
+2020-09-24  Alan Modra  <amodra@gmail.com>
+
+	* src/powerpc/linux64.S (ffi_call_LINUX64): Don't emit global
+	entry when __PCREL__.  Call using @notoc.  Add nops.
+	* src/powerpc/linux64_closure.S (ffi_closure_LINUX64): Likewise.
+	(ffi_go_closure_linux64): Likewise.
 
 2020-04-25  Maciej W. Rozycki  <macro@wdc.com>
 

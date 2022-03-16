@@ -1,40 +1,36 @@
-2020-07-04  Nick Clifton  <nickc@redhat.com>
+2022-02-09  Nick Clifton  <nickc@redhat.com>
 
-	Binutils 2.35 branch created.
+	2.38 release.
 
-2020-06-26  Nick Alcock  <nick.alcock@oracle.com>
+2022-01-22  Nick Clifton  <nickc@redhat.com>
 
-	* elfcpp_swap.h (bswap_16): Do not assume that presence of
-	<byteswap.h> means this is declared.  Make static inline, matching
-	recent change to libctf, since there is no non-inline definition
-	of these functions.
-	(bswap_32): Likewise.
-	(bswap_64): Likewise.
+	* 2.38 release branch created.
 
-2020-06-18  Fangrui Song  <i@maskray.me>
+2021-07-03  Nick Clifton  <nickc@redhat.com>
 
-	PR gold/26039
-	* elfcpp.h (enum DF_1): New enum member DF_1_PIE.
+	* 2.37 release branch created.
 
-2020-06-06  Alan Modra  <amodra@gmail.com>
+2021-03-19  Cary Coutant  <ccoutant@gmail.com>
 
-	* powerpc.h: Rename
-	R_PPC64_GOT_TLSGD34 to R_PPC64_GOT_TLSGD_PCREL34,
-	R_PPC64_GOT_TLSLD34 to R_PPC64_GOT_TLSLD_PCREL34,
-	R_PPC64_GOT_TPREL34 to R_PPC64_GOT_TPREL_PCREL34, and
-	R_PPC64_GOT_DTPREL34 to R_PPC64_GOT_DTPREL_PCREL34.
+	PR gold/27246
+	* dwarf.h (enum DW_LNCT): Add line number table content type codes.
+	(enum DW_LINE_OPS): Reformat.
+	(enum DW_LINE_EXTENDED_OPS): Reformat.
+	(enum DW_CHILDREN): Reformat.
+	(enum DW_RLE): Add range list entry types.
+	(enum DW_SECT): Update values for DWARF 5.
 
-2020-01-18  Nick Clifton  <nickc@redhat.com>
+2021-01-09  Nick Clifton  <nickc@redhat.com>
 
-	Binutils 2.34 branch created.
+	* 2.36 release branch crated.
 
-2020-01-01  Alan Modra  <amodra@gmail.com>
+2021-01-01  Alan Modra  <amodra@gmail.com>
 
 	Update year range in copyright notice of all files.
 
-For older changes see ChangeLog-2019
+For older changes see ChangeLog-2020
 
-Copyright (C) 2020 Free Software Foundation, Inc.
+Copyright (C) 2021-2022 Free Software Foundation, Inc.
 
 Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright

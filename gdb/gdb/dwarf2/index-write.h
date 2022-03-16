@@ -1,6 +1,6 @@
 /* DWARF index writing support for GDB.
 
-   Copyright (C) 2018-2020 Free Software Foundation, Inc.
+   Copyright (C) 2018-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,8 +20,8 @@
 #ifndef DWARF_INDEX_WRITE_H
 #define DWARF_INDEX_WRITE_H
 
-#include "symfile.h"
 #include "dwarf2/read.h"
+#include "dwarf2/public.h"
 
 /* Create index files for OBJFILE in the directory DIR.
 

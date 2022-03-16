@@ -1,6 +1,6 @@
 /* Test file for mpfr_fmma and mpfr_fmms.
 
-Copyright 2016-2019 Free Software Foundation, Inc.
+Copyright 2016-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -480,6 +480,123 @@ bug20170405 (void)
   mpfr_clears (x, y, z, (mpfr_ptr) 0);
 }
 
+static void
+underflow_tests (void)
+{
+  mpfr_t x, y, z;
+  mpfr_prec_t p;
+  mpfr_exp_t emin;
+
+  emin = mpfr_get_emin ();
+  mpfr_set_emin (-17);
+  for (p = MPFR_PREC_MIN; p <= 1024; p++)
+    {
+      mpfr_inits2 (p, x, y, (mpfr_ptr) 0);
+      mpfr_init2 (z, p + 1);
+      mpfr_set_str_binary (x, "1e-10");
+      mpfr_set_str_binary (y, "1e-11");
+      mpfr_clear_underflow ();
+      mpfr_fmms (z, x, x, y, y, MPFR_RNDN);
+      /* the exact result is 2^-20-2^-22, and should underflow */
+      MPFR_ASSERTN(mpfr_underflow_p ());
+      MPFR_ASSERTN(mpfr_zero_p (z));
+      MPFR_ASSERTN(mpfr_signbit (z) == 0);
+      mpfr_clears (x, y, z, (mpfr_ptr) 0);
+    }
+  mpfr_set_emin (emin);
+}
+
+static void
+bug20180604 (void)
+{
+  mpfr_t x, y, yneg, z;
+  mpfr_exp_t emin;
+  int ret;
+
+  emin = mpfr_get_emin ();
+  mpfr_set_emin (-1073741821);
+  mpfr_inits2 (564, x, y, yneg, (mpfr_ptr) 0);
+  mpfr_init2 (z, 2256);
+  mpfr_set_str_binary (x, "1.10010000111100110011001101111111101000111001011000110100110010000101000100010001000000111100010000101001011011111001111000110101111100101111001100001100011101100100011110000000011000010110111100111000100101010001011111010111011001110010001011101111001011001110110000010000011100010001010001011100100110111110101001001111001011101111110011101110101010110100010010111011111100010101111100011110111001011111101110101101101110100101111010000101011110100000000110111101000001100001000100010110100111010011011010110011100111010000101110010101111001011100110101100001100E-737194993");
+  mpfr_set_str_binary (y, "-1.00101000100001001101011110100010110011101010011011010111100110101011111100000100101000111010111101100100110010001110011011100100110110000001011001000111101111101111110101100110111000000011000001101001010100010010001110001000011010000100111001001100101111111100010101110101001101101101111010100011011110001000010000010100011000011000010110101100000111111110111001100100100001101011111011100101110111000100101010110100010011101010110010100110100111000000100111101101101000000011110000100110100100011000010011110010001010000110100011111101101101110001110001101101010E-737194903");
+
+  mpfr_clear_underflow ();
+  ret = mpfr_fmms (z, x, x, y, y, MPFR_RNDN);
+  MPFR_ASSERTN(mpfr_underflow_p ());
+  MPFR_ASSERTN(mpfr_zero_p (z));
+  MPFR_ASSERTN(mpfr_signbit (z) == 1);
+  MPFR_ASSERTN(ret > 0);
+
+  mpfr_clear_underflow ();
+  ret = mpfr_fmms (z, y, y, x, x, MPFR_RNDN);
+  MPFR_ASSERTN(mpfr_underflow_p ());
+  MPFR_ASSERTN(mpfr_zero_p (z));
+  MPFR_ASSERTN(mpfr_signbit (z) == 0);
+  MPFR_ASSERTN(ret < 0);
+
+  mpfr_neg (yneg, y, MPFR_RNDN);
+  mpfr_clear_underflow ();
+  ret = mpfr_fmms (z, x, x, y, yneg, MPFR_RNDN);
+  MPFR_ASSERTN(mpfr_underflow_p ());
+  MPFR_ASSERTN(mpfr_zero_p (z));
+  MPFR_ASSERTN(mpfr_signbit (z) == 0);
+  MPFR_ASSERTN(ret < 0);
+
+  mpfr_clear_underflow ();
+  ret = mpfr_fmms (z, y, yneg, x, x, MPFR_RNDN);
+  MPFR_ASSERTN(mpfr_underflow_p ());
+  MPFR_ASSERTN(mpfr_zero_p (z));
+  MPFR_ASSERTN(mpfr_signbit (z) == 1);
+  MPFR_ASSERTN(ret > 0);
+
+  mpfr_clears (x, y, yneg, z, (mpfr_ptr) 0);
+  mpfr_set_emin (emin);
+}
+
+/* this bug was discovered from mpc_mul */
+static void
+bug20200206 (void)
+{
+  mpfr_exp_t emin = mpfr_get_emin ();
+  mpfr_t xre, xim, yre, yim, zre;
+
+  mpfr_set_emin (-1073);
+  mpfr_inits2 (53, xre, xim, yre, yim, zre, (mpfr_ptr) 0);
+  mpfr_set_str (xre, "-0x8.294611b331c8p-904", 16, MPFR_RNDN);
+  mpfr_set_str (xim, "-0x1.859278c2992fap-676", 16, MPFR_RNDN);
+  mpfr_set_str (yre, "0x9.ac54802a95f8p-820", 16, MPFR_RNDN);
+  mpfr_set_str (yim, "0x3.17e59e7612aap-412", 16, MPFR_RNDN);
+  mpfr_fmms (zre, xre, yre, xim, yim, MPFR_RNDN);
+  if (mpfr_regular_p (zre) && mpfr_get_exp (zre) < -1073)
+    {
+      printf ("Error, mpfr_fmms returns an out-of-range exponent:\n");
+      mpfr_dump (zre);
+      exit (1);
+    }
+  mpfr_clears (xre, xim, yre, yim, zre, (mpfr_ptr) 0);
+  mpfr_set_emin (emin);
+}
+
+/* check for integer overflow (see bug fixed in r13798) */
+static void
+extreme_underflow (void)
+{
+  mpfr_t x, y, z;
+  mpfr_exp_t emin = mpfr_get_emin ();
+
+  set_emin (MPFR_EMIN_MIN);
+  mpfr_inits2 (64, x, y, z, (mpfr_ptr) 0);
+  mpfr_set_ui_2exp (x, 1, MPFR_EMIN_MIN - 1, MPFR_RNDN);
+  mpfr_set (y, x, MPFR_RNDN);
+  mpfr_nextabove (x);
+  mpfr_clear_flags ();
+  mpfr_fmms (z, x, x, y, y, MPFR_RNDN);
+  MPFR_ASSERTN (__gmpfr_flags == (MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_INEXACT));
+  MPFR_ASSERTN (MPFR_IS_ZERO (z) && MPFR_IS_POS (z));
+  mpfr_clears (x, y, z, (mpfr_ptr) 0);
+  set_emin (emin);
+}
+
 /* Test double-rounding cases in mpfr_set_1_2, which is called when
    all the precisions are the same. With set.c before r13347, this
    triggers errors for neg=0. */
@@ -548,6 +665,9 @@ main (int argc, char *argv[])
 {
   tests_start_mpfr ();
 
+  bug20200206 ();
+  bug20180604 ();
+  underflow_tests ();
   random_tests ();
   zero_tests ();
   max_tests ();
@@ -555,6 +675,7 @@ main (int argc, char *argv[])
   half_plus_half ();
   bug20170405 ();
   double_rounding ();
+  extreme_underflow ();
 
   tests_end_mpfr ();
   return 0;

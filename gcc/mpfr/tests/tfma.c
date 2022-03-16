@@ -1,6 +1,6 @@
 /* Test file for mpfr_fma.
 
-Copyright 2001-2019 Free Software Foundation, Inc.
+Copyright 2001-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -47,7 +47,7 @@ test_exact (void)
                 mpfr_add (r1, r1, c, (mpfr_rnd_t) rnd))
               {
                 if (rnd == MPFR_RNDF)
-                  break;
+                  continue;
                 printf ("test_exact internal error for (%d,%d,%d,%d,%s)\n",
                         i, j, k, rnd, mpfr_print_rnd_mode ((mpfr_rnd_t) rnd));
                 exit (1);
@@ -664,7 +664,7 @@ test_underflow3 (int n)
              Note: The purpose of the s * 2^(emin-7) term is to yield
              double rounding when scaling for k = 4, s != 0, MPFR_RNDN. */
 
-          RND_LOOP (rnd)
+          RND_LOOP_NO_RNDF (rnd)
             {
               mpfr_clear_flags ();
               inex1 = mpfr_set_si_2exp (t1, sign * (8*k+s-64), e-6,

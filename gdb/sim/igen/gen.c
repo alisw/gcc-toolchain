@@ -1,6 +1,6 @@
 /* The IGEN simulator generator for GDB, the GNU Debugger.
 
-   Copyright 2002-2020 Free Software Foundation, Inc.
+   Copyright 2002-2022 Free Software Foundation, Inc.
 
    Contributed by Andrew Cagney.
 
@@ -1643,7 +1643,7 @@ main (int argc, char **argv)
     error (NULL,
 	   "Usage: insn <filter-in> <hi-bit-nr> <insn-bit-size> <widths> <decode-table> <insn-table>\n");
 
-  INIT_OPTIONS (options);
+  INIT_OPTIONS ();
 
   filter_parse (&options.flags_filter, argv[1]);
 

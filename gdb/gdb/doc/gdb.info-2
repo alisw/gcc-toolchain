@@ -1,6 +1,6 @@
 This is gdb.info, produced by makeinfo version 6.7 from gdb.texinfo.
 
-Copyright (C) 1988-2020 Free Software Foundation, Inc.
+Copyright (C) 1988-2022 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -21,9 +21,9 @@ END-INFO-DIR-ENTRY
    This file documents the GNU debugger GDB.
 
    This is the Tenth Edition, of 'Debugging with GDB: the GNU
-Source-Level Debugger' for GDB (GDB) Version 10.1.
+Source-Level Debugger' for GDB (GDB) Version 11.2.
 
-   Copyright (C) 1988-2020 Free Software Foundation, Inc.
+   Copyright (C) 1988-2022 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -35,6 +35,120 @@ with the Back-Cover Texts as in (a) below.
    (a) The FSF's Back-Cover Text is: "You are free to copy and modify
 this GNU Manual.  Buying copies from GNU Press supports the FSF in
 developing GNU and promoting software freedom."
+
+
+File: gdb.info,  Node: Selection,  Next: Frame Info,  Prev: Backtrace,  Up: Stack
+
+8.3 Selecting a Frame
+=====================
+
+Most commands for examining the stack and other data in your program
+work on whichever stack frame is selected at the moment.  Here are the
+commands for selecting a stack frame; all of them finish by printing a
+brief description of the stack frame just selected.
+
+'frame [ FRAME-SELECTION-SPEC ]'
+'f [ FRAME-SELECTION-SPEC ]'
+     The 'frame' command allows different stack frames to be selected.
+     The FRAME-SELECTION-SPEC can be any of the following:
+
+     'NUM'
+     'level NUM'
+          Select frame level NUM.  Recall that frame zero is the
+          innermost (currently executing) frame, frame one is the frame
+          that called the innermost one, and so on.  The highest level
+          frame is usually the one for 'main'.
+
+          As this is the most common method of navigating the frame
+          stack, the string 'level' can be omitted.  For example, the
+          following two commands are equivalent:
+
+               (gdb) frame 3
+               (gdb) frame level 3
+
+     'address STACK-ADDRESS'
+          Select the frame with stack address STACK-ADDRESS.  The
+          STACK-ADDRESS for a frame can be seen in the output of 'info
+          frame', for example:
+
+               (gdb) info frame
+               Stack level 1, frame at 0x7fffffffda30:
+                rip = 0x40066d in b (amd64-entry-value.cc:59); saved rip 0x4004c5
+                tail call frame, caller of frame at 0x7fffffffda30
+                source language c++.
+                Arglist at unknown address.
+                Locals at unknown address, Previous frame's sp is 0x7fffffffda30
+
+          The STACK-ADDRESS for this frame is '0x7fffffffda30' as
+          indicated by the line:
+
+               Stack level 1, frame at 0x7fffffffda30:
+
+     'function FUNCTION-NAME'
+          Select the stack frame for function FUNCTION-NAME.  If there
+          are multiple stack frames for function FUNCTION-NAME then the
+          inner most stack frame is selected.
+
+     'view STACK-ADDRESS [ PC-ADDR ]'
+          View a frame that is not part of GDB's backtrace.  The frame
+          viewed has stack address STACK-ADDR, and optionally, a program
+          counter address of PC-ADDR.
+
+          This is useful mainly if the chaining of stack frames has been
+          damaged by a bug, making it impossible for GDB to assign
+          numbers properly to all frames.  In addition, this can be
+          useful when your program has multiple stacks and switches
+          between them.
+
+          When viewing a frame outside the current backtrace using
+          'frame view' then you can always return to the original stack
+          using one of the previous stack frame selection instructions,
+          for example 'frame level 0'.
+
+'up N'
+     Move N frames up the stack; N defaults to 1.  For positive numbers
+     N, this advances toward the outermost frame, to higher frame
+     numbers, to frames that have existed longer.
+
+'down N'
+     Move N frames down the stack; N defaults to 1.  For positive
+     numbers N, this advances toward the innermost frame, to lower frame
+     numbers, to frames that were created more recently.  You may
+     abbreviate 'down' as 'do'.
+
+   All of these commands end by printing two lines of output describing
+the frame.  The first line shows the frame number, the function name,
+the arguments, and the source file and line number of execution in that
+frame.  The second line shows the text of that source line.
+
+   For example:
+
+     (gdb) up
+     #1  0x22f0 in main (argc=1, argv=0xf7fffbf4, env=0xf7fffbfc)
+         at env.c:10
+     10              read_input_file (argv[i]);
+
+   After such a printout, the 'list' command with no arguments prints
+ten lines centered on the point of execution in the frame.  You can also
+edit the program at the point of execution with your favorite editing
+program by typing 'edit'.  *Note Printing Source Lines: List, for
+details.
+
+'select-frame [ FRAME-SELECTION-SPEC ]'
+     The 'select-frame' command is a variant of 'frame' that does not
+     display the new frame after selecting it.  This command is intended
+     primarily for use in GDB command scripts, where the output might be
+     unnecessary and distracting.  The FRAME-SELECTION-SPEC is as for
+     the 'frame' command described in *note Selecting a Frame:
+     Selection.
+
+'up-silently N'
+'down-silently N'
+     These two commands are variants of 'up' and 'down', respectively;
+     they differ in that they do their work silently, without causing
+     display of the new frame.  They are intended primarily for use in
+     GDB command scripts, where the output might be unnecessary and
+     distracting.
 
 
 File: gdb.info,  Node: Frame Info,  Next: Frame Apply,  Prev: Selection,  Up: Stack
@@ -493,17 +607,17 @@ File: gdb.info,  Node: Specify Location,  Next: Edit,  Prev: List,  Up: Source
 9.2 Specifying a Location
 =========================
 
-* Menu:
-
-* Linespec Locations::                Linespec locations
-* Explicit Locations::                Explicit locations
-* Address Locations::                 Address locations
-
 Several GDB commands accept arguments that specify a location of your
 program's code.  Since GDB is a source-level debugger, a location
 usually specifies some line in the source code.  Locations may be
 specified using three different formats: linespec locations, explicit
 locations, or address locations.
+
+* Menu:
+
+* Linespec Locations::                Linespec locations
+* Explicit Locations::                Explicit locations
+* Address Locations::                 Address locations
 
 
 File: gdb.info,  Node: Linespec Locations,  Next: Explicit Locations,  Up: Specify Location
@@ -851,7 +965,7 @@ first look up would not have occurred, but all of the remaining steps
 would be similar.
 
    When searching for source files on MS-DOS and MS-Windows, where
-absolute paths start with a drive letter (e.g.  'C:/project/foo.c'), GDB
+absolute paths start with a drive letter (e.g. 'C:/project/foo.c'), GDB
 will remove the drive letter from the file name before appending it to a
 search directory from "source path"; for instance if the executable
 references the source file 'C:/project/foo.c' and "source path" is set
@@ -1240,8 +1354,8 @@ able to resolve these to actual function names.
 
      If it is necessary to specify more than one disassembler option,
      then multiple options can be placed together into a comma separated
-     list.  Currently this command is only supported on targets ARM,
-     MIPS, PowerPC and S/390.
+     list.  Currently this command is only supported on targets ARC,
+     ARM, MIPS, PowerPC and S/390.
 
 'show disassembler-options'
      Show the current setting of the disassembler options.
@@ -1392,6 +1506,10 @@ Pretty Printing::).
      you to conveniently inspect the same value in an alternative
      format.
 
+   If the architecture supports memory tagging, the 'print' command will
+display pointer/memory tag mismatches if what is being printed is a
+pointer or reference type.  *Note Memory Tagging::.
+
    A more low-level way of examining data is with the 'x' command.  It
 examines data in memory at a specified address and prints it in a
 specified format.  *Note Examining Memory: Memory.
@@ -1527,6 +1645,7 @@ argument is being invoked.
 * Arrays::                      Artificial arrays
 * Output Formats::              Output formats
 * Memory::                      Examining memory
+* Memory Tagging::              Memory Tagging
 * Auto Display::                Automatic display
 * Print Settings::              Print settings
 * Pretty Printing::             Python pretty printing
@@ -2012,7 +2131,7 @@ with the 'x' command, where 'b' stands for "byte"; see *note Examining
 Memory: Memory.
 
 
-File: gdb.info,  Node: Memory,  Next: Auto Display,  Prev: Output Formats,  Up: Data
+File: gdb.info,  Node: Memory,  Next: Memory Tagging,  Prev: Output Formats,  Up: Data
 
 10.6 Examining Memory
 =====================
@@ -2039,9 +2158,10 @@ N, the repeat count
 
 F, the display format
      The display format is one of the formats used by 'print' ('x', 'd',
-     'u', 'o', 't', 'a', 'c', 'f', 's'), and in addition 'i' (for
-     machine instructions).  The default is 'x' (hexadecimal) initially.
-     The default changes each time you use either 'x' or 'print'.
+     'u', 'o', 't', 'a', 'c', 'f', 's'), 'i' (for machine instructions)
+     and 'm' (for displaying memory tags).  The default is 'x'
+     (hexadecimal) initially.  The default changes each time you use
+     either 'x' or 'print'.
 
 U, the unit size
      The unit size is any of
@@ -2130,6 +2250,22 @@ program counter is shown with a '=>' marker.  For example:
      => 0x8048385 <main+17>: movl   $0x8048460,(%esp)
         0x804838c <main+24>: call   0x80482d4 <puts@plt>
 
+   If the architecture supports memory tagging, the tags can be
+displayed by using 'm'.  *Note Memory Tagging::.
+
+   The information will be displayed once per granule size (the amount
+of bytes a particular memory tag covers).  For example, AArch64 has a
+granule size of 16 bytes, so it will display a tag every 16 bytes.
+
+   Due to the way GDB prints information with the 'x' command (not
+aligned to a particular boundary), the tag information will refer to the
+initial address displayed on a particular line.  If a memory tag
+boundary is crossed in the middle of a line displayed by the 'x'
+command, it will be displayed on the next line.
+
+   The 'm' format doesn't affect any other specified formats that were
+passed to the 'x' command.
+
    The addresses and contents printed by the 'x' command are not saved
 in the value history because there is often too much of them and they
 would get in the way.  Instead, GDB makes these values available for
@@ -2172,9 +2308,67 @@ whether the program has corrupted its own read-only sections.  The
      (*note qCRC packet::).
 
 
-File: gdb.info,  Node: Auto Display,  Next: Print Settings,  Prev: Memory,  Up: Data
+File: gdb.info,  Node: Memory Tagging,  Next: Auto Display,  Prev: Memory,  Up: Data
 
-10.7 Automatic Display
+10.7 Memory Tagging
+===================
+
+Memory tagging is a memory protection technology that uses a pair of
+tags to validate memory accesses through pointers.  The tags are integer
+values usually comprised of a few bits, depending on the architecture.
+
+   There are two types of tags that are used in this setup: logical and
+allocation.  A logical tag is stored in the pointers themselves, usually
+at the higher bits of the pointers.  An allocation tag is the tag
+associated with particular ranges of memory in the physical address
+space, against which the logical tags from pointers are compared.
+
+   The pointer tag (logical tag) must match the memory tag (allocation
+tag) for the memory access to be valid.  If the logical tag does not
+match the allocation tag, that will raise a memory violation.
+
+   Allocation tags cover multiple contiguous bytes of physical memory.
+This range of bytes is called a memory tag granule and is
+architecture-specific.  For example, AArch64 has a tag granule of 16
+bytes, meaning each allocation tag spans 16 bytes of memory.
+
+   If the underlying architecture supports memory tagging, like AArch64
+MTE or SPARC ADI do, GDB can make use of it to validate pointers against
+memory allocation tags.
+
+   The 'print' (*note Data::) and 'x' (*note Memory::) commands will
+display tag information when appropriate, and a command prefix of
+'memory-tag' gives access to the various memory tagging commands.
+
+   The 'memory-tag' commands are the following:
+
+'memory-tag print-logical-tag POINTER_EXPRESSION'
+     Print the logical tag stored in POINTER_EXPRESSION.
+'memory-tag with-logical-tag POINTER_EXPRESSION TAG_BYTES'
+     Print the pointer given by POINTER_EXPRESSION, augmented with a
+     logical tag of TAG_BYTES.
+'memory-tag print-allocation-tag ADDRESS_EXPRESSION'
+     Print the allocation tag associated with the memory address given
+     by ADDRESS_EXPRESSION.
+'memory-tag setatag STARTING_ADDRESS LENGTH TAG_BYTES'
+     Set the allocation tag(s) for memory range [STARTING_ADDRESS,
+     STARTING_ADDRESS + LENGTH) to TAG_BYTES.
+'memory-tag check POINTER_EXPRESSION'
+     Check if the logical tag in the pointer given by POINTER_EXPRESSION
+     matches the allocation tag for the memory referenced by the
+     pointer.
+
+     This essentially emulates the hardware validation that is done when
+     tagged memory is accessed through a pointer, but does not cause a
+     memory fault as it would during hardware validation.
+
+     It can be used to inspect potential memory tagging violations in
+     the running process, before any faults get triggered.
+
+
+File: gdb.info,  Node: Auto Display,  Next: Print Settings,  Prev: Memory Tagging,  Up: Data
+
+10.8 Automatic Display
 ======================
 
 If you find that you want to print the value of an expression frequently
@@ -2271,7 +2465,7 @@ display expression once again.
 
 File: gdb.info,  Node: Print Settings,  Next: Pretty Printing,  Prev: Auto Display,  Up: Data
 
-10.8 Print Settings
+10.9 Print Settings
 ===================
 
 GDB provides the following ways to control how arrays, structures, and
@@ -2675,6 +2869,18 @@ print symbol on':
      Display the current threshold after which nested structures are
      replaces with ellipsis.
 
+'set print memory-tag-violations'
+'set print memory-tag-violations on'
+     Cause GDB to display additional information about memory tag
+     violations when printing pointers and addresses.
+
+'set print memory-tag-violations off'
+     Stop printing memory tag violation information.
+
+'show print memory-tag-violations'
+     Show whether memory tag violation information is displayed when
+     printing pointers and addresses.
+
 'set print null-stop'
      Cause GDB to stop printing the characters of an array when the
      first NULL is encountered.  This is useful when large arrays
@@ -2863,8 +3069,8 @@ These settings are of interest when debugging C++ programs:
 
 File: gdb.info,  Node: Pretty Printing,  Next: Value History,  Prev: Print Settings,  Up: Data
 
-10.9 Pretty Printing
-====================
+10.10 Pretty Printing
+=====================
 
 GDB provides a mechanism to allow pretty-printing of values using Python
 code.  It greatly simplifies the display of complex objects.  This
@@ -2879,8 +3085,8 @@ mechanism works for both MI and the CLI.
 
 File: gdb.info,  Node: Pretty-Printer Introduction,  Next: Pretty-Printer Example,  Up: Pretty Printing
 
-10.9.1 Pretty-Printer Introduction
-----------------------------------
+10.10.1 Pretty-Printer Introduction
+-----------------------------------
 
 When GDB prints a value, it first sees if there is a pretty-printer
 registered for the value.  If there is then GDB invokes the
@@ -2921,8 +3127,8 @@ for new types.
 
 File: gdb.info,  Node: Pretty-Printer Example,  Next: Pretty-Printer Commands,  Prev: Pretty-Printer Introduction,  Up: Pretty Printing
 
-10.9.2 Pretty-Printer Example
------------------------------
+10.10.2 Pretty-Printer Example
+------------------------------
 
 Here is how a C++ 'std::string' looks without a pretty-printer:
 
@@ -2949,8 +3155,8 @@ printed:
 
 File: gdb.info,  Node: Pretty-Printer Commands,  Prev: Pretty-Printer Example,  Up: Pretty Printing
 
-10.9.3 Pretty-Printer Commands
-------------------------------
+10.10.3 Pretty-Printer Commands
+-------------------------------
 
 'info pretty-printer [OBJECT-REGEXP [NAME-REGEXP]]'
      Print the list of installed pretty-printers.  This includes
@@ -3042,7 +3248,7 @@ when printing frame argument values.
 
 File: gdb.info,  Node: Value History,  Next: Convenience Vars,  Prev: Pretty Printing,  Up: Data
 
-10.10 Value History
+10.11 Value History
 ===================
 
 Values printed by the 'print' command are saved in the GDB "value
@@ -3104,7 +3310,7 @@ as 'show values +'.
 
 File: gdb.info,  Node: Convenience Vars,  Next: Convenience Funs,  Prev: Value History,  Up: Data
 
-10.11 Convenience Variables
+10.12 Convenience Variables
 ===========================
 
 GDB provides "convenience variables" that you can use within GDB to hold
@@ -3299,7 +3505,7 @@ values likely to be useful.
 
 File: gdb.info,  Node: Convenience Funs,  Next: Registers,  Prev: Convenience Vars,  Up: Data
 
-10.12 Convenience Functions
+10.13 Convenience Functions
 ===========================
 
 GDB also supplies some "convenience functions".  These have a syntax
@@ -3529,7 +3735,7 @@ functions.
 
 File: gdb.info,  Node: Registers,  Next: Floating Point Hardware,  Prev: Convenience Funs,  Up: Data
 
-10.13 Registers
+10.14 Registers
 ===============
 
 You can refer to machine register contents, in expressions, as variables
@@ -3667,7 +3873,7 @@ Returning from a Function: Returning.
 
 File: gdb.info,  Node: Floating Point Hardware,  Next: Vector Unit,  Prev: Registers,  Up: Data
 
-10.14 Floating Point Hardware
+10.15 Floating Point Hardware
 =============================
 
 Depending on the configuration, GDB may be able to give you more
@@ -3682,7 +3888,7 @@ information about the status of the floating point hardware.
 
 File: gdb.info,  Node: Vector Unit,  Next: OS Information,  Prev: Floating Point Hardware,  Up: Data
 
-10.15 Vector Unit
+10.16 Vector Unit
 =================
 
 Depending on the configuration, GDB may be able to give you more
@@ -3695,7 +3901,7 @@ information about the status of the vector unit.
 
 File: gdb.info,  Node: OS Information,  Next: Memory Region Attributes,  Prev: Vector Unit,  Up: Data
 
-10.16 Operating System Auxiliary Information
+10.17 Operating System Auxiliary Information
 ============================================
 
 GDB provides interfaces to useful OS facilities that can help you debug
@@ -3827,7 +4033,7 @@ osdata read::.
 
 File: gdb.info,  Node: Memory Region Attributes,  Next: Dump/Restore Files,  Prev: OS Information,  Up: Data
 
-10.17 Memory Region Attributes
+10.18 Memory Region Attributes
 ==============================
 
 "Memory region attributes" allow you to describe special handling
@@ -3889,10 +4095,10 @@ to enable, disable, or remove a memory region, you specify that number.
      _Attributes_
           The list of attributes set for this memory region.
 
-10.17.1 Attributes
+10.18.1 Attributes
 ------------------
 
-10.17.1.1 Memory Access Mode
+10.18.1.1 Memory Access Mode
 ............................
 
 The access mode attributes set whether GDB may make read or write
@@ -3909,7 +4115,7 @@ from accessing memory.
 'rw'
      Memory is read/write.  This is the default.
 
-10.17.1.2 Memory Access Size
+10.18.1.2 Memory Access Size
 ............................
 
 The access size attribute tells GDB to use specific sized accesses in
@@ -3926,7 +4132,7 @@ may use accesses of any size.
 '64'
      Use 64 bit memory accesses.
 
-10.17.1.3 Data Cache
+10.18.1.3 Data Cache
 ....................
 
 The data cache attributes set whether GDB will cache target memory.
@@ -3939,7 +4145,7 @@ about volatile variables or memory mapped device registers.
 'nocache'
      Disable GDB from caching target memory.  This is the default.
 
-10.17.2 Memory Access Checking
+10.18.2 Memory Access Checking
 ------------------------------
 
 GDB can be instructed to refuse accesses to memory that is not
@@ -3960,7 +4166,7 @@ checking.  The following commands control this behaviour.
 
 File: gdb.info,  Node: Dump/Restore Files,  Next: Core File Generation,  Prev: Memory Region Attributes,  Up: Data
 
-10.18 Copy Between Memory and a File
+10.19 Copy Between Memory and a File
 ====================================
 
 You can use the commands 'dump', 'append', and 'restore' to copy data
@@ -4017,7 +4223,7 @@ can only append to binary files, and cannot read from Verilog Hex files.
 
 File: gdb.info,  Node: Core File Generation,  Next: Character Sets,  Prev: Dump/Restore Files,  Up: Data
 
-10.19 How to Produce a Core File from Your Program
+10.20 How to Produce a Core File from Your Program
 ==================================================
 
 A "core file" or "core dump" is a file that records the memory image of
@@ -4085,7 +4291,7 @@ special command for that.
 
 File: gdb.info,  Node: Character Sets,  Next: Caching Target Data,  Prev: Core File Generation,  Up: Data
 
-10.20 Character Sets
+10.21 Character Sets
 ====================
 
 If the program you are debugging uses a different character set to
@@ -4268,7 +4474,7 @@ character.
 
 File: gdb.info,  Node: Caching Target Data,  Next: Searching Memory,  Prev: Character Sets,  Up: Data
 
-10.21 Caching Data of Targets
+10.22 Caching Data of Targets
 =============================
 
 GDB caches data exchanged between the debugger and a target.  Each cache
@@ -4335,6 +4541,10 @@ marked as cacheable; *note Memory Region Attributes::.
 'show dcache line-size'
      Show default size of dcache lines.
 
+'maint flush dcache'
+     Flush the contents (if any) of the dcache.  This maintainer command
+     is useful when debugging the dcache implementation.
+
    ---------- Footnotes ----------
 
    (1) In non-stop mode, it is moderately rare for a running thread to
@@ -4345,7 +4555,7 @@ of remote backtraces.
 
 File: gdb.info,  Node: Searching Memory,  Next: Value Sizes,  Prev: Caching Target Data,  Up: Data
 
-10.22 Search Memory
+10.23 Search Memory
 ===================
 
 Memory can be searched for a particular sequence of bytes with the
@@ -4438,7 +4648,7 @@ you get during debugging:
 
 File: gdb.info,  Node: Value Sizes,  Prev: Searching Memory,  Up: Data
 
-10.23 Value Sizes
+10.24 Value Sizes
 =================
 
 Whenever GDB prints a value memory will be allocated within GDB to hold
@@ -6707,7 +6917,7 @@ checker:
      accessing memory that the process does not own (a typical example
      from many Unix systems).
 
-'show range'
+'show check range'
      Show the current setting of the range checker, and whether or not
      it is being set automatically by GDB.
 
@@ -7041,208 +7251,4 @@ GDB expression handling can interpret most C++ expressions.
 
   6. GDB performs argument-dependent lookup, following the C++
      specification.
-
-
-File: gdb.info,  Node: C Defaults,  Next: C Checks,  Prev: C Plus Plus Expressions,  Up: C
-
-15.4.1.4 C and C++ Defaults
-...........................
-
-If you allow GDB to set range checking automatically, it defaults to
-'off' whenever the working language changes to C or C++.  This happens
-regardless of whether you or GDB selects the working language.
-
-   If you allow GDB to set the language automatically, it recognizes
-source files whose names end with '.c', '.C', or '.cc', etc, and when
-GDB enters code compiled from one of these files, it sets the working
-language to C or C++.  *Note Having GDB Infer the Source Language:
-Automatically, for further details.
-
-
-File: gdb.info,  Node: C Checks,  Next: Debugging C,  Prev: C Defaults,  Up: C
-
-15.4.1.5 C and C++ Type and Range Checks
-........................................
-
-By default, when GDB parses C or C++ expressions, strict type checking
-is used.  However, if you turn type checking off, GDB will allow certain
-non-standard conversions, such as promoting integer constants to
-pointers.
-
-   Range checking, if turned on, is done on mathematical operations.
-Array indices are not checked, since they are often used to index a
-pointer that is not itself an array.
-
-
-File: gdb.info,  Node: Debugging C,  Next: Debugging C Plus Plus,  Prev: C Checks,  Up: C
-
-15.4.1.6 GDB and C
-..................
-
-The 'set print union' and 'show print union' commands apply to the
-'union' type.  When set to 'on', any 'union' that is inside a 'struct'
-or 'class' is also printed.  Otherwise, it appears as '{...}'.
-
-   The '@' operator aids in the debugging of dynamic arrays, formed with
-pointers and a memory allocation function.  *Note Expressions:
-Expressions.
-
-
-File: gdb.info,  Node: Debugging C Plus Plus,  Next: Decimal Floating Point,  Prev: Debugging C,  Up: C
-
-15.4.1.7 GDB Features for C++
-.............................
-
-Some GDB commands are particularly useful with C++, and some are
-designed specifically for use with C++.  Here is a summary:
-
-'breakpoint menus'
-     When you want a breakpoint in a function whose name is overloaded,
-     GDB has the capability to display a menu of possible breakpoint
-     locations to help you specify which function definition you want.
-     *Note Ambiguous Expressions: Ambiguous Expressions.
-
-'rbreak REGEX'
-     Setting breakpoints using regular expressions is helpful for
-     setting breakpoints on overloaded functions that are not members of
-     any special classes.  *Note Setting Breakpoints: Set Breaks.
-
-'catch throw'
-'catch rethrow'
-'catch catch'
-     Debug C++ exception handling using these commands.  *Note Setting
-     Catchpoints: Set Catchpoints.
-
-'ptype TYPENAME'
-     Print inheritance relationships as well as other information for
-     type TYPENAME.  *Note Examining the Symbol Table: Symbols.
-
-'info vtbl EXPRESSION.'
-     The 'info vtbl' command can be used to display the virtual method
-     tables of the object computed by EXPRESSION.  This shows one entry
-     per virtual table; there may be multiple virtual tables when
-     multiple inheritance is in use.
-
-'demangle NAME'
-     Demangle NAME.  *Note Symbols::, for a more complete description of
-     the 'demangle' command.
-
-'set print demangle'
-'show print demangle'
-'set print asm-demangle'
-'show print asm-demangle'
-     Control whether C++ symbols display in their source form, both when
-     displaying code as C++ source and when displaying disassemblies.
-     *Note Print Settings: Print Settings.
-
-'set print object'
-'show print object'
-     Choose whether to print derived (actual) or declared types of
-     objects.  *Note Print Settings: Print Settings.
-
-'set print vtbl'
-'show print vtbl'
-     Control the format for printing virtual function tables.  *Note
-     Print Settings: Print Settings.  (The 'vtbl' commands do not work
-     on programs compiled with the HP ANSI C++ compiler ('aCC').)
-
-'set overload-resolution on'
-     Enable overload resolution for C++ expression evaluation.  The
-     default is on.  For overloaded functions, GDB evaluates the
-     arguments and searches for a function whose signature matches the
-     argument types, using the standard C++ conversion rules (see *note
-     C++ Expressions: C Plus Plus Expressions, for details).  If it
-     cannot find a match, it emits a message.
-
-'set overload-resolution off'
-     Disable overload resolution for C++ expression evaluation.  For
-     overloaded functions that are not class member functions, GDB
-     chooses the first function of the specified name that it finds in
-     the symbol table, whether or not its arguments are of the correct
-     type.  For overloaded functions that are class member functions,
-     GDB searches for a function whose signature _exactly_ matches the
-     argument types.
-
-'show overload-resolution'
-     Show the current setting of overload resolution.
-
-'Overloaded symbol names'
-     You can specify a particular definition of an overloaded symbol,
-     using the same notation that is used to declare such symbols in
-     C++: type 'SYMBOL(TYPES)' rather than just SYMBOL.  You can also
-     use the GDB command-line word completion facilities to list the
-     available choices, or to finish the type list for you.  *Note
-     Command Completion: Completion, for details on how to do this.
-
-'Breakpoints in functions with ABI tags'
-
-     The GNU C++ compiler introduced the notion of ABI "tags", which
-     correspond to changes in the ABI of a type, function, or variable
-     that would not otherwise be reflected in a mangled name.  See
-     <https://developers.redhat.com/blog/2015/02/05/gcc5-and-the-c11-abi/>
-     for more detail.
-
-     The ABI tags are visible in C++ demangled names.  For example, a
-     function that returns a std::string:
-
-          std::string function(int);
-
-     when compiled for the C++11 ABI is marked with the 'cxx11' ABI tag,
-     and GDB displays the symbol like this:
-
-          function[abi:cxx11](int)
-
-     You can set a breakpoint on such functions simply as if they had no
-     tag.  For example:
-
-          (gdb) b function(int)
-          Breakpoint 2 at 0x40060d: file main.cc, line 10.
-          (gdb) info breakpoints
-          Num     Type           Disp Enb Address    What
-          1       breakpoint     keep y   0x0040060d in function[abi:cxx11](int)
-                                                     at main.cc:10
-
-     On the rare occasion you need to disambiguate between different ABI
-     tags, you can do so by simply including the ABI tag in the function
-     name, like:
-
-          (gdb) b ambiguous[abi:other_tag](int)
-
-
-File: gdb.info,  Node: Decimal Floating Point,  Prev: Debugging C Plus Plus,  Up: C
-
-15.4.1.8 Decimal Floating Point format
-......................................
-
-GDB can examine, set and perform computations with numbers in decimal
-floating point format, which in the C language correspond to the
-'_Decimal32', '_Decimal64' and '_Decimal128' types as specified by the
-extension to support decimal floating-point arithmetic.
-
-   There are two encodings in use, depending on the architecture: BID
-(Binary Integer Decimal) for x86 and x86-64, and DPD (Densely Packed
-Decimal) for PowerPC and S/390.  GDB will use the appropriate encoding
-for the configured target.
-
-   Because of a limitation in 'libdecnumber', the library used by GDB to
-manipulate decimal floating point numbers, it is not possible to convert
-(using a cast, for example) integers wider than 32-bit to decimal float.
-
-   In addition, in order to imitate GDB's behaviour with binary floating
-point computations, error checking in decimal float operations ignores
-underflow, overflow and divide by zero exceptions.
-
-   In the PowerPC architecture, GDB provides a set of pseudo-registers
-to inspect '_Decimal128' values stored in floating point registers.  See
-*note PowerPC: PowerPC. for more details.
-
-
-File: gdb.info,  Node: D,  Next: Go,  Prev: C,  Up: Supported Languages
-
-15.4.2 D
---------
-
-GDB can be used to debug programs written in D and compiled with GDC,
-LDC or DMD compilers.  Currently GDB supports only one D specific
-feature -- dynamic arrays.
 

@@ -1,6 +1,6 @@
 /* Ada Ravenscar thread support.
 
-   Copyright (C) 2004-2020 Free Software Foundation, Inc.
+   Copyright (C) 2004-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -87,7 +87,7 @@ struct ravenscar_thread_target final : public target_ops
 
   strata stratum () const override { return thread_stratum; }
 
-  ptid_t wait (ptid_t, struct target_waitstatus *, int) override;
+  ptid_t wait (ptid_t, struct target_waitstatus *, target_wait_flags) override;
   void resume (ptid_t, int, enum gdb_signal) override;
 
   void fetch_registers (struct regcache *, int) override;
@@ -385,7 +385,7 @@ ravenscar_thread_target::resume (ptid_t ptid, int step,
 ptid_t
 ravenscar_thread_target::wait (ptid_t ptid,
 			       struct target_waitstatus *status,
-			       int options)
+			       target_wait_flags options)
 {
   process_stratum_target *beneath
     = as_process_stratum_target (this->beneath ());
@@ -620,7 +620,7 @@ ravenscar_thread_target::mourn_inferior ()
 {
   m_base_ptid = null_ptid;
   target_ops *beneath = this->beneath ();
-  unpush_target (this);
+  current_inferior ()->unpush_target (this);
   beneath->mourn_inferior ();
 }
 
@@ -657,7 +657,7 @@ ravenscar_thread_target::xfer_partial (enum target_object object,
 /* Observer on inferior_created: push ravenscar thread stratum if needed.  */
 
 static void
-ravenscar_inferior_created (struct target_ops *target, int from_tty)
+ravenscar_inferior_created (inferior *inf)
 {
   const char *err_msg;
 
@@ -674,7 +674,7 @@ ravenscar_inferior_created (struct target_ops *target, int from_tty)
     }
 
   ravenscar_thread_target *rtarget = new ravenscar_thread_target ();
-  push_target (target_ops_up (rtarget));
+  inf->push_target (target_ops_up (rtarget));
   thread_info *thr = rtarget->add_active_thread ();
   if (thr != nullptr)
     switch_to_thread (thr);
@@ -714,21 +714,22 @@ _initialize_ravenscar ()
 {
   /* Notice when the inferior is created in order to push the
      ravenscar ops if needed.  */
-  gdb::observers::inferior_created.attach (ravenscar_inferior_created);
+  gdb::observers::inferior_created.attach (ravenscar_inferior_created,
+					   "ravenscar-thread");
 
   add_basic_prefix_cmd ("ravenscar", no_class,
 			_("Prefix command for changing Ravenscar-specific settings."),
-			&set_ravenscar_list, "set ravenscar ", 0, &setlist);
+			&set_ravenscar_list, 0, &setlist);
 
   add_show_prefix_cmd ("ravenscar", no_class,
 		       _("Prefix command for showing Ravenscar-specific settings."),
-		       &show_ravenscar_list, "show ravenscar ", 0, &showlist);
+		       &show_ravenscar_list, 0, &showlist);
 
   add_setshow_boolean_cmd ("task-switching", class_obscure,
-                           &ravenscar_task_support, _("\
+			   &ravenscar_task_support, _("\
 Enable or disable support for GNAT Ravenscar tasks."), _("\
 Show whether support for GNAT Ravenscar tasks is enabled."),
-                           _("\
+			   _("\
 Enable or disable support for task/thread switching with the GNAT\n\
 Ravenscar run-time library for bareboard configuration."),
 			   NULL, show_ravenscar_task_switching_command,

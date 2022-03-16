@@ -1,5 +1,5 @@
 /* tc-xc16x.c -- Assembler for the Infineon XC16X.
-   Copyright (C) 2006-2020 Free Software Foundation, Inc.
+   Copyright (C) 2006-2022 Free Software Foundation, Inc.
    Contributed by KPIT Cummins Infosystems
 
    This file is part of GAS, the GNU Assembler.
@@ -228,7 +228,7 @@ md_parse_option (int c ATTRIBUTE_UNUSED,
 const char *
 md_atof (int type, char *litP, int *sizeP)
 {
-  return ieee_md_atof (type, litP, sizeP, FALSE);
+  return ieee_md_atof (type, litP, sizeP, false);
 }
 
 valueT
@@ -283,13 +283,12 @@ tc_gen_reloc (asection *section ATTRIBUTE_UNUSED, fixS *fixp)
   arelent *rel;
   bfd_reloc_code_real_type r_type;
 
-  if (fixp->fx_addsy && fixp->fx_subsy)
+  if (fixp->fx_subsy)
     {
       if ((S_GET_SEGMENT (fixp->fx_addsy) != S_GET_SEGMENT (fixp->fx_subsy))
 	  || S_GET_SEGMENT (fixp->fx_addsy) == undefined_section)
 	{
-	  as_bad_where (fixp->fx_file, fixp->fx_line,
-			_("Difference of symbols in different sections is not supported"));
+	  as_bad_subtract (fixp);
 	  return NULL;
 	}
     }

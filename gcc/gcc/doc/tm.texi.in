@@ -1,4 +1,4 @@
-@c Copyright (C) 1988-2020 Free Software Foundation, Inc.
+@c Copyright (C) 1988-2021 Free Software Foundation, Inc.
 @c This is part of the GCC manual.
 @c For copying conditions, see the file gcc.texi.
 
@@ -1035,6 +1035,8 @@ a 32-bit host e.g.@: @samp{(((uint64_t) 1 << 28) * 8)}.
 On 32-bit ELF the largest supported section alignment in bits is
 @samp{(0x80000000 * 8)}, but this is not representable on 32-bit hosts.
 @end defmac
+
+@hook TARGET_LOWER_LOCAL_DECL_ALIGNMENT
 
 @hook TARGET_STATIC_RTX_ALIGNMENT
 
@@ -3875,6 +3877,8 @@ is used for aligning trampolines.
 
 @hook TARGET_TRAMPOLINE_INIT
 
+@hook TARGET_EMIT_CALL_BUILTIN___CLEAR_CACHE
+
 @hook TARGET_TRAMPOLINE_ADJUST_ADDRESS
 
 Implementing trampolines is difficult on many machines because they have
@@ -3895,7 +3899,7 @@ the following macro.
 If defined, expands to a C expression clearing the @emph{instruction
 cache} in the specified interval.  The definition of this macro would
 typically be a series of @code{asm} statements.  Both @var{beg} and
-@var{end} are both pointer expressions.
+@var{end} are pointer expressions.
 @end defmac
 
 To use a standard subroutine, define the following macro.  In addition,
@@ -4142,6 +4146,8 @@ address;  but often a machine-dependent strategy can generate better code.
 @hook TARGET_MODE_DEPENDENT_ADDRESS_P
 
 @hook TARGET_LEGITIMATE_CONSTANT_P
+
+@hook TARGET_PRECOMPUTE_TLS_P
 
 @hook TARGET_DELEGITIMIZE_ADDRESS
 
@@ -4696,6 +4702,8 @@ Define this macro if a non-short-circuit operation produced by
 @hook TARGET_MAX_NOCE_IFCVT_SEQ_COST
 
 @hook TARGET_NOCE_CONVERSION_PROFITABLE_P
+
+@hook TARGET_NEW_ADDRESS_PROFITABLE_P
 
 @hook TARGET_NO_SPECULATION_IN_DELAY_SLOTS_P
 
@@ -6452,7 +6460,11 @@ the jump-table.
 
 @hook TARGET_ASM_UNWIND_EMIT
 
+@hook TARGET_ASM_MAKE_EH_SYMBOL_INDIRECT
+
 @hook TARGET_ASM_UNWIND_EMIT_BEFORE_INSN
+
+@hook TARGET_ASM_SHOULD_RESTORE_CFA_STATE
 
 @node Exception Region Output
 @subsection Assembler Commands for Exception Regions
@@ -7347,7 +7359,19 @@ floating-point support; they are not included in this mechanism.
 
 @hook TARGET_D_OS_VERSIONS
 
-@hook TARGET_D_CRITSEC_SIZE
+@hook TARGET_D_REGISTER_CPU_TARGET_INFO
+
+@hook TARGET_D_REGISTER_OS_TARGET_INFO
+
+@hook TARGET_D_MINFO_SECTION
+
+@hook TARGET_D_MINFO_START_NAME
+
+@hook TARGET_D_MINFO_END_NAME
+
+@hook TARGET_D_HAS_STDCALL_CONVENTION
+
+@hook TARGET_D_TEMPLATES_ALWAYS_COMDAT
 
 @node Named Address Spaces
 @section Adding support for named address spaces
@@ -7657,7 +7681,7 @@ this macro.
 @end defmac
 
 @defmac VECTOR_STORE_FLAG_VALUE (@var{mode})
-A C expression that gives a rtx representing the nonzero true element
+A C expression that gives an rtx representing the nonzero true element
 for vector comparisons.  The returned rtx should be valid for the inner
 mode of @var{mode} which is guaranteed to be a vector mode.  Define
 this macro on machines that have vector comparison operations that
@@ -8107,6 +8131,8 @@ and the associated definitions of those functions.
 
 @hook TARGET_GET_DRAP_RTX
 
+@hook TARGET_ZERO_CALL_USED_REGS
+
 @hook TARGET_ALLOCATE_STACK_SLOTS_FOR_ARGS
 
 @hook TARGET_CONST_ANCHOR
@@ -8178,3 +8204,19 @@ maintainer is familiar with.
 @hook TARGET_SPECULATION_SAFE_VALUE
 
 @hook TARGET_RUN_TARGET_SELFTESTS
+
+@hook TARGET_MEMTAG_CAN_TAG_ADDRESSES
+
+@hook TARGET_MEMTAG_TAG_SIZE
+
+@hook TARGET_MEMTAG_GRANULE_SIZE
+
+@hook TARGET_MEMTAG_INSERT_RANDOM_TAG
+
+@hook TARGET_MEMTAG_ADD_TAG
+
+@hook TARGET_MEMTAG_SET_TAG
+
+@hook TARGET_MEMTAG_EXTRACT_TAG
+
+@hook TARGET_MEMTAG_UNTAGGED_POINTER

@@ -1,5 +1,5 @@
 /* emulos.c -- Small OS emulation
-   Copyright 1999-2020 Free Software Foundation, Inc.
+   Copyright 1999-2022 Free Software Foundation, Inc.
    Written by Stephane Carrez (stcarrez@worldnet.fr)
 
 This file is part of GDB, GAS, and the GNU binutils.
@@ -17,12 +17,17 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
+/* This must come before any other includes.  */
+#include "defs.h"
+
 #include "sim-main.h"
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
 #ifndef WIN32
+#include <errno.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/time.h>
 
@@ -103,8 +108,9 @@ emul_write (sim_cpu *cpu)
   while (size)
     {
       uint8 val = memory_read8 (cpu, addr);
-        
-      write(0, &val, 1);
+
+      if (write (0, &val, 1) != 1)
+	printf ("write failed: %s\n", strerror (errno));
       addr ++;
       size--;
     }

@@ -1,5 +1,5 @@
 /* BFD support for the Infineon XC16X Microcontroller.
-   Copyright (C) 2006-2020 Free Software Foundation, Inc.
+   Copyright (C) 2006-2022 Free Software Foundation, Inc.
    Contributed by KPIT Cummins Infosystems
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -43,11 +43,11 @@
   }
 
 const bfd_arch_info_type xc16xs_info_struct =
-  N (16, bfd_mach_xc16xs, "xc16xs", FALSE, NULL);
+  N (16, bfd_mach_xc16xs, "xc16xs", false, NULL);
 
 const bfd_arch_info_type xc16xl_info_struct =
-  N (32, bfd_mach_xc16xl, "xc16xl", FALSE, & xc16xs_info_struct);
+  N (32, bfd_mach_xc16xl, "xc16xl", false, & xc16xs_info_struct);
 
 const bfd_arch_info_type bfd_xc16x_arch =
-  N (16, bfd_mach_xc16x, "xc16x", TRUE, & xc16xl_info_struct);
+  N (16, bfd_mach_xc16x, "xc16x", true, & xc16xl_info_struct);
 

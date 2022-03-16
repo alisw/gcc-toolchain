@@ -1,5 +1,5 @@
 /* ACLE support for AArch64 SVE
-   Copyright (C) 2018-2020 Free Software Foundation, Inc.
+   Copyright (C) 2018-2021 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -337,7 +337,8 @@ private:
   tree get_attributes (const function_instance &);
 
   registered_function &add_function (const function_instance &,
-				     const char *, tree, tree, uint64_t, bool);
+				     const char *, tree, tree,
+				     uint64_t, bool, bool);
 
   /* The function type to use for functions that are resolved by
      function_resolver.  */
@@ -658,6 +659,7 @@ public:
 
 private:
   unsigned long m_old_isa_flags;
+  unsigned int m_old_maximum_field_alignment;
   bool m_old_general_regs_only;
   bool m_old_have_regs_of_mode[MAX_MACHINE_MODE];
 };

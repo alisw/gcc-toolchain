@@ -1,5 +1,5 @@
 /* Simulator tracing support for Cpu tools GENerated simulators.
-   Copyright (C) 1996-2020 Free Software Foundation, Inc.
+   Copyright (C) 1996-2022 Free Software Foundation, Inc.
    Contributed by Cygnus Support.
 
 This file is part of GDB, the GNU debugger.
@@ -24,9 +24,9 @@ void cgen_trace_insn_init (SIM_CPU *, int);
 void cgen_trace_insn_fini (SIM_CPU *, const struct argbuf *, int);
 void cgen_trace_insn (SIM_CPU *, const struct cgen_insn *,
 		      const struct argbuf *, IADDR);
-void cgen_trace_extract (SIM_CPU *, IADDR, char *, ...);
-void cgen_trace_result (SIM_CPU *, char *, int, ...);
-void cgen_trace_printf (SIM_CPU *, char *fmt, ...);
+void cgen_trace_extract (SIM_CPU *, IADDR, const char *, ...);
+void cgen_trace_result (SIM_CPU *, const char *, int, ...);
+void cgen_trace_printf (SIM_CPU *, const char *fmt, ...) ATTRIBUTE_PRINTF_2;
 
 /* Trace instruction results.  */
 #define CGEN_TRACE_RESULT_P(cpu, abuf) \
@@ -75,7 +75,7 @@ typedef struct {
 } SFILE;
 
 /* String printer for the disassembler.  */
-extern int sim_disasm_sprintf (SFILE *, const char *, ...);
+extern int sim_disasm_sprintf (SFILE *, const char *, ...) ATTRIBUTE_PRINTF_2;
 
 /* For opcodes based disassemblers.  */
 #ifdef __BFD_H_SEEN__

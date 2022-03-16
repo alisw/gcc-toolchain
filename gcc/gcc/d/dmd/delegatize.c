@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (C) 1999-2019 by The D Language Foundation, All Rights Reserved
+ * Copyright (C) 1999-2021 by The D Language Foundation, All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -25,7 +25,6 @@
 bool walkPostorder(Expression *e, StoppableVisitor *v);
 void lambdaSetParent(Expression *e, Scope *sc);
 bool lambdaCheckForNestedRef(Expression *e, Scope *sc);
-Expression *semantic(Expression *e, Scope *sc);
 
 /********************************************
  * Convert from expression to delegate that returns the expression,
@@ -39,7 +38,7 @@ Expression *toDelegate(Expression *e, Type* t, Scope *sc)
     //printf("Expression::toDelegate(t = %s) %s\n", t->toChars(), e->toChars());
     Loc loc = e->loc;
 
-    TypeFunction *tf = new TypeFunction(NULL, t, 0, LINKd);
+    TypeFunction *tf = new TypeFunction(ParameterList(), t, LINKd);
     if (t->hasWild())
         tf->mod = MODwild;
     FuncLiteralDeclaration *fld =
@@ -62,7 +61,7 @@ Expression *toDelegate(Expression *e, Type* t, Scope *sc)
     fld->fbody = s;
 
     e = new FuncExp(loc, fld);
-    e = semantic(e, sc);
+    e = expressionSemantic(e, sc);
     return e;
 }
 

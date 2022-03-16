@@ -1,4 +1,4 @@
-##  Copyright (C) 2012-2020 Free Software Foundation, Inc.
+##  Copyright (C) 2012-2021 Free Software Foundation, Inc.
 ##  Contributed by Richard Henderson <rth@redhat.com>.
 ##
 ##  This file is part of the GNU Atomic Library (libatomic).
@@ -152,5 +152,8 @@ libatomic_convenience_la_LIBADD = $(libatomic_la_LIBADD)
 # when it is reloaded during the build of all-multi.
 all-multi: $(libatomic_la_LIBADD)
 	$(MULTIDO) $(AM_MAKEFLAGS) DO=all multi-do # $(MAKE)
+
+# target overrides
+-include $(tmake_file)
 
 include $(top_srcdir)/../multilib.am

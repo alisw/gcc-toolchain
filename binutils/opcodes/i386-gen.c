@@ -1,4 +1,4 @@
-/* Copyright (C) 2007-2020 Free Software Foundation, Inc.
+/* Copyright (C) 2007-2022 Free Software Foundation, Inc.
 
    This file is part of the GNU opcodes library.
 
@@ -103,6 +103,8 @@ static initializer cpu_flag_init[] =
     "CPU_GENERIC64_FLAGS|CpuFISTTP|CpuRdtscp|CpuCX16|CPU_AVX2_FLAGS|CpuSSE4A|CpuLZCNT|CpuPOPCNT|CpuSVME|CpuAES|CpuPCLMUL|CpuPRFCHW|CpuFMA|CpuBMI|CpuF16C|CpuXsaveopt|CpuFSGSBase|CpuMovbe|CpuBMI2|CpuRdRnd|CpuADX|CpuRdSeed|CpuSMAP|CpuSHA|CpuXSAVEC|CpuXSAVES|CpuClflushOpt|CpuCLZERO|CpuMWAITX" },
   { "CPU_ZNVER2_FLAGS",
     "CPU_ZNVER1_FLAGS|CpuCLWB|CpuRDPID|CpuRDPRU|CpuMCOMMIT|CpuWBNOINVD" },
+  { "CPU_ZNVER3_FLAGS",
+    "CPU_ZNVER2_FLAGS|CpuINVLPGB|CpuTLBSYNC|CpuVAES|CpuVPCLMULQDQ|CpuINVPCID|CpuSNP|CpuOSPKE" },
   { "CPU_BTVER1_FLAGS",
     "CPU_GENERIC64_FLAGS|CpuFISTTP|CpuCX16|CpuRdtscp|CPU_SSSE3_FLAGS|CpuSSE4A|CpuLZCNT|CpuPOPCNT|CpuPRFCHW|CpuCX16|CpuClflush|CpuFISTTP|CpuSVME" },
   { "CPU_BTVER2_FLAGS",
@@ -207,6 +209,8 @@ static initializer cpu_flag_init[] =
     "CPU_SSE4_2_FLAGS|CPU_XSAVE_FLAGS|CpuAVX" },
   { "CPU_AVX2_FLAGS",
     "CPU_AVX_FLAGS|CpuAVX2" },
+  { "CPU_AVX_VNNI_FLAGS",
+    "CPU_AVX2_FLAGS|CpuAVX_VNNI" },
   { "CPU_AVX512F_FLAGS",
     "CPU_AVX2_FLAGS|CpuAVX512F" },
   { "CPU_AVX512CD_FLAGS",
@@ -239,6 +243,8 @@ static initializer cpu_flag_init[] =
     "CPU_AVX512F_FLAGS|CpuAVX512_BITALG" },
   { "CPU_AVX512_BF16_FLAGS",
     "CPU_AVX512F_FLAGS|CpuAVX512_BF16" },
+  { "CPU_AVX512_FP16_FLAGS",
+    "CPU_AVX512BW_FLAGS|CpuAVX512_FP16" },
   { "CPU_L1OM_FLAGS",
     "unknown" },
   { "CPU_K1OM_FLAGS",
@@ -295,8 +301,16 @@ static initializer cpu_flag_init[] =
     "CpuPCONFIG" },
   { "CPU_WAITPKG_FLAGS",
     "CpuWAITPKG" },
+  { "CPU_UINTR_FLAGS",
+    "CpuUINTR" },
   { "CPU_CLDEMOTE_FLAGS",
     "CpuCLDEMOTE" },
+  { "CPU_AMX_INT8_FLAGS",
+    "CpuAMX_INT8" },
+  { "CPU_AMX_BF16_FLAGS",
+    "CpuAMX_BF16" },
+  { "CPU_AMX_TILE_FLAGS",
+    "CpuAMX_TILE" },
   { "CPU_MOVDIRI_FLAGS",
     "CpuMOVDIRI" },
   { "CPU_MOVDIR64B_FLAGS",
@@ -307,6 +321,8 @@ static initializer cpu_flag_init[] =
     "CpuSERIALIZE" },
   { "CPU_AVX512_VP2INTERSECT_FLAGS",
     "CpuAVX512_VP2INTERSECT" },
+  { "CPU_TDX_FLAGS",
+    "CpuTDX" },
   { "CPU_RDPRU_FLAGS",
     "CpuRDPRU" },
   { "CPU_MCOMMIT_FLAGS",
@@ -315,6 +331,18 @@ static initializer cpu_flag_init[] =
     "CpuSEV_ES" },
   { "CPU_TSXLDTRK_FLAGS",
     "CpuTSXLDTRK"},
+  { "CPU_KL_FLAGS",
+    "CpuKL" },
+  { "CPU_WIDEKL_FLAGS",
+    "CpuWideKL" },
+  { "CPU_HRESET_FLAGS",
+    "CpuHRESET"},
+  { "CPU_INVLPGB_FLAGS",
+    "CpuINVLPGB" },
+  { "CPU_TLBSYNC_FLAGS",
+    "CpuTLBSYNC" },
+  { "CPU_SNP_FLAGS",
+    "CpuSNP" },
   { "CPU_ANY_X87_FLAGS",
     "CPU_ANY_287_FLAGS|Cpu8087" },
   { "CPU_ANY_287_FLAGS",
@@ -348,7 +376,7 @@ static initializer cpu_flag_init[] =
   { "CPU_ANY_AVX2_FLAGS",
     "CPU_ANY_AVX512F_FLAGS|CpuAVX2" },
   { "CPU_ANY_AVX512F_FLAGS",
-    "CpuAVX512F|CpuAVX512CD|CpuAVX512ER|CpuAVX512PF|CpuAVX512DQ|CpuAVX512BW|CpuAVX512VL|CpuAVX512IFMA|CpuAVX512VBMI|CpuAVX512_4FMAPS|CpuAVX512_4VNNIW|CpuAVX512_VPOPCNTDQ|CpuAVX512_VBMI2|CpuAVX512_VNNI|CpuAVX512_BITALG|CpuAVX512_BF16|CpuAVX512_VP2INTERSECT" },
+    "CpuAVX512F|CpuAVX512CD|CpuAVX512ER|CpuAVX512PF|CpuAVX512DQ|CPU_ANY_AVX512BW_FLAGS|CpuAVX512VL|CpuAVX512IFMA|CpuAVX512VBMI|CpuAVX512_4FMAPS|CpuAVX512_4VNNIW|CpuAVX512_VPOPCNTDQ|CpuAVX512_VBMI2|CpuAVX512_VNNI|CpuAVX512_BITALG|CpuAVX512_BF16|CpuAVX512_VP2INTERSECT" },
   { "CPU_ANY_AVX512CD_FLAGS",
     "CpuAVX512CD" },
   { "CPU_ANY_AVX512ER_FLAGS",
@@ -358,7 +386,7 @@ static initializer cpu_flag_init[] =
   { "CPU_ANY_AVX512DQ_FLAGS",
     "CpuAVX512DQ" },
   { "CPU_ANY_AVX512BW_FLAGS",
-    "CpuAVX512BW" },
+    "CpuAVX512BW|CPU_ANY_AVX512_FP16_FLAGS" },
   { "CPU_ANY_AVX512VL_FLAGS",
     "CpuAVX512VL" },
   { "CPU_ANY_AVX512IFMA_FLAGS",
@@ -383,8 +411,18 @@ static initializer cpu_flag_init[] =
     "CpuAVX512_BITALG" },
   { "CPU_ANY_AVX512_BF16_FLAGS",
     "CpuAVX512_BF16" },
+  { "CPU_ANY_AMX_INT8_FLAGS",
+    "CpuAMX_INT8" },
+  { "CPU_ANY_AMX_BF16_FLAGS",
+    "CpuAMX_BF16" },
+  { "CPU_ANY_AMX_TILE_FLAGS",
+    "CpuAMX_TILE|CpuAMX_INT8|CpuAMX_BF16" },
+  { "CPU_ANY_AVX_VNNI_FLAGS",
+    "CpuAVX_VNNI" },
   { "CPU_ANY_MOVDIRI_FLAGS",
     "CpuMOVDIRI" },
+  { "CPU_ANY_UINTR_FLAGS",
+    "CpuUINTR" },
   { "CPU_ANY_MOVDIR64B_FLAGS",
     "CpuMOVDIR64B" },
   { "CPU_ANY_ENQCMD_FLAGS",
@@ -393,8 +431,18 @@ static initializer cpu_flag_init[] =
     "CpuSERIALIZE" },
   { "CPU_ANY_AVX512_VP2INTERSECT_FLAGS",
     "CpuAVX512_VP2INTERSECT" },
+  { "CPU_ANY_TDX_FLAGS",
+    "CpuTDX" },
   { "CPU_ANY_TSXLDTRK_FLAGS",
     "CpuTSXLDTRK" },
+  { "CPU_ANY_KL_FLAGS",
+    "CpuKL|CpuWideKL" },
+  { "CPU_ANY_WIDEKL_FLAGS",
+    "CpuWideKL" },
+  { "CPU_ANY_HRESET_FLAGS",
+    "CpuHRESET" },
+  { "CPU_ANY_AVX512_FP16_FLAGS",
+    "CpuAVX512_FP16" },
 };
 
 static initializer operand_type_init[] =
@@ -459,6 +507,8 @@ static initializer operand_type_init[] =
     "Class=RegSIMD|Ymmword" },
   { "OPERAND_TYPE_REGZMM",
     "Class=RegSIMD|Zmmword" },
+  { "OPERAND_TYPE_REGTMM",
+    "Class=RegSIMD|Tmmword" },
   { "OPERAND_TYPE_REGMASK",
     "Class=RegMask" },
   { "OPERAND_TYPE_REGBND",
@@ -597,6 +647,9 @@ static bitfield cpu_flags[] =
   BITFIELD (CpuAVX512_BITALG),
   BITFIELD (CpuAVX512_BF16),
   BITFIELD (CpuAVX512_VP2INTERSECT),
+  BITFIELD (CpuTDX),
+  BITFIELD (CpuAVX_VNNI),
+  BITFIELD (CpuAVX512_FP16),
   BITFIELD (CpuMWAITX),
   BITFIELD (CpuCLZERO),
   BITFIELD (CpuOSPKE),
@@ -610,7 +663,11 @@ static bitfield cpu_flags[] =
   BITFIELD (CpuWBNOINVD),
   BITFIELD (CpuPCONFIG),
   BITFIELD (CpuWAITPKG),
+  BITFIELD (CpuUINTR),
   BITFIELD (CpuCLDEMOTE),
+  BITFIELD (CpuAMX_INT8),
+  BITFIELD (CpuAMX_BF16),
+  BITFIELD (CpuAMX_TILE),
   BITFIELD (CpuMOVDIRI),
   BITFIELD (CpuMOVDIR64B),
   BITFIELD (CpuENQCMD),
@@ -619,6 +676,12 @@ static bitfield cpu_flags[] =
   BITFIELD (CpuMCOMMIT),
   BITFIELD (CpuSEV_ES),
   BITFIELD (CpuTSXLDTRK),
+  BITFIELD (CpuKL),
+  BITFIELD (CpuWideKL),
+  BITFIELD (CpuHRESET),
+  BITFIELD (CpuINVLPGB),
+  BITFIELD (CpuTLBSYNC),
+  BITFIELD (CpuSNP),
 #ifdef CpuUnused
   BITFIELD (CpuUnused),
 #endif
@@ -635,6 +698,7 @@ static bitfield opcode_modifiers[] =
   BITFIELD (FloatR),
   BITFIELD (Size),
   BITFIELD (CheckRegSize),
+  BITFIELD (DistinctDest),
   BITFIELD (MnemonicSize),
   BITFIELD (Anysize),
   BITFIELD (No_bSuf),
@@ -647,12 +711,9 @@ static bitfield opcode_modifiers[] =
   BITFIELD (IsString),
   BITFIELD (RegMem),
   BITFIELD (BNDPrefixOk),
-  BITFIELD (NoTrackPrefixOk),
-  BITFIELD (IsLockable),
   BITFIELD (RegKludge),
   BITFIELD (Implicit1stXmm0),
-  BITFIELD (RepPrefixOk),
-  BITFIELD (HLEPrefixOk),
+  BITFIELD (PrefixOk),
   BITFIELD (ToDword),
   BITFIELD (ToQword),
   BITFIELD (AddrPrefixOpReg),
@@ -660,14 +721,15 @@ static bitfield opcode_modifiers[] =
   BITFIELD (ImmExt),
   BITFIELD (NoRex64),
   BITFIELD (Ugh),
+  BITFIELD (PseudoVexPrefix),
   BITFIELD (Vex),
   BITFIELD (VexVVVV),
   BITFIELD (VexW),
-  BITFIELD (VexOpcode),
+  BITFIELD (OpcodeSpace),
+  BITFIELD (OpcodePrefix),
   BITFIELD (VexSources),
   BITFIELD (SIB),
   BITFIELD (SSE2AVX),
-  BITFIELD (NoAVX),
   BITFIELD (EVex),
   BITFIELD (Masking),
   BITFIELD (Broadcast),
@@ -741,6 +803,7 @@ static bitfield operand_types[] =
   BITFIELD (Xmmword),
   BITFIELD (Ymmword),
   BITFIELD (Zmmword),
+  BITFIELD (Tmmword),
   BITFIELD (Unspecified),
 #ifdef OTUnused
   BITFIELD (OTUnused),
@@ -800,7 +863,7 @@ static void
 process_copyright (FILE *fp)
 {
   fprintf (fp, "/* This file is automatically generated by i386-gen.  Do not edit!  */\n\
-/* Copyright (C) 2007-2020 Free Software Foundation, Inc.\n\
+/* Copyright (C) 2007-2022 Free Software Foundation, Inc.\n\
 \n\
    This file is part of the GNU opcodes library.\n\
 \n\
@@ -910,17 +973,6 @@ set_bitfield (char *f, bitfield *array, int value,
   /* Ignore empty fields; they may result from template expansions.  */
   if (*f == '\0')
     return;
-
-  if (strcmp (f, "CpuFP") == 0)
-    {
-      set_bitfield("Cpu387", array, value, size, lineno);
-      set_bitfield("Cpu287", array, value, size, lineno);
-      f = "Cpu8087";
-    }
-  else if (strcmp (f, "Mmword") == 0)
-    f= "Qword";
-  else if (strcmp (f, "Oword") == 0)
-    f= "Xmmword";
 
   for (i = 0; i < size; i++)
     if (strcasecmp (array[i].name, f) == 0)
@@ -1129,7 +1181,8 @@ adjust_broadcast_modifier (char **opnd)
 }
 
 static void
-process_i386_opcode_modifier (FILE *table, char *mod, char **opnd, int lineno)
+process_i386_opcode_modifier (FILE *table, char *mod, unsigned int space,
+			      unsigned int prefix, char **opnd, int lineno)
 {
   char *str, *next, *last;
   bitfield modifiers [ARRAY_SIZE (opcode_modifiers)];
@@ -1151,9 +1204,10 @@ process_i386_opcode_modifier (FILE *table, char *mod, char **opnd, int lineno)
 	    {
 	      int val = 1;
 	      if (strcasecmp(str, "Broadcast") == 0)
-		  val = adjust_broadcast_modifier (opnd);
+		val = adjust_broadcast_modifier (opnd);
+
 	      set_bitfield (str, modifiers, val, ARRAY_SIZE (modifiers),
-			  lineno);
+			    lineno);
 	      if (strcasecmp(str, "IsString") == 0)
 		active_isstring = 1;
 
@@ -1169,6 +1223,32 @@ process_i386_opcode_modifier (FILE *table, char *mod, char **opnd, int lineno)
 	      if (strcasecmp(str, "No_qSuf") == 0)
 		bwlq_suf &= ~8;
 	    }
+	}
+
+      if (space)
+	{
+	  if (!modifiers[OpcodeSpace].value)
+	    modifiers[OpcodeSpace].value = space;
+	  else if (modifiers[OpcodeSpace].value != space)
+	    fail (_("%s:%d: Conflicting opcode space specifications\n"),
+		  filename, lineno);
+	  else
+	    fprintf (stderr,
+		     _("%s:%d: Warning: redundant opcode space specification\n"),
+		     filename, lineno);
+	}
+
+      if (prefix)
+	{
+	  if (!modifiers[OpcodePrefix].value)
+	    modifiers[OpcodePrefix].value = prefix;
+	  else if (modifiers[OpcodePrefix].value != prefix)
+	    fail (_("%s:%d: Conflicting prefix specifications\n"),
+		  filename, lineno);
+	  else
+	    fprintf (stderr,
+		     _("%s:%d: Warning: redundant prefix specification\n"),
+		     filename, lineno);
 	}
 
       if (have_w && !bwlq_suf)
@@ -1293,21 +1373,16 @@ static void
 output_i386_opcode (FILE *table, const char *name, char *str,
 		    char *last, int lineno)
 {
-  unsigned int i;
-  char *operands, *base_opcode, *extension_opcode, *opcode_length;
+  unsigned int i, length, prefix = 0, space = 0;
+  char *base_opcode, *extension_opcode, *end;
   char *cpu_flags, *opcode_modifier, *operand_types [MAX_OPERANDS];
-
-  /* Find number of operands.  */
-  operands = next_field (str, ',', &str, last);
+  unsigned long long opcode;
 
   /* Find base_opcode.  */
   base_opcode = next_field (str, ',', &str, last);
 
   /* Find extension_opcode.  */
   extension_opcode = next_field (str, ',', &str, last);
-
-  /* Find opcode_length.  */
-  opcode_length = next_field (str, ',', &str, last);
 
   /* Find cpu_flags.  */
   cpu_flags = next_field (str, ',', &str, last);
@@ -1320,56 +1395,90 @@ output_i386_opcode (FILE *table, const char *name, char *str,
   if (*str != '{')
     abort ();
   str = remove_leading_whitespaces (str + 1);
+  remove_trailing_whitespaces (str);
 
+  /* Remove } and trailing white space. */
   i = strlen (str);
-
-  /* There are at least "X}".  */
-  if (i < 2)
+  if (!i || str[i - 1] != '}')
     abort ();
+  str[--i] = '\0';
+  remove_trailing_whitespaces (str);
 
-  /* Remove trailing white spaces and }. */
-  do
+  if (!*str)
+    operand_types [i = 0] = NULL;
+  else
     {
-      i--;
-      if (ISSPACE (str[i]) || str[i] == '}')
-	str[i] = '\0';
-      else
-	break;
-    }
-  while (i != 0);
+      last = str + strlen (str);
 
-  last = str + i;
-
-  /* Find operand_types.  */
-  for (i = 0; i < ARRAY_SIZE (operand_types); i++)
-    {
-      if (str >= last)
+      /* Find operand_types.  */
+      for (i = 0; i < ARRAY_SIZE (operand_types); i++)
 	{
-	  operand_types [i] = NULL;
-	  break;
-	}
+	  if (str >= last)
+	    {
+	      operand_types [i] = NULL;
+	      break;
+	    }
 
-      operand_types [i] = next_field (str, ',', &str, last);
-      if (*operand_types[i] == '0')
-	{
-	  if (i != 0)
-	    operand_types[i] = NULL;
-	  break;
+	  operand_types [i] = next_field (str, ',', &str, last);
 	}
     }
 
-  fprintf (table, "  { \"%s\", %s, %s, %s, %s,\n",
-	   name, base_opcode, extension_opcode, opcode_length, operands);
+  opcode = strtoull (base_opcode, &end, 0);
+
+  /* Determine opcode length.  */
+  for (length = 1; length < 8; ++length)
+    if (!(opcode >> (8 * length)))
+       break;
+
+  /* Transform prefixes encoded in the opcode into opcode modifier
+     representation.  */
+  if (length > 1)
+    {
+      switch (opcode >> (8 * length - 8))
+	{
+	case 0x66: prefix = PREFIX_0X66; break;
+	case 0xF3: prefix = PREFIX_0XF3; break;
+	case 0xF2: prefix = PREFIX_0XF2; break;
+	}
+
+      if (prefix)
+	opcode &= (1ULL << (8 * --length)) - 1;
+    }
+
+  /* Transform opcode space encoded in the opcode into opcode modifier
+     representation.  */
+  if (length > 1 && (opcode >> (8 * length - 8)) == 0xf)
+    {
+      switch ((opcode >> (8 * length - 16)) & 0xff)
+	{
+	default:   space = SPACE_0F;   break;
+	case 0x38: space = SPACE_0F38; break;
+	case 0x3A: space = SPACE_0F3A; break;
+	}
+
+      if (space != SPACE_0F && --length == 1)
+	fail (_("%s:%d: %s: unrecognized opcode encoding space\n"),
+	      filename, lineno, name);
+      opcode &= (1ULL << (8 * --length)) - 1;
+    }
+
+  if (length > 2)
+    fail (_("%s:%d: %s: residual opcode (0x%0*llx) too large\n"),
+	  filename, lineno, name, 2 * length, opcode);
+
+  fprintf (table, "  { \"%s\", 0x%0*llx%s, %s, %lu,\n",
+	   name, 2 * (int)length, opcode, end, extension_opcode, i);
+
+  process_i386_opcode_modifier (table, opcode_modifier, space, prefix,
+				operand_types, lineno);
 
   process_i386_cpu_flag (table, cpu_flags, 0, ",", "    ", lineno);
-
-  process_i386_opcode_modifier (table, opcode_modifier, operand_types, lineno);
 
   fprintf (table, "    { ");
 
   for (i = 0; i < ARRAY_SIZE (operand_types); i++)
     {
-      if (operand_types[i] == NULL || *operand_types[i] == '0')
+      if (!operand_types[i])
 	{
 	  if (i == 0)
 	    process_i386_operand_type (table, "0", stage_opcodes, "\t  ",
@@ -1465,9 +1574,11 @@ parse_template (char *buf, int lineno)
       *end++ = '\0';
 
       inst = xmalloc (sizeof (*inst));
+      inst->next = NULL;
+      inst->args = NULL;
 
       cur = next_field (buf, ':', &next, end);
-      inst->name = xstrdup (cur);
+      inst->name = *cur != '$' ? xstrdup (cur) : "";
 
       for (param = tmpl->params; param; param = param->next)
 	{
@@ -1748,11 +1859,11 @@ process_i386_opcodes (FILE *table)
 
   fclose (fp);
 
-  fprintf (table, "  { NULL, 0, 0, 0, 0,\n");
+  fprintf (table, "  { NULL, 0, 0, 0,\n");
+
+  process_i386_opcode_modifier (table, "0", 0, 0, NULL, -1);
 
   process_i386_cpu_flag (table, "0", 0, ",", "    ", -1);
-
-  process_i386_opcode_modifier (table, "0", NULL, -1);
 
   fprintf (table, "    { ");
   process_i386_operand_type (table, "0", stage_opcodes, "\t  ", -1);

@@ -1,6 +1,6 @@
 /* Test file for mpfr_atan.
 
-Copyright 2001-2019 Free Software Foundation, Inc.
+Copyright 2001-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -55,7 +55,7 @@ special (void)
       mpfr_set_inf (x, 1);
       mpfr_atan (y, x, (mpfr_rnd_t) r);
       mpfr_const_pi (x, (mpfr_rnd_t) r);
-      mpfr_div_2exp (x, x, 1, (mpfr_rnd_t) r);
+      mpfr_div_2ui (x, x, 1, (mpfr_rnd_t) r);
       if (mpfr_cmp (x, y))
         {
           printf ("Error: mpfr_atan(+Inf), rnd=%s\n",
@@ -71,7 +71,7 @@ special (void)
       mpfr_atan (y, x, (mpfr_rnd_t) r);
       mpfr_const_pi (x, MPFR_INVERT_RND((mpfr_rnd_t) r));
       mpfr_neg (x, x, (mpfr_rnd_t) r);
-      mpfr_div_2exp (x, x, 1, (mpfr_rnd_t) r);
+      mpfr_div_2ui (x, x, 1, (mpfr_rnd_t) r);
       if (mpfr_cmp (x, y))
         {
           printf ("Error: mpfr_atan(-Inf), rnd=%s\n",

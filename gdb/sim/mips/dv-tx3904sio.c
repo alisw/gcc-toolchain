@@ -1,6 +1,6 @@
 /*  This file is part of the program GDB, the GNU debugger.
     
-    Copyright (C) 1998-2020 Free Software Foundation, Inc.
+    Copyright (C) 1998-2022 Free Software Foundation, Inc.
     Contributed by Cygnus Solutions.
     
     This program is free software; you can redistribute it and/or modify
@@ -18,12 +18,15 @@
     
     */
 
+/* This must come before any other includes.  */
+#include "defs.h"
 
 #include "sim-main.h"
 #include "hw-main.h"
 #include "dv-sockser.h"
 #include "sim-assert.h"
 
+#include <stdlib.h>
 
 /* DEVICE
 
@@ -579,7 +582,7 @@ tx3904sio_fifo_push(struct hw* me, struct tx3904sio_fifo* fifo, char it)
   if(fifo->size == fifo->used) /* full */
     {
       int next_size = fifo->size * 2 + 16;
-      char* next_buf = zalloc(next_size);
+      unsigned_1* next_buf = zalloc(next_size);
       memcpy(next_buf, fifo->buffer, fifo->used);
 
       if(fifo->buffer != NULL) free(fifo->buffer);

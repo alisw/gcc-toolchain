@@ -1,5 +1,5 @@
 /* as.c - GAS main program.
-   Copyright (C) 1987-2020 Free Software Foundation, Inc.
+   Copyright (C) 1987-2022 Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
 
@@ -108,7 +108,7 @@ unsigned int dwarf_level = 3;
 
 #if defined OBJ_ELF || defined OBJ_MAYBE_ELF
 int flag_use_elf_stt_common = DEFAULT_GENERATE_ELF_STT_COMMON;
-bfd_boolean flag_generate_build_notes = DEFAULT_GENERATE_BUILD_NOTES;
+bool flag_generate_build_notes = DEFAULT_GENERATE_BUILD_NOTES;
 #endif
 
 /* Keep the output file.  */
@@ -158,7 +158,7 @@ select_emulation_mode (int argc, char **argv)
   const char *em = NULL;
 
   for (i = 1; i < argc; i++)
-    if (!strncmp ("--em", argv[i], 4))
+    if (startswith (argv[i], "--em"))
       break;
 
   if (i == argc)
@@ -346,10 +346,6 @@ Options:\n\
   fprintf (stream, _("\
   --gdwarf-sections       generate per-function section names for DWARF line information\n"));
   fprintf (stream, _("\
-  --hash-size=<value>     set the hash table size close to <value>\n"));
-  fprintf (stream, _("\
-  --help                  show this message and exit\n"));
-  fprintf (stream, _("\
   --target-help           show target specific options\n"));
   fprintf (stream, _("\
   -I DIR                  add DIR to search list for .include directives\n"));
@@ -371,10 +367,6 @@ Options:\n\
   -o OBJFILE              name the object-file output OBJFILE (default a.out)\n"));
   fprintf (stream, _("\
   -R                      fold data section into text section\n"));
-  fprintf (stream, _("\
-  --reduce-memory-overheads \n\
-                          prefer smaller memory use at the cost of longer\n\
-                          assembly times\n"));
   fprintf (stream, _("\
   --statistics            print various measured statistics from execution\n"));
   fprintf (stream, _("\
@@ -482,7 +474,7 @@ parse_args (int * pargc, char *** pargv)
       OPTION_DEBUG_PREFIX_MAP,
       OPTION_DEFSYM,
       OPTION_LISTING_LHS_WIDTH,
-      OPTION_LISTING_LHS_WIDTH2,
+      OPTION_LISTING_LHS_WIDTH2, /* = STD_BASE + 10 */
       OPTION_LISTING_RHS_WIDTH,
       OPTION_LISTING_CONT_LINES,
       OPTION_DEPFILE,
@@ -492,7 +484,7 @@ parse_args (int * pargc, char *** pargv)
       OPTION_GDWARF_3,
       OPTION_GDWARF_4,
       OPTION_GDWARF_5,
-      OPTION_GDWARF_SECTIONS,
+      OPTION_GDWARF_SECTIONS, /* = STD_BASE + 20 */
       OPTION_GDWARF_CIE_VERSION,
       OPTION_STRIP_LOCAL_ABSOLUTE,
       OPTION_TRADITIONAL_FORMAT,
@@ -502,7 +494,7 @@ parse_args (int * pargc, char *** pargv)
       OPTION_NOEXECSTACK,
       OPTION_SIZE_CHECK,
       OPTION_ELF_STT_COMMON,
-      OPTION_ELF_BUILD_NOTES,
+      OPTION_ELF_BUILD_NOTES, /* = STD_BASE + 30 */
       OPTION_SECTNAME_SUBST,
       OPTION_ALTERNATE,
       OPTION_AL,
@@ -511,7 +503,8 @@ parse_args (int * pargc, char *** pargv)
       OPTION_WARN_FATAL,
       OPTION_COMPRESS_DEBUG,
       OPTION_NOCOMPRESS_DEBUG,
-      OPTION_NO_PAD_SECTIONS /* = STD_BASE + 40 */
+      OPTION_NO_PAD_SECTIONS,
+      OPTION_MULTIBYTE_HANDLING  /* = STD_BASE + 40 */
     /* When you add options here, check that they do
        not collide with OPTION_MD_BASE.  See as.h.  */
     };
@@ -589,6 +582,7 @@ parse_args (int * pargc, char *** pargv)
     ,{"target-help", no_argument, NULL, OPTION_TARGET_HELP}
     ,{"traditional-format", no_argument, NULL, OPTION_TRADITIONAL_FORMAT}
     ,{"warn", no_argument, NULL, OPTION_WARN}
+    ,{"multibyte-handling", required_argument, NULL, OPTION_MULTIBYTE_HANDLING}
   };
 
   /* Construct the option lists from the standard list and the target
@@ -691,10 +685,23 @@ parse_args (int * pargc, char *** pargv)
 	  flag_traditional_format = 1;
 	  break;
 
+	case OPTION_MULTIBYTE_HANDLING:
+	  if (strcmp (optarg, "allow") == 0)
+	    multibyte_handling = multibyte_allow;
+	  else if (strcmp (optarg, "warn") == 0)
+	    multibyte_handling = multibyte_warn;
+	  else if (strcmp (optarg, "warn-sym-only") == 0)
+	    multibyte_handling = multibyte_warn_syms;
+	  else if (strcmp (optarg, "warn_sym_only") == 0)
+	    multibyte_handling = multibyte_warn_syms;
+	  else
+	    as_fatal (_("unexpected argument to --multibyte-input-option: '%s'"), optarg);
+	  break;
+
 	case OPTION_VERSION:
 	  /* This output is intended to follow the GNU standards document.  */
 	  printf (_("GNU assembler %s\n"), BFD_VERSION_STRING);
-	  printf (_("Copyright (C) 2020 Free Software Foundation, Inc.\n"));
+	  printf (_("Copyright (C) 2022 Free Software Foundation, Inc.\n"));
 	  printf (_("\
 This program is free software; you may redistribute it under the terms of\n\
 the GNU General Public License version 3 or later.\n\
@@ -827,8 +834,7 @@ This program has absolutely no warranty.\n"));
 	  /* We end up here for any -gsomething-not-already-a-long-option.
 	     give some useful feedback on not (yet) supported -gdwarfxxx
 	     versions/sections/options.  */
-	  if (strncmp (old_argv[optind - 1], "-gdwarf",
-		       strlen ("-gdwarf")) == 0)
+	  if (startswith (old_argv[optind - 1], "-gdwarf"))
 	    as_fatal (_("unknown DWARF option %s\n"), old_argv[optind - 1]);
 
 	  if (md_debug_format_selector)
@@ -870,7 +876,7 @@ This program has absolutely no warranty.\n"));
 	  break;
 
 	case OPTION_GDWARF_SECTIONS:
-	  flag_dwarf_sections = TRUE;
+	  flag_dwarf_sections = true;
 	  break;
 
         case OPTION_GDWARF_CIE_VERSION:
@@ -969,9 +975,9 @@ This program has absolutely no warranty.\n"));
 
 	case OPTION_SIZE_CHECK:
 	  if (strcasecmp (optarg, "error") == 0)
-	    flag_allow_nonconst_size = FALSE;
+	    flag_allow_nonconst_size = false;
 	  else if (strcasecmp (optarg, "warning") == 0)
-	    flag_allow_nonconst_size = TRUE;
+	    flag_allow_nonconst_size = true;
 	  else
 	    as_fatal (_("Invalid --size-check= option: `%s'"), optarg);
 	  break;
@@ -992,9 +998,9 @@ This program has absolutely no warranty.\n"));
 
 	case OPTION_ELF_BUILD_NOTES:
 	  if (strcasecmp (optarg, "no") == 0)
-	    flag_generate_build_notes = FALSE;
+	    flag_generate_build_notes = false;
 	  else if (strcasecmp (optarg, "yes") == 0)
-	    flag_generate_build_notes = TRUE;
+	    flag_generate_build_notes = true;
 	  else
 	    as_fatal (_("Invalid --generate-missing-build-notes option: `%s'"),
 		      optarg);
@@ -1107,22 +1113,10 @@ This program has absolutely no warranty.\n"));
 	  break;
 
 	case OPTION_REDUCE_MEMORY_OVERHEADS:
-	  /* The only change we make at the moment is to reduce
-	     the size of the hash tables that we use.  */
-	  set_gas_hash_table_size (4051);
 	  break;
 
 	case OPTION_HASH_TABLE_SIZE:
-	  {
-	    unsigned long new_size;
-
-            new_size = strtoul (optarg, NULL, 0);
-            if (new_size)
-              set_gas_hash_table_size (new_size);
-            else
-              as_fatal (_("--hash-size needs a numeric argument"));
-	    break;
-	  }
+	  break;
 	}
     }
 
@@ -1277,12 +1271,10 @@ main (int argc, char ** argv)
   start_time = get_run_time ();
   signal_init ();
 
-#if defined (HAVE_SETLOCALE) && defined (HAVE_LC_MESSAGES)
+#ifdef HAVE_LC_MESSAGES
   setlocale (LC_MESSAGES, "");
 #endif
-#if defined (HAVE_SETLOCALE)
   setlocale (LC_CTYPE, "");
-#endif
   bindtextdomain (PACKAGE, LOCALEDIR);
   textdomain (PACKAGE);
 
@@ -1395,7 +1387,7 @@ main (int argc, char ** argv)
   dwarf2_init ();
 
   local_symbol_make (".gasversion.", absolute_section,
-		     BFD_VERSION / 10000UL, &predefined_address_frag);
+		     &predefined_address_frag, BFD_VERSION / 10000UL);
 
   /* Now that we have fully initialized, and have created the output
      file, define any symbols requested by --defsym command line
@@ -1405,8 +1397,8 @@ main (int argc, char ** argv)
       symbolS *sym;
       struct defsym_list *next;
 
-      sym = symbol_new (defsyms->name, absolute_section, defsyms->value,
-			&zero_address_frag);
+      sym = symbol_new (defsyms->name, absolute_section,
+			&zero_address_frag, defsyms->value);
       /* Make symbols defined on the command line volatile, so that they
 	 can be redefined inside a source file.  This makes this assembler's
 	 behaviour compatible with earlier versions, but it may not be

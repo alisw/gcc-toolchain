@@ -1,10 +1,34 @@
-2020-07-23  Release Manager
+2021-07-28  Release Manager
 
-	* GCC 10.2.0 released.
+	* GCC 11.2.0 released.
 
-2020-05-07  Release Manager
+2021-04-27  Release Manager
 
-	* GCC 10.1.0 released.
+	* GCC 11.1.0 released.
+
+2020-12-16  Martin Liska  <mliska@suse.cz>
+
+	* lang.opt: Remove usage of Report.
+
+2020-11-20  Jakub Jelinek  <jakub@redhat.com>
+
+	PR other/97911
+	* Make-lang.in (brig.serial): Change from goal to a variable.
+	(.PHONY): Drop brig.serial and brig.prev.
+	(brig1$(exeext)): Depend on $(brig.serial) rather than brig.serial.
+
+2020-11-18  Jakub Jelinek  <jakub@redhat.com>
+
+	* Make-lang.in (brig.serial): New goal.
+	(.PHONY): Add brig.serial brig.prev.
+	(brig1$(exeext)): Depend on brig.prev.  Call LINK_PROGRESS.
+
+2020-08-03  Martin Jambor  <mjambor@suse.cz>
+
+	* brigfrontend/brig-util.h (hsa_type_packed_p): Declared.
+	* brigfrontend/brig-util.cc (hsa_type_packed_p): Moved here from
+	removed gcc/hsa-common.c.
+	* brigfrontend/hsa-brig-format.h: New file.
 
 2020-01-01  Jakub Jelinek  <jakub@redhat.com>
 

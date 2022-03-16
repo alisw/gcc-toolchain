@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---         Copyright (C) 2009-2019, Free Software Foundation, Inc.          --
+--         Copyright (C) 2009-2020, Free Software Foundation, Inc.          --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -644,6 +644,9 @@ package body System.Object_Reader is
 
             when EM_X86_64 =>
                Res.Arch := x86_64;
+
+            when EM_ARM =>
+               Res.Arch := ARM;
 
             when others =>
                raise Format_Error with "unrecognized architecture";
@@ -2030,6 +2033,7 @@ package body System.Object_Reader is
             | MIPS
             | PPC
             | SPARC
+            | ARM
          =>
             Address_32 := Read (S);
             return uint64 (Address_32);

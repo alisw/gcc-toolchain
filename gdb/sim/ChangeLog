@@ -1,16 +1,556 @@
-2020-09-08  David Faust  <david.faust@oracle.com>
+2021-07-01  Mike Frysinger  <vapier@gentoo.org>
 
-	* bpf/sem-be.c: Regenerate.
-	* bpf/sem-le.c: Likewise.
+	* configure.ac: Call SIM_AC_OPTION_RESERVED_BITS.
+	(sim_reserved_bits): Delete.
+	* m4/sim_ac_option_reserved_bits.m4: Delete first arg.  Define
+	WITH_RESERVED_BITS.
+	* m4/sim_ac_output.m4 (sim_reserved_bits): Delete.
+	* aclocal.m4, config.h.in, configure, Makefile.in: Regenerate.
 
-2020-09-03  Jose E. Marchesi  <jose.marchesi@oracle.com>
+2021-07-01  Mike Frysinger  <vapier@gentoo.org>
 
-	* bpf/bpf.c: Include bpf-helpers.h.
-	* bpf/bpf-helpers.h: Provide a prototype for bpf_trace_printk.
-	* bpf/configure.ac: Set simulator bitsize to 64.
-	* bpf/configure (includedir): Regenerate.
-	* bpf/sim-if.c: Include stdlib.h.
-	* bpf/traps.c: Likewise.
+	* configure.ac: Remove [true] from m32r SIM_TARGET call.
+	* configure, Makefile.in: Regenerate.
+
+2021-06-30  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Remove [true] from cris, frv, iq2000, and lm32
+	SIM_TARGET calls.  Include frv/acinclude.m4.
+	* configure, Makefile.in: Regenerate.
+
+2021-06-30  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Call SIM_AC_OPTION_SCACHE.
+	(sim_scache): Delete.
+	* m4/sim_ac_option_scache.m4: Delete first arg.  Define WITH_SCACHE.
+	* m4/sim_ac_output.m4 (sim_scache): Delete.
+	* aclocal.m4, config.h.in, configure, Makefile.in: Regenerate.
+
+2021-06-30  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Remove [true] from bfin SIM_TARGET call.
+	* configure, Makefile.in: Regenerate.
+
+2021-06-30  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac (sim_default_model): Delete.
+	* m4/sim_ac_output.m4 (sim_default_model): Likewise.
+	* configure, Makefile.in: Regenerate.
+	* m4/sim_ac_option_default_model.m4: Removed.
+
+2021-06-29  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_option_warnings.m4: Add -Wunused-but-set-parameter.
+	* configure: Regenerate.
+
+2021-06-29  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_option_warnings.m4: Add -Wno-error=maybe-uninitialized.
+	* configure: Regenerate.
+
+2021-06-27  Mike Frysinger  <vapier@gentoo.org>
+
+	* arch-subdir.mk.in: Move TERMCAP and READLINE variables from
+	erc32/Makefile.in.
+	* configure.ac: Remove [true] from erc32 SIM_TARGET call.
+	* m4/sim_ac_platform.m4: Check for cygwin, termcap, and readline.
+	* configure, Makefile.in: Regenerate.
+
+2021-06-27  Mike Frysinger  <vapier@gentoo.org>
+
+	* arch-subdir.mk.in: Move SDL_CFLAGS & SDL_LIBS from bfin/Makefile.in.
+	* m4/sim_ac_platform.m4: Call PKG_CHECK_MODULES and export SDL_CFLAGS
+	and SDL_LIBS.
+	* m4/sim_ac_toolchain.m4: Call PKG_PROG_PKG_CONFIG.
+	* aclocal.m4, configure, Makefile.in: Regenerate.
+
+2021-06-23  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac (SIM_BUILD_TARGET): Simplify sed script.
+	* configure: Regenerate.
+
+2021-06-22  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Update rx SIM_TARGET call.  Include rx/acinclude.m4.
+	* configure, Makefile.in: Regenerate.
+
+2021-06-22  Mike Frysinger  <vapier@gentoo.org>
+
+	* Makefile.am (SUBDIRS): Add $(SIM_SUBDIRS).
+	* configure.ac (SIM_SUBDIRS): Define.
+	(SIM_COMMON_BUILD): New conditional.
+	(SIM_BUILD_TARGET): Update to take a 2nd arg.
+	(SIM_TARGET): Update to take a 4th arg.  Update callers.
+	(sim_bitsize, sim_float, sim_scache, sim_default_model,
+	sim_reserved_bits): Define.
+	* m4/sim_ac_output.m4 (SIM_COMMON_BUILD): New conditional.
+	* configure, Makefile.in: Regenerate.
+
+2021-06-21  Mike Frysinger  <vapier@gentoo.org>
+
+	* arch-subdir.mk.in: Move sim-hw settings from common/Make-common.in.
+	* configure.ac: Call SIM_AC_OPTION_HARDWARE.
+	* m4/sim_ac_option_hardware.m4: Use AM_CONDITIONAL for SIM_ENABLE_HW.
+	* m4/sim_ac_output.m4: Do not require SIM_AC_OPTION_HARDWARE.
+	* aclocal.m4, configure, Makefile.in: Regenerate.
+
+2021-06-21  Mike Frysinger  <vapier@gentoo.org>
+
+	* README-HACKING: Change SIM_AC_OPTION_HARDWARE to
+	SIM_EXTRA_HW_DEVICES.
+	* m4/sim_ac_option_hardware.m4: Remove first argument, and change
+	configure option to a boolean.  Delete device list.
+	* m4/sim_ac_output.m4: Delete sim_hw variables.
+
+2021-06-20  Mike Frysinger  <vapier@gentoo.org>
+
+	* README-HACKING (SIM_AC_COMMON): Delete mention.
+	* m4/sim_ac_common.m4: Removed.
+
+2021-06-20  Mike Frysinger  <vapier@gentoo.org>
+
+	* arch-subdir.mk.in (MAINT): Define.
+	* m4/sim_ac_common.m4: Delete AM_MAINTAINER_MODE call.
+
+2021-06-20  Mike Frysinger  <vapier@gentoo.org>
+
+	* arch-subdir.mk.in (CGEN_MAINT, CGENDIR): Define.
+	* configure.ac: Call SIM_AC_OPTION_CGEN_MAINT.
+	* aclocal.m4, configure, Makefile.in: Regenerate.
+
+2021-06-20  Mike Frysinger  <vapier@gentoo.org>
+
+	* Makefile.am (AM_CPPFLAGS): Add $(SIM_INLINE).
+	* arch-subdir.mk.in (SIM_INLINE): Define.
+	* configure.ac: Call SIM_AC_OPTION_INLINE.
+	* m4/sim_ac_common.m4: Delete SIM_AC_OPTION_INLINE call.
+	* m4/sim_ac_option_inline.m4: Output SIM_INLINE.
+	* aclocal.m4, configure, Makefile.in: Regenerate.
+
+2021-06-19  Mike Frysinger  <vapier@gentoo.org>
+
+	* arch-subdir.mk.in (DTC): Define.
+	* m4/sim_ac_toolchain.m4: Call AC_CHECK_TOOL.
+	* configure, Makefile.in: Regenerate.
+
+2021-06-19  Mike Frysinger  <vapier@gentoo.org>
+
+	* arch-subdir.mk.in: Move intl vars from common/Make-common.in.
+	* m4/sim_ac_common.m4: Move ZW_GNU_GETTEXT_SISTER_DIR call ...
+	* m4/sim_ac_platform.m4: ... here.
+	* aclocal.m4, config.h.in, configure, Makefile.in: Regenerate.
+
+2021-06-19  Mike Frysinger  <vapier@gentoo.org>
+
+	* arch-subdir.mk.in: Move dependency vars from common/Make-common.in.
+	* configure.ac (SIM_BUILD_TARGET): New macro.
+	(SIM_TARGET): Call SIM_BUILD_TARGET.
+	(example): Change AC_CONFIG_SUBDIRS to SIM_BUILD_TARGET.
+	* m4/sim_ac_common.m4: Delete AC_PROG_CC & AC_PROG_INSTALL require,
+	and delete ZW_CREATE_DEPDIR & ZW_PROG_COMPILER_DEPENDENCIES.
+	* configure: Regenerate.
+
+2021-06-19  Mike Frysinger  <vapier@gentoo.org>
+
+	* arch-subdir.mk.in: Move toolchain vars from common/Make-common.in.
+	* m4/sim_ac_common.m4: Delete SIM_AC_TOOLCHAIN call.  Require
+	AC_PROG_CC and AC_PROG_INSTALL.
+
+2021-06-19  Mike Frysinger  <vapier@gentoo.org>
+
+	* arch-subdir.mk.in (zlibdir): New variable.
+	(@PLUGINS_TRUE@LIBDL): New variable.
+	* m4/sim_ac_common.m4: Move bfd dep calls ...
+	* m4/sim_ac_platform.m4: ... here.
+	* aclocal.m4, config.h.in, configure, Makefile.in: Regenerate.
+
+2021-06-19  Mike Frysinger  <vapier@gentoo.org>
+
+	* arch-subdir.mk.in (COMMON_LIBS): New variable.
+	* m4/sim_ac_common.m4: Delete AC_CHECK_LIB calls.
+	* m4/sim_ac_option_hardware.m4: Likewise.
+	* m4/sim_ac_platform.m4: Call AC_CHECK_LIB.
+	* config.h.in, configure: Regenerate.
+
+2021-06-18  Mike Frysinger  <vapier@gentoo.org>
+
+	* Makefile.am (AM_CFLAGS): New variable.
+	* arch-subdir.mk.in (WARN_CFLAGS, WERROR_CFLAGS): New variables.
+	* configure.ac: Call SIM_AC_OPTION_WARNINGS.
+	* m4/sim_ac_output.m4: Delete SIM_AC_OPTION_WARNINGS require.
+	* aclocal.m4, configure, Makefile.in: Regenerate.
+
+2021-06-18  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_option_warnings.m4: Delete 1st arg to macro.
+
+2021-06-18  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Output arch-subdir.mk.
+	* Makefile.in, configure: Regenerate.
+	* arch-subdir.mk.in: New file.
+
+2021-06-17  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Call SIM_AC_OPTION_ENDIAN.
+	* m4/sim_ac_option_endian.m4: Delete wire & default arguments.
+	* m4/sim_ac_output.m4: Delete sim_alignment & sim_endian.
+	* aclocal.m4, Makefile.in, config.h.in, configure: Regenerate.
+
+2021-06-16  Simon Marchi  <simon.marchi@polymtl.ca>
+
+	* common/Make-common.in (COMPILE, libsim.a, run$(EXEEXT),
+	gentmap.o, gentmap): Make rules silent.
+
+2021-06-16  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_common.m4: Delete AC_EXEEXT call.
+
+2021-06-16  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_common.m4: Delete AC_CONFIG_HEADERS call.
+
+2021-06-15  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_option_hardware.m4: Delete AC_DEFINE_UNQUOTED call.
+	Add -DHAVE_DV_SOCKSER to sim_hw_cflags.
+
+2021-06-15  Mike Frysinger  <vapier@gentoo.org>
+
+	* Makefile.in: Regenerate.
+
+2021-06-14  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Call AM_SILENT_RULES.
+	* Makefile.in, configure: Regenerate.
+
+2021-06-12  Mike Frysinger  <vapier@gentoo.org>
+
+	* Makefile.in: Regenerate.
+
+2021-06-12  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_platform.m4: Delete sys/select.h.
+	* config.h.in, configure: Regenerate.
+
+2021-06-12  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Call SIM_AC_OPTION_ALIGNMENT.
+	* m4/sim_ac_option_alignment.m4: Delete wire and default alignment.
+	* aclocal.m4, config.h.in, configure, Makefile.in: Regenerate.
+
+2021-06-12  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Define PKGVERSION & REPORT_BUGS_TO.
+	* m4/sim_ac_common.m4: Delete calls to ACX_PKGVERSION & ACX_BUGURL.
+	* aclocal.m4, config.h.in, configure, Makefile.in: Regenerate.
+
+2021-06-12  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Call SIM_AC_OPTION_DEBUG, SIM_AC_OPTION_STDIO,
+	SIM_AC_OPTION_TRACE, and SIM_AC_OPTION_PROFILE.
+	* m4/sim_ac_common.m4: Delete calls to SIM_AC_OPTION_DEBUG,
+	SIM_AC_OPTION_STDIO, SIM_AC_OPTION_TRACE, and SIM_AC_OPTION_PROFILE.
+	* aclocal.m4, config.h.in, configure, Makefile.in: Regenerate.
+
+2021-06-12  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_common.m4: Replace --enable-sim-debug, --enable-sim-stdio,
+	--enable-sim-trace, and --enable-sim-profile with calls to
+	SIM_AC_OPTION_DEBUG, SIM_AC_OPTION_STDIO, SIM_AC_OPTION_TRACE, and
+	SIM_AC_OPTION_PROFILE.
+	* m4/sim_ac_option_debug.m4: New file.
+	* m4/sim_ac_option_profile.m4: New file.
+	* m4/sim_ac_option_stdio.m4: New file.
+	* m4/sim_ac_option_trace.m4: New file.
+
+2021-06-12  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_platform.m4: Check more headers, funcs, structs, and
+	types.
+	* config.h.in, configure: Regenerate.
+
+2021-06-12  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Call SIM_AC_OPTION_ENVIRONMENT.
+	* m4/sim_ac_common.m4: Delete call to SIM_AC_OPTION_ENVIRONMENT.
+	* aclocal.m4, config.h.in, configure, Makefile.in: Regenerate.
+
+2021-06-12  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Call SIM_AC_OPTION_ASSERT.
+	* m4/sim_ac_common.m4: Delete call to SIM_AC_OPTION_ASSERT.
+	* aclocal.m4, config.h.in, configure, Makefile.in: Regenerate.
+
+2021-06-12  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Call AC_CONFIG_HEADERS and SIM_AC_PLATFORM.
+	* m4/sim_ac_common.m4: Delete calls to AC_CHECK_HEADERS_ONCE,
+	AC_CHECK_FUNCS_ONCE, AC_CHECK_MEMBERS, AC_CHECK_TYPES, and
+	AC_TYPE_SIGNAL.
+	* aclocal.m4, configure, Makefile.in: Regenerate.
+	* config.h.in: New file.
+	* m4/sim_ac_platform.m4: New file.
+
+2021-06-05  Mike Frysinger  <vapier@gentoo.org>
+
+	* Makefile.am: Include common/local.mk.
+	(SIM_ALL_RECURSIVE_DEPS): Define.
+	(all-recursive): New rule.
+	* Makefile.in: Regenerated.
+
+2021-05-16  Mike Frysinger  <vapier@gentoo.org>
+
+	* Makefile.am (pkginclude_HEADERS): Define.
+	* Makefile.in: Regenerated.
+
+2021-05-15  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_common.m4: Check for __int128 type.
+
+2021-05-14  Mike Frysinger  <vapier@gentoo.org>
+
+	* README-HACKING: Update callback.h path.
+
+2021-05-12  Mike Frysinger  <vapier@gentoo.org>
+
+	* README-HACKING: Delete mention of SIM_AC_OPTION_ENVIRONMENT.
+
+2021-05-12  Luis Machado  <luis.machado@linaro.org>
+
+	* d10v/interp.c (sim_create_inferior): Fix memset call.
+
+2021-05-07  Dimitar Dimitrov  <dimitar@dinux.eu>
+
+	* Makefile.in: Rebuild.
+
+2021-05-04  Tom Tromey  <tromey@adacore.com>
+
+	* Makefile.in: Rebuild.
+	* Makefile.am (AM_CPPFLAGS): New variable.
+
+2021-05-04  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_toolchain.m4 (SIM_AC_TOOLCHAIN): Define AR_FOR_BUILD and
+	RANLIB_FOR_BUILD.
+	* configure, Makefile.in: Regenerate.
+
+2021-05-01  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_common.m4 (AC_CHECK_FUNCS_ONCE): Add strsignal.
+
+2021-04-26  Mike Frysinger  <vapier@gentoo.org>
+
+	* README-HACKING (nltvals.def): Update to gennltvals.py.
+
+2021-04-26  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_output.m4 (SIM_AC_OUTPUT): Require SIM_AC_OPTION_HARDWARE.
+
+2021-04-23  Mike Frysinger  <vapier@gentoo.org>
+
+	* README-HACKING (SIM_AC_OPTION_HARDWARE): Delete first two args.
+	* m4/sim_ac_option_hardware.m4 (SIM_AC_OPTION_HARDWARE): Replace [$1]
+	with yes.  Delete test [$2].  Change [$3] to [$1].  Update comments.
+
+2021-04-22  Tom Tromey  <tom@tromey.com>
+
+	* m4/sim_ac_common.m4 (SIM_AC_COMMON): Don't check for sys/time.h
+	or sys/times.h.
+
+2021-04-22  Tom Tromey  <tom@tromey.com>
+
+	* m4/sim_ac_common.m4 (SIM_AC_COMMON): Don't check for make.
+
+2021-04-21  Simon Marchi  <simon.marchi@polymtl.ca>
+
+	* m4/sim_ac_option_warnings.m4 (SIM_AC_OPTION_WARNINGS): Use
+	-Werror when probing for supported warning flags.
+
+2021-04-18  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_common.m4: Change AC_CHECK_HEADERS to
+	AC_CHECK_HEADERS_ONCE, merge calls, and sort args.
+
+2021-04-18  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_common.m4: Change AC_CHECK_FUNCS to AC_CHECK_FUNCS_ONCE,
+	merge calls, and sort args.
+
+2021-04-03  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Add --example-sims option.
+	* configure: Regenerate.
+
+2021-04-03  Mike Frysinger  <vapier@gentoo.org>
+
+	* Makefile.am (check_PROGRAMS, CLEANFILES, DISTCLEANFILES): Define.
+	* Makefile.in: Regenerated.
+
+2021-04-03  Mike Frysinger  <vapier@gentoo.org>
+
+	* Makefile.am (SIM_PRIMARY_TARGET, AM_MAKEFLAGS): Define.
+	* configure.ac: Add --enable-targets option.  Define SIM_PRIMARY_TARGET
+	and SIM_TARGET.  Rewrite case statement with SIM_TARGET calls.
+	* Makefile.in, configure: Regenerate.
+
+2021-04-02  Mike Frysinger  <vapier@gentoo.org>
+
+	* Makefile.am [SIM_ENABLE_IGEN]: Include igen/local.mk.
+	* configure.ac: Delete AC_CONFIG_SUBDIRS(igen) call.
+	(SIM_ENABLE_IGEN): Define.
+	* configure, Makefile.in: Regenerate.
+
+2021-04-02  Mike Frysinger  <vapier@gentoo.org>
+
+	* Makefile.am (ACLOCAL_AMFLAGS): Add -Im4.
+	(COMPILE_FOR_BUILD, LINK_FOR_BUILD): Define.
+	* configure.ac: Replace toolchain calls with SIM_AC_TOOLCHAIN.
+	* m4/sim_ac_common.m4 (SIM_AC_COMMON): Replace toolchain calls
+	with SIM_AC_TOOLCHAIN.
+	* m4/sim_ac_toolchain.m4: New file.
+	* aclocal.m4, configure, Makefile.in: Regenerate.
+
+2021-03-08  Tom Tromey  <tromey@adacore.com>
+
+	* aclocal.m4, configure, Makefile.in: Rebuild.
+	* configure.ac: Use AM_MAINTAINER_MODE.
+
+2021-03-07  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac (AC_CONFIG_FILES): Delete testsuite/Makefile.
+	* Makefile.am: Include testsuite/local.mk.
+	(AUTOMAKE_OPTIONS): Add dejagnu.
+	* configure, Makefile.in: Regenerated.
+
+2021-03-07  Mike Frysinger  <vapier@gentoo.org>
+
+	* Makefile.am: New file.
+	* configure.ac: Update AC_INIT call.  Move AC_CANONICAL_SYSTEM after
+	it.  Call AM_INIT_AUTOMAKE.  Delete AC_CONFIG_MACRO_DIRS.
+	* aclocal.m4, configure, Makefile.in: Regenerated.
+
+2021-02-28  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_common.m4 (SIM_AC_COMMON): Delete CC_FOR_BUILD test.
+	Change CC_FOR_BUILD assignment.  Define CFLAGS_FOR_BUILD.
+
+2021-02-28  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_common.m4 (SIM_AC_COMMON): Replace AR assignment and
+	AC_SUBST(AR) with call to AC_CHECK_TOOL(AR, ar).
+
+2021-02-28  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_common.m4 (SIM_AC_COMMON): Require AC_PROG_CPP.
+
+2021-02-28  Mike Frysinger  <vapier@gentoo.org>
+
+	* README-HACKING: Delete SIM_EXTRA_LIBDEPS.
+
+2021-02-27  Mike Frysinger  <vapier@gentoo.org>
+
+	* README-HACKING: Delete SIM_EXTRA_ALL.
+
+2021-02-21  Mike Frysinger  <vapier@gentoo.org>
+
+	* m4/sim_ac_common.m4, m4/sim_ac_option_alignment.m4,
+	m4/sim_ac_option_assert.m4, m4/sim_ac_option_bitsize.m4,
+	m4/sim_ac_option_cgen_maint.m4, m4/sim_ac_option_default_model.m4,
+	m4/sim_ac_option_endian.m4, m4/sim_ac_option_environment.m4,
+	m4/sim_ac_option_float.m4, m4/sim_ac_option_hardware.m4,
+	m4/sim_ac_option_inline.m4, m4/sim_ac_option_reserved_bits.m4,
+	m4/sim_ac_option_scache.m4, m4/sim_ac_option_smp.m4,
+	m4/sim_ac_option_warnings.m4, m4/sim_ac_option_xor_endian.m4,
+	m4/sim_ac_output.m4: New files.
+
+2021-02-20  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.tgt: Move arch list ...
+	* configure.ac: ... here.
+	* configure: Regenerate.
+
+2021-02-19  Nelson Chu  <nelson.chu@sifive.com>
+
+	PR 27158
+	* riscv/sim-main.c (execute_i): Updated encoding macros.
+
+2021-02-13  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.tgt: Delete call to AC_SUBST(sim_arch).
+	* configure: Regenerate.
+
+2021-02-13  Mike Frysinger  <vapier@gentoo.org>
+
+	* README-HACKING: Replace sinclude with AC_CONFIG_MACRO_DIRS in
+	configure.ac skeleton.
+
+2021-02-06  Mike Frysinger  <vapier@gentoo.org>
+
+	* README-HACKING: Replace STATE_WATCHPOINTS with CPU_PC_FETCH.
+
+2021-02-06  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac (HDEFINES): Delete AC_SUBST call.
+	* configure: Regenerate.
+
+2021-02-04  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.tgt (sim_arch): Add entry for riscv*-*-*.
+	* configure: Regenerate.
+
+2021-01-30  Mike Frysinger  <vapier@gentoo.org>
+
+	* Makefile.in (nltvals): Change to gennltvals.py.
+
+2021-01-30  Mike Frysinger  <vapier@gentoo.org>
+
+	* README-HACKING: Delete reference to sizeof_pc.
+
+2021-01-29  Mike Frysinger  <vapier@gentoo.org>
+
+	* MAINTAINERS (Global Maintainers): Move myself back.
+
+2021-01-18  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Call AC_PROG_CPP.
+	* configure: Regenerate.
+	* Makefile.in (abs_srcdir, srcroot, CPP): Define.
+	(nltvals): New target.
+	* README-HACKING: Change headers to nltvals.
+
+2021-01-18  Mike Frysinger  <vapier@gentoo.org>
+
+	* Makefile.in (headers): Change args to gennltvals.sh.
+	* gennltvals.sh: Rewrite from scratch.
+	* gentvals.sh: Delete.
+	* nltvals.def: Regen.
+
+2021-01-15  Mike Frysinger  <vapier@gentoo.org>
+
+	* configure.ac: Delete AC_CONFIG_SUBDIRS(testsuite) call.
+	Add AC_CONFIG_FILES([Makefile testsuite/Makefile]) call.
+	Drop argument to AC_OUTPUT.
+	* configure: Regenerate.
+
+2021-01-12  Mike Frysinger  <vapier@gentoo.org>
+
+	* README-HACKING (SIM_RUN_OBJS): Delete.
+
+2021-01-09  Mike Frysinger  <vapier@gentoo.org>
+
+	* MAINTAINERS (sh64): Move to past maintainers.
+	* configure: Regenerate.
+	* configure.tgt (sh64*-*-*): Delete.
+	* sh64/: Delete.
+
+2021-01-09  Mike Frysinger  <vapier@gentoo.org>
+
+	* README-HACKING (AC_PREREQ): Delete.
+
+2021-01-08  Mike Frysinger  <vapier@gentoo.org>
+
+	* README-HACKING (C Language Assumptions): Require C11 compiler.
 
 2020-09-03  Jose E. Marchesi  <jose.marchesi@oracle.com>
 
@@ -21,42 +561,9 @@
 2020-08-04  Jose E. Marchesi  <jose.marchesi@oracle.com>
 	    David Faust <david.faust@oracle.com>
 
-	* bpf/arch.c: Likewise.
-	* bpf/arch.h: Likewise.
-	* bpf/cpu.c: Likewise.
-	* bpf/cpu.h: Likewise.
-	* bpf/cpuall.h: Likewise.
-	* bpf/decode-be.c: Likewise.
-	* bpf/decode-be.h: Likewise.
-	* bpf/decode-le.c: Likewise.
-	* bpf/decode-le.h: Likewise.
-	* bpf/defs-be.h: Likewise.
-	* bpf/defs-le.h: Likewise.
-	* bpf/sem-be.c: Likewise.
-	* bpf/sem-le.c: Likewise.
-
-2020-08-04  Jose E. Marchesi  <jose.marchesi@oracle.com>
-	    David Faust <david.faust@oracle.com>
-
 	* configure.tgt (sim_arch): Add entry for bpf-*-*.
 	* configure: Regenerate.
 	* MAINTAINERS: Add maintainer for the BPF simulator.
-	* bpf/Makefile.in: New file.
-	* bpf/bpf-helpers.c: Likewise.
-	* bpf/bpf-helpers.def: Likewise.
-	* bpf/bpf-helpers.h: Likewise.
-	* bpf/bpf-sim.h: Likewise.
-	* bpf/bpf.c: Likewise.
-	* bpf/config.in: Likewise.
-	* bpf/configure.ac: Likewise.
-	* bpf/decode.h: Likewise.
-	* bpf/eng.h: Likewise.
-	* bpf/mloop.in: Likewise.
-	* bpf/sim-if.c: Likewise.
-	* bpf/sim-main.h: Likewise.
-	* bpf/traps.c: Likewise.
-	* bpf/configure: Generate.
-	* bpf/aclocal.m4: Likewise.
 
 2019-12-19  Tom Tromey  <tromey@adacore.com>
 
@@ -69,10 +576,6 @@
 	* configure: Regenerated.
 	* configure.tgt: Add PRU.
 
-2019-09-20  Alan Modra  <amodra@gmail.com>
-
-	* ppc/emul_generic.c (emul_add_tree_options): Delete old bfd code.
-
 2019-09-18  Alan Modra  <amodra@gmail.com>
 
 	* common/sim-load.c, * common/sim-utils.c, * cris/sim-if.c,
@@ -80,16 +583,6 @@
 	* m68hc11/interp.c, * ppc/hw_htab.c, * ppc/hw_init.c,
 	* rl78/load.c, * rl78/trace.c, * rx/gdb-if.c, * rx/load.c,
 	* rx/trace.c: Update throughout for bfd section macro changes.
-
-2019-06-13  Stafford Horne  <shorne@gmail.com>
-
-	* or1k/cpu.c: Regenerate.
-	* or1k/cpu.h: Regenerate.
-	* or1k/decode.c: Regenerate.
-	* or1k/decode.h: Regenerate.
-	* or1k/model.c: Regenerate.
-	* or1k/sem-switch.c: Regenerate.
-	* or1k/sem.c: Regenerate.
 
 2019-02-28  Joel Brobecker  <brobecker@adacore.com>
 
@@ -114,15 +607,6 @@
 	* m32r/configure: Regenerate.
 	* or1k/configure: Regenerate.
 	* sh64/configure: Regenerate.
-
-2018-10-05  Stafford Horne  <shorne@gmail.com>
-
-	* or1k/cpu.h: Regenerate.
-	* or1k/decode.c: Regenerate.
-	* or1k/decode.h: Regenerate.
-	* or1k/model.c: Regenerate.
-	* or1k/sem-switch.c: Regenerate.
-	* or1k/sem.c: Regenerate:
 
 2018-07-20  Maciej W. Rozycki  <macro@mips.com>
 
@@ -150,45 +634,11 @@
 	    Peter Gavin  <pgavin@gmail.com>
 
 	* configure: Regenerated.
-	* or1k/aclocal.m4: Generated.
-	* or1k/config.in: Generated.
-	* or1k/configure: Generated.
-
-2017-12-12  Stafford Horne  <shorne@gmail.com>
-	    Peter Gavin  <pgavin@gmail.com>
-
-	* or1k/arch.c: Generated.
-	* or1k/arch.h: Generated.
-	* or1k/cpu.c: Generated.
-	* or1k/cpu.h: Generated.
-	* or1k/cpuall.h: Generated.
-	* or1k/decode.c: Generated.
-	* or1k/decode.h: Generated.
-	* or1k/model.c: Generated.
-	* or1k/sem-switch.c: Generated.
-	* or1k/sem.c: Generated.
 
 2017-12-12  Stafford Horne  <shorne@gmail.com>
 	    Peter Gavin  <pgavin@gmail.com>
 
 	* configure.tgt: Add or1k sim.
-	* or1k/README: New file.
-	* or1k/Makefile.in: New file.
-	* or1k/configure.ac: New file.
-	* or1k/mloop.in: New file.
-	* or1k/or1k-sim.h: New file.
-	* or1k/or1k.c: New file.
-	* or1k/sim-if.c: New file.
-	* or1k/sim-main.h: New file.
-	* or1k/traps.c: New file.
-
-2017-11-01  James Bowman  <james.bowman@ftdichip.com>
-
-	* ft32/interp.c (step_once): Add ft32 shortcode decoder.
-
-2017-10-12  James Bowman  <james.bowman@ftdichip.com>
-
-	* ft32/interp.c (step_once): Replace FT32_FLD_K8 with K15.
 
 2017-10-12  James Bowman  <james.bowman@ftdichip.com>
 
@@ -553,31 +1003,11 @@
 
 	* README-HACKING: Add more sections.
 
-2010-02-11  Doug Evans  <dje@sebabeach.org>
-
-	* cris/cpuv10.h, * cris/cpuv32.h, * cris/cris-desc.c,
-	* cris/cris-desc.h, * cris/decodev10.c, * cris/decodev32.c,
-	* cris/modelv10.c, * cris/modelv32.c, * cris/semcrisv10f-switch.c,
-	* cris/semcrisv32f-switch.c: Regenerate.
-
 2010-01-09  Ralf Wildenhues  <Ralf.Wildenhues@gmx.de>
 
 	* avr/configure: Regenerate.
 	* cris/configure: Regenerate.
 	* microblaze/configure: Regenerate.
-
-2010-01-02  Doug Evans  <dje@sebabeach.org>
-
-	* cris/arch.c, * cris/arch.h, * cris/cpuall.h, * cris/cpuv10.c,
-	* cris/cpuv10.h, * cris/cpuv32.c, * cris/cpuv32.h, * cris/cris-desc.c,
-	* cris/cris-desc.h, * cris/cris-opc.h, * cris/decodev10.c,
-	* cris/decodev10.h, * cris/decodev32.c, * cris/decodev32.h,
-	* cris/modelv10.c, * cris/modelv32.c, * cris/semcrisv10f-switch.c,
-	* cris/semcrisv32f-switch.c: Regenerate, update copyright year.
-
-2010-01-01  Doug Evans  <dje@sebabeach.org>
-
-	* cris/mloop.in: Fix copyright year update snafu.
 
 2009-11-24  Joel Brobecker  <brobecker@adacore.com>
 
@@ -597,54 +1027,6 @@
 	* rx: New directory.
 	* configure.ac: Add entry for Renesas RX.
 	* configure: Regenerate.
-
-2009-11-22  Doug Evans  <dje@sebabeach.org>
-
-	* cris/cpuall.h: Regenerate.
-	* cris/cpuv10.h: Regenerate.
-	* cris/cpuv32.h: Regenerate.
-	* cris/decodev10.c: Regenerate.
-	* cris/decodev10.h: Regenerate.
-	* cris/decodev32.c: Regenerate.
-	* cris/decodev32.h: Regenerate.
-
-2009-11-12  Tristan Gingold  <gingold@adacore.com>
-
-	* avr/interp.c (sim_write): Allow byte access.
-	(sim_read): Ditto.
-
-2009-11-12  Tristan Gingold  <gingold@adacore.com>
-
-	* avr/interp.c (sim_load): Clear memory before loading.
-
-2009-11-09  Tristan Gingold  <gingold@adacore.com>
-
-	* avr/interp.c (sim_resume): Fix typo for OP_ret.
-
-2009-10-23  Doug Evans  <dje@sebabeach.org>
-
-	* cris/arch.c: Regenerate.
-	* cris/arch.h: Regenerate.
-	* cris/cpuall.h: Regenerate.
-	* cris/cpuv10.c: Regenerate.
-	* cris/cpuv10.h: Regenerate.
-	* cris/cpuv32.c: Regenerate.
-	* cris/cpuv32.h: Regenerate.
-	* cris/cris-desc.c: Regenerate.
-	* cris/cris-desc.h: Regenerate.
-	* cris/cris-opc.h: Regenerate.
-	* cris/decodev10.c: Regenerate.
-	* cris/decodev10.h: Regenerate.
-	* cris/decodev32.c: Regenerate.
-	* cris/decodev32.h: Regenerate.
-	* cris/modelv10.c: Regenerate.
-	* cris/modelv32.c: Regenerate.
-	* cris/semcrisv10f-switch.c: Regenerate.
-	* cris/semcrisv32f-switch.c: Regenerate.
-
-2009-10-22  Tristan Gingold  <gingold@adacore.com>
-
-	* avr/interp.c (sim_stop): Return 1.
 
 2009-10-16  Doug Evans  <dje@sebabeach.org>
 
@@ -703,13 +1085,6 @@
 
 	* MAINTAINERS: Orphan ppc.
 
-2009-05-08  Kevin Buettner  <kevinb@redhat.com>
-
-	* m32c/gdb-if.c (m32c_signal_to_host): Rename to
-	m32c_signal_to_target.  Change signal return values from SIGILL,
-	SIGTRAP, SIGSEGV, etc. to TARGET_SIGNAL_ILL, TARGET_SIGNAL_TRAP,
-	TARGET_SIGNAL_SEGV, etc.  Fix all callers.
-
 2009-04-30  Anthony Green  <green@moxielogic.com>
 
 	* MAINTAINERS: Add myself for the moxie port.
@@ -720,9 +1095,6 @@
 2009-04-27  Tristan Gingold  <gingold@adacore.com>
 
 	* avr: New directory.
-	* avr/interp.c, avr/Makefile.in, avr/configure.ac: New files.
-	* avr/config.in: New file, generated by autoheader.
-	* avr/configure: New file generated by autoconf.
 	* configure.ac: Add avr.
 	* configure: Regenerated.
 
@@ -730,121 +1102,6 @@
 
 	* Makefile.in: Add dummy install-pdf, html, and
 	install-html targets.
-
-2009-01-18  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/sim-if.c: Include errno.h.
-	(cris_start_address, cris_program_offset): New variables.
-	(OPTION_CRIS_PROGRAM_OFFSET, OPTION_CRIS_STARTADDR): New option
-	enums.
-	(cris_options): New options --cris-program-offset and
-	--cris-start-address.
-	(cris_option_handler): Handle new options.
-	(cris_program_offset_write, cris_set_section_offset_iterator)
-	(cris_offset_sections, cris_offset_sections): New functions.
-	(sim_load): Use cris_program_offset_write as function argument to
-	cris_load_elf_file, not sim_write.
-	(struct offsetinfo): New struct.
-	(cris_handle_interpreter): Fix typo in comment.
-	(sim_open): Call cris_offset_sections as soon as the bfd of the
-	infile is available.  Gate bfd validity checks on abfd non-NULL.
-	(sim_create_inferior): Let cris_start_address when != -1 override
-	other start-address choices.
-
-2009-01-06  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/traps.c (abort): Define to call sim_io_error.
-	(create_map): Make -1 imply a non-fixed address, not 0.  All
-	callers changed.  Only prefer the next higher unmapped address if
-	the last mapped address is no less than 0x40000000.  Check that
-	the address to be mapped is not already mapped.  Update head
-	comment.
-	(unmap_pages): Don't call abort when recursive call fails, just
-	note and return an error if a page in the range couldn't be unmapped.
-	(cris_bmod_handler, h_supr_set_handler, h_supr_get_handler)
-	(schedule, make_first_thread, cris_pipe_empty): New local variable sd.
-	(cris_break_13_handler) <case TARGET_SYS_mmap2>: Handle
-	non-MAP_FIXED argument overlapping existing map.  For MAP_FIXED,
-	don't abort on page not being mapped.  Handle non-anon filemap
-	with length padded to pagesize.
-
-2009-01-03  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/sim-if.c (TARGET_AT_NULL, TARGET_AT_PHDR, TARGET_AT_PHENT)
-	(TARGET_AT_PHNUM, TARGET_AT_PAGESZ, TARGET_AT_BASE)
-	(TARGET_AT_FLAGS, TARGET_AT_ENTRY, TARGET_AT_UID, TARGET_AT_EUID)
-	(TARGET_AT_GID, TARGET_AT_EGID, TARGET_AT_HWCAP)
-	(TARGET_AT_CLKTCK): Remove redundant macros.
-	(AUX_ENT): Adjust to use standard ELF AT_* macros.
-	(AUX_ENTF): Ditto.  Remove always-0 middle argument.  Update all
-	callers.
-	(sim_open): Also pass AT_SECURE.
-
-	* cris/sim-main.h (struct _sim_cpu): New member
-	set_target_thread_data.
-	* cris/crisv32f.c (CRIS_TLS_REGISTER): Define.
-	* cris/crisv10f.c: Ditto.
-	* cris/cris-tmpl.c (MY (set_target_thread_data)): New function.
-	(MY (f_specific_init)): Set new _sim_cpu member to new function.
-	* cris/traps.c (TARGET_SYS_set_thread_area): Define.
-	(cris_break_13_handler) <case TARGET_SYS_set_thread_area>: New
-	case.
-
-	* cris/traps.c (TARGET_SYS_exit_group): Define.
-	(cris_break_13_handler): Handle it like the exit for the last
-	thread.
-
-	* cris/traps.c (TARGET_UTSNAME): Update to 2009-01-01.
-	(TARGET_EPOCH): Update to match TARGET_UTSNAME.  Correct comment.
-	(cris_break_13_handler) <case TARGET_SYS_uname>: Update to
-	2.6.27.  Set machine field to the BFD printable name of the
-	machine.
-
-	* cris/traps.c (TARGET_MAP_DENYWRITE): Define.
-	(cris_break_13_handler) <case TARGET_SYS_mmap2>: Handle
-	TARGET_MAP_DENYWRITE.
-
-	* cris/traps.c (TARGET_SYS_access, TARGET_R_OK, TARGET_W_OK)
-	(TARGET_X_OK, TARGET_F_OK): Define.
-	(cris_break_13_handler) <case TARGET_SYS_access>: New case.
-
-	* cris/semcrisv32f-switch.c: Regenerate.
-
-2008-12-30  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/sim-if.c (sim_open): If sim_analyze_program fails, emit
-	just a short CRIS-specific notice.  Tweak the wording for a
-	failing architecture test.
-
-	* cris/traps.c (TARGET_SYS_writev): New macro.
-	(is_mapped_only, cris_dump_map): New functions.
-	(cris_break_13_handler) <case TARGET_SYS_mmap2>: Handle more flags
-	and prot combinations and a non-zero page-offset.  If
-	TARGET_MAP_FIXED, unmap pages before mapping them.
-	<case TARGET_SYS_mprotect>: When checking, allow any length
-	argument.  Don't actually do anything.
-	<case TARGET_SYS_writev>: New case.
-
-	* cris/Makefile.in (SIM_OBJS): Remove sim-hload.o.
-	* cris/sim-if.c: Include elf-bfd.h.
-	(struct progbounds): New members end_loadmem, start_nonloadmem.
-	(xprintf, eprintf): New functions, copied from common/sim-load.c.
-	(cris_load_elf_file, sim_load, cris_get_progbounds): New functions.
-	(get_progbounds_iterator): Renamed from get_progbounds.  Make
-	static.  Update head comment.  Set new struct progbounds members.
-	(exec_load_addr, interp_load_addr, interp_start_addr): New static
-	variables.
-	(aux_ent_phdr, aux_ent_phent, aux_ent_phnum, aux_ent_base)
-	(aux_ent_entry, cris_write_interp, cris_handle_interpreter): New
-	functions.
-	(sim_open): New constant array auxv_entries.  Rewrite AUX_ENT
-	handling to use auxv_entries.  Improve error message and checking
-	for invalid programs.  Use new variable abfd for the program
-	instead of for each access reaching into sd to get it.
-	(sim_create_inferior): If non-zero, use interp_start_addr instead
-	of the program start address.
-	(cris_disassemble_insn): Remove incorrect and unclear, supposedly
-	stale comment.  Always specify little-endian.
 
 2008-07-29  Nick Clifton  <nickc@redhat.com>
 
@@ -861,17 +1118,6 @@
 	* m32r/Makefile.in: Likewise.
 
 	* frv/mloop.in: Add missing start of line comment marker.
-
-2008-07-11  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/configure: Regenerate to track ../common/common.m4 changes.
-	* cris/config.in: Ditto.
-
-2008-06-06  Vladimir Prus  <vladimir@codesourcery.com>
-	    Daniel Jacobowitz  <dan@codesourcery.com>
-	    Joseph Myers  <joseph@codesourcery.com>
-
-	* cris/configure: Regenerate.
 
 2008-05-09  Olivier Hainque  <hainque@adacore.com>
 
@@ -902,15 +1148,6 @@
 	* frv/frv.c (frvbf_cut): Only look at the six LSBs of
 	cut_point.
 
-2007-10-22  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/arch.c, cris/arch.h, cris/cpuall.h, cris/cpuv10.c,
-	cris/cpuv10.h, cris/cpuv32.c, cris/cpuv32.h, cris/cris-desc.c,
-	cris/cris-desc.h, cris/cris-opc.h, cris/decodev10.c,
-	cris/decodev10.h, cris/decodev32.c, cris/decodev32.h,
-	cris/modelv10.c, cris/modelv32.c, cris/semcrisv10f-switch.c,
-	cris/semcrisv32f-switch.c: Regenerate.
-
 2007-08-24  Joel Brobecker  <brobecker@adacore.com>
 
 	Switch the license of all files explicitly copyright the FSF
@@ -919,11 +1156,6 @@
 2007-03-27  Brooks Moses  <brooks.moses@codesourcery.com>
 
 	* Makefile.in: Add dummy "pdf" target.
-
-2007-02-20  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/traps.c (dump_statistics): Change format for cycle numbers
-	to %llu and cast parameters to unsigned long long.
 
 2007-02-16  Thiemo Seufer  <ths@mips.com>
 
@@ -954,53 +1186,15 @@
 
 	* MAINTAINERS: Add self as authorized committer for *.
 
-2006-10-02  Edgar E. Iglesias  <edgar@axis.com>
-	    Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/cris-sim.h (enum cris_unknown_syscall_action_type)
-	(cris_unknown_syscall_action): Declare.
-	* cris/sim-if.c (cris_unknown_syscall_action): Define.
-	(cris_options): Add cris-unknown-syscall option.
-	(cris_option_handler): Correct comment about and error message for
-	invalid --cris-cycles argument.  Handle --cris-unknown-syscall.
-	* cris/traps.c: Include stdarg.h
-	(cris_unknown_syscall): New function.
-	(cris_break_13_handler): Instead of sim_io_eprintf and
-	sim_engine_halt, call cris_unknown_syscall to handle more or less
-	unknown syscalls.  Adjust code as necessary to handle return
-	value.
-
 2006-09-30  Daniel Jacobowitz  <dan@codesourcery.com>
 
 	* MAINTAINERS: Add Dave Brolley for sh64.
-
-2006-09-30  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/traps.c (TARGET_PIPE_BUF): New macro.
-	(cris_pipe_empty): Correct initialization of "remaining".  Only
-	adjust the "write" return value if more than TARGET_PIPE_BUF bytes
-	are written.
-
-2006-09-29  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/configure.ac: Check for limits.h and sys/param.h.
-	* cris/configure, cris/config.in: Rebuild.
-	* cris/traps.c (SIM_PATHMAX): New macro.
-	(cris_break_13_handler): Use SIM_PATHMAX, not MAXPATHLEN.
 
 2006-08-08  Joel Sherrill <joel.sherrill@oarcorp.com>
 
 	* configure.ac (sparc-*-rtems*|sparc-*-elf*): Enable erc32 simulator.
 	* Makefile.in (FLAGS_TO_PASS): Include libdir.
 	* configure: Regenerated.
-
-2006-06-05  Daniel Jacobowitz  <dan@codesourcery.com>
-
-	* cris/configure: Regenerated.
-
-2006-05-31  Daniel Jacobowitz  <dan@codesourcery.com>
-
-	* cris/configure: Regenerated.
 
 2006-05-05  Andreas Schwab  <schwab@suse.de>
 
@@ -1016,56 +1210,9 @@
 	* MAINTAINERS: Add an "Authorized committers" section, and list
 	DJ Delorie for v850.
 
-2006-04-08  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/crisv32f.c (MY (deliver_interrupt)): Set CCS to new_ccs.
-
-2006-04-03  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/dv-cris.c, cris/dv-rv.c, cris/rvdummy.c: New files.
-	* cris/Makefile.in (CONFIG_DEVICES): Remove redundant setting.
-	(dv-cris.o, dv-rv.o rvdummy$(EXEEXT), rvdummy.o): New rules.
-	(all): Depend on rvdummy$(EXEEXT).
-	* cris/configure.ac: Call SIM_AC_OPTION_WARNINGS.  Check for
-	sys/socket.h and sys/select.h.  Call SIM_AC_OPTION_HARDWARE,
-	default off.
-	* cris/configure: Regenerate.
-	* cris/cris-sim.h (cris_have_900000xxif): Declare here.
-	(enum cris_interrupt_type, crisv10deliver_interrupt)
-	(crisv32deliver_interrupt: New declarations.
-	* cris/cris-tmpl.c [WITH_HW] (MY (f_model_insn_after)): Call
-	sim_events_tickn and set state-events member work_pending when it's
-	time for the next event.
-	[WITH_HW] (MY (f_specific_init)): Set CPU-model-specific
-	interrupt-delivery function.
-	* cris/crisv10f.c (MY (deliver_interrupt)): New function.
-	* cris/crisv32f.c (MY (deliver_interrupt)): New function.
-	* cris/devices.c: Include hw-device.h.
-	(device_io_read_buffer) [WITH_HW]: Call hw_io_read_buffer.
-	(device_io_write_buffer): Only perform 0x900000xx-functions if
-	cris_have_900000xxif is nonzero.  Else if WITH_HW defined,
-	call hw_io_write_buffer.  Add return 0 last in function.
-	* cris/sim-if.c (cris_have_900000xxif): Now global.
-	(sim_open) [WITH_HW]: Clear deliver_interrupt cpu member.
-	Force "-model" option, effectively.
-	* cris/sim-main.h (cris_interrupt_delivery_fn): New type.
-	(struct _sim_cpu) [WITH_HW]: New member deliver_interrupt.
-
-2006-04-02  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/Makefile.in (CRISV10F_OBJS): Remove semcrisv10f-switch.o.
-	(CRISV32F_OBJS): Remove semcrisv32f-switch.o.
-	(semcrisv10f-switch.o, semcrisv32f-switch.o: Remove dependency rules.
-
 2006-03-13  DJ Delorie  <dj@redhat.com>
 
 	* MAINTAINERS: Add self as m32c sim maintainer.
-
-2006-02-23  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/traps.c (syscall_map): Remove CB_SYS_time / TARGET_SYS_time
-	mapping.
-	(cris_break_13_handler) <case TARGET_SYS_time>: New case.
 
 2006-01-23  Jim Blandy  <jimb@redhat.com>
 
@@ -1074,59 +1221,6 @@
 	* m32c: New directory.
 	* configure.ac: Add entry for Renesas M32C.
 	* configure: Regenerate.
-
-2006-01-10  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/cris-tmpl.c (MY (f_model_insn_before)): Only display basic
-	cycle count for the current insn.
-
-2005-12-06  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/cpuv10.h, cris/cpuv32.h, cris/cris-desc.c, cris/cris-opc.h,
-	cris/decodev10.c, cris/decodev10.h, cris/decodev32.c,
-	cris/decodev32.h, cris/modelv10.c, cris/modelv32.c,
-	cris/semcrisv10f-switch.c, cris/semcrisv32f-switch.c: Regenerate.
-
-2005-12-05  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/arch.c, cris/arch.h, cris/cpuall.h, cris/cpuv10.c,
-	cris/cpuv10.h, cris/cpuv32.c, cris/cpuv32.h, cris/cris-desc.c,
-	cris/cris-desc.h, cris/cris-opc.h, cris/decodev10.c,
-	cris/decodev10.h, cris/decodev32.c, cris/decodev32.h,
-	cris/modelv10.c, cris/modelv32.c, cris/semcrisv10f-switch.c,
-	cris/semcrisv32f-switch.c: Regenerate.
-
-2005-11-20  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/traps.c (TARGET_O_RDONLY, TARGET_O_WRONLY): Define.
-	(open_map): Use TARGET_O_ACCMODE, TARGET_O_RDONLY and
-	TARGET_O_WRONLY.
-	(cris_break_13_handler) <case TARGET_SYS_fcntl>: Add support for
-	F_GETFL on fd 0, 1 and 2.
-
-2005-11-17  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/sim-main.h (struct _sim_cpu): New members last_syscall,
-	last_open_fd, last_open_flags.
-	* cris/traps.c: Don't include targ-vals.h.
-	(TARGET_O_ACCMODE): Define.
-	(cris_break_13_handler): Set new _sim_cpu members.
-	<case TARGET_SYS_fcntl>: Support special case of F_GETFL.
-	Rearrange code as switch.  Emit "unimplemented" abort for
-	unimplemented fcntl calls.
-
-	* cris/traps.c (TARGET_SYS_stat): Define.
-	(syscall_stat32_map): Add entry for TARGET_SYS_stat.
-	(cris_break_13_handler) <case TARGET_SYS_stat>: New case.
-
-2005-11-16  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/cris-tmpl.c (MY (f_model_insn_before)): Make sure only the
-	low 32 bits are used after an unsigned long cast.
-
-2005-05-28  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/Makefile.in (stamp-v32fmloop): Depend on stamp-v10fmloop.
 
 2005-05-26  Chris Demetriou  <cgd@netbsd.org>
 
@@ -1152,12 +1246,6 @@
 
 	* common/Make-common.in: Add $(EXEEXT) to "run".
 
-2005-04-18  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/traps.c (cris_break_13_handler) <case TARGET_SYS_mmap2>:
-	For ((len & 8191) != 0 && fd == (USI) -1), don't say this isn't
-	implemented.  In call to create_map, pad length argument to 8k.
-
 2005-04-15  Corinna Vinschen  <vinschen@redhat.com>
 
 	* configure.ac: Add explicit sh64 case.
@@ -1166,26 +1254,6 @@
 2005-03-30  Paul Brook  <paul@codesourcery.com>
 
 	* arm/wrapper.c: Provide SIGTRAP and SIGBUS.
-
-2005-03-24  Hans-Peter Nilsson  <hp@axis.com>
-
-	* cris/Makefile.in (stamp-v10fcpu, stamp-v32fcpu): Add kludge to
-	include cgen-ops.h in decodev10.c and decodev32.c.
-	* cris/sim-main.h: Don't include cgen-ops.h here.
-	* cris/arch.c, cris/arch.h, cris/cpuall.h, cris/cpuv10.c,
-	cris/cpuv10.h, cris/cpuv32.c, cris/cpuv32.h, cris/cris-desc.c,
-	cris/cris-desc.h, cris/cris-opc.h, cris/decodev10.c,
-	cris/decodev10.h, cris/decodev32.c, cris/decodev32.h,
-	cris/modelv10.c, cris/modelv32.c, cris/semcrisv10f-switch.c,
-	cris/semcrisv32f-switch.c: Regenerate.
-
-	* cris/traps.c (cris_break_13_handler) <case
-	TARGET_SYS_rt_sigaction>: Rename sa_handler, sa_flags,
-	sa_restorer, sa_mask_low, sa_mask_high to target_sa_handler etc.
-
-2005-03-23  Mark Kettenis  <kettenis@gnu.org>
-
-	* cris/configure: Regenerate.
 
 2005-02-28  Jim Blandy  <jimb@redhat.com>
 
@@ -1854,5 +1922,3 @@ Mon Feb  8 11:46:06 1993  Steve Chamberlain  (sac@thepub.cygnus.com)
 
 	* Makefile.in, configure.in: if target isn't supported, build a
 	harmless makefile.
-
-

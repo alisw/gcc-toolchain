@@ -1,5 +1,5 @@
 /* read.c - read a source file -
-   Copyright (C) 1986-2020 Free Software Foundation, Inc.
+   Copyright (C) 1986-2022 Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
 
@@ -40,6 +40,8 @@
 #include "dw2gencfi.h"
 #include "wchar.h"
 
+#include <limits.h>
+
 #ifndef TC_START_LABEL
 #define TC_START_LABEL(STR, NUL_CHAR, NEXT_CHAR) (NEXT_CHAR == ':')
 #endif
@@ -62,7 +64,7 @@
 #endif
 
 char *input_line_pointer;	/*->next char of source file to parse.  */
-bfd_boolean input_from_string = FALSE;
+bool input_from_string = false;
 
 #if BITS_PER_CHAR != 8
 /*  The following table is indexed by[(char)] and will break if
@@ -293,7 +295,53 @@ address_bytes (void)
 
 /* Set up pseudo-op tables.  */
 
-static struct hash_control *po_hash;
+struct po_entry
+{
+  const char *poc_name;
+
+  const pseudo_typeS *pop;
+};
+
+typedef struct po_entry po_entry_t;
+
+/* Hash function for a po_entry.  */
+
+static hashval_t
+hash_po_entry (const void *e)
+{
+  const po_entry_t *entry = (const po_entry_t *) e;
+  return htab_hash_string (entry->poc_name);
+}
+
+/* Equality function for a po_entry.  */
+
+static int
+eq_po_entry (const void *a, const void *b)
+{
+  const po_entry_t *ea = (const po_entry_t *) a;
+  const po_entry_t *eb = (const po_entry_t *) b;
+
+  return strcmp (ea->poc_name, eb->poc_name) == 0;
+}
+
+static po_entry_t *
+po_entry_alloc (const char *poc_name, const pseudo_typeS *pop)
+{
+  po_entry_t *entry = XNEW (po_entry_t);
+  entry->poc_name = poc_name;
+  entry->pop = pop;
+  return entry;
+}
+
+static const pseudo_typeS *
+po_entry_find (htab_t table, const char *poc_name)
+{
+  po_entry_t needle = { poc_name, NULL };
+  po_entry_t *entry = htab_find (table, &needle);
+  return entry != NULL ? entry->pop : NULL;
+}
+
+static struct htab *po_hash;
 
 static const pseudo_typeS potable[] = {
   {"abort", s_abort, 0},
@@ -316,9 +364,7 @@ static const pseudo_typeS potable[] = {
   {"common.s", s_mri_common, 1},
   {"data", s_data, 0},
   {"dc", cons, 2},
-#ifdef TC_ADDRESS_BYTES
   {"dc.a", cons, 0},
-#endif
   {"dc.b", cons, 1},
   {"dc.d", float_cons, 'd'},
   {"dc.l", cons, 4},
@@ -336,10 +382,10 @@ static const pseudo_typeS potable[] = {
   {"ds.b", s_space, 1},
   {"ds.d", s_space, 8},
   {"ds.l", s_space, 4},
-  {"ds.p", s_space, 12},
+  {"ds.p", s_space, 'p'},
   {"ds.s", s_space, 4},
   {"ds.w", s_space, 2},
-  {"ds.x", s_space, 12},
+  {"ds.x", s_space, 'x'},
   {"debug", s_ignore, 0},
 #ifdef S_SET_DESC
   {"desc", s_desc, 0},
@@ -482,6 +528,9 @@ static const pseudo_typeS potable[] = {
   {"weakref", s_weakref, 0},
   {"word", cons, 2},
   {"zero", s_space, 0},
+  {"2byte", cons, 2},
+  {"4byte", cons, 4},
+  {"8byte", cons, 8},
   {NULL, NULL, 0}			/* End sentinel.  */
 };
 
@@ -513,14 +562,17 @@ static const char *pop_table_name;
 void
 pop_insert (const pseudo_typeS *table)
 {
-  const char *errtxt;
   const pseudo_typeS *pop;
   for (pop = table; pop->poc_name; pop++)
     {
-      errtxt = hash_insert (po_hash, pop->poc_name, (char *) pop);
-      if (errtxt && (!pop_override_ok || strcmp (errtxt, "exists")))
-	as_fatal (_("error constructing %s pseudo-op table: %s"), pop_table_name,
-		  errtxt);
+      po_entry_t *elt = po_entry_alloc (pop->poc_name, pop);
+      if (htab_insert (po_hash, elt, 0) != NULL)
+	{
+	  free (elt);
+	  if (!pop_override_ok)
+	    as_fatal (_("error constructing %s pseudo-op table"),
+		      pop_table_name);
+	}
     }
 }
 
@@ -539,7 +591,8 @@ pop_insert (const pseudo_typeS *table)
 static void
 pobegin (void)
 {
-  po_hash = hash_new ();
+  po_hash = htab_create_alloc (16, hash_po_entry, eq_po_entry, NULL,
+			       xcalloc, xfree);
 
   /* Do the target-specific pseudo ops.  */
   pop_table_name = "md";
@@ -740,7 +793,7 @@ assemble_one (char *line)
 
 #endif  /* HANDLE_BUNDLE */
 
-static bfd_boolean
+static bool
 in_bss (void)
 {
   flagword flags = bfd_section_flags (now_seg);
@@ -817,8 +870,8 @@ read_a_source_file (const char *name)
   char nul_char;
   char next_char;
   char *s;		/* String of symbol, '\0' appended.  */
-  int temp;
-  pseudo_typeS *pop;
+  long temp;
+  const pseudo_typeS *pop;
 
 #ifdef WARN_COMMENTS
   found_comment = 0;
@@ -846,7 +899,7 @@ read_a_source_file (const char *name)
 #endif
       while (input_line_pointer < buffer_limit)
 	{
-	  bfd_boolean was_new_line;
+	  bool was_new_line;
 	  /* We have more of this buffer to parse.  */
 
 	  /* We now have input_line_pointer->1st char of next line.
@@ -954,8 +1007,7 @@ read_a_source_file (const char *name)
 		      else
 			line_label = symbol_create (line_start,
 						    absolute_section,
-						    (valueT) 0,
-						    &zero_address_frag);
+						    &zero_address_frag, 0);
 
 		      next_char = restore_line_pointer (nul_char);
 		      if (next_char == ':')
@@ -1068,7 +1120,7 @@ read_a_source_file (const char *name)
 		    {
 		      /* The MRI assembler uses pseudo-ops without
 			 a period.  */
-		      pop = (pseudo_typeS *) hash_find (po_hash, s);
+		      pop = po_entry_find (po_hash, s);
 		      if (pop != NULL && pop->poc_handler == NULL)
 			pop = NULL;
 		    }
@@ -1083,7 +1135,7 @@ read_a_source_file (const char *name)
 			 already know that the pseudo-op begins with a '.'.  */
 
 		      if (pop == NULL)
-			pop = (pseudo_typeS *) hash_find (po_hash, s + 1);
+			pop = po_entry_find (po_hash, s + 1);
 		      if (pop && !pop->poc_handler)
 			pop = NULL;
 
@@ -1213,8 +1265,22 @@ read_a_source_file (const char *name)
 	      /* Read the whole number.  */
 	      while (ISDIGIT (*input_line_pointer))
 		{
-		  temp = (temp * 10) + *input_line_pointer - '0';
+		  const long digit = *input_line_pointer - '0';
+		  if (temp > (LONG_MAX - digit) / 10)
+		    {
+		      as_bad (_("local label too large near %s"), backup);
+		      temp = -1;
+		      break;
+		    }
+		  temp = temp * 10 + digit;
 		  ++input_line_pointer;
+		}
+
+	      /* Overflow: stop processing the label.  */
+	      if (temp == -1)
+		{
+		  ignore_rest_of_line ();
+		  continue;
 		}
 
 	      if (LOCAL_LABELS_DOLLAR
@@ -1225,7 +1291,7 @@ read_a_source_file (const char *name)
 
 		  if (dollar_label_defined (temp))
 		    {
-		      as_fatal (_("label \"%d$\" redefined"), temp);
+		      as_fatal (_("label \"%ld$\" redefined"), temp);
 		    }
 
 		  define_dollar_label (temp);
@@ -1254,7 +1320,7 @@ read_a_source_file (const char *name)
 	      char *tmp_buf = 0;
 
 	      s = input_line_pointer;
-	      if (strncmp (s, "APP\n", 4))
+	      if (!startswith (s, "APP\n"))
 		{
 		  /* We ignore it.  */
 		  ignore_rest_of_line ();
@@ -1483,7 +1549,7 @@ static void
 s_align (signed int arg, int bytes_p)
 {
   unsigned int align_limit = TC_ALIGN_LIMIT;
-  unsigned int align;
+  addressT align;
   char *stop = NULL;
   char stopc = 0;
   offsetT fill = 0;
@@ -1530,7 +1596,7 @@ s_align (signed int arg, int bytes_p)
   if (align > align_limit)
     {
       align = align_limit;
-      as_warn (_("alignment too large: %u assumed"), align);
+      as_warn (_("alignment too large: %u assumed"), align_limit);
     }
 
   if (*input_line_pointer != ',')
@@ -2482,7 +2548,7 @@ bss_alloc (symbolS *symbolP, addressT size, unsigned int align)
     symbol_get_frag (symbolP)->fr_symbol = NULL;
 
   symbol_set_frag (symbolP, frag_now);
-  pfrag = frag_var (rs_org, 1, 1, 0, symbolP, size, NULL);
+  pfrag = frag_var (rs_org, 1, 1, 0, symbolP, size * OCTETS_PER_BYTE, NULL);
   *pfrag = 0;
 
 #ifdef S_SET_SIZE
@@ -2724,10 +2790,10 @@ s_macro (int ignore ATTRIBUTE_UNUSED)
 	}
 
       if (((NO_PSEUDO_DOT || flag_m68k_mri)
-	   && hash_find (po_hash, name) != NULL)
+	   && po_entry_find (po_hash, name) != NULL)
 	  || (!flag_m68k_mri
 	      && *name == '.'
-	      && hash_find (po_hash, name + 1) != NULL))
+	      && po_entry_find (po_hash, name + 1) != NULL))
 	as_warn_where (file,
 		 line,
 		 _("attempt to redefine pseudo-op `%s' ignored"),
@@ -3261,6 +3327,29 @@ s_space (int mult)
   md_flush_pending_output ();
 #endif
 
+  switch (mult)
+    {
+    case 'x':
+#ifdef X_PRECISION
+# ifndef P_PRECISION
+#  define P_PRECISION     X_PRECISION
+#  define P_PRECISION_PAD X_PRECISION_PAD
+# endif
+      mult = (X_PRECISION + X_PRECISION_PAD) * sizeof (LITTLENUM_TYPE);
+      if (!mult)
+#endif
+	mult = 12;
+      break;
+
+    case 'p':
+#ifdef P_PRECISION
+      mult = (P_PRECISION + P_PRECISION_PAD) * sizeof (LITTLENUM_TYPE);
+      if (!mult)
+#endif
+	mult = 12;
+      break;
+    }
+
 #ifdef md_cons_align
   md_cons_align (1);
 #endif
@@ -3441,6 +3530,11 @@ s_space (int mult)
 void
 s_nop (int ignore ATTRIBUTE_UNUSED)
 {
+  expressionS exp;
+  fragS *start;
+  addressT start_off;
+  offsetT frag_off;
+
 #ifdef md_flush_pending_output
   md_flush_pending_output ();
 #endif
@@ -3450,29 +3544,42 @@ s_nop (int ignore ATTRIBUTE_UNUSED)
 #endif
 
   SKIP_WHITESPACE ();
+  expression (&exp);
   demand_empty_rest_of_line ();
 
+  start = frag_now;
+  start_off = frag_now_fix ();
+  do
+    {
 #ifdef md_emit_single_noop
-  md_emit_single_noop;
+      md_emit_single_noop;
 #else
-  char * nop;
+      char *nop;
 
 #ifndef md_single_noop_insn
 #define md_single_noop_insn "nop"
 #endif
-  /* md_assemble might modify its argument, so
-     we must pass it a string that is writeable.  */
-  if (asprintf (&nop, "%s", md_single_noop_insn) < 0)
-    as_fatal ("%s", xstrerror (errno));
+      /* md_assemble might modify its argument, so
+	 we must pass it a string that is writable.  */
+      if (asprintf (&nop, "%s", md_single_noop_insn) < 0)
+	as_fatal ("%s", xstrerror (errno));
 
-  /* Some targets assume that they can update input_line_pointer inside
-     md_assemble, and, worse, that they can leave it assigned to the string
-     pointer that was provided as an argument.  So preserve ilp here.  */
-  char * saved_ilp = input_line_pointer;
-  md_assemble (nop);
-  input_line_pointer = saved_ilp;
-  free (nop);
+      /* Some targets assume that they can update input_line_pointer
+	 inside md_assemble, and, worse, that they can leave it
+	 assigned to the string pointer that was provided as an
+	 argument.  So preserve ilp here.  */
+      char *saved_ilp = input_line_pointer;
+      md_assemble (nop);
+      input_line_pointer = saved_ilp;
+      free (nop);
 #endif
+#ifdef md_flush_pending_output
+      md_flush_pending_output ();
+#endif
+    } while (exp.X_op == O_constant
+	     && exp.X_add_number > 0
+	     && frag_offset_ignore_align_p (start, frag_now, &frag_off)
+	     && frag_off + frag_now_fix () < start_off + exp.X_add_number);
 }
 
 void
@@ -3532,6 +3639,113 @@ s_nops (int ignore ATTRIBUTE_UNUSED)
   *p = val.X_add_number;
 }
 
+/* Obtain the size of a floating point number, given a type.  */
+
+static int
+float_length (int float_type, int *pad_p)
+{
+  int length, pad = 0;
+
+  switch (float_type)
+    {
+    case 'b':
+    case 'B':
+    case 'h':
+    case 'H':
+      length = 2;
+      break;
+
+    case 'f':
+    case 'F':
+    case 's':
+    case 'S':
+      length = 4;
+      break;
+
+    case 'd':
+    case 'D':
+    case 'r':
+    case 'R':
+      length = 8;
+      break;
+
+    case 'x':
+    case 'X':
+#ifdef X_PRECISION
+      length = X_PRECISION * sizeof (LITTLENUM_TYPE);
+      pad = X_PRECISION_PAD * sizeof (LITTLENUM_TYPE);
+      if (!length)
+#endif
+	length = 12;
+      break;
+
+    case 'p':
+    case 'P':
+#ifdef P_PRECISION
+      length = P_PRECISION * sizeof (LITTLENUM_TYPE);
+      pad = P_PRECISION_PAD * sizeof (LITTLENUM_TYPE);
+      if (!length)
+#endif
+	length = 12;
+      break;
+
+    default:
+      as_bad (_("unknown floating type '%c'"), float_type);
+      length = -1;
+      break;
+    }
+
+  if (pad_p)
+    *pad_p = pad;
+
+  return length;
+}
+
+static int
+parse_one_float (int float_type, char temp[MAXIMUM_NUMBER_OF_CHARS_FOR_FLOAT])
+{
+  int length;
+
+  SKIP_WHITESPACE ();
+
+  /* Skip any 0{letter} that may be present.  Don't even check if the
+     letter is legal.  Someone may invent a "z" format and this routine
+     has no use for such information. Lusers beware: you get
+     diagnostics if your input is ill-conditioned.  */
+  if (input_line_pointer[0] == '0'
+      && ISALPHA (input_line_pointer[1]))
+    input_line_pointer += 2;
+
+  /* Accept :xxxx, where the x's are hex digits, for a floating point
+     with the exact digits specified.  */
+  if (input_line_pointer[0] == ':')
+    {
+      ++input_line_pointer;
+      length = hex_float (float_type, temp);
+      if (length < 0)
+	{
+	  ignore_rest_of_line ();
+	  return length;
+	}
+    }
+  else
+    {
+      const char *err;
+
+      err = md_atof (float_type, temp, &length);
+      know (length <= MAXIMUM_NUMBER_OF_CHARS_FOR_FLOAT);
+      know (err != NULL || length > 0);
+      if (err)
+	{
+	  as_bad (_("bad floating literal: %s"), err);
+	  ignore_rest_of_line ();
+	  return -1;
+	}
+    }
+
+  return length;
+}
+
 /* This is like s_space, but the value is a floating point number with
    the given precision.  This is for the MRI dcb.s pseudo-op and
    friends.  */
@@ -3557,51 +3771,24 @@ s_float_space (int float_type)
   SKIP_WHITESPACE ();
   if (*input_line_pointer != ',')
     {
-      as_bad (_("missing value"));
-      ignore_rest_of_line ();
-      if (flag_mri)
-	mri_comment_end (stop, stopc);
-      return;
-    }
+      int pad;
 
-  ++input_line_pointer;
-
-  SKIP_WHITESPACE ();
-
-  /* Skip any 0{letter} that may be present.  Don't even check if the
-   * letter is legal.  */
-  if (input_line_pointer[0] == '0'
-      && ISALPHA (input_line_pointer[1]))
-    input_line_pointer += 2;
-
-  /* Accept :xxxx, where the x's are hex digits, for a floating point
-     with the exact digits specified.  */
-  if (input_line_pointer[0] == ':')
-    {
-      flen = hex_float (float_type, temp);
-      if (flen < 0)
-	{
-	  ignore_rest_of_line ();
-	  if (flag_mri)
-	    mri_comment_end (stop, stopc);
-	  return;
-	}
+      flen = float_length (float_type, &pad);
+      if (flen >= 0)
+	memset (temp, 0, flen += pad);
     }
   else
     {
-      const char *err;
+      ++input_line_pointer;
 
-      err = md_atof (float_type, temp, &flen);
-      know (flen <= MAXIMUM_NUMBER_OF_CHARS_FOR_FLOAT);
-      know (err != NULL || flen > 0);
-      if (err)
-	{
-	  as_bad (_("bad floating literal: %s"), err);
-	  ignore_rest_of_line ();
-	  if (flag_mri)
-	    mri_comment_end (stop, stopc);
-	  return;
-	}
+      flen = parse_one_float (float_type, temp);
+    }
+
+  if (flen < 0)
+    {
+      if (flag_mri)
+	mri_comment_end (stop, stopc);
+      return;
     }
 
   while (--count >= 0)
@@ -4009,10 +4196,8 @@ cons_worker (int nbytes,	/* 1=.byte, 2=.word, 4=.long.  */
       return;
     }
 
-#ifdef TC_ADDRESS_BYTES
   if (nbytes == 0)
     nbytes = TC_ADDRESS_BYTES ();
-#endif
 
 #ifdef md_cons_align
   md_cons_align (nbytes);
@@ -4124,6 +4309,9 @@ s_reloc (int ignore ATTRIBUTE_UNUSED)
       goto err_out;
     case O_constant:
       exp.X_add_symbol = section_symbol (now_seg);
+      /* Mark the section symbol used in relocation so that it will be
+	 included in the symbol table.  */
+      symbol_mark_used_in_reloc (exp.X_add_symbol);
       exp.X_op = O_symbol;
       /* Fallthru */
     case O_symbol:
@@ -4420,24 +4608,19 @@ emit_expr_with_reloc (expressionS *exp,
       valueT get;
       valueT use;
       valueT mask;
-      valueT hibit;
       valueT unmask;
 
       /* JF << of >= number of bits in the object is undefined.  In
 	 particular SPARC (Sun 4) has problems.  */
       if (nbytes >= sizeof (valueT))
 	{
+	  know (nbytes == sizeof (valueT));
 	  mask = 0;
-	  if (nbytes > sizeof (valueT))
-	    hibit = 0;
-	  else
-	    hibit = (valueT) 1 << (nbytes * BITS_PER_CHAR - 1);
 	}
       else
 	{
 	  /* Don't store these bits.  */
 	  mask = ~(valueT) 0 << (BITS_PER_CHAR * nbytes);
-	  hibit = (valueT) 1 << (nbytes * BITS_PER_CHAR - 1);
 	}
 
       unmask = ~mask;		/* Do store these bits.  */
@@ -4449,23 +4632,16 @@ emit_expr_with_reloc (expressionS *exp,
 
       get = exp->X_add_number;
       use = get & unmask;
-      if ((get & mask) != 0
-	  && ((get & mask) != mask
-	      || (get & hibit) == 0))
+      if ((get & mask) != 0 && (-get & mask) != 0)
 	{
+	  char get_buf[128];
+	  char use_buf[128];
+
+	  /* These buffers help to ease the translation of the warning message.  */
+	  sprintf_vma (get_buf, get);
+	  sprintf_vma (use_buf, use);
 	  /* Leading bits contain both 0s & 1s.  */
-#if defined (BFD64) && BFD_HOST_64BIT_LONG_LONG
-#ifndef __MSVCRT__
-	  as_warn (_("value 0x%llx truncated to 0x%llx"),
-		   (unsigned long long) get, (unsigned long long) use);
-#else
-	  as_warn (_("value 0x%I64x truncated to 0x%I64x"),
-		   (unsigned long long) get, (unsigned long long) use);
-#endif
-#else
-	  as_warn (_("value 0x%lx truncated to 0x%lx"),
-		   (unsigned long) get, (unsigned long) use);
-#endif
+	  as_warn (_("value 0x%s truncated to 0x%s"), get_buf, use_buf);
 	}
       /* Put bytes in right order.  */
       md_number_to_chars (p, use, (int) nbytes);
@@ -4736,39 +4912,11 @@ parse_repeat_cons (expressionS *exp, unsigned int nbytes)
 static int
 hex_float (int float_type, char *bytes)
 {
-  int length;
+  int pad, length = float_length (float_type, &pad);
   int i;
 
-  switch (float_type)
-    {
-    case 'f':
-    case 'F':
-    case 's':
-    case 'S':
-      length = 4;
-      break;
-
-    case 'd':
-    case 'D':
-    case 'r':
-    case 'R':
-      length = 8;
-      break;
-
-    case 'x':
-    case 'X':
-      length = 12;
-      break;
-
-    case 'p':
-    case 'P':
-      length = 12;
-      break;
-
-    default:
-      as_bad (_("unknown floating type type '%c'"), float_type);
-      return -1;
-    }
+  if (length < 0)
+    return length;
 
   /* It would be nice if we could go through expression to parse the
      hex constant, but if we get a bignum it's a pain to sort it into
@@ -4815,7 +4963,9 @@ hex_float (int float_type, char *bytes)
 	memset (bytes, 0, length - i);
     }
 
-  return length;
+  memset (bytes + length, 0, pad);
+
+  return length + pad;
 }
 
 /*			float_cons()
@@ -4841,7 +4991,6 @@ float_cons (/* Clobbers input_line-pointer, checks end-of-line.  */
 {
   char *p;
   int length;			/* Number of chars in an object.  */
-  const char *err;		/* Error from scanning floating literal.  */
   char temp[MAXIMUM_NUMBER_OF_CHARS_FOR_FLOAT];
 
   if (is_it_end_of_statement ())
@@ -4875,41 +5024,9 @@ float_cons (/* Clobbers input_line-pointer, checks end-of-line.  */
 
   do
     {
-      /* input_line_pointer->1st char of a flonum (we hope!).  */
-      SKIP_WHITESPACE ();
-
-      /* Skip any 0{letter} that may be present. Don't even check if the
-	 letter is legal. Someone may invent a "z" format and this routine
-	 has no use for such information. Lusers beware: you get
-	 diagnostics if your input is ill-conditioned.  */
-      if (input_line_pointer[0] == '0'
-	  && ISALPHA (input_line_pointer[1]))
-	input_line_pointer += 2;
-
-      /* Accept :xxxx, where the x's are hex digits, for a floating
-	 point with the exact digits specified.  */
-      if (input_line_pointer[0] == ':')
-	{
-	  ++input_line_pointer;
-	  length = hex_float (float_type, temp);
-	  if (length < 0)
-	    {
-	      ignore_rest_of_line ();
-	      return;
-	    }
-	}
-      else
-	{
-	  err = md_atof (float_type, temp, &length);
-	  know (length <= MAXIMUM_NUMBER_OF_CHARS_FOR_FLOAT);
-	  know (err != NULL || length > 0);
-	  if (err)
-	    {
-	      as_bad (_("bad floating literal: %s"), err);
-	      ignore_rest_of_line ();
-	      return;
-	    }
-	}
+      length = parse_one_float (float_type, temp);
+      if (length < 0)
+	return;
 
       if (!need_pass_2)
 	{
@@ -5403,6 +5520,11 @@ stringer (int bits_appendzero)
 	  while (is_a_char (c = next_char_of_string ()))
 	    stringer_append_char (c, bitsize);
 
+	  /* Treat "a" "b" as "ab".  Even if we are appending zeros.  */
+	  SKIP_ALL_WHITESPACE ();
+	  if (*input_line_pointer == '"')
+	    break;
+
 	  if (append_zero)
 	    stringer_append_char (0, bitsize);
 
@@ -5520,7 +5642,7 @@ next_char_of_string (void)
 	case '8':
 	case '9':
 	  {
-	    long number;
+	    unsigned number;
 	    int i;
 
 	    for (i = 0, number = 0;
@@ -5538,7 +5660,7 @@ next_char_of_string (void)
 	case 'x':
 	case 'X':
 	  {
-	    long number;
+	    unsigned number;
 
 	    number = 0;
 	    c = *input_line_pointer++;
@@ -5649,12 +5771,12 @@ demand_copy_C_string (int *len_pointer)
 
       for (len = *len_pointer; len > 0; len--)
 	{
-	  if (*s == 0)
+	  if (s[len - 1] == 0)
 	    {
 	      s = 0;
-	      len = 1;
 	      *len_pointer = 0;
 	      as_bad (_("this string may not contain \'\\0\'"));
+	      break;
 	    }
 	}
     }
@@ -5815,7 +5937,16 @@ s_incbin (int x ATTRIBUTE_UNUSED)
   if (binfile)
     {
       long   file_len;
+      struct stat filestat;
 
+      if (fstat (fileno (binfile), &filestat) != 0
+	  || ! S_ISREG (filestat.st_mode)
+	  || S_ISDIR (filestat.st_mode))
+	{
+	  as_bad (_("unable to include `%s'"), path);
+	  goto done;
+	}
+      
       register_dependency (path);
 
       /* Compute the length of the file.  */
@@ -6155,7 +6286,7 @@ s_ignore (int arg ATTRIBUTE_UNUSED)
 void
 read_print_statistics (FILE *file)
 {
-  hash_print_statistics (file, "pseudo-op table", po_hash);
+  htab_print_statistics (file, "pseudo-op table", po_hash);
 }
 
 /* Inserts the given line into the input stream.
@@ -6271,7 +6402,7 @@ temp_ilp (char *buf)
 
   input_line_pointer = buf;
   buffer_limit = buf + strlen (buf);
-  input_from_string = TRUE;
+  input_from_string = true;
 }
 
 /* Restore a saved input line pointer.  */
@@ -6283,7 +6414,7 @@ restore_ilp (void)
 
   input_line_pointer = saved_ilp;
   buffer_limit = saved_limit;
-  input_from_string = FALSE;
+  input_from_string = false;
 
   saved_ilp = NULL;
 }

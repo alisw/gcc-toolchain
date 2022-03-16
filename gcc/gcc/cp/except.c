@@ -1,5 +1,5 @@
 /* Handle exceptional things in C++.
-   Copyright (C) 1989-2020 Free Software Foundation, Inc.
+   Copyright (C) 1989-2021 Free Software Foundation, Inc.
    Contributed by Michael Tiemann <tiemann@cygnus.com>
    Rewritten by Mike Stump <mrs@cygnus.com>, based upon an
    initial re-implementation courtesy Tad Hunt.
@@ -41,7 +41,6 @@ static tree do_allocate_exception (tree);
 static tree wrap_cleanups_r (tree *, int *, void *);
 static int complete_ptr_ref_or_void_ptr_p (tree, tree);
 static bool is_admissible_throw_operand_or_catch_parameter (tree, bool);
-static int can_convert_eh (tree, tree);
 
 /* Sets up all the global eh stuff that needs to be initialized at the
    start of compilation.  */
@@ -133,47 +132,27 @@ build_exc_ptr (void)
 		       1, integer_zero_node);
 }
 
-/* Check that user declared function FN is a function and has return
-   type RTYPE and argument types ARG{1,2,3}TYPE.  */
+/* Declare an exception ABI entry point called NAME.
+   ECF are the library flags, RTYPE the return type and ARGS[NARGS]
+   the parameter types.  We return the DECL -- which might be one
+   found via the symbol table pushing, if the user already declared
+   it.  If we pushed a new decl, the user will see it.  */
 
-static bool
-verify_library_fn (tree fn, const char *name, tree rtype,
-		   tree arg1type, tree arg2type, tree arg3type)
+static tree
+declare_library_fn_1 (const char *name, int ecf,
+		      tree rtype, int nargs, tree args[])
 {
-  if (TREE_CODE (fn) != FUNCTION_DECL
-      || TREE_CODE (TREE_TYPE (fn)) != FUNCTION_TYPE)
-    {
-  bad:
-      error_at (DECL_SOURCE_LOCATION (fn), "%qs declared incorrectly", name);
-      return false;
-    }
-  tree fntype = TREE_TYPE (fn);
-  if (!same_type_p (TREE_TYPE (fntype), rtype))
-    goto bad;
-  tree targs = TYPE_ARG_TYPES (fntype);
-  tree args[3] = { arg1type, arg2type, arg3type };
-  for (int i = 0; i < 3 && args[i]; i++)
-    {
-      if (targs == NULL_TREE)
-	goto bad;
-      if (!same_type_p (TREE_VALUE (targs), args[i]))
-	{
-	  if (i == 0)
-	    goto bad;
-	  /* Be less strict for second and following arguments, __cxa_throw
-	     needs to be more permissive.  */
-	  if (TYPE_PTROBV_P (TREE_VALUE (targs)) && TYPE_PTROBV_P (args[i]))
-	    /* Both object pointers.  */;
-	  else if (TYPE_PTRFN_P (TREE_VALUE (targs)) && TYPE_PTRFN_P (args[i]))
-	    /* Both function pointers.  */;
-	  else
-	    goto bad;
-	}
-      targs = TREE_CHAIN (targs);
-    }
-  if (targs != void_list_node)
-    goto bad;
-  return true;
+  tree ident = get_identifier (name);
+  tree except = ecf & ECF_NOTHROW ? empty_except_spec : NULL_TREE;
+
+  /* Make a new decl.  */
+  tree arg_list = void_list_node;
+  for (unsigned ix = nargs; ix--;)
+    arg_list = tree_cons (NULL_TREE, args[ix], arg_list);
+  tree fntype = build_function_type (rtype, arg_list);
+  tree res = push_library_fn (ident, fntype, except, ecf);
+
+  return res;
 }
 
 /* Find or declare a function NAME, returning RTYPE, taking a single
@@ -190,42 +169,21 @@ static tree
 declare_library_fn (const char *name, tree rtype, tree ptype,
 		    int ecf, int tm_ecf)
 {
-  tree ident = get_identifier (name);
-  tree res = get_global_binding (ident);
-  tree fntype = NULL_TREE;
-  tree except = NULL_TREE;
-  if (!res)
-    {
-      fntype = build_function_type_list (rtype, ptype, NULL_TREE);
-      if (ecf & ECF_NOTHROW)
-	except = empty_except_spec;
-      res = push_library_fn (ident, fntype, except, ecf);
-    }
-  else if (!verify_library_fn (res, name, rtype, ptype, NULL_TREE, NULL_TREE))
-    return error_mark_node;
+  tree res = declare_library_fn_1 (name, ecf, rtype, ptype ? 1 : 0, &ptype);
+  if (res == error_mark_node)
+    return res;
 
   if (tm_ecf && flag_tm)
     {
       char *tm_name = concat ("_ITM_", name + 2, NULL_TREE);
-      tree tm_ident = get_identifier (tm_name);
-      tree tm_fn = get_global_binding (tm_ident);
-      if (!tm_fn)
-	{
-	  if (!fntype)
-	    {
-	      fntype = build_function_type_list (rtype, ptype, NULL_TREE);
-	      if (ecf & ECF_NOTHROW)
-		except = empty_except_spec;
-	    }
-	  tm_fn = push_library_fn (tm_ident, fntype, except, ecf | tm_ecf);
-	}
-      else if (!verify_library_fn (tm_fn, tm_name, rtype, ptype,
-				   NULL_TREE, NULL_TREE))
-	tm_fn = error_mark_node;
+
+      tree tm_fn = declare_library_fn_1 (tm_name, ecf | tm_ecf, rtype,
+					 ptype ? 1 : 0, &ptype);
       free (tm_name);
       if (tm_fn != error_mark_node)
 	record_tm_replacement (res, tm_fn);
     }
+
   return res;
 }
 
@@ -660,55 +618,28 @@ build_throw (location_t loc, tree exp)
       tree temp_type;
       tree cleanup;
       tree object, ptr;
-      tree tmp;
       tree allocate_expr;
 
       /* The CLEANUP_TYPE is the internal type of a destructor.  */
       if (!cleanup_type)
 	{
-	  tmp = build_function_type_list (void_type_node,
-					  ptr_type_node, NULL_TREE);
+	  tree tmp = build_function_type_list (void_type_node,
+					       ptr_type_node, NULL_TREE);
 	  cleanup_type = build_pointer_type (tmp);
 	}
 
       if (!throw_fn)
 	{
-	  const char *name = "__cxa_throw";
-	  tree ident = get_identifier (name);
-	  tree fntype = NULL_TREE;
-	  throw_fn = get_global_binding (ident);
-	  if (!throw_fn)
-	    {
-	      /* Declare void __cxa_throw (void*, void*, void (*)(void*)).  */
-	      /* ??? Second argument is supposed to be "std::type_info*".  */
-	      fntype = build_function_type_list (void_type_node,
-						 ptr_type_node, ptr_type_node,
-						 cleanup_type, NULL_TREE);
-	      throw_fn = push_throw_library_fn (ident, fntype);
-	    }
-	  else if (!verify_library_fn (throw_fn, name, void_type_node,
-				       ptr_type_node, ptr_type_node,
-				       cleanup_type))
-	    throw_fn = error_mark_node;
+	  tree args[3] = {ptr_type_node, ptr_type_node, cleanup_type};
 
+	  throw_fn = declare_library_fn_1 ("__cxa_throw",
+					   ECF_NORETURN | ECF_COLD,
+					   void_type_node, 3, args);
 	  if (flag_tm && throw_fn != error_mark_node)
 	    {
-	      const char *itm_name = "_ITM_cxa_throw";
-	      tree itm_ident = get_identifier (itm_name);
-	      tree itm_fn = get_global_binding (itm_ident);
-	      if (!itm_fn)
-		{
-		  if (!fntype)
-		    fntype
-		      = build_function_type_list (void_type_node,
-						  ptr_type_node, ptr_type_node,
-						  cleanup_type, NULL_TREE);
-		  itm_fn = push_throw_library_fn (itm_ident, fntype);
-		}
-	      else if (!verify_library_fn (itm_fn, itm_name, void_type_node,
-					   ptr_type_node, ptr_type_node,
-					   cleanup_type))
-		itm_fn = error_mark_node;
+	      tree itm_fn = declare_library_fn_1 ("_ITM_cxa_throw",
+						  ECF_NORETURN | ECF_COLD,
+						  void_type_node, 3, args);
 	      if (itm_fn != error_mark_node)
 		{
 		  apply_tm_attr (itm_fn, get_identifier ("transaction_pure"));
@@ -764,21 +695,25 @@ build_throw (location_t loc, tree exp)
 	  /* Under C++0x [12.8/16 class.copy], a thrown lvalue is sometimes
 	     treated as an rvalue for the purposes of overload resolution
 	     to favor move constructors over copy constructors.  */
-	  if (treat_lvalue_as_rvalue_p (exp, /*parm_ok*/false)
-	      /* The variable must not have the `volatile' qualifier.  */
-	      && !CP_TYPE_VOLATILE_P (TREE_TYPE (exp)))
+	  if (tree moved = treat_lvalue_as_rvalue_p (exp, /*return*/false))
 	    {
-	      tree moved = move (exp);
-	      releasing_vec exp_vec (make_tree_vector_single (moved));
-	      moved = (build_special_member_call
-		       (object, complete_ctor_identifier, &exp_vec,
-			TREE_TYPE (object), flags|LOOKUP_PREFER_RVALUE,
-			tf_none));
-	      if (moved != error_mark_node)
+	      if (cxx_dialect < cxx20)
 		{
-		  exp = moved;
-		  converted = true;
+		  releasing_vec exp_vec (make_tree_vector_single (moved));
+		  moved = (build_special_member_call
+			   (object, complete_ctor_identifier, &exp_vec,
+			    TREE_TYPE (object), flags|LOOKUP_PREFER_RVALUE,
+			    tf_none));
+		  if (moved != error_mark_node)
+		    {
+		      exp = moved;
+		      converted = true;
+		    }
 		}
+	      else
+		/* In C++20 we just treat the return value as an rvalue that
+		   can bind to lvalue refs.  */
+		exp = moved;
 	    }
 
 	  /* Call the copy constructor.  */
@@ -798,7 +733,7 @@ build_throw (location_t loc, tree exp)
 	}
       else
 	{
-	  tmp = decay_conversion (exp, tf_warning_or_error);
+	  tree tmp = decay_conversion (exp, tf_warning_or_error);
 	  if (tmp == error_mark_node)
 	    return error_mark_node;
 	  exp = build2 (INIT_EXPR, temp_type, object, tmp);
@@ -821,7 +756,8 @@ build_throw (location_t loc, tree exp)
       if (type_build_dtor_call (TREE_TYPE (object)))
 	{
 	  tree dtor_fn = lookup_fnfields (TYPE_BINFO (TREE_TYPE (object)),
-					  complete_dtor_identifier, 0);
+					  complete_dtor_identifier, 0,
+					  tf_warning_or_error);
 	  dtor_fn = BASELINK_FUNCTIONS (dtor_fn);
 	  mark_used (dtor_fn);
 	  if (TYPE_HAS_NONTRIVIAL_DESTRUCTOR (TREE_TYPE (object)))
@@ -835,8 +771,9 @@ build_throw (location_t loc, tree exp)
 	cleanup = build_int_cst (cleanup_type, 0);
 
       /* ??? Indicate that this function call throws throw_type.  */
-      tmp = cp_build_function_call_nary (throw_fn, tf_warning_or_error,
-					 ptr, throw_type, cleanup, NULL_TREE);
+      tree tmp = cp_build_function_call_nary (throw_fn, tf_warning_or_error,
+					      ptr, throw_type, cleanup,
+					      NULL_TREE);
 
       /* Tack on the initialization stuff.  */
       exp = build2 (COMPOUND_EXPR, TREE_TYPE (tmp), exp, tmp);
@@ -846,20 +783,9 @@ build_throw (location_t loc, tree exp)
       /* Rethrow current exception.  */
       if (!rethrow_fn)
 	{
-	  const char *name = "__cxa_rethrow";
-	  tree ident = get_identifier (name);
-	  rethrow_fn = get_global_binding (ident);
-	  if (!rethrow_fn)
-	    {
-	      /* Declare void __cxa_rethrow (void).  */
-	      tree fntype
-		= build_function_type_list (void_type_node, NULL_TREE);
-	      rethrow_fn = push_throw_library_fn (ident, fntype);
-	    }
-	  else if (!verify_library_fn (rethrow_fn, name, void_type_node,
-				       NULL_TREE, NULL_TREE, NULL_TREE))
-	    rethrow_fn = error_mark_node;
-
+	  rethrow_fn = declare_library_fn_1 ("__cxa_rethrow",
+					     ECF_NORETURN | ECF_COLD,
+					     void_type_node, 0, NULL);
 	  if (flag_tm && rethrow_fn != error_mark_node)
 	    apply_tm_attr (rethrow_fn, get_identifier ("transaction_pure"));
 	}
@@ -1005,11 +931,14 @@ nothrow_libfn_p (const_tree fn)
 /* Returns nonzero if an exception of type FROM will be caught by a
    handler for type TO, as per [except.handle].  */
 
-static int
+static bool
 can_convert_eh (tree to, tree from)
 {
   to = non_reference (to);
   from = non_reference (from);
+
+  if (same_type_ignoring_top_level_qualifiers_p (to, from))
+    return true;
 
   if (TYPE_PTR_P (to) && TYPE_PTR_P (from))
     {
@@ -1017,19 +946,19 @@ can_convert_eh (tree to, tree from)
       from = TREE_TYPE (from);
 
       if (! at_least_as_qualified_p (to, from))
-	return 0;
+	return false;
 
       if (VOID_TYPE_P (to))
-	return 1;
+	return true;
 
       /* Else fall through.  */
     }
 
   if (CLASS_TYPE_P (to) && CLASS_TYPE_P (from)
       && publicly_uniquely_derived_p (to, from))
-    return 1;
+    return true;
 
-  return 0;
+  return false;
 }
 
 /* Check whether any of the handlers in I are shadowed by another handler
@@ -1048,11 +977,11 @@ check_handlers_1 (tree master, tree_stmt_iterator i)
       tree handler = tsi_stmt (i);
       if (TREE_TYPE (handler) && can_convert_eh (type, TREE_TYPE (handler)))
 	{
-	  warning_at (EXPR_LOCATION (handler), 0,
-		      "exception of type %qT will be caught",
-		      TREE_TYPE (handler));
-	  warning_at (EXPR_LOCATION (master), 0,
-		      "   by earlier handler for %qT", type);
+	  auto_diagnostic_group d;
+	  if (warning_at (EXPR_LOCATION (handler), OPT_Wexceptions,
+			  "exception of type %qT will be caught by earlier "
+			  "handler", TREE_TYPE (handler)))
+	    inform (EXPR_LOCATION (master), "for type %qT", type);
 	  break;
 	}
     }
@@ -1103,12 +1032,15 @@ check_handlers (tree handlers)
      expression whose type is a polymorphic class type (10.3).  */
 
 static tree
-check_noexcept_r (tree *tp, int * /*walk_subtrees*/, void * /*data*/)
+check_noexcept_r (tree *tp, int *walk_subtrees, void *)
 {
   tree t = *tp;
   enum tree_code code = TREE_CODE (t);
-  if ((code == CALL_EXPR && CALL_EXPR_FN (t))
-      || code == AGGR_INIT_EXPR)
+
+  if (unevaluated_p (code))
+    *walk_subtrees = false;
+  else if ((code == CALL_EXPR && CALL_EXPR_FN (t))
+	   || code == AGGR_INIT_EXPR)
     {
       /* We can only use the exception specification of the called function
 	 for determining the value of a noexcept expression; we can't use
@@ -1172,7 +1104,7 @@ maybe_noexcept_warning (tree fn)
       && (!DECL_IN_SYSTEM_HEADER (fn)
 	  || global_dc->dc_warn_system_headers))
     {
-      temp_override<bool> s (global_dc->dc_warn_system_headers, true);
+      auto s = make_temp_override (global_dc->dc_warn_system_headers, true);
       auto_diagnostic_group d;
       if (warning (OPT_Wnoexcept, "noexcept-expression evaluates to %<false%> "
 		   "because of a call to %qD", fn))
@@ -1299,6 +1231,8 @@ type_throw_all_p (const_tree type)
 tree
 build_noexcept_spec (tree expr, tsubst_flags_t complain)
 {
+  if (check_for_bare_parameter_packs (expr))
+    return error_mark_node;
   if (TREE_CODE (expr) != DEFERRED_NOEXCEPT
       && !value_dependent_expression_p (expr))
     {

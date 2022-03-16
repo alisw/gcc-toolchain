@@ -1,6 +1,6 @@
 /* Support for printing Go values for GDB, the GNU debugger.
 
-   Copyright (C) 2012-2020 Free Software Foundation, Inc.
+   Copyright (C) 2012-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -43,7 +43,7 @@ print_go_string (struct type *type,
 		 struct value *val,
 		 const struct value_print_options *options)
 {
-  struct gdbarch *gdbarch = get_type_arch (type);
+  struct gdbarch *gdbarch = type->arch ();
   struct type *elt_ptr_type = type->field (0).type ();
   struct type *elt_type = TYPE_TARGET_TYPE (elt_ptr_type);
   LONGEST length;
@@ -87,8 +87,9 @@ print_go_string (struct type *type,
 /* See go-lang.h.  */
 
 void
-go_value_print_inner (struct value *val, struct ui_file *stream,
-		      int recurse, const struct value_print_options *options)
+go_language::value_print_inner (struct value *val, struct ui_file *stream,
+				int recurse,
+				const struct value_print_options *options) const
 {
   struct type *type = check_typedef (value_type (val));
 

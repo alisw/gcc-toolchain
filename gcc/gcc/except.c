@@ -1,5 +1,5 @@
 /* Implements exception handling.
-   Copyright (C) 1989-2020 Free Software Foundation, Inc.
+   Copyright (C) 1989-2021 Free Software Foundation, Inc.
    Contributed by Mike Stump <mrs@cygnus.com>.
 
 This file is part of GCC.
@@ -1454,7 +1454,7 @@ sjlj_build_landing_pads (void)
   num_dispatch = vec_safe_length (cfun->eh->lp_array);
   if (num_dispatch == 0)
     return;
-  sjlj_lp_call_site_index.safe_grow_cleared (num_dispatch);
+  sjlj_lp_call_site_index.safe_grow_cleared (num_dispatch, true);
 
   num_dispatch = sjlj_assign_call_site_values ();
   if (num_dispatch > 0)

@@ -1,6 +1,6 @@
 /* The IGEN simulator generator for GDB, the GNU Debugger.
 
-   Copyright 2002-2020 Free Software Foundation, Inc.
+   Copyright 2002-2022 Free Software Foundation, Inc.
 
    Contributed by Andrew Cagney.
 
@@ -30,10 +30,6 @@
 #include "ld-insn.h"
 
 #include "gen-model.h"
-
-#ifndef NULL
-#define NULL 0
-#endif
 
 
 void

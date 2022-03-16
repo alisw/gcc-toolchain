@@ -1,5 +1,5 @@
 /* Simulator option handling.
-   Copyright (C) 1996-2020 Free Software Foundation, Inc.
+   Copyright (C) 1996-2022 Free Software Foundation, Inc.
    Contributed by Cygnus Support.
 
 This file is part of GDB, the GNU debugger.
@@ -17,18 +17,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#include "config.h"
+/* This must come before any other includes.  */
+#include "defs.h"
+
 #include "sim-main.h"
-#ifdef HAVE_STRING_H
 #include <string.h>
-#else
-#ifdef HAVE_STRINGS_H
-#include <strings.h>
-#endif
-#endif
-#ifdef HAVE_STDLIB_H
 #include <stdlib.h>
-#endif
 #include <ctype.h>
 #include <stdio.h>
 #include "libiberty.h"
@@ -36,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #include "sim-io.h"
 #include "sim-assert.h"
 #include "version.h"
+#include "hashtab.h"
 
 #include "bfd.h"
 
@@ -243,6 +238,7 @@ standard_option_handler (SIM_DESC sd, sim_cpu *cpu, int opt,
 	    case USER_ENVIRONMENT: type = "user"; break;
 	    case VIRTUAL_ENVIRONMENT: type = "virtual"; break;
 	    case OPERATING_ENVIRONMENT: type = "operating"; break;
+	    default: abort ();
 	    }
 	  sim_io_eprintf (sd, "Simulator compiled for the %s environment only.\n",
 			  type);
@@ -291,6 +287,7 @@ standard_option_handler (SIM_DESC sd, sim_cpu *cpu, int opt,
 	case FORCED_ALIGNMENT:
 	  sim_io_eprintf (sd, "Simulator compiled for forced alignment only.\n");
 	  break;
+	default: abort ();
 	}
       return SIM_RC_FAIL;
 
@@ -388,7 +385,7 @@ standard_option_handler (SIM_DESC sd, sim_cpu *cpu, int opt,
       break;
 
     case OPTION_VERSION:
-      sim_io_printf (sd, "GNU simulator %s%s\n", PKGVERSION, version);
+      sim_print_version (sd, is_command);
       if (STATE_OPEN_KIND (sd) == SIM_OPEN_STANDALONE)
 	exit (0);
       break;
@@ -424,34 +421,26 @@ standard_install (SIM_DESC sd)
 /* Return non-zero if arg is a duplicate argument.
    If ARG is NULL, initialize.  */
 
-#define ARG_HASH_SIZE 97
-#define ARG_HASH(a) ((256 * (unsigned char) a[0] + (unsigned char) a[1]) % ARG_HASH_SIZE)
-
 static int
 dup_arg_p (const char *arg)
 {
-  int hash;
-  static const char **arg_table = NULL;
+  static htab_t arg_table = NULL;
+  void **slot;
 
   if (arg == NULL)
     {
       if (arg_table == NULL)
-	arg_table = (const char **) xmalloc (ARG_HASH_SIZE * sizeof (char *));
-      memset (arg_table, 0, ARG_HASH_SIZE * sizeof (char *));
+	arg_table = htab_create_alloc (10, htab_hash_string,
+				       htab_eq_string, NULL,
+				       xcalloc, free);
+      htab_empty (arg_table);
       return 0;
     }
 
-  hash = ARG_HASH (arg);
-  while (arg_table[hash] != NULL)
-    {
-      if (strcmp (arg, arg_table[hash]) == 0)
-	return 1;
-      /* We assume there won't be more than ARG_HASH_SIZE arguments so we
-	 don't check if the table is full.  */
-      if (++hash == ARG_HASH_SIZE)
-	hash = 0;
-    }
-  arg_table[hash] = arg;
+  slot = htab_find_slot (arg_table, arg, INSERT);
+  if (*slot != NULL)
+    return 1;
+  *slot = (void *) arg;
   return 0;
 }
 
@@ -815,6 +804,41 @@ sim_print_help (SIM_DESC sd, int is_command)
       sim_io_printf (sd, "program args    Arguments to pass to simulated program.\n");
       sim_io_printf (sd, "                Note: Very few simulators support this.\n");
     }
+}
+
+/* Print version information.  */
+
+void
+sim_print_version (SIM_DESC sd, int is_command)
+{
+  sim_io_printf (sd, "GNU simulator %s%s\n", PKGVERSION, version);
+
+  sim_io_printf (sd, "Copyright (C) 2021 Free Software Foundation, Inc.\n");
+
+  /* Following the copyright is a brief statement that the program is
+     free software, that users are free to copy and change it on
+     certain conditions, that it is covered by the GNU GPL, and that
+     there is no warranty.  */
+
+  sim_io_printf (sd, "\
+License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\
+\nThis is free software: you are free to change and redistribute it.\n\
+There is NO WARRANTY, to the extent permitted by law.\n");
+
+  if (!is_command)
+    return;
+
+  sim_io_printf (sd, "This SIM was configured as:\n");
+  sim_config_print (sd);
+
+  if (REPORT_BUGS_TO[0])
+    {
+      sim_io_printf (sd, "For bug reporting instructions, please see:\n\
+    %s.\n",
+		     REPORT_BUGS_TO);
+    }
+  sim_io_printf (sd, "Find the SIM homepage & other documentation resources \
+online at:\n    <https://sourceware.org/gdb/wiki/Sim/>.\n");
 }
 
 /* Utility of sim_args_command to find the closest match for a command.

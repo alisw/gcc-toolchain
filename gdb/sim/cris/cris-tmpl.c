@@ -1,5 +1,5 @@
 /* CRIS base simulator support code
-   Copyright (C) 2004-2020 Free Software Foundation, Inc.
+   Copyright (C) 2004-2022 Free Software Foundation, Inc.
    Contributed by Axis Communications.
 
 This file is part of the GNU simulators.
@@ -19,11 +19,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /* The infrastructure is based on that of i960.c.  */
 
+/* This must come before any other includes.  */
+#include "defs.h"
+
 #define WANT_CPU
 
 #include "sim-main.h"
 #include "cgen-mem.h"
 #include "cgen-ops.h"
+
+#include <stdlib.h>
 
 #define MY(f) XCONCAT3(crisv,BASENUM,f)
 

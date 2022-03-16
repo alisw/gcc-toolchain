@@ -1,6 +1,6 @@
 /* GDB/Scheme pretty-printing.
 
-   Copyright (C) 2008-2020 Free Software Foundation, Inc.
+   Copyright (C) 2008-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -59,7 +59,7 @@ enum display_hint
 
 /* The <gdb:pretty-printer> smob.  */
 
-typedef struct
+struct pretty_printer_smob
 {
   /* This must appear first.  */
   gdb_smob base;
@@ -77,11 +77,11 @@ typedef struct
   SCM lookup;
 
   /* Note: Attaching subprinters to this smob is left to Scheme.  */
-} pretty_printer_smob;
+};
 
 /* The <gdb:pretty-printer-worker> smob.  */
 
-typedef struct
+struct pretty_printer_worker_smob
 {
   /* This must appear first.  */
   gdb_smob base;
@@ -99,7 +99,7 @@ typedef struct
      The iterator returns a pair for each iteration: (name . value),
      where "value" can have the same types as to_string.  */
   SCM children;
-} pretty_printer_worker_smob;
+};
 
 static const char pretty_printer_smob_name[] =
   "gdb:pretty-printer";
@@ -675,8 +675,8 @@ ppscm_print_string_repr (SCM printer, enum display_hint hint,
 	{
 	  struct type *type = builtin_type (gdbarch)->builtin_char;
 	  
-	  LA_PRINT_STRING (stream, type, (gdb_byte *) string.get (),
-			   length, NULL, 0, options);
+	  language->printstr (stream, type, (gdb_byte *) string.get (),
+			      length, NULL, 0, options);
 	}
       else
 	{
@@ -818,20 +818,28 @@ ppscm_print_children (SCM printer, enum display_hint hint,
       gdb::unique_xmalloc_ptr<char> name
 	= gdbscm_scm_to_c_string (scm_name);
 
-      /* Print initial "{".  For other elements, there are three cases:
+      /* Print initial "=" to separate print_string_repr output and
+	 children.  For other elements, there are three cases:
 	 1. Maps.  Print a "," after each value element.
 	 2. Arrays.  Always print a ",".
 	 3. Other.  Always print a ",".  */
       if (i == 0)
 	{
-         if (printed_nothing)
-           fputs_filtered ("{", stream);
-         else
-           fputs_filtered (" = {", stream);
-       }
-
+	  if (!printed_nothing)
+	    fputs_filtered (" = ", stream);
+	}
       else if (! is_map || i % 2 == 0)
 	fputs_filtered (pretty ? "," : ", ", stream);
+
+      /* Skip printing children if max_depth has been reached.  This check
+	 is performed after print_string_repr and the "=" separator so that
+	 these steps are not skipped if the variable is located within the
+	 permitted depth.  */
+      if (val_print_check_max_depth (stream, recurse, options, language))
+	goto done;
+      else if (i == 0)
+	/* Print initial "{" to bookend children.  */
+	fputs_filtered ("{", stream);
 
       /* In summary mode, we just want to print "= {...}" if there is
 	 a value.  */
@@ -949,7 +957,7 @@ gdbscm_apply_val_pretty_printer (const struct extension_language_defn *extlang,
 				 const struct language_defn *language)
 {
   struct type *type = value_type (value);
-  struct gdbarch *gdbarch = get_type_arch (type);
+  struct gdbarch *gdbarch = type->arch ();
   SCM exception = SCM_BOOL_F;
   SCM printer = SCM_BOOL_F;
   SCM val_obj = SCM_BOOL_F;
@@ -990,12 +998,6 @@ gdbscm_apply_val_pretty_printer (const struct extension_language_defn *extlang,
       goto done;
     }
   gdb_assert (ppscm_is_pretty_printer_worker (printer));
-
-  if (val_print_check_max_depth (stream, recurse, options, language))
-    {
-      result = EXT_LANG_RC_OK;
-      goto done;
-    }
 
   /* If we are printing a map, we want some special formatting.  */
   hint = ppscm_get_display_hint_enum (printer);

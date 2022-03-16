@@ -1,5 +1,5 @@
 /* Generic COFF swapping routines, for BFD.
-   Copyright (C) 1990-2020 Free Software Foundation, Inc.
+   Copyright (C) 1990-2021 Free Software Foundation, Inc.
    Written by Cygnus Support.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -695,9 +695,16 @@ coff_swap_aouthdr_out (bfd * abfd, void * in, void * out)
   H_PUT_32 (abfd, aouthdr_in->o_maxstack, aouthdr_out->o_maxstack);
   H_PUT_32 (abfd, aouthdr_in->o_maxdata, aouthdr_out->o_maxdata);
 #endif
-  memset (aouthdr_out->o_resv2, 0, sizeof aouthdr_out->o_resv2);
+  /* TODO: set o_*psize dynamically */
+  H_PUT_8 (abfd, 0, aouthdr_out->o_textpsize);
+  H_PUT_8 (abfd, 0, aouthdr_out->o_datapsize);
+  H_PUT_8 (abfd, 0, aouthdr_out->o_stackpsize);
+  H_PUT_8 (abfd, aouthdr_in->o_flags, aouthdr_out->o_flags);
+  H_PUT_16 (abfd, aouthdr_in->o_sntdata, aouthdr_out->o_sntdata);
+  H_PUT_16 (abfd, aouthdr_in->o_sntbss, aouthdr_out->o_sntbss);
+  H_PUT_32 (abfd, 0, aouthdr_out->o_debugger);
 #ifdef XCOFF64
-  memset (aouthdr_out->o_debugger, 0, sizeof aouthdr_out->o_debugger);
+  H_PUT_16 (abfd, aouthdr_in->o_x64flags, aouthdr_out->o_x64flags);
   memset (aouthdr_out->o_resv3, 0, sizeof aouthdr_out->o_resv3);
 #endif
 #endif

@@ -1,6 +1,6 @@
 /* Test file for mpz_set_fr / mpfr_get_z.
 
-Copyright 2004, 2006-2019 Free Software Foundation, Inc.
+Copyright 2004, 2006-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -92,8 +92,8 @@ check_one (mpz_ptr z)
       MPFR_ASSERTN (inex == 0);
 
       inex = sh < 0 ?
-        mpfr_div_2exp (f, f, -sh, MPFR_RNDN) :
-        mpfr_mul_2exp (f, f, sh, MPFR_RNDN);
+        mpfr_div_2ui (f, f, -sh, MPFR_RNDN) :
+        mpfr_mul_2ui (f, f, sh, MPFR_RNDN);
       MPFR_ASSERTN (inex == 0);
 
       for (neg = 0; neg <= 1; neg++)

@@ -1,6 +1,6 @@
 // <experimental/socket> -*- C++ -*-
 
-// Copyright (C) 2015-2020 Free Software Foundation, Inc.
+// Copyright (C) 2015-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -122,33 +122,7 @@ inline namespace v1
   make_error_condition(socket_errc __e) noexcept
   { return error_condition(static_cast<int>(__e), socket_category()); }
 
-  template<typename _Tp, typename = __void_t<>>
-    struct __is_endpoint_impl : false_type
-    { };
 
-  // Check Endpoint requirements.
-  template<typename _Tp>
-    auto
-    __endpoint_reqs(const _Tp* __a = 0)
-    -> enable_if_t<__and_<
-      is_default_constructible<_Tp>,
-      __is_value_constructible<_Tp>,
-      is_same<decltype(__a->__protocol()), typename _Tp::protocol_type>
-      >::value,
-    __void_t< typename _Tp::protocol_type::endpoint >>;
-
-  template<typename _Tp>
-    struct __is_endpoint_impl<_Tp, decltype(__endpoint_reqs<_Tp>())>
-    : true_type
-    { };
-
-  template<typename _Tp>
-    struct __is_endpoint : __is_endpoint_impl<_Tp>
-    { };
-
-  // TODO Endpoint reqs for extensible implementations
-  // TODO _Protocol reqs
-  // TODO AcceptableProtocol reqs
   // TODO GettableSocket reqs
   // TODO SettableSocket reqs
   // TODO BooleanSocketOption reqs
@@ -708,10 +682,13 @@ inline namespace v1
     public:
       // types:
 
-      typedef io_context::executor_type executor_type;
-      typedef int native_handle_type;
-      typedef _Protocol protocol_type;
-      typedef typename protocol_type::endpoint endpoint_type;
+      using executor_type = io_context::executor_type;
+      using native_handle_type = int;
+      using protocol_type = _Protocol;
+      using endpoint_type = typename protocol_type::endpoint;
+
+      static_assert(__detail::__protocol<protocol_type>,
+		    "protocol_type meets the Protocol requirements");
 
       // basic_socket operations:
 
@@ -1081,9 +1058,9 @@ inline namespace v1
     public:
       // types:
 
-      typedef int native_handle_type;
-      typedef _Protocol protocol_type;
-      typedef typename protocol_type::endpoint endpoint_type;
+      using native_handle_type = int;
+      using protocol_type = _Protocol;
+      using endpoint_type = typename protocol_type::endpoint;
 
       // construct / copy / destroy:
 
@@ -1534,9 +1511,9 @@ inline namespace v1
     public:
       // types:
 
-      typedef int native_handle_type;
-      typedef _Protocol protocol_type;
-      typedef typename protocol_type::endpoint endpoint_type;
+      using native_handle_type = int;
+      using protocol_type = _Protocol;
+      using endpoint_type = typename protocol_type::endpoint;
 
       // construct / copy / destroy:
 
@@ -1847,11 +1824,14 @@ inline namespace v1
     public:
       // types:
 
-      typedef io_context::executor_type executor_type;
-      typedef int native_handle_type;
-      typedef _AcceptableProtocol protocol_type;
-      typedef typename protocol_type::endpoint endpoint_type;
-      typedef typename protocol_type::socket socket_type;
+      using executor_type = io_context::executor_type;
+      using native_handle_type = int;
+      using protocol_type = _AcceptableProtocol;
+      using endpoint_type = typename protocol_type::endpoint;
+      using socket_type = typename protocol_type::socket;
+
+      static_assert(__detail::__acceptable_protocol<protocol_type>,
+		    "protocol_type meets the AcceptableProtocol requirements");
 
       // construct / copy / destroy:
 
@@ -2285,7 +2265,7 @@ inline namespace v1
       protocol_type _M_protocol;
     };
 
-  // @}
+  /// @}
 
   /** @brief Socket streams
    * @{
@@ -2297,12 +2277,12 @@ inline namespace v1
     public:
       // types:
 
-      typedef _Protocol protocol_type;
-      typedef typename protocol_type::endpoint endpoint_type;
-      typedef _Clock clock_type;
-      typedef typename clock_type::time_point time_point;
-      typedef typename clock_type::duration duration;
-      typedef _WaitTraits wait_traits_type;
+      using protocol_type = _Protocol;
+      using endpoint_type = typename protocol_type::endpoint;
+      using clock_type = _Clock;
+      using time_point = typename clock_type::time_point;
+      using duration = typename clock_type::duration;
+      using wait_traits_type = _WaitTraits;
 
       // construct / copy / destroy:
 
@@ -2376,12 +2356,12 @@ inline namespace v1
     public:
       // types:
 
-      typedef _Protocol protocol_type;
-      typedef typename protocol_type::endpoint endpoint_type;
-      typedef _Clock clock_type;
-      typedef typename clock_type::time_point time_point;
-      typedef typename clock_type::duration duration;
-      typedef _WaitTraits wait_traits_type;
+      using protocol_type = _Protocol;
+      using endpoint_type = typename protocol_type::endpoint;
+      using clock_type = _Clock;
+      using time_point = typename clock_type::time_point;
+      using duration = typename clock_type::duration;
+      using wait_traits_type = _WaitTraits;
 
       // construct / copy / destroy:
 
@@ -2456,7 +2436,7 @@ inline namespace v1
       __streambuf_type _M_sb;
     };
 
-  // @}
+  /// @}
 
   /** @brief synchronous connect operations
    * @{
@@ -2577,7 +2557,7 @@ inline namespace v1
 			  __ec);
     }
 
-  // @}
+  /// @}
 
   /** @brief asynchronous connect operations
    * @{
@@ -2627,11 +2607,11 @@ inline namespace v1
 				forward<_CompletionToken>(__token));
     }
 
-  // @}
+  /// @}
 
 #endif  // _GLIBCXX_HAVE_UNISTD_H
 
-  // @}
+  /// @}
 
 } // namespace v1
 } // namespace net

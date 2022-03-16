@@ -1,5 +1,5 @@
 /* Language-independent diagnostic subroutines for the GNU Compiler Collection
-   Copyright (C) 1999-2020 Free Software Foundation, Inc.
+   Copyright (C) 1999-2021 Free Software Foundation, Inc.
    Contributed by Gabriel Dos Reis <gdr@codesourcery.com>
 
 This file is part of GCC.
@@ -38,6 +38,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "selftest.h"
 #include "selftest-diagnostic.h"
 #include "opts.h"
+#include "cpplib.h"
 
 #ifdef HAVE_TERMIOS_H
 # include <termios.h>
@@ -218,7 +219,17 @@ diagnostic_initialize (diagnostic_context *context, int n_opts)
   context->show_line_numbers_p = false;
   context->min_margin_width = 0;
   context->show_ruler_p = false;
-  context->parseable_fixits_p = false;
+  if (const char *var = getenv ("GCC_EXTRA_DIAGNOSTIC_OUTPUT"))
+    {
+      if (!strcmp (var, "fixits-v1"))
+	context->extra_output_kind = EXTRA_DIAGNOSTIC_OUTPUT_fixits_v1;
+      else if (!strcmp (var, "fixits-v2"))
+	context->extra_output_kind = EXTRA_DIAGNOSTIC_OUTPUT_fixits_v2;
+      /* Silently ignore unrecognized values.  */
+    }
+  context->column_unit = DIAGNOSTICS_COLUMN_UNIT_DISPLAY;
+  context->column_origin = 1;
+  context->tabstop = 8;
   context->edit_context_ptr = NULL;
   context->diagnostic_group_nesting_depth = 0;
   context->diagnostic_group_emission_count = 0;
@@ -353,8 +364,48 @@ diagnostic_get_color_for_kind (diagnostic_t kind)
   return diagnostic_kind_color[kind];
 }
 
+/* Given an expanded_location, convert the column (which is in 1-based bytes)
+   to the requested units, without converting the origin.
+   Return -1 if the column is invalid (<= 0).  */
+
+static int
+convert_column_unit (enum diagnostics_column_unit column_unit,
+		     int tabstop,
+		     expanded_location s)
+{
+  if (s.column <= 0)
+    return -1;
+
+  switch (column_unit)
+    {
+    default:
+      gcc_unreachable ();
+
+    case DIAGNOSTICS_COLUMN_UNIT_DISPLAY:
+      return location_compute_display_column (s, tabstop);
+
+    case DIAGNOSTICS_COLUMN_UNIT_BYTE:
+      return s.column;
+    }
+}
+
+/* Given an expanded_location, convert the column (which is in 1-based bytes)
+   to the requested units and origin.  Return -1 if the column is
+   invalid (<= 0).  */
+int
+diagnostic_converted_column (diagnostic_context *context, expanded_location s)
+{
+  int one_based_col
+    = convert_column_unit (context->column_unit, context->tabstop, s);
+  if (one_based_col <= 0)
+    return -1;
+  return one_based_col + (context->column_origin - 1);
+}
+
 /* Return a formatted line and column ':%line:%column'.  Elided if
-   zero.  The result is a statically allocated buffer.  */
+   line == 0 or col < 0.  (A column of 0 may be valid due to the
+   -fdiagnostics-column-origin option.)
+   The result is a statically allocated buffer.  */
 
 static const char *
 maybe_line_and_column (int line, int col)
@@ -363,8 +414,9 @@ maybe_line_and_column (int line, int col)
 
   if (line)
     {
-      size_t l = snprintf (result, sizeof (result),
-			   col ? ":%d:%d" : ":%d", line, col);
+      size_t l
+	= snprintf (result, sizeof (result),
+		    col >= 0 ? ":%d:%d" : ":%d", line, col);
       gcc_checking_assert (l < sizeof (result));
     }
   else
@@ -383,13 +435,26 @@ diagnostic_get_location_text (diagnostic_context *context,
   const char *locus_cs = colorize_start (pp_show_color (pp), "locus");
   const char *locus_ce = colorize_stop (pp_show_color (pp));
   const char *file = s.file ? s.file : progname;
-  int line = strcmp (file, N_("<built-in>")) ? s.line : 0;
-  int col = context->show_column ? s.column : 0;
+  int line = 0;
+  int col = -1;
+  if (strcmp (file, N_("<built-in>")))
+    {
+      line = s.line;
+      if (context->show_column)
+	col = diagnostic_converted_column (context, s);
+    }
 
   const char *line_col = maybe_line_and_column (line, col);
   return build_message_string ("%s%s%s:%s", locus_cs, file,
 			       line_col, locus_ce);
 }
+
+static const char *const diagnostic_kind_text[] = {
+#define DEFINE_DIAGNOSTIC_KIND(K, T, C) (T),
+#include "diagnostic.def"
+#undef DEFINE_DIAGNOSTIC_KIND
+  "must-not-happen"
+};
 
 /* Return a malloc'd string describing a location and the severity of the
    diagnostic, e.g. "foo.c:42:10: error: ".  The caller is responsible for
@@ -398,12 +463,6 @@ char *
 diagnostic_build_prefix (diagnostic_context *context,
 			 const diagnostic_info *diagnostic)
 {
-  static const char *const diagnostic_kind_text[] = {
-#define DEFINE_DIAGNOSTIC_KIND(K, T, C) (T),
-#include "diagnostic.def"
-#undef DEFINE_DIAGNOSTIC_KIND
-    "must-not-happen"
-  };
   gcc_assert (diagnostic->kind < DK_LAST_DIAGNOSTIC_KIND);
 
   const char *text = _(diagnostic_kind_text[diagnostic->kind]);
@@ -649,25 +708,42 @@ diagnostic_report_current_module (diagnostic_context *context, location_t where)
       set_last_module (context, map);
       if (! MAIN_FILE_P (map))
 	{
-	  bool first = true;
+	  bool first = true, need_inc = true, was_module = MAP_MODULE_P (map);
+	  expanded_location s = {};
 	  do
 	    {
 	      where = linemap_included_from (map);
 	      map = linemap_included_from_linemap (line_table, map);
-	      const char *line_col
-		= maybe_line_and_column (SOURCE_LINE (map, where),
-					 first && context->show_column
-					 ? SOURCE_COLUMN (map, where) : 0);
+	      bool is_module = MAP_MODULE_P (map);
+	      s.file = LINEMAP_FILE (map);
+	      s.line = SOURCE_LINE (map, where);
+	      int col = -1;
+	      if (first && context->show_column)
+		{
+		  s.column = SOURCE_COLUMN (map, where);
+		  col = diagnostic_converted_column (context, s);
+		}
+	      const char *line_col = maybe_line_and_column (s.line, col);
 	      static const char *const msgs[] =
 		{
-		 N_("In file included from"),
+		 NULL,
 		 N_("                 from"),
+		 N_("In file included from"),	/* 2 */
+		 N_("        included from"),
+		 N_("In module"),		/* 4 */
+		 N_("of module"),
+		 N_("In module imported at"),	/* 6 */
+		 N_("imported at"),
 		};
-	      unsigned index = !first;
+
+	      unsigned index = (was_module ? 6 : is_module ? 4
+				: need_inc ? 2 : 0) + !first;
+
 	      pp_verbatim (context->printer, "%s%s %r%s%s%R",
-			   first ? "" : ",\n", _(msgs[index]),
-			   "locus", LINEMAP_FILE (map), line_col);
-	      first = false;
+			   first ? "" : was_module ? ", " : ",\n",
+			   _(msgs[index]),
+			   "locus", s.file, line_col);
+	      first = false, need_inc = was_module, was_module = is_module;
 	    }
 	  while (! MAIN_FILE_P (map));
 	  pp_verbatim (context->printer, ":");
@@ -874,11 +950,16 @@ print_escaped_string (pretty_printer *pp, const char *text)
   pp_character (pp, '"');
 }
 
-/* Implementation of -fdiagnostics-parseable-fixits.  Print a
-   machine-parseable version of all fixits in RICHLOC to PP.  */
+/* Implementation of -fdiagnostics-parseable-fixits and
+   GCC_EXTRA_DIAGNOSTIC_OUTPUT.
+   Print a machine-parseable version of all fixits in RICHLOC to PP,
+   using COLUMN_UNIT to express columns.
+   Use TABSTOP when handling DIAGNOSTICS_COLUMN_UNIT_DISPLAY.  */
 
 static void
-print_parseable_fixits (pretty_printer *pp, rich_location *richloc)
+print_parseable_fixits (pretty_printer *pp, rich_location *richloc,
+			enum diagnostics_column_unit column_unit,
+			int tabstop)
 {
   gcc_assert (pp);
   gcc_assert (richloc);
@@ -896,9 +977,13 @@ print_parseable_fixits (pretty_printer *pp, rich_location *richloc)
       /* For compatibility with clang, print as a half-open range.  */
       location_t next_loc = hint->get_next_loc ();
       expanded_location next_exploc = expand_location (next_loc);
+      int start_col
+	= convert_column_unit (column_unit, tabstop, start_exploc);
+      int next_col
+	= convert_column_unit (column_unit, tabstop, next_exploc);
       pp_printf (pp, ":{%i:%i-%i:%i}:",
-		 start_exploc.line, start_exploc.column,
-		 next_exploc.line, next_exploc.column);
+		 start_exploc.line, start_col,
+		 next_exploc.line, next_col);
       print_escaped_string (pp, hint->get_string ());
       pp_newline (pp);
     }
@@ -1115,7 +1200,7 @@ diagnostic_report_diagnostic (diagnostic_context *context,
 	return false;
     }
 
-  if (diagnostic->kind != DK_NOTE)
+  if (diagnostic->kind != DK_NOTE && diagnostic->kind != DK_ICE)
     diagnostic_check_max_errors (context);
 
   context->lock++;
@@ -1164,10 +1249,22 @@ diagnostic_report_diagnostic (diagnostic_context *context,
   if (context->show_option_requested)
     print_option_information (context, diagnostic, orig_diag_kind);
   (*diagnostic_finalizer (context)) (context, diagnostic, orig_diag_kind);
-  if (context->parseable_fixits_p)
+  switch (context->extra_output_kind)
     {
-      print_parseable_fixits (context->printer, diagnostic->richloc);
+    default:
+      break;
+    case EXTRA_DIAGNOSTIC_OUTPUT_fixits_v1:
+      print_parseable_fixits (context->printer, diagnostic->richloc,
+			      DIAGNOSTICS_COLUMN_UNIT_BYTE,
+			      context->tabstop);
       pp_flush (context->printer);
+      break;
+    case EXTRA_DIAGNOSTIC_OUTPUT_fixits_v2:
+      print_parseable_fixits (context->printer, diagnostic->richloc,
+			      DIAGNOSTICS_COLUMN_UNIT_DISPLAY,
+			      context->tabstop);
+      pp_flush (context->printer);
+      break;
     }
   diagnostic_action_after_output (context, diagnostic->kind);
   diagnostic->x_data = NULL;
@@ -1775,6 +1872,38 @@ error_recursion (diagnostic_context *context)
 void
 fancy_abort (const char *file, int line, const char *function)
 {
+  /* If fancy_abort is called before the diagnostic subsystem is initialized,
+     internal_error will crash internally in a way that prevents a
+     useful message reaching the user.
+     This can happen with libgccjit in the case of gcc_assert failures
+     that occur outside of the libgccjit mutex that guards the rest of
+     gcc's state, including global_dc (when global_dc may not be
+     initialized yet, or might be in use by another thread).
+     Handle such cases as gracefully as possible by falling back to a
+     minimal abort handler that only relies on i18n.  */
+  if (global_dc->printer == NULL)
+    {
+      /* Print the error message.  */
+      fnotice (stderr, diagnostic_kind_text[DK_ICE]);
+      fnotice (stderr, "in %s, at %s:%d", function, trim_filename (file), line);
+      fputc ('\n', stderr);
+
+      /* Attempt to print a backtrace.  */
+      struct backtrace_state *state
+	= backtrace_create_state (NULL, 0, bt_err_callback, NULL);
+      int count = 0;
+      if (state != NULL)
+	backtrace_full (state, 2, bt_callback, bt_err_callback,
+			(void *) &count);
+
+      /* We can't call warn_if_plugins or emergency_dump_function as these
+	 rely on GCC state that might not be initialized, or might be in
+	 use by another thread.  */
+
+      /* Abort the process.  */
+      real_abort ();
+    }
+
   internal_error ("in %s, at %s:%d", function, trim_filename (file), line);
 }
 
@@ -1966,7 +2095,7 @@ test_print_parseable_fixits_none ()
   pretty_printer pp;
   rich_location richloc (line_table, UNKNOWN_LOCATION);
 
-  print_parseable_fixits (&pp, &richloc);
+  print_parseable_fixits (&pp, &richloc, DIAGNOSTICS_COLUMN_UNIT_BYTE, 8);
   ASSERT_STREQ ("", pp_formatted_text (&pp));
 }
 
@@ -1985,7 +2114,7 @@ test_print_parseable_fixits_insert ()
   location_t where = linemap_position_for_column (line_table, 10);
   richloc.add_fixit_insert_before (where, "added content");
 
-  print_parseable_fixits (&pp, &richloc);
+  print_parseable_fixits (&pp, &richloc, DIAGNOSTICS_COLUMN_UNIT_BYTE, 8);
   ASSERT_STREQ ("fix-it:\"test.c\":{5:10-5:10}:\"added content\"\n",
 		pp_formatted_text (&pp));
 }
@@ -2007,7 +2136,7 @@ test_print_parseable_fixits_remove ()
   where.m_finish = linemap_position_for_column (line_table, 20);
   richloc.add_fixit_remove (where);
 
-  print_parseable_fixits (&pp, &richloc);
+  print_parseable_fixits (&pp, &richloc, DIAGNOSTICS_COLUMN_UNIT_BYTE, 8);
   ASSERT_STREQ ("fix-it:\"test.c\":{5:10-5:21}:\"\"\n",
 		pp_formatted_text (&pp));
 }
@@ -2029,9 +2158,63 @@ test_print_parseable_fixits_replace ()
   where.m_finish = linemap_position_for_column (line_table, 20);
   richloc.add_fixit_replace (where, "replacement");
 
-  print_parseable_fixits (&pp, &richloc);
+  print_parseable_fixits (&pp, &richloc, DIAGNOSTICS_COLUMN_UNIT_BYTE, 8);
   ASSERT_STREQ ("fix-it:\"test.c\":{5:10-5:21}:\"replacement\"\n",
 		pp_formatted_text (&pp));
+}
+
+/* Verify that print_parseable_fixits correctly handles
+   DIAGNOSTICS_COLUMN_UNIT_BYTE vs DIAGNOSTICS_COLUMN_UNIT_COLUMN.  */
+
+static void
+test_print_parseable_fixits_bytes_vs_display_columns ()
+{
+  line_table_test ltt;
+  rich_location richloc (line_table, UNKNOWN_LOCATION);
+
+  /* 1-based byte offsets:     12345677778888999900001234567.  */
+  const char *const content = "smile \xf0\x9f\x98\x82 colour\n";
+  /* 1-based display cols:     123456[......7-8.....]9012345.  */
+  const int tabstop = 8;
+
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", content);
+  const char *const fname = tmp.get_filename ();
+
+  linemap_add (line_table, LC_ENTER, false, fname, 0);
+  linemap_line_start (line_table, 1, 100);
+  linemap_add (line_table, LC_LEAVE, false, NULL, 0);
+  source_range where;
+  where.m_start = linemap_position_for_column (line_table, 12);
+  where.m_finish = linemap_position_for_column (line_table, 17);
+  richloc.add_fixit_replace (where, "color");
+
+  /* Escape fname.  */
+  pretty_printer tmp_pp;
+  print_escaped_string (&tmp_pp, fname);
+  char *escaped_fname = xstrdup (pp_formatted_text (&tmp_pp));
+
+  const int buf_len = strlen (escaped_fname) + 100;
+  char *const expected = XNEWVEC (char, buf_len);
+
+  {
+    pretty_printer pp;
+    print_parseable_fixits (&pp, &richloc, DIAGNOSTICS_COLUMN_UNIT_BYTE,
+			    tabstop);
+    snprintf (expected, buf_len,
+	      "fix-it:%s:{1:12-1:18}:\"color\"\n", escaped_fname);
+    ASSERT_STREQ (expected, pp_formatted_text (&pp));
+  }
+  {
+    pretty_printer pp;
+    print_parseable_fixits (&pp, &richloc, DIAGNOSTICS_COLUMN_UNIT_DISPLAY,
+			    tabstop);
+    snprintf (expected, buf_len,
+	      "fix-it:%s:{1:10-1:16}:\"color\"\n", escaped_fname);
+    ASSERT_STREQ (expected, pp_formatted_text (&pp));
+  }
+
+  XDELETEVEC (expected);
+  free (escaped_fname);
 }
 
 /* Verify that
@@ -2042,10 +2225,15 @@ test_print_parseable_fixits_replace ()
 static void
 assert_location_text (const char *expected_loc_text,
 		      const char *filename, int line, int column,
-		      bool show_column)
+		      bool show_column,
+		      int origin = 1,
+		      enum diagnostics_column_unit column_unit
+			= DIAGNOSTICS_COLUMN_UNIT_BYTE)
 {
   test_diagnostic_context dc;
   dc.show_column = show_column;
+  dc.column_unit = column_unit;
+  dc.column_origin = origin;
 
   expanded_location xloc;
   xloc.file = filename;
@@ -2069,13 +2257,51 @@ test_diagnostic_get_location_text ()
   assert_location_text ("PROGNAME:", NULL, 0, 0, true);
   assert_location_text ("<built-in>:", "<built-in>", 42, 10, true);
   assert_location_text ("foo.c:42:10:", "foo.c", 42, 10, true);
-  assert_location_text ("foo.c:42:", "foo.c", 42, 0, true);
+  assert_location_text ("foo.c:42:9:", "foo.c", 42, 10, true, 0);
+  assert_location_text ("foo.c:42:1010:", "foo.c", 42, 10, true, 1001);
+  for (int origin = 0; origin != 2; ++origin)
+    assert_location_text ("foo.c:42:", "foo.c", 42, 0, true, origin);
   assert_location_text ("foo.c:", "foo.c", 0, 10, true);
   assert_location_text ("foo.c:42:", "foo.c", 42, 10, false);
   assert_location_text ("foo.c:", "foo.c", 0, 10, false);
 
   maybe_line_and_column (INT_MAX, INT_MAX);
   maybe_line_and_column (INT_MIN, INT_MIN);
+
+  {
+    /* In order to test display columns vs byte columns, we need to create a
+       file for location_get_source_line() to read.  */
+
+    const char *const content = "smile \xf0\x9f\x98\x82\n";
+    const int line_bytes = strlen (content) - 1;
+    const int def_tabstop = 8;
+    const int display_width = cpp_display_width (content, line_bytes,
+						 def_tabstop);
+    ASSERT_EQ (line_bytes - 2, display_width);
+    temp_source_file tmp (SELFTEST_LOCATION, ".c", content);
+    const char *const fname = tmp.get_filename ();
+    const int buf_len = strlen (fname) + 16;
+    char *const expected = XNEWVEC (char, buf_len);
+
+    snprintf (expected, buf_len, "%s:1:%d:", fname, line_bytes);
+    assert_location_text (expected, fname, 1, line_bytes, true,
+			  1, DIAGNOSTICS_COLUMN_UNIT_BYTE);
+
+    snprintf (expected, buf_len, "%s:1:%d:", fname, line_bytes - 1);
+    assert_location_text (expected, fname, 1, line_bytes, true,
+			  0, DIAGNOSTICS_COLUMN_UNIT_BYTE);
+
+    snprintf (expected, buf_len, "%s:1:%d:", fname, display_width);
+    assert_location_text (expected, fname, 1, line_bytes, true,
+			  1, DIAGNOSTICS_COLUMN_UNIT_DISPLAY);
+
+    snprintf (expected, buf_len, "%s:1:%d:", fname, display_width - 1);
+    assert_location_text (expected, fname, 1, line_bytes, true,
+			  0, DIAGNOSTICS_COLUMN_UNIT_DISPLAY);
+
+    XDELETEVEC (expected);
+  }
+
 
   progname = old_progname;
 }
@@ -2113,6 +2339,7 @@ diagnostic_c_tests ()
   test_print_parseable_fixits_insert ();
   test_print_parseable_fixits_remove ();
   test_print_parseable_fixits_replace ();
+  test_print_parseable_fixits_bytes_vs_display_columns ();
   test_diagnostic_get_location_text ();
   test_num_digits ();
 

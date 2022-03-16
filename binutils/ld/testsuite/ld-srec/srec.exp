@@ -1,6 +1,6 @@
 # Test linking directly to S-records.
 # By Ian Lance Taylor, Cygnus Support.
-#   Copyright (C) 1999-2020 Free Software Foundation, Inc.
+#   Copyright (C) 1999-2022 Free Software Foundation, Inc.
 #
 # This file is part of the GNU Binutils.
 #
@@ -238,7 +238,10 @@ proc run_srec_test { test objs } {
     # poorly with a.out.
 
     if { $sizeof_headers } {
-	set flags "$flags -Ttext 0x1000"
+	append flags " -Ttext 0x1000"
+	if [is_pecoff_format] {
+	    append flags " --image-base 0"
+	}
     }
 
     # ARM targets cannot convert format in the linker
@@ -288,6 +291,12 @@ proc run_srec_test { test objs } {
 	setup_xfail "riscv*-*-*"
     }
 
+    # LoongArch targets cannot convert format in the linker
+    # using the --oformat command line switch
+    if [istarget loongarch*-*-*] {
+	setup_xfail "loongarch*-*-*"
+    }
+
     # V850 targets need libgcc.a
     if [istarget v850*-*-elf] {
 	set objs "$objs -L ../gcc -lgcc"
@@ -295,12 +304,12 @@ proc run_srec_test { test objs } {
 
     # Xtensa ELF targets relax by default; S-Record linker does not
     if [istarget xtensa*-*-*] {
-	set flags "$flags -no-relax"
+	append flags " -no-relax"
     }
 
     # PRU ELF target relaxes by default; S-Record linker does not
     if [istarget pru*-*-*] {
-	set flags "$flags -no-relax"
+	append flags " -no-relax"
     }
 
     if { ![ld_link $ld tmpdir/sr1 "$flags $objs"] \
@@ -315,7 +324,7 @@ proc run_srec_test { test objs } {
     if ![string match "" $exec_output] {
 	send_log "$exec_output\n"
 	verbose "$exec_output"
-	unresolved $test
+	fail $test
 	return
     }
 
@@ -351,25 +360,25 @@ if { ![check_compiler_available] } {
 # Pass -fplt to CC and CXX since -fno-plt doesn't work with S-records
 # tests. Also add $NOPIE_CFLAGS and $NOPIE_LDFLAGS if PIE doesn't work
 # with S-records.  Also add $NOCF_PROTECTION_CFLAGS for S-records.
-# Also add $NOSANTIZE_CFLAGS for S-records.
-set old_CC "$CC"
-set CC "$CC $PLT_CFLAGS $NOPIE_CFLAGS $NOPIE_LDFLAGS $NOCF_PROTECTION_CFLAGS $NOSANTIZE_CFLAGS"
-set old_CXX "$CXX"
-set CXX "$CXX $PLT_CFLAGS $NOPIE_CFLAGS $NOPIE_LDFLAGS $NOCF_PROTECTION_CFLAGS $NOSANTIZE_CFLAGS"
+# Also add $NOSANITIZE_CFLAGS for S-records.
+set old_CFLAGS "$CFLAGS_FOR_TARGET"
+append CFLAGS_FOR_TARGET " $PLT_CFLAGS $NOPIE_CFLAGS $NOPIE_LDFLAGS $NOCF_PROTECTION_CFLAGS $NOSANITIZE_CFLAGS $NOLTO_CFLAGS"
+set old_CXXFLAGS "$CXXFLAGS_FOR_TARGET"
+append CXXFLAGS_FOR_TARGET " $PLT_CFLAGS $NOPIE_CFLAGS $NOPIE_LDFLAGS $NOCF_PROTECTION_CFLAGS $NOSANITIZE_CFLAGS $NOLTO_CFLAGS"
 
 # S-records can't handle .note.gnu.property sections.
 if { [is_elf_format] \
      && ([istarget "i?86-*-*"] || [istarget "x86_64-*-*"]) } {
-    set CC "$CC -Wa,-mx86-used-note=no"
-    set CXX "$CXX -Wa,-mx86-used-note=no"
+    append CFLAGS_FOR_TARGET " -Wa,-mx86-used-note=no"
+    append CXXFLAGS_FOR_TARGET " -Wa,-mx86-used-note=no"
 }
 
-if { ![ld_compile $CC $srcdir/$subdir/sr1.c tmpdir/sr1.o] \
-     || ![ld_compile $CC $srcdir/$subdir/sr2.c tmpdir/sr2.o] } {
-    unresolved $test1
-    unresolved $test2
-    set CC "$old_CC"
-    set CXX "$old_CXX"
+if { ![ld_compile $CC_FOR_TARGET $srcdir/$subdir/sr1.c tmpdir/sr1.o] \
+     || ![ld_compile $CC_FOR_TARGET $srcdir/$subdir/sr2.c tmpdir/sr2.o] } {
+    unsupported $test1
+    unsupported $test2
+    set CFLAGS_FOR_TARGET "$old_CFLAGS"
+    set CXXFLAGS_FOR_TARGET "$old_CXXFLAGS"
     return
 }
 
@@ -384,7 +393,9 @@ setup_xfail "mips*-*-irix5*" "mips*-*-irix6*" "mips*-*-linux*"
 
 # The S-record linker doesn't do the magic TOC handling that XCOFF
 # linkers do.
-setup_xfail "*-*-aix*" "*-*-xcoff*"
+if [is_xcoff_format] {
+    setup_xfail *-*-*
+}
 
 # The S-record linker is not supported for ARC.
 setup_xfail "arc*-*-*"
@@ -437,24 +448,26 @@ run_srec_test $test1 "tmpdir/sr1.o tmpdir/sr2.o"
 # destructors.  Note that since we are not linking against any
 # libraries, this program won't actually work or anything.
 
-if { ![is_remote host] && [which $CXX] == 0 } {
+if { ![is_remote host] && [which $CXX_FOR_TARGET] == 0 } {
     untested $test2
-    set CC "$old_CC"
-    set CXX "$old_CXX"
+    set CFLAGS_FOR_TARGET "$old_CFLAGS"
+    set CXXFLAGS_FOR_TARGET "$old_CXXFLAGS"
     return
 }
 
-if ![ld_compile "$CXX $CXXFLAGS -fno-exceptions" $srcdir/$subdir/sr3.cc tmpdir/sr3.o] {
-    unresolved $test2
-    set CC "$old_CC"
-    set CXX "$old_CXX"
+if ![ld_compile "$CXX_FOR_TARGET -fno-exceptions" $srcdir/$subdir/sr3.cc tmpdir/sr3.o] {
+    unsupported $test2
+    set CFLAGS_FOR_TARGET "$old_CFLAGS"
+    set CXXFLAGS_FOR_TARGET "$old_CXXFLAGS"
     return
 }
 
 # See above.
 setup_xfail "i*86-*-aout*"
 setup_xfail "mips*-*-irix5*" "mips*-*-irix6*" "mips*-*-linux*"
-setup_xfail "*-*-aix*" "*-*-xcoff*"
+if [is_xcoff_format] {
+    setup_xfail *-*-*
+}
 setup_xfail "arc*-*-*"
 setup_xfail "arm*-*-*"
 setup_xfail "v850*-*-elf"
@@ -471,5 +484,5 @@ setup_xfail "bpf-*-*"
 
 run_srec_test $test2 "tmpdir/sr3.o"
 
-set CC "$old_CC"
-set CXX "$old_CXX"
+set CFLAGS_FOR_TARGET "$old_CFLAGS"
+set CXXFLAGS_FOR_TARGET "$old_CXXFLAGS"

@@ -1,5 +1,5 @@
 /*  dv-nvram.c -- Generic driver for a non volatile ram (battery saved)
-    Copyright (C) 1999-2020 Free Software Foundation, Inc.
+    Copyright (C) 1999-2022 Free Software Foundation, Inc.
     Written by Stephane Carrez (stcarrez@worldnet.fr)
     (From a driver model Contributed by Cygnus Solutions.)
     
@@ -18,6 +18,8 @@
     
     */
 
+/* This must come before any other includes.  */
+#include "defs.h"
 
 #include "sim-main.h"
 #include "hw-main.h"

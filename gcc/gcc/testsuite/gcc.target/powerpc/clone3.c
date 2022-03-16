@@ -7,7 +7,7 @@
    (aka, ISA 2.07) has to do modulus with divide and multiply.  Make sure
    both clone functions are generated.
 
-   POWER10 has pc-relative instructions to access static values, while earlier
+   FUTURE has pc-relative instructions to access static values, while earlier
    systems used TOC addressing.
 
    Restrict ourselves to Linux, since IFUNC might not be supported in other

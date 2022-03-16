@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -793,8 +793,8 @@ package body Sem_Cat is
          if Ekind (E) in Subprogram_Kind then
             Declaration := Unit_Declaration_Node (E);
 
-            if Nkind_In (Declaration, N_Subprogram_Body,
-                                      N_Subprogram_Renaming_Declaration)
+            if Nkind (Declaration) in
+                 N_Subprogram_Body | N_Subprogram_Renaming_Declaration
             then
                Specification := Corresponding_Spec (Declaration);
             end if;
@@ -1003,7 +1003,7 @@ package body Sem_Cat is
       --  Body of RCI unit does not need validation
 
       if Is_Remote_Call_Interface (E)
-        and then Nkind_In (N, N_Package_Body, N_Subprogram_Body)
+        and then Nkind (N) in N_Package_Body | N_Subprogram_Body
       then
          return;
       end if;
@@ -1068,7 +1068,8 @@ package body Sem_Cat is
            and then not Private_Present (P)
            and then not Is_Remote_Call_Interface (E)
          then
-            Error_Msg_N ("public child of rci unit must also be rci unit", N);
+            Error_Msg_N
+              ("public child of 'R'C'I unit must also be 'R'C'I unit", N);
          end if;
       end if;
    end Validate_Categorization_Dependency;
@@ -1506,8 +1507,8 @@ package body Sem_Cat is
 
             null;
 
-         elsif Ekind_In (Param_Type, E_Anonymous_Access_Type,
-                                     E_Anonymous_Access_Subprogram_Type)
+         elsif Ekind (Param_Type) in E_Anonymous_Access_Type
+                                   | E_Anonymous_Access_Subprogram_Type
          then
             --  From RM E.2.2(14), no anonymous access parameter other than
             --  controlling ones may be used (because an anonymous access
@@ -1580,21 +1581,21 @@ package body Sem_Cat is
          if Comes_From_Source (E) then
             if Is_Limited_Type (E) then
                Error_Msg_N
-                 ("limited type not allowed in rci unit", Parent (E));
+                 ("limited type not allowed in 'R'C'I unit", Parent (E));
                Explain_Limited_Type (E, Parent (E));
 
-            elsif Ekind_In (E, E_Generic_Function,
-                               E_Generic_Package,
-                               E_Generic_Procedure)
+            elsif Ekind (E) in E_Generic_Function
+                             | E_Generic_Package
+                             | E_Generic_Procedure
             then
-               Error_Msg_N ("generic declaration not allowed in rci unit",
+               Error_Msg_N ("generic declaration not allowed in 'R'C'I unit",
                  Parent (E));
 
             elsif (Ekind (E) = E_Function or else Ekind (E) = E_Procedure)
               and then Has_Pragma_Inline (E)
             then
                Error_Msg_N
-                 ("inlined subprogram not allowed in rci unit", Parent (E));
+                 ("inlined subprogram not allowed in 'R'C'I unit", Parent (E));
 
             --  Inner packages that are renamings need not be checked. Generic
             --  RCI packages are subject to the checks, but entities that come
@@ -1815,7 +1816,17 @@ package body Sem_Cat is
 
       --    4. called from sem_res Resolve_Actuals
 
-      if K = N_Attribute_Reference then
+      if K = N_Attribute_Definition_Clause then
+         E := Etype (Entity (N));
+
+         if Is_Remote_Access_To_Class_Wide_Type (E) then
+            Error_Msg_Name_1 := Chars (N);
+            Error_Msg_N
+              ("cannot specify% aspect for a remote operand", N);
+            return;
+         end if;
+
+      elsif K = N_Attribute_Reference then
          E := Etype (Prefix (N));
 
          if Is_Remote_Access_To_Class_Wide_Type (E) then
@@ -2111,6 +2122,7 @@ package body Sem_Cat is
                | N_Index_Or_Discriminant_Constraint
                | N_Membership_Test
                | N_Op
+               | N_Range
             =>
                return True;
 

@@ -1,5 +1,5 @@
 /* d-convert.cc -- Data type conversion routines.
-   Copyright (C) 2006-2020 Free Software Foundation, Inc.
+   Copyright (C) 2006-2021 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -430,10 +430,10 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	      /* d_convert will make a no-op cast.  */
 	      break;
 	    }
-	  else if (cdfrom->isCPPclass ())
+	  else if (cdfrom->isCPPclass () || cdto->isCPPclass ())
 	    {
 	      /* Downcasting in C++ is a no-op.  */
-	      if (cdto->isCPPclass ())
+	      if (cdfrom->isCPPclass () && cdto->isCPPclass ())
 		break;
 
 	      /* Casting from a C++ interface to a class/non-C++ interface
@@ -467,7 +467,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	}
       else if (tbtype->ty == Tarray)
 	{
-	  dinteger_t dim = ((TypeSArray *) ebtype)->dim->toInteger ();
+	  dinteger_t dim = ebtype->isTypeSArray ()->dim->toInteger ();
 	  dinteger_t esize = ebtype->nextOf ()->size ();
 	  dinteger_t tsize = tbtype->nextOf ()->size ();
 
@@ -559,7 +559,9 @@ convert_expr (tree exp, Type *etype, Type *totype)
       break;
 
     case Tnull:
-      /* Casting from typeof(null) is represented as all zeros.  */
+    case Tnoreturn:
+      /* Casting from `typeof(null)' for `null' expressions, or `typeof(*null)'
+	 for `noreturn' expressions is represented as all zeros.  */
       result = build_typeof_null_value (totype);
 
       /* Make sure the expression is still evaluated if necessary.  */
@@ -616,13 +618,13 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 
       if (same_type_p (telem, ebtype))
 	{
-	  TypeSArray *sa_type = (TypeSArray *) tbtype;
+	  TypeSArray *sa_type = tbtype->isTypeSArray ();
 	  uinteger_t count = sa_type->dim->toUInteger ();
 
 	  tree ctor = build_constructor (build_ctype (totype), NULL);
 	  if (count)
 	    {
-	      vec<constructor_elt, va_gc> *ce = NULL;
+	      vec <constructor_elt, va_gc> *ce = NULL;
 	      tree index = build2 (RANGE_EXPR, build_ctype (Type::tsize_t),
 				   size_zero_node, size_int (count - 1));
 	      tree value = convert_for_assignment (expr, etype, sa_type->next);
@@ -741,6 +743,16 @@ convert_for_condition (tree expr, Type *type)
 	result = build2 (BIT_IOR_EXPR, TREE_TYPE (obj), obj, func);
 	break;
       }
+
+    case Tnoreturn:
+      /* Front-end allows conditionals that never return, represent the
+	 conditional result value as all zeros.  */
+      result = build_zero_cst (d_bool_type);
+
+      /* Make sure the expression is still evaluated if necessary.  */
+      if (TREE_SIDE_EFFECTS (expr))
+	result = compound_expr (expr, result);
+      break;
 
     default:
       result = expr;

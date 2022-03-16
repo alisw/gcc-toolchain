@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2020 Free Software Foundation, Inc.
+# Copyright (C) 2009-2021 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,6 +59,11 @@ proc check_for_options_with_filter { language gcc_options exclude \
     set gcc_output [gcc_target_compile $srcfname $filebase.x executable $gcc_options]
     remote_file build delete $srcfname $filebase.x $filebase.gcno
 
+    if {[regexp -- "compiler not installed on this system" $gcc_output]} {
+	unsupported "$test: $language compiler not available"
+	return
+    }
+
     if { $exclude != "" } {
 	set lines [split $gcc_output "\n"]
 	set gcc_output ""
@@ -74,7 +79,7 @@ proc check_for_options_with_filter { language gcc_options exclude \
 	}	
    }
     
-    # Verify that COMPILER_PATTERRNS appear in gcc output.
+    # Verify that COMPILER_PATTERNS appear in gcc output.
     foreach pattern [split $compiler_patterns "\n"] {
 	if {$pattern != ""} {
 	    if {[regexp -line -- "$pattern" $gcc_output]} {
@@ -89,7 +94,7 @@ proc check_for_options_with_filter { language gcc_options exclude \
 	}
     }
 
-    # Verify that COMPILER_NON_PATTERRNS do not appear in gcc output.
+    # Verify that COMPILER_NON_PATTERNS do not appear in gcc output.
     foreach pattern [split $compiler_non_patterns "\n"] {
 	if {$pattern != ""} {
 	    if {![regexp -line -- "$pattern" $gcc_output result]} {

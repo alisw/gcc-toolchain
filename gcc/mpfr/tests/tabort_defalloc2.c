@@ -1,6 +1,6 @@
 /* tabort_defalloc2 -- Test for abort due to reaching out of memory
 
-Copyright 2012-2019 Free Software Foundation, Inc.
+Copyright 2012-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -36,6 +36,11 @@ int
 main (int argc, char **argv)
 {
   void *ptr;
+
+  /* Disable this test under Valgrind, which complains due to the
+     large allocation size. */
+  if (tests_run_within_valgrind ())
+    return 77;
 
   tests_start_mpfr ();
   tests_expect_abort ();

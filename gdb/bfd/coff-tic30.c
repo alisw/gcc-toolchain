@@ -1,5 +1,5 @@
 /* BFD back-end for TMS320C30 coff binaries.
-   Copyright (C) 1998-2020 Free Software Foundation, Inc.
+   Copyright (C) 1998-2021 Free Software Foundation, Inc.
    Contributed by Steven Haworth (steve@pm.cse.rmit.edu.au)
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -31,16 +31,16 @@
 
 reloc_howto_type tic30_coff_howto_table[] =
   {
-    HOWTO (R_TIC30_ABS16, 2, 1, 16, FALSE, 0, 0, NULL,
-	   "16", FALSE, 0x0000FFFF, 0x0000FFFF, FALSE),
-    HOWTO (R_TIC30_ABS24, 2, 2, 24, FALSE, 8, complain_overflow_bitfield, NULL,
-	   "24", FALSE, 0xFFFFFF00, 0xFFFFFF00, FALSE),
-    HOWTO (R_TIC30_LDP, 18, 0, 24, FALSE, 0, complain_overflow_bitfield, NULL,
-	   "LDP", FALSE, 0x00FF0000, 0x000000FF, FALSE),
-    HOWTO (R_TIC30_ABS32, 2, 2, 32, FALSE, 0, complain_overflow_bitfield, NULL,
-	   "32", FALSE, 0xFFFFFFFF, 0xFFFFFFFF, FALSE),
-    HOWTO (R_TIC30_PC16, 2, 1, 16, TRUE, 0, complain_overflow_signed, NULL,
-	   "PCREL", FALSE, 0x0000FFFF, 0x0000FFFF, FALSE),
+    HOWTO (R_TIC30_ABS16, 2, 1, 16, false, 0, 0, NULL,
+	   "16", false, 0x0000FFFF, 0x0000FFFF, false),
+    HOWTO (R_TIC30_ABS24, 2, 2, 24, false, 8, complain_overflow_bitfield, NULL,
+	   "24", false, 0xFFFFFF00, 0xFFFFFF00, false),
+    HOWTO (R_TIC30_LDP, 18, 0, 24, false, 0, complain_overflow_bitfield, NULL,
+	   "LDP", false, 0x00FF0000, 0x000000FF, false),
+    HOWTO (R_TIC30_ABS32, 2, 2, 32, false, 0, complain_overflow_bitfield, NULL,
+	   "32", false, 0xFFFFFFFF, 0xFFFFFFFF, false),
+    HOWTO (R_TIC30_PC16, 2, 1, 16, true, 0, complain_overflow_signed, NULL,
+	   "PCREL", false, 0x0000FFFF, 0x0000FFFF, false),
     EMPTY_HOWTO (-1)
   };
 
@@ -192,6 +192,7 @@ const bfd_target tic30_coff_vec =
   '/',				/* ar_pad_char */
   15,				/* ar_max_namelen */
   0,				/* match priority.  */
+  TARGET_KEEP_UNUSED_SECTION_SYMBOLS, /* keep unused section symbols.  */
   bfd_getb64, bfd_getb_signed_64, bfd_putb64,
   bfd_getb32, bfd_getb_signed_32, bfd_putb32,
   bfd_getb16, bfd_getb_signed_16, bfd_putb16,	/* data */

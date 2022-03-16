@@ -1,10 +1,10 @@
-AC_INIT([isl], [0.21], [isl-development@googlegroups.com])
+AC_INIT([isl], [0.24], [isl-development@googlegroups.com])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 AC_SUBST(versioninfo)
-versioninfo=21:0:0
+versioninfo=24:0:1
 
 if test "x$prefix" != "xNONE"; then
 	prefix_wd=`cd $prefix && pwd`
@@ -20,21 +20,13 @@ fi
 
 AC_PROG_CC
 AC_PROG_CXX
+AX_PROG_CC_FOR_BUILD
 
 AX_CC_MAXOPT
 AX_GCC_WARN_UNUSED_RESULT
 AX_C___ATTRIBUTE__
 
-# CXX11FLAGS contains the flags (if any) added by AX_CXX_COMPILE_STDCXX_11
-# Original state of CXX and CXXCPP is preserved because CXX11FLAGS
-# is only needed for compiling interface/isl_test_cpp
-AC_SUBST(CXX11FLAGS)
-ac_save_CXX="$CXX"
-ac_save_CXXCPP="$CXXCPP"
-AX_CXX_COMPILE_STDCXX_11([noext], [optional])
-CXX11FLAGS=${CXX#$ac_save_CXX}
-CXX="$ac_save_CXX"
-CXXCPP="$ac_save_CXXCPP"
+AX_CXX_COMPILE_STDCXX_11_NO_OVERRIDE
 
 AC_PROG_GREP
 AC_PROG_LIBTOOL
@@ -121,14 +113,10 @@ if test "x$ac_cv_have_decl_snprintf" = xno -a \
 fi
 
 AX_SUBMODULE(clang,system|no,no)
-case "$with_clang" in
-system)
-	AX_DETECT_CLANG
-	;;
-esac
 AM_CONDITIONAL(HAVE_CLANG, test $with_clang = system)
 AM_CONDITIONAL(HAVE_CPP_ISL_H,
-    [test $with_clang = system -o -f $srcdir/include/isl/cpp.h])
+    [(test $with_clang = system -a "x$HAVE_CXX11" = "x1") || \
+     test -f $srcdir/include/isl/cpp.h])
 
 AX_SET_WARNING_FLAGS
 
@@ -147,16 +135,11 @@ AC_CONFIG_FILES(isl_srcdir.c)
 AC_CONFIG_FILES(Makefile)
 AC_CONFIG_FILES(doc/Makefile)
 if test $with_clang = system; then
-	AC_CONFIG_FILES(interface/Makefile)
+	AC_CONFIG_SUBDIRS(interface)
 fi
 AC_CONFIG_FILES([bound_test.sh], [chmod +x bound_test.sh])
 AC_CONFIG_FILES([codegen_test.sh], [chmod +x codegen_test.sh])
 AC_CONFIG_FILES([pip_test.sh], [chmod +x pip_test.sh])
 AC_CONFIG_FILES([flow_test.sh], [chmod +x flow_test.sh])
 AC_CONFIG_FILES([schedule_test.sh], [chmod +x schedule_test.sh])
-AC_CONFIG_COMMANDS_POST([
-	dnl pass on arguments to subdir configures, but don't
-	dnl add them to config.status
-	ac_configure_args="$ac_configure_args $isl_configure_args"
-])
 AC_OUTPUT

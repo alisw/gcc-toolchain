@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-Ofast -fdump-tree-optimized" } */
+/* { dg-require-effective-target c99_runtime } */
 
 extern float sinhf (float);
 extern float coshf (float);
@@ -33,13 +34,13 @@ sinhlovercoshl_ (long double x)
 }
 
 /* There must be no calls to sinh, cosh, or atanh */
-/* {dg-final { scan-tree-dump-not "sinh " "optimized" } } */
-/* {dg-final { scan-tree-dump-not "cosh " "optimized" } } */
-/* {dg-final { scan-tree-dump-not "sinfh " "optimized" } } */
-/* {dg-final { scan-tree-dump-not "cosfh " "optimized" } } */
-/* {dg-final { scan-tree-dump-not "sinlh " "optimized" } } */
-/* {dg-final { scan-tree-dump-not "coslh " "optimized" } } */
-/* {dg-final { scan-tree-dump-times "tanh " "1" "optimized" }} */
-/* {dg-final { scan-tree-dump-times "tanhl " "1" "optimized" }} */
-/* {dg-final { scan-tree-dump-times "tanhf " "1" "optimized" }} */
+/* { dg-final { scan-tree-dump-not "sinh " "optimized" } } */
+/* { dg-final { scan-tree-dump-not "cosh " "optimized" } } */
+/* { dg-final { scan-tree-dump-not "sinfh " "optimized" } } */
+/* { dg-final { scan-tree-dump-not "cosfh " "optimized" } } */
+/* { dg-final { scan-tree-dump-not "sinlh " "optimized" } } */
+/* { dg-final { scan-tree-dump-not "coslh " "optimized" } } */
+/* { dg-final { scan-tree-dump-times "tanh " "1" "optimized" } } */
+/* { dg-final { scan-tree-dump-times "tanhl " "1" "optimized" } } */
+/* { dg-final { scan-tree-dump-times "tanhf " "1" "optimized" } } */
 

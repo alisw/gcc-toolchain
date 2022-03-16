@@ -1,6 +1,6 @@
 # Test basic linker script functionality
 # By Ian Lance Taylor, Cygnus Support
-#   Copyright (C) 1999-2020 Free Software Foundation, Inc.
+#   Copyright (C) 1999-2022 Free Software Foundation, Inc.
 #
 # This file is part of the GNU Binutils.
 #
@@ -22,7 +22,7 @@
 set testname "script"
 
 if ![ld_assemble $as $srcdir/$subdir/script.s tmpdir/script.o] { 
-    unresolved $testname
+    unsupported $testname
     return
 }
 
@@ -182,15 +182,13 @@ proc extract_symbol_test { testfile testname } {
 }
 
 # PE targets need to set the image base to 0 to avoid complications from nm.
-set flags ""
-if {[istarget "*-*-pe*"] \
-    || [istarget "*-*-cygwin*"] \
-    || [istarget "*-*-mingw*"] \
-    || [istarget "*-*-winnt*"] \
-    || [istarget "*-*-nt"] \
-    || [istarget "*-*-interix*"] } then {
-  set flags "--image-base 0"
+set old_LDFLAGS $LDFLAGS
+if { [is_pecoff_format] } then {
+    append LDFLAGS " --image-base 0"
+} elseif { [is_xcoff_format] } then {
+    append LDFLAGS " -bnogc"
 }
+set flags $LDFLAGS
 
 if ![ld_link $ld tmpdir/script "$flags -T $srcdir/$subdir/script.t tmpdir/script.o"] {
     fail $testname
@@ -231,7 +229,10 @@ foreach test_script $test_script_list {
 
 run_dump_test "align-with-input"
 run_dump_test "pr20302"
+run_dump_test "output-section-types"
 
 run_dump_test "segment-start" {{name (default)}}
 run_dump_test "segment-start" {{name (overridden)} \
 			       {ld -Ttext-segment=0x10000000}}
+
+set LDFLAGS $old_LDFLAGS

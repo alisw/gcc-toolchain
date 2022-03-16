@@ -1,5 +1,5 @@
 ;; Machine description for RISC-V for GNU compiler.
-;; Copyright (C) 2011-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2011-2021 Free Software Foundation, Inc.
 ;; Contributed by Andrew Waterman (andrew@sifive.com).
 ;; Based on MIPS target for GNU compiler.
 
@@ -65,11 +65,16 @@
   UNSPECV_BLOCKAGE
   UNSPECV_FENCE
   UNSPECV_FENCE_I
+
+  ;; Stack Smash Protector
+  UNSPEC_SSP_SET
+  UNSPEC_SSP_TEST
 ])
 
 (define_constants
   [(RETURN_ADDR_REGNUM		1)
    (GP_REGNUM 			3)
+   (TP_REGNUM			4)
    (T0_REGNUM			5)
    (T1_REGNUM			6)
    (S0_REGNUM			8)
@@ -475,9 +480,9 @@
 (define_insn "*addsi3_extended2"
   [(set (match_operand:DI                       0 "register_operand" "=r,r")
 	(sign_extend:DI
-	  (subreg:SI (plus:DI (match_operand:DI 1 "register_operand" " r,r")
-			      (match_operand:DI 2 "arith_operand"    " r,I"))
-		     0)))]
+	  (match_operator:SI 3 "subreg_lowpart_operator"
+	     [(plus:DI (match_operand:DI 1 "register_operand" " r,r")
+		       (match_operand:DI 2 "arith_operand"    " r,I"))])))]
   "TARGET_64BIT"
   "add%i2w\t%0,%1,%2"
   [(set_attr "type" "arith")
@@ -531,9 +536,9 @@
 (define_insn "*subsi3_extended2"
   [(set (match_operand:DI                        0 "register_operand" "= r")
 	(sign_extend:DI
-	  (subreg:SI (minus:DI (match_operand:DI 1 "reg_or_0_operand" " rJ")
-			       (match_operand:DI 2 "register_operand" "  r"))
-		     0)))]
+	  (match_operator:SI 3 "subreg_lowpart_operator"
+	    [(minus:DI (match_operand:DI 1 "reg_or_0_operand" " rJ")
+		       (match_operand:DI 2 "register_operand" "  r"))])))]
   "TARGET_64BIT"
   "subw\t%0,%z1,%2"
   [(set_attr "type" "arith")
@@ -567,8 +572,8 @@
 (define_insn "*negsi2_extended2"
   [(set (match_operand:DI                     0 "register_operand" "=r")
 	(sign_extend:DI
-	 (subreg:SI (neg:DI (match_operand:DI 1 "register_operand" " r"))
-	 	    0)))]
+	 (match_operator:SI 2 "subreg_lowpart_operator"
+	   [(neg:DI (match_operand:DI 1 "register_operand" " r"))])))]
   "TARGET_64BIT"
   "negw\t%0,%1"
   [(set_attr "type" "arith")
@@ -622,9 +627,9 @@
 (define_insn "*mulsi3_extended2"
   [(set (match_operand:DI                       0 "register_operand" "=r")
 	(sign_extend:DI
-	  (subreg:SI (mult:DI (match_operand:DI 1 "register_operand" " r")
-			      (match_operand:DI 2 "register_operand" " r"))
-		     0)))]
+	  (match_operator:SI 3 "subreg_lowpart_operator"
+	    [(mult:DI (match_operand:DI 1 "register_operand" " r")
+		      (match_operand:DI 2 "register_operand" " r"))])))]
   "TARGET_MUL && TARGET_64BIT"
   "mulw\t%0,%1,%2"
   [(set_attr "type" "imul")
@@ -1538,7 +1543,8 @@
 		     LCT_NORMAL, VOIDmode, operands[0], Pmode,
 		     operands[1], Pmode, const0_rtx, Pmode);
 #else
-  emit_insn (gen_fence_i ());
+  if (TARGET_ZIFENCEI)
+    emit_insn (gen_fence_i ());
 #endif
   DONE;
 })
@@ -1550,7 +1556,7 @@
 
 (define_insn "fence_i"
   [(unspec_volatile [(const_int 0)] UNSPECV_FENCE_I)]
-  ""
+  "TARGET_ZIFENCEI"
   "fence.i")
 
 ;;
@@ -1585,10 +1591,10 @@
   [(set (match_operand:SI     0 "register_operand" "= r")
 	(any_shift:SI
 	    (match_operand:SI 1 "register_operand" "  r")
-	    (subreg:QI
-	     (and:SI
-	      (match_operand:SI 2 "register_operand"  "r")
-	      (match_operand 3 "const_int_operand")) 0)))]
+	    (match_operator 4 "subreg_lowpart_operator"
+	     [(and:SI
+	       (match_operand:SI 2 "register_operand"  "r")
+	       (match_operand 3 "const_int_operand"))])))]
   "(INTVAL (operands[3]) & (GET_MODE_BITSIZE (SImode)-1))
    == GET_MODE_BITSIZE (SImode)-1"
   "#"
@@ -1604,10 +1610,10 @@
   [(set (match_operand:SI     0 "register_operand" "= r")
 	(any_shift:SI
 	    (match_operand:SI 1 "register_operand" "  r")
-	    (subreg:QI
-	     (and:DI
-	      (match_operand:DI 2 "register_operand"  "r")
-	      (match_operand 3 "const_int_operand")) 0)))]
+	    (match_operator 4 "subreg_lowpart_operator"
+	     [(and:DI
+	       (match_operand:DI 2 "register_operand"  "r")
+	       (match_operand 3 "const_int_operand"))])))]
   "TARGET_64BIT
    && (INTVAL (operands[3]) & (GET_MODE_BITSIZE (SImode)-1))
        == GET_MODE_BITSIZE (SImode)-1"
@@ -1640,10 +1646,10 @@
   [(set (match_operand:DI     0 "register_operand" "= r")
 	(any_shift:DI
 	    (match_operand:DI 1 "register_operand" "  r")
-	    (subreg:QI
-	     (and:SI
-	      (match_operand:SI 2 "register_operand"  "r")
-	      (match_operand 3 "const_int_operand")) 0)))]
+	    (match_operator 4 "subreg_lowpart_operator"
+	     [(and:SI
+	       (match_operand:SI 2 "register_operand"  "r")
+	       (match_operand 3 "const_int_operand"))])))]
   "TARGET_64BIT
    && (INTVAL (operands[3]) & (GET_MODE_BITSIZE (DImode)-1))
        == GET_MODE_BITSIZE (DImode)-1"
@@ -1660,10 +1666,10 @@
   [(set (match_operand:DI     0 "register_operand" "= r")
 	(any_shift:DI
 	    (match_operand:DI 1 "register_operand" "  r")
-	    (subreg:QI
-	     (and:DI
-	      (match_operand:DI 2 "register_operand"  "r")
-	      (match_operand 3 "const_int_operand")) 0)))]
+	    (match_operator 4 "subreg_lowpart_operator"
+	     [(and:DI
+	       (match_operand:DI 2 "register_operand"  "r")
+	       (match_operand 3 "const_int_operand"))])))]
   "TARGET_64BIT
    && (INTVAL (operands[3]) & (GET_MODE_BITSIZE (DImode)-1))
        == GET_MODE_BITSIZE (DImode)-1"
@@ -1696,10 +1702,10 @@
 	(sign_extend:DI
 	    (any_shift:SI
 	     (match_operand:SI 1 "register_operand" "  r")
-	     (subreg:QI
-	      (and:SI
-	       (match_operand:SI 2 "register_operand" " r")
-	       (match_operand 3 "const_int_operand")) 0))))]
+	     (match_operator 4 "subreg_lowpart_operator"
+	      [(and:SI
+	        (match_operand:SI 2 "register_operand" " r")
+	        (match_operand 3 "const_int_operand"))]))))]
   "TARGET_64BIT
    && (INTVAL (operands[3]) & (GET_MODE_BITSIZE (SImode)-1))
        == GET_MODE_BITSIZE (SImode)-1"
@@ -1718,10 +1724,10 @@
 	(sign_extend:DI
 	    (any_shift:SI
 	     (match_operand:SI 1 "register_operand" "  r")
-	     (subreg:QI
-	      (and:DI
-	       (match_operand:DI 2 "register_operand" " r")
-	       (match_operand 3 "const_int_operand")) 0))))]
+	     (match_operator 4 "subreg_lowpart_operator"
+	      [(and:DI
+	        (match_operand:DI 2 "register_operand" " r")
+	        (match_operand 3 "const_int_operand"))]))))]
   "TARGET_64BIT
    && (INTVAL (operands[3]) & (GET_MODE_BITSIZE (SImode)-1))
        == GET_MODE_BITSIZE (SImode)-1"
@@ -1816,6 +1822,28 @@
 {
   operands[2] = GEN_INT (ctz_hwi (INTVAL (operands[2])));
 })
+
+;; Handle SImode to DImode zero-extend combined with a left shift.  This can
+;; occur when unsigned int is used for array indexing.  Split this into two
+;; shifts.  Otherwise we can get 3 shifts.
+
+(define_insn_and_split "zero_extendsidi2_shifted"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(and:DI (ashift:DI (match_operand:DI 1 "register_operand" "r")
+			   (match_operand:QI 2 "immediate_operand" "I"))
+		(match_operand 3 "immediate_operand" "")))
+   (clobber (match_scratch:DI 4 "=&r"))]
+  "TARGET_64BIT
+   && ((INTVAL (operands[3]) >> INTVAL (operands[2])) == 0xffffffff)"
+  "#"
+  "&& reload_completed"
+  [(set (match_dup 4)
+	(ashift:DI (match_dup 1) (const_int 32)))
+   (set (match_dup 0)
+	(lshiftrt:DI (match_dup 4) (match_dup 5)))]
+  "operands[5] = GEN_INT (32 - (INTVAL (operands [2])));"
+  [(set_attr "type" "shift")
+   (set_attr "mode" "DI")])
 
 ;;
 ;;  ....................
@@ -2492,6 +2520,89 @@
   emit_clobber (gen_rtx_MEM (BLKmode, hard_frame_pointer_rtx));
   DONE;
 })
+
+;; Named pattern for expanding thread pointer reference.
+(define_expand "get_thread_pointer<mode>"
+  [(set (match_operand:P 0 "register_operand" "=r")
+	(reg:P TP_REGNUM))]
+  ""
+{})
+
+;; Named patterns for stack smashing protection.
+
+(define_expand "stack_protect_set"
+  [(match_operand 0 "memory_operand")
+   (match_operand 1 "memory_operand")]
+  ""
+{
+  machine_mode mode = GET_MODE (operands[0]);
+  if (riscv_stack_protector_guard == SSP_TLS)
+  {
+    rtx reg = gen_rtx_REG (Pmode, riscv_stack_protector_guard_reg);
+    rtx offset = GEN_INT (riscv_stack_protector_guard_offset);
+    rtx addr = gen_rtx_PLUS (Pmode, reg, offset);
+    operands[1] = gen_rtx_MEM (Pmode, addr);
+  }
+
+  emit_insn ((mode == DImode
+	      ? gen_stack_protect_set_di
+	      : gen_stack_protect_set_si) (operands[0], operands[1]));
+  DONE;
+})
+
+;; DO NOT SPLIT THIS PATTERN.  It is important for security reasons that the
+;; canary value does not live beyond the life of this sequence.
+(define_insn "stack_protect_set_<mode>"
+  [(set (match_operand:GPR 0 "memory_operand" "=m")
+	(unspec:GPR [(match_operand:GPR 1 "memory_operand" "m")]
+	 UNSPEC_SSP_SET))
+   (set (match_scratch:GPR 2 "=&r") (const_int 0))]
+  ""
+  "<load>\\t%2, %1\;<store>\\t%2, %0\;li\t%2, 0"
+  [(set_attr "length" "12")])
+
+(define_expand "stack_protect_test"
+  [(match_operand 0 "memory_operand")
+   (match_operand 1 "memory_operand")
+   (match_operand 2)]
+  ""
+{
+  rtx result;
+  machine_mode mode = GET_MODE (operands[0]);
+
+  result = gen_reg_rtx(mode);
+  if (riscv_stack_protector_guard == SSP_TLS)
+  {
+      rtx reg = gen_rtx_REG (Pmode, riscv_stack_protector_guard_reg);
+      rtx offset = GEN_INT (riscv_stack_protector_guard_offset);
+      rtx addr = gen_rtx_PLUS (Pmode, reg, offset);
+      operands[1] = gen_rtx_MEM (Pmode, addr);
+  }
+  emit_insn ((mode == DImode
+		  ? gen_stack_protect_test_di
+		  : gen_stack_protect_test_si) (result,
+					        operands[0],
+					        operands[1]));
+
+  if (mode == DImode)
+    emit_jump_insn (gen_cbranchdi4 (gen_rtx_EQ (VOIDmode, result, const0_rtx),
+				    result, const0_rtx, operands[2]));
+  else
+    emit_jump_insn (gen_cbranchsi4 (gen_rtx_EQ (VOIDmode, result, const0_rtx),
+				    result, const0_rtx, operands[2]));
+
+  DONE;
+})
+
+(define_insn "stack_protect_test_<mode>"
+  [(set (match_operand:GPR 0 "register_operand" "=r")
+	(unspec:GPR [(match_operand:GPR 1 "memory_operand" "m")
+		     (match_operand:GPR 2 "memory_operand" "m")]
+	 UNSPEC_SSP_TEST))
+   (clobber (match_scratch:GPR 3 "=&r"))]
+  ""
+  "<load>\t%3, %1\;<load>\t%0, %2\;xor\t%0, %3, %0\;li\t%3, 0"
+  [(set_attr "length" "12")])
 
 (include "sync.md")
 (include "peephole.md")

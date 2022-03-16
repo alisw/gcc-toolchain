@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
---          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- This specification is derived from the Ada Reference Manual for use with --
 -- GNAT. The copyright notice above, and the license provisions that follow --
@@ -78,6 +78,7 @@ pragma Assertion_Policy (Pre => Ignore);
 with Ada.Strings.Maps;
 private with Ada.Finalization;
 private with System.Atomic_Counters;
+private with Ada.Strings.Text_Output;
 
 package Ada.Strings.Unbounded with
   Initial_Condition => Length (Null_Unbounded_String) = 0
@@ -708,10 +709,12 @@ private
    type Shared_String_Access is access all Shared_String;
 
    procedure Reference (Item : not null Shared_String_Access);
-   --  Increment reference counter
+   --  Increment reference counter.
+   --  Do nothing if Item points to Empty_Shared_String.
 
    procedure Unreference (Item : not null Shared_String_Access);
-   --  Decrement reference counter, deallocate Item when counter goes to zero
+   --  Decrement reference counter, deallocate Item when counter goes to zero.
+   --  Do nothing if Item points to Empty_Shared_String.
 
    function Can_Be_Reused
      (Item   : not null Shared_String_Access;
@@ -736,7 +739,10 @@ private
 
    type Unbounded_String is new AF.Controlled with record
       Reference : not null Shared_String_Access := Empty_Shared_String'Access;
-   end record;
+   end record with Put_Image => Put_Image;
+
+   procedure Put_Image
+     (S : in out Ada.Strings.Text_Output.Sink'Class; V : Unbounded_String);
 
    pragma Stream_Convert (Unbounded_String, To_Unbounded, To_String);
    --  Provide stream routines without dragging in Ada.Streams

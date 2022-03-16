@@ -1,5 +1,5 @@
 /* Simulation code for the MIPS MDMX ASE.
-   Copyright (C) 2002-2020 Free Software Foundation, Inc.
+   Copyright (C) 2002-2022 Free Software Foundation, Inc.
    Contributed by Ed Satterthwaite and Chris Demetriou, of Broadcom
    Corporation (SiByte).
 
@@ -17,6 +17,9 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+
+/* This must come before any other includes.  */
+#include "defs.h"
 
 #include <stdio.h>
 
@@ -772,7 +775,7 @@ AccAbsDiffOB(signed24 *a, unsigned8 ts, unsigned8 tt)
 /* Dispatch tables for operations that update a CPR.  */
 
 static const QH_ACC qh_acc[] = {
-  AccAddAQH, AccAddAQH, AccMulAQH, AccMulLQH,
+  AccAddAQH, AccAddLQH, AccMulAQH, AccMulLQH,
   SubMulAQH, SubMulLQH, AccSubAQH, AccSubLQH,
   NULL
 };

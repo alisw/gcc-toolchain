@@ -47,6 +47,7 @@ extern unsigned struct_timezone_sz;
 extern unsigned struct_tms_sz;
 extern unsigned struct_itimerspec_sz;
 extern unsigned struct_sigevent_sz;
+extern unsigned struct_stack_t_sz;
 extern unsigned struct_sched_param_sz;
 extern unsigned struct_statfs64_sz;
 extern unsigned struct_regex_sz;
@@ -98,9 +99,9 @@ const unsigned struct_kernel_stat64_sz = 144;
 const unsigned struct___old_kernel_stat_sz = 0;
 const unsigned struct_kernel_stat_sz = 64;
 const unsigned struct_kernel_stat64_sz = 104;
-#elif defined(__riscv) && __riscv_xlen == 64
+#elif SANITIZER_RISCV64
 const unsigned struct_kernel_stat_sz = 128;
-const unsigned struct_kernel_stat64_sz = 104;
+const unsigned struct_kernel_stat64_sz = 0;  // RISCV64 does not use stat64
 #endif
 struct __sanitizer_perf_event_attr {
   unsigned type;
@@ -703,6 +704,12 @@ struct __sanitizer_dl_phdr_info {
 extern unsigned struct_ElfW_Phdr_sz;
 #endif
 
+struct __sanitizer_protoent {
+  char *p_name;
+  char **p_aliases;
+  int p_proto;
+};
+
 struct __sanitizer_addrinfo {
   int ai_flags;
   int ai_family;
@@ -797,7 +804,7 @@ typedef void __sanitizer_FILE;
 #if SANITIZER_LINUX && !SANITIZER_ANDROID &&                               \
     (defined(__i386) || defined(__x86_64) || defined(__mips64) ||          \
      defined(__powerpc64__) || defined(__aarch64__) || defined(__arm__) || \
-     defined(__s390__))
+     defined(__s390__) || SANITIZER_RISCV64)
 extern unsigned struct_user_regs_struct_sz;
 extern unsigned struct_user_fpregs_struct_sz;
 extern unsigned struct_user_fpxregs_struct_sz;
@@ -974,7 +981,6 @@ extern unsigned struct_vt_mode_sz;
 
 #if SANITIZER_LINUX && !SANITIZER_ANDROID
 extern unsigned struct_ax25_parms_struct_sz;
-extern unsigned struct_cyclades_monitor_sz;
 extern unsigned struct_input_keymap_entry_sz;
 extern unsigned struct_ipx_config_data_sz;
 extern unsigned struct_kbdiacrs_sz;
@@ -1319,15 +1325,6 @@ extern unsigned IOCTL_VT_WAITACTIVE;
 #endif  // SANITIZER_LINUX
 
 #if SANITIZER_LINUX && !SANITIZER_ANDROID
-extern unsigned IOCTL_CYGETDEFTHRESH;
-extern unsigned IOCTL_CYGETDEFTIMEOUT;
-extern unsigned IOCTL_CYGETMON;
-extern unsigned IOCTL_CYGETTHRESH;
-extern unsigned IOCTL_CYGETTIMEOUT;
-extern unsigned IOCTL_CYSETDEFTHRESH;
-extern unsigned IOCTL_CYSETDEFTIMEOUT;
-extern unsigned IOCTL_CYSETTHRESH;
-extern unsigned IOCTL_CYSETTIMEOUT;
 extern unsigned IOCTL_EQL_EMANCIPATE;
 extern unsigned IOCTL_EQL_ENSLAVE;
 extern unsigned IOCTL_EQL_GETMASTRCFG;

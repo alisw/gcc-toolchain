@@ -7,7 +7,7 @@
 --                                  S p e c                                 --
 --                                                                          --
 --             Copyright (C) 1991-1994, Florida State University            --
---          Copyright (C) 1995-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 1995-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -46,10 +46,6 @@ with System.Multiprocessors;
 
 package System.OS_Interface is
    pragma Preelaborate;
-
-   pragma Linker_Options ("-mthreads");
-   --  Selects the POSIX 1.c runtime, rather than the non-threading runtime or
-   --  the deprecated legacy threads library.
 
    subtype int            is Interfaces.C.int;
    subtype short          is Interfaces.C.short;

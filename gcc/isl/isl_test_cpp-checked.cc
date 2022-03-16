@@ -39,6 +39,7 @@ static int size_val(isl::size s)
 	return s.is_error() ? -1 : unsigned(s);
 }
 
+#undef assert
 #define assert(exp) assert_impl(exp, __FILE__, __LINE__, #exp)
 #define IS_TRUE(b)	(b).is_true()
 #define SIZE_VAL(s)	size_val(s)
@@ -283,6 +284,7 @@ static void test_ast_build(isl::ctx ctx)
  *  - Different return types
  *  - Foreach functions
  *  - Every functions
+ *  - Spaces
  *  - Schedule trees
  *  - AST generation
  *  - AST expression generation
@@ -299,6 +301,7 @@ int main()
 	test_return(ctx);
 	test_foreach(ctx);
 	test_every(ctx);
+	test_space(ctx);
 	test_schedule_tree(ctx);
 	test_ast_build(ctx);
 	test_ast_build_expr(ctx);

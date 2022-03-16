@@ -1,6 +1,6 @@
 /* Memory attributes support, for GDB.
 
-   Copyright (C) 2001-2020 Free Software Foundation, Inc.
+   Copyright (C) 2001-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -625,11 +625,11 @@ Do \"info mem\" to see current list of IDs."), &deletelist);
 
   add_basic_prefix_cmd ("mem", class_vars, _("\
 Memory regions settings."),
-			&mem_set_cmdlist, "set mem ",
+			&mem_set_cmdlist,
 			0/* allow-unknown */, &setlist);
   add_show_prefix_cmd ("mem", class_vars, _("\
 Memory regions settings."),
-		       &mem_show_cmdlist, "show mem  ",
+		       &mem_show_cmdlist,
 		       0/* allow-unknown */, &showlist);
 
   add_setshow_boolean_cmd ("inaccessible-by-default", no_class,

@@ -1,6 +1,6 @@
 /* Test file for mpfr_get_flt and mpfr_set_flt
 
-Copyright 2009-2019 Free Software Foundation, Inc.
+Copyright 2009-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -23,6 +23,7 @@ https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 #include <float.h>     /* for FLT_MIN */
 
 #include "mpfr-test.h"
+#include "ieee_floats.h"
 
 /* return non-zero iff f == g, and if both are zero check the sign */
 static int
@@ -59,9 +60,7 @@ main (void)
   tests_start_mpfr ();
 
 #if !defined(MPFR_ERRDIVZERO)
-  /* The definition of DBL_POS_INF involves a division by 0. This makes
-     "clang -O2 -fsanitize=undefined -fno-sanitize-recover" fail. */
-  infp = (float) DBL_POS_INF;
+  infp = (float) MPFR_DBL_INFP;
   if (infp * 0.5 != infp)
     {
       fprintf (stderr, "Error, FLT_MAX + FLT_MAX does not yield INFP\n");
@@ -169,7 +168,7 @@ main (void)
           printf ("got      "); mpfr_dump (y);
           exit (1);
         }
-      mpfr_mul_2exp (x, x, 1, MPFR_RNDN);
+      mpfr_mul_2ui (x, x, 1, MPFR_RNDN);
     }
 
   mpfr_set_prec (x, 53);
@@ -187,7 +186,7 @@ main (void)
           printf ("got      "); mpfr_dump (y);
           exit (1);
         }
-      mpfr_mul_2exp (x, x, 1, MPFR_RNDN);
+      mpfr_mul_2ui (x, x, 1, MPFR_RNDN);
     }
 
   mpfr_set_prec (x, 53);
@@ -205,10 +204,10 @@ main (void)
           printf ("got      "); mpfr_dump (y);
           exit (1);
         }
-      mpfr_mul_2exp (x, x, 1, MPFR_RNDN);
+      mpfr_mul_2ui (x, x, 1, MPFR_RNDN);
     }
 
-#ifdef HAVE_DENORMS_FLT
+#ifdef HAVE_SUBNORM_FLT
   for (i = 0; i < 2; i++)
     {
       mpfr_set_si_2exp (x, 1, -150, MPFR_RNDN);
@@ -350,7 +349,7 @@ main (void)
           exit (1);
         }
     }
-#endif /* HAVE_DENORMS_FLT */
+#endif /* HAVE_SUBNORM_FLT */
 
   mpfr_set_si_2exp (x, 1, 128, MPFR_RNDN);
   g = FLT_MAX;

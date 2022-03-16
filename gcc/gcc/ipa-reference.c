@@ -1,5 +1,5 @@
 /* Callgraph based analysis of static variables.
-   Copyright (C) 2004-2020 Free Software Foundation, Inc.
+   Copyright (C) 2004-2021 Free Software Foundation, Inc.
    Contributed by Kenneth Zadeck <zadeck@naturalbridge.com>
 
 This file is part of GCC.
@@ -458,8 +458,8 @@ ipa_init (void)
 
   ipa_init_p = true;
 
-  vec_alloc (reference_vars_to_consider, 10);
-
+  if (dump_file)
+    vec_alloc (reference_vars_to_consider, 10);
 
   if (ipa_ref_opt_sum_summaries != NULL)
     {
@@ -894,7 +894,10 @@ propagate (void)
     }
 
   if (ipa_ref_opt_sum_summaries == NULL)
-    ipa_ref_opt_sum_summaries = new ipa_ref_opt_summary_t (symtab);
+    {
+      ipa_ref_opt_sum_summaries = new ipa_ref_opt_summary_t (symtab);
+      ipa_ref_opt_sum_summaries->disable_insertion_hook ();
+    }
 
   /* Cleanup. */
   FOR_EACH_DEFINED_FUNCTION (node)
@@ -964,8 +967,12 @@ propagate (void)
     }
 
   if (dump_file)
-    vec_free (reference_vars_to_consider);
-  reference_vars_to_consider = NULL;
+    {
+      vec_free (reference_vars_to_consider);
+      reference_vars_to_consider = NULL;
+    }
+  else
+    gcc_checking_assert (!reference_vars_to_consider);
   return remove_p ? TODO_remove_functions : 0;
 }
 
@@ -1039,7 +1046,7 @@ stream_out_bitmap (struct lto_simple_output_block *ob,
   EXECUTE_IF_AND_IN_BITMAP (bits, ltrans_statics, 0, index, bi)
     {
       tree decl = (*reference_vars_to_consider) [index];
-      lto_output_var_decl_index (ob->decl_state, ob->main_stream, decl);
+      lto_output_var_decl_ref (ob->decl_state, ob->main_stream, decl);
     }
 }
 
@@ -1056,8 +1063,9 @@ ipa_reference_write_optimization_summary (void)
   auto_bitmap ltrans_statics;
   int i;
 
+  gcc_checking_assert (!reference_vars_to_consider);
   vec_alloc (reference_vars_to_consider, ipa_reference_vars_uids);
-  reference_vars_to_consider->safe_grow (ipa_reference_vars_uids);
+  reference_vars_to_consider->safe_grow (ipa_reference_vars_uids, true);
 
   /* See what variables we are interested in.  */
   for (i = 0; i < lto_symtab_encoder_size (encoder); i++)
@@ -1114,7 +1122,8 @@ ipa_reference_write_optimization_summary (void)
 	  }
       }
   lto_destroy_simple_output_block (ob);
-  delete reference_vars_to_consider;
+  vec_free (reference_vars_to_consider);
+  reference_vars_to_consider = NULL;
 }
 
 /* Deserialize the ipa info for lto.  */
@@ -1130,6 +1139,7 @@ ipa_reference_read_optimization_summary (void)
 
   gcc_checking_assert (ipa_ref_opt_sum_summaries == NULL);
   ipa_ref_opt_sum_summaries = new ipa_ref_opt_summary_t (symtab);
+  ipa_ref_opt_sum_summaries->disable_insertion_hook ();
   ipa_reference_vars_map = new reference_vars_map_t(257);
   varpool_node_hooks
 	 = symtab->add_varpool_removal_hook (varpool_removal_hook, NULL);
@@ -1158,9 +1168,7 @@ ipa_reference_read_optimization_summary (void)
 	    fprintf (dump_file, "all module statics:");
 	  for (i = 0; i < (unsigned int)b_count; i++)
 	    {
-	      unsigned int var_index = streamer_read_uhwi (ib);
-	      tree v_decl = lto_file_decl_data_get_var_decl (file_data,
-							     var_index);
+	      tree v_decl = lto_input_var_decl_ref (ib, file_data);
 	      bool existed;
 	      bitmap_set_bit (all_module_statics,
 			      ipa_reference_var_get_or_insert_uid
@@ -1206,9 +1214,7 @@ ipa_reference_read_optimization_summary (void)
 		    (&optimization_summary_obstack);
 		  for (j = 0; j < (unsigned int)v_count; j++)
 		    {
-		      unsigned int var_index = streamer_read_uhwi (ib);
-		      tree v_decl = lto_file_decl_data_get_var_decl (file_data,
-								     var_index);
+		      tree v_decl = lto_input_var_decl_ref (ib, file_data);
 		      bitmap_set_bit (info->statics_read,
 				      ipa_reference_var_uid (v_decl));
 		      if (dump_file)
@@ -1235,9 +1241,7 @@ ipa_reference_read_optimization_summary (void)
 		    (&optimization_summary_obstack);
 		  for (j = 0; j < (unsigned int)v_count; j++)
 		    {
-		      unsigned int var_index = streamer_read_uhwi (ib);
-		      tree v_decl = lto_file_decl_data_get_var_decl (file_data,
-								     var_index);
+		      tree v_decl = lto_input_var_decl_ref (ib, file_data);
 		      bitmap_set_bit (info->statics_written,
 				      ipa_reference_var_uid (v_decl));
 		      if (dump_file)

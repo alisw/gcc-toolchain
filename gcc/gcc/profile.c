@@ -1,5 +1,5 @@
 /* Calculate branch probabilities, and basic block execution counts.
-   Copyright (C) 1990-2020 Free Software Foundation, Inc.
+   Copyright (C) 1990-2021 Free Software Foundation, Inc.
    Contributed by James E. Wilson, UC Berkeley/Cygnus Support;
    based on some ideas from Dain Samples of UC Berkeley.
    Further mangling by Bob Manson, Cygnus Support.
@@ -412,7 +412,7 @@ compute_branch_probabilities (unsigned cfg_checksum, unsigned lineno_checksum)
       return;
     }
 
-  bb_gcov_counts.safe_grow_cleared (last_basic_block_for_fn (cfun));
+  bb_gcov_counts.safe_grow_cleared (last_basic_block_for_fn (cfun), true);
   edge_gcov_counts = new hash_map<edge,gcov_type>;
 
   /* Attach extra info block to each bb.  */
@@ -765,26 +765,22 @@ compute_branch_probabilities (unsigned cfg_checksum, unsigned lineno_checksum)
 static void
 sort_hist_values (histogram_value hist)
 {
-  /* counters[2] equal to -1 means that all counters are invalidated.  */
-  if (hist->hvalue.counters[2] == -1)
-    return;
-
   gcc_assert (hist->type == HIST_TYPE_TOPN_VALUES
 	      || hist->type == HIST_TYPE_INDIR_CALL);
 
-  gcc_assert (hist->n_counters == GCOV_TOPN_VALUES_COUNTERS);
-
+  int counters = hist->hvalue.counters[1];
+  for (int i = 0; i < counters - 1; i++)
   /* Hist value is organized as:
-     [total_executions, value1, counter1, ..., value4, counter4]
+     [total_executions, N, value1, counter1, ..., valueN, counterN]
      Use decrease bubble sort to rearrange it.  The sort starts from <value1,
      counter1> and compares counter first.  If counter is same, compares the
      value, exchange it if small to keep stable.  */
-  for (unsigned i = 0; i < GCOV_TOPN_VALUES - 1; i++)
+
     {
       bool swapped = false;
-      for (unsigned j = 0; j < GCOV_TOPN_VALUES - 1 - i; j++)
+      for (int j = 0; j < counters - 1 - i; j++)
 	{
-	  gcov_type *p = &hist->hvalue.counters[2 * j + 1];
+	  gcov_type *p = &hist->hvalue.counters[2 * j + 2];
 	  if (p[1] < p[3] || (p[1] == p[3] && p[0] < p[2]))
 	    {
 	      std::swap (p[0], p[2]);
@@ -847,30 +843,42 @@ compute_value_histograms (histogram_values values, unsigned cfg_checksum,
       gimple *stmt = hist->hvalue.stmt;
 
       t = (int) hist->type;
+      bool topn_p = (hist->type == HIST_TYPE_TOPN_VALUES
+		     || hist->type == HIST_TYPE_INDIR_CALL);
 
-      aact_count = act_count[t];
-
-      if (act_count[t])
-        act_count[t] += hist->n_counters;
-
-      gimple_add_histogram_value (cfun, stmt, hist);
-      hist->hvalue.counters =  XNEWVEC (gcov_type, hist->n_counters);
-      for (j = 0; j < hist->n_counters; j++)
-        if (aact_count)
-          hist->hvalue.counters[j] = aact_count[j];
-        else
-          hist->hvalue.counters[j] = 0;
-
-      if (hist->type == HIST_TYPE_TOPN_VALUES
-	  || hist->type == HIST_TYPE_INDIR_CALL)
+      /* TOP N counter uses variable number of counters.  */
+      if (topn_p)
 	{
-	  /* Each count value is multiplied by GCOV_TOPN_VALUES.  */
-	  if (hist->hvalue.counters[2] != -1)
-	    for (unsigned i = 0; i < GCOV_TOPN_VALUES; i++)
-	      hist->hvalue.counters[2 * i + 2]
-		= RDIV (hist->hvalue.counters[2 * i + 2], GCOV_TOPN_VALUES);
-
+	  unsigned total_size;
+	  if (act_count[t])
+	    total_size = 2 + 2 * act_count[t][1];
+	  else
+	    total_size = 2;
+	  gimple_add_histogram_value (cfun, stmt, hist);
+	  hist->n_counters = total_size;
+	  hist->hvalue.counters = XNEWVEC (gcov_type, hist->n_counters);
+	  for (j = 0; j < hist->n_counters; j++)
+	    if (act_count[t])
+	      hist->hvalue.counters[j] = act_count[t][j];
+	    else
+	      hist->hvalue.counters[j] = 0;
+	  act_count[t] += hist->n_counters;
 	  sort_hist_values (hist);
+	}
+      else
+	{
+	  aact_count = act_count[t];
+
+	  if (act_count[t])
+	    act_count[t] += hist->n_counters;
+
+	  gimple_add_histogram_value (cfun, stmt, hist);
+	  hist->hvalue.counters = XNEWVEC (gcov_type, hist->n_counters);
+	  for (j = 0; j < hist->n_counters; j++)
+	    if (aact_count)
+	      hist->hvalue.counters[j] = aact_count[j];
+	    else
+	      hist->hvalue.counters[j] = 0;
 	}
 
       /* Time profiler counter is not related to any statement,
@@ -889,8 +897,16 @@ compute_value_histograms (histogram_values values, unsigned cfg_checksum,
 	      node->tp_first_run = 0;
 	    }
 
-          if (dump_file)
-            fprintf (dump_file, "Read tp_first_run: %d\n", node->tp_first_run);
+	  /* Drop profile for -fprofile-reproducible=multithreaded.  */
+	  bool drop
+	    = (flag_profile_reproducible == PROFILE_REPRODUCIBILITY_MULTITHREADED);
+	  if (drop)
+	    node->tp_first_run = 0;
+
+	  if (dump_file)
+	    fprintf (dump_file, "Read tp_first_run: %d%s\n", node->tp_first_run,
+		     drop ? "; ignored because profile reproducibility is "
+		     "multi-threaded" : "");
         }
     }
 
@@ -1286,6 +1302,11 @@ branch_prob (bool thunk)
   if (dump_file)
     fprintf (dump_file, "%d instrumentation edges\n", num_instrumented);
 
+  /* Dump function body before it's instrumented.
+     It helps to debug gcov tool.  */
+  if (dump_file && (dump_flags & TDF_DETAILS))
+    dump_function_to_file (cfun->decl, dump_file, dump_flags);
+
   /* Compute two different checksums. Note that we want to compute
      the checksum in only once place, since it depends on the shape
      of the control flow which can change during 
@@ -1367,7 +1388,7 @@ branch_prob (bool thunk)
 	      seen_locations.add (loc);
 	      expanded_location curr_location = expand_location (loc);
 	      output_location (&streamed_locations, curr_location.file,
-			       curr_location.line, &offset, bb);
+			       MAX (1, curr_location.line), &offset, bb);
 	    }
 
 	  for (gsi = gsi_start_bb (bb); !gsi_end_p (gsi); gsi_next (&gsi))
@@ -1378,7 +1399,7 @@ branch_prob (bool thunk)
 		{
 		  seen_locations.add (loc);
 		  output_location (&streamed_locations, gimple_filename (stmt),
-				   gimple_lineno (stmt), &offset, bb);
+				   MAX (1, gimple_lineno (stmt)), &offset, bb);
 		}
 	    }
 
@@ -1393,7 +1414,7 @@ branch_prob (bool thunk)
 	    {
 	      expanded_location curr_location = expand_location (loc);
 	      output_location (&streamed_locations, curr_location.file,
-			       curr_location.line, &offset, bb);
+			       MAX (1, curr_location.line), &offset, bb);
 	    }
 
 	  if (offset)

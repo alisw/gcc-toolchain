@@ -17,9 +17,8 @@
  
     */
 
-
-
 #include <getopt.h>
+#include <stdlib.h>
 
 #include "misc.h"
 #include "lf.h"
@@ -183,7 +182,7 @@ gen_semantics_h(insn_table *table,
   lf_printf(file, "\n");
   if ((code & generate_calls)) {
     lf_printf(file, "extern int option_mpc860c0;\n");
-    lf_printf(file, "#define PAGE_SIZE 0x1000\n");
+    lf_printf(file, "#define MPC860C0_PAGE_SIZE 0x1000\n");
     lf_printf(file, "\n");
     lf_printf(file, "PSIM_EXTERN_SEMANTICS(void)\n");
     lf_printf(file, "semantic_init(device* root);\n");
@@ -219,6 +218,7 @@ gen_semantics_c(insn_table *table,
     lf_printf(file, "#include \"cpu.h\"\n");
     lf_printf(file, "#include \"idecode.h\"\n");
     lf_printf(file, "#include \"semantics.h\"\n");
+    lf_printf(file, "#include \"tree.h\"\n");
     lf_printf(file, "#ifdef HAVE_COMMON_FPU\n");
     lf_printf(file, "#include \"sim-inline.h\"\n");
     lf_printf(file, "#include \"sim-fpu.h\"\n");

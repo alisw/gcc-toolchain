@@ -1,6 +1,6 @@
 /* Instruction scheduling pass.  This file computes dependencies between
    instructions.
-   Copyright (C) 1992-2020 Free Software Foundation, Inc.
+   Copyright (C) 1992-2021 Free Software Foundation, Inc.
    Contributed by Michael Tiemann (tiemann@cygnus.com) Enhanced by,
    and currently maintained by, Jim Wilson (wilson@cygnus.com)
 
@@ -4072,7 +4072,7 @@ init_deps_data_vector (void)
 {
   int reserve = (sched_max_luid + 1 - h_d_i_d.length ());
   if (reserve > 0 && ! h_d_i_d.space (reserve))
-    h_d_i_d.safe_grow_cleared (3 * sched_max_luid / 2);
+    h_d_i_d.safe_grow_cleared (3 * sched_max_luid / 2, true);
 }
 
 /* If it is profitable to use them, initialize or extend (depending on
@@ -4693,6 +4693,9 @@ attempt_change (struct mem_inc_info *mii, rtx new_addr)
 {
   rtx mem = *mii->mem_loc;
   rtx new_mem;
+
+  if (!targetm.new_address_profitable_p (mem, mii->mem_insn, new_addr))
+    return NULL_RTX;
 
   /* Jump through a lot of hoops to keep the attributes up to date.  We
      do not want to call one of the change address variants that take

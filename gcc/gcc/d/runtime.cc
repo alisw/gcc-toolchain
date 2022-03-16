@@ -1,5 +1,5 @@
 /* runtime.cc -- D runtime functions called by generated code.
-   Copyright (C) 2006-2020 Free Software Foundation, Inc.
+   Copyright (C) 2006-2021 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -219,7 +219,7 @@ build_libcall_decl (const char *name, d_libcall_type return_type,
   bool varargs = false;
   tree fntype;
 
-  /* Add parameter types, using 'void' as the last parameter type
+  /* Add parameter types, using `void' as the last parameter type
      to mean this function accepts a variable list of arguments.  */
   va_list ap;
   va_start (ap, nparams);

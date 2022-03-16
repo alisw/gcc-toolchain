@@ -1,5 +1,5 @@
 /* Definitions of target machine for GNU compiler, Synopsys DesignWare ARC cpu.
-   Copyright (C) 1994-2020 Free Software Foundation, Inc.
+   Copyright (C) 1994-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -34,7 +34,7 @@ along with GCC; see the file COPYING3.  If not see
 #define SYMBOL_FLAG_CMEM	(SYMBOL_FLAG_MACH_DEP << 3)
 
 #ifndef TARGET_CPU_DEFAULT
-#define TARGET_CPU_DEFAULT	PROCESSOR_arc700
+#define TARGET_CPU_DEFAULT	PROCESSOR_hs38_linux
 #endif
 
 /* Check if this symbol has a long_call attribute in its declaration */
@@ -588,7 +588,7 @@ extern enum reg_class arc_regno_reg_class[];
    || ((REGNO) == ARG_POINTER_REGNUM)					\
    || ((REGNO) == FRAME_POINTER_REGNUM)					\
    || ((REGNO) == PCL_REG)						\
-   || ((unsigned) reg_renumber[REGNO] < 29)				\
+   || (reg_renumber && ((unsigned) reg_renumber[REGNO] < 29))		\
    || ((unsigned) (REGNO) == (unsigned) arc_tp_regno)			\
    || (fixed_regs[REGNO] == 0 && IN_RANGE (REGNO, 32, 59))		\
    || (fixed_regs[REGNO] == 0 && (REGNO) == R30_REG))

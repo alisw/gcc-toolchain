@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -33,7 +33,6 @@ with Osint;    use Osint;
 with Osint.B;  use Osint.B;
 with Output;   use Output;
 with Rident;   use Rident;
-with Stringt;  use Stringt;
 with Table;
 with Targparm; use Targparm;
 with Types;    use Types;
@@ -197,6 +196,7 @@ package body Bindgen is
    --     Main_CPU                      : Integer;
    --     Default_Sized_SS_Pool         : System.Address;
    --     Binder_Sec_Stacks_Count       : Natural;
+   --     XDR_Stream                    : Integer;
 
    --  Main_Priority is the priority value set by pragma Priority in the main
    --  program. If no such pragma is present, the value is -1.
@@ -294,6 +294,9 @@ package body Bindgen is
 
    --  Binder_Sec_Stacks_Count is the number of generated secondary stacks in
    --  the Default_Sized_SS_Pool.
+
+   --  XDR_Stream indicates whether streaming should be performed using the
+   --  XDR protocol. A value of one indicates that XDR streaming is enabled.
 
    procedure WBI (Info : String) renames Osint.B.Write_Binder_Info;
    --  Convenient shorthand used throughout
@@ -457,7 +460,7 @@ package body Bindgen is
 
       if not Bind_For_Library and not CodePeer_Mode then
          WBI ("      procedure s_stalib_adafinal;");
-         Set_String ("      pragma Import (C, s_stalib_adafinal, ");
+         Set_String ("      pragma Import (Ada, s_stalib_adafinal, ");
          Set_String ("""system__standard_library__adafinal"");");
          Write_Statement_Buffer;
       end if;
@@ -758,12 +761,20 @@ package body Bindgen is
                  """__gnat_default_ss_size"");");
          end if;
 
-         WBI ("      Leap_Seconds_Support : Integer;");
-         WBI ("      pragma Import (C, Leap_Seconds_Support, " &
-              """__gl_leap_seconds_support"");");
+         if Leap_Seconds_Support then
+            WBI ("      Leap_Seconds_Support : Integer;");
+            WBI ("      pragma Import (C, Leap_Seconds_Support, " &
+                 """__gl_leap_seconds_support"");");
+         end if;
+
          WBI ("      Bind_Env_Addr : System.Address;");
          WBI ("      pragma Import (C, Bind_Env_Addr, " &
               """__gl_bind_env_addr"");");
+
+         if XDR_Stream then
+            WBI ("      XDR_Stream : Integer;");
+            WBI ("      pragma Import (C, XDR_Stream, ""__gl_xdr_stream"");");
+         end if;
 
          --  Import entry point for elaboration time signal handler
          --  installation, and indication of if it's been called previously.
@@ -978,16 +989,13 @@ package body Bindgen is
          Set_String (";");
          Write_Statement_Buffer;
 
-         Set_String ("      Leap_Seconds_Support := ");
-
          if Leap_Seconds_Support then
-            Set_Int (1);
-         else
-            Set_Int (0);
+            WBI ("      Leap_Seconds_Support := 1;");
          end if;
 
-         Set_String (";");
-         Write_Statement_Buffer;
+         if XDR_Stream then
+            WBI ("      XDR_Stream := 1;");
+         end if;
 
          if Bind_Env_String_Built then
             WBI ("      Bind_Env_Addr := Bind_Env'Address;");
@@ -1152,19 +1160,18 @@ package body Bindgen is
       procedure Write_Name_With_Len (Nam : Name_Id) is
       begin
          Get_Name_String (Nam);
-
-         Start_String;
-         Store_String_Char (Character'Val (Name_Len));
-         Store_String_Chars (Name_Buffer (1 .. Name_Len));
-
-         Write_String_Table_Entry (End_String);
+         Write_Str ("Character'Val (");
+         Write_Int (Int (Name_Len));
+         Write_Str (") & """);
+         Write_Str (Name_Buffer (1 .. Name_Len));
+         Write_Char ('"');
       end Write_Name_With_Len;
 
       --  Local variables
 
-      Amp : Character;
-      KN  : Name_Id := No_Name;
-      VN  : Name_Id := No_Name;
+      First : Boolean := True;
+      KN    : Name_Id := No_Name;
+      VN    : Name_Id := No_Name;
 
    --  Start of processing for Gen_Bind_Env_String
 
@@ -1178,21 +1185,26 @@ package body Bindgen is
       Set_Special_Output (Write_Bind_Line'Access);
 
       WBI ("   Bind_Env : aliased constant String :=");
-      Amp := ' ';
+
       while VN /= No_Name loop
-         Write_Str ("     " & Amp & ' ');
+         if First then
+            Write_Str ("     ");
+         else
+            Write_Str ("     & ");
+         end if;
+
          Write_Name_With_Len (KN);
          Write_Str (" & ");
          Write_Name_With_Len (VN);
          Write_Eol;
 
          Bind_Environment.Get_Next (KN, VN);
-         Amp := '&';
+         First := False;
       end loop;
+
       WBI ("     & ASCII.NUL;");
 
       Cancel_Special_Output;
-
       Bind_Env_String_Built := True;
    end Gen_Bind_Env_String;
 

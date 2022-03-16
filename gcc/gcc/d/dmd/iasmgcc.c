@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (C) 2018-2019 by The D Language Foundation, All Rights Reserved
+ * Copyright (C) 2018-2021 by The D Language Foundation, All Rights Reserved
  * written by Iain Buclaw
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -12,13 +12,11 @@
  */
 
 #include "scope.h"
+#include "expression.h"
 #include "declaration.h"
 #include "errors.h"
 #include "parse.h"
 #include "statement.h"
-
-Expression *semantic(Expression *e, Scope *sc);
-Statement *semantic(Statement *s, Scope *sc);
 
 /***********************************
  * Parse list of extended asm input or output operands.
@@ -321,7 +319,7 @@ Statement *gccAsmSemantic(GccAsmStatement *s, Scope *sc)
     s->stc = sc->stc;
 
     // Fold the instruction template string.
-    s->insn = semantic(s->insn, sc);
+    s->insn = expressionSemantic(s->insn, sc);
     s->insn = s->insn->ctfeInterpret();
 
     if (s->insn->op != TOKstring || ((StringExp *) s->insn)->sz != 1)
@@ -333,10 +331,10 @@ Statement *gccAsmSemantic(GccAsmStatement *s, Scope *sc)
     // Analyse all input and output operands.
     if (s->args)
     {
-        for (size_t i = 0; i < s->args->dim; i++)
+        for (size_t i = 0; i < s->args->length; i++)
         {
             Expression *e = (*s->args)[i];
-            e = semantic(e, sc);
+            e = expressionSemantic(e, sc);
             // Check argument is a valid lvalue/rvalue.
             if (i < s->outputargs)
                 e = e->modifiableLvalue(sc, NULL);
@@ -345,7 +343,7 @@ Statement *gccAsmSemantic(GccAsmStatement *s, Scope *sc)
             (*s->args)[i] = e;
 
             e = (*s->constraints)[i];
-            e = semantic(e, sc);
+            e = expressionSemantic(e, sc);
             assert(e->op == TOKstring && ((StringExp *) e)->sz == 1);
             (*s->constraints)[i] = e;
         }
@@ -354,10 +352,10 @@ Statement *gccAsmSemantic(GccAsmStatement *s, Scope *sc)
     // Analyse all clobbers.
     if (s->clobbers)
     {
-        for (size_t i = 0; i < s->clobbers->dim; i++)
+        for (size_t i = 0; i < s->clobbers->length; i++)
         {
             Expression *e = (*s->clobbers)[i];
-            e = semantic(e, sc);
+            e = expressionSemantic(e, sc);
             assert(e->op == TOKstring && ((StringExp *) e)->sz == 1);
             (*s->clobbers)[i] = e;
         }
@@ -366,14 +364,14 @@ Statement *gccAsmSemantic(GccAsmStatement *s, Scope *sc)
     // Analyse all goto labels.
     if (s->labels)
     {
-        for (size_t i = 0; i < s->labels->dim; i++)
+        for (size_t i = 0; i < s->labels->length; i++)
         {
             Identifier *ident = (*s->labels)[i];
             GotoStatement *gs = new GotoStatement(s->loc, ident);
             if (!s->gotos)
                 s->gotos = new GotoStatements();
             s->gotos->push(gs);
-            semantic(gs, sc);
+            statementSemantic(gs, sc);
         }
     }
 

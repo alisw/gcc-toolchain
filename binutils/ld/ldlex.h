@@ -1,5 +1,5 @@
 /* ldlex.h -
-   Copyright (C) 1991-2020 Free Software Foundation, Inc.
+   Copyright (C) 1991-2022 Free Software Foundation, Inc.
 
    This file is part of the GNU Binutils.
 
@@ -54,6 +54,7 @@ enum option_values
   OPTION_OFORMAT,
   OPTION_RELAX,
   OPTION_NO_RELAX,
+  OPTION_NO_SYMBOLIC,
   OPTION_RETAIN_SYMBOLS_FILE,
   OPTION_RPATH,
   OPTION_RPATH_LINK,
@@ -116,6 +117,9 @@ enum option_values
   OPTION_ALLOW_SHLIB_UNDEFINED,
   OPTION_NO_ALLOW_SHLIB_UNDEFINED,
   OPTION_ALLOW_MULTIPLE_DEFINITION,
+#if SUPPORT_ERROR_HANDLING_SCRIPT
+  OPTION_ERROR_HANDLING_SCRIPT,
+#endif
   OPTION_NO_UNDEFINED_VERSION,
   OPTION_DEFAULT_SYMVER,
   OPTION_DEFAULT_IMPORTED_SYMVER,
@@ -129,12 +133,14 @@ enum option_values
   OPTION_ACCEPT_UNKNOWN_INPUT_ARCH,
   OPTION_NO_ACCEPT_UNKNOWN_INPUT_ARCH,
   OPTION_PIE,
+  OPTION_NO_PIE,
   OPTION_UNRESOLVED_SYMBOLS,
   OPTION_WARN_UNRESOLVED_SYMBOLS,
   OPTION_ERROR_UNRESOLVED_SYMBOLS,
   OPTION_WARN_TEXTREL,
   OPTION_WARN_ALTERNATE_EM,
   OPTION_REDUCE_MEMORY_OVERHEADS,
+  OPTION_MAX_CACHE_SIZE,
 #if BFD_SUPPORTS_PLUGINS
   OPTION_PLUGIN,
   OPTION_PLUGIN_OPT,
@@ -155,6 +161,9 @@ enum option_values
   OPTION_NON_CONTIGUOUS_REGIONS,
   OPTION_NON_CONTIGUOUS_REGIONS_WARNINGS,
   OPTION_DEPENDENCY_FILE,
+  OPTION_CTF_VARIABLES,
+  OPTION_NO_CTF_VARIABLES,
+  OPTION_CTF_SHARE_TYPES,
 };
 
 /* The initial parser states.  */
@@ -181,10 +190,10 @@ extern void ldlex_inputlist (void);
 extern void ldlex_mri_script (void);
 extern void ldlex_version_script (void);
 extern void ldlex_version_file (void);
-extern void ldlex_defsym (void);
 extern void ldlex_expression (void);
-extern void ldlex_both (void);
+extern void ldlex_wild (void);
 extern void ldlex_popstate (void);
+extern void ldlex_backup (void);
 extern const char* ldlex_filename (void);
 
 /* In lexsup.c.  */

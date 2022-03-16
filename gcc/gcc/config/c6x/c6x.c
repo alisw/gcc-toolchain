@@ -1,5 +1,5 @@
 /* Target Code for TI C6X
-   Copyright (C) 2010-2020 Free Software Foundation, Inc.
+   Copyright (C) 2010-2021 Free Software Foundation, Inc.
    Contributed by Andrew Jenner <andrew@codesourcery.com>
    Contributed by Bernd Schmidt <bernds@codesourcery.com>
 
@@ -725,9 +725,10 @@ c6x_initialize_trampoline (rtx tramp, tree fndecl, rtx cxt)
     }
 #ifdef CLEAR_INSN_CACHE
   tramp = XEXP (tramp, 0);
-  emit_library_call (gen_rtx_SYMBOL_REF (Pmode, "__gnu_clear_cache"),
-		     LCT_NORMAL, VOIDmode, tramp, Pmode,
-		     plus_constant (Pmode, tramp, TRAMPOLINE_SIZE), Pmode);
+  maybe_emit_call_builtin___clear_cache (tramp,
+					 plus_constant (Pmode,
+							tramp,
+							TRAMPOLINE_SIZE));
 #endif
 }
 
@@ -3698,7 +3699,7 @@ insn_set_clock (rtx insn, int cycle)
   unsigned uid = INSN_UID (insn);
 
   if (uid >= INSN_INFO_LENGTH)
-    insn_info.safe_grow (uid * 5 / 4 + 10);
+    insn_info.safe_grow (uid * 5 / 4 + 10, true);
 
   INSN_INFO_ENTRY (uid).clock = cycle;
   INSN_INFO_ENTRY (uid).new_cond = NULL;
@@ -5600,7 +5601,8 @@ hwloop_optimize (hwloop_info loop)
       int j;
       rtx_insn *this_iter;
 
-      this_iter = duplicate_insn_chain (head_insn, tail_insn);
+      copy_bb_data id;
+      this_iter = duplicate_insn_chain (head_insn, tail_insn, NULL, &id);
       j = 0;
       while (this_iter)
 	{

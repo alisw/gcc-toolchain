@@ -1,6 +1,6 @@
 This is gdb.info, produced by makeinfo version 6.7 from gdb.texinfo.
 
-Copyright (C) 1988-2020 Free Software Foundation, Inc.
+Copyright (C) 1988-2022 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -21,9 +21,9 @@ END-INFO-DIR-ENTRY
    This file documents the GNU debugger GDB.
 
    This is the Tenth Edition, of 'Debugging with GDB: the GNU
-Source-Level Debugger' for GDB (GDB) Version 10.1.
+Source-Level Debugger' for GDB (GDB) Version 11.2.
 
-   Copyright (C) 1988-2020 Free Software Foundation, Inc.
+   Copyright (C) 1988-2022 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -37,9 +37,660 @@ this GNU Manual.  Buying copies from GNU Press supports the FSF in
 developing GNU and promoting software freedom."
 
 
+File: gdb.info,  Node: Finish Breakpoints in Python,  Next: Lazy Strings In Python,  Prev: Breakpoints In Python,  Up: Python API
+
+23.3.2.31 Finish Breakpoints
+............................
+
+A finish breakpoint is a temporary breakpoint set at the return address
+of a frame, based on the 'finish' command.  'gdb.FinishBreakpoint'
+extends 'gdb.Breakpoint'.  The underlying breakpoint will be disabled
+and deleted when the execution will run out of the breakpoint scope
+(i.e. 'Breakpoint.stop' or 'FinishBreakpoint.out_of_scope' triggered).
+Finish breakpoints are thread specific and must be create with the right
+thread selected.
+
+ -- Function: FinishBreakpoint.__init__ ([frame] [, internal])
+     Create a finish breakpoint at the return address of the 'gdb.Frame'
+     object FRAME.  If FRAME is not provided, this defaults to the
+     newest frame.  The optional INTERNAL argument allows the breakpoint
+     to become invisible to the user.  *Note Breakpoints In Python::,
+     for further details about this argument.
+
+ -- Function: FinishBreakpoint.out_of_scope (self)
+     In some circumstances (e.g. 'longjmp', C++ exceptions, GDB 'return'
+     command, ...), a function may not properly terminate, and thus
+     never hit the finish breakpoint.  When GDB notices such a
+     situation, the 'out_of_scope' callback will be triggered.
+
+     You may want to sub-class 'gdb.FinishBreakpoint' and override this
+     method:
+
+          class MyFinishBreakpoint (gdb.FinishBreakpoint)
+              def stop (self):
+                  print ("normal finish")
+                  return True
+
+              def out_of_scope ():
+                  print ("abnormal finish")
+
+ -- Variable: FinishBreakpoint.return_value
+     When GDB is stopped at a finish breakpoint and the frame used to
+     build the 'gdb.FinishBreakpoint' object had debug symbols, this
+     attribute will contain a 'gdb.Value' object corresponding to the
+     return value of the function.  The value will be 'None' if the
+     function return type is 'void' or if the return value was not
+     computable.  This attribute is not writable.
+
+
+File: gdb.info,  Node: Lazy Strings In Python,  Next: Architectures In Python,  Prev: Finish Breakpoints in Python,  Up: Python API
+
+23.3.2.32 Python representation of lazy strings
+...............................................
+
+A "lazy string" is a string whose contents is not retrieved or encoded
+until it is needed.
+
+   A 'gdb.LazyString' is represented in GDB as an 'address' that points
+to a region of memory, an 'encoding' that will be used to encode that
+region of memory, and a 'length' to delimit the region of memory that
+represents the string.  The difference between a 'gdb.LazyString' and a
+string wrapped within a 'gdb.Value' is that a 'gdb.LazyString' will be
+treated differently by GDB when printing.  A 'gdb.LazyString' is
+retrieved and encoded during printing, while a 'gdb.Value' wrapping a
+string is immediately retrieved and encoded on creation.
+
+   A 'gdb.LazyString' object has the following functions:
+
+ -- Function: LazyString.value ()
+     Convert the 'gdb.LazyString' to a 'gdb.Value'.  This value will
+     point to the string in memory, but will lose all the delayed
+     retrieval, encoding and handling that GDB applies to a
+     'gdb.LazyString'.
+
+ -- Variable: LazyString.address
+     This attribute holds the address of the string.  This attribute is
+     not writable.
+
+ -- Variable: LazyString.length
+     This attribute holds the length of the string in characters.  If
+     the length is -1, then the string will be fetched and encoded up to
+     the first null of appropriate width.  This attribute is not
+     writable.
+
+ -- Variable: LazyString.encoding
+     This attribute holds the encoding that will be applied to the
+     string when the string is printed by GDB.  If the encoding is not
+     set, or contains an empty string, then GDB will select the most
+     appropriate encoding when the string is printed.  This attribute is
+     not writable.
+
+ -- Variable: LazyString.type
+     This attribute holds the type that is represented by the lazy
+     string's type.  For a lazy string this is a pointer or array type.
+     To resolve this to the lazy string's character type, use the type's
+     'target' method.  *Note Types In Python::.  This attribute is not
+     writable.
+
+
+File: gdb.info,  Node: Architectures In Python,  Next: Registers In Python,  Prev: Lazy Strings In Python,  Up: Python API
+
+23.3.2.33 Python representation of architectures
+................................................
+
+GDB uses architecture specific parameters and artifacts in a number of
+its various computations.  An architecture is represented by an instance
+of the 'gdb.Architecture' class.
+
+   A 'gdb.Architecture' class has the following methods:
+
+ -- Function: Architecture.name ()
+     Return the name (string value) of the architecture.
+
+ -- Function: Architecture.disassemble (START_PC [, END_PC [, COUNT]])
+     Return a list of disassembled instructions starting from the memory
+     address START_PC.  The optional arguments END_PC and COUNT
+     determine the number of instructions in the returned list.  If both
+     the optional arguments END_PC and COUNT are specified, then a list
+     of at most COUNT disassembled instructions whose start address
+     falls in the closed memory address interval from START_PC to END_PC
+     are returned.  If END_PC is not specified, but COUNT is specified,
+     then COUNT number of instructions starting from the address
+     START_PC are returned.  If COUNT is not specified but END_PC is
+     specified, then all instructions whose start address falls in the
+     closed memory address interval from START_PC to END_PC are
+     returned.  If neither END_PC nor COUNT are specified, then a single
+     instruction at START_PC is returned.  For all of these cases, each
+     element of the returned list is a Python 'dict' with the following
+     string keys:
+
+     'addr'
+          The value corresponding to this key is a Python long integer
+          capturing the memory address of the instruction.
+
+     'asm'
+          The value corresponding to this key is a string value which
+          represents the instruction with assembly language mnemonics.
+          The assembly language flavor used is the same as that
+          specified by the current CLI variable 'disassembly-flavor'.
+          *Note Machine Code::.
+
+     'length'
+          The value corresponding to this key is the length (integer
+          value) of the instruction in bytes.
+
+ -- Function: Architecture.registers ([ REGGROUP ])
+     Return a 'gdb.RegisterDescriptorIterator' (*note Registers In
+     Python::) for all of the registers in REGGROUP, a string that is
+     the name of a register group.  If REGGROUP is omitted, or is the
+     empty string, then the register group 'all' is assumed.
+
+ -- Function: Architecture.register_groups ()
+     Return a 'gdb.RegisterGroupsIterator' (*note Registers In Python::)
+     for all of the register groups available for the
+     'gdb.Architecture'.
+
+
+File: gdb.info,  Node: Registers In Python,  Next: TUI Windows In Python,  Prev: Architectures In Python,  Up: Python API
+
+23.3.2.34 Registers In Python
+.............................
+
+Python code can request from a 'gdb.Architecture' information about the
+set of registers available (*note 'Architecture.registers':
+gdbpy_architecture_registers.).  The register information is returned as
+a 'gdb.RegisterDescriptorIterator', which is an iterator that in turn
+returns 'gdb.RegisterDescriptor' objects.
+
+   A 'gdb.RegisterDescriptor' does not provide the value of a register
+(*note 'Frame.read_register': gdbpy_frame_read_register. for reading a
+register's value), instead the 'RegisterDescriptor' is a way to discover
+which registers are available for a particular architecture.
+
+   A 'gdb.RegisterDescriptor' has the following read-only properties:
+
+ -- Variable: RegisterDescriptor.name
+     The name of this register.
+
+   It is also possible to lookup a register descriptor based on its name
+using the following 'gdb.RegisterDescriptorIterator' function:
+
+ -- Function: RegisterDescriptorIterator.find (NAME)
+     Takes NAME as an argument, which must be a string, and returns a
+     'gdb.RegisterDescriptor' for the register with that name, or 'None'
+     if there is no register with that name.
+
+   Python code can also request from a 'gdb.Architecture' information
+about the set of register groups available on a given architecture
+(*note 'Architecture.register_groups': gdbpy_architecture_reggroups.).
+
+   Every register can be a member of zero or more register groups.  Some
+register groups are used internally within GDB to control things like
+which registers must be saved when calling into the program being
+debugged (*note Calling Program Functions: Calling.).  Other register
+groups exist to allow users to easily see related sets of registers in
+commands like 'info registers' (*note 'info registers REGGROUP':
+info_registers_reggroup.).
+
+   The register groups information is returned as a
+'gdb.RegisterGroupsIterator', which is an iterator that in turn returns
+'gdb.RegisterGroup' objects.
+
+   A 'gdb.RegisterGroup' object has the following read-only properties:
+
+ -- Variable: RegisterGroup.name
+     A string that is the name of this register group.
+
+
+File: gdb.info,  Node: TUI Windows In Python,  Prev: Registers In Python,  Up: Python API
+
+23.3.2.35 Implementing new TUI windows
+......................................
+
+New TUI (*note TUI::) windows can be implemented in Python.
+
+ -- Function: gdb.register_window_type (NAME, FACTORY)
+     Because TUI windows are created and destroyed depending on the
+     layout the user chooses, new window types are implemented by
+     registering a factory function with GDB.
+
+     NAME is the name of the new window.  It's an error to try to
+     replace one of the built-in windows, but other window types can be
+     replaced.
+
+     FUNCTION is a factory function that is called to create the TUI
+     window.  This is called with a single argument of type
+     'gdb.TuiWindow', described below.  It should return an object that
+     implements the TUI window protocol, also described below.
+
+   As mentioned above, when a factory function is called, it is passed
+an object of type 'gdb.TuiWindow'.  This object has these methods and
+attributes:
+
+ -- Function: TuiWindow.is_valid ()
+     This method returns 'True' when this window is valid.  When the
+     user changes the TUI layout, windows no longer visible in the new
+     layout will be destroyed.  At this point, the 'gdb.TuiWindow' will
+     no longer be valid, and methods (and attributes) other than
+     'is_valid' will throw an exception.
+
+     When the TUI is disabled using 'tui disable' (*note tui disable:
+     TUI Commands.) the window is hidden rather than destroyed, but
+     'is_valid' will still return 'False' and other methods (and
+     attributes) will still throw an exception.
+
+ -- Variable: TuiWindow.width
+     This attribute holds the width of the window.  It is not writable.
+
+ -- Variable: TuiWindow.height
+     This attribute holds the height of the window.  It is not writable.
+
+ -- Variable: TuiWindow.title
+     This attribute holds the window's title, a string.  This is
+     normally displayed above the window.  This attribute can be
+     modified.
+
+ -- Function: TuiWindow.erase ()
+     Remove all the contents of the window.
+
+ -- Function: TuiWindow.write (STRING [, FULL_WINDOW])
+     Write STRING to the window.  STRING can contain ANSI terminal
+     escape styling sequences; GDB will translate these as appropriate
+     for the terminal.
+
+     If the FULL_WINDOW parameter is 'True', then STRING contains the
+     full contents of the window.  This is similar to calling 'erase'
+     before 'write', but avoids the flickering.
+
+   The factory function that you supply should return an object
+conforming to the TUI window protocol.  These are the method that can be
+called on this object, which is referred to below as the "window
+object".  The methods documented below are optional; if the object does
+not implement one of these methods, GDB will not attempt to call it.
+Additional new methods may be added to the window protocol in the
+future.  GDB guarantees that they will begin with a lower-case letter,
+so you can start implementation methods with upper-case letters or
+underscore to avoid any future conflicts.
+
+ -- Function: Window.close ()
+     When the TUI window is closed, the 'gdb.TuiWindow' object will be
+     put into an invalid state.  At this time, GDB will call 'close'
+     method on the window object.
+
+     After this method is called, GDB will discard any references it
+     holds on this window object, and will no longer call methods on
+     this object.
+
+ -- Function: Window.render ()
+     In some situations, a TUI window can change size.  For example,
+     this can happen if the user resizes the terminal, or changes the
+     layout.  When this happens, GDB will call the 'render' method on
+     the window object.
+
+     If your window is intended to update in response to changes in the
+     inferior, you will probably also want to register event listeners
+     and send output to the 'gdb.TuiWindow'.
+
+ -- Function: Window.hscroll (NUM)
+     This is a request to scroll the window horizontally.  NUM is the
+     amount by which to scroll, with negative numbers meaning to scroll
+     right.  In the TUI model, it is the viewport that moves, not the
+     contents.  A positive argument should cause the viewport to move
+     right, and so the content should appear to move to the left.
+
+ -- Function: Window.vscroll (NUM)
+     This is a request to scroll the window vertically.  NUM is the
+     amount by which to scroll, with negative numbers meaning to scroll
+     backward.  In the TUI model, it is the viewport that moves, not the
+     contents.  A positive argument should cause the viewport to move
+     down, and so the content should appear to move up.
+
+ -- Function: Window.click (X, Y, BUTTON)
+     This is called on a mouse click in this window.  X and Y are the
+     mouse coordinates inside the window (0-based), and BUTTON specifies
+     which mouse button was used, whose values can be 1 (left), 2
+     (middle), or 3 (right).
+
+
+File: gdb.info,  Node: Python Auto-loading,  Next: Python modules,  Prev: Python API,  Up: Python
+
+23.3.3 Python Auto-loading
+--------------------------
+
+When a new object file is read (for example, due to the 'file' command,
+or because the inferior has loaded a shared library), GDB will look for
+Python support scripts in several ways: 'OBJFILE-gdb.py' and
+'.debug_gdb_scripts' section.  *Note Auto-loading extensions::.
+
+   The auto-loading feature is useful for supplying application-specific
+debugging commands and scripts.
+
+   Auto-loading can be enabled or disabled, and the list of auto-loaded
+scripts can be printed.
+
+'set auto-load python-scripts [on|off]'
+     Enable or disable the auto-loading of Python scripts.
+
+'show auto-load python-scripts'
+     Show whether auto-loading of Python scripts is enabled or disabled.
+
+'info auto-load python-scripts [REGEXP]'
+     Print the list of all Python scripts that GDB auto-loaded.
+
+     Also printed is the list of Python scripts that were mentioned in
+     the '.debug_gdb_scripts' section and were either not found (*note
+     dotdebug_gdb_scripts section::) or were not auto-loaded due to
+     'auto-load safe-path' rejection (*note Auto-loading::).  This is
+     useful because their names are not printed when GDB tries to load
+     them and fails.  There may be many of them, and printing an error
+     message for each one is problematic.
+
+     If REGEXP is supplied only Python scripts with matching names are
+     printed.
+
+     Example:
+
+          (gdb) info auto-load python-scripts
+          Loaded Script
+          Yes    py-section-script.py
+                 full name: /tmp/py-section-script.py
+          No     my-foo-pretty-printers.py
+
+   When reading an auto-loaded file or script, GDB sets the "current
+objfile".  This is available via the 'gdb.current_objfile' function
+(*note Objfiles In Python::).  This can be useful for registering
+objfile-specific pretty-printers and frame-filters.
+
+
+File: gdb.info,  Node: Python modules,  Prev: Python Auto-loading,  Up: Python
+
+23.3.4 Python modules
+---------------------
+
+GDB comes with several modules to assist writing Python code.
+
+* Menu:
+
+* gdb.printing::       Building and registering pretty-printers.
+* gdb.types::          Utilities for working with types.
+* gdb.prompt::         Utilities for prompt value substitution.
+
+
+File: gdb.info,  Node: gdb.printing,  Next: gdb.types,  Up: Python modules
+
+23.3.4.1 gdb.printing
+.....................
+
+This module provides a collection of utilities for working with
+pretty-printers.
+
+'PrettyPrinter (NAME, SUBPRINTERS=None)'
+     This class specifies the API that makes 'info pretty-printer',
+     'enable pretty-printer' and 'disable pretty-printer' work.
+     Pretty-printers should generally inherit from this class.
+
+'SubPrettyPrinter (NAME)'
+     For printers that handle multiple types, this class specifies the
+     corresponding API for the subprinters.
+
+'RegexpCollectionPrettyPrinter (NAME)'
+     Utility class for handling multiple printers, all recognized via
+     regular expressions.  *Note Writing a Pretty-Printer::, for an
+     example.
+
+'FlagEnumerationPrinter (NAME)'
+     A pretty-printer which handles printing of 'enum' values.  Unlike
+     GDB's built-in 'enum' printing, this printer attempts to work
+     properly when there is some overlap between the enumeration
+     constants.  The argument NAME is the name of the printer and also
+     the name of the 'enum' type to look up.
+
+'register_pretty_printer (OBJ, PRINTER, REPLACE=False)'
+     Register PRINTER with the pretty-printer list of OBJ.  If REPLACE
+     is 'True' then any existing copy of the printer is replaced.
+     Otherwise a 'RuntimeError' exception is raised if a printer with
+     the same name already exists.
+
+
+File: gdb.info,  Node: gdb.types,  Next: gdb.prompt,  Prev: gdb.printing,  Up: Python modules
+
+23.3.4.2 gdb.types
+..................
+
+This module provides a collection of utilities for working with
+'gdb.Type' objects.
+
+'get_basic_type (TYPE)'
+     Return TYPE with const and volatile qualifiers stripped, and with
+     typedefs and C++ references converted to the underlying type.
+
+     C++ example:
+
+          typedef const int const_int;
+          const_int foo (3);
+          const_int& foo_ref (foo);
+          int main () { return 0; }
+
+     Then in gdb:
+
+          (gdb) start
+          (gdb) python import gdb.types
+          (gdb) python foo_ref = gdb.parse_and_eval("foo_ref")
+          (gdb) python print gdb.types.get_basic_type(foo_ref.type)
+          int
+
+'has_field (TYPE, FIELD)'
+     Return 'True' if TYPE, assumed to be a type with fields (e.g., a
+     structure or union), has field FIELD.
+
+'make_enum_dict (ENUM_TYPE)'
+     Return a Python 'dictionary' type produced from ENUM_TYPE.
+
+'deep_items (TYPE)'
+     Returns a Python iterator similar to the standard
+     'gdb.Type.iteritems' method, except that the iterator returned by
+     'deep_items' will recursively traverse anonymous struct or union
+     fields.  For example:
+
+          struct A
+          {
+              int a;
+              union {
+                  int b0;
+                  int b1;
+              };
+          };
+
+     Then in GDB:
+          (gdb) python import gdb.types
+          (gdb) python struct_a = gdb.lookup_type("struct A")
+          (gdb) python print struct_a.keys ()
+          {['a', '']}
+          (gdb) python print [k for k,v in gdb.types.deep_items(struct_a)]
+          {['a', 'b0', 'b1']}
+
+'get_type_recognizers ()'
+     Return a list of the enabled type recognizers for the current
+     context.  This is called by GDB during the type-printing process
+     (*note Type Printing API::).
+
+'apply_type_recognizers (recognizers, type_obj)'
+     Apply the type recognizers, RECOGNIZERS, to the type object
+     TYPE_OBJ.  If any recognizer returns a string, return that string.
+     Otherwise, return 'None'.  This is called by GDB during the
+     type-printing process (*note Type Printing API::).
+
+'register_type_printer (locus, printer)'
+     This is a convenience function to register a type printer PRINTER.
+     The printer must implement the type printer protocol.  The LOCUS
+     argument is either a 'gdb.Objfile', in which case the printer is
+     registered with that objfile; a 'gdb.Progspace', in which case the
+     printer is registered with that progspace; or 'None', in which case
+     the printer is registered globally.
+
+'TypePrinter'
+     This is a base class that implements the type printer protocol.
+     Type printers are encouraged, but not required, to derive from this
+     class.  It defines a constructor:
+
+      -- Method on TypePrinter: __init__ (self, name)
+          Initialize the type printer with the given name.  The new
+          printer starts in the enabled state.
+
+
+File: gdb.info,  Node: gdb.prompt,  Prev: gdb.types,  Up: Python modules
+
+23.3.4.3 gdb.prompt
+...................
+
+This module provides a method for prompt value-substitution.
+
+'substitute_prompt (STRING)'
+     Return STRING with escape sequences substituted by values.  Some
+     escape sequences take arguments.  You can specify arguments inside
+     "{}" immediately following the escape sequence.
+
+     The escape sequences you can pass to this function are:
+
+     '\\'
+          Substitute a backslash.
+     '\e'
+          Substitute an ESC character.
+     '\f'
+          Substitute the selected frame; an argument names a frame
+          parameter.
+     '\n'
+          Substitute a newline.
+     '\p'
+          Substitute a parameter's value; the argument names the
+          parameter.
+     '\r'
+          Substitute a carriage return.
+     '\t'
+          Substitute the selected thread; an argument names a thread
+          parameter.
+     '\v'
+          Substitute the version of GDB.
+     '\w'
+          Substitute the current working directory.
+     '\['
+          Begin a sequence of non-printing characters.  These sequences
+          are typically used with the ESC character, and are not counted
+          in the string length.  Example: "\[\e[0;34m\](gdb)\[\e[0m\]"
+          will return a blue-colored "(gdb)" prompt where the length is
+          five.
+     '\]'
+          End a sequence of non-printing characters.
+
+     For example:
+
+          substitute_prompt ("frame: \f, args: \p{print frame-arguments}")
+
+will return the string:
+
+          "frame: main, args: scalars"
+
+
+File: gdb.info,  Node: Guile,  Next: Auto-loading extensions,  Prev: Python,  Up: Extending GDB
+
+23.4 Extending GDB using Guile
+==============================
+
+You can extend GDB using the Guile implementation of the Scheme
+programming language (http://www.gnu.org/software/guile/).  This feature
+is available only if GDB was configured using '--with-guile'.
+
+* Menu:
+
+* Guile Introduction::     Introduction to Guile scripting in GDB
+* Guile Commands::         Accessing Guile from GDB
+* Guile API::              Accessing GDB from Guile
+* Guile Auto-loading::     Automatically loading Guile code
+* Guile Modules::          Guile modules provided by GDB
+
+
+File: gdb.info,  Node: Guile Introduction,  Next: Guile Commands,  Up: Guile
+
+23.4.1 Guile Introduction
+-------------------------
+
+Guile is an implementation of the Scheme programming language and is the
+GNU project's official extension language.
+
+   Guile support in GDB follows the Python support in GDB reasonably
+closely, so concepts there should carry over.  However, some things are
+done differently where it makes sense.
+
+   GDB requires Guile version 3.0, 2.2, or 2.0.
+
+   Guile scripts used by GDB should be installed in
+'DATA-DIRECTORY/guile', where DATA-DIRECTORY is the data directory as
+determined at GDB startup (*note Data Files::).  This directory, known
+as the "guile directory", is automatically added to the Guile Search
+Path in order to allow the Guile interpreter to locate all scripts
+installed at this location.
+
+
+File: gdb.info,  Node: Guile Commands,  Next: Guile API,  Prev: Guile Introduction,  Up: Guile
+
+23.4.2 Guile Commands
+---------------------
+
+GDB provides two commands for accessing the Guile interpreter:
+
+'guile-repl'
+'gr'
+     The 'guile-repl' command can be used to start an interactive Guile
+     prompt or "repl".  To return to GDB, type ',q' or the 'EOF'
+     character (e.g., 'Ctrl-D' on an empty prompt).  These commands do
+     not take any arguments.
+
+'guile [SCHEME-EXPRESSION]'
+'gu [SCHEME-EXPRESSION]'
+     The 'guile' command can be used to evaluate a Scheme expression.
+
+     If given an argument, GDB will pass the argument to the Guile
+     interpreter for evaluation.
+
+          (gdb) guile (display (+ 20 3)) (newline)
+          23
+
+     The result of the Scheme expression is displayed using normal Guile
+     rules.
+
+          (gdb) guile (+ 20 3)
+          23
+
+     If you do not provide an argument to 'guile', it will act as a
+     multi-line command, like 'define'.  In this case, the Guile script
+     is made up of subsequent command lines, given after the 'guile'
+     command.  This command list is terminated using a line containing
+     'end'.  For example:
+
+          (gdb) guile
+          >(display 23)
+          >(newline)
+          >end
+          23
+
+   It is also possible to execute a Guile script from the GDB
+interpreter:
+
+'source script-name'
+     The script name must end with '.scm' and GDB must be configured to
+     recognize the script language based on filename extension using the
+     'script-extension' setting.  *Note Extending GDB: Extending GDB.
+
+'guile (load "script-name")'
+     This method uses the 'load' Guile function.  It takes a string
+     argument that is the name of the script to load.  See the Guile
+     documentation for a description of this function.  (*note
+     (guile)Loading::).
+
+
 File: gdb.info,  Node: Guile API,  Next: Guile Auto-loading,  Prev: Guile Commands,  Up: Guile
 
-23.3.3 Guile API
+23.4.3 Guile API
 ----------------
 
 You can get quick online help for GDB's Guile API by issuing the command
@@ -79,7 +730,7 @@ PROCEDURE-NAME' from the Guile interactive prompt.
 
 File: gdb.info,  Node: Basic Guile,  Next: Guile Configuration,  Up: Guile API
 
-23.3.3.1 Basic Guile
+23.4.3.1 Basic Guile
 ....................
 
 At startup, GDB overrides Guile's 'current-output-port' and
@@ -203,7 +854,7 @@ more information (*note (guile)Using Guile Modules::).
 
 File: gdb.info,  Node: Guile Configuration,  Next: GDB Scheme Data Types,  Prev: Basic Guile,  Up: Guile API
 
-23.3.3.2 Guile Configuration
+23.4.3.2 Guile Configuration
 ............................
 
 GDB provides these Scheme functions to access various configuration
@@ -231,7 +882,7 @@ parameters.
 
 File: gdb.info,  Node: GDB Scheme Data Types,  Next: Guile Exception Handling,  Prev: Guile Configuration,  Up: Guile API
 
-23.3.3.3 GDB Scheme Data Types
+23.4.3.3 GDB Scheme Data Types
 ..............................
 
 The values exposed by GDB to Guile are known as "GDB objects".  There
@@ -320,7 +971,7 @@ function 'eq?' may be applied to them.
 
 File: gdb.info,  Node: Guile Exception Handling,  Next: Values From Inferior In Guile,  Prev: GDB Scheme Data Types,  Up: Guile API
 
-23.3.3.4 Guile Exception Handling
+23.4.3.4 Guile Exception Handling
 .................................
 
 When executing the 'guile' command, Guile exceptions uncaught within the
@@ -426,7 +1077,7 @@ translated to a Guile 'signal' exception with value 'SIGINT'.
 
 File: gdb.info,  Node: Values From Inferior In Guile,  Next: Arithmetic In Guile,  Prev: Guile Exception Handling,  Up: Guile API
 
-23.3.3.5 Values From Inferior In Guile
+23.4.3.5 Values From Inferior In Guile
 ......................................
 
 GDB provides values it obtains from the inferior program in an object of
@@ -644,6 +1295,18 @@ module.
      The '<gdb:value>' object 'scm-val' is identical to that
      corresponding to 'val'.
 
+ -- Scheme Procedure: value-reference-value value
+     Return a new '<gdb:value>' object which is a reference to the value
+     encapsulated by '<gdb:value>' object VALUE.
+
+ -- Scheme Procedure: value-rvalue-reference-value value
+     Return a new '<gdb:value>' object which is an rvalue reference to
+     the value encapsulated by '<gdb:value>' object VALUE.
+
+ -- Scheme Procedure: value-const-value value
+     Return a new '<gdb:value>' object which is a 'const' version of
+     '<gdb:value>' object VALUE.
+
  -- Scheme Procedure: value-field value field-name
      Return field FIELD-NAME from '<gdb:value>' object VALUE.
 
@@ -772,7 +1435,7 @@ module.
 
 File: gdb.info,  Node: Arithmetic In Guile,  Next: Types In Guile,  Prev: Values From Inferior In Guile,  Up: Guile API
 
-23.3.3.6 Arithmetic In Guile
+23.4.3.6 Arithmetic In Guile
 ............................
 
 The '(gdb)' module provides several functions for performing arithmetic
@@ -838,7 +1501,7 @@ support in GDB does not either.
 
 File: gdb.info,  Node: Types In Guile,  Next: Guile Pretty Printing API,  Prev: Arithmetic In Guile,  Up: Guile API
 
-23.3.3.7 Types In Guile
+23.4.3.7 Types In Guile
 .......................
 
 GDB represents types from the inferior in objects of type '<gdb:type>'.
@@ -1044,6 +1707,9 @@ defined in the '(gdb)' module:
 'TYPE_CODE_REF'
      A reference type.
 
+'TYPE_CODE_RVALUE_REF'
+     A C++11 rvalue reference type.
+
 'TYPE_CODE_CHAR'
      A character type.
 
@@ -1108,7 +1774,7 @@ module:
 
 File: gdb.info,  Node: Guile Pretty Printing API,  Next: Selecting Guile Pretty-Printers,  Prev: Types In Guile,  Up: Guile API
 
-23.3.3.8 Guile Pretty Printing API
+23.4.3.8 Guile Pretty Printing API
 ..................................
 
 An example output is provided (*note Pretty Printing::).
@@ -1242,7 +1908,7 @@ pretty-printer for a '<gdb:value>':
 
 File: gdb.info,  Node: Selecting Guile Pretty-Printers,  Next: Writing a Guile Pretty-Printer,  Prev: Guile Pretty Printing API,  Up: Guile API
 
-23.3.3.9 Selecting Guile Pretty-Printers
+23.4.3.9 Selecting Guile Pretty-Printers
 ........................................
 
 There are three sets of pretty-printers that GDB searches:
@@ -1290,7 +1956,7 @@ highly illegible if any argument is printed with a broken printer.
 
 File: gdb.info,  Node: Writing a Guile Pretty-Printer,  Next: Commands In Guile,  Prev: Selecting Guile Pretty-Printers,  Up: Guile API
 
-23.3.3.10 Writing a Guile Pretty-Printer
+23.4.3.10 Writing a Guile Pretty-Printer
 ........................................
 
 A pretty-printer consists of two basic parts: a lookup function to
@@ -1428,7 +2094,7 @@ corresponding output of 'info pretty-printer':
 
 File: gdb.info,  Node: Commands In Guile,  Next: Parameters In Guile,  Prev: Writing a Guile Pretty-Printer,  Up: Guile API
 
-23.3.3.11 Commands In Guile
+23.4.3.11 Commands In Guile
 ...........................
 
 You can implement new GDB CLI commands in Guile.  A CLI command object
@@ -1675,7 +2341,7 @@ implemented in Guile:
 
 File: gdb.info,  Node: Parameters In Guile,  Next: Progspaces In Guile,  Prev: Commands In Guile,  Up: Guile API
 
-23.3.3.12 Parameters In Guile
+23.4.3.12 Parameters In Guile
 .............................
 
 You can implement new GDB "parameters" using Guile (1).
@@ -1840,7 +2506,7 @@ parameter objects (*note (guile)Parameters::).
 
 File: gdb.info,  Node: Progspaces In Guile,  Next: Objfiles In Guile,  Prev: Parameters In Guile,  Up: Guile API
 
-23.3.3.13 Program Spaces In Guile
+23.4.3.13 Program Spaces In Guile
 .................................
 
 A program space, or "progspace", represents a symbolic view of an
@@ -1903,7 +2569,7 @@ smob.  *Note GDB Scheme Data Types::.
 
 File: gdb.info,  Node: Objfiles In Guile,  Next: Frames In Guile,  Prev: Progspaces In Guile,  Up: Guile API
 
-23.3.3.14 Objfiles In Guile
+23.4.3.14 Objfiles In Guile
 ...........................
 
 GDB loads symbols for an inferior from various symbol-containing files
@@ -1958,7 +2624,7 @@ module:
 
 File: gdb.info,  Node: Frames In Guile,  Next: Blocks In Guile,  Prev: Objfiles In Guile,  Up: Guile API
 
-23.3.3.15 Accessing inferior stack frames from Guile.
+23.4.3.15 Accessing inferior stack frames from Guile.
 .....................................................
 
 When the debugged program stops, GDB is able to analyze its call stack
@@ -2126,7 +2792,7 @@ module:
 
 File: gdb.info,  Node: Blocks In Guile,  Next: Symbols In Guile,  Prev: Frames In Guile,  Up: Guile API
 
-23.3.3.16 Accessing blocks from Guile.
+23.4.3.16 Accessing blocks from Guile.
 ......................................
 
 In GDB, symbols are stored in blocks.  A block corresponds roughly to a
@@ -2248,7 +2914,7 @@ module:
 
 File: gdb.info,  Node: Symbols In Guile,  Next: Symbol Tables In Guile,  Prev: Blocks In Guile,  Up: Guile API
 
-23.3.3.17 Guile representation of Symbols.
+23.4.3.17 Guile representation of Symbols.
 ..........................................
 
 GDB represents every variable, function and type as an entry in a symbol
@@ -2441,7 +3107,7 @@ represented as constants in the 'gdb' module:
 
 File: gdb.info,  Node: Symbol Tables In Guile,  Next: Breakpoints In Guile,  Prev: Symbols In Guile,  Up: Guile API
 
-23.3.3.18 Symbol table representation in Guile.
+23.4.3.18 Symbol table representation in Guile.
 ...............................................
 
 Access to symbol table data maintained by GDB on the inferior is exposed
@@ -2518,7 +3184,7 @@ module:
 
 File: gdb.info,  Node: Breakpoints In Guile,  Next: Lazy Strings In Guile,  Prev: Symbol Tables In Guile,  Up: Guile API
 
-23.3.3.19 Manipulating breakpoints using Guile
+23.4.3.19 Manipulating breakpoints using Guile
 ..............................................
 
 Breakpoints in Guile are represented by objects of type
@@ -2590,7 +3256,11 @@ outside of Guile.
           Hardware assisted access watchpoint.  This value cannot be
           specified when creating the breakpoint.
 
-     The available watchpoint types represented by constants are defined
+     'BP_CATCHPOINT'
+          Catchpoint.  This value cannot be specified when creating the
+          breakpoint.
+
+     The available watchpoint types are represented by constants defined
      in the '(gdb)' module:
 
      'WP_READ'
@@ -2758,7 +3428,7 @@ outside of Guile.
 
 File: gdb.info,  Node: Lazy Strings In Guile,  Next: Architectures In Guile,  Prev: Breakpoints In Guile,  Up: Guile API
 
-23.3.3.20 Guile representation of lazy strings.
+23.4.3.20 Guile representation of lazy strings.
 ...............................................
 
 A "lazy string" is a string whose contents is not retrieved or encoded
@@ -2810,7 +3480,7 @@ creation.
 
 File: gdb.info,  Node: Architectures In Guile,  Next: Disassembly In Guile,  Prev: Lazy Strings In Guile,  Up: Guile API
 
-23.3.3.21 Guile representation of architectures
+23.4.3.21 Guile representation of architectures
 ...............................................
 
 GDB uses architecture specific parameters and artifacts in a number of
@@ -2943,7 +3613,7 @@ following functions.
 
 File: gdb.info,  Node: Disassembly In Guile,  Next: I/O Ports in Guile,  Prev: Architectures In Guile,  Up: Guile API
 
-23.3.3.22 Disassembly In Guile
+23.4.3.22 Disassembly In Guile
 ..............................
 
 The disassembler can be invoked from Scheme code.  Furthermore, the
@@ -3010,7 +3680,7 @@ from any source, and not just target memory.
 
 File: gdb.info,  Node: I/O Ports in Guile,  Next: Memory Ports in Guile,  Prev: Disassembly In Guile,  Up: Guile API
 
-23.3.3.23 I/O Ports in Guile
+23.4.3.23 I/O Ports in Guile
 ............................
 
  -- Scheme Procedure: input-port
@@ -3028,7 +3698,7 @@ File: gdb.info,  Node: I/O Ports in Guile,  Next: Memory Ports in Guile,  Prev: 
 
 File: gdb.info,  Node: Memory Ports in Guile,  Next: Iterators In Guile,  Prev: I/O Ports in Guile,  Up: Guile API
 
-23.3.3.24 Memory Ports in Guile
+23.4.3.24 Memory Ports in Guile
 ...............................
 
 GDB provides a 'port' interface to target memory.  This allows Guile
@@ -3117,7 +3787,7 @@ can do something like the following.
 
 File: gdb.info,  Node: Iterators In Guile,  Prev: Memory Ports in Guile,  Up: Guile API
 
-23.3.3.25 Iterators In Guile
+23.4.3.25 Iterators In Guile
 ............................
 
 A simple iterator facility is provided to allow, for example, iterating
@@ -3219,7 +3889,7 @@ in using iterators.
 
 File: gdb.info,  Node: Guile Auto-loading,  Next: Guile Modules,  Prev: Guile API,  Up: Guile
 
-23.3.4 Guile Auto-loading
+23.4.4 Guile Auto-loading
 -------------------------
 
 When a new object file is read (for example, due to the 'file' command,
@@ -3267,7 +3937,7 @@ pretty-printers.
 
 File: gdb.info,  Node: Guile Modules,  Prev: Guile Auto-loading,  Up: Guile
 
-23.3.5 Guile Modules
+23.4.5 Guile Modules
 --------------------
 
 GDB comes with several modules to assist writing Guile code.
@@ -3280,7 +3950,7 @@ GDB comes with several modules to assist writing Guile code.
 
 File: gdb.info,  Node: Guile Printing Module,  Next: Guile Types Module,  Up: Guile Modules
 
-23.3.5.1 Guile Printing Module
+23.4.5.1 Guile Printing Module
 ..............................
 
 This module provides a collection of utilities for working with
@@ -3303,7 +3973,7 @@ pretty-printers.
 
 File: gdb.info,  Node: Guile Types Module,  Prev: Guile Printing Module,  Up: Guile Modules
 
-23.3.5.2 Guile Types Module
+23.4.5.2 Guile Types Module
 ...........................
 
 This module provides a collection of utilities for working with
@@ -3344,19 +4014,17 @@ This module provides a collection of utilities for working with
 
 File: gdb.info,  Node: Auto-loading extensions,  Next: Multiple Extension Languages,  Prev: Guile,  Up: Extending GDB
 
-23.4 Auto-loading extensions
+23.5 Auto-loading extensions
 ============================
 
 GDB provides two mechanisms for automatically loading extensions when a
 new object file is read (for example, due to the 'file' command, or
-because the inferior has loaded a shared library): 'OBJFILE-gdb.EXT' and
-the '.debug_gdb_scripts' section of modern file formats like ELF.
-
-* Menu:
-
-* objfile-gdb.ext file: objfile-gdbdotext file.  The 'OBJFILE-gdb.EXT' file
-* .debug_gdb_scripts section: dotdebug_gdb_scripts section.  The '.debug_gdb_scripts' section
-* Which flavor to choose?::
+because the inferior has loaded a shared library): 'OBJFILE-gdb.EXT'
+(*note The 'OBJFILE-gdb.EXT' file: objfile-gdbdotext file.) and the
+'.debug_gdb_scripts' section of modern file formats like ELF (*note The
+'.debug_gdb_scripts' section: dotdebug_gdb_scripts section.).  For a
+discussion of the differences between these two approaches see *note
+Which flavor to choose?::.
 
    The auto-loading feature is useful for supplying application-specific
 debugging commands and features.
@@ -3370,10 +4038,16 @@ Auto-loading::.
    Note that loading of this script file also requires accordingly
 configured 'auto-load safe-path' (*note Auto-loading safe path::).
 
+* Menu:
+
+* objfile-gdbdotext file::		The 'OBJFILE-gdb.EXT' file
+* dotdebug_gdb_scripts section::	The '.debug_gdb_scripts' section
+* Which flavor to choose?::		Choosing between these approaches
+
 
 File: gdb.info,  Node: objfile-gdbdotext file,  Next: dotdebug_gdb_scripts section,  Up: Auto-loading extensions
 
-23.4.1 The 'OBJFILE-gdb.EXT' file
+23.5.1 The 'OBJFILE-gdb.EXT' file
 ---------------------------------
 
 When a new object file is read, GDB looks for a file named
@@ -3451,7 +4125,7 @@ it is evaluated more than once.
 
 File: gdb.info,  Node: dotdebug_gdb_scripts section,  Next: Which flavor to choose?,  Prev: objfile-gdbdotext file,  Up: Auto-loading extensions
 
-23.4.2 The '.debug_gdb_scripts' section
+23.5.2 The '.debug_gdb_scripts' section
 ---------------------------------------
 
 For systems using file formats like ELF and COFF, when GDB loads a new
@@ -3469,7 +4143,7 @@ the extension language and whether the script is in a file or inlined in
 'SECTION_SCRIPT_ID_PYTHON_TEXT = 4'
 'SECTION_SCRIPT_ID_SCHEME_TEXT = 6'
 
-23.4.2.1 Script File Entries
+23.5.2.1 Script File Entries
 ............................
 
 If the entry specifies a file, GDB will look for the file first in the
@@ -3504,7 +4178,7 @@ library using this header will get a reference to the specified script,
 and with the use of '"MS"' attributes on the section, the linker will
 remove duplicates.
 
-23.4.2.2 Script Text Entries
+23.5.2.2 Script Text Entries
 ............................
 
 Script text entries allow to put the executable script in the entry
@@ -3544,7 +4218,7 @@ safe-path' (*note Auto-loading safe path::).  The path to specify in
 
 File: gdb.info,  Node: Which flavor to choose?,  Prev: dotdebug_gdb_scripts section,  Up: Auto-loading extensions
 
-23.4.3 Which flavor to choose?
+23.5.3 Which flavor to choose?
 ------------------------------
 
 Given the multiple ways of auto-loading extensions, it might not always
@@ -3588,16 +4262,16 @@ Benefits of the '.debug_gdb_scripts' way:
      the top of the source tree to the source search path.
 
 
-File: gdb.info,  Node: Multiple Extension Languages,  Next: Aliases,  Prev: Auto-loading extensions,  Up: Extending GDB
+File: gdb.info,  Node: Multiple Extension Languages,  Prev: Auto-loading extensions,  Up: Extending GDB
 
-23.5 Multiple Extension Languages
+23.6 Multiple Extension Languages
 =================================
 
 The Guile and Python extension languages do not share any state, and
 generally do not interfere with each other.  There are some things to be
 aware of, however.
 
-23.5.1 Python comes first
+23.6.1 Python comes first
 -------------------------
 
 Python was GDB's first extension language, and to avoid breaking
@@ -3610,95 +4284,6 @@ pretty-printed form of a value).  This extends to errors while
 performing such requests: If an error happens while, for example, trying
 to pretty-print an object then the error is reported and any following
 extension languages are not tried.
-
-
-File: gdb.info,  Node: Aliases,  Prev: Multiple Extension Languages,  Up: Extending GDB
-
-23.6 Creating new spellings of existing commands
-================================================
-
-It is often useful to define alternate spellings of existing commands.
-For example, if a new GDB command defined in Python has a long name to
-type, it is handy to have an abbreviated version of it that involves
-less typing.
-
-   GDB itself uses aliases.  For example 's' is an alias of the 'step'
-command even though it is otherwise an ambiguous abbreviation of other
-commands like 'set' and 'show'.
-
-   Aliases are also used to provide shortened or more common versions of
-multi-word commands.  For example, GDB provides the 'tty' alias of the
-'set inferior-tty' command.
-
-   You can define a new alias with the 'alias' command.
-
-'alias [-a] [--] ALIAS = COMMAND [DEFAULT-ARGS...]'
-
-   ALIAS specifies the name of the new alias.  Each word of ALIAS must
-consist of letters, numbers, dashes and underscores.
-
-   COMMAND specifies the name of an existing command that is being
-aliased.
-
-   COMMAND can also be the name of an existing alias.  In this case,
-COMMAND cannot be an alias that has default arguments.
-
-   The '-a' option specifies that the new alias is an abbreviation of
-the command.  Abbreviations are not used in command completion.
-
-   The '--' option specifies the end of options, and is useful when
-ALIAS begins with a dash.
-
-   You can specify DEFAULT-ARGS for your alias.  These DEFAULT-ARGS will
-be automatically added before the alias arguments typed explicitly on
-the command line.
-
-   For example, the below defines an alias 'btfullall' that shows all
-local variables and all frame arguments:
-     (gdb) alias btfullall = backtrace -full -frame-arguments all
-
-   For more information about DEFAULT-ARGS, see *note Automatically
-prepend default arguments to user-defined aliases: Command aliases
-default args.
-
-   Here is a simple example showing how to make an abbreviation of a
-command so that there is less to type.  Suppose you were tired of typing
-'disas', the current shortest unambiguous abbreviation of the
-'disassemble' command and you wanted an even shorter version named 'di'.
-The following will accomplish this.
-
-     (gdb) alias -a di = disas
-
-   Note that aliases are different from user-defined commands.  With a
-user-defined command, you also need to write documentation for it with
-the 'document' command.  An alias automatically picks up the
-documentation of the existing command.
-
-   Here is an example where we make 'elms' an abbreviation of 'elements'
-in the 'set print elements' command.  This is to show that you can make
-an abbreviation of any part of a command.
-
-     (gdb) alias -a set print elms = set print elements
-     (gdb) alias -a show print elms = show print elements
-     (gdb) set p elms 20
-     (gdb) show p elms
-     Limit on string chars or array elements to print is 200.
-
-   Note that if you are defining an alias of a 'set' command, and you
-want to have an alias for the corresponding 'show' command, then you
-need to define the latter separately.
-
-   Unambiguously abbreviated commands are allowed in COMMAND and ALIAS,
-just as they are normally.
-
-     (gdb) alias -a set pr elms = set p ele
-
-   Finally, here is an example showing the creation of a one word alias
-for a more complex command.  This creates alias 'spe' of the command
-'set print elements'.
-
-     (gdb) alias spe = set print elements
-     (gdb) spe 20
 
 
 File: gdb.info,  Node: Interpreters,  Next: TUI,  Prev: Extending GDB,  Up: Top
@@ -3786,14 +4371,6 @@ File: gdb.info,  Node: TUI,  Next: Emacs,  Prev: Interpreters,  Up: Top
 25 GDB Text User Interface
 **************************
 
-* Menu:
-
-* TUI Overview::                TUI overview
-* TUI Keys::                    TUI key bindings
-* TUI Single Key Mode::         TUI single key mode
-* TUI Commands::                TUI-specific commands
-* TUI Configuration::           TUI configuration variables
-
 The GDB Text User Interface (TUI) is a terminal interface which uses the
 'curses' library to show the source file, the assembly output, the
 program registers and GDB commands in separate text windows.  The TUI
@@ -3805,6 +4382,15 @@ You can also switch in and out of TUI mode while GDB runs by using
 various TUI commands and key bindings, such as 'tui enable' or 'C-x
 C-a'.  *Note TUI Commands: TUI Commands, and *note TUI Key Bindings: TUI
 Keys.
+
+* Menu:
+
+* TUI Overview::                TUI overview
+* TUI Keys::                    TUI key bindings
+* TUI Single Key Mode::         TUI single key mode
+* TUI Mouse Support::           TUI mouse support
+* TUI Commands::                TUI-specific commands
+* TUI Configuration::           TUI configuration variables
 
 
 File: gdb.info,  Node: TUI Overview,  Next: TUI Keys,  Up: TUI
@@ -3987,7 +4573,7 @@ readline key bindings such as 'C-p', 'C-n', 'C-b' and 'C-f' to control
 the command window.
 
 
-File: gdb.info,  Node: TUI Single Key Mode,  Next: TUI Commands,  Prev: TUI Keys,  Up: TUI
+File: gdb.info,  Node: TUI Single Key Mode,  Next: TUI Mouse Support,  Prev: TUI Keys,  Up: TUI
 
 25.3 TUI Single Key Mode
 ========================
@@ -4044,9 +4630,29 @@ will be named 'SingleKey'.  This can be used in '.inputrc' to add
 additional bindings to this keymap.
 
 
-File: gdb.info,  Node: TUI Commands,  Next: TUI Configuration,  Prev: TUI Single Key Mode,  Up: TUI
+File: gdb.info,  Node: TUI Mouse Support,  Next: TUI Commands,  Prev: TUI Single Key Mode,  Up: TUI
 
-25.4 TUI-specific Commands
+25.4 TUI Mouse Support
+======================
+
+If the curses library supports the mouse, the TUI supports mouse
+actions.
+
+   The mouse wheel scrolls the appropriate window under the mouse
+cursor.
+
+   The TUI itself does not directly support copying/pasting with the
+mouse.  However, on Unix terminals, you can typically press and hold the
+<SHIFT> key on your keyboard to temporarily bypass GDB's TUI and access
+the terminal's native mouse copy/paste functionality (commonly,
+click-drag-release or double-click to select text, middle-click to
+paste).  This copy/paste works with the terminal's selection buffer, as
+opposed to the TUI's buffer.
+
+
+File: gdb.info,  Node: TUI Commands,  Next: TUI Configuration,  Prev: TUI Mouse Support,  Up: TUI
+
+25.5 TUI-specific Commands
 ==========================
 
 The TUI has specific commands to control the text windows.  These
@@ -4210,7 +4816,7 @@ window management.
 
 File: gdb.info,  Node: TUI Configuration,  Prev: TUI Commands,  Up: TUI
 
-25.5 TUI Configuration Variables
+25.6 TUI Configuration Variables
 ================================
 
 Several configuration variables control the appearance of TUI windows.
@@ -4965,7 +5571,7 @@ the latest MI version.
 
    Since '--interpreter=mi' always points to the latest MI version, it
 is recommended that front ends request a specific version of MI when
-launching GDB (e.g.  '--interpreter=mi2') to make sure they get an
+launching GDB (e.g. '--interpreter=mi2') to make sure they get an
 interpreter with the MI version they expect.
 
    The following table gives a summary of the released versions of the
@@ -5446,9 +6052,14 @@ with the following fields:
      number of the location within that breakpoint.
 
 'enabled'
-     This indicates whether the location is enabled, in which case the
-     value is 'y', or disabled, in which case the value is 'n'.  Note
-     that this is not the same as the field 'enable'.
+     There are three possible values, with the following meanings:
+     'y'
+          The location is enabled.
+     'n'
+          The location is disabled by the user.
+     'N'
+          The location is disabled because the breakpoint condition is
+          invalid at this location.
 
 'addr'
      The address of this location as an hexidecimal number.
@@ -5789,11 +6400,14 @@ The '-break-condition' Command
 Synopsis
 ........
 
-      -break-condition NUMBER EXPR
+      -break-condition [ --force ] NUMBER [ EXPR ]
 
    Breakpoint NUMBER will stop the program only if the condition in EXPR
 is true.  The condition becomes part of the '-break-list' output (see
-the description of the '-break-list' command below).
+the description of the '-break-list' command below).  If the '--force'
+flag is passed, the condition is forcibly defined even when it is
+invalid for all locations of breakpoint NUMBER.  If the EXPR argument is
+omitted, breakpoint NUMBER becomes unconditional.
 
 GDB Command
 ...........
@@ -5955,8 +6569,8 @@ The '-break-insert' Command
 Synopsis
 ........
 
-      -break-insert [ -t ] [ -h ] [ -f ] [ -d ] [ -a ]
-         [ -c CONDITION ] [ -i IGNORE-COUNT ]
+      -break-insert [ -t ] [ -h ] [ -f ] [ -d ] [ -a ] [ --qualified ]
+         [ -c CONDITION ] [ --force-condition ] [ -i IGNORE-COUNT ]
          [ -p THREAD-ID ] [ LOCATION ]
 
 If specified, LOCATION, can be one of:
@@ -6004,11 +6618,17 @@ The possible optional parameters of this command are:
      used together with '-h', a fast tracepoint is created.
 '-c CONDITION'
      Make the breakpoint conditional on CONDITION.
+'--force-condition'
+     Forcibly define the breakpoint even if the condition is invalid at
+     all of the breakpoint locations.
 '-i IGNORE-COUNT'
      Initialize the IGNORE-COUNT.
 '-p THREAD-ID'
      Restrict the breakpoint to the thread with the specified global
      THREAD-ID.
+'--qualified'
+     This option makes GDB interpret a function name specified as a
+     complete fully-qualified name.
 
 Result
 ......
@@ -6062,13 +6682,13 @@ The '-dprintf-insert' Command
 Synopsis
 ........
 
-      -dprintf-insert [ -t ] [ -f ] [ -d ]
-         [ -c CONDITION ] [ -i IGNORE-COUNT ]
+      -dprintf-insert [ -t ] [ -f ] [ -d ] [ --qualified ]
+         [ -c CONDITION ] [--force-condition] [ -i IGNORE-COUNT ]
          [ -p THREAD-ID ] [ LOCATION ] [ FORMAT ]
          [ ARGUMENT ]
 
-If supplied, LOCATION may be specified the same way as for the
-'-break-insert' command.  *Note -break-insert::.
+If supplied, LOCATION and '--qualified' may be specified the same way as
+for the '-break-insert' command.  *Note -break-insert::.
 
    The possible optional parameters of this command are:
 
@@ -6083,6 +6703,9 @@ If supplied, LOCATION may be specified the same way as for the
      Create a disabled breakpoint.
 '-c CONDITION'
      Make the breakpoint conditional on CONDITION.
+'--force-condition'
+     Forcibly define the breakpoint even if the condition is invalid at
+     all of the breakpoint locations.
 '-i IGNORE-COUNT'
      Set the ignore count of the breakpoint (*note ignore count:
      Conditions.) to IGNORE-COUNT.
@@ -7920,743 +8543,4 @@ Example
      -stack-select-frame 2
      ^done
      (gdb)
-
-
-File: gdb.info,  Node: GDB/MI Variable Objects,  Next: GDB/MI Data Manipulation,  Prev: GDB/MI Stack Manipulation,  Up: GDB/MI
-
-27.15 GDB/MI Variable Objects
-=============================
-
-Introduction to Variable Objects
---------------------------------
-
-Variable objects are "object-oriented" MI interface for examining and
-changing values of expressions.  Unlike some other MI interfaces that
-work with expressions, variable objects are specifically designed for
-simple and efficient presentation in the frontend.  A variable object is
-identified by string name.  When a variable object is created, the
-frontend specifies the expression for that variable object.  The
-expression can be a simple variable, or it can be an arbitrary complex
-expression, and can even involve CPU registers.  After creating a
-variable object, the frontend can invoke other variable object
-operations--for example to obtain or change the value of a variable
-object, or to change display format.
-
-   Variable objects have hierarchical tree structure.  Any variable
-object that corresponds to a composite type, such as structure in C, has
-a number of child variable objects, for example corresponding to each
-element of a structure.  A child variable object can itself have
-children, recursively.  Recursion ends when we reach leaf variable
-objects, which always have built-in types.  Child variable objects are
-created only by explicit request, so if a frontend is not interested in
-the children of a particular variable object, no child will be created.
-
-   For a leaf variable object it is possible to obtain its value as a
-string, or set the value from a string.  String value can be also
-obtained for a non-leaf variable object, but it's generally a string
-that only indicates the type of the object, and does not list its
-contents.  Assignment to a non-leaf variable object is not allowed.
-
-   A frontend does not need to read the values of all variable objects
-each time the program stops.  Instead, MI provides an update command
-that lists all variable objects whose values has changed since the last
-update operation.  This considerably reduces the amount of data that
-must be transferred to the frontend.  As noted above, children variable
-objects are created on demand, and only leaf variable objects have a
-real value.  As result, gdb will read target memory only for leaf
-variables that frontend has created.
-
-   The automatic update is not always desirable.  For example, a
-frontend might want to keep a value of some expression for future
-reference, and never update it.  For another example, fetching memory is
-relatively slow for embedded targets, so a frontend might want to
-disable automatic update for the variables that are either not visible
-on the screen, or "closed".  This is possible using so called "frozen
-variable objects".  Such variable objects are never implicitly updated.
-
-   Variable objects can be either "fixed" or "floating".  For the fixed
-variable object, the expression is parsed when the variable object is
-created, including associating identifiers to specific variables.  The
-meaning of expression never changes.  For a floating variable object the
-values of variables whose names appear in the expressions are
-re-evaluated every time in the context of the current frame.  Consider
-this example:
-
-     void do_work(...)
-     {
-             struct work_state state;
-
-             if (...)
-                do_work(...);
-     }
-
-   If a fixed variable object for the 'state' variable is created in
-this function, and we enter the recursive call, the variable object will
-report the value of 'state' in the top-level 'do_work' invocation.  On
-the other hand, a floating variable object will report the value of
-'state' in the current frame.
-
-   If an expression specified when creating a fixed variable object
-refers to a local variable, the variable object becomes bound to the
-thread and frame in which the variable object is created.  When such
-variable object is updated, GDB makes sure that the thread/frame
-combination the variable object is bound to still exists, and
-re-evaluates the variable object in context of that thread/frame.
-
-   The following is the complete set of GDB/MI operations defined to
-access this functionality:
-
-*Operation*                   *Description*
-                              
-'-enable-pretty-printing'     enable Python-based pretty-printing
-'-var-create'                 create a variable object
-'-var-delete'                 delete the variable object and/or its
-                              children
-'-var-set-format'             set the display format of this variable
-'-var-show-format'            show the display format of this variable
-'-var-info-num-children'      tells how many children this object has
-'-var-list-children'          return a list of the object's children
-'-var-info-type'              show the type of this variable object
-'-var-info-expression'        print parent-relative expression that
-                              this variable object represents
-'-var-info-path-expression'   print full expression that this variable
-                              object represents
-'-var-show-attributes'        is this variable editable?  does it exist
-                              here?
-'-var-evaluate-expression'    get the value of this variable
-'-var-assign'                 set the value of this variable
-'-var-update'                 update the variable and its children
-'-var-set-frozen'             set frozenness attribute
-'-var-set-update-range'       set range of children to display on
-                              update
-
-   In the next subsection we describe each operation in detail and
-suggest how it can be used.
-
-Description And Use of Operations on Variable Objects
------------------------------------------------------
-
-The '-enable-pretty-printing' Command
--------------------------------------
-
-     -enable-pretty-printing
-
-   GDB allows Python-based visualizers to affect the output of the MI
-variable object commands.  However, because there was no way to
-implement this in a fully backward-compatible way, a front end must
-request that this functionality be enabled.
-
-   Once enabled, this feature cannot be disabled.
-
-   Note that if Python support has not been compiled into GDB, this
-command will still succeed (and do nothing).
-
-   This feature is currently (as of GDB 7.0) experimental, and may work
-differently in future versions of GDB.
-
-The '-var-create' Command
--------------------------
-
-Synopsis
-........
-
-      -var-create {NAME | "-"}
-         {FRAME-ADDR | "*" | "@"} EXPRESSION
-
-   This operation creates a variable object, which allows the monitoring
-of a variable, the result of an expression, a memory cell or a CPU
-register.
-
-   The NAME parameter is the string by which the object can be
-referenced.  It must be unique.  If '-' is specified, the varobj system
-will generate a string "varNNNNNN" automatically.  It will be unique
-provided that one does not specify NAME of that format.  The command
-fails if a duplicate name is found.
-
-   The frame under which the expression should be evaluated can be
-specified by FRAME-ADDR.  A '*' indicates that the current frame should
-be used.  A '@' indicates that a floating variable object must be
-created.
-
-   EXPRESSION is any expression valid on the current language set (must
-not begin with a '*'), or one of the following:
-
-   * '*ADDR', where ADDR is the address of a memory cell
-
-   * '*ADDR-ADDR' -- a memory address range (TBD)
-
-   * '$REGNAME' -- a CPU register name
-
-   A varobj's contents may be provided by a Python-based pretty-printer.
-In this case the varobj is known as a "dynamic varobj".  Dynamic varobjs
-have slightly different semantics in some cases.  If the
-'-enable-pretty-printing' command is not sent, then GDB will never
-create a dynamic varobj.  This ensures backward compatibility for
-existing clients.
-
-Result
-......
-
-This operation returns attributes of the newly-created varobj.  These
-are:
-
-'name'
-     The name of the varobj.
-
-'numchild'
-     The number of children of the varobj.  This number is not
-     necessarily reliable for a dynamic varobj.  Instead, you must
-     examine the 'has_more' attribute.
-
-'value'
-     The varobj's scalar value.  For a varobj whose type is some sort of
-     aggregate (e.g., a 'struct'), or for a dynamic varobj, this value
-     will not be interesting.
-
-'type'
-     The varobj's type.  This is a string representation of the type, as
-     would be printed by the GDB CLI. If 'print object' (*note set print
-     object: Print Settings.) is set to 'on', the _actual_ (derived)
-     type of the object is shown rather than the _declared_ one.
-
-'thread-id'
-     If a variable object is bound to a specific thread, then this is
-     the thread's global identifier.
-
-'has_more'
-     For a dynamic varobj, this indicates whether there appear to be any
-     children available.  For a non-dynamic varobj, this will be 0.
-
-'dynamic'
-     This attribute will be present and have the value '1' if the varobj
-     is a dynamic varobj.  If the varobj is not a dynamic varobj, then
-     this attribute will not be present.
-
-'displayhint'
-     A dynamic varobj can supply a display hint to the front end.  The
-     value comes directly from the Python pretty-printer object's
-     'display_hint' method.  *Note Pretty Printing API::.
-
-   Typical output will look like this:
-
-      name="NAME",numchild="N",type="TYPE",thread-id="M",
-       has_more="HAS_MORE"
-
-The '-var-delete' Command
--------------------------
-
-Synopsis
-........
-
-      -var-delete [ -c ] NAME
-
-   Deletes a previously created variable object and all of its children.
-With the '-c' option, just deletes the children.
-
-   Returns an error if the object NAME is not found.
-
-The '-var-set-format' Command
------------------------------
-
-Synopsis
-........
-
-      -var-set-format NAME FORMAT-SPEC
-
-   Sets the output format for the value of the object NAME to be
-FORMAT-SPEC.
-
-   The syntax for the FORMAT-SPEC is as follows:
-
-      FORMAT-SPEC ==>
-      {binary | decimal | hexadecimal | octal | natural | zero-hexadecimal}
-
-   The natural format is the default format choosen automatically based
-on the variable type (like decimal for an 'int', hex for pointers,
-etc.).
-
-   The zero-hexadecimal format has a representation similar to
-hexadecimal but with padding zeroes to the left of the value.  For
-example, a 32-bit hexadecimal value of 0x1234 would be represented as
-0x00001234 in the zero-hexadecimal format.
-
-   For a variable with children, the format is set only on the variable
-itself, and the children are not affected.
-
-The '-var-show-format' Command
-------------------------------
-
-Synopsis
-........
-
-      -var-show-format NAME
-
-   Returns the format used to display the value of the object NAME.
-
-      FORMAT ==>
-      FORMAT-SPEC
-
-The '-var-info-num-children' Command
-------------------------------------
-
-Synopsis
-........
-
-      -var-info-num-children NAME
-
-   Returns the number of children of a variable object NAME:
-
-      numchild=N
-
-   Note that this number is not completely reliable for a dynamic
-varobj.  It will return the current number of children, but more
-children may be available.
-
-The '-var-list-children' Command
---------------------------------
-
-Synopsis
-........
-
-      -var-list-children [PRINT-VALUES] NAME [FROM TO]
-
-   Return a list of the children of the specified variable object and
-create variable objects for them, if they do not already exist.  With a
-single argument or if PRINT-VALUES has a value of 0 or '--no-values',
-print only the names of the variables; if PRINT-VALUES is 1 or
-'--all-values', also print their values; and if it is 2 or
-'--simple-values' print the name and value for simple data types and
-just the name for arrays, structures and unions.
-
-   FROM and TO, if specified, indicate the range of children to report.
-If FROM or TO is less than zero, the range is reset and all children
-will be reported.  Otherwise, children starting at FROM (zero-based) and
-up to and excluding TO will be reported.
-
-   If a child range is requested, it will only affect the current call
-to '-var-list-children', but not future calls to '-var-update'.  For
-this, you must instead use '-var-set-update-range'.  The intent of this
-approach is to enable a front end to implement any update approach it
-likes; for example, scrolling a view may cause the front end to request
-more children with '-var-list-children', and then the front end could
-call '-var-set-update-range' with a different range to ensure that
-future updates are restricted to just the visible items.
-
-   For each child the following results are returned:
-
-NAME
-     Name of the variable object created for this child.
-
-EXP
-     The expression to be shown to the user by the front end to
-     designate this child.  For example this may be the name of a
-     structure member.
-
-     For a dynamic varobj, this value cannot be used to form an
-     expression.  There is no way to do this at all with a dynamic
-     varobj.
-
-     For C/C++ structures there are several pseudo children returned to
-     designate access qualifiers.  For these pseudo children EXP is
-     'public', 'private', or 'protected'.  In this case the type and
-     value are not present.
-
-     A dynamic varobj will not report the access qualifying
-     pseudo-children, regardless of the language.  This information is
-     not available at all with a dynamic varobj.
-
-NUMCHILD
-     Number of children this child has.  For a dynamic varobj, this will
-     be 0.
-
-TYPE
-     The type of the child.  If 'print object' (*note set print object:
-     Print Settings.) is set to 'on', the _actual_ (derived) type of the
-     object is shown rather than the _declared_ one.
-
-VALUE
-     If values were requested, this is the value.
-
-THREAD-ID
-     If this variable object is associated with a thread, this is the
-     thread's global thread id.  Otherwise this result is not present.
-
-FROZEN
-     If the variable object is frozen, this variable will be present
-     with a value of 1.
-
-DISPLAYHINT
-     A dynamic varobj can supply a display hint to the front end.  The
-     value comes directly from the Python pretty-printer object's
-     'display_hint' method.  *Note Pretty Printing API::.
-
-DYNAMIC
-     This attribute will be present and have the value '1' if the varobj
-     is a dynamic varobj.  If the varobj is not a dynamic varobj, then
-     this attribute will not be present.
-
-   The result may have its own attributes:
-
-'displayhint'
-     A dynamic varobj can supply a display hint to the front end.  The
-     value comes directly from the Python pretty-printer object's
-     'display_hint' method.  *Note Pretty Printing API::.
-
-'has_more'
-     This is an integer attribute which is nonzero if there are children
-     remaining after the end of the selected range.
-
-Example
-.......
-
-     (gdb)
-      -var-list-children n
-      ^done,numchild=N,children=[child={name=NAME,exp=EXP,
-      numchild=N,type=TYPE},(repeats N times)]
-     (gdb)
-      -var-list-children --all-values n
-      ^done,numchild=N,children=[child={name=NAME,exp=EXP,
-      numchild=N,value=VALUE,type=TYPE},(repeats N times)]
-
-The '-var-info-type' Command
-----------------------------
-
-Synopsis
-........
-
-      -var-info-type NAME
-
-   Returns the type of the specified variable NAME.  The type is
-returned as a string in the same format as it is output by the GDB CLI:
-
-      type=TYPENAME
-
-The '-var-info-expression' Command
-----------------------------------
-
-Synopsis
-........
-
-      -var-info-expression NAME
-
-   Returns a string that is suitable for presenting this variable object
-in user interface.  The string is generally not valid expression in the
-current language, and cannot be evaluated.
-
-   For example, if 'a' is an array, and variable object 'A' was created
-for 'a', then we'll get this output:
-
-     (gdb) -var-info-expression A.1
-     ^done,lang="C",exp="1"
-
-Here, the value of 'lang' is the language name, which can be found in
-*note Supported Languages::.
-
-   Note that the output of the '-var-list-children' command also
-includes those expressions, so the '-var-info-expression' command is of
-limited use.
-
-The '-var-info-path-expression' Command
----------------------------------------
-
-Synopsis
-........
-
-      -var-info-path-expression NAME
-
-   Returns an expression that can be evaluated in the current context
-and will yield the same value that a variable object has.  Compare this
-with the '-var-info-expression' command, which result can be used only
-for UI presentation.  Typical use of the '-var-info-path-expression'
-command is creating a watchpoint from a variable object.
-
-   This command is currently not valid for children of a dynamic varobj,
-and will give an error when invoked on one.
-
-   For example, suppose 'C' is a C++ class, derived from class 'Base',
-and that the 'Base' class has a member called 'm_size'.  Assume a
-variable 'c' is has the type of 'C' and a variable object 'C' was
-created for variable 'c'.  Then, we'll get this output:
-     (gdb) -var-info-path-expression C.Base.public.m_size
-     ^done,path_expr=((Base)c).m_size)
-
-The '-var-show-attributes' Command
-----------------------------------
-
-Synopsis
-........
-
-      -var-show-attributes NAME
-
-   List attributes of the specified variable object NAME:
-
-      status=ATTR [ ( ,ATTR )* ]
-
-where ATTR is '{ { editable | noneditable } | TBD }'.
-
-The '-var-evaluate-expression' Command
---------------------------------------
-
-Synopsis
-........
-
-      -var-evaluate-expression [-f FORMAT-SPEC] NAME
-
-   Evaluates the expression that is represented by the specified
-variable object and returns its value as a string.  The format of the
-string can be specified with the '-f' option.  The possible values of
-this option are the same as for '-var-set-format' (*note
--var-set-format::).  If the '-f' option is not specified, the current
-display format will be used.  The current display format can be changed
-using the '-var-set-format' command.
-
-      value=VALUE
-
-   Note that one must invoke '-var-list-children' for a variable before
-the value of a child variable can be evaluated.
-
-The '-var-assign' Command
--------------------------
-
-Synopsis
-........
-
-      -var-assign NAME EXPRESSION
-
-   Assigns the value of EXPRESSION to the variable object specified by
-NAME.  The object must be 'editable'.  If the variable's value is
-altered by the assign, the variable will show up in any subsequent
-'-var-update' list.
-
-Example
-.......
-
-     (gdb)
-     -var-assign var1 3
-     ^done,value="3"
-     (gdb)
-     -var-update *
-     ^done,changelist=[{name="var1",in_scope="true",type_changed="false"}]
-     (gdb)
-
-The '-var-update' Command
--------------------------
-
-Synopsis
-........
-
-      -var-update [PRINT-VALUES] {NAME | "*"}
-
-   Reevaluate the expressions corresponding to the variable object NAME
-and all its direct and indirect children, and return the list of
-variable objects whose values have changed; NAME must be a root variable
-object.  Here, "changed" means that the result of
-'-var-evaluate-expression' before and after the '-var-update' is
-different.  If '*' is used as the variable object names, all existing
-variable objects are updated, except for frozen ones (*note
--var-set-frozen::).  The option PRINT-VALUES determines whether both
-names and values, or just names are printed.  The possible values of
-this option are the same as for '-var-list-children' (*note
--var-list-children::).  It is recommended to use the '--all-values'
-option, to reduce the number of MI commands needed on each program stop.
-
-   With the '*' parameter, if a variable object is bound to a currently
-running thread, it will not be updated, without any diagnostic.
-
-   If '-var-set-update-range' was previously used on a varobj, then only
-the selected range of children will be reported.
-
-   '-var-update' reports all the changed varobjs in a tuple named
-'changelist'.
-
-   Each item in the change list is itself a tuple holding:
-
-'name'
-     The name of the varobj.
-
-'value'
-     If values were requested for this update, then this field will be
-     present and will hold the value of the varobj.
-
-'in_scope'
-     This field is a string which may take one of three values:
-
-     '"true"'
-          The variable object's current value is valid.
-
-     '"false"'
-          The variable object does not currently hold a valid value but
-          it may hold one in the future if its associated expression
-          comes back into scope.
-
-     '"invalid"'
-          The variable object no longer holds a valid value.  This can
-          occur when the executable file being debugged has changed,
-          either through recompilation or by using the GDB 'file'
-          command.  The front end should normally choose to delete these
-          variable objects.
-
-     In the future new values may be added to this list so the front
-     should be prepared for this possibility.  *Note GDB/MI Development
-     and Front Ends: GDB/MI Development and Front Ends.
-
-'type_changed'
-     This is only present if the varobj is still valid.  If the type
-     changed, then this will be the string 'true'; otherwise it will be
-     'false'.
-
-     When a varobj's type changes, its children are also likely to have
-     become incorrect.  Therefore, the varobj's children are
-     automatically deleted when this attribute is 'true'.  Also, the
-     varobj's update range, when set using the '-var-set-update-range'
-     command, is unset.
-
-'new_type'
-     If the varobj's type changed, then this field will be present and
-     will hold the new type.
-
-'new_num_children'
-     For a dynamic varobj, if the number of children changed, or if the
-     type changed, this will be the new number of children.
-
-     The 'numchild' field in other varobj responses is generally not
-     valid for a dynamic varobj - it will show the number of children
-     that GDB knows about, but because dynamic varobjs lazily
-     instantiate their children, this will not reflect the number of
-     children which may be available.
-
-     The 'new_num_children' attribute only reports changes to the number
-     of children known by GDB.  This is the only way to detect whether
-     an update has removed children (which necessarily can only happen
-     at the end of the update range).
-
-'displayhint'
-     The display hint, if any.
-
-'has_more'
-     This is an integer value, which will be 1 if there are more
-     children available outside the varobj's update range.
-
-'dynamic'
-     This attribute will be present and have the value '1' if the varobj
-     is a dynamic varobj.  If the varobj is not a dynamic varobj, then
-     this attribute will not be present.
-
-'new_children'
-     If new children were added to a dynamic varobj within the selected
-     update range (as set by '-var-set-update-range'), then they will be
-     listed in this attribute.
-
-Example
-.......
-
-     (gdb)
-     -var-assign var1 3
-     ^done,value="3"
-     (gdb)
-     -var-update --all-values var1
-     ^done,changelist=[{name="var1",value="3",in_scope="true",
-     type_changed="false"}]
-     (gdb)
-
-The '-var-set-frozen' Command
------------------------------
-
-Synopsis
-........
-
-      -var-set-frozen NAME FLAG
-
-   Set the frozenness flag on the variable object NAME.  The FLAG
-parameter should be either '1' to make the variable frozen or '0' to
-make it unfrozen.  If a variable object is frozen, then neither itself,
-nor any of its children, are implicitly updated by '-var-update' of a
-parent variable or by '-var-update *'.  Only '-var-update' of the
-variable itself will update its value and values of its children.  After
-a variable object is unfrozen, it is implicitly updated by all
-subsequent '-var-update' operations.  Unfreezing a variable does not
-update it, only subsequent '-var-update' does.
-
-Example
-.......
-
-     (gdb)
-     -var-set-frozen V 1
-     ^done
-     (gdb)
-
-The '-var-set-update-range' command
------------------------------------
-
-Synopsis
-........
-
-      -var-set-update-range NAME FROM TO
-
-   Set the range of children to be returned by future invocations of
-'-var-update'.
-
-   FROM and TO indicate the range of children to report.  If FROM or TO
-is less than zero, the range is reset and all children will be reported.
-Otherwise, children starting at FROM (zero-based) and up to and
-excluding TO will be reported.
-
-Example
-.......
-
-     (gdb)
-     -var-set-update-range V 1 2
-     ^done
-
-The '-var-set-visualizer' command
----------------------------------
-
-Synopsis
-........
-
-      -var-set-visualizer NAME VISUALIZER
-
-   Set a visualizer for the variable object NAME.
-
-   VISUALIZER is the visualizer to use.  The special value 'None' means
-to disable any visualizer in use.
-
-   If not 'None', VISUALIZER must be a Python expression.  This
-expression must evaluate to a callable object which accepts a single
-argument.  GDB will call this object with the value of the varobj NAME
-as an argument (this is done so that the same Python pretty-printing
-code can be used for both the CLI and MI). When called, this object must
-return an object which conforms to the pretty-printing interface (*note
-Pretty Printing API::).
-
-   The pre-defined function 'gdb.default_visualizer' may be used to
-select a visualizer by following the built-in process (*note Selecting
-Pretty-Printers::).  This is done automatically when a varobj is
-created, and so ordinarily is not needed.
-
-   This feature is only available if Python support is enabled.  The MI
-command '-list-features' (*note GDB/MI Support Commands::) can be used
-to check this.
-
-Example
-.......
-
-Resetting the visualizer:
-
-     (gdb)
-     -var-set-visualizer V None
-     ^done
-
-   Reselecting the default (type-based) visualizer:
-
-     (gdb)
-     -var-set-visualizer V gdb.default_visualizer
-     ^done
-
-   Suppose 'SomeClass' is a visualizer class.  A lambda expression can
-be used to instantiate this class for a varobj:
-
-     (gdb)
-     -var-set-visualizer V "lambda val: SomeClass()"
-     ^done
 

@@ -1,6 +1,6 @@
 // Components for compile-time parsing of numbers -*- C++ -*-
 
-// Copyright (C) 2013-2020 Free Software Foundation, Inc.
+// Copyright (C) 2013-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -36,7 +36,8 @@
 
 #if __cplusplus >= 201402L
 
-#include <bits/int_limits.h>
+#include <type_traits>
+#include <ext/numeric_traits.h>
 
 namespace std _GLIBCXX_VISIBILITY(default)
 {
@@ -265,8 +266,8 @@ namespace __select_int
 
   template<unsigned long long _Val, typename _IntType, typename... _Ints>
     struct _Select_int_base<_Val, _IntType, _Ints...>
-    : conditional_t<(_Val <= __detail::__int_limits<_IntType>::max()),
-		    integral_constant<_IntType, _Val>,
+    : conditional_t<(_Val <= __gnu_cxx::__int_traits<_IntType>::__max),
+		    integral_constant<_IntType, (_IntType)_Val>,
 		    _Select_int_base<_Val, _Ints...>>
     { };
 

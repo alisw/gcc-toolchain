@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
---                     Copyright (C) 2001-2019, AdaCore                     --
+--                     Copyright (C) 2001-2020, AdaCore                     --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -449,10 +449,10 @@ package GNAT.Sockets is
 
    type Selector_Status is (Completed, Expired, Aborted);
    --  Completion status of a selector operation, indicated as follows:
-   --    Complete: one of the expected events occurred
-   --    Expired:  no event occurred before the expiration of the timeout
-   --    Aborted:  an external action cancelled the wait operation before
-   --              any event occurred.
+   --    Completed: one of the expected events occurred
+   --    Expired:   no event occurred before the expiration of the timeout
+   --    Aborted:   an external action cancelled the wait operation before
+   --               any event occurred.
 
    Socket_Error : exception;
    --  There is only one exception in this package to deal with an error during
@@ -1572,5 +1572,9 @@ private
    Peek_At_Incoming_Data     : constant Request_Flag_Type := 2;
    Wait_For_A_Full_Reception : constant Request_Flag_Type := 4;
    Send_End_Of_Record        : constant Request_Flag_Type := 8;
+
+   procedure Raise_Socket_Error (Error : Integer);
+   --  Raise Socket_Error with an exception message describing the error code
+   --  from errno.
 
 end GNAT.Sockets;

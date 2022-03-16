@@ -1,5 +1,5 @@
 /* ELF core file support for BFD.
-   Copyright (C) 1995-2020 Free Software Foundation, Inc.
+   Copyright (C) 1995-2022 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -36,7 +36,7 @@ elf_core_file_pid (bfd *abfd)
   return elf_tdata (abfd)->core->pid;
 }
 
-bfd_boolean
+bool
 elf_core_file_matches_executable_p (bfd *core_bfd, bfd *exec_bfd)
 {
   char* corename;
@@ -46,7 +46,7 @@ elf_core_file_matches_executable_p (bfd *core_bfd, bfd *exec_bfd)
   if (core_bfd->xvec != exec_bfd->xvec)
     {
       bfd_set_error (bfd_error_system_call);
-      return FALSE;
+      return false;
     }
 
   /* If both BFDs have identical build-ids, then they match.  */
@@ -55,7 +55,7 @@ elf_core_file_matches_executable_p (bfd *core_bfd, bfd *exec_bfd)
       && core_bfd->build_id->size == exec_bfd->build_id->size
       && memcmp (core_bfd->build_id->data, exec_bfd->build_id->data,
 		 core_bfd->build_id->size) == 0)
-    return TRUE;
+    return true;
 
   /* See if the name in the corefile matches the executable name.  */
   corename = elf_tdata (core_bfd)->core->program;
@@ -66,10 +66,10 @@ elf_core_file_matches_executable_p (bfd *core_bfd, bfd *exec_bfd)
       execname = execname ? execname + 1 : bfd_get_filename (exec_bfd);
 
       if (strcmp (execname, corename) != 0)
-	return FALSE;
+	return false;
     }
 
-  return TRUE;
+  return true;
 }
 
 /*  Core files are simply standard ELF formatted files that partition
@@ -92,6 +92,7 @@ elf_core_file_p (bfd *abfd)
   unsigned int phindex;
   const struct elf_backend_data *ebd;
   bfd_size_type amt;
+  ufile_ptr filesize;
 
   /* Read in the ELF header in external format.  */
   if (bfd_bread (&x_ehdr, sizeof (x_ehdr), abfd) != sizeof (x_ehdr))
@@ -286,29 +287,21 @@ elf_core_file_p (bfd *abfd)
       goto fail;
 
   /* Check for core truncation.  */
-  {
-    bfd_size_type high = 0;
-    struct stat statbuf;
-    for (phindex = 0; phindex < i_ehdrp->e_phnum; ++phindex)
-      {
-	Elf_Internal_Phdr *p = i_phdrp + phindex;
-	if (p->p_filesz)
-	  {
-	    bfd_size_type current = p->p_offset + p->p_filesz;
-	    if (high < current)
-	      high = current;
-	  }
-      }
-    if (bfd_stat (abfd, &statbuf) == 0)
-      {
-	if ((bfd_size_type) statbuf.st_size < high)
-	  {
-	    _bfd_error_handler
-	      /* xgettext:c-format */
-	      (_("warning: %pB is truncated: expected core file "
-		 "size >= %" PRIu64 ", found: %" PRIu64),
-	       abfd, (uint64_t) high, (uint64_t) statbuf.st_size);
-	  }
+  filesize = bfd_get_file_size (abfd);
+  if (filesize != 0)
+    {
+      for (phindex = 0; phindex < i_ehdrp->e_phnum; ++phindex)
+	{
+	  Elf_Internal_Phdr *p = i_phdrp + phindex;
+	  if (p->p_filesz
+	      && (p->p_offset >= filesize
+		  || p->p_filesz > filesize - p->p_offset))
+	    {
+	      _bfd_error_handler (_("warning: %pB has a segment "
+				    "extending past end of file"), abfd);
+	      abfd->read_only = 1;
+	      break;
+	    }
       }
   }
 
@@ -326,7 +319,7 @@ elf_core_file_p (bfd *abfd)
    OFFSET is the file offset to a PT_LOAD segment that may contain
    the build-id note.  Returns TRUE upon success, FALSE otherwise.  */
 
-bfd_boolean
+bool
 NAME(_bfd_elf, core_find_build_id)
   (bfd *abfd,
    bfd_vma offset)
@@ -410,8 +403,15 @@ NAME(_bfd_elf, core_find_build_id)
 	{
 	  elf_read_notes (abfd, offset + i_phdr->p_offset,
 			  i_phdr->p_filesz, i_phdr->p_align);
+
+	  /* Make sure ABFD returns to processing the program headers.  */
+	  if (bfd_seek (abfd, (file_ptr) (offset + i_ehdr.e_phoff
+					  + (i + 1) * sizeof (x_phdr)),
+			SEEK_SET) != 0)
+	    goto fail;
+
 	  if (abfd->build_id != NULL)
-	    return TRUE;
+	    return true;
 	}
     }
 
@@ -422,5 +422,5 @@ NAME(_bfd_elf, core_find_build_id)
  wrong:
   bfd_set_error (bfd_error_wrong_format);
  fail:
-  return FALSE;
+  return false;
 }

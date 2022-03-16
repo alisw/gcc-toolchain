@@ -1,7 +1,7 @@
 /* Variables that describe the inferior process running under GDB:
    Where it is, why it stopped, and how to step it.
 
-   Copyright (C) 1986-2020 Free Software Foundation, Inc.
+   Copyright (C) 1986-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -22,6 +22,7 @@
 #define INFERIOR_H 1
 
 #include <exception>
+#include <list>
 
 struct target_waitstatus;
 struct frame_info;
@@ -32,7 +33,6 @@ struct regcache;
 struct ui_out;
 struct terminal_info;
 struct target_desc_info;
-struct continuation;
 struct inferior;
 struct thread_info;
 
@@ -60,6 +60,7 @@ struct thread_info;
 #include "gdbthread.h"
 
 #include "process-stratum-target.h"
+#include "displaced-stepping.h"
 
 struct infcall_suspend_state;
 struct infcall_control_state;
@@ -196,7 +197,7 @@ extern ptid_t gdb_startup_inferior (pid_t pid, int num_traps);
 
 extern void setup_inferior (int from_tty);
 
-extern void post_create_inferior (struct target_ops *, int);
+extern void post_create_inferior (int from_tty);
 
 extern void attach_command (const char *, int);
 
@@ -217,7 +218,7 @@ using delete_longjmp_breakpoint_cleanup
 
 extern void detach_command (const char *, int);
 
-extern void notice_new_inferior (struct thread_info *, int, int);
+extern void notice_new_inferior (struct thread_info *, bool, int);
 
 extern struct value *get_return_value (struct value *function,
 				       struct type *value_type);
@@ -351,6 +352,13 @@ public:
   void push_target (struct target_ops *t)
   { m_target_stack.push (t); }
 
+  /* An overload that deletes the target on failure.  */
+  void push_target (target_ops_up &&t)
+  {
+    m_target_stack.push (t.get ());
+    t.release ();
+  }
+
   /* Unpush T from this inferior's target stack.  */
   int unpush_target (struct target_ops *t)
   { return m_target_stack.unpush (t); }
@@ -377,7 +385,7 @@ public:
   { return m_target_stack.at (stratum); }
 
   bool has_execution ()
-  { return target_has_execution_1 (this); }
+  { return target_has_execution (this); }
 
   /* Pointer to next inferior in singly-linked list of inferiors.  */
   struct inferior *next = NULL;
@@ -413,6 +421,14 @@ public:
   */
   inline safe_inf_threads_range threads_safe ()
   { return safe_inf_threads_range (this->thread_list); }
+
+  /* Continuations-related methods.  A continuation is an std::function
+     to be called to finish the execution of a command when running
+     GDB asynchronously.  A continuation is executed after any thread
+     of this inferior stops.  Continuations are used by the attach
+     command and the remote target when a new inferior is detected.  */
+  void add_continuation (std::function<void ()> &&cont);
+  void do_all_continuations ();
 
   /* Set/get file name for default use for standard in/out in the
      inferior.  On Unix systems, we try to make TERMINAL_NAME the
@@ -452,7 +468,7 @@ public:
   struct program_space *pspace = NULL;
 
   /* The arguments string to use when running.  */
-  char *args = NULL;
+  gdb::unique_xmalloc_ptr<char> args;
 
   /* The size of elements in argv.  */
   int argc = 0;
@@ -500,16 +516,15 @@ public:
   /* True if we're in the process of detaching from this inferior.  */
   bool detaching = false;
 
-  /* What is left to do for an execution command after any thread of
-     this inferior stops.  For continuations associated with a
-     specific thread, see `struct thread_info'.  */
-  continuation *continuations = NULL;
-
   /* True if setup_inferior wasn't called for this inferior yet.
      Until that is done, we must not access inferior memory or
      registers, as we haven't determined the target
      architecture/description.  */
   bool needs_setup = false;
+
+  /* True when we are reading the library list of the inferior during an
+     attach or handling a fork child.  */
+  bool in_initial_library_scan = false;
 
   /* Private data used by the target vector implementation.  */
   std::unique_ptr<private_inferior> priv;
@@ -552,6 +567,9 @@ private:
 
   /* The name of terminal device to use for I/O.  */
   gdb::unique_xmalloc_ptr<char> m_terminal;
+
+  /* The list of continuations.  */
+  std::list<std::function<void ()>> m_continuations;
 };
 
 /* Keep a registry of per-inferior data-pointers required by other GDB

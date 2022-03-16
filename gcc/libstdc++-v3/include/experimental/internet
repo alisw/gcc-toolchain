@@ -1,6 +1,6 @@
 // <experimental/internet> -*- C++ -*-
 
-// Copyright (C) 2015-2020 Free Software Foundation, Inc.
+// Copyright (C) 2015-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -101,17 +101,17 @@ namespace ip
     return __c;
   }
 
-  error_code make_error_code(resolver_errc __e) noexcept
+  inline error_code make_error_code(resolver_errc __e) noexcept
   { return error_code(static_cast<int>(__e), resolver_category()); }
 
-  error_condition make_error_condition(resolver_errc __e) noexcept
+  inline error_condition make_error_condition(resolver_errc __e) noexcept
   { return error_condition(static_cast<int>(__e), resolver_category()); }
 
   /// @}
 #endif
 
-  typedef uint_least16_t port_type;	///< Type used for port numbers.
-  typedef uint_least32_t scope_id_type;	///< Type used for IPv6 scope IDs.
+  using port_type = uint_least16_t;	///< Type used for port numbers.
+  using scope_id_type = uint_least32_t;	///< Type used for IPv6 scope IDs.
 
   /// Convenience alias for constraining allocators for strings.
   template<typename _Alloc>
@@ -126,14 +126,14 @@ namespace ip
   struct v4_mapped_t {};
   constexpr v4_mapped_t v4_mapped;
 
-  // @}
+  /// @}
 
   /// An IPv4 address.
   class address_v4
   {
   public:
     // types:
-    typedef uint_least32_t uint_type;
+    using uint_type = uint_least32_t;
 
     struct bytes_type : array<unsigned char, 4>
     {
@@ -344,9 +344,23 @@ namespace ip
       to_string(const _Allocator& __a = _Allocator()) const
       {
 	__string_with<_Allocator> __str(__a);
-	__str.resize(INET6_ADDRSTRLEN);
-	if (inet_ntop(AF_INET6, &_M_bytes, &__str.front(), __str.size()))
-	  __str.erase(__str.find('\0'));
+	__str.resize(INET6_ADDRSTRLEN + (_M_scope_id ? 11 : 0));
+	char* const __p = &__str.front();
+	if (inet_ntop(AF_INET6, &_M_bytes, __p, __str.size()))
+	  {
+	    auto __end = __str.find('\0');
+	    if (unsigned long __scope = _M_scope_id)
+	      {
+		__end +=
+#if _GLIBCXX_USE_C99_STDIO
+		  __builtin_snprintf(__p + __end, __str.size() - __end,
+				     "%%%lu", __scope);
+#else
+		  __builtin_sprintf(__p + __end, "%%%lu", __scope);
+#endif
+	      }
+	    __str.erase(__end);
+	  }
 	else
 	  __str.resize(0);
 	return __str;
@@ -354,20 +368,17 @@ namespace ip
 #endif
 
     // static members:
+
     static constexpr address_v6
     any() noexcept
     {
-      address_v6 __addr;
-      __builtin_memcpy(&__addr._M_bytes, in6addr_any.s6_addr, 16);
-      return __addr;
+      return {};
     }
 
     static constexpr address_v6
     loopback() noexcept
     {
-      address_v6 __addr;
-      __builtin_memcpy(&__addr._M_bytes, in6addr_loopback.s6_addr, 16);
-      return __addr;
+      return {bytes_type{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}};
     }
 
   private:
@@ -530,7 +541,7 @@ namespace ip
   operator>=(const address_v4& __a, const address_v4& __b) noexcept
   { return !(__a < __b); }
 
-  // @}
+  /// @}
 
   /** ip::address_v6 comparisons
    * @{
@@ -574,7 +585,7 @@ namespace ip
   operator>=(const address_v6& __a, const address_v6& __b) noexcept
   { return !(__a < __b); }
 
-  // @}
+  /// @}
 
   /** ip::address comparisons
    * @{
@@ -612,7 +623,7 @@ namespace ip
   operator>=(const address& __a, const address& __b) noexcept
   { return !(__a < __b); }
 
-  // @}
+  /// @}
 
   /** ip::address_v4 creation
    * @{
@@ -684,7 +695,7 @@ namespace ip
   make_address_v4(string_view __str)
   { return make_address_v4(__str, __throw_on_error{"make_address_v4"}); }
 
-  // @}
+  /// @}
 
   /** ip::address_v6 creation
    * @{
@@ -755,7 +766,10 @@ namespace ip
 	__str++;
       }
     if (__out == std::end(__buf))
-      __ec = std::make_error_code(std::errc::invalid_argument);
+      {
+	__ec = std::make_error_code(std::errc::invalid_argument);
+	return {};
+      }
     else
       {
 	*__out = '\0';
@@ -790,7 +804,10 @@ namespace ip
 	__n++;
       }
     if (__out == std::end(__buf))
-      __ec = std::make_error_code(std::errc::invalid_argument);
+      {
+	__ec = std::make_error_code(std::errc::invalid_argument);
+	return {};
+      }
     else
       {
 	*__out = '\0';
@@ -835,7 +852,10 @@ namespace ip
 	__n++;
       }
     if (__out == std::end(__buf))
-      __ec = std::make_error_code(std::errc::invalid_argument);
+      {
+	__ec = std::make_error_code(std::errc::invalid_argument);
+	return {};
+      }
     else
       {
 	*__out = '\0';
@@ -847,7 +867,7 @@ namespace ip
   make_address_v6(string_view __str)
   { return make_address_v6(__str, __throw_on_error{"make_address_v6"}); }
 
-  // @}
+  /// @}
 
   /** ip::address creation
    * @{
@@ -892,7 +912,7 @@ namespace ip
   make_address(string_view __str)
   { return make_address(__str, __throw_on_error{"make_address"}); }
 
-  // @}
+  /// @}
 
   /// ip::address I/O
   template<typename _CharT, typename _Traits>
@@ -918,11 +938,11 @@ namespace ip
   {
   public:
     // types:
-    typedef address_v4 value_type;
-    typedef ptrdiff_t difference_type;
-    typedef const address_v4* pointer;
-    typedef const address_v4& reference;
-    typedef input_iterator_tag iterator_category;
+    using value_type = address_v4;
+    using difference_type = ptrdiff_t;
+    using pointer = const address_v4*;
+    using reference = const address_v4&;
+    using iterator_category = input_iterator_tag;
 
     // constructors:
     basic_address_iterator(const address_v4& __a) noexcept
@@ -972,17 +992,17 @@ namespace ip
     address_v4 _M_address;
   };
 
-  typedef basic_address_iterator<address_v4> address_v4_iterator;
+  using address_v4_iterator = basic_address_iterator<address_v4>;
 
   template<> class basic_address_iterator<address_v6>
   {
   public:
     // types:
-    typedef address_v6 value_type;
-    typedef ptrdiff_t difference_type;
-    typedef const address_v6* pointer;
-    typedef const address_v6& reference;
-    typedef input_iterator_tag iterator_category;
+    using value_type = address_v6;
+    using difference_type = ptrdiff_t;
+    using pointer = const address_v6*;
+    using reference = const address_v6&;
+    using iterator_category = input_iterator_tag;
 
     // constructors:
     basic_address_iterator(const address_v6& __a) noexcept
@@ -1026,7 +1046,7 @@ namespace ip
     address_v6 _M_address;
   };
 
-  typedef basic_address_iterator<address_v6> address_v6_iterator;
+  using address_v6_iterator = basic_address_iterator<address_v6>;
 
   template<typename> class basic_address_range; // not defined
 
@@ -1039,7 +1059,7 @@ namespace ip
   public:
     // types:
 
-    typedef basic_address_iterator<address_v4> iterator;
+    using iterator = basic_address_iterator<address_v4>;
 
     // constructors:
 
@@ -1071,9 +1091,9 @@ namespace ip
     iterator _M_end;
   };
 
-  typedef basic_address_range<address_v4> address_v4_range;
+  using address_v4_range = basic_address_range<address_v4>;
 
-  // @}
+  /// @}
 
   /** An IPv6 address range.
    * @{
@@ -1084,7 +1104,7 @@ namespace ip
   public:
     // types:
 
-    typedef basic_address_iterator<address_v6> iterator;
+    using iterator = basic_address_iterator<address_v6>;
 
     // constructors:
 
@@ -1112,9 +1132,9 @@ namespace ip
     iterator _M_end;
   };
 
-  typedef basic_address_range<address_v6> address_v6_range;
+  using address_v6_range = basic_address_range<address_v6>;
 
-  // @}
+  /// @}
 
   bool
   operator==(const network_v4& __a, const network_v4& __b) noexcept;
@@ -1287,7 +1307,7 @@ namespace ip
   operator!=(const network_v4& __a, const network_v4& __b) noexcept
   { return !(__a == __b); }
 
-  // @}
+  /// @}
 
   /** ip::network_v6 comparisons
    * @{
@@ -1304,7 +1324,7 @@ namespace ip
   operator!=(const network_v6& __a, const network_v6& __b) noexcept
   { return !(__a == __b); }
 
-  // @}
+  /// @}
 
   /** ip::network_v4 creation
    * @{
@@ -1314,7 +1334,7 @@ namespace ip
   make_network_v4(const address_v4& __a, int __prefix_len)
   { return network_v4{__a, __prefix_len}; }
 
-  network_v4
+  inline network_v4
   make_network_v4(const address_v4& __a, const address_v4& __mask)
   { return network_v4{ __a, __mask }; }
 
@@ -1336,7 +1356,7 @@ namespace ip
   make_network_v4(string_view __str)
   { return make_network_v4(__str, __throw_on_error{"make_network_v4"}); }
 
-  // @}
+  /// @}
 
   /** ip::network_v6 creation
    * @{
@@ -1364,7 +1384,7 @@ namespace ip
   make_network_v6(string_view __str)
   { return make_network_v6(__str, __throw_on_error{"make_network_v6"}); }
 
-  // @}
+  /// @}
 
   /// ip::network_v4 I/O
   template<typename _CharT, typename _Traits>
@@ -1384,7 +1404,7 @@ namespace ip
     {
     public:
       // types:
-      typedef _InternetProtocol protocol_type;
+      using protocol_type = _InternetProtocol;
 
       // constructors:
 
@@ -1546,7 +1566,7 @@ namespace ip
 	       const basic_endpoint<_InternetProtocol>& __b)
     { return !(__a < __b); }
 
-  // @}
+  /// @}
 
   /// basic_endpoint I/O
   template<typename _CharT, typename _Traits, typename _InternetProtocol>
@@ -1574,8 +1594,8 @@ namespace ip
     {
     public:
       // types:
-      typedef _InternetProtocol protocol_type;
-      typedef typename _InternetProtocol::endpoint endpoint_type;
+      using protocol_type = _InternetProtocol;
+      using endpoint_type = typename _InternetProtocol::endpoint;
 
       // constructors:
       basic_resolver_entry() { }
@@ -1620,7 +1640,7 @@ namespace ip
 	       const basic_resolver_entry<_InternetProtocol>& __b)
     { return !(__a == __b); }
 
-  // @}
+  /// @}
 
   /** Base class defining flags for name/address resolution.
    * @{
@@ -1686,7 +1706,7 @@ namespace ip
 
   // TODO define resolver_base::flags static constants for C++14 mode
 
-  // @}
+  /// @}
 
   /** Container for results of name/address resolution.
    * @{
@@ -1697,15 +1717,15 @@ namespace ip
     {
     public:
       // types:
-      typedef _InternetProtocol protocol_type;
-      typedef typename protocol_type::endpoint endpoint_type;
-      typedef basic_resolver_entry<protocol_type> value_type;
-      typedef const value_type& const_reference;
-      typedef value_type& reference;
-      typedef typename forward_list<value_type>::const_iterator const_iterator;
-      typedef const_iterator iterator;
-      typedef ptrdiff_t difference_type;
-      typedef size_t size_type;
+      using protocol_type = _InternetProtocol;
+      using endpoint_type = typename protocol_type::endpoint;
+      using value_type = basic_resolver_entry<protocol_type>;
+      using const_reference = const value_type&;
+      using reference = value_type&;
+      using const_iterator = typename forward_list<value_type>::const_iterator;
+      using iterator = const_iterator;
+      using difference_type = ptrdiff_t;
+      using size_type = size_t;
 
       // construct / copy / destroy:
 
@@ -1768,7 +1788,7 @@ namespace ip
 	       const basic_resolver_results<_InternetProtocol>& __b)
     { return !(__a == __b); }
 
-  // @}
+  /// @}
 
   /// Perform name/address resolution.
   template<typename _InternetProtocol>
@@ -1777,10 +1797,10 @@ namespace ip
     public:
       // types:
 
-      typedef io_context::executor_type executor_type;
-      typedef _InternetProtocol protocol_type;
-      typedef typename _InternetProtocol::endpoint endpoint_type;
-      typedef basic_resolver_results<_InternetProtocol> results_type;
+      using executor_type = io_context::executor_type;
+      using protocol_type = _InternetProtocol;
+      using endpoint_type = typename _InternetProtocol::endpoint;
+      using results_type = basic_resolver_results<_InternetProtocol>;
 
       // construct / copy / destroy:
 
@@ -2051,18 +2071,18 @@ namespace ip
   host_name()
   { return host_name(std::allocator<char>{}, __throw_on_error{"host_name"}); }
 
-  // @}
+  /// @}
 
   /// The TCP byte-stream protocol.
   class tcp
   {
   public:
     // types:
-    typedef basic_endpoint<tcp> endpoint;	 ///< A TCP endpoint.
-    typedef basic_resolver<tcp> resolver;	 ///< A TCP resolver.
-    typedef basic_stream_socket<tcp> socket;	 ///< A TCP socket.
-    typedef basic_socket_acceptor<tcp> acceptor; ///< A TCP acceptor.
-    typedef basic_socket_iostream<tcp> iostream; /// A TCP iostream.
+    using endpoint = basic_endpoint<tcp>;	 ///< A TCP endpoint.
+    using resolver = basic_resolver<tcp>;	 ///< A TCP resolver.
+    using socket = basic_stream_socket<tcp>;	 ///< A TCP socket.
+    using acceptor = basic_socket_acceptor<tcp>; ///< A TCP acceptor.
+    using iostream = basic_socket_iostream<tcp>; /// A TCP iostream.
 
 #ifdef _GLIBCXX_HAVE_NETINET_TCP_H
     /// Disable coalescing of small segments (i.e. the Nagle algorithm).
@@ -2106,16 +2126,16 @@ namespace ip
   operator!=(const tcp& __a, const tcp& __b)
   { return !(__a == __b); }
 
-  // @}
+  /// @}
 
   /// The UDP datagram protocol.
   class udp
   {
   public:
     // types:
-    typedef basic_endpoint<udp> endpoint;
-    typedef basic_resolver<udp> resolver;
-    typedef basic_datagram_socket<udp> socket;
+    using endpoint = basic_endpoint<udp>;
+    using resolver = basic_resolver<udp>;
+    using socket = basic_datagram_socket<udp>;
 
     // static members:
     static constexpr udp v4() noexcept { return udp(AF_INET); }
@@ -2137,7 +2157,7 @@ namespace ip
    * @{
    */
 
-  bool
+  inline bool
   operator==(const udp& __a, const udp& __b)
   { return __a.family() == __b.family(); }
 
@@ -2145,7 +2165,7 @@ namespace ip
   operator!=(const udp& __a, const udp& __b)
   { return !(__a == __b); }
 
-  // @}
+  /// @}
 
   /// Restrict a socket created for an IPv6 protocol to IPv6 only.
   struct v6_only : __sockopt_crtp<v6_only, bool>
@@ -2375,7 +2395,7 @@ namespace ip
 
   } // namespace multicast
 
-  // @}
+  /// @}
 
 } // namespace ip
 } // namespace v1
@@ -2393,7 +2413,7 @@ namespace ip
     : __hash_base<size_t, experimental::net::v1::ip::address>
     {
       size_t
-      operator()(const argument_type& __a) const
+      operator()(const experimental::net::v1::ip::address& __a) const
       {
 	if (__a.is_v4())
 	  return _Hash_impl::hash(__a.to_v4());
@@ -2407,7 +2427,7 @@ namespace ip
     : __hash_base<size_t, experimental::net::v1::ip::address_v4>
     {
       size_t
-      operator()(const argument_type& __a) const
+      operator()(const experimental::net::v1::ip::address_v4& __a) const
       { return _Hash_impl::hash(__a.to_bytes()); }
     };
 
@@ -2415,7 +2435,7 @@ namespace ip
     : __hash_base<size_t, experimental::net::v1::ip::address_v6>
     {
       size_t
-      operator()(const argument_type& __a) const
+      operator()(const experimental::net::v1::ip::address_v6& __a) const
       { return _Hash_impl::hash(__a.to_bytes()); }
     };
 

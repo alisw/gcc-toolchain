@@ -1,6 +1,6 @@
 /* Scheme interface to architecture.
 
-   Copyright (C) 2014-2020 Free Software Foundation, Inc.
+   Copyright (C) 2014-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -26,10 +26,9 @@
 #include "arch-utils.h"
 #include "guile-internal.h"
 
-/* The <gdb:arch> smob.
-   The typedef for this struct is in guile-internal.h.  */
+/* The <gdb:arch> smob.  */
 
-struct _arch_smob
+struct arch_smob
 {
   /* This always appears first.  */
   gdb_smob base;
@@ -651,7 +650,12 @@ gdbscm_initialize_arches (void)
   scm_set_smob_print (arch_smob_tag, arscm_print_arch_smob);
 
   gdbscm_define_functions (arch_functions, 1);
+}
 
+void _initialize_scm_arch ();
+void
+_initialize_scm_arch ()
+{
   arch_object_data
     = gdbarch_data_register_post_init (arscm_object_data_init);
 }

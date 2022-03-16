@@ -1,6 +1,6 @@
 /* Abstract base class inherited by all process_stratum targets
 
-   Copyright (C) 2018-2020 Free Software Foundation, Inc.
+   Copyright (C) 2018-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -82,6 +82,26 @@ process_stratum_target::has_execution (inferior *inf)
   /* If there's a process running already, we can't make it run
      through hoops.  */
   return inf->pid != 0;
+}
+
+void
+process_stratum_target::follow_exec (inferior *follow_inf, ptid_t ptid,
+				     const char *execd_pathname)
+{
+  inferior *orig_inf = current_inferior ();
+
+  if (orig_inf != follow_inf)
+    {
+      /* Execution continues in a new inferior, push the original inferior's
+         process target on the new inferior's target stack.  The process target
+	 may decide to unpush itself from the original inferior's target stack
+	 after that, at its discretion.  */
+      follow_inf->push_target (orig_inf->process_target ());
+      thread_info *t = add_thread (follow_inf->process_target (), ptid);
+
+      /* Leave the new inferior / thread as the current inferior / thread.  */
+      switch_to_thread (t);
+    }
 }
 
 /* See process-stratum-target.h.  */

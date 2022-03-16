@@ -1,5 +1,5 @@
 /* Detection of Static Control Parts (SCoP) for Graphite.
-   Copyright (C) 2009-2020 Free Software Foundation, Inc.
+   Copyright (C) 2009-2021 Free Software Foundation, Inc.
    Contributed by Sebastian Pop <sebastian.pop@amd.com> and
    Tobias Grosser <grosser@fim.uni-passau.de>.
 
@@ -19,7 +19,7 @@ You should have received a copy of the GNU General Public License
 along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
-#define USES_ISL
+#define INCLUDE_ISL
 
 #include "config.h"
 
@@ -1262,9 +1262,7 @@ build_cross_bb_scalars_def (scop_p scop, tree def, basic_block def_bb,
 	&& (def_bb != gimple_bb (use_stmt) && !is_gimple_debug (use_stmt)))
       {
 	add_write (writes, def);
-	/* This is required by the FOR_EACH_IMM_USE_STMT when we want to break
-	   before all the uses have been visited.  */
-	BREAK_FROM_IMM_USE_STMT (imm_iter);
+	break;
       }
 }
 

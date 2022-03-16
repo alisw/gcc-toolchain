@@ -1,6 +1,6 @@
 /* Support for printing Ada values for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2020 Free Software Foundation, Inc.
+   Copyright (C) 1986-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -43,7 +43,7 @@ adjust_type_signedness (struct type *type)
 {
   if (type != NULL && type->code () == TYPE_CODE_RANGE
       && type->bounds ()->low.const_val () >= 0)
-    TYPE_UNSIGNED (type) = 1;
+    type->set_is_unsigned (true);
 }
 
 /* Assuming TYPE is a simple array type, prints its lower bound on STREAM,
@@ -76,10 +76,10 @@ print_optional_low_bound (struct ui_file *stream, struct type *type,
   while (index_type->code () == TYPE_CODE_RANGE)
     {
       /* We need to know what the base type is, in order to do the
-         appropriate check below.  Otherwise, if this is a subrange
-         of an enumerated type, where the underlying value of the
-         first element is typically 0, we might test the low bound
-         against the wrong value.  */
+	 appropriate check below.  Otherwise, if this is a subrange
+	 of an enumerated type, where the underlying value of the
+	 first element is typically 0, we might test the low bound
+	 against the wrong value.  */
       index_type = TYPE_TARGET_TYPE (index_type);
     }
 
@@ -136,14 +136,14 @@ val_print_packed_array_elements (struct type *type, const gdb_byte *valaddr,
   {
     LONGEST high;
 
-    if (get_discrete_bounds (index_type, &low, &high) < 0)
+    if (!get_discrete_bounds (index_type, &low, &high))
       len = 1;
     else if (low > high)
       {
-        /* The array length should normally be HIGH_POS - LOW_POS + 1.
-           But in Ada we allow LOW_POS to be greater than HIGH_POS for
-           empty arrays.  In that situation, the array length is just zero,
-           not negative!  */
+	/* The array length should normally be HIGH_POS - LOW_POS + 1.
+	   But in Ada we allow LOW_POS to be greater than HIGH_POS for
+	   empty arrays.  In that situation, the array length is just zero,
+	   not negative!  */
 	len = 0;
       }
     else
@@ -291,7 +291,7 @@ char_at (const gdb_byte *string, int i, int type_len,
     return string[i];
   else
     return (int) extract_unsigned_integer (string + type_len * i,
-                                           type_len, byte_order);
+					   type_len, byte_order);
 }
 
 /* Print a floating-point value of type TYPE, pointed to in GDB by
@@ -398,7 +398,7 @@ ada_print_scalar (struct type *type, LONGEST val, struct ui_file *stream)
       break;
 
     case TYPE_CODE_INT:
-      print_longest (stream, TYPE_UNSIGNED (type) ? 'u' : 'd', 0, val);
+      print_longest (stream, type->is_unsigned () ? 'u' : 'd', 0, val);
       break;
 
     case TYPE_CODE_CHAR:
@@ -462,7 +462,7 @@ printstr (struct ui_file *stream, struct type *elttype, const gdb_byte *string,
   for (i = 0; i < length && things_printed < options->print_max; i += 1)
     {
       /* Position of the character we are examining
-         to see whether it is repeated.  */
+	 to see whether it is repeated.  */
       unsigned int rep1;
       /* Number of repetitions we have detected so far.  */
       unsigned int reps;
@@ -711,36 +711,6 @@ ada_val_print_string (struct type *type, const gdb_byte *valaddr,
 	    eltlen, options);
 }
 
-/* Implement Ada val_print-ing for GNAT arrays (Eg. fat pointers,
-   thin pointers, etc).  */
-
-static void
-ada_val_print_gnat_array (struct value *val,
-			  struct ui_file *stream, int recurse,
-			  const struct value_print_options *options)
-{
-  scoped_value_mark free_values;
-
-  struct type *type = ada_check_typedef (value_type (val));
-
-  /* If this is a reference, coerce it now.  This helps taking care
-     of the case where ADDRESS is meaningless because original_value
-     was not an lval.  */
-  val = coerce_ref (val);
-  if (type->code () == TYPE_CODE_TYPEDEF)  /* array access type.  */
-    val = ada_coerce_to_simple_array_ptr (val);
-  else
-    val = ada_coerce_to_simple_array (val);
-  if (val == NULL)
-    {
-      gdb_assert (type->code () == TYPE_CODE_TYPEDEF);
-      fprintf_filtered (stream, "0x0");
-    }
-  else
-    common_val_print (val, stream, recurse, options,
-		      language_def (language_ada));
-}
-
 /* Implement Ada value_print'ing for the case where TYPE is a
    TYPE_CODE_PTR.  */
 
@@ -749,6 +719,14 @@ ada_value_print_ptr (struct value *val,
 		     struct ui_file *stream, int recurse,
 		     const struct value_print_options *options)
 {
+  if (!options->format
+      && TYPE_TARGET_TYPE (value_type (val))->code () == TYPE_CODE_INT
+      && TYPE_LENGTH (TYPE_TARGET_TYPE (value_type (val))) == 0)
+    {
+      fputs_filtered ("null", stream);
+      return;
+    }
+
   common_val_print (val, stream, recurse, options, language_def (language_c));
 
   struct type *type = ada_check_typedef (value_type (val));
@@ -771,22 +749,10 @@ ada_value_print_num (struct value *val, struct ui_file *stream, int recurse,
   struct type *type = ada_check_typedef (value_type (val));
   const gdb_byte *valaddr = value_contents_for_printing (val);
 
-  if (ada_is_gnat_encoded_fixed_point_type (type))
-    {
-      struct value *scale = ada_scaling_factor (type);
-      val = value_cast (value_type (scale), val);
-      val = value_binop (val, scale, BINOP_MUL);
-
-      const char *fmt = TYPE_LENGTH (type) < 4 ? "%.11g" : "%.17g";
-      std::string str
-	= target_float_to_string (value_contents (val), value_type (val), fmt);
-      fputs_filtered (str.c_str (), stream);
-      return;
-    }
-  else if (type->code () == TYPE_CODE_RANGE
-	   && (TYPE_TARGET_TYPE (type)->code () == TYPE_CODE_ENUM
-	       || TYPE_TARGET_TYPE (type)->code () == TYPE_CODE_BOOL
-	       || TYPE_TARGET_TYPE (type)->code () == TYPE_CODE_CHAR))
+  if (type->code () == TYPE_CODE_RANGE
+      && (TYPE_TARGET_TYPE (type)->code () == TYPE_CODE_ENUM
+	  || TYPE_TARGET_TYPE (type)->code () == TYPE_CODE_BOOL
+	  || TYPE_TARGET_TYPE (type)->code () == TYPE_CODE_CHAR))
     {
       /* For enum-valued ranges, we want to recurse, because we'll end
 	 up printing the constant's name rather than its numeric
@@ -818,7 +784,7 @@ ada_value_print_num (struct value *val, struct ui_file *stream, int recurse,
 	     so we have to work-around this deficiency by handling
 	     System.Address values as a special case.  */
 
-	  struct gdbarch *gdbarch = get_type_arch (type);
+	  struct gdbarch *gdbarch = type->arch ();
 	  struct type *ptr_type = builtin_type (gdbarch)->builtin_data_ptr;
 	  CORE_ADDR addr = extract_typed_address (valaddr, ptr_type);
 
@@ -939,7 +905,10 @@ ada_value_print_array (struct value *val, struct ui_file *stream, int recurse,
 
   fprintf_filtered (stream, "(");
   print_optional_low_bound (stream, type, options);
-  if (TYPE_FIELD_BITSIZE (type, 0) > 0)
+
+  if (value_entirely_optimized_out (val))
+    val_print_optimized_out (val, stream);
+  else if (TYPE_FIELD_BITSIZE (type, 0) > 0)
     {
       const gdb_byte *valaddr = value_contents_for_printing (val);
       int offset_aligned = ada_aligned_value_addr (type, valaddr) - valaddr;
@@ -1028,11 +997,21 @@ ada_value_print_1 (struct value *val, struct ui_file *stream, int recurse,
       || (ada_is_constrained_packed_array_type (type)
 	  && type->code () != TYPE_CODE_PTR))
     {
-      ada_val_print_gnat_array (val, stream, recurse, options);
-      return;
+      /* If this is a reference, coerce it now.  This helps taking
+	 care of the case where ADDRESS is meaningless because
+	 original_value was not an lval.  */
+      val = coerce_ref (val);
+      val = ada_get_decoded_value (val);
+      if (val == nullptr)
+	{
+	  gdb_assert (type->code () == TYPE_CODE_TYPEDEF);
+	  fprintf_filtered (stream, "0x0");
+	  return;
+	}
     }
+  else
+    val = ada_to_fixed_value (val);
 
-  val = ada_to_fixed_value (val);
   type = value_type (val);
   struct type *saved_type = type;
 
@@ -1046,6 +1025,9 @@ ada_value_print_1 (struct value *val, struct ui_file *stream, int recurse,
       val = value_copy (val);
       deprecated_set_value_type (val, type);
     }
+
+  if (is_fixed_point_type (type))
+    type = type->fixed_point_type_base_type ();
 
   switch (type->code ())
     {
@@ -1122,14 +1104,17 @@ ada_value_print (struct value *val0, struct ui_file *stream,
   struct type *type = ada_check_typedef (value_type (val));
   struct value_print_options opts;
 
-  /* If it is a pointer, indicate what it points to.  */
-  if (type->code () == TYPE_CODE_PTR)
+  /* If it is a pointer, indicate what it points to; but not for
+     "void *" pointers.  */
+  if (type->code () == TYPE_CODE_PTR
+      && !(TYPE_TARGET_TYPE (type)->code () == TYPE_CODE_INT
+	   && TYPE_LENGTH (TYPE_TARGET_TYPE (type)) == 0))
     {
       /* Hack:  don't print (char *) for char strings.  Their
-         type is indicated by the quoted string anyway.  */
+	 type is indicated by the quoted string anyway.  */
       if (TYPE_LENGTH (TYPE_TARGET_TYPE (type)) != sizeof (char)
 	  || TYPE_TARGET_TYPE (type)->code () != TYPE_CODE_INT
-	  || TYPE_UNSIGNED (TYPE_TARGET_TYPE (type)))
+	  || TYPE_TARGET_TYPE (type)->is_unsigned ())
 	{
 	  fprintf_filtered (stream, "(");
 	  type_print (type, "", stream, -1);
@@ -1142,7 +1127,7 @@ ada_value_print (struct value *val0, struct ui_file *stream,
 	 access type (this is encoded by the compiler as a typedef to
 	 a fat pointer - hence the check against TYPE_CODE_TYPEDEF).  */
       if (type->code () == TYPE_CODE_TYPEDEF)
-        {
+	{
 	  fprintf_filtered (stream, "(");
 	  type_print (type, "", stream, -1);
 	  fprintf_filtered (stream, ") ");

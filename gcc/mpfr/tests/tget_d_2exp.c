@@ -1,6 +1,6 @@
 /* Test mpfr_get_d_2exp.
 
-Copyright 1999-2019 Free Software Foundation, Inc.
+Copyright 1999-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -43,7 +43,7 @@ check_round (void)
       for (i = 0; i < (int) numberof (data); i++)
         {
           mpfr_set_ui (f, 1L, MPFR_RNDZ);
-          mpfr_mul_2exp (f, f, data[i], MPFR_RNDZ);
+          mpfr_mul_2ui (f, f, data[i], MPFR_RNDZ);
           mpfr_sub_ui (f, f, 1L, MPFR_RNDZ);
 
           for (neg = 0; neg <= 1; neg++)

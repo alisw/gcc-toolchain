@@ -1,5 +1,5 @@
 /*  dv-m68hc11sio.c -- Simulation of the 68HC11 serial device.
-    Copyright (C) 1999-2020 Free Software Foundation, Inc.
+    Copyright (C) 1999-2022 Free Software Foundation, Inc.
     Written by Stephane Carrez (stcarrez@worldnet.fr)
     (From a driver model Contributed by Cygnus Solutions.)
 
@@ -20,6 +20,8 @@
     
     */
 
+/* This must come before any other includes.  */
+#include "defs.h"
 
 #include "sim-main.h"
 #include "hw-main.h"
@@ -340,7 +342,7 @@ m68hc11sio_tx_poll (struct hw *me, void *data)
           break;
 
         case sio_stdio:
-          sim_io_write_stdout (sd, &controller->tx_char, 1);
+          sim_io_write_stdout (sd, (const char *)&controller->tx_char, 1);
           sim_io_flush_stdout (sd);
           break;
 

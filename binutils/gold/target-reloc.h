@@ -1,6 +1,6 @@
 // target-reloc.h -- target specific relocation support  -*- C++ -*-
 
-// Copyright (C) 2006-2020 Free Software Foundation, Inc.
+// Copyright (C) 2006-2022 Free Software Foundation, Inc.
 // Written by Ian Lance Taylor <iant@google.com>.
 
 // This file is part of gold.
@@ -136,8 +136,7 @@ class Default_comdat_behavior
     if (Layout::is_debug_info_section(name))
       return CB_PRETEND;
     if (strcmp(name, ".eh_frame") == 0
-#define ATTR_SECTION_PREFIX ".gnu.build.attributes"
-	|| strncmp(name, ATTR_SECTION_PREFIX, sizeof (ATTR_SECTION_PREFIX) - 1) == 0
+	|| is_prefix_of (".gnu.build.attributes", name)
 	|| strcmp(name, ".gcc_except_table") == 0)
       return CB_IGNORE;
     return CB_ERROR;

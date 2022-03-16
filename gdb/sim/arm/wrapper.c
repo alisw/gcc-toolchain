@@ -1,5 +1,5 @@
 /* run front end support for arm
-   Copyright (C) 1995-2020 Free Software Foundation, Inc.
+   Copyright (C) 1995-2022 Free Software Foundation, Inc.
 
    This file is part of ARM SIM.
 
@@ -20,14 +20,17 @@
    run.c and gdb (when the simulator is linked with gdb).
    All simulator interaction should go through this file.  */
 
-#include "config.h"
+/* This must come before any other includes.  */
+#include "defs.h"
+
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 #include <bfd.h>
 #include <signal.h>
-#include "gdb/callback.h"
-#include "gdb/remote-sim.h"
+#include "sim/callback.h"
+#include "sim/sim.h"
 #include "sim-main.h"
 #include "sim-options.h"
 #include "armemu.h"
@@ -61,8 +64,8 @@ int trace_funcs = 0;
 static struct disassemble_info  info;
 static char opbuf[1000];
 
-static int
-op_printf (char *buf, char *fmt, ...)
+static int ATTRIBUTE_PRINTF (2, 3)
+op_printf (char *buf, const char *fmt, ...)
 {
   int ret;
   va_list ap;
@@ -240,6 +243,14 @@ sim_create_inferior (SIM_DESC sd ATTRIBUTE_UNUSED,
 	 32bit mode.  */
       ARMul_SelectProcessor (state, ARM_v5_Prop | ARM_v5e_Prop | ARM_v6_Prop);
       break;
+
+#if 1
+    case bfd_mach_arm_6T2:
+    case bfd_mach_arm_7:
+    case bfd_mach_arm_7EM:
+      ARMul_SelectProcessor (state, ARM_v5_Prop | ARM_v5e_Prop | ARM_v6_Prop);
+      break;
+#endif
 
     case bfd_mach_arm_XScale:
       ARMul_SelectProcessor (state, ARM_v5_Prop | ARM_v5e_Prop | ARM_XScale_Prop | ARM_v6_Prop);
@@ -790,8 +801,11 @@ sim_open (SIM_OPEN_KIND kind,
   SIM_DESC sd = sim_state_alloc (kind, cb);
   SIM_ASSERT (STATE_MAGIC (sd) == SIM_MAGIC_NUMBER);
 
+  /* Set default options before parsing user options.  */
+  current_alignment = STRICT_ALIGNMENT;
+
   /* The cpu data is kept in a separately allocated chunk of memory.  */
-  if (sim_cpu_alloc_all (sd, 1, /*cgen_cpu_max_extra_bytes ()*/0) != SIM_RC_OK)
+  if (sim_cpu_alloc_all (sd, 1) != SIM_RC_OK)
     {
       free_state (sd);
       return 0;

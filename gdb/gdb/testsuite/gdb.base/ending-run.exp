@@ -1,6 +1,6 @@
 # This testcase is part of GDB, the GNU debugger.
 
-# Copyright 1997-2020 Free Software Foundation, Inc.
+# Copyright 1997-2022 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -188,10 +188,6 @@ gdb_test_multiple "next" "step out of main" {
 	# On sh, another wrapper function (start_l) exists, so
 	# another `next' is necessary.
 	gdb_test "next" ".*in start_l ().*" "step out of main"
-    }
-    -re "E32Main (.*).*$gdb_prompt $" {
-	# On SymbianOS there's a different function which calls main.
-	pass "step out of main"
     }
     -re ".*in.*currently asm.*$gdb_prompt $" { 
         pass "step out of main"

@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 2004-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 2004-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -41,8 +41,11 @@ pragma Elaborate_All (Ada.Containers.Red_Black_Trees.Generic_Set_Operations);
 with Ada.Unchecked_Deallocation;
 
 with System; use type System.Address;
+with System.Put_Images;
 
-package body Ada.Containers.Indefinite_Ordered_Sets is
+package body Ada.Containers.Indefinite_Ordered_Sets with
+  SPARK_Mode => Off
+is
 
    pragma Warnings (Off, "variable ""Busy*"" is not referenced");
    pragma Warnings (Off, "variable ""Lock*"" is not referenced");
@@ -1013,7 +1016,7 @@ package body Ada.Containers.Indefinite_Ordered_Sets is
                Control =>
                  (Controlled with
                     Tree.TC'Unrestricted_Access,
-                    Container => Container'Access,
+                    Container => Container'Unchecked_Access,
                     Pos       => Position,
                     Old_Key   => new Key_Type'(Key (Position))))
          do
@@ -1045,7 +1048,7 @@ package body Ada.Containers.Indefinite_Ordered_Sets is
                Control =>
                  (Controlled with
                     Tree.TC'Unrestricted_Access,
-                    Container => Container'Access,
+                    Container => Container'Unchecked_Access,
                     Pos       => Find (Container, Key),
                     Old_Key   => new Key_Type'(Key)))
             do
@@ -1720,6 +1723,31 @@ package body Ada.Containers.Indefinite_Ordered_Sets is
       end;
    end Query_Element;
 
+   ---------------
+   -- Put_Image --
+   ---------------
+
+   procedure Put_Image
+     (S : in out Ada.Strings.Text_Output.Sink'Class; V : Set)
+   is
+      First_Time : Boolean := True;
+      use System.Put_Images;
+   begin
+      Array_Before (S);
+
+      for X of V loop
+         if First_Time then
+            First_Time := False;
+         else
+            Simple_Array_Between (S);
+         end if;
+
+         Element_Type'Put_Image (S, X);
+      end loop;
+
+      Array_After (S);
+   end Put_Image;
+
    ----------
    -- Read --
    ----------
@@ -1788,11 +1816,11 @@ package body Ada.Containers.Indefinite_Ordered_Sets is
       pragma Warnings (Off, X);
 
    begin
+      TE_Check (Container.Tree.TC);
+
       if Checks and then Node = null then
          raise Constraint_Error with "attempt to replace element not in set";
       end if;
-
-      TE_Check (Container.Tree.TC);
 
       declare
          --  The element allocator may need an accessibility check in the case

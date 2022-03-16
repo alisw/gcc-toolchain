@@ -11,6 +11,9 @@ AX_CC_FOR_BUILD
 
 Find a build-time compiler. Sets CC_FOR_BUILD and EXEEXT_FOR_BUILD.
 
+AX_CC_FOR_BUILD is deprecated; it expands into AX_PROG_CC_FOR_BUILD
+which renames EXEEXT_FOR_BUILD to BUILD_EXEEXT.
+
 @majorheading Source Code
 
 Download the

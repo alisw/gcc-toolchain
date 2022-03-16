@@ -1,6 +1,6 @@
 /* Definitions for frame unwinder, for GDB, the GNU debugger.
 
-   Copyright (C) 2003-2020 Free Software Foundation, Inc.
+   Copyright (C) 2003-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -117,7 +117,7 @@ frame_unwind_append_unwinder (struct gdbarch *gdbarch,
 
 static int
 frame_unwind_try_unwinder (struct frame_info *this_frame, void **this_cache,
-                          const struct frame_unwind *unwinder)
+			  const struct frame_unwind *unwinder)
 {
   int res = 0;
 
@@ -127,10 +127,13 @@ frame_unwind_try_unwinder (struct frame_info *this_frame, void **this_cache,
 
   try
     {
+      frame_debug_printf ("trying unwinder \"%s\"", unwinder->name);
       res = unwinder->sniffer (unwinder, this_frame, this_cache);
     }
   catch (const gdb_exception &ex)
     {
+      frame_debug_printf ("caught exception: %s", ex.message->c_str ());
+
       /* Catch all exceptions, caused by either interrupt or error.
 	 Reset *THIS_CACHE, unless something reinitialized the frame
 	 cache meanwhile, in which case THIS_FRAME/THIS_CACHE are now
@@ -153,9 +156,13 @@ frame_unwind_try_unwinder (struct frame_info *this_frame, void **this_cache,
     }
 
   if (res)
-    return 1;
+    {
+      frame_debug_printf ("yes");
+      return 1;
+    }
   else
     {
+      frame_debug_printf ("no");
       /* Don't set *THIS_CACHE to NULL here, because sniffer has to do
 	 so.  */
       frame_cleanup_after_sniffer (this_frame);
@@ -171,6 +178,9 @@ frame_unwind_try_unwinder (struct frame_info *this_frame, void **this_cache,
 void
 frame_unwind_find_by_frame (struct frame_info *this_frame, void **this_cache)
 {
+  FRAME_SCOPED_DEBUG_ENTER_EXIT;
+  frame_debug_printf ("this_frame=%d", frame_relative_level (this_frame));
+
   struct gdbarch *gdbarch = get_frame_arch (this_frame);
   struct frame_unwind_table *table
     = (struct frame_unwind_table *) gdbarch_data (gdbarch, frame_unwind_data);
@@ -180,13 +190,13 @@ frame_unwind_find_by_frame (struct frame_info *this_frame, void **this_cache)
   unwinder_from_target = target_get_unwinder ();
   if (unwinder_from_target != NULL
       && frame_unwind_try_unwinder (this_frame, this_cache,
-                                   unwinder_from_target))
+				   unwinder_from_target))
     return;
 
   unwinder_from_target = target_get_tailcall_unwinder ();
   if (unwinder_from_target != NULL
       && frame_unwind_try_unwinder (this_frame, this_cache,
-                                   unwinder_from_target))
+				   unwinder_from_target))
     return;
 
   for (entry = table->list; entry != NULL; entry = entry->next)
@@ -296,7 +306,7 @@ frame_unwind_got_constant (struct frame_info *frame, int regnum,
 }
 
 struct value *
-frame_unwind_got_bytes (struct frame_info *frame, int regnum, gdb_byte *buf)
+frame_unwind_got_bytes (struct frame_info *frame, int regnum, const gdb_byte *buf)
 {
   struct gdbarch *gdbarch = frame_unwind_arch (frame);
   struct value *reg_val;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2009-2020 Free Software Foundation, Inc.
+/* Copyright (C) 2009-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -42,6 +42,71 @@ static int amd64_windows_dummy_call_integer_regs[] =
   AMD64_R9_REGNUM            /* %r9 */
 };
 
+/* This vector maps GDB's idea of a register's number into an offset into
+   the Windows API CONTEXT structure.  */
+static int amd64_windows_gregset_reg_offset[] =
+{
+  120, /* Rax */
+  144, /* Rbx */
+  128, /* Rcx */
+  136, /* Rdx */
+  168, /* Rsi */
+  176, /* Rdi */
+  160, /* Rbp */
+  152, /* Rsp */
+  184, /* R8 */
+  192, /* R9 */
+  200, /* R10 */
+  208, /* R11 */
+  216, /* R12 */
+  224, /* R13 */
+  232, /* R14 */
+  240, /* R15 */
+  248, /* Rip */
+  68,  /* EFlags */
+  56,  /* SegCs */
+  66,  /* SegSs */
+  58,  /* SegDs */
+  60,  /* SegEs */
+  62,  /* SegFs */
+  64,  /* SegGs */
+  288, /* FloatSave.FloatRegisters[0] */
+  304, /* FloatSave.FloatRegisters[1] */
+  320, /* FloatSave.FloatRegisters[2] */
+  336, /* FloatSave.FloatRegisters[3] */
+  352, /* FloatSave.FloatRegisters[4] */
+  368, /* FloatSave.FloatRegisters[5] */
+  384, /* FloatSave.FloatRegisters[6] */
+  400, /* FloatSave.FloatRegisters[7] */
+  256, /* FloatSave.ControlWord */
+  258, /* FloatSave.StatusWord */
+  260, /* FloatSave.TagWord */
+  268, /* FloatSave.ErrorSelector */
+  264, /* FloatSave.ErrorOffset */
+  276, /* FloatSave.DataSelector */
+  272, /* FloatSave.DataOffset */
+  268, /* FloatSave.ErrorSelector */
+  416, /* Xmm0 */
+  432, /* Xmm1 */
+  448, /* Xmm2 */
+  464, /* Xmm3 */
+  480, /* Xmm4 */
+  496, /* Xmm5 */
+  512, /* Xmm6 */
+  528, /* Xmm7 */
+  544, /* Xmm8 */
+  560, /* Xmm9 */
+  576, /* Xmm10 */
+  592, /* Xmm11 */
+  608, /* Xmm12 */
+  624, /* Xmm13 */
+  640, /* Xmm14 */
+  656, /* Xmm15 */
+  280, /* FloatSave.MxCsr */
+};
+
+#define AMD64_WINDOWS_SIZEOF_GREGSET 1232
+
 /* Return nonzero if an argument of type TYPE should be passed
    via one of the integer registers.  */
 
@@ -60,6 +125,7 @@ amd64_windows_passed_by_integer_register (struct type *type)
       case TYPE_CODE_RVALUE_REF:
       case TYPE_CODE_STRUCT:
       case TYPE_CODE_UNION:
+      case TYPE_CODE_COMPLEX:
 	return (TYPE_LENGTH (type) == 1
 		|| TYPE_LENGTH (type) == 2
 		|| TYPE_LENGTH (type) == 4
@@ -78,7 +144,7 @@ amd64_windows_passed_by_xmm_register (struct type *type)
 {
   return ((type->code () == TYPE_CODE_FLT
 	   || type->code () == TYPE_CODE_DECFLOAT)
-          && (TYPE_LENGTH (type) == 4 || TYPE_LENGTH (type) == 8));
+	  && (TYPE_LENGTH (type) == 4 || TYPE_LENGTH (type) == 8));
 }
 
 /* Return non-zero iff an argument of the given TYPE should be passed
@@ -202,7 +268,7 @@ amd64_windows_push_arguments (struct regcache *regcache, int nargs,
 	  else if (amd64_windows_passed_by_xmm_register (type))
 	    {
 	      amd64_windows_store_arg_in_reg
-	        (regcache, args[i], AMD64_XMM0_REGNUM + reg_idx);
+		(regcache, args[i], AMD64_XMM0_REGNUM + reg_idx);
 	      /* In case of varargs, these parameters must also be
 		 passed via the integer registers.  */
 	      amd64_windows_store_arg_in_reg
@@ -258,7 +324,7 @@ amd64_windows_push_dummy_call
   if (return_method == return_method_struct)
     {
       /* The "hidden" argument is passed throught the first argument
-         register.  */
+	 register.  */
       const int arg_regnum = amd64_windows_dummy_call_integer_regs[0];
 
       store_unsigned_integer (buf, 8, byte_order, struct_addr);
@@ -299,25 +365,37 @@ amd64_windows_return_value (struct gdbarch *gdbarch, struct value *function,
   switch (type->code ())
     {
       case TYPE_CODE_FLT:
-      case TYPE_CODE_DECFLOAT:
-        /* __m128, __m128i, __m128d, floats, and doubles are returned
-           via XMM0.  */
-        if (len == 4 || len == 8 || len == 16)
-          regnum = AMD64_XMM0_REGNUM;
-        break;
+	/* floats, and doubles are returned via XMM0.  */
+	if (len == 4 || len == 8)
+	  regnum = AMD64_XMM0_REGNUM;
+	break;
+      case TYPE_CODE_ARRAY:
+	/* __m128, __m128i and __m128d are returned via XMM0.  */
+	if (type->is_vector () && len == 16)
+	  {
+	    enum type_code code = TYPE_TARGET_TYPE (type)->code ();
+	    if (code == TYPE_CODE_INT || code == TYPE_CODE_FLT)
+	      {
+		regnum = AMD64_XMM0_REGNUM;
+		break;
+	      }
+	  }
+	/* fall through */
       default:
-        /* All other values that are 1, 2, 4 or 8 bytes long are returned
-           via RAX.  */
-        if (len == 1 || len == 2 || len == 4 || len == 8)
-          regnum = AMD64_RAX_REGNUM;
-        break;
+	/* All other values that are 1, 2, 4 or 8 bytes long are returned
+	   via RAX.  */
+	if (len == 1 || len == 2 || len == 4 || len == 8)
+	  regnum = AMD64_RAX_REGNUM;
+	else if (len == 16 && type->code () == TYPE_CODE_INT)
+	  regnum = AMD64_XMM0_REGNUM;
+	break;
     }
 
   if (regnum < 0)
     {
       /* RAX contains the address where the return value has been stored.  */
       if (readbuf)
-        {
+	{
 	  ULONGEST addr;
 
 	  regcache_raw_read_unsigned (regcache, AMD64_RAX_REGNUM, &addr);
@@ -351,17 +429,17 @@ amd64_skip_main_prologue (struct gdbarch *gdbarch, CORE_ADDR pc)
       gdb_byte buf[4];
 
       if (target_read_memory (pc + 1, buf, sizeof buf) == 0)
- 	{
- 	  struct bound_minimal_symbol s;
- 	  CORE_ADDR call_dest;
+	{
+	  struct bound_minimal_symbol s;
+	  CORE_ADDR call_dest;
 
 	  call_dest = pc + 5 + extract_signed_integer (buf, 4, byte_order);
- 	  s = lookup_minimal_symbol_by_pc (call_dest);
- 	  if (s.minsym != NULL
- 	      && s.minsym->linkage_name () != NULL
- 	      && strcmp (s.minsym->linkage_name (), "__main") == 0)
- 	    pc += 5;
- 	}
+	  s = lookup_minimal_symbol_by_pc (call_dest);
+	  if (s.minsym != NULL
+	      && s.minsym->linkage_name () != NULL
+	      && strcmp (s.minsym->linkage_name (), "__main") == 0)
+	    pc += 5;
+	}
     }
 
   return pc;
@@ -678,14 +756,10 @@ amd64_windows_frame_decode_insns (struct frame_info *this_frame,
 			      (gdb_byte *) &ex_ui, sizeof (ex_ui)) != 0)
 	return;
 
-      if (frame_debug)
-	fprintf_unfiltered
-	  (gdb_stdlog,
-	   "amd64_windows_frame_decodes_insn: "
-	   "%s: ver: %02x, plgsz: %02x, cnt: %02x, frame: %02x\n",
-	   paddress (gdbarch, unwind_info),
-	   ex_ui.Version_Flags, ex_ui.SizeOfPrologue,
-	   ex_ui.CountOfCodes, ex_ui.FrameRegisterOffset);
+      frame_debug_printf ("%s: ver: %02x, plgsz: %02x, cnt: %02x, frame: %02x",
+			  paddress (gdbarch, unwind_info),
+			  ex_ui.Version_Flags, ex_ui.SizeOfPrologue,
+			  ex_ui.CountOfCodes, ex_ui.FrameRegisterOffset);
 
       /* Check version.  */
       if (PEX64_UWI_VERSION (ex_ui.Version_Flags) != 1
@@ -723,10 +797,9 @@ amd64_windows_frame_decode_insns (struct frame_info *this_frame,
 	  get_frame_register (this_frame, frreg, buf);
 	  save_addr = extract_unsigned_integer (buf, 8, byte_order);
 
-	  if (frame_debug)
-	    fprintf_unfiltered (gdb_stdlog, "   frame_reg=%s, val=%s\n",
-				gdbarch_register_name (gdbarch, frreg),
-				paddress (gdbarch, save_addr));
+	  frame_debug_printf ("   frame_reg=%s, val=%s",
+			      gdbarch_register_name (gdbarch, frreg),
+			      paddress (gdbarch, save_addr));
 	}
 
       /* Read opcodes.  */
@@ -757,10 +830,8 @@ amd64_windows_frame_decode_insns (struct frame_info *this_frame,
 	     prologue has been fully executed.  */
 	  if (cache->pc >= start + p[0] || cache->pc < start)
 	    {
-	      if (frame_debug)
-		fprintf_unfiltered
-		  (gdb_stdlog, "   op #%u: off=0x%02x, insn=0x%02x\n",
-		   (unsigned) (p - insns), p[0], p[1]);
+	      frame_debug_printf ("   op #%u: off=0x%02x, insn=0x%02x",
+				  (unsigned) (p - insns), p[0], p[1]);
 
 	      /* If there is no frame registers defined, the current value of
 		 rsp is used instead.  */
@@ -834,11 +905,11 @@ amd64_windows_frame_decode_insns (struct frame_info *this_frame,
 		}
 
 	      /* Display address where the register was saved.  */
-	      if (frame_debug && reg >= 0)
-		fprintf_unfiltered
-		  (gdb_stdlog, "     [reg %s at %s]\n",
-		   gdbarch_register_name (gdbarch, reg),
-		   paddress (gdbarch, cache->prev_reg_addr[reg]));
+	      if (reg >= 0)
+		frame_debug_printf ("     [reg %s at %s]",
+				    gdbarch_register_name (gdbarch, reg),
+				    paddress (gdbarch,
+					      cache->prev_reg_addr[reg]));
 	    }
 
 	  /* Adjust with the length of the opcode.  */
@@ -900,14 +971,11 @@ amd64_windows_frame_decode_insns (struct frame_info *this_frame,
 	  unwind_info =
 	    extract_unsigned_integer (d.rva_UnwindData, 4, byte_order);
 
-	  if (frame_debug)
-	    fprintf_unfiltered
-	      (gdb_stdlog,
-	       "amd64_windows_frame_decodes_insn (next in chain):"
-	       " unwind_data=%s, start_rva=%s, end_rva=%s\n",
-	       paddress (gdbarch, unwind_info),
-	       paddress (gdbarch, cache->start_rva),
-	       paddress (gdbarch, cache->end_rva));
+	  frame_debug_printf ("next in chain: unwind_data=%s, start_rva=%s, "
+			      "end_rva=%s",
+			      paddress (gdbarch, unwind_info),
+			      paddress (gdbarch, cache->start_rva),
+			      paddress (gdbarch, cache->end_rva));
 	}
 
       /* Allow the user to break this loop.  */
@@ -918,10 +986,9 @@ amd64_windows_frame_decode_insns (struct frame_info *this_frame,
     cache->prev_rip_addr = cur_sp;
   cache->prev_sp = cur_sp + 8;
 
-  if (frame_debug)
-    fprintf_unfiltered (gdb_stdlog, "   prev_sp: %s, prev_pc @%s\n",
-			paddress (gdbarch, cache->prev_sp),
-			paddress (gdbarch, cache->prev_rip_addr));
+  frame_debug_printf ("   prev_sp: %s, prev_pc @%s",
+		      paddress (gdbarch, cache->prev_sp),
+		      paddress (gdbarch, cache->prev_rip_addr));
 }
 
 /* Find SEH unwind info for PC, returning 0 on success.
@@ -995,11 +1062,9 @@ amd64_windows_find_unwind_info (struct gdbarch *gdbarch, CORE_ADDR pc,
 	break;
     }
 
-  if (frame_debug)
-    fprintf_unfiltered
-      (gdb_stdlog,
-       "amd64_windows_find_unwind_data:  image_base=%s, unwind_data=%s\n",
-       paddress (gdbarch, base), paddress (gdbarch, *unwind_info));
+  frame_debug_printf ("image_base=%s, unwind_data=%s",
+		      paddress (gdbarch, base),
+		      paddress (gdbarch, *unwind_info));
 
   return 0;
 }
@@ -1061,11 +1126,9 @@ amd64_windows_frame_prev_register (struct frame_info *this_frame,
     amd64_windows_frame_cache (this_frame, this_cache);
   CORE_ADDR prev;
 
-  if (frame_debug)
-    fprintf_unfiltered (gdb_stdlog,
-			"amd64_windows_frame_prev_register %s for sp=%s\n",
-			gdbarch_register_name (gdbarch, regnum),
-			paddress (gdbarch, cache->prev_sp));
+  frame_debug_printf ("%s for sp=%s",
+		      gdbarch_register_name (gdbarch, regnum),
+		      paddress (gdbarch, cache->prev_sp));
 
   if (regnum >= AMD64_XMM0_REGNUM && regnum <= AMD64_XMM0_REGNUM + 15)
       prev = cache->prev_xmm_addr[regnum - AMD64_XMM0_REGNUM];
@@ -1082,8 +1145,8 @@ amd64_windows_frame_prev_register (struct frame_info *this_frame,
   else
     prev = 0;
 
-  if (prev && frame_debug)
-    fprintf_unfiltered (gdb_stdlog, "  -> at %s\n", paddress (gdbarch, prev));
+  if (prev != 0)
+    frame_debug_printf ("  -> at %s", paddress (gdbarch, prev));
 
   if (prev)
     {
@@ -1115,6 +1178,7 @@ amd64_windows_frame_this_id (struct frame_info *this_frame, void **this_cache,
 
 static const struct frame_unwind amd64_windows_frame_unwind =
 {
+  "amd64 windows",
   NORMAL_FRAME,
   default_frame_unwind_stop_reason,
   &amd64_windows_frame_this_id,
@@ -1213,6 +1277,8 @@ amd64_windows_auto_wide_charset (void)
 static void
 amd64_windows_init_abi_common (gdbarch_info info, struct gdbarch *gdbarch)
 {
+  struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
+
   /* The dwarf2 unwinder (appended very early by i386_gdbarch_init) is
      preferred over the SEH one.  The reasons are:
      - binaries without SEH but with dwarf2 debug info are correctly handled
@@ -1237,6 +1303,16 @@ amd64_windows_init_abi_common (gdbarch_info info, struct gdbarch *gdbarch)
 				    amd64_windows_skip_trampoline_code);
 
   set_gdbarch_skip_prologue (gdbarch, amd64_windows_skip_prologue);
+
+  tdep->gregset_reg_offset = amd64_windows_gregset_reg_offset;
+  tdep->gregset_num_regs = ARRAY_SIZE (amd64_windows_gregset_reg_offset);
+  tdep->sizeof_gregset = AMD64_WINDOWS_SIZEOF_GREGSET;
+  tdep->sizeof_fpregset = 0;
+
+  /* Core file support.  */
+  set_gdbarch_core_xfer_shared_libraries
+    (gdbarch, windows_core_xfer_shared_libraries);
+  set_gdbarch_core_pid_to_str (gdbarch, windows_core_pid_to_str);
 
   set_gdbarch_auto_wide_charset (gdbarch, amd64_windows_auto_wide_charset);
 }
@@ -1276,15 +1352,38 @@ amd64_windows_osabi_sniffer (bfd *abfd)
   return GDB_OSABI_WINDOWS;
 }
 
+static enum gdb_osabi
+amd64_cygwin_core_osabi_sniffer (bfd *abfd)
+{
+  const char *target_name = bfd_get_target (abfd);
+
+  /* Cygwin uses elf core dumps.  Do not claim all ELF executables,
+     check whether there is a .reg section of proper size.  */
+  if (strcmp (target_name, "elf64-x86-64") == 0)
+    {
+      asection *section = bfd_get_section_by_name (abfd, ".reg");
+      if (section != nullptr
+	  && bfd_section_size (section) == AMD64_WINDOWS_SIZEOF_GREGSET)
+	return GDB_OSABI_CYGWIN;
+    }
+
+  return GDB_OSABI_UNKNOWN;
+}
+
 void _initialize_amd64_windows_tdep ();
 void
 _initialize_amd64_windows_tdep ()
 {
   gdbarch_register_osabi (bfd_arch_i386, bfd_mach_x86_64, GDB_OSABI_WINDOWS,
-                          amd64_windows_init_abi);
+			  amd64_windows_init_abi);
   gdbarch_register_osabi (bfd_arch_i386, bfd_mach_x86_64, GDB_OSABI_CYGWIN,
-                          amd64_cygwin_init_abi);
+			  amd64_cygwin_init_abi);
 
   gdbarch_register_osabi_sniffer (bfd_arch_i386, bfd_target_coff_flavour,
 				  amd64_windows_osabi_sniffer);
+
+  /* Cygwin uses elf core dumps.  */
+  gdbarch_register_osabi_sniffer (bfd_arch_i386, bfd_target_elf_flavour,
+				  amd64_cygwin_core_osabi_sniffer);
+
 }

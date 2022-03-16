@@ -1,6 +1,6 @@
 // options.c -- handle command line options for gold
 
-// Copyright (C) 2006-2020 Free Software Foundation, Inc.
+// Copyright (C) 2006-2022 Free Software Foundation, Inc.
 // Written by Ian Lance Taylor <iant@google.com>.
 
 // This file is part of gold.
@@ -341,6 +341,27 @@ General_options::parse_V(const char*, const char*, Command_line*)
 }
 
 void
+General_options::parse_Bno_symbolic(const char*, const char*,
+				    Command_line*)
+{
+  this->bsymbolic_ = BSYMBOLIC_NONE;
+}
+
+void
+General_options::parse_Bsymbolic_functions(const char*, const char*,
+					   Command_line*)
+{
+  this->bsymbolic_ = BSYMBOLIC_FUNCTIONS;
+}
+
+void
+General_options::parse_Bsymbolic(const char*, const char*,
+				 Command_line*)
+{
+  this->bsymbolic_ = BSYMBOLIC_ALL;
+}
+
+void
 General_options::parse_defsym(const char*, const char* arg,
 			      Command_line* cmdline)
 {
@@ -462,6 +483,14 @@ General_options::parse_plugin_opt(const char*, const char* arg,
 				  Command_line*)
 {
   this->add_plugin_option(arg);
+}
+
+void
+General_options::parse_no_power10_stubs(const char*, const char*,
+					Command_line*)
+{
+  this->set_power10_stubs("no");
+  this->set_user_set_power10_stubs();
 }
 
 void
@@ -979,7 +1008,8 @@ namespace gold
 {
 
 General_options::General_options()
-  : printed_version_(false),
+  : bsymbolic_(BSYMBOLIC_NONE),
+    printed_version_(false),
     execstack_status_(EXECSTACK_FROM_INPUT),
     icf_status_(ICF_NONE),
     static_(false),
@@ -1181,6 +1211,27 @@ General_options::finalize()
         this->set_start_stop_visibility_enum(elfcpp::STV_HIDDEN);
       else if (strcmp(this->start_stop_visibility(), "protected") == 0)
         this->set_start_stop_visibility_enum(elfcpp::STV_PROTECTED);
+    }
+
+  // Parse the --power10-stubs argument.
+  if (!this->user_set_power10_stubs())
+    {
+      // --power10-stubs without an arg is equivalent to --power10-stubs=yes
+      // but not specifying --power10-stubs at all should be equivalent to
+      // --power10-stubs=auto.  This doesn't fit into the notion of
+      // "default_value", used both as a static initializer and to provide
+      // a missing optional arg.  Fix it here.
+      this->set_power10_stubs("auto");
+      this->set_power10_stubs_enum(POWER10_STUBS_AUTO);
+    }
+  else
+    {
+      if (strcmp(this->power10_stubs(), "auto") == 0)
+	this->set_power10_stubs_enum(POWER10_STUBS_AUTO);
+      else if (strcmp(this->power10_stubs(), "no") == 0)
+	this->set_power10_stubs_enum(POWER10_STUBS_NO);
+      else if (strcmp(this->power10_stubs(), "yes") == 0)
+	this->set_power10_stubs_enum(POWER10_STUBS_YES);
     }
 
   // -M is equivalent to "-Map -".

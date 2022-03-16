@@ -1,5 +1,5 @@
 /* Native debugging support for Intel x86 running DJGPP.
-   Copyright (C) 1997-2020 Free Software Foundation, Inc.
+   Copyright (C) 1997-2022 Free Software Foundation, Inc.
    Written by Robert Hoehne.
 
    This file is part of GDB.
@@ -342,7 +342,7 @@ struct go32_nat_target final : public x86_nat_target<inf_child_target>
 
   void resume (ptid_t, int, enum gdb_signal) override;
 
-  ptid_t wait (ptid_t, struct target_waitstatus *, int) override;
+  ptid_t wait (ptid_t, struct target_waitstatus *, target_wait_flags) override;
 
   void fetch_registers (struct regcache *, int) override;
   void store_registers (struct regcache *, int) override;
@@ -401,25 +401,25 @@ go32_nat_target::resume (ptid_t ptid, int step, enum gdb_signal siggnal)
   resume_is_step = step;
 
   if (siggnal != GDB_SIGNAL_0 && siggnal != GDB_SIGNAL_TRAP)
-  {
-    for (i = 0, resume_signal = -1;
-	 excepn_map[i].gdb_sig != GDB_SIGNAL_LAST; i++)
-      if (excepn_map[i].gdb_sig == siggnal)
-      {
-	resume_signal = excepn_map[i].djgpp_excepno;
-	break;
-      }
-    if (resume_signal == -1)
-      printf_unfiltered ("Cannot deliver signal %s on this platform.\n",
-			 gdb_signal_to_name (siggnal));
-  }
+    {
+      for (i = 0, resume_signal = -1;
+	   excepn_map[i].gdb_sig != GDB_SIGNAL_LAST; i++)
+	if (excepn_map[i].gdb_sig == siggnal)
+	  {
+	    resume_signal = excepn_map[i].djgpp_excepno;
+	    break;
+	  }
+      if (resume_signal == -1)
+	printf_unfiltered ("Cannot deliver signal %s on this platform.\n",
+			   gdb_signal_to_name (siggnal));
+    }
 }
 
 static char child_cwd[FILENAME_MAX];
 
 ptid_t
 go32_nat_target::wait (ptid_t ptid, struct target_waitstatus *status,
-		       int options)
+		       target_wait_flags options)
 {
   int i;
   unsigned char saved_opcode;
@@ -756,8 +756,8 @@ go32_nat_target::create_inferior (const char *exec_file,
   inf = current_inferior ();
   inferior_appeared (inf, SOME_PID);
 
-  if (!target_is_pushed (this))
-    push_target (this);
+  if (!inf->target_is_pushed (this))
+    inf->push_target (this);
 
   thread_info *thr = add_thread_silent (ptid_t (SOME_PID));
   switch_to_thread (thr);
@@ -872,14 +872,14 @@ device_mode (int fd, int raw_p)
     newmode &= ~0x20;
 
   if (oldmode & 0x80)	/* Only for character dev.  */
-  {
-    regs.x.ax = 0x4401;
-    regs.x.bx = fd;
-    regs.x.dx = newmode & 0xff;   /* Force upper byte zero, else it fails.  */
-    __dpmi_int (0x21, &regs);
-    if (regs.x.flags & 1)
-      return -1;
-  }
+    {
+      regs.x.ax = 0x4401;
+      regs.x.bx = fd;
+      regs.x.dx = newmode & 0xff;   /* Force upper byte zero, else it fails.  */
+      __dpmi_int (0x21, &regs);
+      if (regs.x.flags & 1)
+	return -1;
+    }
   return (oldmode & 0x20) == 0x20;
 }
 
@@ -909,24 +909,24 @@ go32_nat_target::terminal_info (const char *args, int from_tty)
 
 #if __DJGPP_MINOR__ > 2
   if (child_cmd.redirection)
-  {
-    int i;
-
-    for (i = 0; i < DBG_HANDLES; i++)
     {
-      if (child_cmd.redirection[i]->file_name)
-	printf_unfiltered ("\tFile handle %d is redirected to `%s'.\n",
-			   i, child_cmd.redirection[i]->file_name);
-      else if (_get_dev_info (child_cmd.redirection[i]->inf_handle) == -1)
-	printf_unfiltered
-	  ("\tFile handle %d appears to be closed by inferior.\n", i);
-      /* Mask off the raw/cooked bit when comparing device info words.  */
-      else if ((_get_dev_info (child_cmd.redirection[i]->inf_handle) & 0xdf)
-	       != (_get_dev_info (i) & 0xdf))
-	printf_unfiltered
-	  ("\tFile handle %d appears to be redirected by inferior.\n", i);
+      int i;
+
+      for (i = 0; i < DBG_HANDLES; i++)
+	{
+	  if (child_cmd.redirection[i]->file_name)
+	    printf_unfiltered ("\tFile handle %d is redirected to `%s'.\n",
+			       i, child_cmd.redirection[i]->file_name);
+	  else if (_get_dev_info (child_cmd.redirection[i]->inf_handle) == -1)
+	    printf_unfiltered
+	      ("\tFile handle %d appears to be closed by inferior.\n", i);
+	  /* Mask off the raw/cooked bit when comparing device info words.  */
+	  else if ((_get_dev_info (child_cmd.redirection[i]->inf_handle) & 0xdf)
+		   != (_get_dev_info (i) & 0xdf))
+	    printf_unfiltered
+	      ("\tFile handle %d appears to be redirected by inferior.\n", i);
+	}
     }
-  }
 #endif
 }
 
@@ -936,19 +936,19 @@ go32_nat_target::terminal_inferior ()
   /* Redirect standard handles as child wants them.  */
   errno = 0;
   if (redir_to_child (&child_cmd) == -1)
-  {
-    redir_to_debugger (&child_cmd);
-    error (_("Cannot redirect standard handles for program: %s."),
-	   safe_strerror (errno));
-  }
+    {
+      redir_to_debugger (&child_cmd);
+      error (_("Cannot redirect standard handles for program: %s."),
+	     safe_strerror (errno));
+    }
   /* Set the console device of the inferior to whatever mode
      (raw or cooked) we found it last time.  */
   if (terminal_is_ours)
-  {
-    if (inf_mode_valid)
-      device_mode (0, inf_terminal_mode);
-    terminal_is_ours = 0;
-  }
+    {
+      if (inf_mode_valid)
+	device_mode (0, inf_terminal_mode);
+      terminal_is_ours = 0;
+    }
 }
 
 void
@@ -957,25 +957,25 @@ go32_nat_target::terminal_ours ()
   /* Switch to cooked mode on the gdb terminal and save the inferior
      terminal mode to be restored when it is resumed.  */
   if (!terminal_is_ours)
-  {
-    inf_terminal_mode = device_mode (0, 0);
-    if (inf_terminal_mode != -1)
-      inf_mode_valid = 1;
-    else
-      /* If device_mode returned -1, we don't know what happens with
-	 handle 0 anymore, so make the info invalid.  */
-      inf_mode_valid = 0;
-    terminal_is_ours = 1;
-
-    /* Restore debugger's standard handles.  */
-    errno = 0;
-    if (redir_to_debugger (&child_cmd) == -1)
     {
-      redir_to_child (&child_cmd);
-      error (_("Cannot redirect standard handles for debugger: %s."),
-	     safe_strerror (errno));
+      inf_terminal_mode = device_mode (0, 0);
+      if (inf_terminal_mode != -1)
+	inf_mode_valid = 1;
+      else
+	/* If device_mode returned -1, we don't know what happens with
+	   handle 0 anymore, so make the info invalid.  */
+	inf_mode_valid = 0;
+      terminal_is_ours = 1;
+
+      /* Restore debugger's standard handles.  */
+      errno = 0;
+      if (redir_to_debugger (&child_cmd) == -1)
+	{
+	  redir_to_child (&child_cmd);
+	  error (_("Cannot redirect standard handles for debugger: %s."),
+		 safe_strerror (errno));
+	}
     }
-  }
 }
 
 void
@@ -1106,8 +1106,8 @@ go32_sysinfo (const char *arg, int from_tty)
       /* CPUID with EAX = 0 returns the Vendor ID.  */
 #if 0
       /* Ideally we would use x86_cpuid(), but it needs someone to run
-         native tests first to make sure things actually work.  They should.
-         http://sourceware.org/ml/gdb-patches/2013-05/msg00164.html  */
+	 native tests first to make sure things actually work.  They should.
+	 http://sourceware.org/ml/gdb-patches/2013-05/msg00164.html  */
       unsigned int eax, ebx, ecx, edx;
 
       if (x86_cpuid (0, &eax, &ebx, &ecx, &edx))
@@ -1259,9 +1259,9 @@ go32_sysinfo (const char *arg, int from_tty)
 	    }
 	}
       xsnprintf (cpu_string, sizeof (cpu_string), "%s%s Model %d Stepping %d",
-	         intel_p ? "Pentium" : (amd_p ? "AMD" : (hygon_p ? "Hygon" : "ix86")),
-	         cpu_brand, cpu_model, cpuid_eax & 0xf);
-      printfi_filtered (31, "%s\n", cpu_string);
+		 intel_p ? "Pentium" : (amd_p ? "AMD" : (hygon_p ? "Hygon" : "ix86")),
+		 cpu_brand, cpu_model, cpuid_eax & 0xf);
+      printf_filtered ("%*s%s\n", 31, "", cpu_string);
       if (((cpuid_edx & (6 | (0x0d << 23))) != 0)
 	  || ((cpuid_edx & 1) == 0)
 	  || ((amd_p || hygon_p) && (cpuid_edx & (3 << 30)) != 0))
@@ -1372,11 +1372,11 @@ go32_sysinfo (const char *arg, int from_tty)
 		   "%s-bit DPMI, with%s Virtual Memory support\n",
 		   (dpmi_version_data.flags & 1) ? "32" : "16",
 		   (dpmi_version_data.flags & 4) ? "" : "out");
-  printfi_filtered (31, "Interrupts reflected to %s mode\n",
+  printf_filtered ("%*sInterrupts reflected to %s mode\n", 31, "",
 		   (dpmi_version_data.flags & 2) ? "V86" : "Real");
-  printfi_filtered (31, "Processor type: i%d86\n",
+  printf_filtered ("%*sProcessor type: i%d86\n", 31, "",
 		   dpmi_version_data.cpu);
-  printfi_filtered (31, "PIC base interrupt: Master: %#x  Slave: %#x\n",
+  printf_filtered ("%*sPIC base interrupt: Master: %#x  Slave: %#x\n", 31, "",
 		   dpmi_version_data.master_pic, dpmi_version_data.slave_pic);
 
   /* a_tss is only initialized when the debuggee is first run.  */
@@ -1430,8 +1430,8 @@ go32_sysinfo (const char *arg, int from_tty)
       __dpmi_int (0x21, &regs);
       if ((regs.x.flags & 1) != 0)
 	regs.h.al = 0;
-      printfi_filtered (31, "UMBs %sin DOS memory chain\n",
-			regs.h.al == 0 ? "not " : "");
+      printf_filtered ("%*sUMBs %sin DOS memory chain\n", 31, "",
+		       regs.h.al == 0 ? "not " : "");
     }
 }
 
@@ -1595,7 +1595,7 @@ display_descriptor (unsigned type, unsigned long base_addr, int idx, int force)
 		break;
 	      case 5:
 		printf_filtered ("TSS selector=0x%04x", descr.base0);
-		printfi_filtered (16, "Task Gate");
+		printf_filtered ("%*sTask Gate", 16, "");
 		break;
 	      case 6:
 	      case 7:
@@ -2099,7 +2099,7 @@ _initialize_go32_nat ()
 
   add_basic_prefix_cmd ("dos", class_info, _("\
 Print information specific to DJGPP (aka MS-DOS) debugging."),
-			&info_dos_cmdlist, "info dos ", 0, &infolist);
+			&info_dos_cmdlist, 0, &infolist);
 
   add_cmd ("sysinfo", class_info, go32_sysinfo, _("\
 Display information about the target system, including CPU, OS, DPMI, etc."),

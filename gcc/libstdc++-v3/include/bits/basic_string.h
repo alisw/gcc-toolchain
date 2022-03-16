@@ -1,6 +1,6 @@
 // Components for manipulating sequences of characters -*- C++ -*-
 
-// Copyright (C) 1997-2020 Free Software Foundation, Inc.
+// Copyright (C) 1997-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -48,10 +48,18 @@
 # include <string_view>
 #endif
 
-
 namespace std _GLIBCXX_VISIBILITY(default)
 {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
+
+#ifdef __cpp_lib_is_constant_evaluated
+// Support P1032R1 in C++20 (but not P0980R1 yet).
+# define __cpp_lib_constexpr_string 201811L
+#elif __cplusplus >= 201703L
+// Support P0426R1 changes to char_traits in C++17.
+# define __cpp_lib_constexpr_string 201611L
+#elif __cplusplus > 201703L
+#endif
 
 #if _GLIBCXX_USE_CXX11_ABI
 _GLIBCXX_BEGIN_NAMESPACE_CXX11
@@ -524,7 +532,12 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
 #endif
       basic_string(const _CharT* __s, const _Alloc& __a = _Alloc())
       : _M_dataplus(_M_local_data(), __a)
-      { _M_construct(__s, __s ? __s + traits_type::length(__s) : __s+npos); }
+      {
+	const _CharT* __end = __s ? __s + traits_type::length(__s)
+	  // We just need a non-null pointer here to get an exception:
+	  : reinterpret_cast<const _CharT*>(__alignof__(_CharT));
+	_M_construct(__s, __end, random_access_iterator_tag());
+      }
 
       /**
        *  @brief  Construct string as multiple characters.
@@ -548,7 +561,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
        *
        *  The newly-created string contains the exact contents of @a __str.
        *  @a __str is a valid, but unspecified string.
-       **/
+       */
       basic_string(basic_string&& __str) noexcept
       : _M_dataplus(_M_local_data(), std::move(__str._M_get_allocator()))
       {
@@ -696,7 +709,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
        *
        *  The contents of @a str are moved into this string (without copying).
        *  @a str is a valid, but unspecified string.
-       **/
+       */
       // _GLIBCXX_RESOLVE_LIB_DEFECTS
       // 2063. Contradictory requirements for string move assignment
       basic_string&
@@ -717,10 +730,15 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
 
 	if (__str._M_is_local())
 	  {
-	    // We've always got room for a short string, just copy it.
-	    if (__str.size())
-	      this->_S_copy(_M_data(), __str._M_data(), __str.size());
-	    _M_set_length(__str.size());
+	    // We've always got room for a short string, just copy it
+	    // (unless this is a self-move, because that would violate the
+	    // char_traits::copy precondition that the ranges don't overlap).
+	    if (__builtin_expect(std::__addressof(__str) != this, true))
+	      {
+		if (__str.size())
+		  this->_S_copy(_M_data(), __str._M_data(), __str.size());
+		_M_set_length(__str.size());
+	      }
 	  }
 	else if (_Alloc_traits::_S_propagate_on_move_assign()
 	    || _Alloc_traits::_S_always_equal()
@@ -940,20 +958,13 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
       { this->resize(__n, _CharT()); }
 
 #if __cplusplus >= 201103L
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
       ///  A non-binding request to reduce capacity() to size().
       void
       shrink_to_fit() noexcept
-      {
-#if __cpp_exceptions
-	if (capacity() > size())
-	  {
-	    try
-	      { reserve(0); }
-	    catch(...)
-	      { }
-	  }
-#endif
-      }
+      { reserve(); }
+#pragma GCC diagnostic pop
 #endif
 
       /**
@@ -985,7 +996,16 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
        *  data.
        */
       void
-      reserve(size_type __res_arg = 0);
+      reserve(size_type __res_arg);
+
+      /**
+       *  Equivalent to shrink_to_fit().
+       */
+#if __cplusplus > 201703L
+      [[deprecated("use shrink_to_fit() instead")]]
+#endif
+      void
+      reserve();
 
       /**
        *  Erases the string, making it empty.
@@ -3066,6 +3086,20 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
       { return __sv_type(this->data(), this->size()).ends_with(__x); }
 #endif // C++20
 
+#if __cplusplus > 202002L
+      bool
+      contains(basic_string_view<_CharT, _Traits> __x) const noexcept
+      { return __sv_type(this->data(), this->size()).contains(__x); }
+
+      bool
+      contains(_CharT __x) const noexcept
+      { return __sv_type(this->data(), this->size()).contains(__x); }
+
+      bool
+      contains(const _CharT* __x) const noexcept
+      { return __sv_type(this->data(), this->size()).contains(__x); }
+#endif // C++23
+
       // Allow basic_stringbuf::__xfer_bufptrs to call _M_length:
       template<typename, typename, typename> friend class basic_stringbuf;
     };
@@ -3147,8 +3181,8 @@ _GLIBCXX_END_NAMESPACE_CXX11
       typedef _Traits					    traits_type;
       typedef typename _Traits::char_type		    value_type;
       typedef _Alloc					    allocator_type;
-      typedef typename _CharT_alloc_type::size_type	    size_type;
-      typedef typename _CharT_alloc_type::difference_type   difference_type;
+      typedef typename _CharT_alloc_traits::size_type	    size_type;
+      typedef typename _CharT_alloc_traits::difference_type difference_type;
 #if __cplusplus < 201103L
       typedef typename _CharT_alloc_type::reference	    reference;
       typedef typename _CharT_alloc_type::const_reference   const_reference;
@@ -3556,14 +3590,20 @@ _GLIBCXX_END_NAMESPACE_CXX11
        *  @brief  Construct an empty string using allocator @a a.
        */
       explicit
-      basic_string(const _Alloc& __a);
+      basic_string(const _Alloc& __a)
+      : _M_dataplus(_S_construct(size_type(), _CharT(), __a), __a)
+      { }
 
       // NB: per LWG issue 42, semantics different from IS:
       /**
        *  @brief  Construct string with copy of value of @a str.
        *  @param  __str  Source string.
        */
-      basic_string(const basic_string& __str);
+      basic_string(const basic_string& __str)
+      : _M_dataplus(__str._M_rep()->_M_grab(_Alloc(__str.get_allocator()),
+					    __str.get_allocator()),
+		    __str.get_allocator())
+      { }
 
       // _GLIBCXX_RESOLVE_LIB_DEFECTS
       // 2583. no way to supply an allocator for basic_string(str, pos)
@@ -3604,20 +3644,34 @@ _GLIBCXX_END_NAMESPACE_CXX11
        *  has no special meaning.
        */
       basic_string(const _CharT* __s, size_type __n,
-		   const _Alloc& __a = _Alloc());
+		   const _Alloc& __a = _Alloc())
+      : _M_dataplus(_S_construct(__s, __s + __n, __a), __a)
+      { }
+
       /**
        *  @brief  Construct string as copy of a C string.
        *  @param  __s  Source C string.
        *  @param  __a  Allocator to use (default is default allocator).
        */
-      basic_string(const _CharT* __s, const _Alloc& __a = _Alloc());
+#if __cpp_deduction_guides && ! defined _GLIBCXX_DEFINING_STRING_INSTANTIATIONS
+      // _GLIBCXX_RESOLVE_LIB_DEFECTS
+      // 3076. basic_string CTAD ambiguity
+      template<typename = _RequireAllocator<_Alloc>>
+#endif
+      basic_string(const _CharT* __s, const _Alloc& __a = _Alloc())
+      : _M_dataplus(_S_construct(__s, __s ? __s + traits_type::length(__s) :
+				 __s + npos, __a), __a)
+      { }
+
       /**
        *  @brief  Construct string as multiple characters.
        *  @param  __n  Number of characters.
        *  @param  __c  Character to use.
        *  @param  __a  Allocator to use (default is default allocator).
        */
-      basic_string(size_type __n, _CharT __c, const _Alloc& __a = _Alloc());
+      basic_string(size_type __n, _CharT __c, const _Alloc& __a = _Alloc())
+      : _M_dataplus(_S_construct(__n, __c, __a), __a)
+      { }
 
 #if __cplusplus >= 201103L
       /**
@@ -3626,7 +3680,7 @@ _GLIBCXX_END_NAMESPACE_CXX11
        *
        *  The newly-created string contains the exact contents of @a __str.
        *  @a __str is a valid, but unspecified string.
-       **/
+       */
       basic_string(basic_string&& __str)
 #if _GLIBCXX_FULLY_DYNAMIC_STRING == 0
       noexcept // FIXME C++11: should always be noexcept.
@@ -3645,7 +3699,9 @@ _GLIBCXX_END_NAMESPACE_CXX11
        *  @param  __l  std::initializer_list of characters.
        *  @param  __a  Allocator to use (default is default allocator).
        */
-      basic_string(initializer_list<_CharT> __l, const _Alloc& __a = _Alloc());
+      basic_string(initializer_list<_CharT> __l, const _Alloc& __a = _Alloc())
+      : _M_dataplus(_S_construct(__l.begin(), __l.end(), __a), __a)
+      { }
 
       basic_string(const basic_string& __str, const _Alloc& __a)
       : _M_dataplus(__str._M_rep()->_M_grab(__a, __str.get_allocator()), __a)
@@ -3675,7 +3731,9 @@ _GLIBCXX_END_NAMESPACE_CXX11
        */
       template<class _InputIterator>
         basic_string(_InputIterator __beg, _InputIterator __end,
-		     const _Alloc& __a = _Alloc());
+		     const _Alloc& __a = _Alloc())
+	: _M_dataplus(_S_construct(__beg, __end, __a), __a)
+	{ }
 
 #if __cplusplus >= 201703L
       /**
@@ -3744,7 +3802,7 @@ _GLIBCXX_END_NAMESPACE_CXX11
        *
        *  The contents of @a str are moved into this string (without copying).
        *  @a str is a valid, but unspecified string.
-       **/
+       */
       basic_string&
       operator=(basic_string&& __str)
       _GLIBCXX_NOEXCEPT_IF(allocator_traits<_Alloc>::is_always_equal::value)
@@ -3942,20 +4000,13 @@ _GLIBCXX_END_NAMESPACE_CXX11
       { this->resize(__n, _CharT()); }
 
 #if __cplusplus >= 201103L
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
       ///  A non-binding request to reduce capacity() to size().
       void
-      shrink_to_fit() _GLIBCXX_NOEXCEPT
-      {
-#if __cpp_exceptions
-	if (capacity() > size())
-	  {
-	    try
-	      { reserve(0); }
-	    catch(...)
-	      { }
-	  }
-#endif
-      }
+      shrink_to_fit() noexcept
+      { reserve(); }
+#pragma GCC diagnostic pop
 #endif
 
       /**
@@ -3984,7 +4035,14 @@ _GLIBCXX_END_NAMESPACE_CXX11
        *  data.
        */
       void
-      reserve(size_type __res_arg = 0);
+      reserve(size_type __res_arg);
+
+      /// Equivalent to shrink_to_fit().
+#if __cplusplus > 201703L
+      [[deprecated("use shrink_to_fit() instead")]]
+#endif
+      void
+      reserve();
 
       /**
        *  Erases the string, making it empty.
@@ -4662,10 +4720,9 @@ _GLIBCXX_END_NAMESPACE_CXX11
 
       /**
        *  @brief  Insert a string_view.
-       *  @param __pos  Position in string to insert at.
-       *  @param __svt  The object convertible to string_view to insert from.
-       *  @param __pos  Position in string_view to insert
-       *  from.
+       *  @param __pos1  Position in string to insert at.
+       *  @param __svt   The object convertible to string_view to insert from.
+       *  @param __pos2  Position in string_view to insert from.
        *  @param __n    The number of characters to insert.
        *  @return  Reference to this string.
       */
@@ -5966,6 +6023,21 @@ _GLIBCXX_END_NAMESPACE_CXX11
       ends_with(const _CharT* __x) const noexcept
       { return __sv_type(this->data(), this->size()).ends_with(__x); }
 #endif // C++20
+
+#if __cplusplus >= 202011L \
+  || (__cplusplus == 202002L && !defined __STRICT_ANSI__)
+      bool
+      contains(basic_string_view<_CharT, _Traits> __x) const noexcept
+      { return __sv_type(this->data(), this->size()).contains(__x); }
+
+      bool
+      contains(_CharT __x) const noexcept
+      { return __sv_type(this->data(), this->size()).contains(__x); }
+
+      bool
+      contains(const _CharT* __x) const noexcept
+      { return __sv_type(this->data(), this->size()).contains(__x); }
+#endif // C++23
 
 # ifdef _GLIBCXX_TM_TS_INTERNAL
       friend void

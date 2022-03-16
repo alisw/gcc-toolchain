@@ -1,6 +1,6 @@
 // Debugging iterator implementation (out of line) -*- C++ -*-
 
-// Copyright (C) 2003-2020 Free Software Foundation, Inc.
+// Copyright (C) 2003-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -92,23 +92,31 @@ namespace __gnu_debug
       if (__n == 0)
 	return true;
 
+      std::pair<difference_type, _Distance_precision> __dist = __n < 0
+	? _M_get_distance_from_begin()
+	: _M_get_distance_to_end();
+
       if (__n < 0)
-	{
-	  std::pair<difference_type, _Distance_precision> __dist =
-	    _M_get_distance_from_begin();
-	  return __dist.second == __dp_exact
-	    ? __dist.first >= -__n
-	    : !__strict && __dist.first > 0;
-	}
-      else
-	{
-	  std::pair<difference_type, _Distance_precision> __dist =
-	    _M_get_distance_to_end();
-	  return __dist.second == __dp_exact
-	    ? __dist.first >= __n
-	    : !__strict && __dist.first > 0;
-	}
+	__n = -__n;
+
+      return __dist.second > __dp_sign
+	? __dist.first >= __n
+	: !__strict && __dist.first > 0;
     }
+
+  template<typename _Iterator, typename _Sequence, typename _Category>
+    template<typename _Diff>
+      bool
+      _Safe_iterator<_Iterator, _Sequence, _Category>::
+      _M_can_advance(const std::pair<_Diff, _Distance_precision>& __dist,
+		     int __way) const
+      {
+	return __dist.second == __dp_exact
+	  ? _M_can_advance(__way * __dist.first)
+	  : _M_can_advance(__way * (__dist.first == 0
+				    ? 0
+				    : __dist.first < 0 ? -1 : 1));
+      }
 
   template<typename _Iterator, typename _Sequence, typename _Category>
     typename _Distance_traits<_Iterator>::__type
@@ -186,24 +194,17 @@ namespace __gnu_debug
 		   std::pair<difference_type, _Distance_precision>& __dist,
 		   bool __check_dereferenceable) const
     {
-      if (!_M_can_compare(__rhs))
+      if (_M_singular() || __rhs._M_singular() || !_M_can_compare(__rhs))
 	return false;
 
       /* Determine iterators order */
       __dist = _M_get_distance_to(__rhs);
-      switch (__dist.second)
+      if (__dist.second != __dp_equality)
 	{
-	case __dp_equality:
-	  if (__dist.first == 0)
-	    return true;
-	  break;
-
-	case __dp_sign:
-	case __dp_exact:
 	  // If range is not empty first iterator must be dereferenceable.
-	  if (__dist.first > 0)
-	    return !__check_dereferenceable || _M_dereferenceable();
-	  return __dist.first == 0;
+	  return __dist.first == 0
+	    || (__dist.first > 0
+		&& (!__check_dereferenceable || _M_dereferenceable()));
 	}
 
       // Assume that this is a valid range; we can't check anything else.
@@ -217,22 +218,28 @@ namespace __gnu_debug
 		   std::pair<difference_type,
 			     _Distance_precision>& __dist) const
     {
-      if (!this->_M_can_compare(__rhs))
+      if (this->_M_singular() || __rhs._M_singular()
+	  || !this->_M_can_compare(__rhs))
 	return false;
 
       /* Determine iterators order */
       __dist = std::make_pair(__rhs.base() - this->base(), __dp_exact);
 
       // If range is not empty first iterator must be dereferenceable.
-      if (__dist.first > 0)
-	return this->_M_dereferenceable();
-      return __dist.first == 0;
+      return __dist.first == 0
+	|| (__dist.first > 0 && this->_M_dereferenceable());
     }
 } // namespace __gnu_debug
 
 namespace std _GLIBCXX_VISIBILITY(default)
 {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
+
+  template<typename _Ite, typename _Seq>
+    _Ite
+    __niter_base(const ::__gnu_debug::_Safe_iterator<_Ite, _Seq,
+		 std::random_access_iterator_tag>& __it)
+    { return __it.base(); }
 
   template<bool _IsMove,
 	   typename _Ite, typename _Seq, typename _Cat, typename _OI>
@@ -244,7 +251,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       typename ::__gnu_debug::_Distance_traits<_Ite>::__type __dist;
       __glibcxx_check_valid_range2(__first, __last, __dist);
-      __glibcxx_check_can_increment(__result, __dist.first);
+      __glibcxx_check_can_increment_dist(__result, __dist, 1);
 
       if (__dist.second > ::__gnu_debug::__dp_equality)
 	return std::__copy_move_a<_IsMove>(__first.base(), __last.base(),
@@ -261,7 +268,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       typename ::__gnu_debug::_Distance_traits<_II>::__type __dist;
       __glibcxx_check_valid_range2(__first, __last, __dist);
-      __glibcxx_check_can_increment(__result, __dist.first);
+      __glibcxx_check_can_increment_dist(__result, __dist, 1);
 
       if (__dist.second > ::__gnu_debug::__dp_sign
 	  && __result._M_can_advance(__dist.first, true))
@@ -283,7 +290,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       typename ::__gnu_debug::_Distance_traits<_IIte>::__type __dist;
       __glibcxx_check_valid_range2(__first, __last, __dist);
-      __glibcxx_check_can_increment(__result, __dist.first);
+      __glibcxx_check_can_increment_dist(__result, __dist, 1);
 
       if (__dist.second > ::__gnu_debug::__dp_equality)
 	{
@@ -311,7 +318,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       typename ::__gnu_debug::_Distance_traits<_Ite>::__type __dist;
       __glibcxx_check_valid_range2(__first, __last, __dist);
-      __glibcxx_check_can_increment(__result, -__dist.first);
+      __glibcxx_check_can_increment_dist(__result, __dist, -1);
 
       if (__dist.second > ::__gnu_debug::__dp_equality)
 	return std::__copy_move_backward_a<_IsMove>(
@@ -328,7 +335,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       typename ::__gnu_debug::_Distance_traits<_II>::__type __dist;
       __glibcxx_check_valid_range2(__first, __last, __dist);
-      __glibcxx_check_can_increment(__result, -__dist.first);
+      __glibcxx_check_can_increment_dist(__result, __dist, -1);
 
       if (__dist.second > ::__gnu_debug::__dp_sign
 	  && __result._M_can_advance(-__dist.first, true))
@@ -351,7 +358,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       typename ::__gnu_debug::_Distance_traits<_IIte>::__type __dist;
       __glibcxx_check_valid_range2(__first, __last, __dist);
-      __glibcxx_check_can_increment(__result, -__dist.first);
+      __glibcxx_check_can_increment_dist(__result, __dist, -1);
 
       if (__dist.second > ::__gnu_debug::__dp_equality)
 	{
@@ -416,7 +423,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       typename ::__gnu_debug::_Distance_traits<_II1>::__type __dist;
       __glibcxx_check_valid_range2(__first1, __last1, __dist);
-      __glibcxx_check_can_increment(__first2, __dist.first);
+      __glibcxx_check_can_increment_dist(__first2, __dist, 1);
 
       if (__dist.second > ::__gnu_debug::__dp_equality)
 	return std::__equal_aux(__first1.base(), __last1.base(), __first2);
@@ -431,7 +438,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       typename ::__gnu_debug::_Distance_traits<_II1>::__type __dist;
       __glibcxx_check_valid_range2(__first1, __last1, __dist);
-      __glibcxx_check_can_increment(__first2, __dist.first);
+      __glibcxx_check_can_increment_dist(__first2, __dist, 1);
 
       if (__dist.second > ::__gnu_debug::__dp_sign
 	  && __first2._M_can_advance(__dist.first, true))
@@ -450,7 +457,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       typename ::__gnu_debug::_Distance_traits<_II1>::__type __dist;
       __glibcxx_check_valid_range2(__first1, __last1, __dist);
-      __glibcxx_check_can_increment(__first2, __dist.first);
+      __glibcxx_check_can_increment_dist(__first2, __dist, 1);
 
       if (__dist.second > ::__gnu_debug::__dp_equality)
 	{
@@ -462,6 +469,80 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
       return __equal_aux1(__first1, __last1, __first2);
+    }
+
+  template<typename _Ite1, typename _Seq1, typename _Cat1,
+	   typename _II2>
+    bool
+    __lexicographical_compare_aux(
+	const ::__gnu_debug::_Safe_iterator<_Ite1, _Seq1, _Cat1>& __first1,
+	const ::__gnu_debug::_Safe_iterator<_Ite1, _Seq1, _Cat1>& __last1,
+	_II2 __first2, _II2 __last2)
+    {
+      typename ::__gnu_debug::_Distance_traits<_Ite1>::__type __dist1;
+      __glibcxx_check_valid_range2(__first1, __last1, __dist1);
+      __glibcxx_check_valid_range(__first2, __last2);
+
+      if (__dist1.second > ::__gnu_debug::__dp_equality)
+	return std::__lexicographical_compare_aux(__first1.base(),
+						  __last1.base(),
+						  __first2, __last2);
+      return std::__lexicographical_compare_aux1(__first1, __last1,
+						 __first2, __last2);
+    }
+
+  template<typename _II1,
+	   typename _Ite2, typename _Seq2, typename _Cat2>
+    bool
+    __lexicographical_compare_aux(
+	_II1 __first1, _II1 __last1,
+	const ::__gnu_debug::_Safe_iterator<_Ite2, _Seq2, _Cat2>& __first2,
+	const ::__gnu_debug::_Safe_iterator<_Ite2, _Seq2, _Cat2>& __last2)
+    {
+      __glibcxx_check_valid_range(__first1, __last1);
+      typename ::__gnu_debug::_Distance_traits<_II1>::__type __dist2;
+      __glibcxx_check_valid_range2(__first2, __last2, __dist2);
+
+      if (__dist2.second > ::__gnu_debug::__dp_equality)
+	return std::__lexicographical_compare_aux(__first1, __last1,
+						  __first2.base(),
+						  __last2.base());
+      return std::__lexicographical_compare_aux1(__first1, __last1,
+						 __first2, __last2);
+    }
+
+  template<typename _Ite1, typename _Seq1, typename _Cat1,
+	   typename _Ite2, typename _Seq2, typename _Cat2>
+    bool
+    __lexicographical_compare_aux(
+	const ::__gnu_debug::_Safe_iterator<_Ite1, _Seq1, _Cat1>& __first1,
+	const ::__gnu_debug::_Safe_iterator<_Ite1, _Seq1, _Cat1>& __last1,
+	const ::__gnu_debug::_Safe_iterator<_Ite2, _Seq2, _Cat2>& __first2,
+	const ::__gnu_debug::_Safe_iterator<_Ite2, _Seq2, _Cat2>& __last2)
+    {
+      typename ::__gnu_debug::_Distance_traits<_Ite1>::__type __dist1;
+      __glibcxx_check_valid_range2(__first1, __last1, __dist1);
+      typename ::__gnu_debug::_Distance_traits<_Ite2>::__type __dist2;
+      __glibcxx_check_valid_range2(__first2, __last2, __dist2);
+
+      if (__dist1.second > ::__gnu_debug::__dp_equality)
+	{
+	  if (__dist2.second > ::__gnu_debug::__dp_equality)
+	    return std::__lexicographical_compare_aux(__first1.base(),
+						      __last1.base(),
+						      __first2.base(),
+						      __last2.base());
+	  return std::__lexicographical_compare_aux(__first1.base(),
+						    __last1.base(),
+						    __first2, __last2);
+	}
+
+      if (__dist2.second > ::__gnu_debug::__dp_equality)
+	return std::__lexicographical_compare_aux(__first1, __last1,
+						  __first2.base(),
+						  __last2.base());
+      return std::__lexicographical_compare_aux1(__first1, __last1,
+						 __first2, __last2);
     }
 
 _GLIBCXX_END_NAMESPACE_VERSION

@@ -1,5 +1,5 @@
 /* d-spec.c -- Specific flags and argument handling of the D front end.
-   Copyright (C) 2006-2020 Free Software Foundation, Inc.
+   Copyright (C) 2006-2021 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -56,7 +56,7 @@ enum phobos_action
   /* libgphobos is needed and should be linked statically.  */
   PHOBOS_STATIC,
   /* libgphobos is needed and should be linked dynamically.  */
-  PHOBOS_DYNAMIC,
+  PHOBOS_DYNAMIC
 };
 
 static phobos_action phobos_library = PHOBOS_DEFAULT;

@@ -1,6 +1,6 @@
 /* Support for printing C++ values for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2020 Free Software Foundation, Inc.
+   Copyright (C) 1986-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -38,6 +38,8 @@
 #include "gdbsupport/byte-vector.h"
 #include "gdbarch.h"
 #include "cli/cli-style.h"
+#include "gdbsupport/selftest.h"
+#include "selftest-arch.h"
 
 static struct obstack dont_print_vb_obstack;
 static struct obstack dont_print_statmem_obstack;
@@ -84,7 +86,7 @@ cp_is_vtbl_member (struct type *type)
 	      || type->code () == TYPE_CODE_PTR)   /* if using thunks */
 	    {
 	      /* Virtual functions tables are full of pointers
-	         to virtual functions.  */
+		 to virtual functions.  */
 	      return cp_is_vtbl_ptr_type (type);
 	    }
 	}
@@ -262,7 +264,7 @@ cp_print_value_fields (struct value *val, struct ui_file *stream,
 	      struct value *v;
 
 	      /* Bitfields require special handling, especially due to
-	         byte order problems.  */
+		 byte order problems.  */
 	      if (TYPE_FIELD_IGNORE (type, i))
 		{
 		  fputs_styled ("<optimized out or zero length>",
@@ -324,7 +326,7 @@ cp_print_value_fields (struct value *val, struct ui_file *stream,
 		      i_offset += value_embedded_offset (val);
 		      addr = extract_typed_address (valaddr + i_offset, i_type);
 		      print_function_pointer_address (opts,
-						      get_type_arch (type),
+						      type->arch (),
 						      addr, stream);
 		    }
 		}
@@ -342,7 +344,7 @@ cp_print_value_fields (struct value *val, struct ui_file *stream,
       if (dont_print_statmem == 0)
 	{
 	  size_t obstack_final_size =
-           obstack_object_size (&dont_print_statmem_obstack);
+	   obstack_object_size (&dont_print_statmem_obstack);
 
 	  if (obstack_final_size > statmem_obstack_initial_size)
 	    {
@@ -400,8 +402,8 @@ cp_print_value (struct value *val, struct ui_file *stream,
   if (dont_print_vb == 0)
     {
       /* If we're at top level, carve out a completely fresh chunk of
-         the obstack and use that until this particular invocation
-         returns.  */
+	 the obstack and use that until this particular invocation
+	 returns.  */
       /* Bump up the high-water mark.  Now alpha is omega.  */
       obstack_finish (&dont_print_vb_obstack);
     }
@@ -483,7 +485,7 @@ cp_print_value (struct value *val, struct ui_file *stream,
 	}
       fputs_filtered ("<", stream);
       /* Not sure what the best notation is in the case where there is
-         no baseclass name.  */
+	 no baseclass name.  */
       fputs_filtered (basename ? basename : "", stream);
       fputs_filtered ("> = ", stream);
 
@@ -495,14 +497,8 @@ cp_print_value (struct value *val, struct ui_file *stream,
 	{
 	  int result = 0;
 
-	  if (options->max_depth > -1
-	      && recurse >= options->max_depth)
-	    {
-	      const struct language_defn *language = current_language;
-	      gdb_assert (language->la_struct_too_deep_ellipsis != NULL);
-	      fputs_filtered (language->la_struct_too_deep_ellipsis, stream);
-	    }
-	  else
+	  if (!val_print_check_max_depth (stream, recurse, options,
+					  current_language))
 	    {
 	      struct value *baseclass_val = value_primitive_field (val, 0,
 								   i, type);
@@ -531,10 +527,10 @@ cp_print_value (struct value *val, struct ui_file *stream,
   if (dont_print_vb == 0)
     {
       /* Free the space used to deal with the printing
-         of this type from top level.  */
+	 of this type from top level.  */
       obstack_free (&dont_print_vb_obstack, last_dont_print);
       /* Reset watermark so that we can continue protecting
-         ourselves from whatever we were protecting ourselves.  */
+	 ourselves from whatever we were protecting ourselves.  */
       dont_print_vb_obstack = tmp_obstack;
     }
 }
@@ -721,11 +717,77 @@ cp_print_class_member (const gdb_byte *valaddr, struct type *type,
     fprintf_filtered (stream, "%ld", (long) val);
 }
 
+#if GDB_SELF_TEST
+
+/* Test printing of TYPE_CODE_STRUCT values.  */
+
+static void
+test_print_fields (gdbarch *arch)
+{
+  struct field *f;
+  type *uint8_type = builtin_type (arch)->builtin_uint8;
+  type *bool_type = builtin_type (arch)->builtin_bool;
+  type *the_struct = arch_composite_type (arch, NULL, TYPE_CODE_STRUCT);
+  TYPE_LENGTH (the_struct) = 4;
+
+  /* Value:  1110 1001
+     Fields: C-BB B-A- */
+  if (gdbarch_byte_order (arch) == BFD_ENDIAN_LITTLE)
+    {
+      f = append_composite_type_field_raw (the_struct, "A", bool_type);
+      SET_FIELD_BITPOS (*f, 1);
+      FIELD_BITSIZE (*f) = 1;
+      f = append_composite_type_field_raw (the_struct, "B", uint8_type);
+      SET_FIELD_BITPOS (*f, 3);
+      FIELD_BITSIZE (*f) = 3;
+      f = append_composite_type_field_raw (the_struct, "C", bool_type);
+      SET_FIELD_BITPOS (*f, 7);
+      FIELD_BITSIZE (*f) = 1;
+    }
+  /* According to the logic commented in "make_gdb_type_struct ()" of
+   * target-descriptions.c, bit positions are numbered differently for
+   * little and big endians.  */
+  else
+    {
+      f = append_composite_type_field_raw (the_struct, "A", bool_type);
+      SET_FIELD_BITPOS (*f, 30);
+      FIELD_BITSIZE (*f) = 1;
+      f = append_composite_type_field_raw (the_struct, "B", uint8_type);
+      SET_FIELD_BITPOS (*f, 26);
+      FIELD_BITSIZE (*f) = 3;
+      f = append_composite_type_field_raw (the_struct, "C", bool_type);
+      SET_FIELD_BITPOS (*f, 24);
+      FIELD_BITSIZE (*f) = 1;
+    }
+
+  value *val = allocate_value (the_struct);
+  gdb_byte *contents = value_contents_writeable (val);
+  store_unsigned_integer (contents, TYPE_LENGTH (value_enclosing_type (val)),
+			  gdbarch_byte_order (arch), 0xe9);
+
+  string_file out;
+  struct value_print_options opts;
+  get_no_prettyformat_print_options (&opts);
+  cp_print_value_fields(val, &out, 0, &opts, NULL, 0);
+  SELF_CHECK (out.string () == "{A = false, B = 5, C = true}");
+
+  out.clear();
+  opts.format = 'x';
+  cp_print_value_fields(val, &out, 0, &opts, NULL, 0);
+  SELF_CHECK (out.string () == "{A = 0x0, B = 0x5, C = 0x1}");
+}
+
+#endif
+
 
 void _initialize_cp_valprint ();
 void
 _initialize_cp_valprint ()
 {
+#if GDB_SELF_TEST
+  selftests::register_test_foreach_arch ("print-fields", test_print_fields);
+#endif
+
   obstack_begin (&dont_print_stat_array_obstack,
 		 32 * sizeof (struct type *));
   obstack_begin (&dont_print_statmem_obstack,

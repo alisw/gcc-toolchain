@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2020 Free Software Foundation, Inc.
+# Copyright (C) 2009-2022 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -89,4 +89,5 @@ gdb_test "python print ('result = %s' % t0.is_exited ())" " = False" "test Infer
 
 gdb_test "python print ('result = %s' % t0.is_valid ())" " = True" "test InferiorThread.is_valid"
 gdb_test_no_output "kill inferior 1" "kill inferior 1"
-gdb_test "python print ('result = %s' % t0.is_valid ())" " = False" "test InferiorThread.is_valid"
+gdb_test "python print ('result = %s' % t0.is_valid ())" " = False" \
+    "test InferiorThread.is_valid after thread has been killed"
