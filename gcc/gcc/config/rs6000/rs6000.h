@@ -1,5 +1,5 @@
 /* Definitions of target machine for GNU compiler, for IBM RS/6000.
-   Copyright (C) 1992-2020 Free Software Foundation, Inc.
+   Copyright (C) 1992-2021 Free Software Foundation, Inc.
    Contributed by Richard Kenner (kenner@vlsi1.ultra.nyu.edu)
 
    This file is part of GCC.
@@ -539,6 +539,7 @@ extern int rs6000_vector_align[];
 #define MASK_UPDATE			OPTION_MASK_UPDATE
 #define MASK_VSX			OPTION_MASK_VSX
 #define MASK_POWER10			OPTION_MASK_POWER10
+#define MASK_P10_FUSION			OPTION_MASK_P10_FUSION
 
 #ifndef IN_LIBGCC2
 #define MASK_POWERPC64			OPTION_MASK_POWERPC64
@@ -640,8 +641,9 @@ extern unsigned char rs6000_recip_bits[];
 #define TARGET_CPU_CPP_BUILTINS() \
   rs6000_cpu_cpp_builtins (pfile)
 
-/* Target CPU versions for D.  */
+/* Target hooks for D language.  */
 #define TARGET_D_CPU_VERSIONS rs6000_d_target_versions
+#define TARGET_D_REGISTER_CPU_TARGET_INFO rs6000_d_register_target_info
 
 /* This is used by rs6000_cpu_cpp_builtins to indicate the byte order
    we're compiling for.  Some configurations may need to override it.  */
@@ -776,8 +778,10 @@ extern unsigned rs6000_pointer_size;
 /* Allocation boundary (in *bits*) for the code of a function.  */
 #define FUNCTION_BOUNDARY 32
 
-/* No data type wants to be aligned rounder than this.  */
-#define BIGGEST_ALIGNMENT (TARGET_MMA ? 512 : 128)
+/* No data type is required to be aligned rounder than this.  Warning, if
+   BIGGEST_ALIGNMENT is changed, then this may be an ABI break.  An example
+   of where this can break an ABI is in GLIBC's struct _Unwind_Exception.  */
+#define BIGGEST_ALIGNMENT 128
 
 /* Alignment of field after `int : 0' in a structure.  */
 #define EMPTY_FIELD_BOUNDARY 32
@@ -1039,7 +1043,7 @@ enum data_align { align_abi, align_opt, align_both };
 /* Modes that are not vectors, but require vector alignment.  Treat these like
    vectors in terms of loads and stores.  */
 #define VECTOR_ALIGNMENT_P(MODE)					\
-  (FLOAT128_VECTOR_P (MODE) || (MODE) == POImode || (MODE) == PXImode)
+  (FLOAT128_VECTOR_P (MODE) || (MODE) == OOmode || (MODE) == XOmode)
 
 #define ALTIVEC_VECTOR_MODE(MODE)					\
   ((MODE) == V16QImode							\
@@ -1754,15 +1758,15 @@ typedef struct rs6000_args
 
 /* #define LEGITIMATE_PIC_OPERAND_P (X) */
 
-/* Specify the machine mode that this machine uses
-   for the index in the tablejump instruction.  */
-#define CASE_VECTOR_MODE SImode
-
 /* Define as C expression which evaluates to nonzero if the tablejump
    instruction expects the table to contain offsets from the address of the
    table.
    Do not define this if the table should contain absolute addresses.  */
-#define CASE_VECTOR_PC_RELATIVE 1
+#define CASE_VECTOR_PC_RELATIVE rs6000_relative_jumptables
+
+/* Specify the machine mode that this machine uses
+   for the index in the tablejump instruction.  */
+#define CASE_VECTOR_MODE (rs6000_relative_jumptables ? SImode : Pmode)
 
 /* Define this as 1 if `char' should by default be signed; else as 0.  */
 #define DEFAULT_SIGNED_CHAR 0
@@ -2192,6 +2196,11 @@ extern char rs6000_reg_names[][8];	/* register names (0 vs. %r0).  */
        putc ('\n', FILE);				\
      } while (0)
 
+/* This is how to output an element of a case-vector
+   that is non-relative.  */
+#define ASM_OUTPUT_ADDR_VEC_ELT(FILE, VALUE) \
+  rs6000_output_addr_vec_elt ((FILE), (VALUE))
+
 /* This is how to output an assembler line
    that says to advance the location counter
    to a multiple of 2**LOG bytes.  */
@@ -2352,6 +2361,7 @@ extern int frame_pointer_needed;
 #undef RS6000_BUILTIN_1
 #undef RS6000_BUILTIN_2
 #undef RS6000_BUILTIN_3
+#undef RS6000_BUILTIN_4
 #undef RS6000_BUILTIN_A
 #undef RS6000_BUILTIN_D
 #undef RS6000_BUILTIN_H
@@ -2363,6 +2373,7 @@ extern int frame_pointer_needed;
 #define RS6000_BUILTIN_1(ENUM, NAME, MASK, ATTR, ICODE) ENUM,
 #define RS6000_BUILTIN_2(ENUM, NAME, MASK, ATTR, ICODE) ENUM,
 #define RS6000_BUILTIN_3(ENUM, NAME, MASK, ATTR, ICODE) ENUM,
+#define RS6000_BUILTIN_4(ENUM, NAME, MASK, ATTR, ICODE) ENUM,
 #define RS6000_BUILTIN_A(ENUM, NAME, MASK, ATTR, ICODE) ENUM,
 #define RS6000_BUILTIN_D(ENUM, NAME, MASK, ATTR, ICODE) ENUM,
 #define RS6000_BUILTIN_H(ENUM, NAME, MASK, ATTR, ICODE) ENUM,
@@ -2381,6 +2392,7 @@ enum rs6000_builtins
 #undef RS6000_BUILTIN_1
 #undef RS6000_BUILTIN_2
 #undef RS6000_BUILTIN_3
+#undef RS6000_BUILTIN_4
 #undef RS6000_BUILTIN_A
 #undef RS6000_BUILTIN_D
 #undef RS6000_BUILTIN_H
@@ -2432,6 +2444,7 @@ enum rs6000_builtin_type_index
   RS6000_BTI_bool_V8HI,          /* __vector __bool short */
   RS6000_BTI_bool_V4SI,          /* __vector __bool int */
   RS6000_BTI_bool_V2DI,          /* __vector __bool long */
+  RS6000_BTI_bool_V1TI,          /* __vector __bool 128-bit */
   RS6000_BTI_pixel_V8HI,         /* __vector __pixel */
   RS6000_BTI_long,	         /* long_integer_type_node */
   RS6000_BTI_unsigned_long,      /* long_unsigned_type_node */
@@ -2485,6 +2498,7 @@ enum rs6000_builtin_type_index
 #define bool_V8HI_type_node	      (rs6000_builtin_types[RS6000_BTI_bool_V8HI])
 #define bool_V4SI_type_node	      (rs6000_builtin_types[RS6000_BTI_bool_V4SI])
 #define bool_V2DI_type_node	      (rs6000_builtin_types[RS6000_BTI_bool_V2DI])
+#define bool_V1TI_type_node	      (rs6000_builtin_types[RS6000_BTI_bool_V1TI])
 #define pixel_V8HI_type_node	      (rs6000_builtin_types[RS6000_BTI_pixel_V8HI])
 
 #define long_long_integer_type_internal_node  (rs6000_builtin_types[RS6000_BTI_long_long])
@@ -2550,6 +2564,7 @@ typedef struct GTY(()) machine_function
   bool fpr_is_wrapped_separately[32];
   bool lr_is_wrapped_separately;
   bool toc_is_wrapped_separately;
+  bool mma_return_type_error;
 } machine_function;
 #endif
 

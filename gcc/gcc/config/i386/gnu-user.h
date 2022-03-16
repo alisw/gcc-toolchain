@@ -1,5 +1,5 @@
 /* Definitions for Intel 386 systems using GNU userspace.
-   Copyright (C) 1994-2020 Free Software Foundation, Inc.
+   Copyright (C) 1994-2021 Free Software Foundation, Inc.
    Contributed by Eric Youngdale.
    Modified for stabs-in-ELF by H.J. Lu.
 
@@ -38,12 +38,6 @@ along with GCC; see the file COPYING3.  If not see
 
 #undef MCOUNT_NAME
 #define MCOUNT_NAME "mcount"
-
-/* The GLIBC version of mcount for the x86 assumes that there is a
-   frame, so we cannot allow profiling without a frame pointer.  */
-
-#undef SUBTARGET_FRAME_POINTER_REQUIRED
-#define SUBTARGET_FRAME_POINTER_REQUIRED crtl->profile
 
 #undef SIZE_TYPE
 #define SIZE_TYPE "unsigned int"

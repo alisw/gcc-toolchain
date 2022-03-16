@@ -1,6 +1,6 @@
 /* Test file for mpfr_tanh.
 
-Copyright 2001-2019 Free Software Foundation, Inc.
+Copyright 2001-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -118,7 +118,7 @@ special_overflow (void)
 
 /* This test was generated from bad_cases, with input y=-7.778@-1 = -3823/8192.
    For the x value below, we have atanh(y) < x, thus since tanh() is increasing,
-   y < tanh(x), and thus tanh(x) rounded towards zero should give -3822/8192. */
+   y < tanh(x), and thus tanh(x) rounded toward zero should give -3822/8192. */
 static void
 bug20171218 (void)
 {

@@ -1,5 +1,5 @@
 /* Decompose multiword subregs.
-   Copyright (C) 2007-2020 Free Software Foundation, Inc.
+   Copyright (C) 2007-2021 Free Software Foundation, Inc.
    Contributed by Richard Henderson <rth@redhat.com>
 		  Ian Lance Taylor <iant@google.com>
 
@@ -1087,12 +1087,21 @@ resolve_simple_move (rtx set, rtx_insn *insn)
 	emit_clobber (dest);
 
       for (i = 0; i < words; ++i)
-	emit_move_insn (simplify_gen_subreg_concatn (word_mode, dest,
-						     dest_mode,
-						     i * UNITS_PER_WORD),
-			simplify_gen_subreg_concatn (word_mode, src,
-						     orig_mode,
-						     i * UNITS_PER_WORD));
+	{
+	  rtx t = simplify_gen_subreg_concatn (word_mode, dest,
+					       dest_mode,
+					       i * UNITS_PER_WORD);
+	  /* simplify_gen_subreg_concatn can return (const_int 0) for
+	     some sub-objects of paradoxical subregs.  As a source operand,
+	     that's fine.  As a destination it must be avoided.  Those are
+	     supposed to be don't care bits, so we can just drop that store
+	     on the floor.  */
+	  if (t != CONST0_RTX (word_mode))
+	    emit_move_insn (t,
+			    simplify_gen_subreg_concatn (word_mode, src,
+							 orig_mode,
+							 i * UNITS_PER_WORD));
+	}
     }
 
   if (real_dest != NULL_RTX)
@@ -1517,7 +1526,7 @@ decompose_multiword_subregs (bool decompose_copies)
   subreg_context = BITMAP_ALLOC (NULL);
 
   reg_copy_graph.create (max);
-  reg_copy_graph.safe_grow_cleared (max);
+  reg_copy_graph.safe_grow_cleared (max, true);
   memset (reg_copy_graph.address (), 0, sizeof (bitmap) * max);
 
   speed_p = optimize_function_for_speed_p (cfun);

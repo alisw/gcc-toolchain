@@ -1,5 +1,5 @@
 /* Perform instruction reorganizations for delay slot filling.
-   Copyright (C) 1992-2020 Free Software Foundation, Inc.
+   Copyright (C) 1992-2021 Free Software Foundation, Inc.
    Contributed by Richard Kenner (kenner@vlsi1.ultra.nyu.edu).
    Hacked by Michael Tiemann (tiemann@cygnus.com).
 
@@ -139,9 +139,9 @@ skip_consecutive_labels (rtx label_or_return)
   /* __builtin_unreachable can create a CODE_LABEL followed by a BARRIER.
 
      Since reaching the CODE_LABEL is undefined behavior, we can return
-     any code label and we're OK at runtime.
+     any code label and we're OK at run time.
 
-     However, if we return a CODE_LABEL which leads to a shrinked wrapped
+     However, if we return a CODE_LABEL which leads to a shrink-wrapped
      epilogue, but the path does not have a prologue, then we will trip
      a sanity check in the dwarf2 cfi code which wants to verify that
      the CFIs are all the same on the traces leading to the epilogue.
@@ -2412,6 +2412,21 @@ fill_slots_from_thread (rtx_jump_insn *insn, rtx condition,
   CLEAR_RESOURCE (&needed);
   CLEAR_RESOURCE (&set);
 
+  /* Handle the flags register specially, to be able to accept a
+     candidate that clobbers it.  See also fill_simple_delay_slots.  */
+  bool filter_flags
+    = (slots_to_fill == 1
+       && targetm.flags_regnum != INVALID_REGNUM
+       && find_regno_note (insn, REG_DEAD, targetm.flags_regnum));
+  struct resources fset;
+  struct resources flags_res;
+  if (filter_flags)
+    {
+      CLEAR_RESOURCE (&fset);
+      CLEAR_RESOURCE (&flags_res);
+      SET_HARD_REG_BIT (flags_res.regs, targetm.flags_regnum);
+    }
+
   /* If we do not own this thread, we must stop as soon as we find
      something that we can't put in a delay slot, since all we can do
      is branch into THREAD at a later point.  Therefore, labels stop
@@ -2440,8 +2455,18 @@ fill_slots_from_thread (rtx_jump_insn *insn, rtx condition,
       /* If TRIAL conflicts with the insns ahead of it, we lose.  Also,
 	 don't separate or copy insns that set and use CC0.  */
       if (! insn_references_resource_p (trial, &set, true)
-	  && ! insn_sets_resource_p (trial, &set, true)
+	  && ! insn_sets_resource_p (trial, filter_flags ? &fset : &set, true)
 	  && ! insn_sets_resource_p (trial, &needed, true)
+	  /* If we're handling sets to the flags register specially, we
+	     only allow an insn into a delay-slot, if it either:
+	     - doesn't set the flags register,
+	     - the "set" of the flags register isn't used (clobbered),
+	     - insns between the delay-slot insn and the trial-insn
+	     as accounted in "set", have not affected the flags register.  */
+	  && (! filter_flags
+	      || ! insn_sets_resource_p (trial, &flags_res, true)
+	      || find_regno_note (trial, REG_UNUSED, targetm.flags_regnum)
+	      || ! TEST_HARD_REG_BIT (set.regs, targetm.flags_regnum))
 	  && (!HAVE_cc0 || (! (reg_mentioned_p (cc0_rtx, pat)
 			      && (! own_thread || ! sets_cc0_p (pat)))))
 	  && ! can_throw_internal (trial))
@@ -2619,6 +2644,16 @@ fill_slots_from_thread (rtx_jump_insn *insn, rtx condition,
       lose = 1;
       mark_set_resources (trial, &set, 0, MARK_SRC_DEST_CALL);
       mark_referenced_resources (trial, &needed, true);
+      if (filter_flags)
+	{
+	  mark_set_resources (trial, &fset, 0, MARK_SRC_DEST_CALL);
+
+	  /* Groups of flags-register setters with users should not
+	     affect opportunities to move flags-register-setting insns
+	     (clobbers) into the delay-slot.  */
+	  CLEAR_HARD_REG_BIT (needed.regs, targetm.flags_regnum);
+	  CLEAR_HARD_REG_BIT (fset.regs, targetm.flags_regnum);
+	}
 
       /* Ensure we don't put insns between the setting of cc and the comparison
 	 by moving a setting of cc into an earlier delay slot since these insns
@@ -3175,6 +3210,23 @@ relax_delay_slots (rtx_insn *first)
 	      && ! condjump_in_parallel_p (jump_insn)
 	      && ! (next && switch_text_sections_between_p (jump_insn, next)))
 	    {
+	      rtx_insn *direct_label = as_a<rtx_insn *> (JUMP_LABEL (insn));
+	      rtx_insn *prev = prev_nonnote_insn (direct_label);
+
+	      /* If the insn jumps over a BARRIER and is the only way to reach
+		 its target, then we need to delete the BARRIER before the jump
+		 because, otherwise, the target may end up being considered as
+		 unreachable and thus also deleted.  */
+	      if (BARRIER_P (prev) && LABEL_NUSES (direct_label) == 1)
+		{
+		  delete_related_insns (prev);
+
+		  /* We have just removed a BARRIER, which means that the block
+		     number of the next insns has effectively been changed (see
+		     find_basic_block in resource.c), so clear it.  */
+		  clear_hashed_info_until_next_barrier (direct_label);
+		}
+
 	      delete_jump (jump_insn);
 	      continue;
 	    }

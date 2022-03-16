@@ -1,6 +1,6 @@
 %{ /* deffilep.y - parser for .def files */
 
-/*   Copyright (C) 1995-2020 Free Software Foundation, Inc.
+/*   Copyright (C) 1995-2022 Free Software Foundation, Inc.
 
      This file is part of GNU Binutils.
 
@@ -102,7 +102,7 @@ static void def_version (int, int);
 static void def_directive (char *);
 static void def_aligncomm (char *str, int align);
 static int def_parse (void);
-static int def_error (const char *);
+static void def_error (const char *);
 static int def_lex (void);
 
 static int lex_forced_token = 0;
@@ -122,7 +122,7 @@ static const char *lex_parse_string_end = 0;
 %token NAME LIBRARY DESCRIPTION STACKSIZE_K HEAPSIZE CODE DATAU DATAL
 %token SECTIONS EXPORTS IMPORTS VERSIONK BASE CONSTANTU CONSTANTL
 %token PRIVATEU PRIVATEL ALIGNCOMM
-%token READ WRITE EXECUTE SHARED NONAMEU NONAMEL DIRECTIVE EQUAL
+%token READ WRITE EXECUTE SHARED_K NONAMEU NONAMEL DIRECTIVE EQUAL
 %token <id> ID
 %token <digits> DIGITS
 %type  <number> NUMBER
@@ -235,7 +235,7 @@ attr:
 		READ	{ $$ = 1;}
 	|	WRITE	{ $$ = 2;}
 	|	EXECUTE	{ $$=4;}
-	|	SHARED	{ $$=8;}
+	|	SHARED_K { $$=8;}
 	;
 
 
@@ -263,7 +263,7 @@ keyword_as_name: BASE { $$ = "BASE"; }
 	 | PRIVATEU { $$ = "PRIVATE"; }
 	 | PRIVATEL { $$ = "private"; }
 	 | READ { $$ = "READ"; }
-	 | SHARED  { $$ = "SHARED"; }
+	 | SHARED_K  { $$ = "SHARED"; }
 	 | STACKSIZE_K { $$ = "STACKSIZE"; }
 	 | VERSIONK { $$ = "VERSION"; }
 	 | WRITE { $$ = "WRITE"; }
@@ -1261,12 +1261,11 @@ def_aligncomm (char *str, int align)
     }
 }
 
-static int
+static void
 def_error (const char *err)
 {
   einfo ("%P: %s:%d: %s\n",
 	 def_filename ? def_filename : "<unknown-file>", linenumber, err);
-  return 0;
 }
 
 
@@ -1323,7 +1322,7 @@ tokens[] =
   { "READ", READ },
   { "SECTIONS", SECTIONS },
   { "SEGMENTS", SECTIONS },
-  { "SHARED", SHARED },
+  { "SHARED", SHARED_K },
   { "STACKSIZE", STACKSIZE_K },
   { "VERSION", VERSIONK },
   { "WRITE", WRITE },

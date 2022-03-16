@@ -1,6 +1,6 @@
 /* GDB commands implemented in Scheme.
 
-   Copyright (C) 2008-2020 Free Software Foundation, Inc.
+   Copyright (C) 2008-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -37,7 +37,7 @@
    any side-effects.  This means that the smob needs to store everything
    that was passed to make-command.  */
 
-typedef struct _command_smob
+struct command_smob
 {
   /* This always appears first.  */
   gdb_smob base;
@@ -85,7 +85,7 @@ typedef struct _command_smob
      the object since a reference to it comes from non-gc-managed space
      (the command context pointer).  */
   SCM containing_scm;
-} command_smob;
+};
 
 static const char command_smob_name[] = "gdb:command";
 
@@ -294,7 +294,7 @@ static void
 cmdscm_function (struct cmd_list_element *command,
 		 const char *args, int from_tty)
 {
-  command_smob *c_smob/*obj*/ = (command_smob *) get_cmd_context (command);
+  command_smob *c_smob/*obj*/ = (command_smob *) command->context ();
   SCM arg_scm, tty_scm, result;
 
   gdb_assert (c_smob != NULL);
@@ -383,7 +383,7 @@ cmdscm_completer (struct cmd_list_element *command,
 		  completion_tracker &tracker,
 		  const char *text, const char *word)
 {
-  command_smob *c_smob/*obj*/ = (command_smob *) get_cmd_context (command);
+  command_smob *c_smob/*obj*/ = (command_smob *) command->context ();
   SCM completer_result_scm;
   SCM text_scm, word_scm;
 
@@ -524,10 +524,10 @@ gdbscm_parse_command_name (const char *name,
 				 gdbscm_scm_from_c_string (name), msg);
     }
 
-  if (elt->prefixlist)
+  if (elt->is_prefix ())
     {
       xfree (prefix_text);
-      *base_list = elt->prefixlist;
+      *base_list = elt->subcommands;
       return result;
     }
 
@@ -635,9 +635,9 @@ gdbscm_canonicalize_command_name (const char *name, int want_trailing_space)
      One of the COMPLETE_* constants defined in the gdb module.
      A procedure of three arguments: (lambda (self text word) ...).
        Its result is one of:
-         A list of strings.
-         A <gdb:iterator> object that returns the set of possible completions,
-         ending with #f.
+	 A list of strings.
+	 A <gdb:iterator> object that returns the set of possible completions,
+	 ending with #f.
 	 TODO(dje): Once PR 16699 is fixed, add support for returning
 	 a COMPLETE_* constant.
    If not specified, then completion is not supported for this command.
@@ -766,7 +766,7 @@ gdbscm_register_command_x (SCM self)
 
 	  cmd = add_prefix_cmd (c_smob->cmd_name, c_smob->cmd_class,
 				NULL, c_smob->doc, &c_smob->sub_list,
-				c_smob->name, allow_unknown, cmd_list);
+				allow_unknown, cmd_list);
 	}
       else
 	{
@@ -788,7 +788,7 @@ gdbscm_register_command_x (SCM self)
   cmd->destroyer = cmdscm_destroyer;
 
   c_smob->command = cmd;
-  set_cmd_context (cmd, c_smob);
+  cmd->set_context (c_smob);
 
   if (gdbscm_is_true (c_smob->complete))
     {

@@ -1,5 +1,5 @@
 /* Instruction scheduling pass.
-   Copyright (C) 1992-2020 Free Software Foundation, Inc.
+   Copyright (C) 1992-2021 Free Software Foundation, Inc.
    Contributed by Michael Tiemann (tiemann@cygnus.com) Enhanced by,
    and currently maintained by, Jim Wilson (wilson@cygnus.com)
 
@@ -8967,7 +8967,7 @@ sched_extend_luids (void)
 {
   int new_luids_max_uid = get_max_uid () + 1;
 
-  sched_luids.safe_grow_cleared (new_luids_max_uid);
+  sched_luids.safe_grow_cleared (new_luids_max_uid, true);
 }
 
 /* Initialize LUID for INSN.  */
@@ -9039,7 +9039,7 @@ extend_h_i_d (void)
   if (reserve > 0
       && ! h_i_d.space (reserve))
     {
-      h_i_d.safe_grow_cleared (3 * get_max_uid () / 2);
+      h_i_d.safe_grow_cleared (3 * get_max_uid () / 2, true);
       sched_extend_target ();
     }
 }

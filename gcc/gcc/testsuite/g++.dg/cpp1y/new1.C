@@ -1,6 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-O2 -fdump-tree-cddce-details" } */
-// { dg-additional-options "-fdelete-null-pointer-checks" }
+/* { dg-options "-O2 -fdump-tree-cddce-details -fdelete-null-pointer-checks" } */
 
 #include <stdlib.h>
 
@@ -70,5 +69,5 @@ test_unused() {
   delete p;
 }
 
-/* { dg-final { scan-tree-dump-times "Deleting : operator delete" 5 "cddce1"} } */
-/* { dg-final { scan-tree-dump-times "Deleting : _\\d+ = operator new" 7 "cddce1"} } */
+/* { dg-final { scan-tree-dump-times "Deleting : operator delete" 6 "cddce1"} } */
+/* { dg-final { scan-tree-dump-times "Deleting : _\\d+ = operator new" 8 "cddce1"} } */

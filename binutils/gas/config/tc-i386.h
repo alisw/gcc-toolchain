@@ -1,5 +1,5 @@
 /* tc-i386.h -- Header file for tc-i386.c
-   Copyright (C) 1989-2020 Free Software Foundation, Inc.
+   Copyright (C) 1989-2022 Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
 
@@ -126,15 +126,16 @@ extern const char *i386_comment_chars;
 #define GLOBAL_OFFSET_TABLE_NAME "_GLOBAL_OFFSET_TABLE_"
 #endif
 
-#if (defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)) && !defined (LEX_AT)
 #define TC_PARSE_CONS_EXPRESSION(EXP, NBYTES) x86_cons (EXP, NBYTES)
-#endif
 extern bfd_reloc_code_real_type x86_cons (expressionS *, int);
 
 #define TC_CONS_FIX_NEW(FRAG, OFF, LEN, EXP, RELOC)	\
   x86_cons_fix_new(FRAG, OFF, LEN, EXP, RELOC)
 extern void x86_cons_fix_new
 (fragS *, unsigned int, unsigned int, expressionS *, bfd_reloc_code_real_type);
+
+#define X_PRECISION     5
+#define X_PRECISION_PAD 0
 
 #define TC_ADDRESS_BYTES x86_address_bytes
 extern int x86_address_bytes (void);
@@ -143,8 +144,10 @@ extern int x86_address_bytes (void);
 
 #define NO_RELOC BFD_RELOC_NONE
 
-void i386_validate_fix (struct fix *);
-#define TC_VALIDATE_FIX(FIX,SEGTYPE,SKIP) i386_validate_fix(FIX)
+int i386_validate_fix (struct fix *);
+#define TC_VALIDATE_FIX(FIX,SEGTYPE,SKIP) do { \
+    if (!i386_validate_fix(FIX)) goto SKIP;      \
+  } while (0)
 
 #define tc_fix_adjustable(X)  tc_i386_fix_adjustable(X)
 extern int tc_i386_fix_adjustable (struct fix *);
@@ -280,6 +283,7 @@ struct i386_tc_frag_data
   unsigned int mf_type : 3;
   unsigned int classified : 1;
   unsigned int branch_type : 3;
+  unsigned int code64 : 1; /* Only set by output_branch for now.  */
 };
 
 /* We need to emit the right NOP pattern in .align frags.  This is

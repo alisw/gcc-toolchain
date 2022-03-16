@@ -1,5 +1,5 @@
 /* GDB self-test for each gdbarch.
-   Copyright (C) 2017-2020 Free Software Foundation, Inc.
+   Copyright (C) 2017-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -64,7 +64,6 @@ struct gdbarch_selftest : public selftest
 	  {
 	    struct gdbarch_info info;
 
-	    gdbarch_info_init (&info);
 	    info.bfd_arch_info = bfd_scan_arch (arches[i]);
 
 	    struct gdbarch *gdbarch = gdbarch_find_by_info (info);

@@ -1,6 +1,6 @@
 /* Test file for in-place operations.
 
-Copyright 2000-2019 Free Software Foundation, Inc.
+Copyright 2000-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -597,8 +597,10 @@ main (void)
 
           test2ui (mpfr_add_ui, "mpfr_add_ui", p, (mpfr_rnd_t) rnd);
           test2ui (mpfr_div_2exp, "mpfr_div_2exp", p, (mpfr_rnd_t) rnd);
+          test2ui (mpfr_div_2ui, "mpfr_div_2ui", p, (mpfr_rnd_t) rnd);
           test2ui (mpfr_div_ui, "mpfr_div_ui", p, (mpfr_rnd_t) rnd);
           test2ui (mpfr_mul_2exp, "mpfr_mul_2exp", p, (mpfr_rnd_t) rnd);
+          test2ui (mpfr_mul_2ui, "mpfr_mul_2ui", p, (mpfr_rnd_t) rnd);
           test2ui (mpfr_mul_ui, "mpfr_mul_ui", p, (mpfr_rnd_t) rnd);
           test2ui (mpfr_pow_ui, "mpfr_pow_ui", p, (mpfr_rnd_t) rnd);
           test2ui (mpfr_sub_ui, "mpfr_sub_ui", p, (mpfr_rnd_t) rnd);

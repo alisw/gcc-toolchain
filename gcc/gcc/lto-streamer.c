@@ -1,7 +1,7 @@
 /* Miscellaneous utilities for GIMPLE streaming.  Things that are used
    in both input and output are here.
 
-   Copyright (C) 2009-2020 Free Software Foundation, Inc.
+   Copyright (C) 2009-2021 Free Software Foundation, Inc.
    Contributed by Doug Kwan <dougkwan@google.com>
 
 This file is part of GCC.
@@ -84,24 +84,10 @@ lto_tag_name (enum LTO_tags tag)
       return "LTO_ert_must_not_throw";
     case LTO_tree_pickle_reference:
       return "LTO_tree_pickle_reference";
-    case LTO_field_decl_ref:
-      return "LTO_field_decl_ref";
-    case LTO_function_decl_ref:
-      return "LTO_function_decl_ref";
-    case LTO_label_decl_ref:
-      return "LTO_label_decl_ref";
-    case LTO_namespace_decl_ref:
-      return "LTO_namespace_decl_ref";
-    case LTO_result_decl_ref:
-      return "LTO_result_decl_ref";
+    case LTO_global_stream_ref:
+      return "LTO_global_sream_ref";
     case LTO_ssa_name_ref:
       return "LTO_ssa_name_ref";
-    case LTO_type_decl_ref:
-      return "LTO_type_decl_ref";
-    case LTO_type_ref:
-      return "LTO_type_ref";
-    case LTO_global_decl_ref:
-      return "LTO_global_decl_ref";
     default:
       return "LTO_UNKNOWN";
     }
@@ -120,6 +106,7 @@ lto_get_section_name (int section_type, const char *name,
   const char *add;
   char post[32];
   const char *sep;
+  char *buffer = NULL;
 
   if (section_type == LTO_section_function_body)
     {
@@ -127,7 +114,7 @@ lto_get_section_name (int section_type, const char *name,
       if (name[0] == '*')
 	name++;
 
-      char *buffer = (char *)xmalloc (strlen (name) + 32);
+      buffer = (char *)xmalloc (strlen (name) + 32);
       sprintf (buffer, "%s.%d", name, node_order);
 
       add = buffer;
@@ -152,7 +139,10 @@ lto_get_section_name (int section_type, const char *name,
     sprintf (post, "." HOST_WIDE_INT_PRINT_HEX_PURE, f->id);
   else
     sprintf (post, "." HOST_WIDE_INT_PRINT_HEX_PURE, get_random_seed (false)); 
-  return concat (section_name_prefix, sep, add, post, NULL);
+  char *res = concat (section_name_prefix, sep, add, post, NULL);
+  if (buffer)
+    free (buffer);
+  return res;
 }
 
 
@@ -286,4 +276,5 @@ lto_streamer_hooks_init (void)
   streamer_hooks.read_tree = lto_input_tree;
   streamer_hooks.input_location = lto_input_location;
   streamer_hooks.output_location = lto_output_location;
+  streamer_hooks.output_location_and_block = lto_output_location_and_block;
 }

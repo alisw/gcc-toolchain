@@ -1,5 +1,5 @@
 /* Miscellaneous stuff that doesn't fit anywhere else.
-   Copyright (C) 2000-2020 Free Software Foundation, Inc.
+   Copyright (C) 2000-2021 Free Software Foundation, Inc.
    Contributed by Andy Vaught
 
 This file is part of GCC.
@@ -124,8 +124,10 @@ gfc_basic_typename (bt type)
 const char *
 gfc_typename (gfc_typespec *ts, bool for_hash)
 {
-  static char buffer1[GFC_MAX_SYMBOL_LEN + 7];  /* 7 for "TYPE()" + '\0'.  */
-  static char buffer2[GFC_MAX_SYMBOL_LEN + 7];
+  /* Need to add sufficient padding for "TYPE()" + '\0', "UNION()" + '\0',
+     or "CLASS()" + '\0'.  */
+  static char buffer1[GFC_MAX_SYMBOL_LEN + 8];
+  static char buffer2[GFC_MAX_SYMBOL_LEN + 8];
   static int flag = 0;
   char *buffer;
   gfc_typespec *ts1;
@@ -224,10 +226,32 @@ gfc_typename (gfc_expr *ex)
 
   if (ex->ts.type == BT_CHARACTER)
     {
-      if (ex->ts.u.cl && ex->ts.u.cl->length)
-	length = gfc_mpz_get_hwi (ex->ts.u.cl->length->value.integer);
-      else
+      if (ex->expr_type == EXPR_CONSTANT)
 	length = ex->value.character.length;
+      else if (ex->ts.deferred)
+	{
+	  if (ex->ts.kind == gfc_default_character_kind)
+	    return "CHARACTER(:)";
+	  sprintf (buffer, "CHARACTER(:,%d)", ex->ts.kind);
+	  return buffer;
+	}
+      else if (ex->ts.u.cl && ex->ts.u.cl->length == NULL)
+	{
+	  if (ex->ts.kind == gfc_default_character_kind)
+	    return "CHARACTER(*)";
+	  sprintf (buffer, "CHARACTER(*,%d)", ex->ts.kind);
+	  return buffer;
+	}
+      else if (ex->ts.u.cl == NULL
+	       || ex->ts.u.cl->length->expr_type != EXPR_CONSTANT)
+	{
+	  if (ex->ts.kind == gfc_default_character_kind)
+	    return "CHARACTER";
+	  sprintf (buffer, "CHARACTER(KIND=%d)", ex->ts.kind);
+	  return buffer;
+	}
+      else
+	length = gfc_mpz_get_hwi (ex->ts.u.cl->length->value.integer);
       if (ex->ts.kind == gfc_default_character_kind)
 	sprintf (buffer, "CHARACTER(" HOST_WIDE_INT_PRINT_DEC ")", length);
       else
@@ -403,7 +427,7 @@ gfc_closest_fuzzy_match (const char *typo, char **candidates)
      likely to be meaningless.  */
   if (best)
     {
-      unsigned int cutoff = MAX (tl, strlen (best)) / 2;
+      unsigned int cutoff = MAX (tl, strlen (best));
 
       if (best_distance > cutoff)
 	{

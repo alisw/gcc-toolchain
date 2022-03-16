@@ -1,5 +1,5 @@
 /* aarch64-asm.h -- Header file for aarch64-asm.c and aarch64-asm-2.c.
-   Copyright (C) 2012-2020 Free Software Foundation, Inc.
+   Copyright (C) 2012-2021 Free Software Foundation, Inc.
    Contributed by ARM Ltd.
 
    This file is part of the GNU opcodes library.
@@ -30,17 +30,16 @@ const aarch64_opcode* aarch64_find_real_opcode (const aarch64_opcode *);
 
 /* Switch-table-based high-level operand inserter.  */
 
-bfd_boolean aarch64_insert_operand (const aarch64_operand *,
-				    const aarch64_opnd_info *, aarch64_insn *,
-				    const aarch64_inst *,
-				    aarch64_operand_error *);
+bool aarch64_insert_operand (const aarch64_operand *,
+			     const aarch64_opnd_info *, aarch64_insn *,
+			     const aarch64_inst *, aarch64_operand_error *);
 
 /* Operand inserters.  */
 
 #define AARCH64_DECL_OPD_INSERTER(x)	\
-  bfd_boolean aarch64_##x (const aarch64_operand *, const aarch64_opnd_info *, \
-			   aarch64_insn *, const aarch64_inst *, \
-			   aarch64_operand_error *)
+  bool aarch64_##x (const aarch64_operand *, const aarch64_opnd_info *, \
+		    aarch64_insn *, const aarch64_inst *,		\
+		    aarch64_operand_error *)
 
 AARCH64_DECL_OPD_INSERTER (ins_none);
 AARCH64_DECL_OPD_INSERTER (ins_regno);
@@ -71,6 +70,7 @@ AARCH64_DECL_OPD_INSERTER (ins_sysreg);
 AARCH64_DECL_OPD_INSERTER (ins_pstatefield);
 AARCH64_DECL_OPD_INSERTER (ins_sysins_op);
 AARCH64_DECL_OPD_INSERTER (ins_barrier);
+AARCH64_DECL_OPD_INSERTER (ins_barrier_dsb_nxs);
 AARCH64_DECL_OPD_INSERTER (ins_hint);
 AARCH64_DECL_OPD_INSERTER (ins_prfop);
 AARCH64_DECL_OPD_INSERTER (ins_reg_extended);

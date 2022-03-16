@@ -1,5 +1,5 @@
 /* Maintain binary trees of symbols.
-   Copyright (C) 2000-2020 Free Software Foundation, Inc.
+   Copyright (C) 2000-2021 Free Software Foundation, Inc.
    Contributed by Andy Vaught
 
 This file is part of GCC.
@@ -569,7 +569,7 @@ gfc_check_conflict (symbol_attribute *attr, const char *name, locus *where)
   conf_std (allocatable, dummy, GFC_STD_F2003);
   conf_std (allocatable, function, GFC_STD_F2003);
   conf_std (allocatable, result, GFC_STD_F2003);
-  conf (elemental, recursive);
+  conf_std (elemental, recursive, GFC_STD_F2018);
 
   conf (in_common, dummy);
   conf (in_common, allocatable);
@@ -1772,8 +1772,8 @@ gfc_add_flavor (symbol_attribute *attr, sym_flavor f, const char *name,
   /* Copying a procedure dummy argument for a module procedure in a
      submodule results in the flavor being copied and would result in
      an error without this.  */
-  if (gfc_new_block && gfc_new_block->abr_modproc_decl
-      && attr->flavor == f && f == FL_PROCEDURE)
+  if (attr->flavor == f && f == FL_PROCEDURE
+      && gfc_new_block && gfc_new_block->abr_modproc_decl)
     return true;
 
   if (attr->flavor != FL_UNKNOWN)
@@ -3145,11 +3145,15 @@ gfc_new_symbol (const char *name, gfc_namespace *ns)
 }
 
 
-/* Generate an error if a symbol is ambiguous.  */
+/* Generate an error if a symbol is ambiguous, and set the error flag
+   on it.  */
 
 static void
 ambiguous_symbol (const char *name, gfc_symtree *st)
 {
+
+  if (st->n.sym->error)
+    return;
 
   if (st->n.sym->module)
     gfc_error ("Name %qs at %C is an ambiguous reference to %qs "
@@ -3157,6 +3161,8 @@ ambiguous_symbol (const char *name, gfc_symtree *st)
   else
     gfc_error ("Name %qs at %C is an ambiguous reference to %qs "
 	       "from current program unit", name, st->n.sym->name);
+
+  st->n.sym->error = 1;
 }
 
 
@@ -4385,7 +4391,7 @@ get_iso_c_binding_dt (int sym_id)
 	  if (dt_list->from_intmod != INTMOD_NONE
 	      && dt_list->intmod_sym_id == sym_id)
 	    return dt_list;
-	
+
 	  dt_list = dt_list->dt_next;
 	}
     }
@@ -4639,12 +4645,13 @@ add_proc_interface (gfc_symbol *sym, ifsrc source, gfc_formal_arglist *formal)
    declaration statement (see match_proc_decl()) to create the formal
    args based on the args of a given named interface.
 
-   When an actual argument list is provided, skip the absent arguments.
+   When an actual argument list is provided, skip the absent arguments
+   unless copy_type is true.
    To be used together with gfc_se->ignore_optional.  */
 
 void
 gfc_copy_formal_args_intr (gfc_symbol *dest, gfc_intrinsic_sym *src,
-			   gfc_actual_arglist *actual)
+			   gfc_actual_arglist *actual, bool copy_type)
 {
   gfc_formal_arglist *head = NULL;
   gfc_formal_arglist *tail = NULL;
@@ -4671,13 +4678,27 @@ gfc_copy_formal_args_intr (gfc_symbol *dest, gfc_intrinsic_sym *src,
 	      act_arg = act_arg->next;
 	      continue;
 	    }
-	  act_arg = act_arg->next;
 	}
       formal_arg = gfc_get_formal_arglist ();
       gfc_get_symbol (curr_arg->name, gfc_current_ns, &(formal_arg->sym));
 
       /* May need to copy more info for the symbol.  */
-      formal_arg->sym->ts = curr_arg->ts;
+      if (copy_type && act_arg->expr != NULL)
+	{
+	  formal_arg->sym->ts = act_arg->expr->ts;
+	  if (act_arg->expr->rank > 0)
+	    {
+	      formal_arg->sym->attr.dimension = 1;
+	      formal_arg->sym->as = gfc_get_array_spec();
+	      formal_arg->sym->as->rank = -1;
+	      formal_arg->sym->as->type = AS_ASSUMED_RANK;
+	    }
+	  if (act_arg->name && strcmp (act_arg->name, "%VAL") == 0)
+	    formal_arg->sym->pass_as_value = 1;
+	}
+      else
+	formal_arg->sym->ts = curr_arg->ts;
+
       formal_arg->sym->attr.optional = curr_arg->optional;
       formal_arg->sym->attr.value = curr_arg->value;
       formal_arg->sym->attr.intent = curr_arg->intent;
@@ -4702,6 +4723,8 @@ gfc_copy_formal_args_intr (gfc_symbol *dest, gfc_intrinsic_sym *src,
 
       /* Validate changes.  */
       gfc_commit_symbol (formal_arg->sym);
+      if (actual)
+	act_arg = act_arg->next;
     }
 
   /* Add the interface to the symbol.  */

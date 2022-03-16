@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- Copyright (C) 1988-2020 Free Software Foundation, Inc.
+<!-- Copyright (C) 1988-2021 Free Software Foundation, Inc.
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -748,6 +748,38 @@ and only the default run-time library will be enabled.
 </dl>
 
 </dd>
+<dt><code>--with-multilib-generator=<var>config</var></code></dt>
+<dd><p>Specify what multilibs to build.  <var>config</var> is a semicolon separated list of
+values, possibly consisting of a single value.  Currently only implemented
+for riscv*-*-elf*.  The accepted values and meanings are given below.
+</p>
+
+<p>Every config is constructed with four components: architecture string, ABI,
+reuse rule with architecture string and reuse rule with sub-extension.
+</p>
+<p>Example 1: Add multi-lib suppport for rv32i with ilp32.
+</p><div class="smallexample">
+<pre class="smallexample">rv32i-ilp32--
+</pre></div>
+
+<p>Example 2: Add multi-lib suppport for rv32i with ilp32 and rv32imafd with ilp32.
+</p><div class="smallexample">
+<pre class="smallexample">rv32i-ilp32--;rv32imafd-ilp32--
+</pre></div>
+
+<p>Example 3: Add multi-lib suppport for rv32i with ilp32; rv32im with ilp32 and
+rv32ic with ilp32 will reuse this multi-lib set.
+</p><div class="smallexample">
+<pre class="smallexample">rv32i-ilp32-rv32im-c
+</pre></div>
+
+<p>Example 4: Add multi-lib suppport for rv64ima with lp64; rv64imaf with lp64,
+rv64imac with lp64 and rv64imafc with lp64 will reuse this multi-lib set.
+</p><div class="smallexample">
+<pre class="smallexample">rv64ima-lp64--f,c,fc
+</pre></div>
+
+</dd>
 <dt><code>--with-endian=<var>endians</var></code></dt>
 <dd><p>Specify what endians to use.
 Currently only implemented for sh*-*-*.
@@ -858,7 +890,7 @@ not use transactional memory.
 This option is only supported on some targets, including ARC, ARM, i386, M68k,
 PowerPC, and SPARC.  It is mandatory for ARC.  The <samp>--with-cpu-32</samp> and
 <samp>--with-cpu-64</samp> options specify separate default CPUs for
-32-bit and 64-bit modes; these options are only supported for i386,
+32-bit and 64-bit modes; these options are only supported for aarch64, i386,
 x86-64, PowerPC, and SPARC.
 </p>
 </dd>
@@ -1081,6 +1113,15 @@ will try to guess whether the <code>.init_array</code> and
 <dd><p>When building GCC, use a mutex to avoid linking the compilers for
 multiple languages at the same time, to avoid thrashing on build
 systems with limited free memory.  The default is not to use such a mutex.
+</p>
+</dd>
+<dt><code>--enable-link-serialization</code></dt>
+<dd><p>When building GCC, use make dependencies to serialize linking the compilers for
+multiple languages, to avoid thrashing on build
+systems with limited free memory.  The default is not to add such
+dependencies and thus with parallel make potentially link different
+compilers concurrently.  If the argument is a positive integer, allow
+that number of concurrent link processes for the large binaries.
 </p>
 </dd>
 <dt><code>--enable-maintainer-mode</code></dt>
@@ -1448,7 +1489,7 @@ checking with extra checks that might affect code generation and should
 therefore not differ between stage1 and later stages in bootstrap.
 </p>
 <p>The &lsquo;<samp>valgrind</samp>&rsquo; check requires the external <code>valgrind</code> simulator,
-available from <a href="http://valgrind.org/">http://valgrind.org/</a>.  The &lsquo;<samp>rtl</samp>&rsquo; checks are
+available from <a href="https://valgrind.org">https://valgrind.org</a>.  The &lsquo;<samp>rtl</samp>&rsquo; checks are
 expensive and the &lsquo;<samp>df</samp>&rsquo;, &lsquo;<samp>gcac</samp>&rsquo; and &lsquo;<samp>valgrind</samp>&rsquo; checks are very
 expensive.
 </p>
@@ -1788,23 +1829,19 @@ specifying paths <var>path1</var>, &hellip;, <var>pathN</var>.
 </p>
 <div class="smallexample">
 <pre class="smallexample">% <var>srcdir</var>/configure \
-    --enable-offload-targets=x86_64-intelmicemul-linux-gnu=/path/to/x86_64/compiler,nvptx-none,hsa
+    --enable-offload-targets=x86_64-intelmicemul-linux-gnu=/path/to/x86_64/compiler,nvptx-none
 </pre></div>
 
-<p>If &lsquo;<samp>hsa</samp>&rsquo; is specified as one of the targets, the compiler will be
-built with support for HSA GPU accelerators.  Because the same
-compiler will emit the accelerator code, no path should be specified.
-</p>
 </dd>
 <dt><code>--with-hsa-runtime=<var>pathname</var></code></dt>
 <dt><code>--with-hsa-runtime-include=<var>pathname</var></code></dt>
 <dt><code>--with-hsa-runtime-lib=<var>pathname</var></code></dt>
 <dd>
-<p>If you configure GCC with HSA offloading but do not have the HSA
-run-time library installed in a standard location then you can
-explicitly specify the directory where they are installed.  The
-<samp>--with-hsa-runtime=<var>hsainstalldir</var></samp> option is a
-shorthand for
+<p>If you configure GCC with offloading which uses an HSA run-time such as
+AMDGCN but do not have the HSA run-time library installed in a standard
+location then you can explicitly specify the directory where they are
+installed.  The <samp>--with-hsa-runtime=<var>hsainstalldir</var></samp> option
+is a shorthand for
 <samp>--with-hsa-runtime-lib=<var>hsainstalldir</var>/lib</samp> and
 <samp>--with-hsa-runtime-include=<var>hsainstalldir</var>/include</samp>.
 </p>
@@ -1817,11 +1854,10 @@ instrumentation, see <samp>-fcf-protection</samp> option.  When
 to add <samp>-fcf-protection</samp> and, if needed, other target
 specific options to a set of building options.
 </p>
-<p>The option is disabled by default.  When <code>--enable-cet=auto</code>
-is used, it is enabled on Linux/x86 if target binutils
-supports <code>Intel CET</code> instructions and disabled otherwise.
-In this case the target libraries are configured to get additional
-<samp>-fcf-protection</samp> option.
+<p><code>--enable-cet=auto</code> is default.  CET is enabled on Linux/x86 if
+target binutils supports <code>Intel CET</code> instructions and disabled
+otherwise.  In this case, the target libraries are configured to get
+additional <samp>-fcf-protection</samp> option.
 </p>
 </dd>
 <dt><code>--with-riscv-attribute=&lsquo;<samp>yes</samp>&rsquo;, &lsquo;<samp>no</samp>&rsquo; or &lsquo;<samp>default</samp>&rsquo;</code></dt>
@@ -1830,6 +1866,18 @@ information in object.
 </p>
 <p>The option is disabled by default. It is enabled on RISC-V/ELF (bare-metal)
 target if target binutils supported.
+</p>
+</dd>
+<dt><code>--enable-s390-excess-float-precision</code></dt>
+<dt><code>--disable-s390-excess-float-precision</code></dt>
+<dd><p>On s390(x) targets, enable treatment of float expressions with double precision
+when in standards-compliant mode (e.g., when <code>--std=c99</code> or
+<code>-fexcess-precision=standard</code> are given).
+</p>
+<p>For a native build and cross compiles that have target headers, the option&rsquo;s
+default is derived from glibc&rsquo;s behavior. When glibc clamps float_t to double,
+GCC follows and enables the option. For other cross compiles, the default is
+disabled.
 </p></dd>
 </dl>
 

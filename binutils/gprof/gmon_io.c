@@ -1,6 +1,6 @@
 /* gmon_io.c - Input and output from/to gmon.out files.
 
-   Copyright (C) 1999-2020 Free Software Foundation, Inc.
+   Copyright (C) 1999-2022 Free Software Foundation, Inc.
 
    This file is part of GNU Binutils.
 
@@ -586,7 +586,7 @@ gmon_out_read (const char *filename)
       printf (nbbs == 1 ?
 	      _("\t%d basic-block count record\n") :
 	      _("\t%d basic-block count records\n"), nbbs);
-      first_output = FALSE;
+      first_output = false;
     }
 }
 

@@ -1,5 +1,5 @@
 /* Conditional constant propagation pass for the GNU compiler.
-   Copyright (C) 2000-2020 Free Software Foundation, Inc.
+   Copyright (C) 2000-2021 Free Software Foundation, Inc.
    Adapted from original RTL SSA-CCP by Daniel Berlin <dberlin@dberlin.org>
    Adapted to GIMPLE trees by Diego Novillo <dnovillo@redhat.com>
 
@@ -306,6 +306,9 @@ get_default_value (tree var)
 		{
 		  val.lattice_val = CONSTANT;
 		  val.value = value;
+		  widest_int ipa_value = wi::to_widest (value);
+		  /* Unknown bits from IPA CP must be equal to zero.  */
+		  gcc_assert (wi::bit_and (ipa_value, mask) == 0);
 		  val.mask = mask;
 		  if (nonzero_bits != -1)
 		    val.mask &= extend_mask (nonzero_bits,
@@ -943,7 +946,7 @@ do_dbg_cnt (void)
 class ccp_folder : public substitute_and_fold_engine
 {
  public:
-  tree get_value (tree) FINAL OVERRIDE;
+  tree value_of_expr (tree, gimple *) FINAL OVERRIDE;
   bool fold_stmt (gimple_stmt_iterator *) FINAL OVERRIDE;
 };
 
@@ -952,7 +955,7 @@ class ccp_folder : public substitute_and_fold_engine
    of calling member functions.  */
 
 tree
-ccp_folder::get_value (tree op)
+ccp_folder::value_of_expr (tree op, gimple *)
 {
   return get_constant_value (op);
 }
@@ -1429,13 +1432,7 @@ bit_value_binop (enum tree_code code, signop sgn, int width,
 	  else
 	    {
 	      if (wi::neg_p (shift))
-		{
-		  shift = -shift;
-		  if (code == RSHIFT_EXPR)
-		    code = LSHIFT_EXPR;
-		  else
-		    code = RSHIFT_EXPR;
-		}
+		break;
 	      if (code == RSHIFT_EXPR)
 		{
 		  *mask = wi::rshift (wi::ext (r1mask, width, sgn), shift, sgn);
@@ -1793,6 +1790,7 @@ evaluate_stmt (gimple *stmt)
   ccp_lattice_t likelyvalue = likely_value (stmt);
   bool is_constant = false;
   unsigned int align;
+  bool ignore_return_flags = false;
 
   if (dump_file && (dump_flags & TDF_DETAILS))
     {
@@ -1962,25 +1960,13 @@ evaluate_stmt (gimple *stmt)
 	      val.mask = ~((HOST_WIDE_INT) align / BITS_PER_UNIT - 1);
 	      break;
 
-	    /* These builtins return their first argument, unmodified.  */
-	    case BUILT_IN_MEMCPY:
-	    case BUILT_IN_MEMMOVE:
-	    case BUILT_IN_MEMSET:
-	    case BUILT_IN_STRCPY:
-	    case BUILT_IN_STRNCPY:
-	    case BUILT_IN_MEMCPY_CHK:
-	    case BUILT_IN_MEMMOVE_CHK:
-	    case BUILT_IN_MEMSET_CHK:
-	    case BUILT_IN_STRCPY_CHK:
-	    case BUILT_IN_STRNCPY_CHK:
-	      val = get_value_for_expr (gimple_call_arg (stmt, 0), true);
-	      break;
-
 	    case BUILT_IN_ASSUME_ALIGNED:
 	      val = bit_value_assume_aligned (stmt, NULL_TREE, val, false);
+	      ignore_return_flags = true;
 	      break;
 
 	    case BUILT_IN_ALIGNED_ALLOC:
+	    case BUILT_IN_GOMP_ALLOC:
 	      {
 		tree align = get_constant_value (gimple_call_arg (stmt, 0));
 		if (align
@@ -2002,6 +1988,7 @@ evaluate_stmt (gimple *stmt)
 	    case BUILT_IN_BSWAP16:
 	    case BUILT_IN_BSWAP32:
 	    case BUILT_IN_BSWAP64:
+	    case BUILT_IN_BSWAP128:
 	      val = get_value_for_expr (gimple_call_arg (stmt, 0), true);
 	      if (val.lattice_val == UNDEFINED)
 		break;
@@ -2044,6 +2031,15 @@ evaluate_stmt (gimple *stmt)
 					TYPE_ATTRIBUTES (fntype));
 	      if (attrs)
 		val = bit_value_assume_aligned (stmt, attrs, val, true);
+	    }
+	  int flags = ignore_return_flags
+		      ? 0 : gimple_call_return_flags (as_a <gcall *> (stmt));
+	  if (flags & ERF_RETURNS_ARG
+	      && (flags & ERF_RETURN_ARG_MASK) < gimple_call_num_args (stmt))
+	    {
+	      val = get_value_for_expr
+			 (gimple_call_arg (stmt,
+					   flags & ERF_RETURN_ARG_MASK), true);
 	    }
 	}
       is_constant = (val.lattice_val == CONSTANT);
@@ -2158,7 +2154,7 @@ gsi_prev_dom_bb_nondebug (gimple_stmt_iterator *i)
   gsi_prev_nondebug (i);
   while (gsi_end_p (*i))
     {
-      dom = get_immediate_dominator (CDI_DOMINATORS, i->bb);
+      dom = get_immediate_dominator (CDI_DOMINATORS, gsi_bb (*i));
       if (dom == NULL || dom == ENTRY_BLOCK_PTR_FOR_FN (cfun))
 	return;
 
@@ -3024,7 +3020,7 @@ optimize_atomic_bit_test_and (gimple_stmt_iterator *gsip,
 	}
 
       use_bool = false;
-      BREAK_FROM_IMM_USE_STMT (iter);
+      break;
     }
 
   tree new_lhs = make_ssa_name (TREE_TYPE (lhs));
@@ -3539,43 +3535,62 @@ pass_post_ipa_warn::execute (function *fun)
 	  if (!is_gimple_call (stmt) || gimple_no_warning_p (stmt))
 	    continue;
 
-	  if (warn_nonnull)
+	  tree fntype = gimple_call_fntype (stmt);
+	  bitmap nonnullargs = get_nonnull_args (fntype);
+	  if (!nonnullargs)
+	    continue;
+
+	  tree fndecl = gimple_call_fndecl (stmt);
+	  const bool closure = fndecl && DECL_LAMBDA_FUNCTION_P (fndecl);
+
+	  for (unsigned i = 0; i < gimple_call_num_args (stmt); i++)
 	    {
-	      bitmap nonnullargs
-		= get_nonnull_args (gimple_call_fntype (stmt));
-	      if (nonnullargs)
+	      tree arg = gimple_call_arg (stmt, i);
+	      if (TREE_CODE (TREE_TYPE (arg)) != POINTER_TYPE)
+		continue;
+	      if (!integer_zerop (arg))
+		continue;
+	      if (i == 0 && closure)
+		/* Avoid warning for the first argument to lambda functions.  */
+		continue;
+	      if (!bitmap_empty_p (nonnullargs)
+		  && !bitmap_bit_p (nonnullargs, i))
+		continue;
+
+	      /* In C++ non-static member functions argument 0 refers
+		 to the implicit this pointer.  Use the same one-based
+		 numbering for ordinary arguments.  */
+	      unsigned argno = TREE_CODE (fntype) == METHOD_TYPE ? i : i + 1;
+	      location_t loc = (EXPR_HAS_LOCATION (arg)
+				? EXPR_LOCATION (arg)
+				: gimple_location (stmt));
+	      auto_diagnostic_group d;
+	      if (argno == 0)
 		{
-		  for (unsigned i = 0; i < gimple_call_num_args (stmt); i++)
-		    {
-		      tree arg = gimple_call_arg (stmt, i);
-		      if (TREE_CODE (TREE_TYPE (arg)) != POINTER_TYPE)
-			continue;
-		      if (!integer_zerop (arg))
-			continue;
-		      if (!bitmap_empty_p (nonnullargs)
-			  && !bitmap_bit_p (nonnullargs, i))
-			continue;
-
-		      location_t loc = gimple_location (stmt);
-		      auto_diagnostic_group d;
-		      if (warning_at (loc, OPT_Wnonnull,
-				      "%Gargument %u null where non-null "
-				      "expected", stmt, i + 1))
-			{
-			  tree fndecl = gimple_call_fndecl (stmt);
-			  if (fndecl && DECL_IS_BUILTIN (fndecl))
-			    inform (loc, "in a call to built-in function %qD",
-				    fndecl);
-			  else if (fndecl)
-			    inform (DECL_SOURCE_LOCATION (fndecl),
-				    "in a call to function %qD declared here",
-				    fndecl);
-
-			}
-		    }
-		  BITMAP_FREE (nonnullargs);
+		  if (warning_at (loc, OPT_Wnonnull,
+				  "%G%qs pointer is null", stmt, "this")
+		      && fndecl)
+		    inform (DECL_SOURCE_LOCATION (fndecl),
+			    "in a call to non-static member function %qD",
+			    fndecl);
+		  continue;
 		}
+
+	      if (!warning_at (loc, OPT_Wnonnull,
+			       "%Gargument %u null where non-null "
+			       "expected", stmt, argno))
+		continue;
+
+	      tree fndecl = gimple_call_fndecl (stmt);
+	      if (fndecl && DECL_IS_UNDECLARED_BUILTIN (fndecl))
+		inform (loc, "in a call to built-in function %qD",
+			fndecl);
+	      else if (fndecl)
+		inform (DECL_SOURCE_LOCATION (fndecl),
+			"in a call to function %qD declared %qs",
+			fndecl, "nonnull");
 	    }
+	  BITMAP_FREE (nonnullargs);
 	}
     }
   return 0;

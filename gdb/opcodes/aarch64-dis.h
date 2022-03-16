@@ -1,5 +1,5 @@
 /* aarch64-dis.h -- Header file for aarch64-dis.c and aarch64-dis-2.c.
-   Copyright (C) 2012-2020 Free Software Foundation, Inc.
+   Copyright (C) 2012-2021 Free Software Foundation, Inc.
    Contributed by ARM Ltd.
 
    This file is part of the GNU opcodes library.
@@ -20,7 +20,7 @@
 
 #ifndef OPCODES_AARCH64_DIS_H
 #define OPCODES_AARCH64_DIS_H
-#include "bfd_stdint.h"
+#include <stdint.h>
 #include "aarch64-opc.h"
 
 /* Lookup opcode WORD in the opcode table.
@@ -50,7 +50,7 @@ const aarch64_opcode* aarch64_find_next_alias_opcode (const aarch64_opcode *);
 
 /* Switch-table-based high-level operand extractor.  */
 
-bfd_boolean
+bool
 aarch64_extract_operand (const aarch64_operand *, aarch64_opnd_info *,
 			 const aarch64_insn, const aarch64_inst *,
 			 aarch64_operand_error *);
@@ -58,9 +58,9 @@ aarch64_extract_operand (const aarch64_operand *, aarch64_opnd_info *,
 /* Operand extractors.  */
 
 #define AARCH64_DECL_OPD_EXTRACTOR(x)	\
-  bfd_boolean aarch64_##x (const aarch64_operand *, aarch64_opnd_info *, \
-			   const aarch64_insn, const aarch64_inst *, \
-			   aarch64_operand_error *)
+  bool aarch64_##x (const aarch64_operand *, aarch64_opnd_info *,	\
+		    const aarch64_insn, const aarch64_inst *,		\
+		    aarch64_operand_error *)
 
 AARCH64_DECL_OPD_EXTRACTOR (ext_none);
 AARCH64_DECL_OPD_EXTRACTOR (ext_regno);
@@ -94,6 +94,7 @@ AARCH64_DECL_OPD_EXTRACTOR (ext_sysreg);
 AARCH64_DECL_OPD_EXTRACTOR (ext_pstatefield);
 AARCH64_DECL_OPD_EXTRACTOR (ext_sysins_op);
 AARCH64_DECL_OPD_EXTRACTOR (ext_barrier);
+AARCH64_DECL_OPD_EXTRACTOR (ext_barrier_dsb_nxs);
 AARCH64_DECL_OPD_EXTRACTOR (ext_hint);
 AARCH64_DECL_OPD_EXTRACTOR (ext_prfop);
 AARCH64_DECL_OPD_EXTRACTOR (ext_reg_extended);

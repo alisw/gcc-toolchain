@@ -1,6 +1,6 @@
 /* Common target-dependent functionality for RISC-V
 
-   Copyright (C) 2018-2020 Free Software Foundation, Inc.
+   Copyright (C) 2018-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -46,10 +46,20 @@ struct riscv_gdbarch_features
      that there are no f-registers.  No other value is valid.  */
   int flen = 0;
 
+  /* The size of the v-registers in bytes.  The value 0 indicates a target
+     with no vector registers.  The minimum value for a standard compliant
+     target should be 16, but GDB doesn't currently mind, and will accept
+     any vector size.  */
+  int vlen = 0;
+
+  /* When true this target is RV32E.  */
+  bool embedded = false;
+
   /* Equality operator.  */
   bool operator== (const struct riscv_gdbarch_features &rhs) const
   {
-    return (xlen == rhs.xlen && flen == rhs.flen);
+    return (xlen == rhs.xlen && flen == rhs.flen
+	    && embedded == rhs.embedded && vlen == rhs.vlen);
   }
 
   /* Inequality operator.  */
@@ -61,7 +71,10 @@ struct riscv_gdbarch_features
   /* Used by std::unordered_map to hash feature sets.  */
   std::size_t hash () const noexcept
   {
-    std::size_t val = ((xlen & 0x1f) << 5 | (flen & 0x1f) << 0);
+    std::size_t val = ((embedded ? 1 : 0) << 10
+		       | (xlen & 0x1f) << 5
+		       | (flen & 0x1f) << 0
+		       | (vlen & 0xfff) << 11);
     return val;
   }
 };
@@ -72,7 +85,7 @@ struct riscv_gdbarch_features
    This is only used directly from the gdbserver where the created target
    description is modified after it is return.  */
 
-target_desc *riscv_create_target_description
+target_desc_up riscv_create_target_description
 	(const struct riscv_gdbarch_features features);
 
 #else

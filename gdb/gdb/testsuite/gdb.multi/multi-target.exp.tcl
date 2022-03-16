@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Free Software Foundation, Inc.
+# Copyright 2017-2022 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -109,7 +109,13 @@ proc setup {non-stop} {
     global binfile
 
     cleanup_gdbservers
-    clean_restart ${binfile}
+
+    save_vars { ::GDBFLAGS } {
+	# Make GDB read files from the local file system, not through the
+	# remote targets, to speed things up.
+	set ::GDBFLAGS "${::GDBFLAGS} -ex \"set sysroot\""
+	clean_restart ${binfile}
+    }
 
     # multi-target depends on target running in non-stop mode.  Force
     # it on for remote targets, until this is the default.

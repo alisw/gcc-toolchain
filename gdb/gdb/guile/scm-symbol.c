@@ -1,6 +1,6 @@
 /* Scheme interface to symbols.
 
-   Copyright (C) 2008-2020 Free Software Foundation, Inc.
+   Copyright (C) 2008-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -30,14 +30,14 @@
 
 /* The <gdb:symbol> smob.  */
 
-typedef struct
+struct symbol_smob
 {
   /* This always appears first.  */
   eqable_gdb_smob base;
 
   /* The GDB symbol structure this smob is wrapping.  */
   struct symbol *symbol;
-} symbol_smob;
+};
 
 static const char symbol_smob_name[] = "gdb:symbol";
 
@@ -817,7 +817,12 @@ gdbscm_initialize_symbols (void)
   block_keyword = scm_from_latin1_keyword ("block");
   domain_keyword = scm_from_latin1_keyword ("domain");
   frame_keyword = scm_from_latin1_keyword ("frame");
+}
 
+void _initialize_scm_symbol ();
+void
+_initialize_scm_symbol ()
+{
   /* Register an objfile "free" callback so we can properly
      invalidate symbols when an object file is about to be deleted.  */
   syscm_objfile_data_key

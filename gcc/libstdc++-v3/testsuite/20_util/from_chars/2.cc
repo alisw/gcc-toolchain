@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2020 Free Software Foundation, Inc.
+// Copyright (C) 2017-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -55,6 +55,12 @@ test01()
   VERIFY( r.ptr == s.data() );
   VERIFY( i == 999 );
 
+  s = "+1";
+  r = std::from_chars(s.data(), s.data() + s.length(), i);
+  VERIFY( r.ec == std::errc::invalid_argument );
+  VERIFY( r.ptr == s.data() );
+  VERIFY( i == 999 );
+
   unsigned u = 888;
   s = "-1";
   r = std::from_chars(s.data(), s.data() + s.length(), u);
@@ -65,6 +71,11 @@ test01()
   VERIFY( r.ec == std::errc::invalid_argument );
   VERIFY( r.ptr == s.data() );
   s = "-";
+  r = std::from_chars(s.data(), s.data() + s.length(), u);
+  VERIFY( r.ec == std::errc::invalid_argument );
+  VERIFY( r.ptr == s.data() );
+  VERIFY( u == 888 );
+  s = "+1";
   r = std::from_chars(s.data(), s.data() + s.length(), u);
   VERIFY( r.ec == std::errc::invalid_argument );
   VERIFY( r.ptr == s.data() );

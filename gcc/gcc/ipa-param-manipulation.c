@@ -1,6 +1,6 @@
 /* Manipulation of formal and actual parameters of functions and function
    calls.
-   Copyright (C) 2017-2020 Free Software Foundation, Inc.
+   Copyright (C) 2017-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -40,6 +40,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "builtins.h"
 #include "tree-ssa.h"
 #include "tree-inline.h"
+#include "alloc-pool.h"
+#include "symbol-summary.h"
+#include "symtab-clones.h"
 
 
 /* Actual prefixes of different newly synthetized parameters.  Keep in sync
@@ -110,6 +113,9 @@ ipa_dump_adjusted_parameters (FILE *f,
 {
   unsigned i, len = vec_safe_length (adj_params);
   bool first = true;
+
+  if (!len)
+    return;
 
   fprintf (f, "    IPA adjusted parameters: ");
   for (i = 0; i < len; i++)
@@ -780,6 +786,13 @@ ipa_param_adjustments::modify_call (gcall *stmt,
     {
       vec<tree, va_gc> **debug_args = NULL;
       unsigned i = 0;
+      cgraph_node *callee_node = cgraph_node::get (callee_decl);
+
+      /* FIXME: we don't seem to be able to insert debug args before clone
+	 is materialized.  Materializing them early leads to extra memory
+	 use.  */
+      if (callee_node->clone_of)
+	callee_node->get_untransformed_body ();
       for (tree old_parm = DECL_ARGUMENTS (old_decl);
 	   old_parm && i < old_nargs && ((int) i) < m_always_copy_start;
 	   old_parm = DECL_CHAIN (old_parm), i++)
@@ -903,7 +916,7 @@ ipa_param_adjustments::dump (FILE *f)
   fprintf (f, "    m_always_copy_start: %i\n", m_always_copy_start);
   ipa_dump_adjusted_parameters (f, m_adj_params);
   if (m_skip_return)
-    fprintf (f, "     Will SKIP return.\n");
+    fprintf (f, "    Will SKIP return.\n");
 }
 
 /* Dump information contained in the object in textual form to stderr.  */
@@ -1032,10 +1045,6 @@ ipa_param_body_adjustments::common_initialization (tree old_fndecl,
 	  DECL_CONTEXT (new_parm) = m_fndecl;
 	  TREE_USED (new_parm) = 1;
 	  DECL_IGNORED_P (new_parm) = 1;
-	  /* We assume all newly created arguments are not addressable.  */
-	  if (TREE_CODE (new_type) == COMPLEX_TYPE
-	      || TREE_CODE (new_type) == VECTOR_TYPE)
-	    DECL_GIMPLE_REG_P (new_parm) = 1;
 	  layout_decl (new_parm, 0);
 	  m_new_decls.quick_push (new_parm);
 
@@ -1066,7 +1075,8 @@ ipa_param_body_adjustments::common_initialization (tree old_fndecl,
 		  ipa_param_performed_split ps;
 		  ps.dummy_decl = dummy_decl;
 		  ps.unit_offset = apm->unit_offset;
-		  vec_safe_push (m_id->dst_node->clone.performed_splits, ps);
+		  vec_safe_push (clone_info::get_create
+				   (m_id->dst_node)->performed_splits, ps);
 		}
 	      else
 		register_replacement (apm, new_parm);
@@ -1125,11 +1135,11 @@ ipa_param_body_adjustments::common_initialization (tree old_fndecl,
 	 when they were in fact replaced by a constant.  */
       auto_vec <int, 16> index_mapping;
       bool need_remap = false;
+      clone_info *info = clone_info::get (m_id->src_node);
 
-      if (m_id && m_id->src_node->clone.param_adjustments)
+      if (m_id && info && info->param_adjustments)
 	{
-	  ipa_param_adjustments *prev_adjustments
-	    = m_id->src_node->clone.param_adjustments;
+	  ipa_param_adjustments *prev_adjustments = info->param_adjustments;
 	  prev_adjustments->get_updated_indices (&index_mapping);
 	  need_remap = true;
 	}
@@ -1671,12 +1681,16 @@ ipa_param_body_adjustments::modify_call_stmt (gcall **stmt_p)
 	    }
 	}
       gcall *new_stmt = gimple_build_call_vec (gimple_call_fn (stmt), vargs);
+      if (gimple_has_location (stmt))
+	gimple_set_location (new_stmt, gimple_location (stmt));
       gimple_call_set_chain (new_stmt, gimple_call_chain (stmt));
       gimple_call_copy_flags (new_stmt, stmt);
       if (tree lhs = gimple_call_lhs (stmt))
 	{
 	  modify_expression (&lhs, false);
-	  gimple_call_set_lhs (new_stmt, lhs);
+	  /* Avoid adjusting SSA_NAME_DEF_STMT of a SSA lhs, SSA names
+	     have not yet been remapped.  */
+	  *gimple_call_lhs_ptr (new_stmt) = lhs;
 	}
       *stmt_p = new_stmt;
       return true;
@@ -1892,7 +1906,7 @@ ipa_param_body_adjustments::reset_debug_stmts ()
 	  TREE_ADDRESSABLE (copy) = TREE_ADDRESSABLE (decl);
 	  TREE_READONLY (copy) = TREE_READONLY (decl);
 	  TREE_THIS_VOLATILE (copy) = TREE_THIS_VOLATILE (decl);
-	  DECL_GIMPLE_REG_P (copy) = DECL_GIMPLE_REG_P (decl);
+	  DECL_NOT_GIMPLE_REG_P (copy) = DECL_NOT_GIMPLE_REG_P (decl);
 	  DECL_ARTIFICIAL (copy) = DECL_ARTIFICIAL (decl);
 	  DECL_IGNORED_P (copy) = DECL_IGNORED_P (decl);
 	  DECL_ABSTRACT_ORIGIN (copy) = DECL_ORIGIN (decl);

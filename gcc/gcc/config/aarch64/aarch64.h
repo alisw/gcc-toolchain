@@ -1,5 +1,5 @@
 /* Machine description for AArch64 architecture.
-   Copyright (C) 2009-2020 Free Software Foundation, Inc.
+   Copyright (C) 2009-2021 Free Software Foundation, Inc.
    Contributed by ARM Ltd.
 
    This file is part of GCC.
@@ -26,8 +26,9 @@
 #define TARGET_CPU_CPP_BUILTINS()	\
   aarch64_cpu_cpp_builtins (pfile)
 
-/* Target CPU versions for D.  */
+/* Target hooks for D language.  */
 #define TARGET_D_CPU_VERSIONS aarch64_d_target_versions
+#define TARGET_D_REGISTER_CPU_TARGET_INFO aarch64_d_register_target_info
 
 
 
@@ -161,6 +162,8 @@ extern unsigned aarch64_architecture_version;
 #define AARCH64_FL_LSE	      (1 << 4)  /* Has Large System Extensions.  */
 #define AARCH64_FL_RDMA       (1 << 5)  /* Has Round Double Multiply Add.  */
 #define AARCH64_FL_V8_1       (1 << 6)  /* Has ARMv8.1-A extensions.  */
+/* Armv8-R.  */
+#define AARCH64_FL_V8_R       (1 << 7)  /* Armv8-R AArch64.  */
 /* ARMv8.2-A architecture extensions.  */
 #define AARCH64_FL_V8_2       (1 << 8)  /* Has ARMv8.2-A features.  */
 #define AARCH64_FL_F16	      (1 << 9)  /* Has ARMv8.2-A FP16 extensions.  */
@@ -222,6 +225,12 @@ extern unsigned aarch64_architecture_version;
 /* 64-bit Floating-point Matrix Multiply (F64MM) extensions.  */
 #define AARCH64_FL_F64MM      (1ULL << 38)
 
+/* Flag Manipulation Instructions (FLAGM) extension.  */
+#define AARCH64_FL_FLAGM      (1ULL << 39)
+
+/* Pointer Authentication (PAUTH) extension.  */
+#define AARCH64_FL_PAUTH      (1ULL << 40)
+
 /* Has FP and SIMD.  */
 #define AARCH64_FL_FPSIMD     (AARCH64_FL_FP | AARCH64_FL_SIMD)
 
@@ -236,16 +245,18 @@ extern unsigned aarch64_architecture_version;
 #define AARCH64_FL_FOR_ARCH8_2			\
   (AARCH64_FL_FOR_ARCH8_1 | AARCH64_FL_V8_2)
 #define AARCH64_FL_FOR_ARCH8_3			\
-  (AARCH64_FL_FOR_ARCH8_2 | AARCH64_FL_V8_3)
+  (AARCH64_FL_FOR_ARCH8_2 | AARCH64_FL_V8_3 | AARCH64_FL_PAUTH)
 #define AARCH64_FL_FOR_ARCH8_4			\
   (AARCH64_FL_FOR_ARCH8_3 | AARCH64_FL_V8_4 | AARCH64_FL_F16FML \
-   | AARCH64_FL_DOTPROD | AARCH64_FL_RCPC8_4)
+   | AARCH64_FL_DOTPROD | AARCH64_FL_RCPC8_4 | AARCH64_FL_FLAGM)
 #define AARCH64_FL_FOR_ARCH8_5			\
   (AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_V8_5	\
    | AARCH64_FL_SB | AARCH64_FL_SSBS | AARCH64_FL_PREDRES)
 #define AARCH64_FL_FOR_ARCH8_6			\
   (AARCH64_FL_FOR_ARCH8_5 | AARCH64_FL_V8_6 | AARCH64_FL_FPSIMD \
    | AARCH64_FL_I8MM | AARCH64_FL_BF16)
+#define AARCH64_FL_FOR_ARCH8_R     \
+  (AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_V8_R)
 
 /* Macros to test ISA flags.  */
 
@@ -281,6 +292,9 @@ extern unsigned aarch64_architecture_version;
 #define AARCH64_ISA_F32MM	   (aarch64_isa_flags & AARCH64_FL_F32MM)
 #define AARCH64_ISA_F64MM	   (aarch64_isa_flags & AARCH64_FL_F64MM)
 #define AARCH64_ISA_BF16	   (aarch64_isa_flags & AARCH64_FL_BF16)
+#define AARCH64_ISA_SB		   (aarch64_isa_flags & AARCH64_FL_SB)
+#define AARCH64_ISA_V8_R	   (aarch64_isa_flags & AARCH64_FL_V8_R)
+#define AARCH64_ISA_PAUTH	   (aarch64_isa_flags & AARCH64_FL_PAUTH)
 
 /* Crypto is an optional extension to AdvSIMD.  */
 #define TARGET_CRYPTO (TARGET_SIMD && AARCH64_ISA_CRYPTO)
@@ -369,6 +383,9 @@ extern unsigned aarch64_architecture_version;
 #define TARGET_BF16_SIMD (AARCH64_ISA_BF16 && TARGET_SIMD)
 #define TARGET_SVE_BF16 (TARGET_SVE && AARCH64_ISA_BF16)
 
+/* PAUTH instructions are enabled through +pauth.  */
+#define TARGET_PAUTH (AARCH64_ISA_PAUTH)
+
 /* Make sure this is always defined so we don't have to check for ifdefs
    but rather use normal ifs.  */
 #ifndef TARGET_FIX_ERR_A53_835769_DEFAULT
@@ -377,6 +394,9 @@ extern unsigned aarch64_architecture_version;
 #undef TARGET_FIX_ERR_A53_835769_DEFAULT
 #define TARGET_FIX_ERR_A53_835769_DEFAULT 1
 #endif
+
+/* SB instruction is enabled through +sb.  */
+#define TARGET_SB (AARCH64_ISA_SB)
 
 /* Apply the workaround for Cortex-A53 erratum 835769.  */
 #define TARGET_FIX_ERR_A53_835769	\
@@ -639,6 +659,16 @@ extern unsigned aarch64_architecture_version;
 #define GP_REGNUM_P(REGNO)						\
   (((unsigned) (REGNO - R0_REGNUM)) <= (R30_REGNUM - R0_REGNUM))
 
+/* Registers known to be preserved over a BL instruction.  This consists of the
+   GENERAL_REGS without x16, x17, and x30.  The x30 register is changed by the
+   BL instruction itself, while the x16 and x17 registers may be used by
+   veneers which can be inserted by the linker.  */
+#define STUB_REGNUM_P(REGNO) \
+  (GP_REGNUM_P (REGNO) \
+   && (REGNO) != R16_REGNUM \
+   && (REGNO) != R17_REGNUM \
+   && (REGNO) != R30_REGNUM) \
+
 #define FP_REGNUM_P(REGNO)			\
   (((unsigned) (REGNO - V0_REGNUM)) <= (V31_REGNUM - V0_REGNUM))
 
@@ -663,6 +693,7 @@ enum reg_class
 {
   NO_REGS,
   TAILCALL_ADDR_REGS,
+  STUB_REGS,
   GENERAL_REGS,
   STACK_REG,
   POINTER_REGS,
@@ -685,6 +716,7 @@ enum reg_class
 {						\
   "NO_REGS",					\
   "TAILCALL_ADDR_REGS",				\
+  "STUB_REGS",					\
   "GENERAL_REGS",				\
   "STACK_REG",					\
   "POINTER_REGS",				\
@@ -704,6 +736,7 @@ enum reg_class
 {									\
   { 0x00000000, 0x00000000, 0x00000000 },	/* NO_REGS */		\
   { 0x00030000, 0x00000000, 0x00000000 },	/* TAILCALL_ADDR_REGS */\
+  { 0x3ffcffff, 0x00000000, 0x00000000 },	/* STUB_REGS */		\
   { 0x7fffffff, 0x00000000, 0x00000003 },	/* GENERAL_REGS */	\
   { 0x80000000, 0x00000000, 0x00000000 },	/* STACK_REG */		\
   { 0xffffffff, 0x00000000, 0x00000003 },	/* POINTER_REGS */	\
@@ -842,6 +875,23 @@ struct GTY (()) aarch64_frame
   /* Store FP,LR and setup a frame pointer.  */
   bool emit_frame_chain;
 
+  /* In each frame, we can associate up to two register saves with the
+     initial stack allocation.  This happens in one of two ways:
+
+     (1) Using an STR or STP with writeback to perform the initial
+	 stack allocation.  When EMIT_FRAME_CHAIN, the registers will
+	 be those needed to create a frame chain.
+
+	 Indicated by CALLEE_ADJUST != 0.
+
+     (2) Using a separate STP to set up the frame record, after the
+	 initial stack allocation but before setting up the frame pointer.
+	 This is used if the offset is too large to use writeback.
+
+	 Indicated by CALLEE_ADJUST == 0 && EMIT_FRAME_CHAIN.
+
+     These fields indicate which registers we've decided to handle using
+     (1) or (2), or INVALID_REGNUM if none.  */
   unsigned wb_candidate1;
   unsigned wb_candidate2;
 
@@ -858,6 +908,8 @@ typedef struct GTY (()) machine_function
   struct aarch64_frame frame;
   /* One entry for each hard register.  */
   bool reg_is_wrapped_separately[LAST_SAVED_REGNUM];
+  /* One entry for each general purpose register.  */
+  rtx call_via[SP_REGNUM];
   bool label_is_assembled;
 } machine_function;
 #endif
@@ -983,16 +1035,19 @@ typedef struct
 #define MOVE_RATIO(speed) \
   (!STRICT_ALIGNMENT ? 2 : (((speed) ? 15 : AARCH64_CALL_RATIO) / 2))
 
-/* For CLEAR_RATIO, when optimizing for size, give a better estimate
-   of the length of a memset call, but use the default otherwise.  */
+/* Like MOVE_RATIO, without -mstrict-align, make decisions in "setmem" when
+   we would use more than 3 scalar instructions.
+   Otherwise follow a sensible default: when optimizing for size, give a better
+   estimate of the length of a memset call, but use the default otherwise.  */
 #define CLEAR_RATIO(speed) \
-  ((speed) ? 15 : AARCH64_CALL_RATIO)
+  (!STRICT_ALIGNMENT ? 4 : (speed) ? 15 : AARCH64_CALL_RATIO)
 
-/* SET_RATIO is similar to CLEAR_RATIO, but for a non-zero constant, so when
-   optimizing for size adjust the ratio to account for the overhead of loading
-   the constant.  */
+/* SET_RATIO is similar to CLEAR_RATIO, but for a non-zero constant.  Without
+   -mstrict-align, make decisions in "setmem".  Otherwise follow a sensible
+   default: when optimizing for size adjust the ratio to account for the
+   overhead of loading the constant.  */
 #define SET_RATIO(speed) \
-  ((speed) ? 15 : AARCH64_CALL_RATIO - 2)
+  (!STRICT_ALIGNMENT ? 0 : (speed) ? 15 : AARCH64_CALL_RATIO - 2)
 
 /* Disable auto-increment in move_by_pieces et al.  Use of auto-increment is
    rarely a good idea in straight-line code since it adds an extra address
@@ -1058,8 +1113,10 @@ typedef struct
 
 #define RETURN_ADDR_RTX aarch64_return_addr
 
-/* BTI c + 3 insns + 2 pointer-sized entries.  */
-#define TRAMPOLINE_SIZE	(TARGET_ILP32 ? 24 : 32)
+/* BTI c + 3 insns
+   + sls barrier of DSB + ISB.
+   + 2 pointer-sized entries.  */
+#define TRAMPOLINE_SIZE	(24 + (TARGET_ILP32 ? 8 : 16))
 
 /* Trampolines contain dwords, so must be dword aligned.  */
 #define TRAMPOLINE_ALIGNMENT 64
@@ -1163,12 +1220,14 @@ extern enum aarch64_code_model aarch64_cmodel;
 #define ENDIAN_LANE_N(NUNITS, N) \
   (BYTES_BIG_ENDIAN ? NUNITS - 1 - N : N)
 
-/* Support for a configure-time default CPU, etc.  We currently support
-   --with-arch and --with-cpu.  Both are ignored if either is specified
-   explicitly on the command line at run time.  */
+/* Support for configure-time --with-arch, --with-cpu and --with-tune.
+   --with-arch and --with-cpu are ignored if either -mcpu or -march is used.
+   --with-tune is ignored if either -mtune or -mcpu is used (but is not
+   affected by -march).  */
 #define OPTION_DEFAULT_SPECS				\
   {"arch", "%{!march=*:%{!mcpu=*:-march=%(VALUE)}}" },	\
-  {"cpu",  "%{!march=*:%{!mcpu=*:-mcpu=%(VALUE)}}" },
+  {"cpu",  "%{!march=*:%{!mcpu=*:-mcpu=%(VALUE)}}" },   \
+  {"tune", "%{!mcpu=*:%{!mtune=*:-mtune=%(VALUE)}}"},
 
 #define MCPU_TO_MARCH_SPEC \
    " %{mcpu=*:-march=%:rewrite_mcpu(%{mcpu=*:%*})}"

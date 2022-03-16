@@ -1,6 +1,6 @@
 /* Altivec registers, for PSIM, the PowerPC simulator.
 
-   Copyright 2003-2020 Free Software Foundation, Inc.
+   Copyright 2003-2022 Free Software Foundation, Inc.
 
    Contributed by Red Hat Inc; developed under contract from Motorola.
    Written by matthew green <mrg@redhat.com>.
@@ -49,7 +49,7 @@ struct altivec_regs {
    work on N independant bits of data.  This is only for the
    instructions that actually move data around.  */
 
-#if (WITH_HOST_BYTE_ORDER == BIG_ENDIAN)
+#if (HOST_BYTE_ORDER == BIG_ENDIAN)
 #define AV_BINDEX(x)	((x) & 15)
 #define AV_HINDEX(x)	((x) & 7)
 #else

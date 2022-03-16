@@ -1,6 +1,6 @@
 /* Offload image generation tool for AMD GCN.
 
-   Copyright (C) 2014-2020 Free Software Foundation, Inc.
+   Copyright (C) 2014-2021 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -33,30 +33,60 @@
 #include <libgen.h>
 #include "collect-utils.h"
 #include "gomp-constants.h"
+#include "simple-object.h"
+#include "elf.h"
+
+/* These probably won't (all) be in elf.h for a while.  */
+#undef  EM_AMDGPU
+#define EM_AMDGPU		0xe0;
+
+#undef  ELFOSABI_AMDGPU_HSA
+#define ELFOSABI_AMDGPU_HSA	 64
+#undef  ELFABIVERSION_AMDGPU_HSA
+#define ELFABIVERSION_AMDGPU_HSA 1
+
+#undef  EF_AMDGPU_MACH_AMDGCN_GFX803
+#define EF_AMDGPU_MACH_AMDGCN_GFX803 0x2a
+#undef  EF_AMDGPU_MACH_AMDGCN_GFX900
+#define EF_AMDGPU_MACH_AMDGCN_GFX900 0x2c
+#undef  EF_AMDGPU_MACH_AMDGCN_GFX906
+#define EF_AMDGPU_MACH_AMDGCN_GFX906 0x2f
+#undef  EF_AMDGPU_MACH_AMDGCN_GFX908
+#define EF_AMDGPU_MACH_AMDGCN_GFX908 0x230  // Assume SRAM-ECC enabled.
+
+#ifndef R_AMDGPU_NONE
+#define R_AMDGPU_NONE		0
+#define R_AMDGPU_ABS32_LO	1	/* (S + A) & 0xFFFFFFFF  */
+#define R_AMDGPU_ABS32_HI	2	/* (S + A) >> 32  */
+#define R_AMDGPU_ABS64		3	/* S + A  */
+#define R_AMDGPU_REL32		4	/* S + A - P  */
+#define R_AMDGPU_REL64		5	/* S + A - P  */
+#define R_AMDGPU_ABS32		6	/* S + A  */
+#define R_AMDGPU_GOTPCREL	7	/* G + GOT + A - P  */
+#define R_AMDGPU_GOTPCREL32_LO	8	/* (G + GOT + A - P) & 0xFFFFFFFF  */
+#define R_AMDGPU_GOTPCREL32_HI	9	/* (G + GOT + A - P) >> 32  */
+#define R_AMDGPU_REL32_LO	10	/* (S + A - P) & 0xFFFFFFFF  */
+#define R_AMDGPU_REL32_HI	11	/* (S + A - P) >> 32  */
+#define R_AMDGPU_RELATIVE64	13	/* B + A  */
+#endif
 
 const char tool_name[] = "gcn mkoffload";
 
-/* Files to unlink.  */
-static const char *gcn_s1_name;
-static const char *gcn_s2_name;
-static const char *gcn_o_name;
-static const char *gcn_cfile_name;
+static const char *gcn_dumpbase;
+static struct obstack files_to_cleanup;
 
 enum offload_abi offload_abi = OFFLOAD_ABI_UNSET;
+uint32_t elf_arch = EF_AMDGPU_MACH_AMDGCN_GFX803;  // Default GPU architecture.
 
 /* Delete tempfiles.  */
 
 void
 tool_cleanup (bool from_signal ATTRIBUTE_UNUSED)
 {
-  if (gcn_cfile_name)
-    maybe_unlink (gcn_cfile_name);
-  if (gcn_s1_name)
-    maybe_unlink (gcn_s1_name);
-  if (gcn_s2_name)
-    maybe_unlink (gcn_s2_name);
-  if (gcn_o_name)
-    maybe_unlink (gcn_o_name);
+  obstack_ptr_grow (&files_to_cleanup, NULL);
+  const char **files = XOBFINISH (&files_to_cleanup, const char **);
+  for (int i = 0; files[i]; i++)
+    maybe_unlink (files[i]);
 }
 
 static void
@@ -203,6 +233,185 @@ access_check (const char *name, int mode)
   return access (name, mode);
 }
 
+/* Copy the early-debug-info from the incoming LTO object to a new object
+   that will be linked into the output HSACO file.  The host relocations
+   must be translated into GCN relocations, and any global undefined symbols
+   must be weakened (so as not to have the debug info try to pull in host
+   junk).
+
+   Returns true if the file was created, false otherwise.  */
+
+static bool
+copy_early_debug_info (const char *infile, const char *outfile)
+{
+  const char *errmsg;
+  int err;
+
+  /* The simple_object code can handle extracting the debug sections.
+     This code is based on that in lto-wrapper.c.  */
+  int infd = open (infile, O_RDONLY | O_BINARY);
+  if (infd == -1)
+    return false;
+  simple_object_read *inobj = simple_object_start_read (infd, 0,
+							"__GNU_LTO",
+							&errmsg, &err);
+  if (!inobj)
+    return false;
+
+  off_t off, len;
+  if (simple_object_find_section (inobj, ".gnu.debuglto_.debug_info",
+				  &off, &len, &errmsg, &err) != 1)
+    {
+      simple_object_release_read (inobj);
+      close (infd);
+      return false;
+    }
+
+  errmsg = simple_object_copy_lto_debug_sections (inobj, outfile, &err, true);
+  if (errmsg)
+    {
+      unlink_if_ordinary (outfile);
+      return false;
+    }
+
+  simple_object_release_read (inobj);
+  close (infd);
+
+  /* Open the file we just created for some adjustments.
+     The simple_object code can't do this, so we do it manually.  */
+  FILE *outfd = fopen (outfile, "r+b");
+  if (!outfd)
+    return false;
+
+  Elf64_Ehdr ehdr;
+  if (fread (&ehdr, sizeof (ehdr), 1, outfd) != 1)
+    {
+      fclose (outfd);
+      return true;
+    }
+
+  /* We only support host relocations of x86_64, for now.  */
+  gcc_assert (ehdr.e_machine == EM_X86_64);
+
+  /* Patch the correct elf architecture flag into the file.  */
+  ehdr.e_ident[7] = ELFOSABI_AMDGPU_HSA;
+  ehdr.e_ident[8] = ELFABIVERSION_AMDGPU_HSA;
+  ehdr.e_type = ET_REL;
+  ehdr.e_machine = EM_AMDGPU;
+  ehdr.e_flags = elf_arch;
+
+  /* Load the section headers so we can walk them later.  */
+  Elf64_Shdr *sections = (Elf64_Shdr *)xmalloc (sizeof (Elf64_Shdr)
+						* ehdr.e_shnum);
+  if (fseek (outfd, ehdr.e_shoff, SEEK_SET) == -1
+      || fread (sections, sizeof (Elf64_Shdr), ehdr.e_shnum,
+		outfd) != ehdr.e_shnum)
+    {
+      free (sections);
+      fclose (outfd);
+      return true;
+    }
+
+  /* Convert the host relocations to target relocations.  */
+  for (int i = 0; i < ehdr.e_shnum; i++)
+    {
+      if (sections[i].sh_type != SHT_RELA)
+	continue;
+
+      char *data = (char *)xmalloc (sections[i].sh_size);
+      if (fseek (outfd, sections[i].sh_offset, SEEK_SET) == -1
+	  || fread (data, sections[i].sh_size, 1, outfd) != 1)
+	{
+	  free (data);
+	  continue;
+	}
+
+      for (size_t offset = 0;
+	   offset < sections[i].sh_size;
+	   offset += sections[i].sh_entsize)
+	{
+	  Elf64_Rela *reloc = (Elf64_Rela *) (data + offset);
+
+	  /* Map the host relocations to GCN relocations.
+	     Only relocations that can appear in DWARF need be handled.  */
+	  switch (ELF64_R_TYPE (reloc->r_info))
+	    {
+	    case R_X86_64_32:
+	    case R_X86_64_32S:
+	      reloc->r_info = ELF32_R_INFO(ELF32_R_SYM(reloc->r_info),
+					   R_AMDGPU_ABS32);
+	      break;
+	    case R_X86_64_PC32:
+	      reloc->r_info = ELF32_R_INFO(ELF32_R_SYM(reloc->r_info),
+					   R_AMDGPU_REL32);
+	      break;
+	    case R_X86_64_PC64:
+	      reloc->r_info = ELF32_R_INFO(ELF32_R_SYM(reloc->r_info),
+					   R_AMDGPU_REL64);
+	      break;
+	    case R_X86_64_64:
+	      reloc->r_info = ELF32_R_INFO(ELF32_R_SYM(reloc->r_info),
+					   R_AMDGPU_ABS64);
+	      break;
+	    case R_X86_64_RELATIVE:
+	      reloc->r_info = ELF32_R_INFO(ELF32_R_SYM(reloc->r_info),
+					   R_AMDGPU_RELATIVE64);
+	      break;
+	    default:
+	      gcc_unreachable ();
+	    }
+	}
+
+      /* Write back our relocation changes.  */
+      if (fseek (outfd, sections[i].sh_offset, SEEK_SET) != -1)
+	fwrite (data, sections[i].sh_size, 1, outfd);
+
+      free (data);
+    }
+
+  /* Weaken any global undefined symbols that would pull in unwanted
+     objects.  */
+  for (int i = 0; i < ehdr.e_shnum; i++)
+    {
+      if (sections[i].sh_type != SHT_SYMTAB)
+	continue;
+
+      char *data = (char *)xmalloc (sections[i].sh_size);
+      if (fseek (outfd, sections[i].sh_offset, SEEK_SET) == -1
+	  || fread (data, sections[i].sh_size, 1, outfd) != 1)
+	{
+	  free (data);
+	  continue;
+	}
+
+      for (size_t offset = 0;
+	   offset < sections[i].sh_size;
+	   offset += sections[i].sh_entsize)
+	{
+	  Elf64_Sym *sym = (Elf64_Sym *) (data + offset);
+	  int type = ELF64_ST_TYPE (sym->st_info);
+	  int bind = ELF64_ST_BIND (sym->st_info);
+
+	  if (bind == STB_GLOBAL && sym->st_shndx == 0)
+	    sym->st_info = ELF64_ST_INFO (STB_WEAK, type);
+	}
+
+      /* Write back our symbol changes.  */
+      if (fseek (outfd, sections[i].sh_offset, SEEK_SET) != -1)
+	fwrite (data, sections[i].sh_size, 1, outfd);
+
+      free (data);
+    }
+  free (sections);
+
+  /* Write back our header changes.  */
+  rewind (outfd);
+  fwrite (&ehdr, sizeof (ehdr), 1, outfd);
+
+  fclose (outfd);
+  return true;
+}
+
 /* Parse an input assembler file, extract the offload tables etc.,
    and output (1) the assembler code, minus the tables (which can contain
    problematic relocations), and (2) a C file with the offload tables
@@ -230,7 +439,7 @@ process_asm (FILE *in, FILE *out, FILE *cfile)
     int sgpr_count;
     int vgpr_count;
     char *kernel_name;
-  } regcount;
+  } regcount = { -1, -1, NULL };
 
   /* Always add _init_array and _fini_array as kernels.  */
   obstack_ptr_grow (&fns_os, xstrdup ("_init_array"));
@@ -238,7 +447,12 @@ process_asm (FILE *in, FILE *out, FILE *cfile)
   fn_count += 2;
 
   char buf[1000];
-  enum { IN_CODE, IN_AMD_KERNEL_CODE_T, IN_VARS, IN_FUNCS } state = IN_CODE;
+  enum
+    { IN_CODE,
+      IN_METADATA,
+      IN_VARS,
+      IN_FUNCS
+    } state = IN_CODE;
   while (fgets (buf, sizeof (buf), in))
     {
       switch (state)
@@ -251,21 +465,25 @@ process_asm (FILE *in, FILE *out, FILE *cfile)
 		obstack_grow (&dims_os, &dim, sizeof (dim));
 		dims_count++;
 	      }
-	    else if (sscanf (buf, " .amdgpu_hsa_kernel %ms\n",
-			     &regcount.kernel_name) == 1)
-	      break;
 
 	    break;
 	  }
-	case IN_AMD_KERNEL_CODE_T:
+	case IN_METADATA:
 	  {
-	    gcc_assert (regcount.kernel_name);
-	    if (sscanf (buf, " wavefront_sgpr_count = %d\n",
-			&regcount.sgpr_count) == 1)
+	    if (sscanf (buf, " - .name: %ms\n", &regcount.kernel_name) == 1)
 	      break;
-	    else if (sscanf (buf, " workitem_vgpr_count = %d\n",
+	    else if (sscanf (buf, " .sgpr_count: %d\n",
+			     &regcount.sgpr_count) == 1)
+	      {
+		gcc_assert (regcount.kernel_name);
+		break;
+	      }
+	    else if (sscanf (buf, " .vgpr_count: %d\n",
 			     &regcount.vgpr_count) == 1)
-	      break;
+	      {
+		gcc_assert (regcount.kernel_name);
+		break;
+	      }
 
 	    break;
 	  }
@@ -306,9 +524,10 @@ process_asm (FILE *in, FILE *out, FILE *cfile)
 	state = IN_VARS;
       else if (sscanf (buf, " .section .gnu.offload_funcs%c", &dummy) > 0)
 	state = IN_FUNCS;
-      else if (sscanf (buf, " .amd_kernel_code_%c", &dummy) > 0)
+      else if (sscanf (buf, " .amdgpu_metadata%c", &dummy) > 0)
 	{
-	  state = IN_AMD_KERNEL_CODE_T;
+	  state = IN_METADATA;
+	  regcount.kernel_name = NULL;
 	  regcount.sgpr_count = regcount.vgpr_count = -1;
 	}
       else if (sscanf (buf, " .section %c", &dummy) > 0
@@ -317,7 +536,7 @@ process_asm (FILE *in, FILE *out, FILE *cfile)
 	       || sscanf (buf, " .data%c", &dummy) > 0
 	       || sscanf (buf, " .ident %c", &dummy) > 0)
 	state = IN_CODE;
-      else if (sscanf (buf, " .end_amd_kernel_code_%c", &dummy) > 0)
+      else if (sscanf (buf, " .end_amdgpu_metadata%c", &dummy) > 0)
 	{
 	  state = IN_CODE;
 	  gcc_assert (regcount.kernel_name != NULL
@@ -329,7 +548,7 @@ process_asm (FILE *in, FILE *out, FILE *cfile)
 	  regcount.sgpr_count = regcount.vgpr_count = -1;
 	}
 
-      if (state == IN_CODE || state == IN_AMD_KERNEL_CODE_T)
+      if (state == IN_CODE || state == IN_METADATA)
 	fputs (buf, out);
     }
 
@@ -482,7 +701,8 @@ process_obj (FILE *in, FILE *cfile)
 /* Compile a C file using the host compiler.  */
 
 static void
-compile_native (const char *infile, const char *outfile, const char *compiler)
+compile_native (const char *infile, const char *outfile, const char *compiler,
+		bool fPIC, bool fpic)
 {
   const char *collect_gcc_options = getenv ("COLLECT_GCC_OPTIONS");
   if (!collect_gcc_options)
@@ -492,10 +712,20 @@ compile_native (const char *infile, const char *outfile, const char *compiler)
   struct obstack argv_obstack;
   obstack_init (&argv_obstack);
   obstack_ptr_grow (&argv_obstack, compiler);
+  if (fPIC)
+    obstack_ptr_grow (&argv_obstack, "-fPIC");
+  if (fpic)
+    obstack_ptr_grow (&argv_obstack, "-fpic");
   if (save_temps)
     obstack_ptr_grow (&argv_obstack, "-save-temps");
   if (verbose)
     obstack_ptr_grow (&argv_obstack, "-v");
+  obstack_ptr_grow (&argv_obstack, "-dumpdir");
+  obstack_ptr_grow (&argv_obstack, "");
+  obstack_ptr_grow (&argv_obstack, "-dumpbase");
+  obstack_ptr_grow (&argv_obstack, gcn_dumpbase);
+  obstack_ptr_grow (&argv_obstack, "-dumpbase-ext");
+  obstack_ptr_grow (&argv_obstack, ".c");
   switch (offload_abi)
     {
     case OFFLOAD_ABI_LP64:
@@ -514,7 +744,8 @@ compile_native (const char *infile, const char *outfile, const char *compiler)
   obstack_ptr_grow (&argv_obstack, NULL);
 
   const char **new_argv = XOBFINISH (&argv_obstack, const char **);
-  fork_execute (new_argv[0], CONST_CAST (char **, new_argv), true);
+  fork_execute (new_argv[0], CONST_CAST (char **, new_argv), true,
+		".gccnative_args");
   obstack_free (&argv_obstack, NULL);
 }
 
@@ -524,11 +755,12 @@ main (int argc, char **argv)
   FILE *in = stdin;
   FILE *out = stdout;
   FILE *cfile = stdout;
-  const char *outname = 0, *offloadsrc = 0;
+  const char *outname = 0;
 
   progname = "mkoffload";
   diagnostic_initialize (global_dc, 0);
 
+  obstack_init (&files_to_cleanup);
   if (atexit (mkoffload_cleanup) != 0)
     fatal_error (input_location, "atexit failed");
 
@@ -589,6 +821,8 @@ main (int argc, char **argv)
   /* Scan the argument vector.  */
   bool fopenmp = false;
   bool fopenacc = false;
+  bool fPIC = false;
+  bool fpic = false;
   for (int i = 1; i < argc; i++)
     {
 #define STR "-foffload-abi="
@@ -607,11 +841,27 @@ main (int argc, char **argv)
 	fopenmp = true;
       else if (strcmp (argv[i], "-fopenacc") == 0)
 	fopenacc = true;
+      else if (strcmp (argv[i], "-fPIC") == 0)
+	fPIC = true;
+      else if (strcmp (argv[i], "-fpic") == 0)
+	fpic = true;
       else if (strcmp (argv[i], "-save-temps") == 0)
 	save_temps = true;
       else if (strcmp (argv[i], "-v") == 0)
 	verbose = true;
+      else if (strcmp (argv[i], "-dumpbase") == 0
+	       && i + 1 < argc)
+	dumppfx = argv[++i];
+      else if (strcmp (argv[i], "-march=fiji") == 0)
+	elf_arch = EF_AMDGPU_MACH_AMDGCN_GFX803;
+      else if (strcmp (argv[i], "-march=gfx900") == 0)
+	elf_arch = EF_AMDGPU_MACH_AMDGCN_GFX900;
+      else if (strcmp (argv[i], "-march=gfx906") == 0)
+	elf_arch = EF_AMDGPU_MACH_AMDGCN_GFX906;
+      else if (strcmp (argv[i], "-march=gfx908") == 0)
+	elf_arch = EF_AMDGPU_MACH_AMDGCN_GFX908;
     }
+
   if (!(fopenacc ^ fopenmp))
     fatal_error (input_location, "either -fopenacc or -fopenmp must be set");
 
@@ -627,11 +877,6 @@ main (int argc, char **argv)
     default:
       gcc_unreachable ();
     }
-
-  gcn_s1_name = make_temp_file (".mkoffload.1.s");
-  gcn_s2_name = make_temp_file (".mkoffload.2.s");
-  gcn_o_name = make_temp_file (".mkoffload.hsaco");
-  gcn_cfile_name = make_temp_file (".c");
 
   /* Build arguments for compiler pass.  */
   struct obstack cc_argv_obstack;
@@ -653,86 +898,165 @@ main (int argc, char **argv)
       if (!strcmp (argv[ix], "-o") && ix + 1 != argc)
 	outname = argv[++ix];
       else
-	{
-	  obstack_ptr_grow (&cc_argv_obstack, argv[ix]);
-
-	  if (argv[ix][0] != '-')
-	    offloadsrc = argv[ix];
-	}
+	obstack_ptr_grow (&cc_argv_obstack, argv[ix]);
     }
 
-  obstack_ptr_grow (&cc_argv_obstack, "-o");
-  obstack_ptr_grow (&cc_argv_obstack, gcn_s1_name);
-  obstack_ptr_grow (&cc_argv_obstack,
-		    concat ("-mlocal-symbol-id=", offloadsrc, NULL));
-  obstack_ptr_grow (&cc_argv_obstack, NULL);
-  const char **cc_argv = XOBFINISH (&cc_argv_obstack, const char **);
+  if (!dumppfx)
+    dumppfx = outname;
 
-  /* Build arguments for assemble/link pass.  */
-  struct obstack ld_argv_obstack;
-  obstack_init (&ld_argv_obstack);
-  obstack_ptr_grow (&ld_argv_obstack, driver);
-  obstack_ptr_grow (&ld_argv_obstack, gcn_s2_name);
-  obstack_ptr_grow (&ld_argv_obstack, "-lgomp");
+  gcn_dumpbase = concat (dumppfx, ".c", NULL);
 
-  for (int i = 1; i < argc; i++)
-    if (strncmp (argv[i], "-l", 2) == 0
-	|| strncmp (argv[i], "-Wl", 3) == 0
-	|| strncmp (argv[i], "-march", 6) == 0)
-      obstack_ptr_grow (&ld_argv_obstack, argv[i]);
-
-  obstack_ptr_grow (&ld_argv_obstack, "-o");
-  obstack_ptr_grow (&ld_argv_obstack, gcn_o_name);
-  obstack_ptr_grow (&ld_argv_obstack, NULL);
-  const char **ld_argv = XOBFINISH (&ld_argv_obstack, const char **);
-
-  /* Clean up unhelpful environment variables.  */
-  char *execpath = getenv ("GCC_EXEC_PREFIX");
-  char *cpath = getenv ("COMPILER_PATH");
-  char *lpath = getenv ("LIBRARY_PATH");
-  unsetenv ("GCC_EXEC_PREFIX");
-  unsetenv ("COMPILER_PATH");
-  unsetenv ("LIBRARY_PATH");
-
-  /* Run the compiler pass.  */
-  fork_execute (cc_argv[0], CONST_CAST (char **, cc_argv), true);
-  obstack_free (&cc_argv_obstack, NULL);
-
-  in = fopen (gcn_s1_name, "r");
-  if (!in)
-    fatal_error (input_location, "cannot open intermediate gcn asm file");
-
-  out = fopen (gcn_s2_name, "w");
-  if (!out)
-    fatal_error (input_location, "cannot open '%s'", gcn_s2_name);
+  const char *gcn_cfile_name;
+  if (save_temps)
+    gcn_cfile_name = gcn_dumpbase;
+  else
+    gcn_cfile_name = make_temp_file (".c");
+  obstack_ptr_grow (&files_to_cleanup, gcn_cfile_name);
 
   cfile = fopen (gcn_cfile_name, "w");
   if (!cfile)
     fatal_error (input_location, "cannot open '%s'", gcn_cfile_name);
 
-  process_asm (in, out, cfile);
+  /* Currently, we only support offloading in 64-bit configurations.  */
+  if (offload_abi == OFFLOAD_ABI_LP64)
+    {
+      const char *mko_dumpbase = concat (dumppfx, ".mkoffload", NULL);
+      const char *hsaco_dumpbase = concat (dumppfx, ".mkoffload.hsaco", NULL);
 
-  fclose (in);
-  fclose (out);
+      const char *gcn_s1_name;
+      const char *gcn_s2_name;
+      const char *gcn_o_name;
+      if (save_temps)
+	{
+	  gcn_s1_name = concat (mko_dumpbase, ".1.s", NULL);
+	  gcn_s2_name = concat (mko_dumpbase, ".2.s", NULL);
+	  gcn_o_name = hsaco_dumpbase;
+	}
+      else
+	{
+	  gcn_s1_name = make_temp_file (".mkoffload.1.s");
+	  gcn_s2_name = make_temp_file (".mkoffload.2.s");
+	  gcn_o_name = make_temp_file (".mkoffload.hsaco");
+	}
+      obstack_ptr_grow (&files_to_cleanup, gcn_s1_name);
+      obstack_ptr_grow (&files_to_cleanup, gcn_s2_name);
+      obstack_ptr_grow (&files_to_cleanup, gcn_o_name);
 
-  /* Run the assemble/link pass.  */
-  fork_execute (ld_argv[0], CONST_CAST (char **, ld_argv), true);
-  obstack_free (&ld_argv_obstack, NULL);
+      obstack_ptr_grow (&cc_argv_obstack, "-dumpdir");
+      obstack_ptr_grow (&cc_argv_obstack, "");
+      obstack_ptr_grow (&cc_argv_obstack, "-dumpbase");
+      obstack_ptr_grow (&cc_argv_obstack, mko_dumpbase);
+      obstack_ptr_grow (&cc_argv_obstack, "-dumpbase-ext");
+      obstack_ptr_grow (&cc_argv_obstack, "");
 
-  in = fopen (gcn_o_name, "r");
-  if (!in)
-    fatal_error (input_location, "cannot open intermediate gcn obj file");
+      obstack_ptr_grow (&cc_argv_obstack, "-o");
+      obstack_ptr_grow (&cc_argv_obstack, gcn_s1_name);
+      obstack_ptr_grow (&cc_argv_obstack, NULL);
+      const char **cc_argv = XOBFINISH (&cc_argv_obstack, const char **);
 
-  process_obj (in, cfile);
+      /* Build arguments for assemble/link pass.  */
+      struct obstack ld_argv_obstack;
+      obstack_init (&ld_argv_obstack);
+      obstack_ptr_grow (&ld_argv_obstack, driver);
 
-  fclose (in);
+      /* Extract early-debug information from the input objects.
+	 This loop finds all the inputs that end ".o" and aren't the output.  */
+      int dbgcount = 0;
+      for (int ix = 1; ix != argc; ix++)
+	{
+	  if (!strcmp (argv[ix], "-o") && ix + 1 != argc)
+	    ++ix;
+	  else
+	    {
+	      if (strcmp (argv[ix] + strlen(argv[ix]) - 2, ".o") == 0)
+		{
+		  char *dbgobj;
+		  if (save_temps)
+		    {
+		      char buf[10];
+		      sprintf (buf, "%d", dbgcount++);
+		      dbgobj = concat (dumppfx, ".mkoffload.dbg", buf, ".o", NULL);
+		    }
+		  else
+		    dbgobj = make_temp_file (".mkoffload.dbg.o");
+
+		  /* If the copy fails then just ignore it.  */
+		  if (copy_early_debug_info (argv[ix], dbgobj))
+		    {
+		      obstack_ptr_grow (&ld_argv_obstack, dbgobj);
+		      obstack_ptr_grow (&files_to_cleanup, dbgobj);
+		    }
+		  else
+		    free (dbgobj);
+		}
+	    }
+	}
+      obstack_ptr_grow (&ld_argv_obstack, gcn_s2_name);
+      obstack_ptr_grow (&ld_argv_obstack, "-lgomp");
+
+      for (int i = 1; i < argc; i++)
+	if (strncmp (argv[i], "-l", 2) == 0
+	    || strncmp (argv[i], "-Wl", 3) == 0
+	    || strncmp (argv[i], "-march", 6) == 0)
+	  obstack_ptr_grow (&ld_argv_obstack, argv[i]);
+
+      obstack_ptr_grow (&cc_argv_obstack, "-dumpdir");
+      obstack_ptr_grow (&cc_argv_obstack, "");
+      obstack_ptr_grow (&cc_argv_obstack, "-dumpbase");
+      obstack_ptr_grow (&cc_argv_obstack, hsaco_dumpbase);
+      obstack_ptr_grow (&cc_argv_obstack, "-dumpbase-ext");
+      obstack_ptr_grow (&cc_argv_obstack, "");
+
+      obstack_ptr_grow (&ld_argv_obstack, "-o");
+      obstack_ptr_grow (&ld_argv_obstack, gcn_o_name);
+      obstack_ptr_grow (&ld_argv_obstack, NULL);
+      const char **ld_argv = XOBFINISH (&ld_argv_obstack, const char **);
+
+      /* Clean up unhelpful environment variables.  */
+      char *execpath = getenv ("GCC_EXEC_PREFIX");
+      char *cpath = getenv ("COMPILER_PATH");
+      char *lpath = getenv ("LIBRARY_PATH");
+      unsetenv ("GCC_EXEC_PREFIX");
+      unsetenv ("COMPILER_PATH");
+      unsetenv ("LIBRARY_PATH");
+
+      /* Run the compiler pass.  */
+      fork_execute (cc_argv[0], CONST_CAST (char **, cc_argv), true, ".gcc_args");
+      obstack_free (&cc_argv_obstack, NULL);
+
+      in = fopen (gcn_s1_name, "r");
+      if (!in)
+	fatal_error (input_location, "cannot open intermediate gcn asm file");
+
+      out = fopen (gcn_s2_name, "w");
+      if (!out)
+	fatal_error (input_location, "cannot open '%s'", gcn_s2_name);
+
+      process_asm (in, out, cfile);
+
+      fclose (in);
+      fclose (out);
+
+      /* Run the assemble/link pass.  */
+      fork_execute (ld_argv[0], CONST_CAST (char **, ld_argv), true, ".ld_args");
+      obstack_free (&ld_argv_obstack, NULL);
+
+      in = fopen (gcn_o_name, "r");
+      if (!in)
+	fatal_error (input_location, "cannot open intermediate gcn obj file");
+
+      process_obj (in, cfile);
+
+      fclose (in);
+
+      xputenv (concat ("GCC_EXEC_PREFIX=", execpath, NULL));
+      xputenv (concat ("COMPILER_PATH=", cpath, NULL));
+      xputenv (concat ("LIBRARY_PATH=", lpath, NULL));
+    }
+
   fclose (cfile);
 
-  xputenv (concat ("GCC_EXEC_PREFIX=", execpath, NULL));
-  xputenv (concat ("COMPILER_PATH=", cpath, NULL));
-  xputenv (concat ("LIBRARY_PATH=", lpath, NULL));
-
-  compile_native (gcn_cfile_name, outname, collect_gcc);
+  compile_native (gcn_cfile_name, outname, collect_gcc, fPIC, fpic);
 
   return 0;
 }

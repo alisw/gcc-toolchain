@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010, 2011, 2012, 2014, 2016, 2017 INRIA
+# Copyright (C) 2008, 2009, 2010, 2011, 2012, 2014, 2016, 2017, 2018, 2020 INRIA
 #
 # This file is part of GNU MPC.
 #
@@ -20,8 +20,9 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(mpc, 1.1.0, mpc-discuss@lists.gforge.inria.fr)
+AC_INIT(mpc, 1.2.1, mpc-discuss@lists.gforge.inria.fr)
 AC_CONFIG_SRCDIR([src/mpc-impl.h])
+AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADER([config.h])
 
 AM_INIT_AUTOMAKE
@@ -165,22 +166,6 @@ AC_LINK_IFELSE(
         AC_MSG_ERROR([libmpfr not found or uses a different ABI (including static vs shared).])
         ])
 
-AC_MSG_CHECKING(for mpfr_fmma)
-LIBS="-lmpfr $LIBS"
-AC_LINK_IFELSE(
-        [AC_LANG_PROGRAM(
-                [[#include "mpfr.h"]],
-                [[mpfr_t x; mpfr_fmma (x, x, x, x, x, 0);]]
-        )],
-        [
-	AC_MSG_RESULT(yes)
-	AC_DEFINE(HAVE_MPFR_FMMA, 1, [mpfr_fmma is present])
-	],
-        [
-        AC_MSG_RESULT(no)
-	AC_DEFINE(HAVE_MPFR_FMMA, 0, [mpfr_fmma	is not present])
-        ])
-
 # Check for a recent GMP
 # We only guarantee that with a *functional* and recent enough GMP version,
 # MPC will compile; we do not guarantee that GMP will compile.
@@ -203,22 +188,22 @@ error
         AC_MSG_ERROR([GMP version >= 5.0.0 required])
         ])
 
-# Check for a recent MPFR: we require MPFR 3.0.0 for MPC_RNDA
+# Check for a recent MPFR: we require MPFR 4.1.0
 # The same remark as above for GMP applies.
 AC_MSG_CHECKING(for recent MPFR)
 AC_COMPILE_IFELSE(
         [AC_LANG_SOURCE(
         [[
 #include "mpfr.h"
-#if (MPFR_VERSION < MPFR_VERSION_NUM (3,0,0))
-# error "Minimal MPFR version is 3.0.0"
+#if (MPFR_VERSION < MPFR_VERSION_NUM (4,1,0))
+# error "Minimal MPFR version is 4.1.0"
 error
 #endif
         ]])],
         [AC_MSG_RESULT(yes)],
         [
          AC_MSG_RESULT(no)
-         AC_MSG_ERROR([MPFR version >= 3.0.0 required])
+         AC_MSG_ERROR([MPFR version >= 4.1.0 required])
          ])
 
 # Check for logging feature
@@ -253,5 +238,5 @@ AC_DEFINE_UNQUOTED([MPC_GCC_VERSION], ["$GCC_VERSION"], [Version of gcc])
 # Looks for short git hash if the version string contains "dev"
 MPC_GITVERSION
 
-AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile doc/Makefile tools/Makefile tools/bench/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile doc/Makefile tools/Makefile tools/bench/Makefile tools/mpcheck/Makefile])
 AC_OUTPUT

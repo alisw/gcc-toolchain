@@ -1,5 +1,5 @@
 /* Implementation of Fortran 2003 Polymorphism.
-   Copyright (C) 2009-2020 Free Software Foundation, Inc.
+   Copyright (C) 2009-2021 Free Software Foundation, Inc.
    Contributed by Paul Richard Thomas <pault@gcc.gnu.org>
    and Janus Weil <janus@gcc.gnu.org>
 
@@ -49,6 +49,8 @@ along with GCC; see the file COPYING3.  If not see
     * _copy:     A procedure pointer to a copying procedure.
     * _final:    A procedure pointer to a wrapper function, which frees
 		 allocatable components and calls FINAL subroutines.
+    * _deallocate: A procedure pointer to a deallocation procedure; nonnull
+		 only for a recursive derived type.
 
    After these follow procedure pointer components for the specific
    type-bound procedures.  */
@@ -228,7 +230,7 @@ gfc_add_component_ref (gfc_expr *e, const char *name)
 	break;
       tail = &((*tail)->next);
     }
-  if (derived->components && derived->components->next &&
+  if (derived && derived->components && derived->components->next &&
       derived->components->next->ts.type == BT_DERIVED &&
       derived->components->next->ts.u.derived == NULL)
     {
@@ -663,6 +665,10 @@ gfc_build_class_symbol (gfc_typespec *ts, symbol_attribute *attr,
 
   /* Determine the name of the encapsulating type.  */
   rank = !(*as) || (*as)->rank == -1 ? GFC_MAX_DIMENSIONS : (*as)->rank;
+
+  if (!ts->u.derived)
+    return false;
+
   get_unique_hashed_string (tname, ts->u.derived);
   if ((*as) && attr->allocatable)
     name = xasprintf ("__class_%s_%d_%da", tname, rank, (*as)->corank);
@@ -2900,7 +2906,9 @@ gfc_find_vtab (gfc_typespec *ts)
     case BT_DERIVED:
       return gfc_find_derived_vtab (ts->u.derived);
     case BT_CLASS:
-      if (ts->u.derived->components && ts->u.derived->components->ts.u.derived)
+      if (ts->u.derived->attr.is_class
+	  && ts->u.derived->components
+	  && ts->u.derived->components->ts.u.derived)
 	return gfc_find_derived_vtab (ts->u.derived->components->ts.u.derived);
       else
 	return NULL;

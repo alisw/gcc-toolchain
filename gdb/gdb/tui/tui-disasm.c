@@ -1,6 +1,6 @@
 /* Disassembly display.
 
-   Copyright (C) 1998-2020 Free Software Foundation, Inc.
+   Copyright (C) 1998-2022 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -40,6 +40,7 @@
 #include "progspace.h"
 #include "objfiles.h"
 #include "cli/cli-style.h"
+#include "tui/tui-location.h"
 
 #include "gdb_curses.h"
 
@@ -60,7 +61,7 @@ len_without_escapes (const std::string &str)
   const char *ptr = str.c_str ();
   char c;
 
-  while ((c = *ptr++) != '\0')
+  while ((c = *ptr) != '\0')
     {
       if (c == '\033')
 	{
@@ -76,7 +77,10 @@ len_without_escapes (const std::string &str)
 	    }
 	}
       else
-	++len;
+	{
+	  ++len;
+	  ++ptr;
+	}
     }
   return len;
 }
@@ -174,7 +178,7 @@ tui_find_backward_disassembly_start_address (CORE_ADDR addr)
      section.  */
   struct obj_section *section = find_pc_section (addr);
   if (section != NULL)
-    return obj_section_addr (section);
+    return section->addr ();
 
   return addr;
 }
@@ -278,22 +282,22 @@ tui_find_disassembly_address (struct gdbarch *gdbarch, CORE_ADDR pc, int from)
 	}
 
       /* Scan forward disassembling one instruction at a time until
-         the last visible instruction of the window matches the pc.
-         We keep the disassembled instructions in the 'lines' window
-         and shift it downward (increasing its addresses).  */
+	 the last visible instruction of the window matches the pc.
+	 We keep the disassembled instructions in the 'lines' window
+	 and shift it downward (increasing its addresses).  */
       int pos = max_lines - 1;
       if (last_addr < pc)
-        do
-          {
-            pos++;
-            if (pos >= max_lines)
-              pos = 0;
+	do
+	  {
+	    pos++;
+	    if (pos >= max_lines)
+	      pos = 0;
 
 	    CORE_ADDR old_next_addr = next_addr;
 	    std::vector<tui_asm_line> single_asm_line;
 	    next_addr = tui_disassemble (gdbarch, single_asm_line,
 					 next_addr, 1);
-            /* If there are some problems while disassembling exit.  */
+	    /* If there are some problems while disassembling exit.  */
 	    if (next_addr <= old_next_addr)
 	      return pc;
 	    gdb_assert (single_asm_line.size () == 1);
@@ -301,7 +305,7 @@ tui_find_disassembly_address (struct gdbarch *gdbarch, CORE_ADDR pc, int from)
 	  } while (next_addr <= pc);
       pos++;
       if (pos >= max_lines)
-         pos = 0;
+	 pos = 0;
       new_low = asm_lines[pos].addr;
 
       /* When scrolling backward the addresses should move backward, or at
@@ -318,10 +322,8 @@ tui_disasm_window::set_contents (struct gdbarch *arch,
 				 const struct symtab_and_line &sal)
 {
   int i;
-  int offset = m_horizontal_offset;
-  int max_lines, line_width;
+  int max_lines;
   CORE_ADDR cur_pc;
-  struct tui_locator_window *locator = tui_locator_win_info_ptr ();
   int tab_len = tui_tab_width;
   int insn_pos;
 
@@ -332,11 +334,10 @@ tui_disasm_window::set_contents (struct gdbarch *arch,
   m_gdbarch = arch;
   m_start_line_or_addr.loa = LOA_ADDRESS;
   m_start_line_or_addr.u.addr = pc;
-  cur_pc = locator->addr;
+  cur_pc = tui_location.addr ();
 
   /* Window size, excluding highlight box.  */
   max_lines = height - 2;
-  line_width = width - TUI_EXECINFO_SIZE - 2;
 
   /* Get temporary table that will hold all strings (addr & insn).  */
   std::vector<tui_asm_line> asm_lines;
@@ -348,6 +349,7 @@ tui_disasm_window::set_contents (struct gdbarch *arch,
 
   /* Now construct each line.  */
   m_content.resize (max_lines);
+  m_max_length = -1;
   for (i = 0; i < max_lines; i++)
     {
       tui_source_element *src = &m_content[i];
@@ -370,7 +372,9 @@ tui_disasm_window::set_contents (struct gdbarch *arch,
 	}
 
       const char *ptr = line.c_str ();
-      src->line = tui_copy_source_line (&ptr, -1, offset, line_width, 0);
+      int line_len;
+      src->line = tui_copy_source_line (&ptr, &line_len);
+      m_max_length = std::max (m_max_length, line_len);
 
       src->line_or_addr.loa = LOA_ADDRESS;
       src->line_or_addr.u.addr = addr;
@@ -383,13 +387,10 @@ tui_disasm_window::set_contents (struct gdbarch *arch,
 void
 tui_get_begin_asm_address (struct gdbarch **gdbarch_p, CORE_ADDR *addr_p)
 {
-  struct tui_locator_window *locator;
   struct gdbarch *gdbarch = get_current_arch ();
   CORE_ADDR addr = 0;
 
-  locator = tui_locator_win_info_ptr ();
-
-  if (locator->addr == 0)
+  if (tui_location.addr () == 0)
     {
       if (have_full_symbols () || have_partial_symbols ())
 	{
@@ -410,8 +411,8 @@ tui_get_begin_asm_address (struct gdbarch **gdbarch_p, CORE_ADDR *addr_p)
     }
   else				/* The target is executing.  */
     {
-      gdbarch = locator->gdbarch;
-      addr = locator->addr;
+      gdbarch = tui_location.gdbarch ();
+      addr = tui_location.addr ();
     }
 
   *gdbarch_p = gdbarch;

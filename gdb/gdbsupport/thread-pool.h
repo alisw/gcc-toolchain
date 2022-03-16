@@ -1,6 +1,6 @@
 /* Thread pool
 
-   Copyright (C) 2019-2020 Free Software Foundation, Inc.
+   Copyright (C) 2019-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -58,7 +58,7 @@ public:
 
   /* Post a task to the thread pool.  A future is returned, which can
      be used to wait for the result.  */
-  std::future<void> post_task (std::function<void ()> func);
+  std::future<void> post_task (std::function<void ()> &&func);
 
 private:
 

@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (C) 1999-2019 by The D Language Foundation, All Rights Reserved
+ * Copyright (C) 1999-2021 by The D Language Foundation, All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -26,18 +26,17 @@
 #include "arraytypes.h"
 #include "tokens.h"
 
-Expression *semantic(Expression *e, Scope *sc);
 bool evalStaticCondition(Scope *sc, Expression *exp, Expression *e, bool &errors);
 
-int findCondition(Strings *ids, Identifier *ident)
+int findCondition(Identifiers *ids, Identifier *ident)
 {
     if (ids)
     {
-        for (size_t i = 0; i < ids->dim; i++)
+        for (size_t i = 0; i < ids->length; i++)
         {
-            const char *id = (*ids)[i];
+            Identifier *id = (*ids)[i];
 
-            if (strcmp(id, ident->toChars()) == 0)
+            if (id == ident)
                 return true;
         }
     }
@@ -86,17 +85,16 @@ static void lowerArrayAggregate(StaticForeach *sfe, Scope *sc)
     Expression *aggr = sfe->aggrfe->aggr;
     Expression *el = new ArrayLengthExp(aggr->loc, aggr);
     sc = sc->startCTFE();
-    el = semantic(el, sc);
+    el = expressionSemantic(el, sc);
     sc = sc->endCTFE();
     el = el->optimize(WANTvalue);
     el = el->ctfeInterpret();
     if (el->op == TOKint64)
     {
         Expressions *es;
-        if (aggr->op == TOKarrayliteral)
+        if (ArrayLiteralExp *ale = aggr->isArrayLiteralExp())
         {
             // Directly use the elements of the array for the TupleExp creation
-            ArrayLiteralExp *ale = (ArrayLiteralExp *)aggr;
             es = ale->elements;
         }
         else
@@ -112,8 +110,9 @@ static void lowerArrayAggregate(StaticForeach *sfe, Scope *sc)
             }
         }
         sfe->aggrfe->aggr = new TupleExp(aggr->loc, es);
-        sfe->aggrfe->aggr = semantic(sfe->aggrfe->aggr, sc);
+        sfe->aggrfe->aggr = expressionSemantic(sfe->aggrfe->aggr, sc);
         sfe->aggrfe->aggr = sfe->aggrfe->aggr->optimize(WANTvalue);
+        sfe->aggrfe->aggr = sfe->aggrfe->aggr->ctfeInterpret();
     }
     else
     {
@@ -133,7 +132,7 @@ static void lowerArrayAggregate(StaticForeach *sfe, Scope *sc)
 
 static Expression *wrapAndCall(Loc loc, Statement *s)
 {
-    TypeFunction *tf = new TypeFunction(new Parameters(), NULL, 0, LINKdefault, 0);
+    TypeFunction *tf = new TypeFunction(ParameterList(), NULL, LINKdefault, 0);
     FuncLiteralDeclaration *fd = new FuncLiteralDeclaration(loc, loc, tf, TOKreserved, NULL);
     fd->fbody = s;
     FuncExp *fe = new FuncExp(loc, fd);
@@ -163,7 +162,7 @@ static Statement *createForeach(StaticForeach *sfe, Loc loc, Parameters *paramet
     }
     else
     {
-        assert(sfe->rangefe && parameters->dim == 1);
+        assert(sfe->rangefe && parameters->length == 1);
         return new ForeachRangeStatement(loc, sfe->rangefe->op, (*parameters)[0],
                                          sfe->rangefe->lwr->syntaxCopy(),
                                          sfe->rangefe->upr->syntaxCopy(), s, loc);
@@ -200,7 +199,8 @@ static TypeStruct *createTupleType(Loc loc, Expressions *e)
     Type *ty = new TypeTypeof(loc, new TupleExp(loc, e));
     sdecl->members->push(new VarDeclaration(loc, ty, fid, NULL));
     TypeStruct *r = (TypeStruct *)sdecl->type;
-    r->vtinfo = TypeInfoStructDeclaration::create(r); // prevent typeinfo from going to object file
+    if (global.params.useTypeInfo && Type::dtypeinfo)
+        r->vtinfo = TypeInfoStructDeclaration::create(r); // prevent typeinfo from going to object file
     return r;
 }
 
@@ -247,7 +247,7 @@ static Expression *createTuple(Loc loc, TypeStruct *type, Expressions *e)
 
 static void lowerNonArrayAggregate(StaticForeach *sfe, Scope *sc)
 {
-    size_t nvars = sfe->aggrfe ? sfe->aggrfe->parameters->dim : 1;
+    size_t nvars = sfe->aggrfe ? sfe->aggrfe->parameters->length : 1;
     Loc aloc = sfe->aggrfe ? sfe->aggrfe->aggr->loc : sfe->rangefe->lwr->loc;
     // We need three sets of foreach loop variables because the
     // lowering contains three foreach loops.
@@ -258,7 +258,7 @@ static void lowerNonArrayAggregate(StaticForeach *sfe, Scope *sc)
         {
             Parameters *params = pparams[j];
             Parameter *p = sfe->aggrfe ? (*sfe->aggrfe->parameters)[i] : sfe->rangefe->prm;
-            params->push(new Parameter(p->storageClass, p->type, p->ident, NULL));
+            params->push(new Parameter(p->storageClass, p->type, p->ident, NULL, NULL));
         }
     }
     Expression *res[2];
@@ -275,7 +275,7 @@ static void lowerNonArrayAggregate(StaticForeach *sfe, Scope *sc)
         for (size_t i = 0; i < 2; i++)
         {
             Expressions *e = new Expressions();
-            for (size_t j = 0; j < pparams[0]->dim; j++)
+            for (size_t j = 0; j < pparams[0]->length; j++)
             {
                 Parameter *p = (*pparams[i])[j];
                 e->push(new IdentifierExp(aloc, p->ident));
@@ -293,9 +293,9 @@ static void lowerNonArrayAggregate(StaticForeach *sfe, Scope *sc)
     if (sfe->rangefe)
     {
         sc = sc->startCTFE();
-        sfe->rangefe->lwr = semantic(sfe->rangefe->lwr, sc);
+        sfe->rangefe->lwr = expressionSemantic(sfe->rangefe->lwr, sc);
         sfe->rangefe->lwr = resolveProperties(sc, sfe->rangefe->lwr);
-        sfe->rangefe->upr = semantic(sfe->rangefe->upr, sc);
+        sfe->rangefe->upr = expressionSemantic(sfe->rangefe->upr, sc);
         sfe->rangefe->upr = resolveProperties(sc, sfe->rangefe->upr);
         sc = sc->endCTFE();
         sfe->rangefe->lwr = sfe->rangefe->lwr->optimize(WANTvalue);
@@ -314,15 +314,25 @@ static void lowerNonArrayAggregate(StaticForeach *sfe, Scope *sc)
     Identifier *idres = Identifier::generateId("__res");
     VarDeclaration *vard = new VarDeclaration(aloc, aty, idres, NULL);
     Statements *s2 = new Statements();
-    s2->push(new ExpStatement(aloc, vard));
-    Expression *catass = new CatAssignExp(aloc, new IdentifierExp(aloc, idres), res[1]);
-    s2->push(createForeach(sfe, aloc, pparams[1], new ExpStatement(aloc, catass)));
-    s2->push(new ReturnStatement(aloc, new IdentifierExp(aloc, idres)));
+
+    // Run 'typeof' gagged to avoid duplicate errors and if it fails just create
+    // an empty foreach to expose them.
+    unsigned olderrors = global.startGagging();
+    ety = typeSemantic(ety, aloc, sc);
+    if (global.endGagging(olderrors))
+        s2->push(createForeach(sfe, aloc, pparams[1], NULL));
+    else
+    {
+        s2->push(new ExpStatement(aloc, vard));
+        Expression *catass = new CatAssignExp(aloc, new IdentifierExp(aloc, idres), res[1]);
+        s2->push(createForeach(sfe, aloc, pparams[1], new ExpStatement(aloc, catass)));
+        s2->push(new ReturnStatement(aloc, new IdentifierExp(aloc, idres)));
+    }
 
     Expression *aggr;
     Type *indexty;
 
-    if (sfe->rangefe && (indexty = ety->semantic(aloc, sc))->isintegral())
+    if (sfe->rangefe && (indexty = ety)->isintegral())
     {
         sfe->rangefe->lwr->type = indexty;
         sfe->rangefe->upr->type = indexty;
@@ -356,7 +366,7 @@ static void lowerNonArrayAggregate(StaticForeach *sfe, Scope *sc)
     {
         aggr = wrapAndCall(aloc, new CompoundStatement(aloc, s2));
         sc = sc->startCTFE();
-        aggr = semantic(aggr, sc);
+        aggr = expressionSemantic(aggr, sc);
         aggr = resolveProperties(sc, aggr);
         sc = sc->endCTFE();
         aggr = aggr->optimize(WANTvalue);
@@ -383,14 +393,9 @@ void staticForeachPrepare(StaticForeach *sfe, Scope *sc)
     if (sfe->aggrfe)
     {
         sc = sc->startCTFE();
-        sfe->aggrfe->aggr = semantic(sfe->aggrfe->aggr, sc);
+        sfe->aggrfe->aggr = expressionSemantic(sfe->aggrfe->aggr, sc);
         sc = sc->endCTFE();
         sfe->aggrfe->aggr = sfe->aggrfe->aggr->optimize(WANTvalue);
-        Type *tab = sfe->aggrfe->aggr->type->toBasetype();
-        if (tab->ty != Ttuple)
-        {
-            sfe->aggrfe->aggr = sfe->aggrfe->aggr->ctfeInterpret();
-        }
     }
 
     if (sfe->aggrfe && sfe->aggrfe->aggr->type->toBasetype()->ty == Terror)
@@ -439,16 +444,11 @@ Condition *DVCondition::syntaxCopy()
 
 /* ============================================================ */
 
-void DebugCondition::setGlobalLevel(unsigned level)
-{
-    global.params.debuglevel = level;
-}
-
 void DebugCondition::addGlobalIdent(const char *ident)
 {
-    if (!global.params.debugids)
-        global.params.debugids = new Strings();
-    global.params.debugids->push(ident);
+    if (!global.debugids)
+        global.debugids = new Identifiers();
+    global.debugids->push(Identifier::idPool(ident));
 }
 
 
@@ -460,7 +460,7 @@ DebugCondition::DebugCondition(Module *mod, unsigned level, Identifier *ident)
 // Helper for printing dependency information
 void printDepsConditional(Scope *sc, DVCondition* condition, const char* depType)
 {
-    if (!global.params.moduleDeps || global.params.moduleDepsFile)
+    if (!global.params.moduleDeps || global.params.moduleDepsFile.length)
         return;
     OutBuffer *ob = global.params.moduleDeps;
     Module* imod = sc ? sc->instantiatingModule() : condition->mod;
@@ -478,7 +478,7 @@ void printDepsConditional(Scope *sc, DVCondition* condition, const char* depType
 }
 
 
-int DebugCondition::include(Scope *sc, ScopeDsymbol *)
+int DebugCondition::include(Scope *sc)
 {
     //printf("DebugCondition::include() level = %d, debuglevel = %d\n", level, global.params.debuglevel);
     if (inc == 0)
@@ -492,12 +492,12 @@ int DebugCondition::include(Scope *sc, ScopeDsymbol *)
                 inc = 1;
                 definedInModule = true;
             }
-            else if (findCondition(global.params.debugids, ident))
+            else if (findCondition(global.debugids, ident))
                 inc = 1;
             else
             {   if (!mod->debugidsNot)
-                    mod->debugidsNot = new Strings();
-                mod->debugidsNot->push(ident->toChars());
+                    mod->debugidsNot = new Identifiers();
+                mod->debugidsNot->push(ident);
             }
         }
         else if (level <= global.params.debuglevel || level <= mod->debuglevel)
@@ -509,11 +509,6 @@ int DebugCondition::include(Scope *sc, ScopeDsymbol *)
 }
 
 /* ============================================================ */
-
-void VersionCondition::setGlobalLevel(unsigned level)
-{
-    global.params.versionlevel = level;
-}
 
 static bool isReserved(const char *ident)
 {
@@ -635,7 +630,7 @@ static bool isReserved(const char *ident)
 void checkReserved(Loc loc, const char *ident)
 {
     if (isReserved(ident))
-        error(loc, "version identifier '%s' is reserved and cannot be set", ident);
+        error(loc, "version identifier `%s` is reserved and cannot be set", ident);
 }
 
 void VersionCondition::addGlobalIdent(const char *ident)
@@ -646,9 +641,9 @@ void VersionCondition::addGlobalIdent(const char *ident)
 
 void VersionCondition::addPredefinedGlobalIdent(const char *ident)
 {
-    if (!global.params.versionids)
-        global.params.versionids = new Strings();
-    global.params.versionids->push(ident);
+    if (!global.versionids)
+        global.versionids = new Identifiers();
+    global.versionids->push(Identifier::idPool(ident));
 }
 
 
@@ -657,7 +652,7 @@ VersionCondition::VersionCondition(Module *mod, unsigned level, Identifier *iden
 {
 }
 
-int VersionCondition::include(Scope *sc, ScopeDsymbol *)
+int VersionCondition::include(Scope *sc)
 {
     //printf("VersionCondition::include() level = %d, versionlevel = %d\n", level, global.params.versionlevel);
     //if (ident) printf("\tident = '%s'\n", ident->toChars());
@@ -672,13 +667,13 @@ int VersionCondition::include(Scope *sc, ScopeDsymbol *)
                 inc = 1;
                 definedInModule = true;
             }
-            else if (findCondition(global.params.versionids, ident))
+            else if (findCondition(global.versionids, ident))
                 inc = 1;
             else
             {
                 if (!mod->versionidsNot)
-                    mod->versionidsNot = new Strings();
-                mod->versionidsNot->push(ident->toChars());
+                    mod->versionidsNot = new Identifiers();
+                mod->versionidsNot->push(ident);
             }
         }
         else if (level <= global.params.versionlevel || level <= mod->versionlevel)
@@ -702,7 +697,7 @@ Condition *StaticIfCondition::syntaxCopy()
     return new StaticIfCondition(loc, exp->syntaxCopy());
 }
 
-int StaticIfCondition::include(Scope *sc, ScopeDsymbol *sds)
+int StaticIfCondition::include(Scope *sc)
 {
     if (inc == 0)
     {
@@ -714,9 +709,12 @@ int StaticIfCondition::include(Scope *sc, ScopeDsymbol *sds)
         }
 
         sc = sc->push(sc->scopesym);
-        sc->sds = sds;                  // sds gets any addMember()
 
         bool errors = false;
+
+        if (!exp)
+            goto Lerror;
+
         bool result = evalStaticCondition(sc, exp, exp, errors);
         sc->pop();
 

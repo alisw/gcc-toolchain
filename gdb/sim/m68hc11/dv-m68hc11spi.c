@@ -1,5 +1,5 @@
 /*  dv-m68hc11spi.c -- Simulation of the 68HC11 SPI
-    Copyright (C) 2000-2020 Free Software Foundation, Inc.
+    Copyright (C) 2000-2022 Free Software Foundation, Inc.
     Written by Stephane Carrez (stcarrez@nerim.fr)
     (From a driver model Contributed by Cygnus Solutions.)
 
@@ -20,6 +20,8 @@
     
     */
 
+/* This must come before any other includes.  */
+#include "defs.h"
 
 #include "sim-main.h"
 #include "hw-main.h"

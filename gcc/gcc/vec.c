@@ -1,5 +1,5 @@
 /* Vector API for GNU compiler.
-   Copyright (C) 2004-2020 Free Software Foundation, Inc.
+   Copyright (C) 2004-2021 Free Software Foundation, Inc.
    Contributed by Nathan Sidwell <nathan@codesourcery.com>
    Re-implemented in C++ by Diego Novillo <dnovillo@google.com>
 
@@ -338,7 +338,7 @@ test_safe_grow_cleared ()
 {
   auto_vec <int> v;
   ASSERT_EQ (0, v.length ());
-  v.safe_grow_cleared (50);
+  v.safe_grow_cleared (50, true);
   ASSERT_EQ (50, v.length ());
   ASSERT_EQ (0, v[0]);
   ASSERT_EQ (0, v[49]);

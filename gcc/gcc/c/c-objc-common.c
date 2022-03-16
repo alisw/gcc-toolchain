@@ -1,5 +1,5 @@
 /* Some code common to C and ObjC front ends.
-   Copyright (C) 2001-2020 Free Software Foundation, Inc.
+   Copyright (C) 2001-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -185,6 +185,12 @@ get_aka_type (tree type)
 static void
 print_type (c_pretty_printer *cpp, tree t, bool *quoted)
 {
+  if (t == error_mark_node)
+    {
+      pp_string (cpp, _("{erroneous}"));
+      return;
+    }
+
   gcc_assert (TYPE_P (t));
   struct obstack *ob = pp_buffer (cpp)->obstack;
   char *p = (char *) obstack_base (ob);

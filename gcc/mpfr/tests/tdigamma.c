@@ -1,6 +1,6 @@
 /* test file for digamma function
 
-Copyright 2009-2019 Free Software Foundation, Inc.
+Copyright 2009-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -56,7 +56,7 @@ main (int argc, char *argv[])
 
   special ();
 
-  test_generic (MPFR_PREC_MIN, 100, 2);
+  test_generic (MPFR_PREC_MIN, 200, 20);
 
   data_check ("data/digamma", mpfr_digamma, "mpfr_digamma");
 

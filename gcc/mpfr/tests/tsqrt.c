@@ -1,6 +1,6 @@
 /* Test file for mpfr_sqrt.
 
-Copyright 1999, 2001-2019 Free Software Foundation, Inc.
+Copyright 1999, 2001-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -289,7 +289,7 @@ special (void)
 
   mpfr_set_prec (x, 53);
   mpfr_set_str (x, "8093416094703476.0", 10, MPFR_RNDN);
-  mpfr_div_2exp (x, x, 1075, MPFR_RNDN);
+  mpfr_div_2ui (x, x, 1075, MPFR_RNDN);
   test_sqrt (x, x, MPFR_RNDN);
   mpfr_set_str (z, "1e55596835b5ef@-141", 16, MPFR_RNDN);
   if (mpfr_cmp (x, z))
@@ -341,7 +341,7 @@ special (void)
   mpfr_set_prec (z, GMP_NUMB_BITS - 1);
   mpfr_set_prec (y, GMP_NUMB_BITS - 1);
   mpfr_set_ui (y, 1, MPFR_RNDN);
-  mpfr_mul_2exp (y, y, GMP_NUMB_BITS - 1, MPFR_RNDN);
+  mpfr_mul_2ui (y, y, GMP_NUMB_BITS - 1, MPFR_RNDN);
   mpfr_nextabove (y);
   for (p = 2 * GMP_NUMB_BITS - 1; p <= 1000; p++)
     {
@@ -661,20 +661,28 @@ test_sqrt1n (void)
   mpfr_t r, u;
   int inex;
 
+  MPFR_ASSERTD(GMP_NUMB_BITS >= 8); /* so that 15^2 is exactly representable */
+
   mpfr_init2 (r, GMP_NUMB_BITS);
   mpfr_init2 (u, GMP_NUMB_BITS);
 
-  inex = mpfr_set_ui_2exp (u, 17 * 17, 2 * GMP_NUMB_BITS - 10, MPFR_RNDN);
+  inex = mpfr_set_ui_2exp (u, 9 * 9, 2 * GMP_NUMB_BITS - 10, MPFR_RNDN);
   MPFR_ASSERTN(inex == 0);
   inex = mpfr_sqrt (r, u, MPFR_RNDN);
   MPFR_ASSERTN(inex == 0);
-  MPFR_ASSERTN(mpfr_cmp_ui_2exp (r, 17, GMP_NUMB_BITS - 5) == 0);
+  MPFR_ASSERTN(mpfr_cmp_ui_2exp (r, 9, GMP_NUMB_BITS - 5) == 0);
+
+  inex = mpfr_set_ui_2exp (u, 15 * 15, 2 * GMP_NUMB_BITS - 10, MPFR_RNDN);
+  MPFR_ASSERTN(inex == 0);
+  inex = mpfr_sqrt (r, u, MPFR_RNDN);
+  MPFR_ASSERTN(inex == 0);
+  MPFR_ASSERTN(mpfr_cmp_ui_2exp (r, 15, GMP_NUMB_BITS - 5) == 0);
 
   inex = mpfr_set_ui_2exp (u, 1, GMP_NUMB_BITS - 2, MPFR_RNDN);
   MPFR_ASSERTN(inex == 0);
   inex = mpfr_add_ui (u, u, 1, MPFR_RNDN);
   MPFR_ASSERTN(inex == 0);
-  inex = mpfr_mul_2exp (u, u, GMP_NUMB_BITS, MPFR_RNDN);
+  inex = mpfr_mul_2ui (u, u, GMP_NUMB_BITS, MPFR_RNDN);
   MPFR_ASSERTN(inex == 0);
   /* u = 2^(2*GMP_NUMB_BITS-2) + 2^GMP_NUMB_BITS, thus
      u = r^2 + 2^GMP_NUMB_BITS with r = 2^(GMP_NUMB_BITS-1).
@@ -706,7 +714,7 @@ check_overflow (void)
       mpfr_set_emax (-1);
       mpfr_set_ui_2exp (u, 1, mpfr_get_emax () - 1, MPFR_RNDN);
       mpfr_nextbelow (u);
-      mpfr_mul_2exp (u, u, 1, MPFR_RNDN);
+      mpfr_mul_2ui (u, u, 1, MPFR_RNDN);
       /* now u = (1 - 2^(-p))*2^emax is the largest number < +Inf,
          it square root is near 0.707 and has exponent 0 > emax */
       /* for RNDN, the result should be +Inf */
@@ -725,7 +733,7 @@ check_overflow (void)
       mpfr_set_emax (0);
       mpfr_set_ui_2exp (u, 1, mpfr_get_emax () - 1, MPFR_RNDN);
       mpfr_nextbelow (u);
-      mpfr_mul_2exp (u, u, 1, MPFR_RNDN);
+      mpfr_mul_2ui (u, u, 1, MPFR_RNDN);
       /* u = 1-2^(-p), its square root is > u, and should thus give +Inf when
          rounding away */
       inex = mpfr_sqrt (r, u, MPFR_RNDA);
@@ -1051,7 +1059,7 @@ main (void)
 
   test_generic (MPFR_PREC_MIN, 300, 15);
   data_check ("data/sqrt", mpfr_sqrt, "mpfr_sqrt");
-  bad_cases (mpfr_sqrt, mpfr_sqr, "mpfr_sqrt", 8, -256, 255, 4, 128, 800, 50);
+  bad_cases (mpfr_sqrt, mpfr_sqr, "mpfr_sqrt", 0, -256, 255, 4, 128, 80, 50);
 
   bug20160120 ();
   bug20160908 ();

@@ -6,31 +6,24 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
 -- ware  Foundation;  either version 3,  or (at your option) any later ver- --
 -- sion.  GNAT is distributed in the hope that it will be useful, but WITH- --
 -- OUT ANY WARRANTY;  without even the  implied warranty of MERCHANTABILITY --
--- or FITNESS FOR A PARTICULAR PURPOSE.                                     --
---                                                                          --
--- As a special exception under Section 7 of GPL version 3, you are granted --
--- additional permissions described in the GCC Runtime Library Exception,   --
--- version 3.1, as published by the Free Software Foundation.               --
---                                                                          --
--- You should have received a copy of the GNU General Public License and    --
--- a copy of the GCC Runtime Library Exception along with this program;     --
--- see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see    --
--- <http://www.gnu.org/licenses/>.                                          --
+-- or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License --
+-- for  more details.  You should have  received  a copy of the GNU General --
+-- Public License  distributed with GNAT; see file COPYING3.  If not, go to --
+-- http://www.gnu.org/licenses for a complete copy of the license.          --
 --                                                                          --
 -- GNAT was originally developed  by the GNAT team at  New York University. --
 -- Extensive contributions were provided by Ada Core Technologies Inc.      --
 --                                                                          --
 ------------------------------------------------------------------------------
 
-with Output;  use Output;
-with Tree_IO; use Tree_IO;
+with Output; use Output;
 
 with GNAT.HTable; use GNAT.HTable;
 
@@ -50,7 +43,7 @@ package body Uintp is
    Uint_Int_Last : Uint;
    --  Uint value containing Int'Last value set by Initialize
 
-   UI_Power_2 : array (Int range 0 .. 64) of Uint;
+   UI_Power_2 : array (Int range 0 .. 128) of Uint;
    --  This table is used to memoize exponentiations by powers of 2. The Nth
    --  entry, if set, contains the Uint value 2**N. Initially UI_Power_2_Set
    --  is zero and only the 0'th entry is set, the invariant being that all
@@ -59,7 +52,7 @@ package body Uintp is
    UI_Power_2_Set : Nat;
    --  Number of entries set in UI_Power_2;
 
-   UI_Power_10 : array (Int range 0 .. 64) of Uint;
+   UI_Power_10 : array (Int range 0 .. 128) of Uint;
    --  This table is used to memoize exponentiations by powers of 10 in the
    --  same manner as described above for UI_Power_2.
 
@@ -716,58 +709,6 @@ package body Uintp is
       end if;
    end Release_And_Save;
 
-   ---------------
-   -- Tree_Read --
-   ---------------
-
-   procedure Tree_Read is
-   begin
-      Uints.Tree_Read;
-      Udigits.Tree_Read;
-
-      Tree_Read_Int (Int (Uint_Int_First));
-      Tree_Read_Int (Int (Uint_Int_Last));
-      Tree_Read_Int (UI_Power_2_Set);
-      Tree_Read_Int (UI_Power_10_Set);
-      Tree_Read_Int (Int (Uints_Min));
-      Tree_Read_Int (Udigits_Min);
-
-      for J in 0 .. UI_Power_2_Set loop
-         Tree_Read_Int (Int (UI_Power_2 (J)));
-      end loop;
-
-      for J in 0 .. UI_Power_10_Set loop
-         Tree_Read_Int (Int (UI_Power_10 (J)));
-      end loop;
-
-   end Tree_Read;
-
-   ----------------
-   -- Tree_Write --
-   ----------------
-
-   procedure Tree_Write is
-   begin
-      Uints.Tree_Write;
-      Udigits.Tree_Write;
-
-      Tree_Write_Int (Int (Uint_Int_First));
-      Tree_Write_Int (Int (Uint_Int_Last));
-      Tree_Write_Int (UI_Power_2_Set);
-      Tree_Write_Int (UI_Power_10_Set);
-      Tree_Write_Int (Int (Uints_Min));
-      Tree_Write_Int (Udigits_Min);
-
-      for J in 0 .. UI_Power_2_Set loop
-         Tree_Write_Int (Int (UI_Power_2 (J)));
-      end loop;
-
-      for J in 0 .. UI_Power_10_Set loop
-         Tree_Write_Int (Int (UI_Power_10 (J)));
-      end loop;
-
-   end Tree_Write;
-
    -------------
    -- UI_Abs --
    -------------
@@ -1294,6 +1235,7 @@ package body Uintp is
                   Discard_Int : Int;
                   pragma Warnings (Off, Discard_Int);
                begin
+                  pragma Assert (D /= Int'(0));
                   UI_Div_Vector
                     (Dividend (Dividend'Last - R_Length + 1 .. Dividend'Last),
                      D,
@@ -1369,9 +1311,9 @@ package body Uintp is
 
       --  Cases which can be done by table lookup
 
-      elsif Right <= Uint_64 then
+      elsif Right <= Uint_128 then
 
-         --  2**N for N in 2 .. 64
+         --  2**N for N in 2 .. 128
 
          if Left = Uint_2 then
             declare
@@ -1391,7 +1333,7 @@ package body Uintp is
                return UI_Power_2 (Right_Int);
             end;
 
-         --  10**N for N in 2 .. 64
+         --  10**N for N in 2 .. 128
 
          elsif Left = Uint_10 then
             declare

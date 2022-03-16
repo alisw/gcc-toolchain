@@ -1,6 +1,6 @@
 /* Test file for round away.
 
-Copyright 2000-2019 Free Software Foundation, Inc.
+Copyright 2000-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -401,8 +401,10 @@ main (void)
 
       test2ui (mpfr_add_ui, "mpfr_add_ui");
       test2ui (mpfr_div_2exp, "mpfr_div_2exp");
+      test2ui (mpfr_div_2ui, "mpfr_div_2ui");
       test2ui (mpfr_div_ui, "mpfr_div_ui");
       test2ui (mpfr_mul_2exp, "mpfr_mul_2exp");
+      test2ui (mpfr_mul_2ui, "mpfr_mul_2ui");
       test2ui (mpfr_mul_ui, "mpfr_mul_ui");
       test2ui (mpfr_pow_ui, "mpfr_pow_ui");
       test2ui (mpfr_sub_ui, "mpfr_sub_ui");

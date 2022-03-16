@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (C) 1999-2019 by The D Language Foundation, All Rights Reserved
+ * Copyright (C) 1999-2021 by The D Language Foundation, All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -62,7 +62,7 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
 
     vtblInterfaces = NULL;
 
-    //printf("ClassDeclaration(%s), dim = %d\n", id->toChars(), this->baseclasses->dim);
+    //printf("ClassDeclaration(%s), dim = %d\n", id->toChars(), this->baseclasses->length);
 
     // For forward references
     type = new TypeClass(this);
@@ -261,8 +261,8 @@ Dsymbol *ClassDeclaration::syntaxCopy(Dsymbol *s)
 
     cd->storage_class |= storage_class;
 
-    cd->baseclasses->setDim(this->baseclasses->dim);
-    for (size_t i = 0; i < cd->baseclasses->dim; i++)
+    cd->baseclasses->setDim(this->baseclasses->length);
+    for (size_t i = 0; i < cd->baseclasses->length; i++)
     {
         BaseClass *b = (*this->baseclasses)[i];
         BaseClass *b2 = new BaseClass(b->type->syntaxCopy());
@@ -277,610 +277,12 @@ Scope *ClassDeclaration::newScope(Scope *sc)
     Scope *sc2 = AggregateDeclaration::newScope(sc);
     if (isCOMclass())
     {
-        if (global.params.isWindows)
-            sc2->linkage = LINKwindows;
-        else
-        {
-            /* This enables us to use COM objects under Linux and
-             * work with things like XPCOM
-             */
-            sc2->linkage = LINKc;
-        }
+        /* This enables us to use COM objects under Linux and
+         * work with things like XPCOM
+         */
+        sc2->linkage = target.systemLinkage();
     }
     return sc2;
-}
-
-/* Bugzilla 12078, 12143 and 15733:
- * While resolving base classes and interfaces, a base may refer
- * the member of this derived class. In that time, if all bases of
- * this class can  be determined, we can go forward the semantc process
- * beyond the Lancestorsdone. To do the recursive semantic analysis,
- * temporarily set and unset `_scope` around exp().
- */
-static Type *resolveBase(ClassDeclaration *cd, Scope *sc, Scope *&scx, Type *type)
-{
-    if (!scx)
-    {
-        scx = sc->copy();
-        scx->setNoFree();
-    }
-    cd->_scope = scx;
-    Type *t = type->semantic(cd->loc, sc);
-    cd->_scope = NULL;
-    return t;
-}
-
-static void resolveBase(ClassDeclaration *cd, Scope *sc, Scope *&scx, ClassDeclaration *sym)
-{
-    if (!scx)
-    {
-        scx = sc->copy();
-        scx->setNoFree();
-    }
-    cd->_scope = scx;
-    sym->semantic(NULL);
-    cd->_scope = NULL;
-}
-
-static void badObjectDotD(ClassDeclaration *cd)
-{
-    cd->error("missing or corrupt object.d");
-    fatal();
-}
-
-void ClassDeclaration::semantic(Scope *sc)
-{
-    //printf("ClassDeclaration::semantic(%s), type = %p, sizeok = %d, this = %p\n", toChars(), type, sizeok, this);
-    //printf("\tparent = %p, '%s'\n", sc->parent, sc->parent ? sc->parent->toChars() : "");
-    //printf("sc->stc = %x\n", sc->stc);
-
-    //{ static int n;  if (++n == 20) *(char*)0=0; }
-
-    if (semanticRun >= PASSsemanticdone)
-        return;
-    unsigned errors = global.errors;
-
-    //printf("+ClassDeclaration::semantic(%s), type = %p, sizeok = %d, this = %p\n", toChars(), type, sizeok, this);
-
-    Scope *scx = NULL;
-    if (_scope)
-    {
-        sc = _scope;
-        scx = _scope;            // save so we don't make redundant copies
-        _scope = NULL;
-    }
-
-    if (!parent)
-    {
-        assert(sc->parent);
-        parent = sc->parent;
-    }
-
-    if (this->errors)
-        type = Type::terror;
-    type = type->semantic(loc, sc);
-
-    if (type->ty == Tclass && ((TypeClass *)type)->sym != this)
-    {
-        TemplateInstance *ti = ((TypeClass *)type)->sym->isInstantiated();
-        if (ti && isError(ti))
-            ((TypeClass *)type)->sym = this;
-    }
-
-    // Ungag errors when not speculative
-    Ungag ungag = ungagSpeculative();
-
-    if (semanticRun == PASSinit)
-    {
-        protection = sc->protection;
-
-        storage_class |= sc->stc;
-        if (storage_class & STCdeprecated)
-            isdeprecated = true;
-        if (storage_class & STCauto)
-            error("storage class 'auto' is invalid when declaring a class, did you mean to use 'scope'?");
-        if (storage_class & STCscope)
-            isscope = true;
-        if (storage_class & STCabstract)
-            isabstract = ABSyes;
-
-        userAttribDecl = sc->userAttribDecl;
-
-        if (sc->linkage == LINKcpp)
-            classKind = ClassKind::cpp;
-        if (sc->linkage == LINKobjc)
-            objc()->setObjc(this);
-    }
-    else if (symtab && !scx)
-    {
-        return;
-    }
-    semanticRun = PASSsemantic;
-
-    if (baseok < BASEOKdone)
-    {
-        baseok = BASEOKin;
-
-        // Expand any tuples in baseclasses[]
-        for (size_t i = 0; i < baseclasses->dim; )
-        {
-            BaseClass *b = (*baseclasses)[i];
-            b->type = resolveBase(this, sc, scx, b->type);
-
-            Type *tb = b->type->toBasetype();
-            if (tb->ty == Ttuple)
-            {
-                TypeTuple *tup = (TypeTuple *)tb;
-                baseclasses->remove(i);
-                size_t dim = Parameter::dim(tup->arguments);
-                for (size_t j = 0; j < dim; j++)
-                {
-                    Parameter *arg = Parameter::getNth(tup->arguments, j);
-                    b = new BaseClass(arg->type);
-                    baseclasses->insert(i + j, b);
-                }
-            }
-            else
-                i++;
-        }
-
-        if (baseok >= BASEOKdone)
-        {
-            //printf("%s already semantic analyzed, semanticRun = %d\n", toChars(), semanticRun);
-            if (semanticRun >= PASSsemanticdone)
-                return;
-            goto Lancestorsdone;
-        }
-
-        // See if there's a base class as first in baseclasses[]
-        if (baseclasses->dim)
-        {
-            BaseClass *b = (*baseclasses)[0];
-            Type *tb = b->type->toBasetype();
-            TypeClass *tc = (tb->ty == Tclass) ? (TypeClass *)tb : NULL;
-            if (!tc)
-            {
-                if (b->type != Type::terror)
-                    error("base type must be class or interface, not %s", b->type->toChars());
-                baseclasses->remove(0);
-                goto L7;
-            }
-
-            if (tc->sym->isDeprecated())
-            {
-                if (!isDeprecated())
-                {
-                    // Deriving from deprecated class makes this one deprecated too
-                    isdeprecated = true;
-
-                    tc->checkDeprecated(loc, sc);
-                }
-            }
-
-            if (tc->sym->isInterfaceDeclaration())
-                goto L7;
-
-            for (ClassDeclaration *cdb = tc->sym; cdb; cdb = cdb->baseClass)
-            {
-                if (cdb == this)
-                {
-                    error("circular inheritance");
-                    baseclasses->remove(0);
-                    goto L7;
-                }
-            }
-
-            /* Bugzilla 11034: Essentially, class inheritance hierarchy
-             * and instance size of each classes are orthogonal information.
-             * Therefore, even if tc->sym->sizeof == SIZEOKnone,
-             * we need to set baseClass field for class covariance check.
-             */
-            baseClass = tc->sym;
-            b->sym = baseClass;
-
-            if (tc->sym->baseok < BASEOKdone)
-                resolveBase(this, sc, scx, tc->sym); // Try to resolve forward reference
-            if (tc->sym->baseok < BASEOKdone)
-            {
-                //printf("\ttry later, forward reference of base class %s\n", tc->sym->toChars());
-                if (tc->sym->_scope)
-                    tc->sym->_scope->_module->addDeferredSemantic(tc->sym);
-                baseok = BASEOKnone;
-            }
-         L7: ;
-        }
-
-        // Treat the remaining entries in baseclasses as interfaces
-        // Check for errors, handle forward references
-        for (size_t i = (baseClass ? 1 : 0); i < baseclasses->dim; )
-        {
-            BaseClass *b = (*baseclasses)[i];
-            Type *tb = b->type->toBasetype();
-            TypeClass *tc = (tb->ty == Tclass) ? (TypeClass *)tb : NULL;
-            if (!tc || !tc->sym->isInterfaceDeclaration())
-            {
-                if (b->type != Type::terror)
-                    error("base type must be interface, not %s", b->type->toChars());
-                baseclasses->remove(i);
-                continue;
-            }
-
-            // Check for duplicate interfaces
-            for (size_t j = (baseClass ? 1 : 0); j < i; j++)
-            {
-                BaseClass *b2 = (*baseclasses)[j];
-                if (b2->sym == tc->sym)
-                {
-                    error("inherits from duplicate interface %s", b2->sym->toChars());
-                    baseclasses->remove(i);
-                    continue;
-                }
-            }
-
-            if (tc->sym->isDeprecated())
-            {
-                if (!isDeprecated())
-                {
-                    // Deriving from deprecated class makes this one deprecated too
-                    isdeprecated = true;
-
-                    tc->checkDeprecated(loc, sc);
-                }
-            }
-
-            b->sym = tc->sym;
-
-            if (tc->sym->baseok < BASEOKdone)
-                resolveBase(this, sc, scx, tc->sym); // Try to resolve forward reference
-            if (tc->sym->baseok < BASEOKdone)
-            {
-                //printf("\ttry later, forward reference of base %s\n", tc->sym->toChars());
-                if (tc->sym->_scope)
-                    tc->sym->_scope->_module->addDeferredSemantic(tc->sym);
-                baseok = BASEOKnone;
-            }
-            i++;
-        }
-        if (baseok == BASEOKnone)
-        {
-            // Forward referencee of one or more bases, try again later
-            _scope = scx ? scx : sc->copy();
-            _scope->setNoFree();
-            _scope->_module->addDeferredSemantic(this);
-            //printf("\tL%d semantic('%s') failed due to forward references\n", __LINE__, toChars());
-            return;
-        }
-        baseok = BASEOKdone;
-
-        // If no base class, and this is not an Object, use Object as base class
-        if (!baseClass && ident != Id::Object && !isCPPclass())
-        {
-            if (!object || object->errors)
-                badObjectDotD(this);
-
-            Type *t = object->type;
-            t = t->semantic(loc, sc)->toBasetype();
-            if (t->ty == Terror)
-                badObjectDotD(this);
-            assert(t->ty == Tclass);
-            TypeClass *tc = (TypeClass *)t;
-
-            BaseClass *b = new BaseClass(tc);
-            baseclasses->shift(b);
-
-            baseClass = tc->sym;
-            assert(!baseClass->isInterfaceDeclaration());
-            b->sym = baseClass;
-        }
-        if (baseClass)
-        {
-            if (baseClass->storage_class & STCfinal)
-                error("cannot inherit from final class %s", baseClass->toChars());
-
-            // Inherit properties from base class
-            if (baseClass->isCOMclass())
-                com = true;
-            if (baseClass->isCPPclass())
-                classKind = ClassKind::cpp;
-            if (baseClass->isscope)
-                isscope = true;
-            enclosing = baseClass->enclosing;
-            storage_class |= baseClass->storage_class & STC_TYPECTOR;
-        }
-
-        interfaces.length = baseclasses->dim - (baseClass ? 1 : 0);
-        interfaces.ptr = baseclasses->tdata() + (baseClass ? 1 : 0);
-
-        for (size_t i = 0; i < interfaces.length; i++)
-        {
-            BaseClass *b = interfaces.ptr[i];
-            // If this is an interface, and it derives from a COM interface,
-            // then this is a COM interface too.
-            if (b->sym->isCOMinterface())
-                com = true;
-            if (isCPPclass() && !b->sym->isCPPinterface())
-            {
-                ::error(loc, "C++ class '%s' cannot implement D interface '%s'",
-                    toPrettyChars(), b->sym->toPrettyChars());
-            }
-        }
-
-        interfaceSemantic(sc);
-    }
-Lancestorsdone:
-    //printf("\tClassDeclaration::semantic(%s) baseok = %d\n", toChars(), baseok);
-
-    if (!members)               // if opaque declaration
-    {
-        semanticRun = PASSsemanticdone;
-        return;
-    }
-    if (!symtab)
-    {
-        symtab = new DsymbolTable();
-
-        /* Bugzilla 12152: The semantic analysis of base classes should be finished
-         * before the members semantic analysis of this class, in order to determine
-         * vtbl in this class. However if a base class refers the member of this class,
-         * it can be resolved as a normal forward reference.
-         * Call addMember() and setScope() to make this class members visible from the base classes.
-         */
-        for (size_t i = 0; i < members->dim; i++)
-        {
-            Dsymbol *s = (*members)[i];
-            s->addMember(sc, this);
-        }
-
-        Scope *sc2 = newScope(sc);
-
-        /* Set scope so if there are forward references, we still might be able to
-         * resolve individual members like enums.
-         */
-        for (size_t i = 0; i < members->dim; i++)
-        {
-            Dsymbol *s = (*members)[i];
-            //printf("[%d] setScope %s %s, sc2 = %p\n", i, s->kind(), s->toChars(), sc2);
-            s->setScope(sc2);
-        }
-
-        sc2->pop();
-    }
-
-    for (size_t i = 0; i < baseclasses->dim; i++)
-    {
-        BaseClass *b = (*baseclasses)[i];
-        Type *tb = b->type->toBasetype();
-        assert(tb->ty == Tclass);
-        TypeClass *tc = (TypeClass *)tb;
-
-        if (tc->sym->semanticRun < PASSsemanticdone)
-        {
-            // Forward referencee of one or more bases, try again later
-            _scope = scx ? scx : sc->copy();
-            _scope->setNoFree();
-            if (tc->sym->_scope)
-                tc->sym->_scope->_module->addDeferredSemantic(tc->sym);
-            _scope->_module->addDeferredSemantic(this);
-            //printf("\tL%d semantic('%s') failed due to forward references\n", __LINE__, toChars());
-            return;
-        }
-    }
-
-    if (baseok == BASEOKdone)
-    {
-        baseok = BASEOKsemanticdone;
-
-        // initialize vtbl
-        if (baseClass)
-        {
-            if (isCPPclass() && baseClass->vtbl.dim == 0)
-            {
-                error("C++ base class %s needs at least one virtual function", baseClass->toChars());
-            }
-
-            // Copy vtbl[] from base class
-            vtbl.setDim(baseClass->vtbl.dim);
-            memcpy(vtbl.tdata(), baseClass->vtbl.tdata(), sizeof(void *) * vtbl.dim);
-
-            vthis = baseClass->vthis;
-        }
-        else
-        {
-            // No base class, so this is the root of the class hierarchy
-            vtbl.setDim(0);
-            if (vtblOffset())
-                vtbl.push(this);            // leave room for classinfo as first member
-        }
-
-        /* If this is a nested class, add the hidden 'this'
-         * member which is a pointer to the enclosing scope.
-         */
-        if (vthis)              // if inheriting from nested class
-        {
-            // Use the base class's 'this' member
-            if (storage_class & STCstatic)
-                error("static class cannot inherit from nested class %s", baseClass->toChars());
-            if (toParent2() != baseClass->toParent2() &&
-                (!toParent2() ||
-                 !baseClass->toParent2()->getType() ||
-                 !baseClass->toParent2()->getType()->isBaseOf(toParent2()->getType(), NULL)))
-            {
-                if (toParent2())
-                {
-                    error("is nested within %s, but super class %s is nested within %s",
-                        toParent2()->toChars(),
-                        baseClass->toChars(),
-                        baseClass->toParent2()->toChars());
-                }
-                else
-                {
-                    error("is not nested, but super class %s is nested within %s",
-                        baseClass->toChars(),
-                        baseClass->toParent2()->toChars());
-                }
-                enclosing = NULL;
-            }
-        }
-        else
-            makeNested();
-    }
-
-    Scope *sc2 = newScope(sc);
-
-    for (size_t i = 0; i < members->dim; i++)
-    {
-        Dsymbol *s = (*members)[i];
-        s->importAll(sc2);
-    }
-
-    // Note that members.dim can grow due to tuple expansion during semantic()
-    for (size_t i = 0; i < members->dim; i++)
-    {
-        Dsymbol *s = (*members)[i];
-        s->semantic(sc2);
-    }
-
-    if (!determineFields())
-    {
-        assert(type == Type::terror);
-        sc2->pop();
-        return;
-    }
-
-    /* Following special member functions creation needs semantic analysis
-     * completion of sub-structs in each field types.
-     */
-    for (size_t i = 0; i < fields.dim; i++)
-    {
-        VarDeclaration *v = fields[i];
-        Type *tb = v->type->baseElemOf();
-        if (tb->ty != Tstruct)
-            continue;
-        StructDeclaration *sd = ((TypeStruct *)tb)->sym;
-        if (sd->semanticRun >= PASSsemanticdone)
-            continue;
-
-        sc2->pop();
-
-        _scope = scx ? scx : sc->copy();
-        _scope->setNoFree();
-        _scope->_module->addDeferredSemantic(this);
-        //printf("\tdeferring %s\n", toChars());
-        return;
-    }
-
-    /* Look for special member functions.
-     * They must be in this class, not in a base class.
-     */
-
-    // Can be in base class
-    aggNew    =    (NewDeclaration *)search(Loc(), Id::classNew);
-    aggDelete = (DeleteDeclaration *)search(Loc(), Id::classDelete);
-
-    // Look for the constructor
-    ctor = searchCtor();
-
-    if (!ctor && noDefaultCtor)
-    {
-        // A class object is always created by constructor, so this check is legitimate.
-        for (size_t i = 0; i < fields.dim; i++)
-        {
-            VarDeclaration *v = fields[i];
-            if (v->storage_class & STCnodefaultctor)
-                ::error(v->loc, "field %s must be initialized in constructor", v->toChars());
-        }
-    }
-
-    // If this class has no constructor, but base class has a default
-    // ctor, create a constructor:
-    //    this() { }
-    if (!ctor && baseClass && baseClass->ctor)
-    {
-        FuncDeclaration *fd = resolveFuncCall(loc, sc2, baseClass->ctor, NULL, type, NULL, 1);
-        if (!fd) // try shared base ctor instead
-            fd = resolveFuncCall(loc, sc2, baseClass->ctor, NULL, type->sharedOf(), NULL, 1);
-        if (fd && !fd->errors)
-        {
-            //printf("Creating default this(){} for class %s\n", toChars());
-            TypeFunction *btf = fd->type->toTypeFunction();
-            TypeFunction *tf = new TypeFunction(NULL, NULL, 0, LINKd, fd->storage_class);
-            tf->mod = btf->mod;
-            tf->purity = btf->purity;
-            tf->isnothrow = btf->isnothrow;
-            tf->isnogc = btf->isnogc;
-            tf->trust = btf->trust;
-
-            CtorDeclaration *ctor = new CtorDeclaration(loc, Loc(), 0, tf);
-            ctor->fbody = new CompoundStatement(Loc(), new Statements());
-
-            members->push(ctor);
-            ctor->addMember(sc, this);
-            ctor->semantic(sc2);
-
-            this->ctor = ctor;
-            defaultCtor = ctor;
-        }
-        else
-        {
-            error("cannot implicitly generate a default ctor when base class %s is missing a default ctor",
-                baseClass->toPrettyChars());
-        }
-    }
-
-    dtor = buildDtor(this, sc2);
-
-    if (FuncDeclaration *f = hasIdentityOpAssign(this, sc2))
-    {
-        if (!(f->storage_class & STCdisable))
-            error(f->loc, "identity assignment operator overload is illegal");
-    }
-
-    inv = buildInv(this, sc2);
-
-    Module::dprogress++;
-    semanticRun = PASSsemanticdone;
-    //printf("-ClassDeclaration.semantic(%s), type = %p\n", toChars(), type);
-    //members.print();
-
-    sc2->pop();
-
-    if (type->ty == Tclass && ((TypeClass *)type)->sym != this)
-    {
-        // https://issues.dlang.org/show_bug.cgi?id=17492
-        ClassDeclaration *cd = ((TypeClass *)type)->sym;
-        error("already exists at %s. Perhaps in another function with the same name?", cd->loc.toChars());
-    }
-
-    if (global.errors != errors)
-    {
-        // The type is no good.
-        type = Type::terror;
-        this->errors = true;
-        if (deferred)
-            deferred->errors = true;
-    }
-
-    // Verify fields of a synchronized class are not public
-    if (storage_class & STCsynchronized)
-    {
-        for (size_t i = 0; i < fields.dim; i++)
-        {
-            VarDeclaration *vd = fields[i];
-            if (!vd->isThisDeclaration() &&
-                !vd->prot().isMoreRestrictiveThan(Prot(PROTpublic)))
-            {
-                vd->error("Field members of a synchronized class cannot be %s",
-                    protectionToChars(vd->prot().kind));
-            }
-        }
-    }
-
-    if (deferred && !global.gag)
-    {
-        deferred->semantic2(sc);
-        deferred->semantic3(sc);
-    }
-    //printf("-ClassDeclaration::semantic(%s), type = %p, sizeok = %d, this = %p\n", toChars(), type, sizeok, this);
 }
 
 /*********************************************
@@ -893,7 +295,7 @@ bool ClassDeclaration::isBaseOf2(ClassDeclaration *cd)
     if (!cd)
         return false;
     //printf("ClassDeclaration::isBaseOf2(this = '%s', cd = '%s')\n", toChars(), cd->toChars());
-    for (size_t i = 0; i < cd->baseclasses->dim; i++)
+    for (size_t i = 0; i < cd->baseclasses->length; i++)
     {
         BaseClass *b = (*cd->baseclasses)[i];
         if (b->sym == this || isBaseOf2(b->sym))
@@ -917,7 +319,7 @@ bool ClassDeclaration::isBaseOf(ClassDeclaration *cd, int *poffset)
          */
         if (!cd->baseClass && cd->semanticRun < PASSsemanticdone && !cd->isInterfaceDeclaration())
         {
-            cd->semantic(NULL);
+            dsymbolSemantic(cd, NULL);
             if (!cd->baseClass && cd->semanticRun < PASSsemanticdone)
                 cd->error("base class is forward referenced by %s", toChars());
         }
@@ -951,14 +353,14 @@ Dsymbol *ClassDeclaration::search(const Loc &loc, Identifier *ident, int flags)
         {
             // must semantic on base class/interfaces
             ++inuse;
-            semantic(NULL);
+            dsymbolSemantic(this, NULL);
             --inuse;
         }
     }
 
     if (!members || !symtab)    // opaque or addMember is not yet done
     {
-        error("is forward referenced when looking for '%s'", ident->toChars());
+        error("is forward referenced when looking for `%s`", ident->toChars());
         //*(char*)0=0;
         return NULL;
     }
@@ -973,7 +375,7 @@ Dsymbol *ClassDeclaration::search(const Loc &loc, Identifier *ident, int flags)
     {
         // Search bases classes in depth-first, left to right order
 
-        for (size_t i = 0; i < baseclasses->dim; i++)
+        for (size_t i = 0; i < baseclasses->length; i++)
         {
             BaseClass *b = (*baseclasses)[i];
 
@@ -988,7 +390,7 @@ Dsymbol *ClassDeclaration::search(const Loc &loc, Identifier *ident, int flags)
                         continue;
                     else if (s == this) // happens if s is nested in this and derives from this
                         s = NULL;
-                    else if (!(flags & IgnoreSymbolVisibility) && !(s->prot().kind == PROTprotected) && !symbolIsVisible(this, s))
+                    else if (!(flags & IgnoreSymbolVisibility) && !(s->prot().kind == Prot::protected_) && !symbolIsVisible(this, s))
                         s = NULL;
                     else
                         break;
@@ -1010,7 +412,7 @@ Dsymbol *ClassDeclaration::search(const Loc &loc, Identifier *ident, int flags)
  */
 ClassDeclaration *ClassDeclaration::searchBase(Identifier *ident)
 {
-    for (size_t i = 0; i < baseclasses->dim; i++)
+    for (size_t i = 0; i < baseclasses->length; i++)
     {
         BaseClass *b = (*baseclasses)[i];
         ClassDeclaration *cdb = b->type->isClassHandle();
@@ -1048,9 +450,9 @@ static unsigned membersPlace(BaseClasses *vtblInterfaces, size_t &bi, ClassDecla
         assert(b->sym->sizeok == SIZEOKdone);
 
         if (!b->sym->alignsize)
-            b->sym->alignsize = Target::ptrsize;
+            b->sym->alignsize = target.ptrsize;
         cd->alignmember(b->sym->alignsize, b->sym->alignsize, &offset);
-        assert(bi < vtblInterfaces->dim);
+        assert(bi < vtblInterfaces->length);
         BaseClass *bv = (*vtblInterfaces)[bi];
         if (b->sym->interfaces.length == 0)
         {
@@ -1084,24 +486,25 @@ void ClassDeclaration::finalizeSize()
         assert(baseClass->sizeok == SIZEOKdone);
 
         alignsize = baseClass->alignsize;
-        structsize = baseClass->structsize;
-        if (isCPPclass() && global.params.isWindows)
-            structsize = (structsize + alignsize - 1) & ~(alignsize - 1);
+        if (classKind == ClassKind::cpp)
+            structsize = target.cpp.derivedClassOffset(baseClass);
+        else
+            structsize = baseClass->structsize;
     }
     else if (isInterfaceDeclaration())
     {
         if (interfaces.length == 0)
         {
-            alignsize = Target::ptrsize;
-            structsize = Target::ptrsize;      // allow room for __vptr
+            alignsize = target.ptrsize;
+            structsize = target.ptrsize;      // allow room for __vptr
         }
     }
     else
     {
-        alignsize = Target::ptrsize;
-        structsize = Target::ptrsize;      // allow room for __vptr
-        if (!isCPPclass())
-            structsize += Target::ptrsize; // allow room for __monitor
+        alignsize = target.ptrsize;
+        structsize = target.ptrsize;      // allow room for __vptr
+        if (hasMonitor())
+            structsize += target.ptrsize; // allow room for __monitor
     }
 
     //printf("finalizeSize() %s, sizeok = %d\n", toChars(), sizeok);
@@ -1121,7 +524,7 @@ void ClassDeclaration::finalizeSize()
     fields.setDim(0);
 
     unsigned offset = structsize;
-    for (size_t i = 0; i < members->dim; i++)
+    for (size_t i = 0; i < members->length; i++)
     {
         Dsymbol *s = (*members)[i];
         s->setFieldOffset(this, &offset, false);
@@ -1131,6 +534,14 @@ void ClassDeclaration::finalizeSize()
 
     // Calculate fields[i]->overlapped
     checkOverlappedFields();
+}
+
+/**************
+ * Returns: true if there's a __monitor field
+ */
+bool ClassDeclaration::hasMonitor()
+{
+    return classKind == ClassKind::d;
 }
 
 /**********************************************************
@@ -1163,7 +574,7 @@ bool ClassDeclaration::isFuncHidden(FuncDeclaration *fd)
     OverloadSet *os = s->isOverloadSet();
     if (os)
     {
-        for (size_t i = 0; i < os->a.dim; i++)
+        for (size_t i = 0; i < os->a.length; i++)
         {
             Dsymbol *s2 = os->a[i];
             FuncDeclaration *f2 = s2->isFuncDeclaration();
@@ -1198,7 +609,7 @@ FuncDeclaration *ClassDeclaration::findFunc(Identifier *ident, TypeFunction *tf)
     Dsymbols *vtbl = &cd->vtbl;
     while (1)
     {
-        for (size_t i = 0; i < vtbl->dim; i++)
+        for (size_t i = 0; i < vtbl->length; i++)
         {
             FuncDeclaration *fd = (*vtbl)[i]->isFuncDeclaration();
             if (!fd)
@@ -1269,19 +680,6 @@ FuncDeclaration *ClassDeclaration::findFunc(Identifier *ident, TypeFunction *tf)
     return fdmatch;
 }
 
-void ClassDeclaration::interfaceSemantic(Scope *)
-{
-    vtblInterfaces = new BaseClasses();
-    vtblInterfaces->reserve(interfaces.length);
-
-    for (size_t i = 0; i < interfaces.length; i++)
-    {
-        BaseClass *b = interfaces.ptr[i];
-        vtblInterfaces->push(b);
-        b->copyBaseInterfaces(vtblInterfaces);
-    }
-}
-
 /****************************************
  */
 
@@ -1328,7 +726,7 @@ bool ClassDeclaration::isAbstract()
                 return 0;
 
             if (fd->_scope)
-                fd->semantic(NULL);
+                dsymbolSemantic(fd, NULL);
 
             if (fd->isAbstract())
                 return 1;
@@ -1336,7 +734,7 @@ bool ClassDeclaration::isAbstract()
         }
     };
 
-    for (size_t i = 0; i < members->dim; i++)
+    for (size_t i = 0; i < members->length; i++)
     {
         Dsymbol *s = (*members)[i];
         if (s->apply(&SearchAbstract::fp, this))
@@ -1348,7 +746,7 @@ bool ClassDeclaration::isAbstract()
 
     /* Iterate inherited member functions and check their abstract attribute.
      */
-    for (size_t i = 1; i < vtbl.dim; i++)
+    for (size_t i = 1; i < vtbl.length; i++)
     {
         FuncDeclaration *fd = vtbl[i]->isFuncDeclaration();
         //if (fd) printf("\tvtbl[%d] = [%s] %s\n", i, fd->loc.toChars(), fd->toChars());
@@ -1425,303 +823,6 @@ Scope *InterfaceDeclaration::newScope(Scope *sc)
     else if (classKind == ClassKind::objc)
         sc2->linkage = LINKobjc;
     return sc2;
-}
-
-void InterfaceDeclaration::semantic(Scope *sc)
-{
-    //printf("InterfaceDeclaration::semantic(%s), type = %p\n", toChars(), type);
-    if (semanticRun >= PASSsemanticdone)
-        return;
-    unsigned errors = global.errors;
-
-    //printf("+InterfaceDeclaration.semantic(%s), type = %p\n", toChars(), type);
-
-    Scope *scx = NULL;
-    if (_scope)
-    {
-        sc = _scope;
-        scx = _scope;            // save so we don't make redundant copies
-        _scope = NULL;
-    }
-
-    if (!parent)
-    {
-        assert(sc->parent && sc->func);
-        parent = sc->parent;
-    }
-    assert(parent && !isAnonymous());
-
-    if (this->errors)
-        type = Type::terror;
-    type = type->semantic(loc, sc);
-
-    if (type->ty == Tclass && ((TypeClass *)type)->sym != this)
-    {
-        TemplateInstance *ti = ((TypeClass *)type)->sym->isInstantiated();
-        if (ti && isError(ti))
-            ((TypeClass *)type)->sym = this;
-    }
-
-    // Ungag errors when not speculative
-    Ungag ungag = ungagSpeculative();
-
-    if (semanticRun == PASSinit)
-    {
-        protection = sc->protection;
-
-        storage_class |= sc->stc;
-        if (storage_class & STCdeprecated)
-            isdeprecated = true;
-
-        userAttribDecl = sc->userAttribDecl;
-    }
-    else if (symtab)
-    {
-        if (sizeok == SIZEOKdone || !scx)
-        {
-            semanticRun = PASSsemanticdone;
-            return;
-        }
-    }
-    semanticRun = PASSsemantic;
-
-    if (baseok < BASEOKdone)
-    {
-        baseok = BASEOKin;
-
-        // Expand any tuples in baseclasses[]
-        for (size_t i = 0; i < baseclasses->dim; )
-        {
-            BaseClass *b = (*baseclasses)[i];
-            b->type = resolveBase(this, sc, scx, b->type);
-
-            Type *tb = b->type->toBasetype();
-            if (tb->ty == Ttuple)
-            {
-                TypeTuple *tup = (TypeTuple *)tb;
-                baseclasses->remove(i);
-                size_t dim = Parameter::dim(tup->arguments);
-                for (size_t j = 0; j < dim; j++)
-                {
-                    Parameter *arg = Parameter::getNth(tup->arguments, j);
-                    b = new BaseClass(arg->type);
-                    baseclasses->insert(i + j, b);
-                }
-            }
-            else
-                i++;
-        }
-
-        if (baseok >= BASEOKdone)
-        {
-            //printf("%s already semantic analyzed, semanticRun = %d\n", toChars(), semanticRun);
-            if (semanticRun >= PASSsemanticdone)
-                return;
-            goto Lancestorsdone;
-        }
-
-        if (!baseclasses->dim && sc->linkage == LINKcpp)
-            classKind = ClassKind::cpp;
-        if (sc->linkage == LINKobjc)
-            objc()->setObjc(this);
-
-        // Check for errors, handle forward references
-        for (size_t i = 0; i < baseclasses->dim; )
-        {
-            BaseClass *b = (*baseclasses)[i];
-            Type *tb = b->type->toBasetype();
-            TypeClass *tc = (tb->ty == Tclass) ? (TypeClass *)tb : NULL;
-            if (!tc || !tc->sym->isInterfaceDeclaration())
-            {
-                if (b->type != Type::terror)
-                    error("base type must be interface, not %s", b->type->toChars());
-                baseclasses->remove(i);
-                continue;
-            }
-
-            // Check for duplicate interfaces
-            for (size_t j = 0; j < i; j++)
-            {
-                BaseClass *b2 = (*baseclasses)[j];
-                if (b2->sym == tc->sym)
-                {
-                    error("inherits from duplicate interface %s", b2->sym->toChars());
-                    baseclasses->remove(i);
-                    continue;
-                }
-            }
-
-            if (tc->sym == this || isBaseOf2(tc->sym))
-            {
-                error("circular inheritance of interface");
-                baseclasses->remove(i);
-                continue;
-            }
-
-            if (tc->sym->isDeprecated())
-            {
-                if (!isDeprecated())
-                {
-                    // Deriving from deprecated class makes this one deprecated too
-                    isdeprecated = true;
-
-                    tc->checkDeprecated(loc, sc);
-                }
-            }
-
-            b->sym = tc->sym;
-
-            if (tc->sym->baseok < BASEOKdone)
-                resolveBase(this, sc, scx, tc->sym); // Try to resolve forward reference
-            if (tc->sym->baseok < BASEOKdone)
-            {
-                //printf("\ttry later, forward reference of base %s\n", tc->sym->toChars());
-                if (tc->sym->_scope)
-                    tc->sym->_scope->_module->addDeferredSemantic(tc->sym);
-                baseok = BASEOKnone;
-            }
-            i++;
-        }
-        if (baseok == BASEOKnone)
-        {
-            // Forward referencee of one or more bases, try again later
-            _scope = scx ? scx : sc->copy();
-            _scope->setNoFree();
-            _scope->_module->addDeferredSemantic(this);
-            return;
-        }
-        baseok = BASEOKdone;
-
-        interfaces.length = baseclasses->dim;
-        interfaces.ptr = baseclasses->tdata();
-
-        for (size_t i = 0; i < interfaces.length; i++)
-        {
-            BaseClass *b = interfaces.ptr[i];
-            // If this is an interface, and it derives from a COM interface,
-            // then this is a COM interface too.
-            if (b->sym->isCOMinterface())
-                com = true;
-            if (b->sym->isCPPinterface())
-                classKind = ClassKind::cpp;
-        }
-
-        interfaceSemantic(sc);
-    }
-Lancestorsdone:
-
-    if (!members)               // if opaque declaration
-    {
-        semanticRun = PASSsemanticdone;
-        return;
-    }
-    if (!symtab)
-        symtab = new DsymbolTable();
-
-    for (size_t i = 0; i < baseclasses->dim; i++)
-    {
-        BaseClass *b = (*baseclasses)[i];
-        Type *tb = b->type->toBasetype();
-        assert(tb->ty == Tclass);
-        TypeClass *tc = (TypeClass *)tb;
-
-        if (tc->sym->semanticRun < PASSsemanticdone)
-        {
-            // Forward referencee of one or more bases, try again later
-            _scope = scx ? scx : sc->copy();
-            _scope->setNoFree();
-            if (tc->sym->_scope)
-                tc->sym->_scope->_module->addDeferredSemantic(tc->sym);
-            _scope->_module->addDeferredSemantic(this);
-            return;
-        }
-    }
-
-    if (baseok == BASEOKdone)
-    {
-        baseok = BASEOKsemanticdone;
-
-        // initialize vtbl
-        if (vtblOffset())
-            vtbl.push(this);                // leave room at vtbl[0] for classinfo
-
-        // Cat together the vtbl[]'s from base interfaces
-        for (size_t i = 0; i < interfaces.length; i++)
-        {
-            BaseClass *b = interfaces.ptr[i];
-
-            // Skip if b has already appeared
-            for (size_t k = 0; k < i; k++)
-            {
-                if (b == interfaces.ptr[k])
-                    goto Lcontinue;
-            }
-
-            // Copy vtbl[] from base class
-            if (b->sym->vtblOffset())
-            {
-                size_t d = b->sym->vtbl.dim;
-                if (d > 1)
-                {
-                    vtbl.reserve(d - 1);
-                    for (size_t j = 1; j < d; j++)
-                        vtbl.push(b->sym->vtbl[j]);
-                }
-            }
-            else
-            {
-                vtbl.append(&b->sym->vtbl);
-            }
-
-          Lcontinue:
-            ;
-        }
-    }
-
-    for (size_t i = 0; i < members->dim; i++)
-    {
-        Dsymbol *s = (*members)[i];
-        s->addMember(sc, this);
-    }
-
-    Scope *sc2 = newScope(sc);
-
-    /* Set scope so if there are forward references, we still might be able to
-     * resolve individual members like enums.
-     */
-    for (size_t i = 0; i < members->dim; i++)
-    {
-        Dsymbol *s = (*members)[i];
-        //printf("setScope %s %s\n", s->kind(), s->toChars());
-        s->setScope(sc2);
-    }
-
-    for (size_t i = 0; i < members->dim; i++)
-    {
-        Dsymbol *s = (*members)[i];
-        s->importAll(sc2);
-    }
-
-    for (size_t i = 0; i < members->dim; i++)
-    {
-        Dsymbol *s = (*members)[i];
-        s->semantic(sc2);
-    }
-
-    Module::dprogress++;
-    semanticRun = PASSsemanticdone;
-    //printf("-InterfaceDeclaration.semantic(%s), type = %p\n", toChars(), type);
-    //members->print();
-
-    sc2->pop();
-
-    if (global.errors != errors)
-    {
-        // The type is no good.
-        type = Type::terror;
-    }
-
-    assert(type->ty != Tclass || ((TypeClass *)type)->sym == this);
 }
 
 /*******************************************
@@ -1867,10 +968,10 @@ bool BaseClass::fillVtbl(ClassDeclaration *cd, FuncDeclarations *vtbl, int newin
 
     //printf("BaseClass::fillVtbl(this='%s', cd='%s')\n", sym->toChars(), cd->toChars());
     if (vtbl)
-        vtbl->setDim(sym->vtbl.dim);
+        vtbl->setDim(sym->vtbl.length);
 
     // first entry is ClassInfo reference
-    for (size_t j = sym->vtblOffset(); j < sym->vtbl.dim; j++)
+    for (size_t j = sym->vtblOffset(); j < sym->vtbl.length; j++)
     {
         FuncDeclaration *ifd = sym->vtbl[j]->isFuncDeclaration();
         FuncDeclaration *fd;
@@ -1893,7 +994,7 @@ bool BaseClass::fillVtbl(ClassDeclaration *cd, FuncDeclarations *vtbl, int newin
             //printf("newinstance = %d fd->toParent() = %s ifd->toParent() = %s\n",
                 //newinstance, fd->toParent()->toChars(), ifd->toParent()->toChars());
             if (newinstance && fd->toParent() != cd && ifd->toParent() == sym)
-                cd->error("interface function '%s' is not implemented", ifd->toFullSignature());
+                cd->error("interface function `%s` is not implemented", ifd->toFullSignature());
 
             if (fd->toParent() == cd)
                 result = true;
@@ -1903,7 +1004,7 @@ bool BaseClass::fillVtbl(ClassDeclaration *cd, FuncDeclarations *vtbl, int newin
             //printf("            not found %p\n", fd);
             // BUG: should mark this class as abstract?
             if (!cd->isAbstract())
-                cd->error("interface function '%s' is not implemented", ifd->toFullSignature());
+                cd->error("interface function `%s` is not implemented", ifd->toFullSignature());
 
             fd = NULL;
         }
@@ -1929,7 +1030,7 @@ void BaseClass::copyBaseInterfaces(BaseClasses *vtblInterfaces)
         void *pb = &baseInterfaces.ptr[i];
         BaseClass *b2 = sym->interfaces.ptr[i];
 
-        assert(b2->vtbl.dim == 0);      // should not be filled yet
+        assert(b2->vtbl.length == 0);      // should not be filled yet
         BaseClass *b = (BaseClass *)memcpy(pb, b2, sizeof(BaseClass));
 
         if (i)                          // single inheritance is i==0

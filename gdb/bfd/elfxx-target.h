@@ -1,5 +1,5 @@
 /* Target definitions for NN-bit ELF
-   Copyright (C) 1993-2020 Free Software Foundation, Inc.
+   Copyright (C) 1993-2021 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -130,13 +130,13 @@
 #define elf_backend_extern_protected_data 0
 #endif
 #ifndef elf_backend_always_renumber_dynsyms
-#define elf_backend_always_renumber_dynsyms FALSE
+#define elf_backend_always_renumber_dynsyms false
 #endif
 #ifndef elf_backend_linux_prpsinfo32_ugid16
-#define elf_backend_linux_prpsinfo32_ugid16 FALSE
+#define elf_backend_linux_prpsinfo32_ugid16 false
 #endif
 #ifndef elf_backend_linux_prpsinfo64_ugid16
-#define elf_backend_linux_prpsinfo64_ugid16 FALSE
+#define elf_backend_linux_prpsinfo64_ugid16 false
 #endif
 #ifndef elf_backend_stack_align
 #define elf_backend_stack_align 16
@@ -408,10 +408,10 @@
 #endif
 
 #ifndef elf_backend_collect
-#define elf_backend_collect FALSE
+#define elf_backend_collect false
 #endif
 #ifndef elf_backend_type_change_ok
-#define elf_backend_type_change_ok FALSE
+#define elf_backend_type_change_ok false
 #endif
 
 #ifndef elf_backend_sym_is_global
@@ -802,7 +802,7 @@
 
 extern const struct elf_size_info _bfd_elfNN_size_info;
 
-static struct elf_backend_data elfNN_bed =
+static const struct elf_backend_data elfNN_bed =
 {
   ELF_ARCH,			/* arch */
   ELF_TARGET_ID,		/* target_id */
@@ -1007,6 +1007,9 @@ const bfd_target TARGET_BIG_SYM =
 
   elf_match_priority,
 
+  /* TRUE if unused section symbols should be kept.  */
+  TARGET_KEEP_UNUSED_SECTION_SYMBOLS,
+
   /* Routines to byte-swap various sized integers from the data sections */
   bfd_getb64, bfd_getb_signed_64, bfd_putb64,
     bfd_getb32, bfd_getb_signed_32, bfd_putb32,
@@ -1107,6 +1110,9 @@ const bfd_target TARGET_LITTLE_SYM =
   15,
 
   elf_match_priority,
+
+  /* TRUE if unused section symbols should be kept.  */
+  TARGET_KEEP_UNUSED_SECTION_SYMBOLS,
 
   /* Routines to byte-swap various sized integers from the data sections */
   bfd_getl64, bfd_getl_signed_64, bfd_putl64,

@@ -1,6 +1,6 @@
 This is gdb.info, produced by makeinfo version 6.7 from gdb.texinfo.
 
-Copyright (C) 1988-2020 Free Software Foundation, Inc.
+Copyright (C) 1988-2022 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -21,9 +21,9 @@ END-INFO-DIR-ENTRY
    This file documents the GNU debugger GDB.
 
    This is the Tenth Edition, of 'Debugging with GDB: the GNU
-Source-Level Debugger' for GDB (GDB) Version 10.1.
+Source-Level Debugger' for GDB (GDB) Version 11.2.
 
-   Copyright (C) 1988-2020 Free Software Foundation, Inc.
+   Copyright (C) 1988-2022 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -35,6 +35,210 @@ with the Back-Cover Texts as in (a) below.
    (a) The FSF's Back-Cover Text is: "You are free to copy and modify
 this GNU Manual.  Buying copies from GNU Press supports the FSF in
 developing GNU and promoting software freedom."
+
+
+File: gdb.info,  Node: C Defaults,  Next: C Checks,  Prev: C Plus Plus Expressions,  Up: C
+
+15.4.1.4 C and C++ Defaults
+...........................
+
+If you allow GDB to set range checking automatically, it defaults to
+'off' whenever the working language changes to C or C++.  This happens
+regardless of whether you or GDB selects the working language.
+
+   If you allow GDB to set the language automatically, it recognizes
+source files whose names end with '.c', '.C', or '.cc', etc, and when
+GDB enters code compiled from one of these files, it sets the working
+language to C or C++.  *Note Having GDB Infer the Source Language:
+Automatically, for further details.
+
+
+File: gdb.info,  Node: C Checks,  Next: Debugging C,  Prev: C Defaults,  Up: C
+
+15.4.1.5 C and C++ Type and Range Checks
+........................................
+
+By default, when GDB parses C or C++ expressions, strict type checking
+is used.  However, if you turn type checking off, GDB will allow certain
+non-standard conversions, such as promoting integer constants to
+pointers.
+
+   Range checking, if turned on, is done on mathematical operations.
+Array indices are not checked, since they are often used to index a
+pointer that is not itself an array.
+
+
+File: gdb.info,  Node: Debugging C,  Next: Debugging C Plus Plus,  Prev: C Checks,  Up: C
+
+15.4.1.6 GDB and C
+..................
+
+The 'set print union' and 'show print union' commands apply to the
+'union' type.  When set to 'on', any 'union' that is inside a 'struct'
+or 'class' is also printed.  Otherwise, it appears as '{...}'.
+
+   The '@' operator aids in the debugging of dynamic arrays, formed with
+pointers and a memory allocation function.  *Note Expressions:
+Expressions.
+
+
+File: gdb.info,  Node: Debugging C Plus Plus,  Next: Decimal Floating Point,  Prev: Debugging C,  Up: C
+
+15.4.1.7 GDB Features for C++
+.............................
+
+Some GDB commands are particularly useful with C++, and some are
+designed specifically for use with C++.  Here is a summary:
+
+'breakpoint menus'
+     When you want a breakpoint in a function whose name is overloaded,
+     GDB has the capability to display a menu of possible breakpoint
+     locations to help you specify which function definition you want.
+     *Note Ambiguous Expressions: Ambiguous Expressions.
+
+'rbreak REGEX'
+     Setting breakpoints using regular expressions is helpful for
+     setting breakpoints on overloaded functions that are not members of
+     any special classes.  *Note Setting Breakpoints: Set Breaks.
+
+'catch throw'
+'catch rethrow'
+'catch catch'
+     Debug C++ exception handling using these commands.  *Note Setting
+     Catchpoints: Set Catchpoints.
+
+'ptype TYPENAME'
+     Print inheritance relationships as well as other information for
+     type TYPENAME.  *Note Examining the Symbol Table: Symbols.
+
+'info vtbl EXPRESSION.'
+     The 'info vtbl' command can be used to display the virtual method
+     tables of the object computed by EXPRESSION.  This shows one entry
+     per virtual table; there may be multiple virtual tables when
+     multiple inheritance is in use.
+
+'demangle NAME'
+     Demangle NAME.  *Note Symbols::, for a more complete description of
+     the 'demangle' command.
+
+'set print demangle'
+'show print demangle'
+'set print asm-demangle'
+'show print asm-demangle'
+     Control whether C++ symbols display in their source form, both when
+     displaying code as C++ source and when displaying disassemblies.
+     *Note Print Settings: Print Settings.
+
+'set print object'
+'show print object'
+     Choose whether to print derived (actual) or declared types of
+     objects.  *Note Print Settings: Print Settings.
+
+'set print vtbl'
+'show print vtbl'
+     Control the format for printing virtual function tables.  *Note
+     Print Settings: Print Settings.  (The 'vtbl' commands do not work
+     on programs compiled with the HP ANSI C++ compiler ('aCC').)
+
+'set overload-resolution on'
+     Enable overload resolution for C++ expression evaluation.  The
+     default is on.  For overloaded functions, GDB evaluates the
+     arguments and searches for a function whose signature matches the
+     argument types, using the standard C++ conversion rules (see *note
+     C++ Expressions: C Plus Plus Expressions, for details).  If it
+     cannot find a match, it emits a message.
+
+'set overload-resolution off'
+     Disable overload resolution for C++ expression evaluation.  For
+     overloaded functions that are not class member functions, GDB
+     chooses the first function of the specified name that it finds in
+     the symbol table, whether or not its arguments are of the correct
+     type.  For overloaded functions that are class member functions,
+     GDB searches for a function whose signature _exactly_ matches the
+     argument types.
+
+'show overload-resolution'
+     Show the current setting of overload resolution.
+
+'Overloaded symbol names'
+     You can specify a particular definition of an overloaded symbol,
+     using the same notation that is used to declare such symbols in
+     C++: type 'SYMBOL(TYPES)' rather than just SYMBOL.  You can also
+     use the GDB command-line word completion facilities to list the
+     available choices, or to finish the type list for you.  *Note
+     Command Completion: Completion, for details on how to do this.
+
+'Breakpoints in functions with ABI tags'
+
+     The GNU C++ compiler introduced the notion of ABI "tags", which
+     correspond to changes in the ABI of a type, function, or variable
+     that would not otherwise be reflected in a mangled name.  See
+     <https://developers.redhat.com/blog/2015/02/05/gcc5-and-the-c11-abi/>
+     for more detail.
+
+     The ABI tags are visible in C++ demangled names.  For example, a
+     function that returns a std::string:
+
+          std::string function(int);
+
+     when compiled for the C++11 ABI is marked with the 'cxx11' ABI tag,
+     and GDB displays the symbol like this:
+
+          function[abi:cxx11](int)
+
+     You can set a breakpoint on such functions simply as if they had no
+     tag.  For example:
+
+          (gdb) b function(int)
+          Breakpoint 2 at 0x40060d: file main.cc, line 10.
+          (gdb) info breakpoints
+          Num     Type           Disp Enb Address    What
+          1       breakpoint     keep y   0x0040060d in function[abi:cxx11](int)
+                                                     at main.cc:10
+
+     On the rare occasion you need to disambiguate between different ABI
+     tags, you can do so by simply including the ABI tag in the function
+     name, like:
+
+          (gdb) b ambiguous[abi:other_tag](int)
+
+
+File: gdb.info,  Node: Decimal Floating Point,  Prev: Debugging C Plus Plus,  Up: C
+
+15.4.1.8 Decimal Floating Point format
+......................................
+
+GDB can examine, set and perform computations with numbers in decimal
+floating point format, which in the C language correspond to the
+'_Decimal32', '_Decimal64' and '_Decimal128' types as specified by the
+extension to support decimal floating-point arithmetic.
+
+   There are two encodings in use, depending on the architecture: BID
+(Binary Integer Decimal) for x86 and x86-64, and DPD (Densely Packed
+Decimal) for PowerPC and S/390.  GDB will use the appropriate encoding
+for the configured target.
+
+   Because of a limitation in 'libdecnumber', the library used by GDB to
+manipulate decimal floating point numbers, it is not possible to convert
+(using a cast, for example) integers wider than 32-bit to decimal float.
+
+   In addition, in order to imitate GDB's behaviour with binary floating
+point computations, error checking in decimal float operations ignores
+underflow, overflow and divide by zero exceptions.
+
+   In the PowerPC architecture, GDB provides a set of pseudo-registers
+to inspect '_Decimal128' values stored in floating point registers.  See
+*note PowerPC: PowerPC. for more details.
+
+
+File: gdb.info,  Node: D,  Next: Go,  Prev: C,  Up: Supported Languages
+
+15.4.2 D
+--------
+
+GDB can be used to debug programs written in D and compiled with GDC,
+LDC or DMD compilers.  Currently GDB supports only one D specific
+feature -- dynamic arrays.
 
 
 File: gdb.info,  Node: Go,  Next: Objective-C,  Prev: D,  Up: Supported Languages
@@ -277,6 +481,26 @@ displaying common blocks.
      block whose name is COMMON-NAME.  With no argument, the names of
      all 'COMMON' blocks visible at the current program location are
      printed.
+'set fortran repack-array-slices [on|off]'
+'show fortran repack-array-slices'
+     When taking a slice from an array, a Fortran compiler can choose to
+     either produce an array descriptor that describes the slice in
+     place, or it may repack the slice, copying the elements of the
+     slice into a new region of memory.
+
+     When this setting is on, then GDB will also repack array slices in
+     some situations.  When this setting is off, then GDB will create
+     array descriptors for slices that reference the original data in
+     place.
+
+     GDB will never repack an array slice if the data for the slice is
+     contiguous within the original array.
+
+     GDB will always repack string slices if the data for the slice is
+     non-contiguous within the original string as GDB does not support
+     printing non-contiguous strings.
+
+     The default for this setting is 'off'.
 
 
 File: gdb.info,  Node: Pascal,  Next: Rust,  Prev: Fortran,  Up: Supported Languages
@@ -1694,6 +1918,19 @@ looks up the value of 'x' in the scope of the file 'foo.c'.
      This command shows the current setting of typedef display when
      printing classes.
 
+'set print type hex'
+'set print type hex on'
+'set print type hex off'
+
+     When GDB prints sizes and offsets of struct members, it can use
+     either the decimal or hexadecimal notation.  You can select one or
+     the other either by passing the appropriate flag to 'ptype', or by
+     using the 'set print type hex' command.
+
+'show print type hex'
+     This command shows whether the sizes and offsets of struct members
+     are printed in decimal or hexadecimal notation.
+
 'info address SYMBOL'
      Describe where the data for SYMBOL is stored.  For a register
      variable, this says which register it is kept in.  For a
@@ -1794,6 +2031,14 @@ looks up the value of 'x' in the scope of the file 'foo.c'.
           what the 'pahole' tool does.  This option implies the '/tm'
           flags.
 
+     'x'
+          Use hexadecimal notation when printing offsets and sizes of
+          fields in a struct.
+
+     'd'
+          Use decimal notation when printing offsets and sizes of fields
+          in a struct.
+
           For example, given the following declarations:
 
                struct tuv
@@ -1831,14 +2076,14 @@ looks up the value of 'x' in the scope of the file 'foo.c'.
           Issuing a 'ptype /o struct tuv' command would print:
 
                (gdb) ptype /o struct tuv
-               /* offset    |  size */  type = struct tuv {
-               /*    0      |     4 */    int a1;
-               /* XXX  4-byte hole  */
-               /*    8      |     8 */    char *a2;
-               /*   16      |     4 */    int a3;
+               /* offset      |    size */  type = struct tuv {
+               /*      0      |       4 */    int a1;
+               /* XXX  4-byte hole      */
+               /*      8      |       8 */    char *a2;
+               /*     16      |       4 */    int a3;
 
-                                          /* total size (bytes):   24 */
-                                        }
+                                              /* total size (bytes):   24 */
+                                            }
 
           Notice the format of the first column of comments.  There, you
           can find two parts separated by the '|' character: the
@@ -1851,34 +2096,34 @@ looks up the value of 'x' in the scope of the file 'foo.c'.
           It is also possible to print offsets inside an union:
 
                (gdb) ptype /o union qwe
-               /* offset    |  size */  type = union qwe {
-               /*                24 */    struct tuv {
-               /*    0      |     4 */        int a1;
-               /* XXX  4-byte hole  */
-               /*    8      |     8 */        char *a2;
-               /*   16      |     4 */        int a3;
-
-                                              /* total size (bytes):   24 */
-                                          } fff1;
-               /*                40 */    struct xyz {
-               /*    0      |     4 */        int f1;
-               /*    4      |     1 */        char f2;
-               /* XXX  3-byte hole  */
-               /*    8      |     8 */        void *f3;
-               /*   16      |    24 */        struct tuv {
-               /*   16      |     4 */            int a1;
-               /* XXX  4-byte hole  */
-               /*   24      |     8 */            char *a2;
-               /*   32      |     4 */            int a3;
+               /* offset      |    size */  type = union qwe {
+               /*                    24 */    struct tuv {
+               /*      0      |       4 */        int a1;
+               /* XXX  4-byte hole      */
+               /*      8      |       8 */        char *a2;
+               /*     16      |       4 */        int a3;
 
                                                   /* total size (bytes):   24 */
-                                              } f4;
+                                              } fff1;
+               /*                    40 */    struct xyz {
+               /*      0      |       4 */        int f1;
+               /*      4      |       1 */        char f2;
+               /* XXX  3-byte hole      */
+               /*      8      |       8 */        void *f3;
+               /*     16      |      24 */        struct tuv {
+               /*     16      |       4 */            int a1;
+               /* XXX  4-byte hole      */
+               /*     24      |       8 */            char *a2;
+               /*     32      |       4 */            int a3;
+
+                                                      /* total size (bytes):   24 */
+                                                  } f4;
+
+                                                  /* total size (bytes):   40 */
+                                              } fff2;
 
                                               /* total size (bytes):   40 */
-                                          } fff2;
-
-                                          /* total size (bytes):   40 */
-                                        }
+                                            }
 
           In this case, since 'struct tuv' and 'struct xyz' occupy the
           same space (because we are dealing with an union), the offset
@@ -1889,20 +2134,20 @@ looks up the value of 'x' in the scope of the file 'foo.c'.
           containing bitfields:
 
                (gdb) ptype /o struct tyu
-               /* offset    |  size */  type = struct tyu {
-               /*    0:31   |     4 */    int a1 : 1;
-               /*    0:28   |     4 */    int a2 : 3;
-               /*    0: 5   |     4 */    int a3 : 23;
-               /*    3: 3   |     1 */    signed char a4 : 2;
-               /* XXX  3-bit hole   */
-               /* XXX  4-byte hole  */
-               /*    8      |     8 */    int64_t a5;
-               /*   16: 0   |     4 */    int a6 : 5;
-               /*   16: 5   |     8 */    int64_t a7 : 3;
-               "/* XXX  7-byte padding  */
+               /* offset      |    size */  type = struct tyu {
+               /*      0:31   |       4 */    int a1 : 1;
+               /*      0:28   |       4 */    int a2 : 3;
+               /*      0: 5   |       4 */    int a3 : 23;
+               /*      3: 3   |       1 */    signed char a4 : 2;
+               /* XXX  3-bit hole       */
+               /* XXX  4-byte hole      */
+               /*      8      |       8 */    int64_t a5;
+               /*     16: 0   |       4 */    int a6 : 5;
+               /*     16: 5   |       8 */    int64_t a7 : 3;
+               /* XXX  7-byte padding   */
 
-                                          /* total size (bytes):   24 */
-                                        }
+                                              /* total size (bytes):   24 */
+                                            }
 
           Note how the offset information is now extended to also
           include the first bit of the bitfield.
@@ -2061,20 +2306,34 @@ looks up the value of 'x' in the scope of the file 'foo.c'.
         * whether the debugging information includes information about
           preprocessor macros.
 
-'info sources'
-     Print the names of all source files in your program for which there
-     is debugging information, organized into two lists: files whose
-     symbols have already been read, and files whose symbols will be
-     read when needed.
-
 'info sources [-dirname | -basename] [--] [REGEXP]'
-     Like 'info sources', but only print the names of the files matching
-     the provided REGEXP.  By default, the REGEXP is used to match
-     anywhere in the filename.  If '-dirname', only files having a
-     dirname matching REGEXP are shown.  If '-basename', only files
-     having a basename matching REGEXP are shown.  The matching is
+
+     With no options 'info sources' prints the names of all source files
+     in your program for which there is debugging information.  The
+     source files are presented based on a list of object files
+     (executables and libraries) currently loaded into GDB.  For each
+     object file all of the associated source files are listed.
+
+     Each source file will only be printed once for each object file,
+     but a single source file can be repeated in the output if it is
+     part of multiple object files.
+
+     If the optional REGEXP is provided, then only source files that
+     match the regular expression will be printed.  The matching is
      case-sensitive, except on operating systems that have
-     case-insensitive filesystem (e.g., MS-Windows).
+     case-insensitive filesystem (e.g., MS-Windows).  '--' can be used
+     before REGEXP to prevent GDB interpreting REGEXP as a command
+     option (e.g.  if REGEXP starts with '-').
+
+     By default, the REGEXP is used to match anywhere in the filename.
+     If '-dirname', only files having a dirname matching REGEXP are
+     shown.  If '-basename', only files having a basename matching
+     REGEXP are shown.
+
+     It is possible that an object file may be printed in the list with
+     no associated source files.  This can happen when either no source
+     files match REGEXP, or, the object file was compiled without debug
+     information and so GDB is unable to find any source file names.
 
 'info functions [-q] [-n]'
      Print the names and data types of all defined functions.  Similarly
@@ -2323,10 +2582,13 @@ looks up the value of 'x' in the scope of the file 'foo.c'.
      Print symbol cache usage statistics.  This helps determine how well
      the cache is being utilized.
 
+'maint flush symbol-cache'
 'maint flush-symbol-cache'
      Flush the contents of the symbol cache, all entries are removed.
      This command is useful when debugging the symbol cache.  It is also
-     useful when collecting performance data.
+     useful when collecting performance data.  The command 'maint
+     flush-symbol-cache' is deprecated in favor of 'maint flush
+     symbol-cache'..
 
 
 File: gdb.info,  Node: Altering,  Next: GDB Files,  Prev: Symbols,  Up: Top
@@ -3322,22 +3584,25 @@ files are useful.
      command 'help target' lists all possible targets rather than
      current ones.
 
-'maint info sections'
+'maint info sections [-all-objects] [FILTER-LIST]'
      Another command that can give you extra information about program
      sections is 'maint info sections'.  In addition to the section
      information displayed by 'info files', this command displays the
      flags and file offset of each section in the executable and core
-     dump files.  In addition, 'maint info sections' provides the
-     following command options (which may be arbitrarily combined):
+     dump files.
 
-     'ALLOBJ'
-          Display sections for all loaded object files, including shared
-          libraries.
-     'SECTIONS'
-          Display info only for named SECTIONS.
-     'SECTION-FLAGS'
-          Display info only for sections for which SECTION-FLAGS are
-          true.  The section flags that GDB currently knows about are:
+     When '-all-objects' is passed then sections from all loaded object
+     files, including shared libraries, are printed.
+
+     The optional FILTER-LIST is a space separated list of filter
+     keywords.  Sections that match any one of the filter criteria will
+     be printed.  There are two types of filter:
+
+     'SECTION-NAME'
+          Display information about any section named SECTION-NAME.
+     'SECTION-FLAG'
+          Display information for any section with SECTION-FLAG.  The
+          section flags that GDB currently knows about are:
           'ALLOC'
                Section will have space allocated in the process when
                loaded.  Set for all sections except those containing
@@ -3367,6 +3632,13 @@ files are useful.
                COFF shared library information.
           'IS_COMMON'
                Section contains common symbols.
+
+'maint info target-sections'
+     This command prints GDB's internal section table.  For each target
+     GDB maintains a table containing the allocatable sections from all
+     currently mapped objects, along with information about where the
+     section is mapped.
+
 'set trust-readonly-sections on'
      Tell GDB that readonly sections in your object file really are
      read-only (i.e. that their contents will not change).  In that
@@ -3512,11 +3784,11 @@ directories for target libraries.
      to be named 'target:' or 'remote:', you need to use some equivalent
      variant of the name like './target:'.
 
-     For targets with an MS-DOS based filesystem, such as MS-Windows and
-     SymbianOS, GDB tries prefixing a few variants of the target
-     absolute file name with PATH.  But first, on Unix hosts, GDB
-     converts all backslash directory separators into forward slashes,
-     because the backslash is not a directory separator on Unix:
+     For targets with an MS-DOS based filesystem, such as MS-Windows,
+     GDB tries prefixing a few variants of the target absolute file name
+     with PATH.  But first, on Unix hosts, GDB converts all backslash
+     directory separators into forward slashes, because the backslash is
+     not a directory separator on Unix:
 
             c:\foo\bar.dll => c:/foo/bar.dll
 
@@ -5231,7 +5503,7 @@ system.
      kernel prefers 'BREAK-g', a.k.a Magic SysRq g.  It is 'BREAK'
      signal followed by character 'g'.
 
-'show interrupt-sequence'
+'show remote interrupt-sequence'
      Show which of 'Ctrl-C', 'BREAK' or 'BREAK-g' is sent by GDB to
      interrupt the remote program.  'BREAK-g' is BREAK signal followed
      by 'g' and also known as Magic SysRq g.
@@ -5242,7 +5514,7 @@ system.
      kernel.  Linux kernel expects 'BREAK' followed by 'g' which is
      known as Magic SysRq g in order to connect GDB.
 
-'show interrupt-on-connect'
+'show remote interrupt-on-connect'
      Show whether interrupt-sequence is sent to remote target when GDB
      connects to it.
 
@@ -6947,336 +7219,35 @@ When GDB prints a backtrace, any addresses that required unmasking will
 be postfixed with the marker [PAC]. When using the MI, this is printed
 as part of the 'addr_flags' field.
 
-
-File: gdb.info,  Node: i386,  Next: Alpha,  Prev: AArch64,  Up: Architectures
-
-21.4.2 x86 Architecture-specific Issues
----------------------------------------
-
-'set struct-convention MODE'
-     Set the convention used by the inferior to return 'struct's and
-     'union's from functions to MODE.  Possible values of MODE are
-     '"pcc"', '"reg"', and '"default"' (the default).  '"default"' or
-     '"pcc"' means that 'struct's are returned on the stack, while
-     '"reg"' means that a 'struct' or a 'union' whose size is 1, 2, 4,
-     or 8 bytes will be returned in a register.
-
-'show struct-convention'
-     Show the current setting of the convention to return 'struct's from
-     functions.
-
-21.4.2.1 Intel "Memory Protection Extensions" (MPX).
-....................................................
-
-Memory Protection Extension (MPX) adds the bound registers 'BND0' (1)
-through 'BND3'.  Bound registers store a pair of 64-bit values which are
-the lower bound and upper bound.  Bounds are effective addresses or
-memory locations.  The upper bounds are architecturally represented in
-1's complement form.  A bound having lower bound = 0, and upper bound =
-0 (1's complement of all bits set) will allow access to the entire
-address space.
-
-   'BND0' through 'BND3' are represented in GDB as 'bnd0raw' through
-'bnd3raw'.  Pseudo registers 'bnd0' through 'bnd3' display the upper
-bound performing the complement of one operation on the upper bound
-value, i.e. when upper bound in 'bnd0raw' is 0 in the GDB 'bnd0' it will
-be '0xfff...'.  In this sense it can also be noted that the upper bounds
-are inclusive.
-
-   As an example, assume that the register BND0 holds bounds for a
-pointer having access allowed for the range between 0x32 and 0x71.  The
-values present on bnd0raw and bnd registers are presented as follows:
-
-     	bnd0raw = {0x32, 0xffffffff8e}
-     	bnd0 = {lbound = 0x32, ubound = 0x71} : size 64
-
-   This way the raw value can be accessed via bnd0raw...bnd3raw.  Any
-change on bnd0...bnd3 or bnd0raw...bnd3raw is reflect on its
-counterpart.  When the bnd0...bnd3 registers are displayed via Python,
-the display includes the memory size, in bits, accessible to the
-pointer.
-
-   Bounds can also be stored in bounds tables, which are stored in
-application memory.  These tables store bounds for pointers by
-specifying the bounds pointer's value along with its bounds.  Evaluating
-and changing bounds located in bound tables is therefore interesting
-while investigating bugs on MPX context.  GDB provides commands for this
-purpose:
-
-'show mpx bound POINTER'
-     Display bounds of the given POINTER.
-
-'set mpx bound POINTER, LBOUND, UBOUND'
-     Set the bounds of a pointer in the bound table.  This command takes
-     three parameters: POINTER is the pointers whose bounds are to be
-     changed, LBOUND and UBOUND are new values for lower and upper
-     bounds respectively.
-
-   When you call an inferior function on an Intel MPX enabled program,
-GDB sets the inferior's bound registers to the init (disabled) state
-before calling the function.  As a consequence, bounds checks for the
-pointer arguments passed to the function will always pass.
-
-   This is necessary because when you call an inferior function, the
-program is usually in the middle of the execution of other function.
-Since at that point bound registers are in an arbitrary state, not
-clearing them would lead to random bound violations in the called
-function.
-
-   You can still examine the influence of the bound registers on the
-execution of the called function by stopping the execution of the called
-function at its prologue, setting bound registers, and continuing the
-execution.  For example:
-
-     	$ break *upper
-     	Breakpoint 2 at 0x4009de: file i386-mpx-call.c, line 47.
-     	$ print upper (a, b, c, d, 1)
-     	Breakpoint 2, upper (a=0x0, b=0x6e0000005b, c=0x0, d=0x0, len=48)....
-     	$ print $bnd0
-     	{lbound = 0x0, ubound = ffffffff} : size -1
-
-   At this last step the value of bnd0 can be changed for investigation
-of bound violations caused along the execution of the call.  In order to
-know how to set the bound registers or bound table for the call consult
-the ABI.
-
-   ---------- Footnotes ----------
-
-   (1) The register named with capital letters represent the
-architecture registers.
-
-
-File: gdb.info,  Node: Alpha,  Next: MIPS,  Prev: i386,  Up: Architectures
-
-21.4.3 Alpha
-------------
-
-See the following section.
-
-
-File: gdb.info,  Node: MIPS,  Next: HPPA,  Prev: Alpha,  Up: Architectures
-
-21.4.4 MIPS
------------
-
-Alpha- and MIPS-based computers use an unusual stack frame, which
-sometimes requires GDB to search backward in the object code to find the
-beginning of a function.
-
-   To improve response time (especially for embedded applications, where
-GDB may be restricted to a slow serial line for this search) you may
-want to limit the size of this search, using one of these commands:
-
-'set heuristic-fence-post LIMIT'
-     Restrict GDB to examining at most LIMIT bytes in its search for the
-     beginning of a function.  A value of 0 (the default) means there is
-     no limit.  However, except for 0, the larger the limit the more
-     bytes 'heuristic-fence-post' must search and therefore the longer
-     it takes to run.  You should only need to use this command when
-     debugging a stripped executable.
-
-'show heuristic-fence-post'
-     Display the current limit.
-
-These commands are available _only_ when GDB is configured for debugging
-programs on Alpha or MIPS processors.
-
-   Several MIPS-specific commands are available when debugging MIPS
-programs:
-
-'set mips abi ARG'
-     Tell GDB which MIPS ABI is used by the inferior.  Possible values
-     of ARG are:
-
-     'auto'
-          The default ABI associated with the current binary (this is
-          the default).
-     'o32'
-     'o64'
-     'n32'
-     'n64'
-     'eabi32'
-     'eabi64'
-
-'show mips abi'
-     Show the MIPS ABI used by GDB to debug the inferior.
-
-'set mips compression ARG'
-     Tell GDB which MIPS compressed ISA (Instruction Set Architecture)
-     encoding is used by the inferior.  GDB uses this for code
-     disassembly and other internal interpretation purposes.  This
-     setting is only referred to when no executable has been associated
-     with the debugging session or the executable does not provide
-     information about the encoding it uses.  Otherwise this setting is
-     automatically updated from information provided by the executable.
-
-     Possible values of ARG are 'mips16' and 'micromips'.  The default
-     compressed ISA encoding is 'mips16', as executables containing
-     MIPS16 code frequently are not identified as such.
-
-     This setting is "sticky"; that is, it retains its value across
-     debugging sessions until reset either explicitly with this command
-     or implicitly from an executable.
-
-     The compiler and/or assembler typically add symbol table
-     annotations to identify functions compiled for the MIPS16 or
-     microMIPS ISAs.  If these function-scope annotations are present,
-     GDB uses them in preference to the global compressed ISA encoding
-     setting.
-
-'show mips compression'
-     Show the MIPS compressed ISA encoding used by GDB to debug the
-     inferior.
-
-'set mipsfpu'
-'show mipsfpu'
-     *Note set mipsfpu: MIPS Embedded.
-
-'set mips mask-address ARG'
-     This command determines whether the most-significant 32 bits of
-     64-bit MIPS addresses are masked off.  The argument ARG can be
-     'on', 'off', or 'auto'.  The latter is the default setting, which
-     lets GDB determine the correct value.
-
-'show mips mask-address'
-     Show whether the upper 32 bits of MIPS addresses are masked off or
-     not.
-
-'set remote-mips64-transfers-32bit-regs'
-     This command controls compatibility with 64-bit MIPS targets that
-     transfer data in 32-bit quantities.  If you have an old MIPS 64
-     target that transfers 32 bits for some registers, like SR and FSR,
-     and 64 bits for other registers, set this option to 'on'.
-
-'show remote-mips64-transfers-32bit-regs'
-     Show the current setting of compatibility with older MIPS 64
-     targets.
-
-'set debug mips'
-     This command turns on and off debugging messages for the
-     MIPS-specific target code in GDB.
-
-'show debug mips'
-     Show the current setting of MIPS debugging messages.
-
-
-File: gdb.info,  Node: HPPA,  Next: PowerPC,  Prev: MIPS,  Up: Architectures
-
-21.4.5 HPPA
------------
-
-When GDB is debugging the HP PA architecture, it provides the following
-special commands:
-
-'set debug hppa'
-     This command determines whether HPPA architecture-specific
-     debugging messages are to be displayed.
-
-'show debug hppa'
-     Show whether HPPA debugging messages are displayed.
-
-'maint print unwind ADDRESS'
-     This command displays the contents of the unwind table entry at the
-     given ADDRESS.
-
-
-File: gdb.info,  Node: PowerPC,  Next: Nios II,  Prev: HPPA,  Up: Architectures
-
-21.4.6 PowerPC
---------------
-
-When GDB is debugging the PowerPC architecture, it provides a set of
-pseudo-registers to enable inspection of 128-bit wide Decimal Floating
-Point numbers stored in the floating point registers.  These values must
-be stored in two consecutive registers, always starting at an even
-register like 'f0' or 'f2'.
-
-   The pseudo-registers go from '$dl0' through '$dl15', and are formed
-by joining the even/odd register pairs 'f0' and 'f1' for '$dl0', 'f2'
-and 'f3' for '$dl1' and so on.
-
-   For POWER7 processors, GDB provides a set of pseudo-registers, the
-64-bit wide Extended Floating Point Registers ('f32' through 'f63').
-
-
-File: gdb.info,  Node: Nios II,  Next: Sparc64,  Prev: PowerPC,  Up: Architectures
-
-21.4.7 Nios II
---------------
-
-When GDB is debugging the Nios II architecture, it provides the
-following special commands:
-
-'set debug nios2'
-     This command turns on and off debugging messages for the Nios II
-     target code in GDB.
-
-'show debug nios2'
-     Show the current setting of Nios II debugging messages.
-
-
-File: gdb.info,  Node: Sparc64,  Next: S12Z,  Prev: Nios II,  Up: Architectures
-
-21.4.8 Sparc64
---------------
-
-21.4.8.1 ADI Support
-....................
-
-The M7 processor supports an Application Data Integrity (ADI) feature
-that detects invalid data accesses.  When software allocates memory and
-enables ADI on the allocated memory, it chooses a 4-bit version number,
-sets the version in the upper 4 bits of the 64-bit pointer to that data,
-and stores the 4-bit version in every cacheline of that data.  Hardware
-saves the latter in spare bits in the cache and memory hierarchy.  On
-each load and store, the processor compares the upper 4 VA (virtual
-address) bits to the cacheline's version.  If there is a mismatch, the
-processor generates a version mismatch trap which can be either precise
-or disrupting.  The trap is an error condition which the kernel delivers
-to the process as a SIGSEGV signal.
-
-   Note that only 64-bit applications can use ADI and need to be built
-with ADI-enabled.
-
-   Values of the ADI version tags, which are in granularity of a
-cacheline (64 bytes), can be viewed or modified.
-
-'adi (examine | x) [ / N ] ADDR'
-
-     The 'adi examine' command displays the value of one ADI version tag
-     per cacheline.
-
-     N is a decimal integer specifying the number in bytes; the default
-     is 1.  It specifies how much ADI version information, at the ratio
-     of 1:ADI block size, to display.
-
-     ADDR is the address in user address space where you want GDB to
-     begin displaying the ADI version tags.
-
-     Below is an example of displaying ADI versions of variable
-     "shmaddr".
-
-          (gdb) adi x/100 shmaddr
-             0xfff800010002c000:     0 0
-
-'adi (assign | a) [ / N ] ADDR = TAG'
-
-     The 'adi assign' command is used to assign new ADI version tag to
-     an address.
-
-     N is a decimal integer specifying the number in bytes; the default
-     is 1.  It specifies how much ADI version information, at the ratio
-     of 1:ADI block size, to modify.
-
-     ADDR is the address in user address space where you want GDB to
-     begin modifying the ADI version tags.
-
-     TAG is the new ADI version tag.
-
-     For example, do the following to modify then verify ADI versions of
-     variable "shmaddr":
-
-          (gdb) adi a/100 shmaddr = 7
-          (gdb) adi x/100 shmaddr
-             0xfff800010002c000:     7 7
+21.4.1.3 AArch64 Memory Tagging Extension.
+..........................................
+
+When GDB is debugging the AArch64 architecture, the program is using the
+v8.5-A feature Memory Tagging Extension (MTE) and there is support in
+the kernel for MTE, GDB will make memory tagging functionality available
+for inspection and editing of logical and allocation tags.  *Note Memory
+Tagging::.
+
+   To aid debugging, GDB will output additional information when SIGSEGV
+signals are generated as a result of memory tag failures.
+
+   If the tag violation is synchronous, the following will be shown:
+
+     Program received signal SIGSEGV, Segmentation fault
+     Memory tag violation while accessing address 0x0500fffff7ff8000
+     Allocation tag 0x1
+     Logical tag 0x5.
+
+   If the tag violation is asynchronous, the fault address is not
+available.  In this case GDB will show the following:
+
+     Program received signal SIGSEGV, Segmentation fault
+     Memory tag violation
+     Fault address unavailable.
+
+   A special register, 'tag_ctl', is made available through the
+'org.gnu.gdb.aarch64.mte' feature.  This register exposes some options
+that can be controlled at runtime and emulates the 'prctl' option
+'PR_SET_TAGGED_ADDR_CTRL'.  For further information, see the
+documentation in the Linux kernel.
 

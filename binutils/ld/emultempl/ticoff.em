@@ -3,7 +3,7 @@
 (echo;echo;echo;echo)>e${EMULATION_NAME}.c # there, now line numbers match ;-)
 fragment <<EOF
 /* This file is part of GLD, the Gnu Linker.
-   Copyright (C) 1999-2020 Free Software Foundation, Inc.
+   Copyright (C) 1999-2022 Free Software Foundation, Inc.
 
    This file is part of the GNU Binutils.
 
@@ -69,13 +69,13 @@ gld_${EMULATION_NAME}_list_options (FILE * file)
   fprintf (file, _("  --format 0|1|2              Specify which COFF version to use\n"));
 }
 
-static bfd_boolean
+static bool
 gld${EMULATION_NAME}_handle_option (int optc)
 {
   switch (optc)
     {
     default:
-      return FALSE;
+      return false;
 
     case OPTION_COFF_FORMAT:
       if ((*optarg == '0' || *optarg == '1' || *optarg == '2')
@@ -92,7 +92,7 @@ gld${EMULATION_NAME}_handle_option (int optc)
 	}
       break;
     }
-  return FALSE;
+  return false;
 }
 
 static void
@@ -186,7 +186,8 @@ struct ld_emulation_xfer_struct ld_${EMULATION_NAME}_emulation =
   NULL,	/* new_vers_pattern */
   NULL,  /* extra_map_file_text */
   ${LDEMUL_EMIT_CTF_EARLY-NULL},
-  ${LDEMUL_EXAMINE_STRTAB_FOR_CTF-NULL},
+  ${LDEMUL_ACQUIRE_STRINGS_FOR_CTF-NULL},
+  ${LDEMUL_NEW_DYNSYM_FOR_CTF-NULL},
   ${LDEMUL_PRINT_SYMBOL-NULL}
 };
 EOF

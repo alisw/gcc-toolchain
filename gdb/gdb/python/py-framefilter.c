@@ -1,6 +1,6 @@
 /* Python frame filters
 
-   Copyright (C) 2013-2020 Free Software Foundation, Inc.
+   Copyright (C) 2013-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -780,16 +780,16 @@ py_print_frame (PyObject *filter, frame_filter_flags flags,
 
   get_user_print_options (&opts);
   if (print_frame_info)
-  {
-    gdb::optional<enum print_what> user_frame_info_print_what;
+    {
+      gdb::optional<enum print_what> user_frame_info_print_what;
 
-    get_user_print_what_frame_info (&user_frame_info_print_what);
-    if (!out->is_mi_like_p () && user_frame_info_print_what.has_value ())
-      {
-	/* Use the specific frame information desired by the user.  */
-	print_what = *user_frame_info_print_what;
-      }
-  }
+      get_user_print_what_frame_info (&user_frame_info_print_what);
+      if (!out->is_mi_like_p () && user_frame_info_print_what.has_value ())
+	{
+	  /* Use the specific frame information desired by the user.  */
+	  print_what = *user_frame_info_print_what;
+	}
+    }
 
   /* Get the underlying frame.  This is needed to determine GDB
   architecture, and also, in the cases of frame variables/arguments to
@@ -924,7 +924,11 @@ py_print_frame (PyObject *filter, frame_filter_flags flags,
 
 	      function = function_to_free.get ();
 	    }
-	  else if (PyLong_Check (py_func.get ()))
+	  else if (PyLong_Check (py_func.get ())
+#if PY_MAJOR_VERSION == 2
+		   || PyInt_Check (py_func.get ())
+#endif
+		   )
 	    {
 	      CORE_ADDR addr;
 	      struct bound_minimal_symbol msymbol;
@@ -1013,8 +1017,8 @@ py_print_frame (PyObject *filter, frame_filter_flags flags,
 	    }
 	}
       if (out->is_mi_like_p ())
-        out->field_string ("arch",
-                           (gdbarch_bfd_arch_info (gdbarch))->printable_name);
+	out->field_string ("arch",
+			   (gdbarch_bfd_arch_info (gdbarch))->printable_name);
     }
 
   bool source_print
@@ -1098,11 +1102,11 @@ bootstrap_python_frame_filters (struct frame_info *frame,
   if (sort_func == NULL)
     return NULL;
 
-  gdbpy_ref<> py_frame_low (PyInt_FromLong (frame_low));
+  gdbpy_ref<> py_frame_low = gdb_py_object_from_longest (frame_low);
   if (py_frame_low == NULL)
     return NULL;
 
-  gdbpy_ref<> py_frame_high (PyInt_FromLong (frame_high));
+  gdbpy_ref<> py_frame_high = gdb_py_object_from_longest (frame_high);
   if (py_frame_high == NULL)
     return NULL;
 

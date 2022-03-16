@@ -22,6 +22,14 @@ aff uncheck(checked::aff obj) {
 	return manage(obj.copy());
 }
 
+checked::aff_list check(aff_list obj) {
+	return checked::manage(obj.copy());
+}
+
+aff_list uncheck(checked::aff_list obj) {
+	return manage(obj.copy());
+}
+
 checked::ast_build check(ast_build obj) {
 	return checked::manage(obj.copy());
 }
@@ -342,11 +350,27 @@ basic_set uncheck(checked::basic_set obj) {
 	return manage(obj.copy());
 }
 
+checked::fixed_box check(fixed_box obj) {
+	return checked::manage(obj.copy());
+}
+
+fixed_box uncheck(checked::fixed_box obj) {
+	return manage(obj.copy());
+}
+
 checked::id check(id obj) {
 	return checked::manage(obj.copy());
 }
 
 id uncheck(checked::id obj) {
+	return manage(obj.copy());
+}
+
+checked::id_list check(id_list obj) {
+	return checked::manage(obj.copy());
+}
+
+id_list uncheck(checked::id_list obj) {
 	return manage(obj.copy());
 }
 
@@ -363,6 +387,14 @@ checked::multi_aff check(multi_aff obj) {
 }
 
 multi_aff uncheck(checked::multi_aff obj) {
+	return manage(obj.copy());
+}
+
+checked::multi_id check(multi_id obj) {
+	return checked::manage(obj.copy());
+}
+
+multi_id uncheck(checked::multi_id obj) {
 	return manage(obj.copy());
 }
 
@@ -406,11 +438,27 @@ pw_aff uncheck(checked::pw_aff obj) {
 	return manage(obj.copy());
 }
 
+checked::pw_aff_list check(pw_aff_list obj) {
+	return checked::manage(obj.copy());
+}
+
+pw_aff_list uncheck(checked::pw_aff_list obj) {
+	return manage(obj.copy());
+}
+
 checked::pw_multi_aff check(pw_multi_aff obj) {
 	return checked::manage(obj.copy());
 }
 
 pw_multi_aff uncheck(checked::pw_multi_aff obj) {
+	return manage(obj.copy());
+}
+
+checked::pw_multi_aff_list check(pw_multi_aff_list obj) {
+	return checked::manage(obj.copy());
+}
+
+pw_multi_aff_list uncheck(checked::pw_multi_aff_list obj) {
 	return manage(obj.copy());
 }
 
@@ -534,6 +582,14 @@ set uncheck(checked::set obj) {
 	return manage(obj.copy());
 }
 
+checked::space check(space obj) {
+	return checked::manage(obj.copy());
+}
+
+space uncheck(checked::space obj) {
+	return manage(obj.copy());
+}
+
 checked::union_access_info check(union_access_info obj) {
 	return checked::manage(obj.copy());
 }
@@ -566,6 +622,14 @@ union_pw_aff uncheck(checked::union_pw_aff obj) {
 	return manage(obj.copy());
 }
 
+checked::union_pw_aff_list check(union_pw_aff_list obj) {
+	return checked::manage(obj.copy());
+}
+
+union_pw_aff_list uncheck(checked::union_pw_aff_list obj) {
+	return manage(obj.copy());
+}
+
 checked::union_pw_multi_aff check(union_pw_multi_aff obj) {
 	return checked::manage(obj.copy());
 }
@@ -595,6 +659,14 @@ checked::val check(val obj) {
 }
 
 val uncheck(checked::val obj) {
+	return manage(obj.copy());
+}
+
+checked::val_list check(val_list obj) {
+	return checked::manage(obj.copy());
+}
+
+val_list uncheck(checked::val_list obj) {
 	return manage(obj.copy());
 }
 

@@ -2,7 +2,7 @@
 
    Contributed by Evgeny Stupachenko <evstupac@gmail.com>
 
-   Copyright (C) 2015-2020 Free Software Foundation, Inc.
+   Copyright (C) 2015-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -483,7 +483,8 @@ redirect_to_specific_clone (cgraph_node *node)
 					    DECL_ATTRIBUTES (e->callee->decl));
 
       /* Function is not calling proper target clone.  */
-      if (!attribute_list_equal (attr_target, attr_target2))
+      if (attr_target2 == NULL_TREE
+	  || !attribute_value_equal (attr_target, attr_target2))
 	{
 	  while (fv2->prev != NULL)
 	    fv2 = fv2->prev;
@@ -494,7 +495,8 @@ redirect_to_specific_clone (cgraph_node *node)
 	      cgraph_node *callee = fv2->this_node;
 	      attr_target2 = lookup_attribute ("target",
 					       DECL_ATTRIBUTES (callee->decl));
-	      if (attribute_list_equal (attr_target, attr_target2))
+	      if (attr_target2 != NULL_TREE
+		  && attribute_value_equal (attr_target, attr_target2))
 		{
 		  e->redirect_callee (callee);
 		  cgraph_edge::redirect_call_stmt_to_callee (e);

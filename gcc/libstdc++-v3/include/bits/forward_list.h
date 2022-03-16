@@ -1,6 +1,6 @@
 // <forward_list.h> -*- C++ -*-
 
-// Copyright (C) 2008-2020 Free Software Foundation, Inc.
+// Copyright (C) 2008-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -1152,7 +1152,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
       splice_after(const_iterator __pos, forward_list&,
 		   const_iterator __before, const_iterator __last) noexcept
       { _M_splice_after(__pos, __before, __last); }
-      // @}
+      /// @}
 
     private:
 #if __cplusplus > 201703L

@@ -1,5 +1,5 @@
 /* A type-safe hash map.
-   Copyright (C) 2014-2020 Free Software Foundation, Inc.
+   Copyright (C) 2014-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -177,7 +177,8 @@ public:
       return !ins;
     }
 
-  /* if the passed in key is in the map return its value otherwise NULL.  */
+  /* If the passed in key is in the map return pointer to its value
+     otherwise NULL.  */
 
   Value *get (const Key &k)
     {

@@ -30,6 +30,7 @@ load_gcc_lib scanlang.exp
 load_gcc_lib scanrtl.exp
 load_gcc_lib scantree.exp
 load_gcc_lib scanltranstree.exp
+load_gcc_lib scanoffload.exp
 load_gcc_lib scanoffloadtree.exp
 load_gcc_lib scanoffloadrtl.exp
 load_gcc_lib scanipa.exp
@@ -232,9 +233,6 @@ proc libgomp_init { args } {
     # Disable caret
     lappend ALWAYS_CFLAGS "additional_flags=-fno-diagnostics-show-caret"
 
-    # Disable HSA warnings by default.
-    lappend ALWAYS_CFLAGS "additional_flags=-Wno-hsa"
-
     # Disable color diagnostics
     lappend ALWAYS_CFLAGS "additional_flags=-fdiagnostics-color=never"
 
@@ -243,6 +241,12 @@ proc libgomp_init { args } {
     if { $offload_additional_options != "" } {
 	lappend ALWAYS_CFLAGS "additional_flags=${offload_additional_options}"
     }
+
+    # Tell warning from error diagnostics.  This fits for C, C++, and Fortran.
+    global gcc_warning_prefix
+    set gcc_warning_prefix "\[Ww\]arning:"
+    global gcc_error_prefix
+    set gcc_error_prefix "(\[Ff\]atal )?\[Ee\]rror:"
 }
 
 #
@@ -324,9 +328,6 @@ proc offload_target_to_openacc_device_type { offload_target } {
 	disable {
 	    return "host"
 	}
-	hsa* {
-	    return ""
-	}
 	*-intelmic* {
 	    return ""
 	}
@@ -339,8 +340,10 @@ proc offload_target_to_openacc_device_type { offload_target } {
     }
 }
 
-# Return 1 if compiling for offload target nvptx.
-proc check_effective_target_offload_target_nvptx { } {
+# Return 1 if compiling for the specified offload target
+# Takes -foffload=... into account by checking OFFLOAD_TARGET_NAMES=
+# in the -v compiler output.
+proc libgomp_check_effective_target_offload_target { target_name } {
     # Consider all actual options, including the flags passed to
     # 'gcc-dg-runtest', or 'gfortran-dg-runtest' (see the 'libgomp.*/*.exp'
     # files; in particular, '-foffload', 'libgomp.oacc-*/*.exp'), which don't
@@ -353,11 +356,21 @@ proc check_effective_target_offload_target_nvptx { } {
     set gcc_output [libgomp_target_compile "" "" "none" $options]
     if [regexp "(?n)^OFFLOAD_TARGET_NAMES=(.*)" $gcc_output dummy offload_targets] {
 	verbose "compiling for offload targets: $offload_targets"
-	return [string match "*:nvptx*:*" ":$offload_targets:"]
+	return [string match "*:$target_name*:*" ":$offload_targets:"]
     }
 
-    verbose "not compiling for any offload targets"
+    verbose "not compiling for $target_name offload target"
     return 0
+}
+
+# Return 1 if compiling for offload target nvptx.
+proc check_effective_target_offload_target_nvptx { } {
+    return [libgomp_check_effective_target_offload_target "nvptx"]
+}
+
+# Return 1 if compiling for offload target amdgcn
+proc check_effective_target_offload_target_amdgcn { } {
+    return [libgomp_check_effective_target_offload_target "amdgcn"]
 }
 
 # Return 1 if offload device is available.
@@ -400,6 +413,18 @@ proc check_effective_target_offload_device_shared_as { } {
     } ]
 }
 
+# Return 1 if using nvptx offload device.
+proc check_effective_target_offload_device_nvptx { } {
+    return [check_runtime_nocache offload_device_nvptx {
+      #include <omp.h>
+      #include "testsuite/libgomp.c-c++-common/on_device_arch.h"
+      int main ()
+	{
+	  return !on_device_arch_nvptx ();
+	}
+    } ]
+}
+
 # Return 1 if at least one Nvidia GPU is accessible.
 
 proc check_effective_target_openacc_nvidia_accel_present { } {
@@ -427,60 +452,6 @@ proc check_effective_target_openacc_nvidia_accel_selected { } {
 proc check_effective_target_openacc_host_selected { } {
     global openacc_device_type
     return [string match "host" $openacc_device_type]
-}
-
-# Return 1 if the selected OMP device is actually a HSA device
-
-proc check_effective_target_hsa_offloading_selected_nocache {} {
-    global tool
-
-    set src {
-	int main () {
-	    int v = 1;
-	    #pragma omp target map(from:v)
-	    v = 0;
-	    return v;
-	}
-    }
-    
-    set result [check_compile hsa_offloading_src executable $src]
-    set lines [lindex $result 0]
-    set exe [lindex $result 1]
-
-    set ok 0
-    if { [string match "" $lines] } {
-	# No error messages, let us switch on HSA debugging output and run it
-	set prev_HSA_DEBUG [getenv HSA_DEBUG]
-	setenv HSA_DEBUG "1"
-	set result [remote_load target "./$exe"]
-	if { [string match "" $prev_HSA_DEBUG] } {
-	    unsetenv HSA_DEBUG
-	} else {
-	    setenv HSA_DEBUG $prev_HSA_DEBUG
-	}
-	set status [lindex $result 0]
-	if { $status != "pass" } {
-	    remote_file build delete $exe
-	    verbose "HSA availability test failed"
-	    return 0
-	}
-	set output [lindex $result 1]
-	if { [string match "*HSA debug: Going to dispatch kernel*" $output] } {
-	    verbose "HSA availability detected"
-	    set ok 1
-	}
-    }
-    remote_file build delete $exe
-    return $ok
-}
-
-# Return 1 if the selected OMP device is actually a HSA device and
-# cache the result
-
-proc check_effective_target_hsa_offloading_selected {} {
-    return [check_cached_effective_target hsa_offloading_selected {
-	check_effective_target_hsa_offloading_selected_nocache
-    }]
 }
 
 # Return 1 if at least one AMD GPU is accessible.

@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -582,9 +582,8 @@ package body Exp_Ch13 is
             Install_Visible_Declarations (E_Scope);
          end if;
 
-         if Is_Package_Or_Generic_Package (E_Scope) or else
-            Is_Protected_Type (E_Scope)             or else
-            Is_Task_Type (E_Scope)
+         if Is_Concurrent_Type (E_Scope)
+           or else Is_Package_Or_Generic_Package (E_Scope)
          then
             Install_Private_Declarations (E_Scope);
          end if;

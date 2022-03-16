@@ -1,7 +1,7 @@
 /* Bits of OpenMP and OpenACC handling that is specific to device offloading
    and a lowering pass for OpenACC device directives.
 
-   Copyright (C) 2005-2020 Free Software Foundation, Inc.
+   Copyright (C) 2005-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -52,6 +52,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "stringpool.h"
 #include "attribs.h"
 #include "cfgloop.h"
+#include "context.h"
 
 /* Describe the OpenACC looping structure of a function.  The entire
    function is held in a 'NULL' loop.  */
@@ -161,6 +162,229 @@ add_decls_addresses_to_decl_constructor (vec<tree, va_gc> *v_decls,
 	CONSTRUCTOR_APPEND_ELT (v_ctor, NULL_TREE, size);
     }
 }
+
+/* Return true if DECL is a function for which its references should be
+   analyzed.  */
+
+static bool
+omp_declare_target_fn_p (tree decl)
+{
+  return (TREE_CODE (decl) == FUNCTION_DECL
+	  && lookup_attribute ("omp declare target", DECL_ATTRIBUTES (decl))
+	  && !lookup_attribute ("omp declare target host",
+				DECL_ATTRIBUTES (decl))
+	  && (!flag_openacc
+	      || oacc_get_fn_attrib (decl) == NULL_TREE));
+}
+
+/* Return true if DECL Is a variable for which its initializer references
+   should be analyzed.  */
+
+static bool
+omp_declare_target_var_p (tree decl)
+{
+  return (VAR_P (decl)
+	  && lookup_attribute ("omp declare target", DECL_ATTRIBUTES (decl))
+	  && !lookup_attribute ("omp declare target link",
+				DECL_ATTRIBUTES (decl)));
+}
+
+/* Helper function for omp_discover_implicit_declare_target, called through
+   walk_tree.  Mark referenced FUNCTION_DECLs implicitly as
+   declare target to.  */
+
+static tree
+omp_discover_declare_target_tgt_fn_r (tree *tp, int *walk_subtrees, void *data)
+{
+  if (TREE_CODE (*tp) == CALL_EXPR
+      && CALL_EXPR_FN (*tp)
+      && TREE_CODE (CALL_EXPR_FN (*tp)) == ADDR_EXPR
+      && TREE_CODE (TREE_OPERAND (CALL_EXPR_FN (*tp), 0)) == FUNCTION_DECL
+      && lookup_attribute ("omp declare variant base",
+			   DECL_ATTRIBUTES (TREE_OPERAND (CALL_EXPR_FN (*tp),
+							  0))))
+    {
+      tree fn = TREE_OPERAND (CALL_EXPR_FN (*tp), 0);
+      for (tree attr = DECL_ATTRIBUTES (fn); attr; attr = TREE_CHAIN (attr))
+	{
+	  attr = lookup_attribute ("omp declare variant base", attr);
+	  if (attr == NULL_TREE)
+	    break;
+	  tree purpose = TREE_PURPOSE (TREE_VALUE (attr));
+	  if (TREE_CODE (purpose) == FUNCTION_DECL)
+	    omp_discover_declare_target_tgt_fn_r (&purpose, walk_subtrees, data);
+	}
+    }
+  else if (TREE_CODE (*tp) == FUNCTION_DECL)
+    {
+      tree decl = *tp;
+      tree id = get_identifier ("omp declare target");
+      symtab_node *node = symtab_node::get (*tp);
+      if (node != NULL)
+	{
+	  while (node->alias_target
+		 && TREE_CODE (node->alias_target) == FUNCTION_DECL)
+	    {
+	      if (!omp_declare_target_fn_p (node->decl)
+		  && !lookup_attribute ("omp declare target host",
+					DECL_ATTRIBUTES (node->decl)))
+		{
+		  node->offloadable = 1;
+		  DECL_ATTRIBUTES (node->decl)
+		    = tree_cons (id, NULL_TREE, DECL_ATTRIBUTES (node->decl));
+		}
+	      node = symtab_node::get (node->alias_target);
+	    }
+	  symtab_node *new_node = node->ultimate_alias_target ();
+	  decl = new_node->decl;
+	  while (node != new_node)
+	    {
+	      if (!omp_declare_target_fn_p (node->decl)
+		  && !lookup_attribute ("omp declare target host",
+					DECL_ATTRIBUTES (node->decl)))
+		{
+		  node->offloadable = 1;
+		  DECL_ATTRIBUTES (node->decl)
+		    = tree_cons (id, NULL_TREE, DECL_ATTRIBUTES (node->decl));
+		}
+	      gcc_assert (node->alias && node->analyzed);
+	      node = node->get_alias_target ();
+	    }
+	  node->offloadable = 1;
+	  if (ENABLE_OFFLOADING)
+	    g->have_offload = true;
+	}
+      if (omp_declare_target_fn_p (decl)
+	  || lookup_attribute ("omp declare target host",
+			       DECL_ATTRIBUTES (decl)))
+	return NULL_TREE;
+
+      if (!DECL_EXTERNAL (decl) && DECL_SAVED_TREE (decl))
+	((vec<tree> *) data)->safe_push (decl);
+      DECL_ATTRIBUTES (decl) = tree_cons (id, NULL_TREE,
+					  DECL_ATTRIBUTES (decl));
+    }
+  else if (TYPE_P (*tp))
+    *walk_subtrees = 0;
+  /* else if (TREE_CODE (*tp) == OMP_TARGET)
+       {
+	 if (tree dev = omp_find_clause (OMP_TARGET_CLAUSES (*tp)))
+	   if (OMP_DEVICE_ANCESTOR (dev))
+	     *walk_subtrees = 0;
+       } */
+  return NULL_TREE;
+}
+
+/* Similarly, but ignore references outside of OMP_TARGET regions.  */
+
+static tree
+omp_discover_declare_target_fn_r (tree *tp, int *walk_subtrees, void *data)
+{
+  if (TREE_CODE (*tp) == OMP_TARGET)
+    {
+      /* And not OMP_DEVICE_ANCESTOR.  */
+      walk_tree_without_duplicates (&OMP_TARGET_BODY (*tp),
+				    omp_discover_declare_target_tgt_fn_r,
+				    data);
+      *walk_subtrees = 0;
+    }
+  else if (TYPE_P (*tp))
+    *walk_subtrees = 0;
+  return NULL_TREE;
+}
+
+/* Helper function for omp_discover_implicit_declare_target, called through
+   walk_tree.  Mark referenced FUNCTION_DECLs implicitly as
+   declare target to.  */
+
+static tree
+omp_discover_declare_target_var_r (tree *tp, int *walk_subtrees, void *data)
+{
+  if (TREE_CODE (*tp) == FUNCTION_DECL)
+    return omp_discover_declare_target_tgt_fn_r (tp, walk_subtrees, data);
+  else if (VAR_P (*tp)
+	   && is_global_var (*tp)
+	   && !omp_declare_target_var_p (*tp))
+    {
+      tree id = get_identifier ("omp declare target");
+      if (lookup_attribute ("omp declare target link", DECL_ATTRIBUTES (*tp)))
+	{
+	  error_at (DECL_SOURCE_LOCATION (*tp),
+		    "%qD specified both in declare target %<link%> and "
+		    "implicitly in %<to%> clauses", *tp);
+	  DECL_ATTRIBUTES (*tp)
+	    = remove_attribute ("omp declare target link", DECL_ATTRIBUTES (*tp));
+	}
+      if (TREE_STATIC (*tp) && lang_hooks.decls.omp_get_decl_init (*tp))
+	((vec<tree> *) data)->safe_push (*tp);
+      DECL_ATTRIBUTES (*tp) = tree_cons (id, NULL_TREE, DECL_ATTRIBUTES (*tp));
+      symtab_node *node = symtab_node::get (*tp);
+      if (node != NULL && !node->offloadable)
+	{
+	  node->offloadable = 1;
+	  if (ENABLE_OFFLOADING)
+	    {
+	      g->have_offload = true;
+	      if (is_a <varpool_node *> (node))
+		vec_safe_push (offload_vars, node->decl);
+	    }
+	}
+    }
+  else if (TYPE_P (*tp))
+    *walk_subtrees = 0;
+  return NULL_TREE;
+}
+
+/* Perform the OpenMP implicit declare target to discovery.  */
+
+void
+omp_discover_implicit_declare_target (void)
+{
+  cgraph_node *node;
+  varpool_node *vnode;
+  auto_vec<tree> worklist;
+
+  FOR_EACH_DEFINED_FUNCTION (node)
+    if (DECL_SAVED_TREE (node->decl))
+      {
+	struct cgraph_node *cgn;
+        if (omp_declare_target_fn_p (node->decl))
+	  worklist.safe_push (node->decl);
+	else if (DECL_STRUCT_FUNCTION (node->decl)
+		 && DECL_STRUCT_FUNCTION (node->decl)->has_omp_target)
+	  worklist.safe_push (node->decl);
+	for (cgn = first_nested_function (node);
+	     cgn; cgn = next_nested_function (cgn))
+	  if (omp_declare_target_fn_p (cgn->decl))
+	    worklist.safe_push (cgn->decl);
+	  else if (DECL_STRUCT_FUNCTION (cgn->decl)
+		   && DECL_STRUCT_FUNCTION (cgn->decl)->has_omp_target)
+	    worklist.safe_push (cgn->decl);
+      }
+  FOR_EACH_VARIABLE (vnode)
+    if (lang_hooks.decls.omp_get_decl_init (vnode->decl)
+	&& omp_declare_target_var_p (vnode->decl))
+      worklist.safe_push (vnode->decl);
+  while (!worklist.is_empty ())
+    {
+      tree decl = worklist.pop ();
+      if (VAR_P (decl))
+	walk_tree_without_duplicates (lang_hooks.decls.omp_get_decl_init (decl),
+				      omp_discover_declare_target_var_r,
+				      &worklist);
+      else if (omp_declare_target_fn_p (decl))
+	walk_tree_without_duplicates (&DECL_SAVED_TREE (decl),
+				      omp_discover_declare_target_tgt_fn_r,
+				      &worklist);
+      else
+	walk_tree_without_duplicates (&DECL_SAVED_TREE (decl),
+				      omp_discover_declare_target_fn_r,
+				      &worklist);
+    }
+
+  lang_hooks.decls.omp_finish_decl_inits ();
+}
+
 
 /* Create new symbols containing (address, size) pairs for global variables,
    marked with "omp declare target" attribute, as well as addresses for the
@@ -1541,12 +1765,59 @@ execute_oacc_device_lower ()
       flag_openacc_dims = (char *)&flag_openacc_dims;
     }
 
+  bool is_oacc_parallel
+    = (lookup_attribute ("oacc parallel",
+			 DECL_ATTRIBUTES (current_function_decl)) != NULL);
   bool is_oacc_kernels
     = (lookup_attribute ("oacc kernels",
 			 DECL_ATTRIBUTES (current_function_decl)) != NULL);
+  bool is_oacc_serial
+    = (lookup_attribute ("oacc serial",
+			 DECL_ATTRIBUTES (current_function_decl)) != NULL);
+  bool is_oacc_parallel_kernels_parallelized
+    = (lookup_attribute ("oacc parallel_kernels_parallelized",
+			 DECL_ATTRIBUTES (current_function_decl)) != NULL);
+  bool is_oacc_parallel_kernels_gang_single
+    = (lookup_attribute ("oacc parallel_kernels_gang_single",
+			 DECL_ATTRIBUTES (current_function_decl)) != NULL);
+  int fn_level = oacc_fn_attrib_level (attrs);
+  bool is_oacc_routine = (fn_level >= 0);
+  gcc_checking_assert (is_oacc_parallel
+		       + is_oacc_kernels
+		       + is_oacc_serial
+		       + is_oacc_parallel_kernels_parallelized
+		       + is_oacc_parallel_kernels_gang_single
+		       + is_oacc_routine
+		       == 1);
+
   bool is_oacc_kernels_parallelized
     = (lookup_attribute ("oacc kernels parallelized",
 			 DECL_ATTRIBUTES (current_function_decl)) != NULL);
+  if (is_oacc_kernels_parallelized)
+    gcc_checking_assert (is_oacc_kernels);
+
+  if (dump_file)
+    {
+      if (is_oacc_parallel)
+	fprintf (dump_file, "Function is OpenACC parallel offload\n");
+      else if (is_oacc_kernels)
+	fprintf (dump_file, "Function is %s OpenACC kernels offload\n",
+		 (is_oacc_kernels_parallelized
+		  ? "parallelized" : "unparallelized"));
+      else if (is_oacc_serial)
+	fprintf (dump_file, "Function is OpenACC serial offload\n");
+      else if (is_oacc_parallel_kernels_parallelized)
+	fprintf (dump_file, "Function is %s OpenACC kernels offload\n",
+		 "parallel_kernels_parallelized");
+      else if (is_oacc_parallel_kernels_gang_single)
+	fprintf (dump_file, "Function is %s OpenACC kernels offload\n",
+		 "parallel_kernels_gang_single");
+      else if (is_oacc_routine)
+	fprintf (dump_file, "Function is OpenACC routine level %d\n",
+		 fn_level);
+      else
+	gcc_unreachable ();
+    }
 
   /* Unparallelized OpenACC kernels constructs must get launched as 1 x 1 x 1
      kernels, so remove the parallelism dimensions function attributes
@@ -1559,22 +1830,10 @@ execute_oacc_device_lower ()
 
   /* Discover, partition and process the loops.  */
   oacc_loop *loops = oacc_loop_discovery ();
-  int fn_level = oacc_fn_attrib_level (attrs);
 
-  if (dump_file)
-    {
-      if (fn_level >= 0)
-	fprintf (dump_file, "Function is OpenACC routine level %d\n",
-		 fn_level);
-      else if (is_oacc_kernels)
-	fprintf (dump_file, "Function is %s OpenACC kernels offload\n",
-		 (is_oacc_kernels_parallelized
-		  ? "parallelized" : "unparallelized"));
-      else
-	fprintf (dump_file, "Function is OpenACC parallel offload\n");
-    }
-
-  unsigned outer_mask = fn_level >= 0 ? GOMP_DIM_MASK (fn_level) - 1 : 0;
+  unsigned outer_mask = 0;
+  if (is_oacc_routine)
+    outer_mask = GOMP_DIM_MASK (fn_level) - 1;
   unsigned used_mask = oacc_loop_partition (loops, outer_mask);
   /* OpenACC kernels constructs are special: they currently don't use the
      generic oacc_loop infrastructure and attribute/dimension processing.  */
@@ -1595,6 +1854,11 @@ execute_oacc_device_lower ()
 	fprintf (dump_file, "%s%d", comma, dims[ix]);
       fprintf (dump_file, "]\n");
     }
+
+  /* Verify that for OpenACC 'kernels' decomposed "gang-single" parts we launch
+     a single gang only.  */
+  if (is_oacc_parallel_kernels_gang_single)
+    gcc_checking_assert (dims[GOMP_DIM_GANG] == 1);
 
   oacc_loop_process (loops);
   if (dump_file)
@@ -1915,12 +2179,28 @@ execute_omp_device_lower ()
   bool regimplify = false;
   basic_block bb;
   gimple_stmt_iterator gsi;
+  bool calls_declare_variant_alt
+    = cgraph_node::get (cfun->decl)->calls_declare_variant_alt;
   FOR_EACH_BB_FN (bb, cfun)
     for (gsi = gsi_start_bb (bb); !gsi_end_p (gsi); gsi_next (&gsi))
       {
 	gimple *stmt = gsi_stmt (gsi);
-	if (!is_gimple_call (stmt) || !gimple_call_internal_p (stmt))
+	if (!is_gimple_call (stmt))
 	  continue;
+	if (!gimple_call_internal_p (stmt))
+	  {
+	    if (calls_declare_variant_alt)
+	      if (tree fndecl = gimple_call_fndecl (stmt))
+		{
+		  tree new_fndecl = omp_resolve_declare_variant (fndecl);
+		  if (new_fndecl != fndecl)
+		    {
+		      gimple_call_set_fndecl (stmt, new_fndecl);
+		      update_stmt (stmt);
+		    }
+		}
+	    continue;
+	  }
 	tree lhs = gimple_call_lhs (stmt), rhs = NULL_TREE;
 	tree type = lhs ? TREE_TYPE (lhs) : integer_type_node;
 	switch (gimple_call_internal_fn (stmt))
@@ -2014,7 +2294,9 @@ public:
   /* opt_pass methods: */
   virtual bool gate (function *fun)
     {
-      return !(fun->curr_properties & PROP_gimple_lomp_dev);
+      return (!(fun->curr_properties & PROP_gimple_lomp_dev)
+	      || (flag_openmp
+		  && cgraph_node::get (fun->decl)->calls_declare_variant_alt));
     }
   virtual unsigned int execute (function *)
     {

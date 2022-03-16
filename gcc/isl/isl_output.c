@@ -2,6 +2,7 @@
  * Copyright 2008-2009 Katholieke Universiteit Leuven
  * Copyright 2010      INRIA Saclay
  * Copyright 2012-2013 Ecole Normale Superieure
+ * Copyright 2019      Cerebras Systems
  *
  * Use of this software is governed by the MIT license
  *
@@ -9,7 +10,8 @@
  * Computerwetenschappen, Celestijnenlaan 200A, B-3001 Leuven, Belgium
  * and INRIA Saclay - Ile-de-France, Parc Club Orsay Universite,
  * ZAC des vignes, 4 rue Jacques Monod, 91893 Orsay, France 
- * and Ecole Normale Superieure, 45 rue d’Ulm, 75230 Paris, France
+ * and Ecole Normale Superieure, 45 rue d'Ulm, 75230 Paris, France
+ * and Cerebras Systems, 175 S San Antonio Rd, Los Altos, CA, USA
  */
 
 #include <stdlib.h>
@@ -29,6 +31,7 @@
 #include <isl_local.h>
 #include <isl_local_space_private.h>
 #include <isl_aff_private.h>
+#include <isl_id_private.h>
 #include <isl_val_private.h>
 #include <isl_constraint_private.h>
 #include <isl/ast_build.h>
@@ -278,7 +281,7 @@ static isl_bool can_print_div_expr(__isl_keep isl_printer *p,
 	return isl_bool_not(isl_local_div_is_marked_unknown(div, pos));
 }
 
-static __isl_give isl_printer *print_div(__isl_keep isl_space *dim,
+static __isl_give isl_printer *print_div(__isl_keep isl_space *space,
 	__isl_keep isl_mat *div, int pos, __isl_take isl_printer *p);
 
 static __isl_give isl_printer *print_term(__isl_keep isl_space *space,
@@ -314,7 +317,7 @@ static __isl_give isl_printer *print_term(__isl_keep isl_space *space,
 	return p;
 }
 
-static __isl_give isl_printer *print_affine_of_len(__isl_keep isl_space *dim,
+static __isl_give isl_printer *print_affine_of_len(__isl_keep isl_space *space,
 	__isl_keep isl_mat *div,
 	__isl_take isl_printer *p, isl_int *c, int len)
 {
@@ -334,7 +337,7 @@ static __isl_give isl_printer *print_affine_of_len(__isl_keep isl_space *dim,
 				p = isl_printer_print_str(p, " + ");
 		}
 		first = 0;
-		p = print_term(dim, div, c[i], i, p, 0);
+		p = print_term(space, div, c[i], i, p, 0);
 		if (flip)
 			isl_int_neg(c[i], c[i]);
 	}
@@ -436,13 +439,13 @@ static __isl_give isl_printer *print_nested_tuple(__isl_take isl_printer *p,
 	return p;
 }
 
-static __isl_give isl_printer *print_tuple(__isl_keep isl_space *dim,
+static __isl_give isl_printer *print_tuple(__isl_keep isl_space *space,
 	__isl_take isl_printer *p, enum isl_dim_type type,
 	struct isl_print_space_data *data)
 {
-	data->space = dim;
+	data->space = space;
 	data->type = type;
-	return print_nested_tuple(p, dim, type, data, 0);
+	return print_nested_tuple(p, space, type, data, 0);
 }
 
 static __isl_give isl_printer *print_nested_map_dim(__isl_take isl_printer *p,
@@ -622,15 +625,15 @@ static __isl_give isl_printer *print_mod(__isl_take isl_printer *p,
 	return p;
 }
 
-/* Can the equality constraints "c" be printed as a modulo constraint?
- * In particular, is of the form
+/* Given an equality constraint with a non-zero coefficient "c"
+ * in position "pos", is this term of the form
  *
- *	f - a m floor(g/m) = 0,
+ *	a m floor(g/m),
  *
- * with c = -a m the coefficient at position "pos"?
+ * with c = a m?
  * Return the position of the corresponding integer division if so.
  * Return the number of integer divisions if not.
- * Return -1 on error.
+ * Return isl_size_error on error.
  *
  * Modulo constraints are currently not printed in C format.
  * Other than that, "pos" needs to correspond to an integer division
@@ -651,7 +654,7 @@ static isl_size print_as_modulo_pos(__isl_keep isl_printer *p,
 	if (p->output_format == ISL_FORMAT_C)
 		return n_div;
 	if (pos2type(space, &type, &pos) < 0)
-		return -1;
+		return isl_size_error;
 	if (type != isl_dim_div)
 		return n_div;
 	can_print = can_print_div_expr(p, div, pos);
@@ -868,7 +871,7 @@ error:
 	return NULL;
 }
 
-static __isl_give isl_printer *print_div(__isl_keep isl_space *dim,
+static __isl_give isl_printer *print_div(__isl_keep isl_space *space,
 	__isl_keep isl_mat *div, int pos, __isl_take isl_printer *p)
 {
 	int c;
@@ -878,7 +881,7 @@ static __isl_give isl_printer *print_div(__isl_keep isl_space *dim,
 
 	c = p->output_format == ISL_FORMAT_C;
 	p = isl_printer_print_str(p, c ? "floord(" : "floor((");
-	p = print_affine_of_len(dim, div, p,
+	p = print_affine_of_len(space, div, p,
 				div->row[pos] + 1, div->n_col - 1);
 	p = isl_printer_print_str(p, c ? ", " : ")/");
 	p = isl_printer_print_isl_int(p, div->row[pos][0]);
@@ -1378,7 +1381,7 @@ error:
 }
 
 static int defining_equality(__isl_keep isl_basic_map *eq,
-	__isl_keep isl_space *dim, enum isl_dim_type type, int pos)
+	__isl_keep isl_space *space, enum isl_dim_type type, int pos)
 {
 	int i;
 	isl_size total;
@@ -1387,7 +1390,7 @@ static int defining_equality(__isl_keep isl_basic_map *eq,
 	if (total < 0)
 		return -1;
 
-	pos += isl_space_offset(dim, type);
+	pos += isl_space_offset(space, type);
 
 	for (i = 0; i < eq->n_eq; ++i) {
 		if (isl_seq_last_non_zero(eq->eq[i] + 1, total) != pos)
@@ -1800,16 +1803,16 @@ static __isl_give isl_printer *print_base(__isl_take isl_printer *p,
 }
 
 static __isl_give isl_printer *print_pow(__isl_take isl_printer *p,
-	__isl_keep isl_space *dim, __isl_keep isl_mat *div, int var, int exp)
+	__isl_keep isl_space *space, __isl_keep isl_mat *div, int var, int exp)
 {
-	p = print_base(p, dim, div, var);
+	p = print_base(p, space, div, var);
 	if (exp == 1)
 		return p;
 	if (p->output_format == ISL_FORMAT_C) {
 		int i;
 		for (i = 1; i < exp; ++i) {
 			p = isl_printer_print_str(p, "*");
-			p = print_base(p, dim, div, var);
+			p = print_base(p, space, div, var);
 		}
 	} else {
 		p = isl_printer_print_str(p, "^");
@@ -1985,16 +1988,25 @@ static __isl_give isl_printer *qpolynomial_fold_print(
 	__isl_keep isl_qpolynomial_fold *fold, __isl_take isl_printer *p)
 {
 	int i;
+	isl_qpolynomial_list *list;
+	isl_size n;
 
+	list = isl_qpolynomial_fold_peek_list(fold);
+	n = isl_qpolynomial_list_size(list);
+	if (n < 0)
+		return isl_printer_free(p);
 	if (fold->type == isl_fold_min)
 		p = isl_printer_print_str(p, "min");
 	else if (fold->type == isl_fold_max)
 		p = isl_printer_print_str(p, "max");
 	p = isl_printer_print_str(p, "(");
-	for (i = 0; i < fold->n; ++i) {
+	for (i = 0; i < n; ++i) {
+		isl_qpolynomial *qp;
+
 		if (i)
 			p = isl_printer_print_str(p, ", ");
-		p = print_qpolynomial(p, fold->qp[i]);
+		qp = isl_qpolynomial_list_peek(list, i);
+		p = print_qpolynomial(p, qp);
 	}
 	p = isl_printer_print_str(p, ")");
 	return p;
@@ -2334,17 +2346,26 @@ static __isl_give isl_printer *print_qpolynomial_fold_c(
 	__isl_keep isl_qpolynomial_fold *fold)
 {
 	int i;
+	isl_qpolynomial_list *list;
+	isl_size n;
 
-	for (i = 0; i < fold->n - 1; ++i)
+	list = isl_qpolynomial_fold_peek_list(fold);
+	n = isl_qpolynomial_list_size(list);
+	if (n < 0)
+		return isl_printer_free(p);
+	for (i = 0; i < n - 1; ++i)
 		if (fold->type == isl_fold_min)
 			p = isl_printer_print_str(p, "min(");
 		else if (fold->type == isl_fold_max)
 			p = isl_printer_print_str(p, "max(");
 
-	for (i = 0; i < fold->n; ++i) {
+	for (i = 0; i < n; ++i) {
+		isl_qpolynomial *qp;
+
 		if (i)
 			p = isl_printer_print_str(p, ", ");
-		p = print_qpolynomial_c(p, space, fold->qp[i]);
+		qp = isl_qpolynomial_list_peek(list, i);
+		p = print_qpolynomial_c(p, space, qp);
 		if (i)
 			p = isl_printer_print_str(p, ")");
 	}
@@ -2588,23 +2609,193 @@ error:
 	return NULL;
 }
 
+/* Look for the last of the "n" integer divisions that is used in "aff" and
+ * that can be printed as a modulo and
+ * return the position of this integer division.
+ * Return "n" if no such integer division can be found.
+ * Return isl_size_error on error.
+ *
+ * In particular, look for an integer division that appears in "aff"
+ * with a coefficient that is a multiple of the denominator
+ * of the integer division.
+ * That is, check if the numerator of "aff" is of the form
+ *
+ *	f(...) + a m floor(g/m)
+ *
+ * and return the position of "floor(g/m)".
+ *
+ * Note that, unlike print_as_modulo_pos, no check needs to be made
+ * for whether the integer division can be printed, since it will
+ * need to be printed as an integer division anyway if it is not printed
+ * as a modulo.
+ */
+static isl_size last_modulo(__isl_keep isl_printer *p, __isl_keep isl_aff *aff,
+	unsigned n)
+{
+	isl_size o_div;
+	int i;
+
+	if (n == 0)
+		return n;
+	o_div = isl_aff_domain_offset(aff, isl_dim_div);
+	if (o_div < 0)
+		return isl_size_error;
+	for (i = n - 1; i >= 0; --i) {
+		if (isl_int_is_zero(aff->v->el[1 + o_div + i]))
+			continue;
+		if (isl_int_is_divisible_by(aff->v->el[1 + o_div + i],
+					    aff->ls->div->row[i][0]))
+			return i;
+	}
+
+	return n;
+}
+
+/* Print the numerator of the affine expression "aff" to "p",
+ * with the variable names taken from "space".
+ */
+static __isl_give isl_printer *print_aff_num_base(__isl_take isl_printer *p,
+	__isl_keep isl_space *space, __isl_keep isl_aff *aff)
+{
+	isl_size total;
+
+	total = isl_aff_domain_dim(aff, isl_dim_all);
+	if (total < 0)
+		return isl_printer_free(p);
+	p = print_affine_of_len(space, aff->ls->div, p,
+				aff->v->el + 1, 1 + total);
+
+	return p;
+}
+
+static __isl_give isl_printer *print_aff_num(__isl_take isl_printer *p,
+	__isl_keep isl_space *space, __isl_keep isl_aff *aff);
+
+/* Print the modulo term "c" * ("aff" mod "mod") to "p",
+ * with the variable names taken from "space".
+ * If "first" is set, then this is the first term of an expression.
+ */
+static __isl_give isl_printer *print_mod_term(__isl_take isl_printer *p,
+	__isl_keep isl_space *space, __isl_keep isl_aff *aff, int first,
+	__isl_take isl_val *c, __isl_keep isl_val *mod)
+{
+	isl_bool is_one, is_neg;
+
+	is_neg = isl_val_is_neg(c);
+	if (is_neg < 0)
+		p = isl_printer_free(p);
+	if (!first) {
+		if (is_neg)
+			c = isl_val_neg(c);
+		p = isl_printer_print_str(p, is_neg ? " - " : " + ");
+	}
+	is_one = isl_val_is_one(c);
+	if (is_one < 0)
+		p = isl_printer_free(p);
+	if (!is_one) {
+		p = isl_printer_print_val(p, c);
+		p = isl_printer_print_str(p, "*(");
+	}
+	p = isl_printer_print_str(p, "(");
+	p = print_aff_num(p, space, aff);
+	p = isl_printer_print_str(p, ")");
+	p = isl_printer_print_str(p, " mod ");
+	p = isl_printer_print_val(p, mod);
+	if (!is_one)
+		p = isl_printer_print_str(p, ")");
+
+	isl_val_free(c);
+
+	return p;
+}
+
+/* Print the numerator of the affine expression "aff" to "p",
+ * with the variable names taken from "space",
+ * given that the numerator of "aff" is of the form
+ *
+ *	f(...) + a m floor(g/m)
+ *
+ * with "floor(g/m)" the integer division at position "last".
+ *
+ * First replace "aff" by its numerator and rewrite it as
+ *
+ *	f(...) + a g - a (g mod m)
+ *
+ * Recursively write out (the numerator of) "f(...) + a g"
+ * (which may involve other modulo expressions) and
+ * then write out "- a (g mod m)".
+ */
+static __isl_give isl_printer *print_aff_num_mod(__isl_take isl_printer *p,
+	__isl_keep isl_space *space, __isl_keep isl_aff *aff, unsigned last)
+{
+	isl_bool is_zero;
+	isl_val *a, *m;
+	isl_aff *div, *term;
+
+	aff = isl_aff_copy(aff);
+	aff = isl_aff_scale_val(aff, isl_aff_get_denominator_val(aff));
+	a = isl_aff_get_coefficient_val(aff, isl_dim_div, last);
+	aff = isl_aff_set_coefficient_si(aff, isl_dim_div, last, 0);
+	div = isl_aff_get_div(aff, last);
+	m = isl_aff_get_denominator_val(div);
+	a = isl_val_div(a, isl_val_copy(m));
+	div = isl_aff_scale_val(div, isl_val_copy(m));
+	term = isl_aff_scale_val(isl_aff_copy(div), isl_val_copy(a));
+	aff = isl_aff_add(aff, term);
+
+	is_zero = isl_aff_plain_is_zero(aff);
+	if (is_zero < 0) {
+		p = isl_printer_free(p);
+	} else {
+		if (!is_zero)
+			p = print_aff_num(p, space, aff);
+		a = isl_val_neg(a);
+		p = print_mod_term(p, space, div, is_zero, isl_val_copy(a), m);
+	}
+
+	isl_val_free(a);
+	isl_val_free(m);
+	isl_aff_free(aff);
+	isl_aff_free(div);
+
+	return p;
+}
+
+/* Print the numerator of the affine expression "aff" to "p",
+ * with the variable names taken from "space",
+ * separating out any (obvious) modulo expressions.
+ *
+ * In particular, look for modulo expressions in "aff",
+ * separating them out if found and simply printing out "aff" otherwise.
+ */
+static __isl_give isl_printer *print_aff_num(__isl_take isl_printer *p,
+	__isl_keep isl_space *space, __isl_keep isl_aff *aff)
+{
+	isl_size n_div, mod;
+
+	n_div = isl_aff_dim(aff, isl_dim_div);
+	if (n_div < 0)
+		return isl_printer_free(p);
+	mod = last_modulo(p, aff, n_div);
+	if (mod < 0)
+		return isl_printer_free(p);
+	if (mod < n_div)
+		return print_aff_num_mod(p, space, aff, mod);
+	else
+		return print_aff_num_base(p, space, aff);
+}
+
 /* Print the (potentially rational) affine expression "aff" to "p",
  * with the variable names taken from "space".
  */
 static __isl_give isl_printer *print_aff_body(__isl_take isl_printer *p,
 	__isl_keep isl_space *space, __isl_keep isl_aff *aff)
 {
-	isl_size total;
-
 	if (isl_aff_is_nan(aff))
 		return isl_printer_print_str(p, "NaN");
 
-	total = isl_local_space_dim(aff->ls, isl_dim_all);
-	if (total < 0)
-		return isl_printer_free(p);
 	p = isl_printer_print_str(p, "(");
-	p = print_affine_of_len(space, aff->ls->div, p,
-				aff->v->el + 1, 1 + total);
+	p = print_aff_num(p, space, aff);
 	if (isl_int_is_one(aff->v->el[0]))
 		p = isl_printer_print_str(p, ")");
 	else {
@@ -2783,7 +2974,7 @@ static __isl_give isl_printer *print_aff_c(__isl_take isl_printer *p,
 {
 	isl_size total;
 
-	total = isl_local_space_dim(aff->ls, isl_dim_all);
+	total = isl_aff_domain_dim(aff, isl_dim_all);
 	if (total < 0)
 		return isl_printer_free(p);
 	if (!isl_int_is_one(aff->v->el[0]))
@@ -2892,7 +3083,7 @@ static __isl_give isl_printer *print_union_pw_aff_body(
 	data.p = p;
 	if (isl_union_pw_aff_foreach_pw_aff(upa,
 					    &print_pw_aff_body_wrap, &data) < 0)
-		data.p = isl_printer_free(p);
+		data.p = isl_printer_free(data.p);
 	p = data.p;
 	p = isl_printer_print_str(p, s_close_set[0]);
 
@@ -3320,6 +3511,58 @@ __isl_give isl_printer *isl_printer_print_multi_val(
 		return print_multi_val_isl(p, mv);
 	isl_die(p->ctx, isl_error_unsupported, "unsupported output format",
 		return isl_printer_free(p));
+}
+
+/* Print dimension "pos" of data->space to "p".
+ *
+ * data->user is assumed to be an isl_multi_id.
+ *
+ * If the current dimension is an output dimension, then print
+ * the corresponding identifier.  Otherwise, print the name of the dimension.
+ */
+static __isl_give isl_printer *print_dim_mi(__isl_take isl_printer *p,
+	struct isl_print_space_data *data, unsigned pos)
+{
+	isl_multi_id *mi = data->user;
+
+	if (data->type == isl_dim_out)
+		return isl_printer_print_id(p, mi->u.p[pos]);
+	else
+		return print_name(data->space, p, data->type, pos, data->latex);
+}
+
+/* Print the isl_multi_id "mi" to "p" in isl format.
+ */
+static __isl_give isl_printer *print_multi_id_isl(__isl_take isl_printer *p,
+	__isl_keep isl_multi_id *mi)
+{
+	isl_space *space;
+	struct isl_print_space_data data = { 0 };
+
+	space = isl_multi_id_peek_space(mi);
+	p = print_param_tuple(p, space, &data);
+	p = isl_printer_print_str(p, "{ ");
+	data.print_dim = &print_dim_mi;
+	data.user = mi;
+	p = isl_print_space(space, p, 0, &data);
+	p = isl_printer_print_str(p, " }");
+	return p;
+}
+
+/* Print the isl_multi_id "mi" to "p".
+ *
+ * Currently only supported in isl format.
+ */
+__isl_give isl_printer *isl_printer_print_multi_id(
+	__isl_take isl_printer *p, __isl_keep isl_multi_id *mi)
+{
+	if (!p || !mi)
+		return isl_printer_free(p);
+
+	if (p->output_format == ISL_FORMAT_ISL)
+		return print_multi_id_isl(p, mi);
+	isl_die(isl_printer_get_ctx(p), isl_error_unsupported,
+		"unsupported output format", return isl_printer_free(p));
 }
 
 /* Print dimension "pos" of data->space to "p".

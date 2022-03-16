@@ -1,5 +1,5 @@
 /* A state machine for detecting misuses of <stdio.h>'s FILE * API.
-   Copyright (C) 2019-2020 Free Software Foundation, Inc.
+   Copyright (C) 2019-2021 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -29,6 +29,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "diagnostic-path.h"
 #include "diagnostic-metadata.h"
 #include "function.h"
+#include "json.h"
 #include "analyzer/analyzer.h"
 #include "diagnostic-event-id.h"
 #include "analyzer/analyzer-logging.h"
@@ -36,6 +37,12 @@ along with GCC; see the file COPYING3.  If not see
 #include "analyzer/pending-diagnostic.h"
 #include "analyzer/function-set.h"
 #include "analyzer/analyzer-selftests.h"
+#include "tristate.h"
+#include "selftest.h"
+#include "analyzer/call-string.h"
+#include "analyzer/program-point.h"
+#include "analyzer/store.h"
+#include "analyzer/region-model.h"
 
 #if ENABLE_ANALYZER
 
@@ -52,6 +59,17 @@ public:
 
   bool inherited_state_p () const FINAL OVERRIDE { return false; }
 
+  state_machine::state_t
+  get_default_state (const svalue *sval) const FINAL OVERRIDE
+  {
+    if (tree cst = sval->maybe_get_constant ())
+      {
+	if (zerop (cst))
+	  return m_null;
+      }
+    return m_start;
+  }
+
   bool on_stmt (sm_context *sm_ctxt,
 		const supernode *node,
 		const gimple *stmt) const FINAL OVERRIDE;
@@ -65,9 +83,6 @@ public:
 
   bool can_purge_p (state_t s) const FINAL OVERRIDE;
   pending_diagnostic *on_leak (tree var) const FINAL OVERRIDE;
-
-  /* Start state.  */
-  state_t m_start;
 
   /* State for a FILE * returned from fopen that hasn't been checked for
      NULL.
@@ -104,7 +119,7 @@ public:
   label_text describe_state_change (const evdesc::state_change &change)
     OVERRIDE
   {
-    if (change.m_old_state == m_sm.m_start
+    if (change.m_old_state == m_sm.get_start_state ()
 	&& change.m_new_state == m_sm.m_unchecked)
       // TODO: verify that it's the fopen stmt, not a copy
       return label_text::borrow ("opened here");
@@ -212,7 +227,6 @@ private:
 fileptr_state_machine::fileptr_state_machine (logger *logger)
 : state_machine ("file", logger)
 {
-  m_start = add_state ("start");
   m_unchecked = add_state ("unchecked");
   m_null = add_state ("null");
   m_nonnull = add_state ("nonnull");
@@ -232,7 +246,7 @@ get_file_using_fns ()
     "__fbufsize",
     "__flbf",
     "__fpending",
-    "__fpurge"
+    "__fpurge",
     "__freadable",
     "__freading",
     "__fsetlocking",
@@ -293,7 +307,16 @@ static bool
 is_file_using_fn_p (tree fndecl)
 {
   function_set fs = get_file_using_fns ();
-  return fs.contains_decl_p (fndecl);
+  if (fs.contains_decl_p (fndecl))
+    return true;
+
+  /* Also support variants of these names prefixed with "_IO_".  */
+  const char *name = IDENTIFIER_POINTER (DECL_NAME (fndecl));
+  if (strncmp (name, "_IO_", 4) == 0)
+    if (fs.contains_name_p (name + 4))
+      return true;
+
+  return false;
 }
 
 /* Implementation of state_machine::on_stmt vfunc for fileptr_state_machine.  */
@@ -310,10 +333,7 @@ fileptr_state_machine::on_stmt (sm_context *sm_ctxt,
 	  {
 	    tree lhs = gimple_call_lhs (call);
 	    if (lhs)
-	      {
-		lhs = sm_ctxt->get_readable_tree (lhs);
-		sm_ctxt->on_transition (node, stmt, lhs, m_start, m_unchecked);
-	      }
+	      sm_ctxt->on_transition (node, stmt, lhs, m_start, m_unchecked);
 	    else
 	      {
 		/* TODO: report leak.  */
@@ -324,7 +344,6 @@ fileptr_state_machine::on_stmt (sm_context *sm_ctxt,
 	if (is_named_call_p (callee_fndecl, "fclose", call, 1))
 	  {
 	    tree arg = gimple_call_arg (call, 0);
-	    arg = sm_ctxt->get_readable_tree (arg);
 
 	    sm_ctxt->on_transition (node, stmt, arg, m_start, m_closed);
 
@@ -334,9 +353,13 @@ fileptr_state_machine::on_stmt (sm_context *sm_ctxt,
 
 	    sm_ctxt->on_transition (node, stmt , arg, m_nonnull, m_closed);
 
-	    sm_ctxt->warn_for_state (node, stmt, arg, m_closed,
-				     new double_fclose (*this, arg));
-	    sm_ctxt->on_transition (node, stmt, arg, m_closed, m_stop);
+	    if (sm_ctxt->get_state (stmt, arg) == m_closed)
+	      {
+		tree diag_arg = sm_ctxt->get_diagnostic_tree (arg);
+		sm_ctxt->warn (node, stmt, arg,
+			       new double_fclose (*this, diag_arg));
+		sm_ctxt->set_next_state (stmt, arg, m_stop);
+	      }
 	    return true;
 	  }
 

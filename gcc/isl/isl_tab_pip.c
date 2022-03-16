@@ -4379,8 +4379,8 @@ static __isl_give isl_basic_map *align_context_divs(
 	}
 	other = bmap_n_div - common;
 	if (dom->n_div - common > 0) {
-		bmap = isl_basic_map_extend_space(bmap, isl_space_copy(bmap->dim),
-				dom->n_div - common, 0, 0);
+		bmap = isl_basic_map_cow(bmap);
+		bmap = isl_basic_map_extend(bmap, dom->n_div - common, 0, 0);
 		if (!bmap)
 			return NULL;
 	}
@@ -4566,12 +4566,14 @@ struct isl_constraint_equal_info {
 /* Check whether the coefficients of the output variables
  * of the constraint in "entry" are equal to info->val.
  */
-static int constraint_equal(const void *entry, const void *val)
+static isl_bool constraint_equal(const void *entry, const void *val)
 {
 	isl_int **row = (isl_int **)entry;
 	const struct isl_constraint_equal_info *info = val;
+	int eq;
 
-	return isl_seq_eq((*row) + 1 + info->n_in, info->val, info->n_out);
+	eq = isl_seq_eq((*row) + 1 + info->n_in, info->val, info->n_out);
+	return isl_bool_ok(eq);
 }
 
 /* Check whether "bmap" has a pair of constraints that have

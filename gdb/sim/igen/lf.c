@@ -1,6 +1,6 @@
 /* The IGEN simulator generator for GDB, the GNU Debugger.
 
-   Copyright 2002-2020 Free Software Foundation, Inc.
+   Copyright 2002-2022 Free Software Foundation, Inc.
 
    Contributed by Andrew Cagney.
 
@@ -25,21 +25,11 @@
 #include <stdarg.h>
 #include <ctype.h>
 
-#include "config.h"
 #include "misc.h"
 #include "lf.h"
 
-#ifdef HAVE_STDLIB_H
 #include <stdlib.h>
-#endif
-
-#ifdef HAVE_STRING_H
 #include <string.h>
-#else
-#ifdef HAVE_STRINGS_H
-#include <strings.h>
-#endif
-#endif
 
 struct _lf
 {

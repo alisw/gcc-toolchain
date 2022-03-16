@@ -1,7 +1,7 @@
 // { dg-options "-g -O0" }
 // { dg-do run { target c++11 } }
 
-// Copyright (C) 2014-2020 Free Software Foundation, Inc.
+// Copyright (C) 2014-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -53,7 +53,9 @@ namespace std
     {
       unique_ptr(T* p) { _M_t._M_head_impl = p; }
 
-      tuple<T*, D> _M_t;
+      using __tuple_type = tuple<T*, D>;
+
+      __tuple_type _M_t;
     };
 
   // Old representation of std::optional, before GCC 9

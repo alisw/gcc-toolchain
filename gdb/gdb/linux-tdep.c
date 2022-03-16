@@ -1,6 +1,6 @@
 /* Target-dependent code for GNU/Linux, architecture independent.
 
-   Copyright (C) 2009-2020 Free Software Foundation, Inc.
+   Copyright (C) 2009-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -39,6 +39,8 @@
 #include "gdb_regex.h"
 #include "gdbsupport/enum-flags.h"
 #include "gdbsupport/gdb_optional.h"
+#include "gcore.h"
+#include "gcore-elf.h"
 
 #include <ctype.h>
 
@@ -86,7 +88,32 @@ struct smaps_vmflags
     /* Is this a MAP_SHARED mapping (VM_SHARED, "sh").  */
 
     unsigned int shared_mapping : 1;
+
+    /* Memory map has memory tagging enabled.  */
+
+    unsigned int memory_tagging : 1;
   };
+
+/* Data structure that holds the information contained in the
+   /proc/<pid>/smaps file.  */
+
+struct smaps_data
+{
+  ULONGEST start_address;
+  ULONGEST end_address;
+  std::string filename;
+  struct smaps_vmflags vmflags;
+  bool read;
+  bool write;
+  bool exec;
+  bool priv;
+  bool has_anonymous;
+  bool mapping_anon_p;
+  bool mapping_file_p;
+
+  ULONGEST inode;
+  ULONGEST offset;
+};
 
 /* Whether to take the /proc/PID/coredump_filter into account when
    generating a corefile.  */
@@ -166,14 +193,15 @@ enum
 static struct gdbarch_data *linux_gdbarch_data_handle;
 
 struct linux_gdbarch_data
-  {
-    struct type *siginfo_type;
-  };
+{
+  struct type *siginfo_type;
+  int num_disp_step_buffers;
+};
 
 static void *
-init_linux_gdbarch_data (struct gdbarch *gdbarch)
+init_linux_gdbarch_data (struct obstack *obstack)
 {
-  return GDBARCH_OBSTACK_ZALLOC (gdbarch, struct linux_gdbarch_data);
+  return obstack_zalloc<linux_gdbarch_data> (obstack);
 }
 
 static struct linux_gdbarch_data *
@@ -199,6 +227,9 @@ struct linux_info
      yet.  Positive if we tried looking it up, and found it.  Negative
      if we tried looking it up but failed.  */
   int vsyscall_range_p = 0;
+
+  /* Inferior's displaced step buffers.  */
+  gdb::optional<displaced_step_buffers> disp_step_bufs;
 };
 
 /* Per-inferior data key.  */
@@ -217,13 +248,11 @@ invalidate_linux_cache_inf (struct inferior *inf)
    valid INFO pointer.  */
 
 static struct linux_info *
-get_linux_inferior_data (void)
+get_linux_inferior_data (inferior *inf)
 {
-  struct linux_info *info;
-  struct inferior *inf = current_inferior ();
+  linux_info *info = linux_inferior_data.get (inf);
 
-  info = linux_inferior_data.get (inf);
-  if (info == NULL)
+  if (info == nullptr)
     info = linux_inferior_data.emplace (inf);
 
   return info;
@@ -266,20 +295,20 @@ linux_get_siginfo_type_with_fields (struct gdbarch *gdbarch,
   pid_type = arch_type (gdbarch, TYPE_CODE_TYPEDEF,
 			TYPE_LENGTH (int_type) * TARGET_CHAR_BIT, "__pid_t");
   TYPE_TARGET_TYPE (pid_type) = int_type;
-  TYPE_TARGET_STUB (pid_type) = 1;
+  pid_type->set_target_is_stub (true);
 
   /* __uid_t */
   uid_type = arch_type (gdbarch, TYPE_CODE_TYPEDEF,
 			TYPE_LENGTH (uint_type) * TARGET_CHAR_BIT, "__uid_t");
   TYPE_TARGET_TYPE (uid_type) = uint_type;
-  TYPE_TARGET_STUB (uid_type) = 1;
+  uid_type->set_target_is_stub (true);
 
   /* __clock_t */
   clock_type = arch_type (gdbarch, TYPE_CODE_TYPEDEF,
 			  TYPE_LENGTH (long_type) * TARGET_CHAR_BIT,
 			  "__clock_t");
   TYPE_TARGET_TYPE (clock_type) = long_type;
-  TYPE_TARGET_STUB (clock_type) = 1;
+  clock_type->set_target_is_stub (true);
 
   /* _sifields */
   sifields_type = arch_composite_type (gdbarch, NULL, TYPE_CODE_UNION);
@@ -381,9 +410,10 @@ int
 linux_is_uclinux (void)
 {
   CORE_ADDR dummy;
+  target_ops *target = current_inferior ()->top_target ();
 
-  return (target_auxv_search (current_top_target (), AT_NULL, &dummy) > 0
-	  && target_auxv_search (current_top_target (), AT_PAGESZ, &dummy) == 0);
+  return (target_auxv_search (target, AT_NULL, &dummy) > 0
+	  && target_auxv_search (target, AT_PAGESZ, &dummy) == 0);
 }
 
 static int
@@ -410,7 +440,7 @@ read_mapping (const char *line,
 	      ULONGEST *addr, ULONGEST *endaddr,
 	      const char **permissions, size_t *permissions_len,
 	      ULONGEST *offset,
-              const char **device, size_t *device_len,
+	      const char **device, size_t *device_len,
 	      ULONGEST *inode,
 	      const char **filename)
 {
@@ -472,6 +502,8 @@ decode_vmflags (char *p, struct smaps_vmflags *v)
 	v->exclude_coredump = 1;
       else if (strcmp (s, "sh") == 0)
 	v->shared_mapping = 1;
+      else if (strcmp (s, "mt") == 0)
+	v->memory_tagging = 1;
     }
 }
 
@@ -742,7 +774,7 @@ dump_note_entry_p (filter_flags filterflags, const struct smaps_vmflags *v,
 
   /* Otherwise, any other file-based mapping should be placed in the
      note.  */
-  return filename != nullptr;
+  return 1;
 }
 
 /* Implement the "info proc" command.  */
@@ -772,7 +804,7 @@ linux_info_proc (struct gdbarch *gdbarch, const char *args,
     }
   else
     {
-      if (!target_has_execution)
+      if (!target_has_execution ())
 	error (_("No current process: you must name one."));
       if (current_inferior ()->fake_pid_p)
 	error (_("Can't determine the current process's PID: you must name one."));
@@ -843,9 +875,9 @@ linux_info_proc (struct gdbarch *gdbarch, const char *args,
 			   "Start Addr",
 			   "  End Addr",
 			   "      Size", "    Offset", "objfile");
-            }
+	    }
 	  else
-            {
+	    {
 	      printf_filtered ("  %18s %18s %10s %10s %s\n",
 			   "Start Addr",
 			   "  End Addr",
@@ -867,8 +899,8 @@ linux_info_proc (struct gdbarch *gdbarch, const char *args,
 			    &inode, &mapping_filename);
 
 	      if (gdbarch_addr_bit (gdbarch) == 32)
-	        {
-	          printf_filtered ("\t%10s %10s %10s %10s %s\n",
+		{
+		  printf_filtered ("\t%10s %10s %10s %10s %s\n",
 				   paddress (gdbarch, addr),
 				   paddress (gdbarch, endaddr),
 				   hex_string (endaddr - addr),
@@ -876,14 +908,14 @@ linux_info_proc (struct gdbarch *gdbarch, const char *args,
 				   *mapping_filename ? mapping_filename : "");
 		}
 	      else
-	        {
-	          printf_filtered ("  %18s %18s %10s %10s %s\n",
+		{
+		  printf_filtered ("  %18s %18s %10s %10s %s\n",
 				   paddress (gdbarch, addr),
 				   paddress (gdbarch, endaddr),
 				   hex_string (endaddr - addr),
 				   hex_string (offset),
 				   *mapping_filename ? mapping_filename : "");
-	        }
+		}
 	    }
 	}
       else
@@ -1067,13 +1099,12 @@ static void
 linux_read_core_file_mappings (struct gdbarch *gdbarch,
 			       struct bfd *cbfd,
 			       gdb::function_view<void (ULONGEST count)>
-			         pre_loop_cb,
+				 pre_loop_cb,
 			       gdb::function_view<void (int num,
-			                                ULONGEST start,
+							ULONGEST start,
 							ULONGEST end,
 							ULONGEST file_ofs,
-							const char *filename,
-							const void *other)>
+							const char *filename)>
 				 loop_cb)
 {
   /* Ensure that ULONGEST is big enough for reading 64-bit core files.  */
@@ -1133,7 +1164,7 @@ linux_read_core_file_mappings (struct gdbarch *gdbarch,
   for (int i = 0; i < count; i++)
     {
       if (f >= descend)
-        {
+	{
 	  warning (_("malformed note - filename area is too small"));
 	  return;
 	}
@@ -1152,12 +1183,12 @@ linux_read_core_file_mappings (struct gdbarch *gdbarch,
       ULONGEST end = bfd_get (addr_size_bits, core_bfd, descdata);
       descdata += addr_size;
       ULONGEST file_ofs
-        = bfd_get (addr_size_bits, core_bfd, descdata) * page_size;
+	= bfd_get (addr_size_bits, core_bfd, descdata) * page_size;
       descdata += addr_size;
       char * filename = filenames;
       filenames += strlen ((char *) filenames) + 1;
 
-      loop_cb (i, start, end, file_ofs, filename, nullptr);
+      loop_cb (i, start, end, file_ofs, filename);
     }
 }
 
@@ -1186,7 +1217,7 @@ linux_core_info_proc_mappings (struct gdbarch *gdbarch, const char *args)
 	  }
       },
     [=] (int num, ULONGEST start, ULONGEST end, ULONGEST file_ofs,
-         const char *filename, const void *other)
+	 const char *filename)
       {
 	if (gdbarch_addr_bit (gdbarch) == 32)
 	  printf_filtered ("\t%10s %10s %10s %10s %s\n",
@@ -1268,6 +1299,180 @@ typedef int linux_dump_mapping_p_ftype (filter_flags filterflags,
 					ULONGEST addr,
 					ULONGEST offset);
 
+/* Helper function to parse the contents of /proc/<pid>/smaps into a data
+   structure, for easy access.
+
+   DATA is the contents of the smaps file.  The parsed contents are stored
+   into the SMAPS vector.  */
+
+static std::vector<struct smaps_data>
+parse_smaps_data (const char *data,
+		  const std::string maps_filename)
+{
+  char *line, *t;
+
+  gdb_assert (data != nullptr);
+
+  line = strtok_r ((char *) data, "\n", &t);
+
+  std::vector<struct smaps_data> smaps;
+
+  while (line != NULL)
+    {
+      ULONGEST addr, endaddr, offset, inode;
+      const char *permissions, *device, *filename;
+      struct smaps_vmflags v;
+      size_t permissions_len, device_len;
+      int read, write, exec, priv;
+      int has_anonymous = 0;
+      int mapping_anon_p;
+      int mapping_file_p;
+
+      memset (&v, 0, sizeof (v));
+      read_mapping (line, &addr, &endaddr, &permissions, &permissions_len,
+		    &offset, &device, &device_len, &inode, &filename);
+      mapping_anon_p = mapping_is_anonymous_p (filename);
+      /* If the mapping is not anonymous, then we can consider it
+	 to be file-backed.  These two states (anonymous or
+	 file-backed) seem to be exclusive, but they can actually
+	 coexist.  For example, if a file-backed mapping has
+	 "Anonymous:" pages (see more below), then the Linux
+	 kernel will dump this mapping when the user specified
+	 that she only wants anonymous mappings in the corefile
+	 (*even* when she explicitly disabled the dumping of
+	 file-backed mappings).  */
+      mapping_file_p = !mapping_anon_p;
+
+      /* Decode permissions.  */
+      read = (memchr (permissions, 'r', permissions_len) != 0);
+      write = (memchr (permissions, 'w', permissions_len) != 0);
+      exec = (memchr (permissions, 'x', permissions_len) != 0);
+      /* 'private' here actually means VM_MAYSHARE, and not
+	 VM_SHARED.  In order to know if a mapping is really
+	 private or not, we must check the flag "sh" in the
+	 VmFlags field.  This is done by decode_vmflags.  However,
+	 if we are using a Linux kernel released before the commit
+	 834f82e2aa9a8ede94b17b656329f850c1471514 (3.10), we will
+	 not have the VmFlags there.  In this case, there is
+	 really no way to know if we are dealing with VM_SHARED,
+	 so we just assume that VM_MAYSHARE is enough.  */
+      priv = memchr (permissions, 'p', permissions_len) != 0;
+
+      /* Try to detect if region should be dumped by parsing smaps
+	 counters.  */
+      for (line = strtok_r (NULL, "\n", &t);
+	   line != NULL && line[0] >= 'A' && line[0] <= 'Z';
+	   line = strtok_r (NULL, "\n", &t))
+	{
+	  char keyword[64 + 1];
+
+	  if (sscanf (line, "%64s", keyword) != 1)
+	    {
+	      warning (_("Error parsing {s,}maps file '%s'"),
+		       maps_filename.c_str ());
+	      break;
+	    }
+
+	  if (strcmp (keyword, "Anonymous:") == 0)
+	    {
+	      /* Older Linux kernels did not support the
+		 "Anonymous:" counter.  Check it here.  */
+	      has_anonymous = 1;
+	    }
+	  else if (strcmp (keyword, "VmFlags:") == 0)
+	    decode_vmflags (line, &v);
+
+	  if (strcmp (keyword, "AnonHugePages:") == 0
+	      || strcmp (keyword, "Anonymous:") == 0)
+	    {
+	      unsigned long number;
+
+	      if (sscanf (line, "%*s%lu", &number) != 1)
+		{
+		  warning (_("Error parsing {s,}maps file '%s' number"),
+			   maps_filename.c_str ());
+		  break;
+		}
+	      if (number > 0)
+		{
+		  /* Even if we are dealing with a file-backed
+		     mapping, if it contains anonymous pages we
+		     consider it to be *also* an anonymous
+		     mapping, because this is what the Linux
+		     kernel does:
+
+		     // Dump segments that have been written to.
+		     if (vma->anon_vma && FILTER(ANON_PRIVATE))
+		       goto whole;
+
+		    Note that if the mapping is already marked as
+		    file-backed (i.e., mapping_file_p is
+		    non-zero), then this is a special case, and
+		    this mapping will be dumped either when the
+		    user wants to dump file-backed *or* anonymous
+		    mappings.  */
+		  mapping_anon_p = 1;
+		}
+	    }
+	}
+      /* Save the smaps entry to the vector.  */
+	struct smaps_data map;
+
+	map.start_address = addr;
+	map.end_address = endaddr;
+	map.filename = filename;
+	map.vmflags = v;
+	map.read = read? true : false;
+	map.write = write? true : false;
+	map.exec = exec? true : false;
+	map.priv = priv? true : false;
+	map.has_anonymous = has_anonymous;
+	map.mapping_anon_p = mapping_anon_p? true : false;
+	map.mapping_file_p = mapping_file_p? true : false;
+	map.offset = offset;
+	map.inode = inode;
+
+	smaps.emplace_back (map);
+    }
+
+  return smaps;
+}
+
+/* See linux-tdep.h.  */
+
+bool
+linux_address_in_memtag_page (CORE_ADDR address)
+{
+  if (current_inferior ()->fake_pid_p)
+    return false;
+
+  pid_t pid = current_inferior ()->pid;
+
+  std::string smaps_file = string_printf ("/proc/%d/smaps", pid);
+
+  gdb::unique_xmalloc_ptr<char> data
+    = target_fileio_read_stralloc (NULL, smaps_file.c_str ());
+
+  if (data == nullptr)
+    return false;
+
+  /* Parse the contents of smaps into a vector.  */
+  std::vector<struct smaps_data> smaps
+    = parse_smaps_data (data.get (), smaps_file);
+
+  for (const smaps_data &map : smaps)
+    {
+      /* Is the address within [start_address, end_address) in a page
+	 mapped with memory tagging?  */
+      if (address >= map.start_address
+	  && address < map.end_address
+	  && map.vmflags.memory_tagging)
+	return true;
+    }
+
+  return false;
+}
+
 /* List memory regions in the inferior for a corefile.  */
 
 static int
@@ -1276,8 +1481,6 @@ linux_find_memory_regions_full (struct gdbarch *gdbarch,
 				linux_find_memory_region_ftype *func,
 				void *obfd)
 {
-  char mapsfilename[100];
-  char coredumpfilter_name[100];
   pid_t pid;
   /* Default dump behavior of coredump_filter (0x33), according to
      Documentation/filesystems/proc.txt from the Linux kernel
@@ -1295,10 +1498,12 @@ linux_find_memory_regions_full (struct gdbarch *gdbarch,
 
   if (use_coredump_filter)
     {
-      xsnprintf (coredumpfilter_name, sizeof (coredumpfilter_name),
-		 "/proc/%d/coredump_filter", pid);
+      std::string core_dump_filter_name
+	= string_printf ("/proc/%d/coredump_filter", pid);
+
       gdb::unique_xmalloc_ptr<char> coredumpfilterdata
-	= target_fileio_read_stralloc (NULL, coredumpfilter_name);
+	= target_fileio_read_stralloc (NULL, core_dump_filter_name.c_str ());
+
       if (coredumpfilterdata != NULL)
 	{
 	  unsigned int flags;
@@ -1308,144 +1513,59 @@ linux_find_memory_regions_full (struct gdbarch *gdbarch,
 	}
     }
 
-  xsnprintf (mapsfilename, sizeof mapsfilename, "/proc/%d/smaps", pid);
+  std::string maps_filename = string_printf ("/proc/%d/smaps", pid);
+
   gdb::unique_xmalloc_ptr<char> data
-    = target_fileio_read_stralloc (NULL, mapsfilename);
+    = target_fileio_read_stralloc (NULL, maps_filename.c_str ());
+
   if (data == NULL)
     {
       /* Older Linux kernels did not support /proc/PID/smaps.  */
-      xsnprintf (mapsfilename, sizeof mapsfilename, "/proc/%d/maps", pid);
-      data = target_fileio_read_stralloc (NULL, mapsfilename);
+      maps_filename = string_printf ("/proc/%d/maps", pid);
+      data = target_fileio_read_stralloc (NULL, maps_filename.c_str ());
+
+      if (data == nullptr)
+	return 1;
     }
 
-  if (data != NULL)
+  /* Parse the contents of smaps into a vector.  */
+  std::vector<struct smaps_data> smaps
+    = parse_smaps_data (data.get (), maps_filename.c_str ());
+
+  for (const struct smaps_data &map : smaps)
     {
-      char *line, *t;
+      int should_dump_p = 0;
 
-      line = strtok_r (data.get (), "\n", &t);
-      while (line != NULL)
+      if (map.has_anonymous)
 	{
-	  ULONGEST addr, endaddr, offset, inode;
-	  const char *permissions, *device, *filename;
-	  struct smaps_vmflags v;
-	  size_t permissions_len, device_len;
-	  int read, write, exec, priv;
-	  int has_anonymous = 0;
-	  int should_dump_p = 0;
-	  int mapping_anon_p;
-	  int mapping_file_p;
-
-	  memset (&v, 0, sizeof (v));
-	  read_mapping (line, &addr, &endaddr, &permissions, &permissions_len,
-			&offset, &device, &device_len, &inode, &filename);
-	  mapping_anon_p = mapping_is_anonymous_p (filename);
-	  /* If the mapping is not anonymous, then we can consider it
-	     to be file-backed.  These two states (anonymous or
-	     file-backed) seem to be exclusive, but they can actually
-	     coexist.  For example, if a file-backed mapping has
-	     "Anonymous:" pages (see more below), then the Linux
-	     kernel will dump this mapping when the user specified
-	     that she only wants anonymous mappings in the corefile
-	     (*even* when she explicitly disabled the dumping of
-	     file-backed mappings).  */
-	  mapping_file_p = !mapping_anon_p;
-
-	  /* Decode permissions.  */
-	  read = (memchr (permissions, 'r', permissions_len) != 0);
-	  write = (memchr (permissions, 'w', permissions_len) != 0);
-	  exec = (memchr (permissions, 'x', permissions_len) != 0);
-	  /* 'private' here actually means VM_MAYSHARE, and not
-	     VM_SHARED.  In order to know if a mapping is really
-	     private or not, we must check the flag "sh" in the
-	     VmFlags field.  This is done by decode_vmflags.  However,
-	     if we are using a Linux kernel released before the commit
-	     834f82e2aa9a8ede94b17b656329f850c1471514 (3.10), we will
-	     not have the VmFlags there.  In this case, there is
-	     really no way to know if we are dealing with VM_SHARED,
-	     so we just assume that VM_MAYSHARE is enough.  */
-	  priv = memchr (permissions, 'p', permissions_len) != 0;
-
-	  /* Try to detect if region should be dumped by parsing smaps
-	     counters.  */
-	  for (line = strtok_r (NULL, "\n", &t);
-	       line != NULL && line[0] >= 'A' && line[0] <= 'Z';
-	       line = strtok_r (NULL, "\n", &t))
-	    {
-	      char keyword[64 + 1];
-
-	      if (sscanf (line, "%64s", keyword) != 1)
-		{
-		  warning (_("Error parsing {s,}maps file '%s'"), mapsfilename);
-		  break;
-		}
-
-	      if (strcmp (keyword, "Anonymous:") == 0)
-		{
-		  /* Older Linux kernels did not support the
-		     "Anonymous:" counter.  Check it here.  */
-		  has_anonymous = 1;
-		}
-	      else if (strcmp (keyword, "VmFlags:") == 0)
-		decode_vmflags (line, &v);
-
-	      if (strcmp (keyword, "AnonHugePages:") == 0
-		  || strcmp (keyword, "Anonymous:") == 0)
-		{
-		  unsigned long number;
-
-		  if (sscanf (line, "%*s%lu", &number) != 1)
-		    {
-		      warning (_("Error parsing {s,}maps file '%s' number"),
-			       mapsfilename);
-		      break;
-		    }
-		  if (number > 0)
-		    {
-		      /* Even if we are dealing with a file-backed
-			 mapping, if it contains anonymous pages we
-			 consider it to be *also* an anonymous
-			 mapping, because this is what the Linux
-			 kernel does:
-
-			 // Dump segments that have been written to.
-			 if (vma->anon_vma && FILTER(ANON_PRIVATE))
-			 	goto whole;
-
-			 Note that if the mapping is already marked as
-			 file-backed (i.e., mapping_file_p is
-			 non-zero), then this is a special case, and
-			 this mapping will be dumped either when the
-			 user wants to dump file-backed *or* anonymous
-			 mappings.  */
-		      mapping_anon_p = 1;
-		    }
-		}
-	    }
-
-	  if (has_anonymous)
-	    should_dump_p = should_dump_mapping_p (filterflags, &v, priv,
-					           mapping_anon_p,
-						   mapping_file_p,
-					           filename, addr, offset);
-	  else
-	    {
-	      /* Older Linux kernels did not support the "Anonymous:" counter.
-		 If it is missing, we can't be sure - dump all the pages.  */
-	      should_dump_p = 1;
-	    }
-
-	  /* Invoke the callback function to create the corefile segment.  */
-	  if (should_dump_p)
-	    func (addr, endaddr - addr, offset, inode,
-		  read, write, exec, 1, /* MODIFIED is true because we
-					   want to dump the mapping.  */
-		  filename, obfd);
+	  should_dump_p
+	    = should_dump_mapping_p (filterflags, &map.vmflags,
+				     map.priv,
+				     map.mapping_anon_p,
+				     map.mapping_file_p,
+				     map.filename.c_str (),
+				     map.start_address,
+				     map.offset);
+	}
+      else
+	{
+	  /* Older Linux kernels did not support the "Anonymous:" counter.
+	     If it is missing, we can't be sure - dump all the pages.  */
+	  should_dump_p = 1;
 	}
 
-      return 0;
+      /* Invoke the callback function to create the corefile segment.  */
+      if (should_dump_p)
+	{
+	  func (map.start_address, map.end_address - map.start_address,
+		map.offset, map.inode, map.read, map.write, map.exec,
+		1, /* MODIFIED is true because we want to dump
+		      the mapping.  */
+		map.filename.c_str (), obfd);
+	}
     }
 
-  return 1;
+  return 0;
 }
 
 /* A structure for passing information through
@@ -1548,12 +1668,12 @@ linux_make_mappings_callback (ULONGEST vaddr, ULONGEST size,
 
 /* Write the file mapping data to the core file, if possible.  OBFD is
    the output BFD.  NOTE_DATA is the current note data, and NOTE_SIZE
-   is a pointer to the note size.  Returns the new NOTE_DATA and
-   updates NOTE_SIZE.  */
+   is a pointer to the note size.  Updates NOTE_DATA and NOTE_SIZE.  */
 
-static char *
+static void
 linux_make_mappings_corefile_notes (struct gdbarch *gdbarch, bfd *obfd,
-				    char *note_data, int *note_size)
+				    gdb::unique_xmalloc_ptr<char> &note_data,
+				    int *note_size)
 {
   struct linux_make_mappings_data mapping_data;
   struct type *long_type
@@ -1590,102 +1710,10 @@ linux_make_mappings_corefile_notes (struct gdbarch *gdbarch, bfd *obfd,
       obstack_grow (&data_obstack, obstack_base (&filename_obstack),
 		    size);
 
-      note_data = elfcore_write_note (obfd, note_data, note_size,
-				      "CORE", NT_FILE,
-				      obstack_base (&data_obstack),
-				      obstack_object_size (&data_obstack));
+      note_data.reset (elfcore_write_file_note (obfd, note_data.release (), note_size,
+						obstack_base (&data_obstack),
+						obstack_object_size (&data_obstack)));
     }
-
-  return note_data;
-}
-
-/* Structure for passing information from
-   linux_collect_thread_registers via an iterator to
-   linux_collect_regset_section_cb. */
-
-struct linux_collect_regset_section_cb_data
-{
-  struct gdbarch *gdbarch;
-  const struct regcache *regcache;
-  bfd *obfd;
-  char *note_data;
-  int *note_size;
-  unsigned long lwp;
-  enum gdb_signal stop_signal;
-  int abort_iteration;
-};
-
-/* Callback for iterate_over_regset_sections that records a single
-   regset in the corefile note section.  */
-
-static void
-linux_collect_regset_section_cb (const char *sect_name, int supply_size,
-				 int collect_size, const struct regset *regset,
-				 const char *human_name, void *cb_data)
-{
-  struct linux_collect_regset_section_cb_data *data
-    = (struct linux_collect_regset_section_cb_data *) cb_data;
-  bool variable_size_section = (regset != NULL
-				&& regset->flags & REGSET_VARIABLE_SIZE);
-
-  if (!variable_size_section)
-    gdb_assert (supply_size == collect_size);
-
-  if (data->abort_iteration)
-    return;
-
-  gdb_assert (regset && regset->collect_regset);
-
-  /* This is intentionally zero-initialized by using std::vector, so
-     that any padding bytes in the core file will show as 0.  */
-  std::vector<gdb_byte> buf (collect_size);
-
-  regset->collect_regset (regset, data->regcache, -1, buf.data (),
-			  collect_size);
-
-  /* PRSTATUS still needs to be treated specially.  */
-  if (strcmp (sect_name, ".reg") == 0)
-    data->note_data = (char *) elfcore_write_prstatus
-      (data->obfd, data->note_data, data->note_size, data->lwp,
-       gdb_signal_to_host (data->stop_signal), buf.data ());
-  else
-    data->note_data = (char *) elfcore_write_register_note
-      (data->obfd, data->note_data, data->note_size,
-       sect_name, buf.data (), collect_size);
-
-  if (data->note_data == NULL)
-    data->abort_iteration = 1;
-}
-
-/* Records the thread's register state for the corefile note
-   section.  */
-
-static char *
-linux_collect_thread_registers (const struct regcache *regcache,
-				ptid_t ptid, bfd *obfd,
-				char *note_data, int *note_size,
-				enum gdb_signal stop_signal)
-{
-  struct gdbarch *gdbarch = regcache->arch ();
-  struct linux_collect_regset_section_cb_data data;
-
-  data.gdbarch = gdbarch;
-  data.regcache = regcache;
-  data.obfd = obfd;
-  data.note_data = note_data;
-  data.note_size = note_size;
-  data.stop_signal = stop_signal;
-  data.abort_iteration = 0;
-
-  /* For remote targets the LWP may not be available, so use the TID.  */
-  data.lwp = ptid.lwp ();
-  if (!data.lwp)
-    data.lwp = ptid.tid ();
-
-  gdbarch_iterate_over_regset_sections (gdbarch,
-					linux_collect_regset_section_cb,
-					&data, regcache);
-  return data.note_data;
 }
 
 /* Fetch the siginfo data for the specified thread, if it exists.  If
@@ -1708,7 +1736,8 @@ linux_get_siginfo_data (thread_info *thread, struct gdbarch *gdbarch)
 
   gdb::byte_vector buf (TYPE_LENGTH (siginfo_type));
 
-  bytes_read = target_read (current_top_target (), TARGET_OBJECT_SIGNAL_INFO, NULL,
+  bytes_read = target_read (current_inferior ()->top_target (),
+			    TARGET_OBJECT_SIGNAL_INFO, NULL,
 			    buf.data (), 0, TYPE_LENGTH (siginfo_type));
   if (bytes_read != TYPE_LENGTH (siginfo_type))
     buf.clear ();
@@ -1718,9 +1747,16 @@ linux_get_siginfo_data (thread_info *thread, struct gdbarch *gdbarch)
 
 struct linux_corefile_thread_data
 {
+  linux_corefile_thread_data (struct gdbarch *gdbarch, bfd *obfd,
+			      gdb::unique_xmalloc_ptr<char> &note_data,
+			      int *note_size, gdb_signal stop_signal)
+    : gdbarch (gdbarch), obfd (obfd), note_data (note_data),
+      note_size (note_size), stop_signal (stop_signal)
+  {}
+
   struct gdbarch *gdbarch;
   bfd *obfd;
-  char *note_data;
+  gdb::unique_xmalloc_ptr<char> &note_data;
   int *note_size;
   enum gdb_signal stop_signal;
 };
@@ -1732,28 +1768,25 @@ static void
 linux_corefile_thread (struct thread_info *info,
 		       struct linux_corefile_thread_data *args)
 {
-  struct regcache *regcache;
-
-  regcache = get_thread_arch_regcache (info->inf->process_target (),
-				       info->ptid, args->gdbarch);
-
-  target_fetch_registers (regcache, -1);
-  gdb::byte_vector siginfo_data = linux_get_siginfo_data (info, args->gdbarch);
-
-  args->note_data = linux_collect_thread_registers
-    (regcache, info->ptid, args->obfd, args->note_data,
-     args->note_size, args->stop_signal);
+  gcore_elf_build_thread_register_notes (args->gdbarch, info,
+					 args->stop_signal,
+					 args->obfd, &args->note_data,
+					 args->note_size);
 
   /* Don't return anything if we got no register information above,
      such a core file is useless.  */
   if (args->note_data != NULL)
-    if (!siginfo_data.empty ())
-      args->note_data = elfcore_write_note (args->obfd,
-					    args->note_data,
-					    args->note_size,
-					    "CORE", NT_SIGINFO,
-					    siginfo_data.data (),
-					    siginfo_data.size ());
+    {
+      gdb::byte_vector siginfo_data
+	= linux_get_siginfo_data (info, args->gdbarch);
+      if (!siginfo_data.empty ())
+	args->note_data.reset (elfcore_write_note (args->obfd,
+						   args->note_data.release (),
+						   args->note_size,
+						   "CORE", NT_SIGINFO,
+						   siginfo_data.data (),
+						   siginfo_data.size ()));
+    }
 }
 
 /* Fill the PRPSINFO structure with information about the process being
@@ -1944,39 +1977,14 @@ linux_fill_prpsinfo (struct elf_internal_linux_prpsinfo *p)
   return 1;
 }
 
-/* Find the signalled thread.  In case there's more than one signalled
-   thread, prefer the current thread, if it is signalled.  If no
-   thread was signalled, default to the current thread, unless it has
-   exited, in which case return NULL.  */
-
-static thread_info *
-find_signalled_thread ()
-{
-  thread_info *curr_thr = inferior_thread ();
-  if (curr_thr->state != THREAD_EXITED
-      && curr_thr->suspend.stop_signal != GDB_SIGNAL_0)
-    return curr_thr;
-
-  for (thread_info *thr : current_inferior ()->non_exited_threads ())
-    if (thr->suspend.stop_signal != GDB_SIGNAL_0)
-      return thr;
-
-  /* Default to the current thread, unless it has exited.  */
-  if (curr_thr->state != THREAD_EXITED)
-    return curr_thr;
-
-  return nullptr;
-}
-
 /* Build the note section for a corefile, and return it in a malloc
    buffer.  */
 
-static char *
+static gdb::unique_xmalloc_ptr<char>
 linux_make_corefile_notes (struct gdbarch *gdbarch, bfd *obfd, int *note_size)
 {
-  struct linux_corefile_thread_data thread_args;
   struct elf_internal_linux_prpsinfo prpsinfo;
-  char *note_data = NULL;
+  gdb::unique_xmalloc_ptr<char> note_data;
 
   if (! gdbarch_iterate_over_regset_sections_p (gdbarch))
     return NULL;
@@ -1984,13 +1992,13 @@ linux_make_corefile_notes (struct gdbarch *gdbarch, bfd *obfd, int *note_size)
   if (linux_fill_prpsinfo (&prpsinfo))
     {
       if (gdbarch_ptr_bit (gdbarch) == 64)
-	note_data = elfcore_write_linux_prpsinfo64 (obfd,
-						    note_data, note_size,
-						    &prpsinfo);
+	note_data.reset (elfcore_write_linux_prpsinfo64 (obfd,
+							 note_data.release (),
+							 note_size, &prpsinfo));
       else
-	note_data = elfcore_write_linux_prpsinfo32 (obfd,
-						    note_data, note_size,
-						    &prpsinfo);
+	note_data.reset (elfcore_write_linux_prpsinfo32 (obfd,
+							 note_data.release (),
+							 note_size, &prpsinfo));
     }
 
   /* Thread register information.  */
@@ -2006,16 +2014,15 @@ linux_make_corefile_notes (struct gdbarch *gdbarch, bfd *obfd, int *note_size)
   /* Like the kernel, prefer dumping the signalled thread first.
      "First thread" is what tools use to infer the signalled
      thread.  */
-  thread_info *signalled_thr = find_signalled_thread ();
-
-  thread_args.gdbarch = gdbarch;
-  thread_args.obfd = obfd;
-  thread_args.note_data = note_data;
-  thread_args.note_size = note_size;
+  thread_info *signalled_thr = gcore_find_signalled_thread ();
+  gdb_signal stop_signal;
   if (signalled_thr != nullptr)
-    thread_args.stop_signal = signalled_thr->suspend.stop_signal;
+    stop_signal = signalled_thr->suspend.stop_signal;
   else
-    thread_args.stop_signal = GDB_SIGNAL_0;
+    stop_signal = GDB_SIGNAL_0;
+
+  linux_corefile_thread_data thread_args (gdbarch, obfd, note_data, note_size,
+					  stop_signal);
 
   if (signalled_thr != nullptr)
     linux_corefile_thread (signalled_thr, &thread_args);
@@ -2027,26 +2034,28 @@ linux_make_corefile_notes (struct gdbarch *gdbarch, bfd *obfd, int *note_size)
       linux_corefile_thread (thr, &thread_args);
     }
 
-  note_data = thread_args.note_data;
   if (!note_data)
     return NULL;
 
   /* Auxillary vector.  */
   gdb::optional<gdb::byte_vector> auxv =
-    target_read_alloc (current_top_target (), TARGET_OBJECT_AUXV, NULL);
+    target_read_alloc (current_inferior ()->top_target (),
+		       TARGET_OBJECT_AUXV, NULL);
   if (auxv && !auxv->empty ())
     {
-      note_data = elfcore_write_note (obfd, note_data, note_size,
-				      "CORE", NT_AUXV, auxv->data (),
-				      auxv->size ());
+      note_data.reset (elfcore_write_note (obfd, note_data.release (),
+					   note_size, "CORE", NT_AUXV,
+					   auxv->data (), auxv->size ()));
 
       if (!note_data)
 	return NULL;
     }
 
   /* File mappings.  */
-  note_data = linux_make_mappings_corefile_notes (gdbarch, obfd,
-						  note_data, note_size);
+  linux_make_mappings_corefile_notes (gdbarch, obfd, note_data, note_size);
+
+  /* Target description.  */
+  gcore_elf_make_tdesc_note (obfd, &note_data, note_size);
 
   return note_data;
 }
@@ -2311,13 +2320,14 @@ linux_vsyscall_range_raw (struct gdbarch *gdbarch, struct mem_range *range)
   char filename[100];
   long pid;
 
-  if (target_auxv_search (current_top_target (), AT_SYSINFO_EHDR, &range->start) <= 0)
+  if (target_auxv_search (current_inferior ()->top_target (),
+			  AT_SYSINFO_EHDR, &range->start) <= 0)
     return 0;
 
   /* It doesn't make sense to access the host's /proc when debugging a
      core file.  Instead, look for the PT_LOAD segment that matches
      the vDSO.  */
-  if (!target_has_execution)
+  if (!target_has_execution ())
     {
       long phdrs_size;
       int num_phdrs, i;
@@ -2395,7 +2405,7 @@ linux_vsyscall_range_raw (struct gdbarch *gdbarch, struct mem_range *range)
 static int
 linux_vsyscall_range (struct gdbarch *gdbarch, struct mem_range *range)
 {
-  struct linux_info *info = get_linux_inferior_data ();
+  struct linux_info *info = get_linux_inferior_data (current_inferior ());
 
   if (info->vsyscall_range_p == 0)
     {
@@ -2501,14 +2511,15 @@ linux_displaced_step_location (struct gdbarch *gdbarch)
      local-store address and is thus not usable as displaced stepping
      location.  The auxiliary vector gets us the PowerPC-side entry
      point address instead.  */
-  if (target_auxv_search (current_top_target (), AT_ENTRY, &addr) <= 0)
+  if (target_auxv_search (current_inferior ()->top_target (),
+			  AT_ENTRY, &addr) <= 0)
     throw_error (NOT_SUPPORTED_ERROR,
 		 _("Cannot find AT_ENTRY auxiliary vector entry."));
 
   /* Make certain that the address points at real code, and not a
      function descriptor.  */
-  addr = gdbarch_convert_from_func_ptr_addr (gdbarch, addr,
-					     current_top_target ());
+  addr = gdbarch_convert_from_func_ptr_addr
+    (gdbarch, addr, current_inferior ()->top_target ());
 
   /* Inferior calls also use the entry point as a breakpoint location.
      We don't want displaced stepping to interfere with those
@@ -2517,6 +2528,75 @@ linux_displaced_step_location (struct gdbarch *gdbarch)
   addr += bp_len * 2;
 
   return addr;
+}
+
+/* See linux-tdep.h.  */
+
+displaced_step_prepare_status
+linux_displaced_step_prepare (gdbarch *arch, thread_info *thread,
+			      CORE_ADDR &displaced_pc)
+{
+  linux_info *per_inferior = get_linux_inferior_data (thread->inf);
+
+  if (!per_inferior->disp_step_bufs.has_value ())
+    {
+      /* Figure out the location of the buffers.  They are contiguous, starting
+	 at DISP_STEP_BUF_ADDR.  They are all of size BUF_LEN.  */
+      CORE_ADDR disp_step_buf_addr
+	= linux_displaced_step_location (thread->inf->gdbarch);
+      int buf_len = gdbarch_max_insn_length (arch);
+
+      linux_gdbarch_data *gdbarch_data = get_linux_gdbarch_data (arch);
+      gdb_assert (gdbarch_data->num_disp_step_buffers > 0);
+
+      std::vector<CORE_ADDR> buffers;
+      for (int i = 0; i < gdbarch_data->num_disp_step_buffers; i++)
+	buffers.push_back (disp_step_buf_addr + i * buf_len);
+
+      per_inferior->disp_step_bufs.emplace (buffers);
+    }
+
+  return per_inferior->disp_step_bufs->prepare (thread, displaced_pc);
+}
+
+/* See linux-tdep.h.  */
+
+displaced_step_finish_status
+linux_displaced_step_finish (gdbarch *arch, thread_info *thread, gdb_signal sig)
+{
+  linux_info *per_inferior = get_linux_inferior_data (thread->inf);
+
+  gdb_assert (per_inferior->disp_step_bufs.has_value ());
+
+  return per_inferior->disp_step_bufs->finish (arch, thread, sig);
+}
+
+/* See linux-tdep.h.  */
+
+const displaced_step_copy_insn_closure *
+linux_displaced_step_copy_insn_closure_by_addr (inferior *inf, CORE_ADDR addr)
+{
+  linux_info *per_inferior = linux_inferior_data.get (inf);
+
+  if (per_inferior == nullptr
+      || !per_inferior->disp_step_bufs.has_value ())
+    return nullptr;
+
+  return per_inferior->disp_step_bufs->copy_insn_closure_by_addr (addr);
+}
+
+/* See linux-tdep.h.  */
+
+void
+linux_displaced_step_restore_all_in_ptid (inferior *parent_inf, ptid_t ptid)
+{
+  linux_info *per_inferior = linux_inferior_data.get (parent_inf);
+
+  if (per_inferior == nullptr
+      || !per_inferior->disp_step_bufs.has_value ())
+    return;
+
+  per_inferior->disp_step_bufs->restore_in_ptid (ptid);
 }
 
 /* See linux-tdep.h.  */
@@ -2564,11 +2644,29 @@ show_dump_excluded_mappings (struct ui_file *file, int from_tty,
 }
 
 /* To be called from the various GDB_OSABI_LINUX handlers for the
-   various GNU/Linux architectures and machine types.  */
+   various GNU/Linux architectures and machine types.
+
+   NUM_DISP_STEP_BUFFERS is the number of displaced step buffers to use.  If 0,
+   displaced stepping is not supported. */
 
 void
-linux_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
+linux_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch,
+		int num_disp_step_buffers)
 {
+  if (num_disp_step_buffers > 0)
+    {
+      linux_gdbarch_data *gdbarch_data = get_linux_gdbarch_data (gdbarch);
+      gdbarch_data->num_disp_step_buffers = num_disp_step_buffers;
+
+      set_gdbarch_displaced_step_prepare (gdbarch,
+					  linux_displaced_step_prepare);
+      set_gdbarch_displaced_step_finish (gdbarch, linux_displaced_step_finish);
+      set_gdbarch_displaced_step_copy_insn_closure_by_addr
+	(gdbarch, linux_displaced_step_copy_insn_closure_by_addr);
+      set_gdbarch_displaced_step_restore_all_in_ptid
+	(gdbarch, linux_displaced_step_restore_all_in_ptid);
+    }
+
   set_gdbarch_core_pid_to_str (gdbarch, linux_core_pid_to_str);
   set_gdbarch_info_proc (gdbarch, linux_info_proc);
   set_gdbarch_core_info_proc (gdbarch, linux_core_info_proc);
@@ -2593,11 +2691,15 @@ void
 _initialize_linux_tdep ()
 {
   linux_gdbarch_data_handle =
-    gdbarch_data_register_post_init (init_linux_gdbarch_data);
+    gdbarch_data_register_pre_init (init_linux_gdbarch_data);
 
   /* Observers used to invalidate the cache when needed.  */
-  gdb::observers::inferior_exit.attach (invalidate_linux_cache_inf);
-  gdb::observers::inferior_appeared.attach (invalidate_linux_cache_inf);
+  gdb::observers::inferior_exit.attach (invalidate_linux_cache_inf,
+					"linux-tdep");
+  gdb::observers::inferior_appeared.attach (invalidate_linux_cache_inf,
+					    "linux-tdep");
+  gdb::observers::inferior_execd.attach (invalidate_linux_cache_inf,
+					 "linux-tdep");
 
   add_setshow_boolean_cmd ("use-coredump-filter", class_files,
 			   &use_coredump_filter, _("\

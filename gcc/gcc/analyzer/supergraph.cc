@@ -1,5 +1,5 @@
 /* "Supergraph" classes that combine CFGs and callgraph into one digraph.
-   Copyright (C) 2019-2020 Free Software Foundation, Inc.
+   Copyright (C) 2019-2021 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -43,6 +43,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-dfa.h"
 #include "cfganal.h"
 #include "function.h"
+#include "json.h"
 #include "analyzer/analyzer.h"
 #include "ordered-hash-map.h"
 #include "options.h"
@@ -86,10 +87,55 @@ supergraph_call_edge (function *fun, gimple *stmt)
   return edge;
 }
 
+/* class saved_uids.
+
+   In order to ensure consistent results without relying on the ordering
+   of pointer values we assign a uid to each gimple stmt, globally unique
+   across all functions.
+
+   Normally, the stmt uids are a scratch space that each pass can freely
+   assign its own values to.  However, in the case of LTO, the uids are
+   used to associate call stmts with callgraph edges between the WPA phase
+   (where the analyzer runs in LTO mode) and the LTRANS phase; if the
+   analyzer changes them in the WPA phase, it leads to errors when
+   streaming the code back in at LTRANS.
+   lto_prepare_function_for_streaming has code to renumber the stmt UIDs
+   when the code is streamed back out, but for some reason this isn't
+   called for clones.
+
+   Hence, as a workaround, this class has responsibility for tracking
+   the original uids and restoring them once the pass is complete
+   (in the supergraph dtor).  */
+
+/* Give STMT a globally unique uid, storing its original uid so it can
+   later be restored.  */
+
+void
+saved_uids::make_uid_unique (gimple *stmt)
+{
+  unsigned next_uid = m_old_stmt_uids.length ();
+  unsigned old_stmt_uid = stmt->uid;
+  stmt->uid = next_uid;
+  m_old_stmt_uids.safe_push
+    (std::pair<gimple *, unsigned> (stmt, old_stmt_uid));
+}
+
+/* Restore the saved uids of all stmts.  */
+
+void
+saved_uids::restore_uids () const
+{
+  unsigned i;
+  std::pair<gimple *, unsigned> *pair;
+  FOR_EACH_VEC_ELT (m_old_stmt_uids, i, pair)
+    pair->first->uid = pair->second;
+}
+
 /* supergraph's ctor.  Walk the callgraph, building supernodes for each
    CFG basic block, splitting the basic blocks at callsites.  Join
    together the supernodes with interprocedural and intraprocedural
-   superedges as appropriate.  */
+   superedges as appropriate.
+   Assign UIDs to the gimple stmts.  */
 
 supergraph::supergraph (logger *logger)
 {
@@ -97,7 +143,7 @@ supergraph::supergraph (logger *logger)
 
   LOG_FUNC (logger);
 
-  /* First pass: make supernodes.  */
+  /* First pass: make supernodes (and assign UIDs to the gimple stmts).  */
   {
     /* Sort the cgraph_nodes?  */
     cgraph_node *node;
@@ -123,6 +169,7 @@ supergraph::supergraph (logger *logger)
 	    {
 	      gimple *stmt = gsi_stmt (gpi);
 	      m_stmt_to_node_t.put (stmt, node_for_stmts);
+	      m_stmt_uids.make_uid_unique (stmt);
 	    }
 
 	  /* Append statements from BB to the current supernode, splitting
@@ -134,6 +181,7 @@ supergraph::supergraph (logger *logger)
 	      gimple *stmt = gsi_stmt (gsi);
 	      node_for_stmts->m_stmts.safe_push (stmt);
 	      m_stmt_to_node_t.put (stmt, node_for_stmts);
+	      m_stmt_uids.make_uid_unique (stmt);
 	      if (cgraph_edge *edge = supergraph_call_edge (fun, stmt))
 		{
 		  m_cgraph_edge_to_caller_prev_node.put(edge, node_for_stmts);
@@ -249,6 +297,13 @@ supergraph::supergraph (logger *logger)
 
     }
   }
+}
+
+/* supergraph's dtor.  Reset stmt uids.  */
+
+supergraph::~supergraph ()
+{
+  m_stmt_uids.restore_uids ();
 }
 
 /* Dump this graph in .dot format to PP, using DUMP_ARGS.
@@ -372,6 +427,38 @@ supergraph::dump_dot (const char *path, const dump_args_t &dump_args) const
   FILE *fp = fopen (path, "w");
   dump_dot_to_file (fp, dump_args);
   fclose (fp);
+}
+
+/* Return a new json::object of the form
+   {"nodes" : [objs for snodes],
+    "edges" : [objs for sedges]}.  */
+
+json::object *
+supergraph::to_json () const
+{
+  json::object *sgraph_obj = new json::object ();
+
+  /* Nodes.  */
+  {
+    json::array *nodes_arr = new json::array ();
+    unsigned i;
+    supernode *n;
+    FOR_EACH_VEC_ELT (m_nodes, i, n)
+      nodes_arr->append (n->to_json ());
+    sgraph_obj->set ("nodes", nodes_arr);
+  }
+
+  /* Edges.  */
+  {
+    json::array *edges_arr = new json::array ();
+    unsigned i;
+    superedge *n;
+    FOR_EACH_VEC_ELT (m_edges, i, n)
+      edges_arr->append (n->to_json ());
+    sgraph_obj->set ("edges", edges_arr);
+  }
+
+  return sgraph_obj;
 }
 
 /* Create a supernode for BB within FUN and add it to this supergraph.
@@ -594,6 +681,66 @@ supernode::dump_dot_id (pretty_printer *pp) const
   pp_printf (pp, "node_%i", m_index);
 }
 
+/* Return a new json::object of the form
+   {"idx": int,
+    "fun": optional str
+    "bb_idx": int,
+    "returning_call": optional str,
+    "phis": [str],
+    "stmts" : [str]}.  */
+
+json::object *
+supernode::to_json () const
+{
+  json::object *snode_obj = new json::object ();
+
+  snode_obj->set ("idx", new json::integer_number (m_index));
+  snode_obj->set ("bb_idx", new json::integer_number (m_bb->index));
+  if (function *fun = get_function ())
+    snode_obj->set ("fun", new json::string (function_name (fun)));
+
+  if (m_returning_call)
+    {
+      pretty_printer pp;
+      pp_format_decoder (&pp) = default_tree_printer;
+      pp_gimple_stmt_1 (&pp, m_returning_call, 0, (dump_flags_t)0);
+      snode_obj->set ("returning_call",
+		      new json::string (pp_formatted_text (&pp)));
+    }
+
+  /* Phi nodes.  */
+  {
+    json::array *phi_arr = new json::array ();
+    for (gphi_iterator gpi = const_cast<supernode *> (this)->start_phis ();
+	 !gsi_end_p (gpi); gsi_next (&gpi))
+      {
+	const gimple *stmt = gsi_stmt (gpi);
+	pretty_printer pp;
+	pp_format_decoder (&pp) = default_tree_printer;
+	pp_gimple_stmt_1 (&pp, stmt, 0, (dump_flags_t)0);
+	phi_arr->append (new json::string (pp_formatted_text (&pp)));
+      }
+    snode_obj->set ("phis", phi_arr);
+  }
+
+  /* Statements.  */
+  {
+    json::array *stmt_arr = new json::array ();
+    int i;
+    gimple *stmt;
+    FOR_EACH_VEC_ELT (m_stmts, i, stmt)
+      {
+	pretty_printer pp;
+	pp_format_decoder (&pp) = default_tree_printer;
+	pp_gimple_stmt_1 (&pp, stmt, 0, (dump_flags_t)0);
+	stmt_arr->append (new json::string (pp_formatted_text (&pp)));
+      }
+    snode_obj->set ("stmts", stmt_arr);
+  }
+
+  return snode_obj;
+}
+
 /* Get a location_t for the start of this supernode.  */
 
 location_t
@@ -657,6 +804,26 @@ supernode::get_stmt_index (const gimple *stmt) const
       return i;
   gcc_unreachable ();
 }
+
+/* Get a string for PK.  */
+
+static const char *
+edge_kind_to_string (enum edge_kind kind)
+{
+  switch (kind)
+    {
+    default:
+      gcc_unreachable ();
+    case SUPEREDGE_CFG_EDGE:
+      return "SUPEREDGE_CFG_EDGE";
+    case SUPEREDGE_CALL:
+      return "SUPEREDGE_CALL";
+    case SUPEREDGE_RETURN:
+      return "SUPEREDGE_RETURN";
+    case SUPEREDGE_INTRAPROCEDURAL_CALL:
+      return "SUPEREDGE_INTRAPROCEDURAL_CALL";
+    }
+};
 
 /* Dump this superedge to PP.  */
 
@@ -757,6 +924,30 @@ superedge::dump_dot (graphviz_out *gv, const dump_args_t &) const
   dump_label_to_pp (pp, false);
 
   pp_printf (pp, "\"];\n");
+}
+
+/* Return a new json::object of the form
+   {"kind"   : str,
+    "src_idx": int, the index of the source supernode,
+    "dst_idx": int, the index of the destination supernode,
+    "desc"   : str.  */
+
+json::object *
+superedge::to_json () const
+{
+  json::object *sedge_obj = new json::object ();
+  sedge_obj->set ("kind", new json::string (edge_kind_to_string (m_kind)));
+  sedge_obj->set ("src_idx", new json::integer_number (m_src->m_index));
+  sedge_obj->set ("dst_idx", new json::integer_number (m_dest->m_index));
+
+  {
+    pretty_printer pp;
+    pp_format_decoder (&pp) = default_tree_printer;
+    dump_label_to_pp (&pp, false);
+    sedge_obj->set ("desc", new json::string (pp_formatted_text (&pp)));
+  }
+
+  return sedge_obj;
 }
 
 /* If this is an intraprocedural superedge, return the associated

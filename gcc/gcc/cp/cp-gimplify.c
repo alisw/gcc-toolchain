@@ -1,6 +1,6 @@
 /* C++-specific tree lowering bits; see also c-gimplify.c and gimple.c.
 
-   Copyright (C) 2002-2020 Free Software Foundation, Inc.
+   Copyright (C) 2002-2021 Free Software Foundation, Inc.
    Contributed by Jason Merrill <jason@redhat.com>
 
 This file is part of GCC.
@@ -48,66 +48,6 @@ static tree cp_genericize_r (tree *, int *, void *);
 static tree cp_fold_r (tree *, int *, void *);
 static void cp_genericize_tree (tree*, bool);
 static tree cp_fold (tree);
-
-/* Local declarations.  */
-
-enum bc_t { bc_break = 0, bc_continue = 1 };
-
-/* Stack of labels which are targets for "break" or "continue",
-   linked through TREE_CHAIN.  */
-static tree bc_label[2];
-
-/* Begin a scope which can be exited by a break or continue statement.  BC
-   indicates which.
-
-   Just creates a label with location LOCATION and pushes it into the current
-   context.  */
-
-static tree
-begin_bc_block (enum bc_t bc, location_t location)
-{
-  tree label = create_artificial_label (location);
-  DECL_CHAIN (label) = bc_label[bc];
-  bc_label[bc] = label;
-  if (bc == bc_break)
-    LABEL_DECL_BREAK (label) = true;
-  else
-    LABEL_DECL_CONTINUE (label) = true;
-  return label;
-}
-
-/* Finish a scope which can be exited by a break or continue statement.
-   LABEL was returned from the most recent call to begin_bc_block.  BLOCK is
-   an expression for the contents of the scope.
-
-   If we saw a break (or continue) in the scope, append a LABEL_EXPR to
-   BLOCK.  Otherwise, just forget the label.  */
-
-static void
-finish_bc_block (tree *block, enum bc_t bc, tree label)
-{
-  gcc_assert (label == bc_label[bc]);
-
-  if (TREE_USED (label))
-    append_to_statement_list (build1 (LABEL_EXPR, void_type_node, label),
-			      block);
-
-  bc_label[bc] = DECL_CHAIN (label);
-  DECL_CHAIN (label) = NULL_TREE;
-}
-
-/* Get the LABEL_EXPR to represent a break or continue statement
-   in the current block scope.  BC indicates which.  */
-
-static tree
-get_bc_label (enum bc_t bc)
-{
-  tree label = bc_label[bc];
-
-  /* Mark the label used for finish_bc_block.  */
-  TREE_USED (label) = 1;
-  return label;
-}
 
 /* Genericize a TRY_BLOCK.  */
 
@@ -229,228 +169,6 @@ genericize_if_stmt (tree *stmt_p)
     stmt = build3 (COND_EXPR, void_type_node, cond, then_, else_);
   protected_set_expr_location_if_unset (stmt, locus);
   *stmt_p = stmt;
-}
-
-/* Build a generic representation of one of the C loop forms.  COND is the
-   loop condition or NULL_TREE.  BODY is the (possibly compound) statement
-   controlled by the loop.  INCR is the increment expression of a for-loop,
-   or NULL_TREE.  COND_IS_FIRST indicates whether the condition is
-   evaluated before the loop body as in while and for loops, or after the
-   loop body as in do-while loops.  */
-
-static void
-genericize_cp_loop (tree *stmt_p, location_t start_locus, tree cond, tree body,
-		    tree incr, bool cond_is_first, int *walk_subtrees,
-		    void *data)
-{
-  tree blab, clab;
-  tree exit = NULL;
-  tree stmt_list = NULL;
-  tree debug_begin = NULL;
-
-  protected_set_expr_location_if_unset (incr, start_locus);
-
-  cp_walk_tree (&cond, cp_genericize_r, data, NULL);
-  cp_walk_tree (&incr, cp_genericize_r, data, NULL);
-
-  blab = begin_bc_block (bc_break, start_locus);
-  clab = begin_bc_block (bc_continue, start_locus);
-
-  cp_walk_tree (&body, cp_genericize_r, data, NULL);
-  *walk_subtrees = 0;
-
-  if (MAY_HAVE_DEBUG_MARKER_STMTS
-      && (!cond || !integer_zerop (cond)))
-    {
-      debug_begin = build0 (DEBUG_BEGIN_STMT, void_type_node);
-      SET_EXPR_LOCATION (debug_begin, cp_expr_loc_or_loc (cond, start_locus));
-    }
-
-  if (cond && TREE_CODE (cond) != INTEGER_CST)
-    {
-      /* If COND is constant, don't bother building an exit.  If it's false,
-	 we won't build a loop.  If it's true, any exits are in the body.  */
-      location_t cloc = cp_expr_loc_or_loc (cond, start_locus);
-      exit = build1_loc (cloc, GOTO_EXPR, void_type_node,
-			 get_bc_label (bc_break));
-      exit = fold_build3_loc (cloc, COND_EXPR, void_type_node, cond,
-			      build_empty_stmt (cloc), exit);
-    }
-
-  if (exit && cond_is_first)
-    {
-      append_to_statement_list (debug_begin, &stmt_list);
-      debug_begin = NULL_TREE;
-      append_to_statement_list (exit, &stmt_list);
-    }
-  append_to_statement_list (body, &stmt_list);
-  finish_bc_block (&stmt_list, bc_continue, clab);
-  if (incr)
-    {
-      if (MAY_HAVE_DEBUG_MARKER_STMTS)
-	{
-	  tree d = build0 (DEBUG_BEGIN_STMT, void_type_node);
-	  SET_EXPR_LOCATION (d, cp_expr_loc_or_loc (incr, start_locus));
-	  append_to_statement_list (d, &stmt_list);
-	}
-      append_to_statement_list (incr, &stmt_list);
-    }
-  append_to_statement_list (debug_begin, &stmt_list);
-  if (exit && !cond_is_first)
-    append_to_statement_list (exit, &stmt_list);
-
-  if (!stmt_list)
-    stmt_list = build_empty_stmt (start_locus);
-
-  tree loop;
-  if (cond && integer_zerop (cond))
-    {
-      if (cond_is_first)
-	loop = fold_build3_loc (start_locus, COND_EXPR,
-				void_type_node, cond, stmt_list,
-				build_empty_stmt (start_locus));
-      else
-	loop = stmt_list;
-    }
-  else
-    {
-      location_t loc = start_locus;
-      if (!cond || integer_nonzerop (cond))
-	loc = EXPR_LOCATION (expr_first (body));
-      if (loc == UNKNOWN_LOCATION)
-	loc = start_locus;
-      loop = build1_loc (loc, LOOP_EXPR, void_type_node, stmt_list);
-    }
-
-  stmt_list = NULL;
-  append_to_statement_list (loop, &stmt_list);
-  finish_bc_block (&stmt_list, bc_break, blab);
-  if (!stmt_list)
-    stmt_list = build_empty_stmt (start_locus);
-
-  *stmt_p = stmt_list;
-}
-
-/* Genericize a FOR_STMT node *STMT_P.  */
-
-static void
-genericize_for_stmt (tree *stmt_p, int *walk_subtrees, void *data)
-{
-  tree stmt = *stmt_p;
-  tree expr = NULL;
-  tree loop;
-  tree init = FOR_INIT_STMT (stmt);
-
-  if (init)
-    {
-      cp_walk_tree (&init, cp_genericize_r, data, NULL);
-      append_to_statement_list (init, &expr);
-    }
-
-  genericize_cp_loop (&loop, EXPR_LOCATION (stmt), FOR_COND (stmt),
-		      FOR_BODY (stmt), FOR_EXPR (stmt), 1, walk_subtrees, data);
-  append_to_statement_list (loop, &expr);
-  if (expr == NULL_TREE)
-    expr = loop;
-  *stmt_p = expr;
-}
-
-/* Genericize a WHILE_STMT node *STMT_P.  */
-
-static void
-genericize_while_stmt (tree *stmt_p, int *walk_subtrees, void *data)
-{
-  tree stmt = *stmt_p;
-  genericize_cp_loop (stmt_p, EXPR_LOCATION (stmt), WHILE_COND (stmt),
-		      WHILE_BODY (stmt), NULL_TREE, 1, walk_subtrees, data);
-}
-
-/* Genericize a DO_STMT node *STMT_P.  */
-
-static void
-genericize_do_stmt (tree *stmt_p, int *walk_subtrees, void *data)
-{
-  tree stmt = *stmt_p;
-  genericize_cp_loop (stmt_p, EXPR_LOCATION (stmt), DO_COND (stmt),
-		      DO_BODY (stmt), NULL_TREE, 0, walk_subtrees, data);
-}
-
-/* Genericize a SWITCH_STMT node *STMT_P by turning it into a SWITCH_EXPR.  */
-
-static void
-genericize_switch_stmt (tree *stmt_p, int *walk_subtrees, void *data)
-{
-  tree stmt = *stmt_p;
-  tree break_block, body, cond, type;
-  location_t stmt_locus = EXPR_LOCATION (stmt);
-
-  body = SWITCH_STMT_BODY (stmt);
-  if (!body)
-    body = build_empty_stmt (stmt_locus);
-  cond = SWITCH_STMT_COND (stmt);
-  type = SWITCH_STMT_TYPE (stmt);
-
-  cp_walk_tree (&cond, cp_genericize_r, data, NULL);
-
-  break_block = begin_bc_block (bc_break, stmt_locus);
-
-  cp_walk_tree (&body, cp_genericize_r, data, NULL);
-  cp_walk_tree (&type, cp_genericize_r, data, NULL);
-  *walk_subtrees = 0;
-
-  if (TREE_USED (break_block))
-    SWITCH_BREAK_LABEL_P (break_block) = 1;
-  finish_bc_block (&body, bc_break, break_block);
-  *stmt_p = build2_loc (stmt_locus, SWITCH_EXPR, type, cond, body);
-  SWITCH_ALL_CASES_P (*stmt_p) = SWITCH_STMT_ALL_CASES_P (stmt);
-  gcc_checking_assert (!SWITCH_STMT_NO_BREAK_P (stmt)
-		       || !TREE_USED (break_block));
-}
-
-/* Genericize a CONTINUE_STMT node *STMT_P.  */
-
-static void
-genericize_continue_stmt (tree *stmt_p)
-{
-  tree stmt_list = NULL;
-  tree pred = build_predict_expr (PRED_CONTINUE, NOT_TAKEN);
-  tree label = get_bc_label (bc_continue);
-  location_t location = EXPR_LOCATION (*stmt_p);
-  tree jump = build1_loc (location, GOTO_EXPR, void_type_node, label);
-  append_to_statement_list_force (pred, &stmt_list);
-  append_to_statement_list (jump, &stmt_list);
-  *stmt_p = stmt_list;
-}
-
-/* Genericize a BREAK_STMT node *STMT_P.  */
-
-static void
-genericize_break_stmt (tree *stmt_p)
-{
-  tree label = get_bc_label (bc_break);
-  location_t location = EXPR_LOCATION (*stmt_p);
-  *stmt_p = build1_loc (location, GOTO_EXPR, void_type_node, label);
-}
-
-/* Genericize a OMP_FOR node *STMT_P.  */
-
-static void
-genericize_omp_for_stmt (tree *stmt_p, int *walk_subtrees, void *data)
-{
-  tree stmt = *stmt_p;
-  location_t locus = EXPR_LOCATION (stmt);
-  tree clab = begin_bc_block (bc_continue, locus);
-
-  cp_walk_tree (&OMP_FOR_BODY (stmt), cp_genericize_r, data, NULL);
-  if (TREE_CODE (stmt) != OMP_TASKLOOP)
-    cp_walk_tree (&OMP_FOR_CLAUSES (stmt), cp_genericize_r, data, NULL);
-  cp_walk_tree (&OMP_FOR_INIT (stmt), cp_genericize_r, data, NULL);
-  cp_walk_tree (&OMP_FOR_COND (stmt), cp_genericize_r, data, NULL);
-  cp_walk_tree (&OMP_FOR_INCR (stmt), cp_genericize_r, data, NULL);
-  cp_walk_tree (&OMP_FOR_PRE_BODY (stmt), cp_genericize_r, data, NULL);
-  *walk_subtrees = 0;
-
-  finish_bc_block (&OMP_FOR_BODY (stmt), bc_continue, clab);
 }
 
 /* Hook into the middle of gimplifying an OMP_FOR node.  */
@@ -606,6 +324,18 @@ simple_empty_class_p (tree type, tree op, tree_code code)
       && TYPE_HAS_TRIVIAL_DESTRUCTOR (type))
     /* The TARGET_EXPR is itself a simple copy, look through it.  */
     return simple_empty_class_p (type, TARGET_EXPR_INITIAL (op), code);
+
+  if (TREE_CODE (op) == PARM_DECL
+      && TREE_ADDRESSABLE (TREE_TYPE (op)))
+    {
+      tree fn = DECL_CONTEXT (op);
+      if (DECL_THUNK_P (fn)
+	  || lambda_static_thunk_p (fn))
+	/* In a thunk, we pass through invisible reference parms, so this isn't
+	   actually a copy.  */
+	return false;
+    }
+
   return
     (TREE_CODE (op) == EMPTY_CLASS_EXPR
      || code == MODIFY_EXPR
@@ -853,6 +583,7 @@ cp_gimplify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p)
       ret = GS_OK;
       if (flag_strong_eval_order == 2
 	  && CALL_EXPR_FN (*expr_p)
+	  && !CALL_EXPR_OPERATOR_SYNTAX (*expr_p)
 	  && cp_get_callee_fndecl_nofold (*expr_p) == NULL_TREE)
 	{
 	  tree fnptrtype = TREE_TYPE (CALL_EXPR_FN (*expr_p));
@@ -929,6 +660,14 @@ cp_gimplify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p)
       ret = GS_UNHANDLED;
       break;
 
+    case PTRMEM_CST:
+      *expr_p = cplus_expand_constant (*expr_p);
+      if (TREE_CODE (*expr_p) == PTRMEM_CST)
+	ret = GS_ERROR;
+      else
+	ret = GS_OK;
+      break;
+
     case RETURN_EXPR:
       if (TREE_OPERAND (*expr_p, 0)
 	  && (TREE_CODE (TREE_OPERAND (*expr_p, 0)) == INIT_EXPR
@@ -959,22 +698,6 @@ is_invisiref_parm (const_tree t)
 {
   return ((TREE_CODE (t) == PARM_DECL || TREE_CODE (t) == RESULT_DECL)
 	  && DECL_BY_REFERENCE (t));
-}
-
-/* Return true if the uid in both int tree maps are equal.  */
-
-bool
-cxx_int_tree_map_hasher::equal (cxx_int_tree_map *a, cxx_int_tree_map *b)
-{
-  return (a->uid == b->uid);
-}
-
-/* Hash a UID in a cxx_int_tree_map.  */
-
-unsigned int
-cxx_int_tree_map_hasher::hash (cxx_int_tree_map *item)
-{
-  return item->uid;
 }
 
 /* A stable comparison routine for use with splay trees and DECLs.  */
@@ -1179,19 +902,22 @@ static tree genericize_spaceship (tree expr)
   tree type = TREE_TYPE (expr);
   tree op0 = TREE_OPERAND (expr, 0);
   tree op1 = TREE_OPERAND (expr, 1);
-  return genericize_spaceship (type, op0, op1);
+  return genericize_spaceship (input_location, type, op0, op1);
 }
 
 /* If EXPR involves an anonymous VLA type, prepend a DECL_EXPR for that type
    to trigger gimplify_type_sizes; otherwise a cast to pointer-to-VLA confuses
-   the middle-end (c++/88256).  */
+   the middle-end (c++/88256).  If EXPR is a DECL, use add_stmt and return
+   NULL_TREE; otherwise return a COMPOUND_STMT of the DECL_EXPR and EXPR.  */
 
-static tree
+tree
 predeclare_vla (tree expr)
 {
   tree type = TREE_TYPE (expr);
   if (type == error_mark_node)
     return expr;
+  if (is_typedef_decl (expr))
+    type = DECL_ORIGINAL_TYPE (expr);
 
   /* We need to strip pointers for gimplify_type_sizes.  */
   tree vla = type;
@@ -1201,15 +927,24 @@ predeclare_vla (tree expr)
 	return expr;
       vla = TREE_TYPE (vla);
     }
-  if (TYPE_NAME (vla) || !variably_modified_type_p (vla, NULL_TREE))
+  if (vla == type || TYPE_NAME (vla)
+      || !variably_modified_type_p (vla, NULL_TREE))
     return expr;
 
   tree decl = build_decl (input_location, TYPE_DECL, NULL_TREE, vla);
   DECL_ARTIFICIAL (decl) = 1;
   TYPE_NAME (vla) = decl;
   tree dexp = build_stmt (input_location, DECL_EXPR, decl);
-  expr = build2 (COMPOUND_EXPR, type, dexp, expr);
-  return expr;
+  if (DECL_P (expr))
+    {
+      add_stmt (dexp);
+      return NULL_TREE;
+    }
+  else
+    {
+      expr = build2 (COMPOUND_EXPR, type, dexp, expr);
+      return expr;
+    }
 }
 
 /* Perform any pre-gimplification lowering of C++ front end trees to
@@ -1231,7 +966,7 @@ cp_genericize_r (tree *stmt_p, int *walk_subtrees, void *data)
     omp_cxx_notice_variable (wtd->omp_ctx, stmt);
 
   /* Don't dereference parms in a thunk, pass the references through. */
-  if ((TREE_CODE (stmt) == CALL_EXPR && CALL_FROM_THUNK_P (stmt))
+  if ((TREE_CODE (stmt) == CALL_EXPR && call_from_lambda_thunk_p (stmt))
       || (TREE_CODE (stmt) == AGGR_INIT_EXPR && AGGR_INIT_FROM_THUNK_P (stmt)))
     {
       *walk_subtrees = 0;
@@ -1249,21 +984,17 @@ cp_genericize_r (tree *stmt_p, int *walk_subtrees, void *data)
 
   /* Map block scope extern declarations to visible declarations with the
      same name and type in outer scopes if any.  */
-  if (cp_function_chain->extern_decl_map
-      && VAR_OR_FUNCTION_DECL_P (stmt)
-      && DECL_EXTERNAL (stmt))
-    {
-      struct cxx_int_tree_map *h, in;
-      in.uid = DECL_UID (stmt);
-      h = cp_function_chain->extern_decl_map->find_with_hash (&in, in.uid);
-      if (h)
-	{
-	  *stmt_p = h->to;
-	  TREE_USED (h->to) |= TREE_USED (stmt);
-	  *walk_subtrees = 0;
-	  return NULL;
-	}
-    }
+  if (VAR_OR_FUNCTION_DECL_P (stmt) && DECL_LOCAL_DECL_P (stmt))
+    if (tree alias = DECL_LOCAL_DECL_ALIAS (stmt))
+      {
+	if (alias != error_mark_node)
+	  {
+	    *stmt_p = alias;
+	    TREE_USED (alias) |= TREE_USED (stmt);
+	  }
+	*walk_subtrees = 0;
+	return NULL;
+      }
 
   if (TREE_CODE (stmt) == INTEGER_CST
       && TYPE_REF_P (TREE_TYPE (stmt))
@@ -1482,6 +1213,7 @@ cp_genericize_r (tree *stmt_p, int *walk_subtrees, void *data)
 	      {
 		tree using_directive = make_node (IMPORTED_DECL);
 		TREE_TYPE (using_directive) = void_type_node;
+		DECL_CONTEXT (using_directive) = current_function_decl;
 
 		IMPORTED_DECL_ASSOCIATED_DECL (using_directive) = decl;
 		DECL_CHAIN (using_directive) = BLOCK_VARS (block);
@@ -1551,12 +1283,17 @@ cp_genericize_r (tree *stmt_p, int *walk_subtrees, void *data)
 	      break;
 	    }
 	if (TREE_CODE (stmt) == OMP_TASKLOOP)
-	  genericize_omp_for_stmt (stmt_p, walk_subtrees, data);
+	  c_genericize_control_stmt (stmt_p, walk_subtrees, data,
+				     cp_genericize_r, cp_walk_subtrees);
 	else
 	  cp_walk_tree (&OMP_BODY (stmt), cp_genericize_r, data, NULL);
 	wtd->omp_ctx = omp_ctx.outer;
 	splay_tree_delete (omp_ctx.variables);
       }
+      break;
+
+    case OMP_TARGET:
+      cfun->has_omp_target = true;
       break;
 
     case TRY_BLOCK:
@@ -1618,32 +1355,115 @@ cp_genericize_r (tree *stmt_p, int *walk_subtrees, void *data)
       gcc_assert (!CONVERT_EXPR_VBASE_PATH (stmt));
       break;
 
-    case FOR_STMT:
-      genericize_for_stmt (stmt_p, walk_subtrees, data);
-      break;
-
-    case WHILE_STMT:
-      genericize_while_stmt (stmt_p, walk_subtrees, data);
-      break;
-
-    case DO_STMT:
-      genericize_do_stmt (stmt_p, walk_subtrees, data);
-      break;
-
-    case SWITCH_STMT:
-      genericize_switch_stmt (stmt_p, walk_subtrees, data);
-      break;
-
-    case CONTINUE_STMT:
-      genericize_continue_stmt (stmt_p);
-      break;
-
-    case BREAK_STMT:
-      genericize_break_stmt (stmt_p);
-      break;
-
     case SPACESHIP_EXPR:
       *stmt_p = genericize_spaceship (*stmt_p);
+      break;
+
+    case PTRMEM_CST:
+      /* By the time we get here we're handing off to the back end, so we don't
+	 need or want to preserve PTRMEM_CST anymore.  */
+      *stmt_p = cplus_expand_constant (stmt);
+      *walk_subtrees = 0;
+      break;
+
+    case MEM_REF:
+      /* For MEM_REF, make sure not to sanitize the second operand even
+	 if it has reference type.  It is just an offset with a type
+	 holding other information.  There is no other processing we
+	 need to do for INTEGER_CSTs, so just ignore the second argument
+	 unconditionally.  */
+      cp_walk_tree (&TREE_OPERAND (stmt, 0), cp_genericize_r, data, NULL);
+      *walk_subtrees = 0;
+      break;
+
+    case NOP_EXPR:
+      *stmt_p = predeclare_vla (*stmt_p);
+      if (!wtd->no_sanitize_p
+	  && sanitize_flags_p (SANITIZE_NULL | SANITIZE_ALIGNMENT)
+	  && TYPE_REF_P (TREE_TYPE (stmt)))
+	ubsan_maybe_instrument_reference (stmt_p);
+      break;
+
+    case CALL_EXPR:
+      /* Evaluate function concept checks instead of treating them as
+	 normal functions.  */
+      if (concept_check_p (stmt))
+	{
+	  *stmt_p = evaluate_concept_check (stmt);
+	  * walk_subtrees = 0;
+	  break;
+	}
+
+      if (tree fndecl = cp_get_callee_fndecl_nofold (stmt))
+	if (DECL_IMMEDIATE_FUNCTION_P (fndecl))
+	  {
+	    gcc_assert (source_location_current_p (fndecl));
+	    *stmt_p = cxx_constant_value (stmt);
+	    break;
+	  }
+
+      if (!wtd->no_sanitize_p
+	  && sanitize_flags_p ((SANITIZE_NULL
+				| SANITIZE_ALIGNMENT | SANITIZE_VPTR)))
+	{
+	  tree fn = CALL_EXPR_FN (stmt);
+	  if (fn != NULL_TREE
+	      && !error_operand_p (fn)
+	      && INDIRECT_TYPE_P (TREE_TYPE (fn))
+	      && TREE_CODE (TREE_TYPE (TREE_TYPE (fn))) == METHOD_TYPE)
+	    {
+	      bool is_ctor
+		= TREE_CODE (fn) == ADDR_EXPR
+		  && TREE_CODE (TREE_OPERAND (fn, 0)) == FUNCTION_DECL
+		  && DECL_CONSTRUCTOR_P (TREE_OPERAND (fn, 0));
+	      if (sanitize_flags_p (SANITIZE_NULL | SANITIZE_ALIGNMENT))
+		ubsan_maybe_instrument_member_call (stmt, is_ctor);
+	      if (sanitize_flags_p (SANITIZE_VPTR) && !is_ctor)
+		cp_ubsan_maybe_instrument_member_call (stmt);
+	    }
+	  else if (fn == NULL_TREE
+		   && CALL_EXPR_IFN (stmt) == IFN_UBSAN_NULL
+		   && TREE_CODE (CALL_EXPR_ARG (stmt, 0)) == INTEGER_CST
+		   && TYPE_REF_P (TREE_TYPE (CALL_EXPR_ARG (stmt, 0))))
+	    *walk_subtrees = 0;
+	}
+      /* Fall through.  */
+    case AGGR_INIT_EXPR:
+      /* For calls to a multi-versioned function, overload resolution
+	 returns the function with the highest target priority, that is,
+	 the version that will checked for dispatching first.  If this
+	 version is inlinable, a direct call to this version can be made
+	 otherwise the call should go through the dispatcher.  */
+      {
+	tree fn = cp_get_callee_fndecl_nofold (stmt);
+	if (fn && DECL_FUNCTION_VERSIONED (fn)
+	    && (current_function_decl == NULL
+		|| !targetm.target_option.can_inline_p (current_function_decl,
+							fn)))
+	  if (tree dis = get_function_version_dispatcher (fn))
+	    {
+	      mark_versions_used (dis);
+	      dis = build_address (dis);
+	      if (TREE_CODE (stmt) == CALL_EXPR)
+		CALL_EXPR_FN (stmt) = dis;
+	      else
+		AGGR_INIT_EXPR_FN (stmt) = dis;
+	    }
+      }
+      break;
+
+    case TARGET_EXPR:
+      if (TARGET_EXPR_INITIAL (stmt)
+	  && TREE_CODE (TARGET_EXPR_INITIAL (stmt)) == CONSTRUCTOR
+	  && CONSTRUCTOR_PLACEHOLDER_BOUNDARY (TARGET_EXPR_INITIAL (stmt)))
+	TARGET_EXPR_NO_ELIDE (stmt) = 1;
+      break;
+
+    case TEMPLATE_ID_EXPR:
+      gcc_assert (concept_check_p (stmt));
+      /* Emit the value of the concept check.  */
+      *stmt_p = evaluate_concept_check (stmt);
+      walk_subtrees = 0;
       break;
 
     case OMP_DISTRIBUTE:
@@ -1708,146 +1528,26 @@ cp_genericize_r (tree *stmt_p, int *walk_subtrees, void *data)
 	    }
 	}
       /* FALLTHRU */
+
+    case FOR_STMT:
+    case WHILE_STMT:
+    case DO_STMT:
+    case SWITCH_STMT:
+    case CONTINUE_STMT:
+    case BREAK_STMT:
     case OMP_FOR:
     case OMP_SIMD:
     case OMP_LOOP:
     case OACC_LOOP:
-      genericize_omp_for_stmt (stmt_p, walk_subtrees, data);
-      break;
-
-    case PTRMEM_CST:
-      /* By the time we get here we're handing off to the back end, so we don't
-	 need or want to preserve PTRMEM_CST anymore.  */
-      *stmt_p = cplus_expand_constant (stmt);
-      *walk_subtrees = 0;
-      break;
-
-    case MEM_REF:
-      /* For MEM_REF, make sure not to sanitize the second operand even
-	 if it has reference type.  It is just an offset with a type
-	 holding other information.  There is no other processing we
-	 need to do for INTEGER_CSTs, so just ignore the second argument
-	 unconditionally.  */
-      cp_walk_tree (&TREE_OPERAND (stmt, 0), cp_genericize_r, data, NULL);
-      *walk_subtrees = 0;
-      break;
-
-    case NOP_EXPR:
-      *stmt_p = predeclare_vla (*stmt_p);
-      if (!wtd->no_sanitize_p
-	  && sanitize_flags_p (SANITIZE_NULL | SANITIZE_ALIGNMENT)
-	  && TYPE_REF_P (TREE_TYPE (stmt)))
-	ubsan_maybe_instrument_reference (stmt_p);
-      break;
-
-    case CALL_EXPR:
-      /* Evaluate function concept checks instead of treating them as
-	 normal functions.  */
-      if (concept_check_p (stmt))
-	{
-	  *stmt_p = evaluate_concept_check (stmt, tf_warning_or_error);
-	  * walk_subtrees = 0;
-	  break;
-	}
-
-      if (!wtd->no_sanitize_p
-	  && sanitize_flags_p ((SANITIZE_NULL
-				| SANITIZE_ALIGNMENT | SANITIZE_VPTR)))
-	{
-	  tree fn = CALL_EXPR_FN (stmt);
-	  if (fn != NULL_TREE
-	      && !error_operand_p (fn)
-	      && INDIRECT_TYPE_P (TREE_TYPE (fn))
-	      && TREE_CODE (TREE_TYPE (TREE_TYPE (fn))) == METHOD_TYPE)
-	    {
-	      bool is_ctor
-		= TREE_CODE (fn) == ADDR_EXPR
-		  && TREE_CODE (TREE_OPERAND (fn, 0)) == FUNCTION_DECL
-		  && DECL_CONSTRUCTOR_P (TREE_OPERAND (fn, 0));
-	      if (sanitize_flags_p (SANITIZE_NULL | SANITIZE_ALIGNMENT))
-		ubsan_maybe_instrument_member_call (stmt, is_ctor);
-	      if (sanitize_flags_p (SANITIZE_VPTR) && !is_ctor)
-		cp_ubsan_maybe_instrument_member_call (stmt);
-	    }
-	  else if (fn == NULL_TREE
-		   && CALL_EXPR_IFN (stmt) == IFN_UBSAN_NULL
-		   && TREE_CODE (CALL_EXPR_ARG (stmt, 0)) == INTEGER_CST
-		   && TYPE_REF_P (TREE_TYPE (CALL_EXPR_ARG (stmt, 0))))
-	    *walk_subtrees = 0;
-	}
-      /* Fall through.  */
-    case AGGR_INIT_EXPR:
-      /* For calls to a multi-versioned function, overload resolution
-	 returns the function with the highest target priority, that is,
-	 the version that will checked for dispatching first.  If this
-	 version is inlinable, a direct call to this version can be made
-	 otherwise the call should go through the dispatcher.  */
-      {
-	tree fn = cp_get_callee_fndecl_nofold (stmt);
-	if (fn && DECL_FUNCTION_VERSIONED (fn)
-	    && (current_function_decl == NULL
-		|| !targetm.target_option.can_inline_p (current_function_decl,
-							fn)))
-	  if (tree dis = get_function_version_dispatcher (fn))
-	    {
-	      mark_versions_used (dis);
-	      dis = build_address (dis);
-	      if (TREE_CODE (stmt) == CALL_EXPR)
-		CALL_EXPR_FN (stmt) = dis;
-	      else
-		AGGR_INIT_EXPR_FN (stmt) = dis;
-	    }
-      }
-      break;
-
-    case TARGET_EXPR:
-      if (TARGET_EXPR_INITIAL (stmt)
-	  && TREE_CODE (TARGET_EXPR_INITIAL (stmt)) == CONSTRUCTOR
-	  && CONSTRUCTOR_PLACEHOLDER_BOUNDARY (TARGET_EXPR_INITIAL (stmt)))
-	TARGET_EXPR_NO_ELIDE (stmt) = 1;
-      break;
-
-    case REQUIRES_EXPR:
-      /* Emit the value of the requires-expression.  */
-      *stmt_p = constant_boolean_node (constraints_satisfied_p (stmt),
-				       boolean_type_node);
-      *walk_subtrees = 0;
-      break;
-
-    case TEMPLATE_ID_EXPR:
-      gcc_assert (concept_check_p (stmt));
-      /* Emit the value of the concept check.  */
-      *stmt_p = evaluate_concept_check (stmt, tf_warning_or_error);
-      walk_subtrees = 0;
-      break;
-
     case STATEMENT_LIST:
-      if (TREE_SIDE_EFFECTS (stmt))
-	{
-	  tree_stmt_iterator i;
-	  int nondebug_stmts = 0;
-	  bool clear_side_effects = true;
-	  /* Genericization can clear TREE_SIDE_EFFECTS, e.g. when
-	     transforming an IF_STMT into COND_EXPR.  If such stmt
-	     appears in a STATEMENT_LIST that contains only that
-	     stmt and some DEBUG_BEGIN_STMTs, without -g where the
-	     STATEMENT_LIST wouldn't be present at all the resulting
-	     expression wouldn't have TREE_SIDE_EFFECTS set, so make sure
-	     to clear it even on the STATEMENT_LIST in such cases.  */
-	  for (i = tsi_start (stmt); !tsi_end_p (i); tsi_next (&i))
-	    {
-	      tree t = tsi_stmt (i);
-	      if (TREE_CODE (t) != DEBUG_BEGIN_STMT && nondebug_stmts < 2)
-		nondebug_stmts++;
-	      cp_walk_tree (tsi_stmt_ptr (i), cp_genericize_r, data, NULL);
-	      if (TREE_CODE (t) != DEBUG_BEGIN_STMT
-		  && (nondebug_stmts > 1 || TREE_SIDE_EFFECTS (tsi_stmt (i))))
-		clear_side_effects = false;
-	    }
-	  if (clear_side_effects)
-	    TREE_SIDE_EFFECTS (stmt) = 0;
-	  *walk_subtrees = 0;
-	}
+      /* These cases are handled by shared code.  */
+      c_genericize_control_stmt (stmt_p, walk_subtrees, data,
+				 cp_genericize_r, cp_walk_subtrees);
+      break;
+
+    case BIT_CAST_EXPR:
+      *stmt_p = build1_loc (EXPR_LOCATION (stmt), VIEW_CONVERT_EXPR,
+			    TREE_TYPE (stmt), TREE_OPERAND (stmt, 0));
       break;
 
     default:
@@ -2015,11 +1715,8 @@ cp_genericize (tree fndecl)
     return;
 
   /* Allow cp_genericize calls to be nested.  */
-  tree save_bc_label[2];
-  save_bc_label[bc_break] = bc_label[bc_break];
-  save_bc_label[bc_continue] = bc_label[bc_continue];
-  bc_label[bc_break] = NULL_TREE;
-  bc_label[bc_continue] = NULL_TREE;
+  bc_state_t save_state;
+  save_bc_state (&save_state);
 
   /* We do want to see every occurrence of the parms, so we can't just use
      walk_tree's hash functionality.  */
@@ -2029,11 +1726,7 @@ cp_genericize (tree fndecl)
 
   /* Do everything else.  */
   c_genericize (fndecl);
-
-  gcc_assert (bc_label[bc_break] == NULL);
-  gcc_assert (bc_label[bc_continue] == NULL);
-  bc_label[bc_break] = save_bc_label[bc_break];
-  bc_label[bc_continue] = save_bc_label[bc_continue];
+  restore_bc_state (&save_state);
 }
 
 /* Build code to apply FN to each member of ARG1 and ARG2.  FN may be
@@ -2262,7 +1955,8 @@ cxx_omp_const_qual_no_mutable (tree decl)
   return false;
 }
 
-/* True if OpenMP sharing attribute of DECL is predetermined.  */
+/* OMP_CLAUSE_DEFAULT_UNSPECIFIED unless OpenMP sharing attribute
+   of DECL is predetermined.  */
 
 enum omp_clause_default_kind
 cxx_omp_predetermined_sharing_1 (tree decl)
@@ -2316,10 +2010,29 @@ cxx_omp_predetermined_sharing (tree decl)
   return OMP_CLAUSE_DEFAULT_UNSPECIFIED;
 }
 
+enum omp_clause_defaultmap_kind
+cxx_omp_predetermined_mapping (tree decl)
+{
+  /* Predetermine artificial variables holding integral values, those
+     are usually result of gimplify_one_sizepos or SAVE_EXPR
+     gimplification.  */
+  if (VAR_P (decl)
+      && DECL_ARTIFICIAL (decl)
+      && INTEGRAL_TYPE_P (TREE_TYPE (decl))
+      && !(DECL_LANG_SPECIFIC (decl)
+	   && DECL_OMP_PRIVATIZED_MEMBER (decl)))
+    return OMP_CLAUSE_DEFAULTMAP_FIRSTPRIVATE;
+
+  if (c_omp_predefined_variable (decl))
+    return OMP_CLAUSE_DEFAULTMAP_TO;
+
+  return OMP_CLAUSE_DEFAULTMAP_CATEGORY_UNSPECIFIED;
+}
+
 /* Finalize an implicitly determined clause.  */
 
 void
-cxx_omp_finish_clause (tree c, gimple_seq *)
+cxx_omp_finish_clause (tree c, gimple_seq *, bool /* openacc */)
 {
   tree decl, inner_type;
   bool make_shared = false;
@@ -2504,6 +2217,8 @@ cp_fold (tree x)
 
   if (tree *cached = fold_cache->get (x))
     return *cached;
+
+  uid_sensitive_constexpr_evaluation_checker c;
 
   code = TREE_CODE (x);
   switch (code)
@@ -2703,6 +2418,32 @@ cp_fold (tree x)
       op0 = cp_fold_maybe_rvalue (TREE_OPERAND (x, 0), rval_ops);
       op1 = cp_fold_rvalue (TREE_OPERAND (x, 1));
 
+      /* decltype(nullptr) has only one value, so optimize away all comparisons
+	 with that type right away, keeping them in the IL causes troubles for
+	 various optimizations.  */
+      if (COMPARISON_CLASS_P (org_x)
+	  && TREE_CODE (TREE_TYPE (op0)) == NULLPTR_TYPE
+	  && TREE_CODE (TREE_TYPE (op1)) == NULLPTR_TYPE)
+	{
+	  switch (code)
+	    {
+	    case EQ_EXPR:
+	    case LE_EXPR:
+	    case GE_EXPR:
+	      x = constant_boolean_node (true, TREE_TYPE (x));
+	      break;
+	    case NE_EXPR:
+	    case LT_EXPR:
+	    case GT_EXPR:
+	      x = constant_boolean_node (false, TREE_TYPE (x));
+	      break;
+	    default:
+	      gcc_unreachable ();
+	    }
+	  return omit_two_operands_loc (loc, TREE_TYPE (x), x,
+					op0, op1);
+	}
+
       if (op0 != TREE_OPERAND (x, 0) || op1 != TREE_OPERAND (x, 1))
 	{
 	  if (op0 == error_mark_node || op1 == error_mark_node)
@@ -2804,7 +2545,7 @@ cp_fold (tree x)
 
     case CALL_EXPR:
       {
-	int i, m, sv = optimize, nw = sv, changed = 0;
+	int sv = optimize, nw = sv;
 	tree callee = get_callee_fndecl (x);
 
 	/* Some built-in function calls will be evaluated at compile-time in
@@ -2830,10 +2571,9 @@ cp_fold (tree x)
 	    break;
 	  }
 
-	x = copy_node (x);
-
-	m = call_expr_nargs (x);
-	for (i = 0; i < m; i++)
+	bool changed = false;
+	int m = call_expr_nargs (x);
+	for (int i = 0; i < m; i++)
 	  {
 	    r = cp_fold (CALL_EXPR_ARG (x, i));
 	    if (r != CALL_EXPR_ARG (x, i))
@@ -2843,9 +2583,11 @@ cp_fold (tree x)
 		    x = error_mark_node;
 		    break;
 		  }
-		changed = 1;
+		if (!changed)
+		  x = copy_node (x);
+		CALL_EXPR_ARG (x, i) = r;
+		changed = true;
 	      }
-	    CALL_EXPR_ARG (x, i) = r;
 	  }
 	if (x == error_mark_node)
 	  break;
@@ -2885,8 +2627,6 @@ cp_fold (tree x)
 	    break;
 	  }
 
-	if (!changed)
-	  x = org_x;
 	break;
       }
 
@@ -2925,24 +2665,18 @@ cp_fold (tree x)
     case TREE_VEC:
       {
 	bool changed = false;
-	releasing_vec vec;
-	int i, n = TREE_VEC_LENGTH (x);
-	vec_safe_reserve (vec, n);
+	int n = TREE_VEC_LENGTH (x);
 
-	for (i = 0; i < n; i++)
+	for (int i = 0; i < n; i++)
 	  {
 	    tree op = cp_fold (TREE_VEC_ELT (x, i));
-	    vec->quick_push (op);
 	    if (op != TREE_VEC_ELT (x, i))
-	      changed = true;
-	  }
-
-	if (changed)
-	  {
-	    r = copy_node (x);
-	    for (i = 0; i < n; i++)
-	      TREE_VEC_ELT (r, i) = (*vec)[i];
-	    x = r;
+	      {
+		if (!changed)
+		  x = copy_node (x);
+		TREE_VEC_ELT (x, i) = op;
+		changed = true;
+	      }
 	  }
       }
 
@@ -2988,6 +2722,10 @@ cp_fold (tree x)
 	x = r;
       break;
 
+    case REQUIRES_EXPR:
+      x = evaluate_requires_expr (x);
+      break;
+
     default:
       return org_x;
     }
@@ -2998,10 +2736,13 @@ cp_fold (tree x)
       TREE_NO_WARNING (x) = TREE_NO_WARNING (org_x);
     }
 
-  fold_cache->put (org_x, x);
-  /* Prevent that we try to fold an already folded result again.  */
-  if (x != org_x)
-    fold_cache->put (x, x);
+  if (!c.evaluation_restricted_p ())
+    {
+      fold_cache->put (org_x, x);
+      /* Prevent that we try to fold an already folded result again.  */
+      if (x != org_x)
+	fold_cache->put (x, x);
+    }
 
   return x;
 }
@@ -3205,6 +2946,21 @@ struct source_location_table_entry_hash
 	    && ref.uid == 0
 	    && ref.var == NULL_TREE);
   }
+
+  static void
+  pch_nx (source_location_table_entry &p)
+  {
+    extern void gt_pch_nx (source_location_table_entry &);
+    gt_pch_nx (p);
+  }
+
+  static void
+  pch_nx (source_location_table_entry &p, gt_pointer_operator op, void *cookie)
+  {
+    extern void gt_pch_nx (source_location_table_entry *, gt_pointer_operator,
+			   void *);
+    gt_pch_nx (&p, op, cookie);
+  }
 };
 
 static GTY(()) hash_table <source_location_table_entry_hash>
@@ -3279,7 +3035,7 @@ fold_builtin_source_location (location_t loc)
 	      const char *name = "";
 
 	      if (current_function_decl)
-		name = cxx_printable_name (current_function_decl, 0);
+		name = cxx_printable_name (current_function_decl, 2);
 
 	      val = build_string_literal (strlen (name) + 1, name);
 	    }

@@ -1,5 +1,5 @@
 /* Preprocess only, using cpplib.
-   Copyright (C) 1995-2020 Free Software Foundation, Inc.
+   Copyright (C) 1995-2021 Free Software Foundation, Inc.
    Written by Per Bothner, 1994-95.
 
    This program is free software; you can redistribute it and/or modify it
@@ -21,6 +21,7 @@
 #include "coretypes.h"
 #include "c-common.h"		/* For flags.  */
 #include "../libcpp/internal.h"
+#include "langhooks.h"
 #include "c-pragma.h"		/* For parse_in.  */
 #include "file-prefix-map.h"    /* remap_macro_filename()  */
 
@@ -31,7 +32,7 @@ static struct
   FILE *outf;			/* Stream to write to.  */
   const cpp_token *prev;	/* Previous token.  */
   const cpp_token *source;	/* Source token for spacing.  */
-  int src_line;			/* Line number currently being written.  */
+  unsigned src_line;		/* Line number currently being written.  */
   bool printed;			/* True if something output at line.  */
   bool first_time;		/* pp_file_change hasn't been called yet.  */
   bool prev_was_system_token;	/* True if the previous token was a
@@ -52,7 +53,6 @@ static macro_queue *define_queue, *undef_queue;
 
 /* General output routines.  */
 static void scan_translation_unit (cpp_reader *);
-static void print_lines_directives_only (int, const void *, size_t);
 static void scan_translation_unit_directives_only (cpp_reader *);
 static void scan_translation_unit_trad (cpp_reader *);
 static void account_for_newlines (const unsigned char *, size_t);
@@ -165,133 +165,229 @@ init_pp_output (FILE *out_stream)
   print.prev_was_system_token = false;
 }
 
+// FIXME: Ideally we'd just turn the entirety of the print struct into
+// an encapsulated streamer ...
+
+class token_streamer
+{
+  bool avoid_paste;
+  bool do_line_adjustments;
+  bool in_pragma;
+  bool line_marker_emitted;
+
+ public:
+  token_streamer (cpp_reader *pfile)
+    :avoid_paste (false),
+    do_line_adjustments (cpp_get_options (pfile)->lang != CLK_ASM
+			 && !flag_no_line_commands),
+    in_pragma (false),
+    line_marker_emitted (false)
+    {
+    }
+
+  void begin_pragma () 
+  {
+    in_pragma = true;
+  }
+
+  void stream (cpp_reader *pfile, const cpp_token *tok, location_t);
+};
+
+void
+token_streamer::stream (cpp_reader *pfile, const cpp_token *token,
+			location_t loc)
+{
+  if (token->type == CPP_PADDING)
+    {
+      avoid_paste = true;
+      if (print.source == NULL
+	  || (!(print.source->flags & PREV_WHITE)
+	      && token->val.source == NULL))
+	print.source = token->val.source;
+      return;
+    }
+
+  if (token->type == CPP_EOF)
+    return;
+
+  /* Subtle logic to output a space if and only if necessary.  */
+  if (avoid_paste)
+    {
+      unsigned src_line = LOCATION_LINE (loc);
+
+      if (print.source == NULL)
+	print.source = token;
+
+      if (src_line != print.src_line
+	  && do_line_adjustments
+	  && !in_pragma)
+	{
+	  line_marker_emitted = do_line_change (pfile, token, loc, false);
+	  putc (' ', print.outf);
+	  print.printed = true;
+	}
+      else if (print.source->flags & PREV_WHITE
+	       || (print.prev
+		   && cpp_avoid_paste (pfile, print.prev, token))
+	       || (print.prev == NULL && token->type == CPP_HASH))
+	{
+	  putc (' ', print.outf);
+	  print.printed = true;
+	}
+    }
+  else if (token->flags & PREV_WHITE)
+    {
+      unsigned src_line = LOCATION_LINE (loc);
+
+      if (src_line != print.src_line
+	  && do_line_adjustments
+	  && !in_pragma)
+	line_marker_emitted = do_line_change (pfile, token, loc, false);
+      putc (' ', print.outf);
+      print.printed = true;
+    }
+
+  avoid_paste = false;
+  print.source = NULL;
+  print.prev = token;
+  if (token->type == CPP_PRAGMA)
+    {
+      const char *space;
+      const char *name;
+
+      line_marker_emitted = maybe_print_line (token->src_loc);
+      fputs ("#pragma ", print.outf);
+      c_pp_lookup_pragma (token->val.pragma, &space, &name);
+      if (space)
+	fprintf (print.outf, "%s %s", space, name);
+      else
+	fprintf (print.outf, "%s", name);
+      print.printed = true;
+      in_pragma = true;
+    }
+  else if (token->type == CPP_PRAGMA_EOL)
+    {
+      maybe_print_line (UNKNOWN_LOCATION);
+      in_pragma = false;
+    }
+  else
+    {
+      if (cpp_get_options (parse_in)->debug)
+	linemap_dump_location (line_table, token->src_loc, print.outf);
+
+      if (do_line_adjustments
+	  && !in_pragma
+	  && !line_marker_emitted
+	  && print.prev_was_system_token != !!in_system_header_at (loc)
+	  && !is_location_from_builtin_token (loc))
+	/* The system-ness of this token is different from the one of
+	   the previous token.  Let's emit a line change to mark the
+	   new system-ness before we emit the token.  */
+	{
+	  do_line_change (pfile, token, loc, false);
+	  print.prev_was_system_token = !!in_system_header_at (loc);
+	}
+      cpp_output_token (token, print.outf);
+      line_marker_emitted = false;
+      print.printed = true;
+    }
+
+  /* CPP_COMMENT tokens and raw-string literal tokens can have
+     embedded new-line characters.  Rather than enumerating all the
+     possible token types just check if token uses val.str union
+     member.  */
+  if (cpp_token_val_index (token) == CPP_TOKEN_FLD_STR)
+    account_for_newlines (token->val.str.text, token->val.str.len);
+}
+
 /* Writes out the preprocessed file, handling spacing and paste
    avoidance issues.  */
+
 static void
 scan_translation_unit (cpp_reader *pfile)
 {
-  bool avoid_paste = false;
-  bool do_line_adjustments
-    = cpp_get_options (parse_in)->lang != CLK_ASM
-      && !flag_no_line_commands;
-  bool in_pragma = false;
-  bool line_marker_emitted = false;
+  token_streamer streamer (pfile);
+  uintptr_t filter = 0;
+
+  if (lang_hooks.preprocess_token)
+    filter = lang_hooks.preprocess_token (pfile, NULL, filter);
 
   print.source = NULL;
   for (;;)
     {
-      location_t loc;
-      const cpp_token *token = cpp_get_token_with_location (pfile, &loc);
+      location_t spelling_loc;
+      const cpp_token *token
+	= cpp_get_token_with_location (pfile, &spelling_loc);
 
-      if (token->type == CPP_PADDING)
+      streamer.stream (pfile, token, spelling_loc);
+      if (filter)
 	{
-	  avoid_paste = true;
-	  if (print.source == NULL
-	      || (!(print.source->flags & PREV_WHITE)
-		  && token->val.source == NULL))
-	    print.source = token->val.source;
-	  continue;
+	  unsigned flags = lang_hooks.preprocess_token (pfile, token, filter);
+	  if (flags & lang_hooks::PT_begin_pragma)
+	    streamer.begin_pragma ();
 	}
-
       if (token->type == CPP_EOF)
 	break;
-
-      /* Subtle logic to output a space if and only if necessary.  */
-      if (avoid_paste)
-	{
-	  int src_line = LOCATION_LINE (loc);
-
-	  if (print.source == NULL)
-	    print.source = token;
-
-	  if (src_line != print.src_line
-	      && do_line_adjustments
-	      && !in_pragma)
-	    {
-	      line_marker_emitted = do_line_change (pfile, token, loc, false);
-	      putc (' ', print.outf);
-	      print.printed = true;
-	    }
-	  else if (print.source->flags & PREV_WHITE
-		   || (print.prev
-		       && cpp_avoid_paste (pfile, print.prev, token))
-		   || (print.prev == NULL && token->type == CPP_HASH))
-	    {
-	      putc (' ', print.outf);
-	      print.printed = true;
-	    }
-	}
-      else if (token->flags & PREV_WHITE)
-	{
-	  int src_line = LOCATION_LINE (loc);
-
-	  if (src_line != print.src_line
-	      && do_line_adjustments
-	      && !in_pragma)
-	    line_marker_emitted = do_line_change (pfile, token, loc, false);
-	  putc (' ', print.outf);
-	  print.printed = true;
-	}
-
-      avoid_paste = false;
-      print.source = NULL;
-      print.prev = token;
-      if (token->type == CPP_PRAGMA)
-	{
-	  const char *space;
-	  const char *name;
-
-	  line_marker_emitted = maybe_print_line (token->src_loc);
-	  fputs ("#pragma ", print.outf);
-	  c_pp_lookup_pragma (token->val.pragma, &space, &name);
-	  if (space)
-	    fprintf (print.outf, "%s %s", space, name);
-	  else
-	    fprintf (print.outf, "%s", name);
-	  print.printed = true;
-	  in_pragma = true;
-	}
-      else if (token->type == CPP_PRAGMA_EOL)
-	{
-	  maybe_print_line (token->src_loc);
-	  in_pragma = false;
-	}
-      else
-	{
-	  if (cpp_get_options (parse_in)->debug)
-	    linemap_dump_location (line_table, token->src_loc, print.outf);
-
-	  if (do_line_adjustments
-	      && !in_pragma
-	      && !line_marker_emitted
-	      && print.prev_was_system_token != !!in_system_header_at (loc)
-	      && !is_location_from_builtin_token (loc))
-	    /* The system-ness of this token is different from the one
-	       of the previous token.  Let's emit a line change to
-	       mark the new system-ness before we emit the token.  */
-	    {
-	      do_line_change (pfile, token, loc, false);
-	      print.prev_was_system_token = !!in_system_header_at (loc);
-	    }
-	  cpp_output_token (token, print.outf);
-	  line_marker_emitted = false;
-	  print.printed = true;
-	}
-
-      /* CPP_COMMENT tokens and raw-string literal tokens can
-	 have embedded new-line characters.  Rather than enumerating
-	 all the possible token types just check if token uses
-	 val.str union member.  */
-      if (cpp_token_val_index (token) == CPP_TOKEN_FLD_STR)
-	account_for_newlines (token->val.str.text, token->val.str.len);
     }
+
+  if (filter)
+    lang_hooks.preprocess_token (pfile, NULL, filter);
 }
 
-static void
-print_lines_directives_only (int lines, const void *buf, size_t size)
+class do_streamer : public token_streamer
 {
-  print.src_line += lines;
-  fwrite (buf, 1, size, print.outf);
+ public:
+  uintptr_t filter;
+
+  do_streamer (cpp_reader *pfile, uintptr_t filter)
+    :token_streamer (pfile), filter (filter)
+    {
+    }
+};
+
+static void
+directives_only_cb (cpp_reader *pfile, CPP_DO_task task, void *data_, ...)
+{
+  va_list args;
+  va_start (args, data_);
+
+  do_streamer *streamer = reinterpret_cast <do_streamer *> (data_);
+  switch (task)
+    {
+    default:
+      gcc_unreachable ();
+
+    case CPP_DO_print:
+      {
+	print.src_line += va_arg (args, unsigned);
+
+	const void *buf = va_arg (args, const void *);
+	size_t size = va_arg (args, size_t);
+	fwrite (buf, 1, size, print.outf);
+      }
+      break;
+
+    case CPP_DO_location:
+      maybe_print_line (va_arg (args, location_t));
+      break;
+
+    case CPP_DO_token:
+      {
+	const cpp_token *token = va_arg (args, const cpp_token *);
+	location_t spelling_loc = va_arg (args, location_t);
+	streamer->stream (pfile, token, spelling_loc);
+	if (streamer->filter)
+	  {
+	    unsigned flags = lang_hooks.preprocess_token
+	      (pfile, token, streamer->filter);
+	    if (flags & lang_hooks::PT_begin_pragma)
+	      streamer->begin_pragma ();
+	  }
+      }
+      break;
+    }
+
+  va_end (args);
 }
 
 /* Writes out the preprocessed file, handling spacing and paste
@@ -299,12 +395,13 @@ print_lines_directives_only (int lines, const void *buf, size_t size)
 static void
 scan_translation_unit_directives_only (cpp_reader *pfile)
 {
-  struct _cpp_dir_only_callbacks cb;
-
-  cb.print_lines = print_lines_directives_only;
-  cb.maybe_print_line = maybe_print_line;
-
-  _cpp_preprocess_dir_only (pfile, &cb);
+  uintptr_t filter = 0;
+  if (lang_hooks.preprocess_token)
+    filter = lang_hooks.preprocess_token (pfile, NULL, filter);
+  do_streamer streamer (pfile, filter);
+  cpp_directive_only_process (pfile, &streamer, directives_only_cb);
+  if (streamer.filter)
+    lang_hooks.preprocess_token (pfile, NULL, streamer.filter);
 }
 
 /* Adjust print.src_line for newlines embedded in output.  */
@@ -340,7 +437,7 @@ static bool
 maybe_print_line_1 (location_t src_loc, FILE *stream)
 {
   bool emitted_line_marker = false;
-  int src_line = LOCATION_LINE (src_loc);
+  unsigned src_line = LOCATION_LINE (src_loc);
   const char *src_file = LOCATION_FILE (src_loc);
 
   /* End the previous line of text.  */
@@ -354,6 +451,7 @@ maybe_print_line_1 (location_t src_loc, FILE *stream)
   if (!flag_no_line_commands
       && src_line >= print.src_line
       && src_line < print.src_line + 8
+      && src_loc != UNKNOWN_LOCATION
       && strcmp (src_file, print.src_file) == 0)
     {
       while (src_line > print.src_line)
@@ -396,29 +494,27 @@ print_line_1 (location_t src_loc, const char *special_flags, FILE *stream)
     putc ('\n', stream);
   print.printed = false;
 
-  if (!flag_no_line_commands)
+  if (src_loc != UNKNOWN_LOCATION && !flag_no_line_commands)
     {
       const char *file_path = LOCATION_FILE (src_loc);
-      int sysp;
       size_t to_file_len = strlen (file_path);
       unsigned char *to_file_quoted =
          (unsigned char *) alloca (to_file_len * 4 + 1);
-      unsigned char *p;
+
+      /* cpp_quote_string does not nul-terminate, so we have to do it
+	 ourselves.  */
+      unsigned char *p = cpp_quote_string (to_file_quoted,
+					   (const unsigned char *) file_path,
+					   to_file_len);
+      *p = '\0';
 
       print.src_line = LOCATION_LINE (src_loc);
       print.src_file = file_path;
 
-      /* cpp_quote_string does not nul-terminate, so we have to do it
-	 ourselves.  */
-      p = cpp_quote_string (to_file_quoted,
-			    (const unsigned char *) file_path,
-			    to_file_len);
-      *p = '\0';
       fprintf (stream, "# %u \"%s\"%s",
-	       print.src_line == 0 ? 1 : print.src_line,
-	       to_file_quoted, special_flags);
+	       print.src_line, to_file_quoted, special_flags);
 
-      sysp = in_system_header_at (src_loc);
+      int sysp = in_system_header_at (src_loc);
       if (sysp == 2)
 	fputs (" 3 4", stream);
       else if (sysp == 1)
@@ -516,14 +612,14 @@ cb_define (cpp_reader *pfile, location_t line, cpp_hashnode *node)
   linemap_resolve_location (line_table, line,
 			    LRK_MACRO_DEFINITION_LOCATION,
 			    &map);
-  if (LINEMAP_LINE (map) != 0)
-    print.src_line++;
+  print.src_line++;
 }
 
 static void
-cb_undef (cpp_reader *pfile ATTRIBUTE_UNUSED, location_t line,
-	  cpp_hashnode *node)
+cb_undef (cpp_reader *pfile, location_t line, cpp_hashnode *node)
 {
+  if (lang_hooks.preprocess_undef)
+    lang_hooks.preprocess_undef (pfile, line, node);
   maybe_print_line (line);
   fprintf (print.outf, "#undef %s\n", NODE_NAME (node));
   print.src_line++;

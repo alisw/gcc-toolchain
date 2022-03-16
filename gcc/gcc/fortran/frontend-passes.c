@@ -1,5 +1,5 @@
 /* Pass manager for Fortran front end.
-   Copyright (C) 2010-2020 Free Software Foundation, Inc.
+   Copyright (C) 2010-2021 Free Software Foundation, Inc.
    Contributed by Thomas König.
 
 This file is part of GCC.
@@ -1299,8 +1299,8 @@ traverse_io_block (gfc_code *code, bool *has_reached, gfc_code *prev)
 		std::swap (start->value.op.op1, start->value.op.op2);
 	      gcc_fallthrough ();
 	    case INTRINSIC_MINUS:
-	      if ((start->value.op.op1->expr_type!= EXPR_VARIABLE
-		   && start->value.op.op2->expr_type != EXPR_CONSTANT)
+	      if (start->value.op.op1->expr_type!= EXPR_VARIABLE
+		  || start->value.op.op2->expr_type != EXPR_CONSTANT
 		  || start->value.op.op1->ref)
 		return false;
 	      if (!stack_top || !stack_top->iter
@@ -2305,6 +2305,220 @@ optimize_minmaxloc (gfc_expr **e)
   mpz_set_ui (a->expr->value.integer, 1);
 }
 
+/* Data package to hand down for DO loop checks in a contained
+   procedure.  */
+typedef struct contained_info
+{
+  gfc_symbol *do_var;
+  gfc_symbol *procedure;
+  locus where_do;
+} contained_info;
+
+static enum gfc_exec_op last_io_op;
+
+/* Callback function to check for INTENT(OUT) and INTENT(INOUT) in a
+   contained function call.  */
+
+static int
+doloop_contained_function_call (gfc_expr **e,
+				int *walk_subtrees ATTRIBUTE_UNUSED, void *data)
+{
+  gfc_expr *expr = *e;
+  gfc_formal_arglist *f;
+  gfc_actual_arglist *a;
+  gfc_symbol *sym, *do_var;
+  contained_info *info;
+
+  if (expr->expr_type != EXPR_FUNCTION || expr->value.function.isym
+      || expr->value.function.esym == NULL)
+    return 0;
+
+  sym = expr->value.function.esym;
+  f = gfc_sym_get_dummy_args (sym);
+  if (f == NULL)
+    return 0;
+
+  info = (contained_info *) data;
+  do_var = info->do_var;
+  a = expr->value.function.actual;
+
+  while (a && f)
+    {
+      if (a->expr && a->expr->symtree && a->expr->symtree->n.sym == do_var)
+	{
+	  if (f->sym->attr.intent == INTENT_OUT)
+	    {
+	      gfc_error_now ("Index variable %qs set to undefined as "
+			     "INTENT(OUT) argument at %L in procedure %qs "
+			     "called from within DO loop at %L", do_var->name,
+			     &a->expr->where, info->procedure->name,
+			     &info->where_do);
+	      return 1;
+	    }
+	  else if (f->sym->attr.intent == INTENT_INOUT)
+	    {
+	      gfc_error_now ("Index variable %qs not definable as "
+			     "INTENT(INOUT) argument at %L in procedure %qs "
+			     "called from within DO loop at %L", do_var->name,
+			     &a->expr->where, info->procedure->name,
+			     &info->where_do);
+	      return 1;
+	    }
+	}
+      a = a->next;
+      f = f->next;
+    }
+  return 0;
+}
+
+/* Callback function that goes through the code in a contained
+   procedure to make sure it does not change a variable in a DO
+   loop.  */
+
+static int
+doloop_contained_procedure_code (gfc_code **c,
+				 int *walk_subtrees ATTRIBUTE_UNUSED,
+				 void *data)
+{
+  gfc_code *co = *c;
+  contained_info *info = (contained_info *) data;
+  gfc_symbol *do_var = info->do_var;
+  const char *errmsg = _("Index variable %qs redefined at %L in procedure %qs "
+			 "called from within DO loop at %L");
+  static enum gfc_exec_op saved_io_op;
+
+  switch (co->op)
+    {
+    case EXEC_ASSIGN:
+      if (co->expr1->symtree->n.sym == do_var)
+	gfc_error_now (errmsg, do_var->name, &co->loc, info->procedure->name,
+		       &info->where_do);
+      break;
+
+    case EXEC_DO:
+      if (co->ext.iterator && co->ext.iterator->var
+	  && co->ext.iterator->var->symtree->n.sym == do_var)
+	gfc_error (errmsg, do_var->name, &co->loc, info->procedure->name,
+		   &info->where_do);
+      break;
+
+    case EXEC_READ:
+    case EXEC_WRITE:
+    case EXEC_INQUIRE:
+    case EXEC_IOLENGTH:
+      saved_io_op = last_io_op;
+      last_io_op = co->op;
+      break;
+
+    case EXEC_OPEN:
+      if (co->ext.open->iostat
+	  && co->ext.open->iostat->symtree->n.sym == do_var)
+	gfc_error_now (errmsg, do_var->name, &co->ext.open->iostat->where,
+		       info->procedure->name, &info->where_do);
+      break;
+
+    case EXEC_CLOSE:
+      if (co->ext.close->iostat
+	  && co->ext.close->iostat->symtree->n.sym == do_var)
+	gfc_error_now (errmsg, do_var->name, &co->ext.close->iostat->where,
+		       info->procedure->name, &info->where_do);
+      break;
+
+    case EXEC_TRANSFER:
+      switch (last_io_op)
+	{
+
+	case EXEC_INQUIRE:
+#define CHECK_INQ(a) do { if (co->ext.inquire->a &&			\
+			      co->ext.inquire->a->symtree->n.sym == do_var) \
+	      gfc_error_now (errmsg, do_var->name,			\
+			     &co->ext.inquire->a->where,		\
+			     info->procedure->name,			\
+			     &info->where_do);				\
+	  } while (0)
+
+	  CHECK_INQ(iostat);
+	  CHECK_INQ(number);
+	  CHECK_INQ(position);
+	  CHECK_INQ(recl);
+	  CHECK_INQ(position);
+	  CHECK_INQ(iolength);
+	  CHECK_INQ(strm_pos);
+	  break;
+#undef CHECK_INQ
+
+	case EXEC_READ:
+	  if (co->expr1 && co->expr1->symtree->n.sym == do_var)
+	    gfc_error_now (errmsg, do_var->name, &co->expr1->where,
+			   info->procedure->name, &info->where_do);
+
+	  /* Fallthrough.  */
+
+	case EXEC_WRITE:
+	  if (co->ext.dt->iostat
+	      && co->ext.dt->iostat->symtree->n.sym == do_var)
+	    gfc_error_now (errmsg, do_var->name, &co->ext.dt->iostat->where,
+			   info->procedure->name, &info->where_do);
+	  break;
+
+	case EXEC_IOLENGTH:
+	  if (co->expr1 && co->expr1->symtree->n.sym == do_var)
+	    gfc_error_now (errmsg, do_var->name, &co->expr1->where,
+			   info->procedure->name, &info->where_do);
+	  break;
+
+	default:
+	  gcc_unreachable ();
+	}
+      break;
+
+    case EXEC_DT_END:
+      last_io_op = saved_io_op;
+      break;
+
+    case EXEC_CALL:
+      gfc_formal_arglist *f;
+      gfc_actual_arglist *a;
+
+      f = gfc_sym_get_dummy_args (co->resolved_sym);
+      if (f == NULL)
+	break;
+      a = co->ext.actual;
+      /* Slightly different error message here. If there is an error,
+	 return 1 to avoid an infinite loop.  */
+      while (a && f)
+	{
+	  if (a->expr && a->expr->symtree && a->expr->symtree->n.sym == do_var)
+	    {
+	      if (f->sym->attr.intent == INTENT_OUT)
+		{
+		  gfc_error_now ("Index variable %qs set to undefined as "
+				 "INTENT(OUT) argument at %L in subroutine %qs "
+				 "called from within DO loop at %L",
+				 do_var->name, &a->expr->where,
+				 info->procedure->name, &info->where_do);
+		  return 1;
+		}
+	      else if (f->sym->attr.intent == INTENT_INOUT)
+		{
+		  gfc_error_now ("Index variable %qs not definable as "
+				 "INTENT(INOUT) argument at %L in subroutine %qs "
+				 "called from within DO loop at %L", do_var->name,
+				 &a->expr->where, info->procedure->name,
+				 &info->where_do);
+		  return 1;
+		}
+	    }
+	  a = a->next;
+	  f = f->next;
+	}
+      break;
+    default:
+      break;
+    }
+  return 0;
+}
+
 /* Callback function for code checking that we do not pass a DO variable to an
    INTENT(OUT) or INTENT(INOUT) dummy variable.  */
 
@@ -2389,9 +2603,31 @@ doloop_code (gfc_code **c, int *walk_subtrees ATTRIBUTE_UNUSED,
       break;
 
     case EXEC_CALL:
-
       if (co->resolved_sym == NULL)
 	break;
+
+      /* Test if somebody stealthily changes the DO variable from
+	 under us by changing it in a host-associated procedure.  */
+      if (co->resolved_sym->attr.contained)
+	{
+	  FOR_EACH_VEC_ELT (doloop_list, i, lp)
+	    {
+	      gfc_symbol *sym = co->resolved_sym;
+	      contained_info info;
+	      gfc_namespace *ns;
+
+	      cl = lp->c;
+	      info.do_var = cl->ext.iterator->var->symtree->n.sym;
+	      info.procedure = co->resolved_sym;  /* sym? */
+	      info.where_do = co->loc;
+	      /* Look contained procedures under the namespace of the
+		 variable.  */
+	      for (ns = info.do_var->ns->contained; ns; ns = ns->sibling)
+		if (ns->proc_name && ns->proc_name == sym)
+		  gfc_code_walker (&ns->code, doloop_contained_procedure_code,
+				   doloop_contained_function_call, &info);
+	    }
+	}
 
       f = gfc_sym_get_dummy_args (co->resolved_sym);
 
@@ -2419,7 +2655,7 @@ doloop_code (gfc_code **c, int *walk_subtrees ATTRIBUTE_UNUSED,
 		{
 		  if (f->sym->attr.intent == INTENT_OUT)
 		    gfc_error_now ("Variable %qs at %L set to undefined "
-				   "value inside loop  beginning at %L as "
+				   "value inside loop beginning at %L as "
 				   "INTENT(OUT) argument to subroutine %qs",
 				   do_sym->name, &a->expr->where,
 				   &(doloop_list[i].c->loc),
@@ -2436,6 +2672,7 @@ doloop_code (gfc_code **c, int *walk_subtrees ATTRIBUTE_UNUSED,
 	  a = a->next;
 	  f = f->next;
 	}
+
       break;
 
     default:
@@ -2737,6 +2974,7 @@ do_intent (gfc_expr **e)
   gfc_code *dl;
   do_t *lp;
   int i;
+  gfc_symbol *sym;
 
   expr = *e;
   if (expr->expr_type != EXPR_FUNCTION)
@@ -2747,7 +2985,31 @@ do_intent (gfc_expr **e)
   if (expr->value.function.isym)
     return 0;
 
-  f = gfc_sym_get_dummy_args (expr->symtree->n.sym);
+  sym = expr->value.function.esym;
+  if (sym == NULL)
+    return 0;
+
+  if (sym->attr.contained)
+    {
+      FOR_EACH_VEC_ELT (doloop_list, i, lp)
+	{
+	  contained_info info;
+	  gfc_namespace *ns;
+
+	  dl = lp->c;
+	  info.do_var = dl->ext.iterator->var->symtree->n.sym;
+	  info.procedure = sym;
+	  info.where_do = expr->where;
+	  /* Look contained procedures under the namespace of the
+		 variable.  */
+	  for (ns = info.do_var->ns->contained; ns; ns = ns->sibling)
+	    if (ns->proc_name && ns->proc_name == sym)
+	      gfc_code_walker (&ns->code, doloop_contained_procedure_code,
+			       dummy_expr_callback, &info);
+	}
+    }
+
+  f = gfc_sym_get_dummy_args (sym);
 
   /* Without a formal arglist, there is only unknown INTENT,
      which we don't check for.  */
@@ -3045,7 +3307,7 @@ get_operand (gfc_intrinsic_op op, gfc_expr *e1, gfc_expr *e2)
    removed by DCE. Only called for rank-two matrices A and B.  */
 
 static gfc_code *
-inline_limit_check (gfc_expr *a, gfc_expr *b, int limit)
+inline_limit_check (gfc_expr *a, gfc_expr *b, int limit, int rank_a)
 {
   gfc_expr *inline_limit;
   gfc_code *if_1, *if_2, *else_2;
@@ -3053,16 +3315,28 @@ inline_limit_check (gfc_expr *a, gfc_expr *b, int limit)
   gfc_typespec ts;
   gfc_expr *cond;
 
+  gcc_assert (rank_a == 1 || rank_a == 2);
+
   /* Calculation is done in real to avoid integer overflow.  */
 
   inline_limit = gfc_get_constant_expr (BT_REAL, gfc_default_real_kind,
 					&a->where);
   mpfr_set_si (inline_limit->value.real, limit, GFC_RND_MODE);
-  mpfr_pow_ui (inline_limit->value.real, inline_limit->value.real, 3,
+
+  /* Set the limit according to the rank.  */
+  mpfr_pow_ui (inline_limit->value.real, inline_limit->value.real, rank_a + 1,
 	       GFC_RND_MODE);
 
   a1 = get_array_inq_function (GFC_ISYM_SIZE, a, 1);
-  a2 = get_array_inq_function (GFC_ISYM_SIZE, a, 2);
+
+  /* For a_rank = 1, must use one as the size of a along the second
+     dimension as to avoid too much code duplication.  */
+
+  if (rank_a == 2)
+    a2 = get_array_inq_function (GFC_ISYM_SIZE, a, 2);
+  else
+    a2 = gfc_get_int_expr (gfc_index_integer_kind, &a->where, 1);
+
   b2 = get_array_inq_function (GFC_ISYM_SIZE, b, 2);
 
   gfc_clear_ts (&ts);
@@ -3919,6 +4193,19 @@ inline_matmul_assign (gfc_code **c, int *walk_subtrees,
   if (m_case == none)
     return 0;
 
+  /* We only handle assignment to numeric or logical variables.  */
+  switch(expr1->ts.type)
+    {
+    case BT_INTEGER:
+    case BT_LOGICAL:
+    case BT_REAL:
+    case BT_COMPLEX:
+      break;
+
+    default:
+      return 0;
+    }
+
   ns = insert_block ();
 
   /* Assign the type of the zero expression for initializing the resulting
@@ -3981,11 +4268,13 @@ inline_matmul_assign (gfc_code **c, int *walk_subtrees,
   /* Take care of the inline flag.  If the limit check evaluates to a
      constant, dead code elimination will eliminate the unneeded branch.  */
 
-  if (flag_inline_matmul_limit > 0 && matrix_a->rank == 2
+  if (flag_inline_matmul_limit > 0
+      && (matrix_a->rank == 1 || matrix_a->rank == 2)
       && matrix_b->rank == 2)
     {
       if_limit = inline_limit_check (matrix_a, matrix_b,
-				     flag_inline_matmul_limit);
+				     flag_inline_matmul_limit,
+				     matrix_a->rank);
 
       /* Insert the original statement into the else branch.  */
       if_limit->block->block->next = co;
@@ -4495,7 +4784,7 @@ call_external_blas (gfc_code **c, int *walk_subtrees ATTRIBUTE_UNUSED,
     return 0;
 
   /* Generate the if statement and hang it into the tree.  */
-  if_limit = inline_limit_check (matrix_a, matrix_b, flag_blas_matmul_limit);
+  if_limit = inline_limit_check (matrix_a, matrix_b, flag_blas_matmul_limit, 2);
   co_next = co->next;
   (*current_code) = if_limit;
   co->next = NULL;
@@ -5342,6 +5631,7 @@ gfc_code_walker (gfc_code **c, walk_code_fn_t codefn, walk_expr_fn_t exprfn,
 		  WALK_SUBEXPR (co->ext.omp_clauses->hint);
 		  WALK_SUBEXPR (co->ext.omp_clauses->num_tasks);
 		  WALK_SUBEXPR (co->ext.omp_clauses->priority);
+		  WALK_SUBEXPR (co->ext.omp_clauses->detach);
 		  for (idx = 0; idx < OMP_IF_LAST; idx++)
 		    WALK_SUBEXPR (co->ext.omp_clauses->if_exprs[idx]);
 		  for (idx = 0;
@@ -5441,6 +5731,7 @@ check_externals_procedure (gfc_symbol *sym, locus *loc,
   gfc_current_ns = gsym->ns;
 
   gfc_get_formal_from_actual_arglist (new_sym, actual);
+  new_sym->declared_at = *loc;
   gfc_current_ns = save_ns;
 
   return 0;
@@ -5493,12 +5784,66 @@ check_externals_expr (gfc_expr **ep, int *walk_subtrees ATTRIBUTE_UNUSED,
   return check_externals_procedure (sym, loc, actual);
 }
 
+/* Function to check if any interface clashes with a global
+   identifier, to be invoked via gfc_traverse_ns.  */
+
+static void
+check_against_globals (gfc_symbol *sym)
+{
+  gfc_gsymbol *gsym;
+  gfc_symbol *def_sym = NULL;
+  const char *sym_name;
+  char buf  [200];
+
+  if (sym->attr.if_source != IFSRC_IFBODY || sym->attr.flavor != FL_PROCEDURE
+      || sym->attr.generic || sym->error)
+    return;
+
+  if (sym->binding_label)
+    sym_name = sym->binding_label;
+  else
+    sym_name = sym->name;
+
+  gsym = gfc_find_gsymbol (gfc_gsym_root, sym_name);
+  if (gsym && gsym->ns)
+    gfc_find_symbol (sym->name, gsym->ns, 0, &def_sym);
+
+  if (!def_sym || def_sym->error || def_sym->attr.generic)
+    return;
+
+  buf[0] = 0;
+  gfc_compare_interfaces (sym, def_sym, sym->name, 0, 1, buf, sizeof(buf),
+			  NULL, NULL, NULL);
+  if (buf[0] != 0)
+    {
+      gfc_warning (0, "%s between %L and %L", buf, &def_sym->declared_at,
+		   &sym->declared_at);
+      sym->error = 1;
+      def_sym->error = 1;
+    }
+
+}
+
+/* Do the code-walkling part for gfc_check_externals.  */
+
+static void
+gfc_check_externals0 (gfc_namespace *ns)
+{
+  gfc_code_walker (&ns->code, check_externals_code, check_externals_expr, NULL);
+
+  for (ns = ns->contained; ns; ns = ns->sibling)
+    {
+      if (ns->code == NULL || ns->code->op != EXEC_BLOCK)
+	gfc_check_externals0 (ns);
+    }
+
+}
+
 /* Called routine.  */
 
 void
 gfc_check_externals (gfc_namespace *ns)
 {
-
   gfc_clear_error ();
 
   /* Turn errors into warnings if the user indicated this.  */
@@ -5506,13 +5851,82 @@ gfc_check_externals (gfc_namespace *ns)
   if (!pedantic && flag_allow_argument_mismatch)
     gfc_errors_to_warnings (true);
 
-  gfc_code_walker (&ns->code, check_externals_code, check_externals_expr, NULL);
+  gfc_check_externals0 (ns);
+  gfc_traverse_ns (ns, check_against_globals);
+
+  gfc_errors_to_warnings (false);
+}
+
+/* Callback function. If there is a call to a subroutine which is
+   neither pure nor implicit_pure, unset the implicit_pure flag for
+   the caller and return -1.  */
+
+static int
+implicit_pure_call (gfc_code **c, int *walk_subtrees ATTRIBUTE_UNUSED,
+		    void *sym_data)
+{
+  gfc_code *co = *c;
+  gfc_symbol *caller_sym;
+  symbol_attribute *a;
+
+  if (co->op != EXEC_CALL || co->resolved_sym == NULL)
+    return 0;
+
+  a = &co->resolved_sym->attr;
+  if (a->intrinsic || a->pure || a->implicit_pure)
+    return 0;
+
+  caller_sym = (gfc_symbol *) sym_data;
+  gfc_unset_implicit_pure (caller_sym);
+  return 1;
+}
+
+/* Callback function. If there is a call to a function which is
+   neither pure nor implicit_pure, unset the implicit_pure flag for
+   the caller and return 1.  */
+
+static int
+implicit_pure_expr (gfc_expr **e, int *walk ATTRIBUTE_UNUSED, void *sym_data)
+{
+  gfc_expr *expr = *e;
+  gfc_symbol *caller_sym;
+  gfc_symbol *sym;
+  symbol_attribute *a;
+
+  if (expr->expr_type != EXPR_FUNCTION || expr->value.function.isym)
+    return 0;
+
+  sym = expr->symtree->n.sym;
+  a = &sym->attr;
+  if (a->pure || a->implicit_pure)
+    return 0;
+
+  caller_sym = (gfc_symbol *) sym_data;
+  gfc_unset_implicit_pure (caller_sym);
+  return 1;
+}
+
+/* Go through all procedures in the namespace and unset the
+   implicit_pure attribute for any procedure that calls something not
+   pure or implicit pure.  */
+
+bool
+gfc_fix_implicit_pure (gfc_namespace *ns)
+{
+  bool changed = false;
+  gfc_symbol *proc = ns->proc_name;
+
+  if (proc && proc->attr.flavor == FL_PROCEDURE && proc->attr.implicit_pure
+      && ns->code
+      && gfc_code_walker (&ns->code, implicit_pure_call, implicit_pure_expr,
+			  (void *) ns->proc_name))
+    changed = true;
 
   for (ns = ns->contained; ns; ns = ns->sibling)
     {
-      if (ns->code == NULL || ns->code->op != EXEC_BLOCK)
-	gfc_check_externals (ns);
+      if (gfc_fix_implicit_pure (ns))
+	changed = true;
     }
 
-  gfc_errors_to_warnings (false);
+  return changed;
 }

@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -52,7 +52,7 @@ package body Erroutc is
    -----------------------
 
    function Matches (S : String; P : String) return Boolean;
-   --  Returns true if the String S patches the pattern P, which can contain
+   --  Returns true if the String S matches the pattern P, which can contain
    --  wildcard chars (*). The entire pattern must match the entire string.
    --  Case is ignored in the comparison (so X matches x).
 
@@ -249,13 +249,47 @@ package body Erroutc is
    ------------------------
 
    function Compilation_Errors return Boolean is
+      Warnings_Count : constant Int
+         := Warnings_Detected - Warning_Info_Messages;
    begin
-      return
-        Total_Errors_Detected /= 0
-          or else (Warnings_Detected - Warning_Info_Messages /= 0
-                    and then Warning_Mode = Treat_As_Error)
-          or else Warnings_Treated_As_Errors /= 0;
+      if Total_Errors_Detected /= 0 then
+         return True;
+
+      elsif Warnings_Treated_As_Errors /= 0 then
+         return True;
+
+      --  We should never treat warnings that originate from a
+      --  Compile_Time_Warning pragma as an error. Warnings_Count is the sum
+      --  of both "normal" and Compile_Time_Warning warnings. This means that
+      --  there are only one or more non-Compile_Time_Warning warnings when
+      --  Warnings_Count is greater than Count_Compile_Time_Pragma_Warnings.
+
+      elsif Warning_Mode = Treat_As_Error
+         and then Warnings_Count > Count_Compile_Time_Pragma_Warnings
+      then
+         return True;
+      end if;
+
+      return False;
    end Compilation_Errors;
+
+   ----------------------------------------
+   -- Count_Compile_Time_Pragma_Warnings  --
+   ----------------------------------------
+
+   function Count_Compile_Time_Pragma_Warnings return Int is
+      Result : Int := 0;
+   begin
+      for J in 1 .. Errors.Last loop
+         begin
+            if Errors.Table (J).Warn and Errors.Table (J).Compile_Time_Pragma
+            then
+               Result := Result + 1;
+            end if;
+         end;
+      end loop;
+      return Result;
+   end Count_Compile_Time_Pragma_Warnings;
 
    ------------------
    -- Debug_Output --
@@ -375,17 +409,17 @@ package body Erroutc is
          if PPtr = PLast and then P (PPtr) = '*' then
             return True;
 
-            --  Return True if both pattern and string exhausted
+         --  Return True if both pattern and string exhausted
 
          elsif PPtr > PLast and then SPtr > Slast then
             return True;
 
-            --  Return False, if one exhausted and not the other
+         --  Return False, if one exhausted and not the other
 
          elsif PPtr > PLast or else SPtr > Slast then
             return False;
 
-            --  Case where pattern starts with asterisk
+         --  Case where pattern starts with asterisk
 
          elsif P (PPtr) = '*' then
 
@@ -401,13 +435,13 @@ package body Erroutc is
 
             return False;
 
-            --  Dealt with end of string and *, advance if we have a match
+         --  Dealt with end of string and *, advance if we have a match
 
          elsif Fold_Lower (S (SPtr)) = Fold_Lower (P (PPtr)) then
             SPtr := SPtr + 1;
             PPtr := PPtr + 1;
 
-            --  If first characters do not match, that's decisive
+         --  If first characters do not match, that's decisive
 
          else
             return False;
@@ -655,9 +689,16 @@ package body Erroutc is
          Txt := Text;
       end if;
 
+      --  If -gnatdF is used, continuation messages follow the main message
+      --  with only an indentation of two space characters, without repeating
+      --  any prefix.
+
+      if Debug_Flag_FF and then E_Msg.Msg_Cont then
+         null;
+
       --  For info messages, prefix message with "info: "
 
-      if E_Msg.Info then
+      elsif E_Msg.Info then
          Txt := new String'("info: " & Txt.all);
 
       --  Warning treated as error
@@ -773,37 +814,49 @@ package body Erroutc is
       J : Natural;
 
    begin
-      --  Nothing to do for continuation line
+      --  Nothing to do for continuation line, unless -gnatdF is set
 
-      if Msg (Msg'First) = '\' then
+      if not Debug_Flag_FF and then Msg (Msg'First) = '\' then
          return;
+
+      --  Some global variables are not set for continuation messages, as they
+      --  only make sense for the initial mesage.
+
+      elsif Msg (Msg'First) /= '\' then
+
+         --  Set initial values of globals (may be changed during scan)
+
+         Is_Serious_Error     := True;
+         Is_Unconditional_Msg := False;
+         Is_Warning_Msg       := False;
+
+         --  Check style message
+
+         Is_Style_Msg :=
+           Msg'Length > 7
+             and then Msg (Msg'First .. Msg'First + 6) = "(style)";
+
+         --  Check info message
+
+         Is_Info_Msg :=
+           Msg'Length > 6
+             and then Msg (Msg'First .. Msg'First + 5) = "info: ";
+
+         --  Check check message
+
+         Is_Check_Msg :=
+           (Msg'Length > 8
+             and then Msg (Msg'First .. Msg'First + 7) = "medium: ")
+           or else
+           (Msg'Length > 6
+             and then Msg (Msg'First .. Msg'First + 5) = "high: ")
+           or else
+           (Msg'Length > 5
+             and then Msg (Msg'First .. Msg'First + 4) = "low: ");
       end if;
 
-      --  Set initial values of globals (may be changed during scan)
-
-      Is_Serious_Error     := True;
-      Is_Unconditional_Msg := False;
-      Is_Warning_Msg       := False;
-      Has_Double_Exclam    := False;
-
-      --  Check style message
-
-      Is_Style_Msg :=
-        Msg'Length > 7 and then Msg (Msg'First .. Msg'First + 6) = "(style)";
-
-      --  Check info message
-
-      Is_Info_Msg :=
-        Msg'Length > 6 and then Msg (Msg'First .. Msg'First + 5) = "info: ";
-
-      --  Check check message
-
-      Is_Check_Msg :=
-        (Msg'Length > 8 and then Msg (Msg'First .. Msg'First + 7) = "medium: ")
-        or else
-          (Msg'Length > 6 and then Msg (Msg'First .. Msg'First + 5) = "high: ")
-        or else
-          (Msg'Length > 5 and then Msg (Msg'First .. Msg'First + 4) = "low: ");
+      Has_Double_Exclam  := False;
+      Has_Insertion_Line := False;
 
       --  Loop through message looking for relevant insertion sequences
 
@@ -861,6 +914,12 @@ package body Erroutc is
                Has_Double_Exclam := True;
                J := J + 1;
             end if;
+
+         --  Insertion line (# insertion)
+
+         elsif Msg (J) = '#' then
+            Has_Insertion_Line := True;
+            J := J + 1;
 
          --  Non-serious error (| insertion)
 

@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---               Copyright (C) 2019, Free Software Foundation, Inc.         --
+--               Copyright (C) 2019-2020, Free Software Foundation, Inc.    --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -317,6 +317,7 @@ package body System.Bitfield_Utils is
                  Get_Val_2 (S_Addr, S_Off, Initial_Size);
                Initial_Val : constant Val :=
                  Get_Bitfield (Initial_Val_2, S_Off, Initial_Size);
+
             begin
                Set_Bitfield
                  (Initial_Val, D_Addr, D_Off, Initial_Size);

@@ -1,5 +1,5 @@
 /* "Supergraph" classes that combine CFGs and callgraph into one digraph.
-   Copyright (C) 2019-2020 Free Software Foundation, Inc.
+   Copyright (C) 2019-2021 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -79,6 +79,18 @@ struct supergraph_traits
   typedef supercluster cluster_t;
 };
 
+/* A class to manage the setting and restoring of statement uids.  */
+
+class saved_uids
+{
+public:
+  void make_uid_unique (gimple *stmt);
+  void restore_uids () const;
+
+private:
+  auto_vec<std::pair<gimple *, unsigned> > m_old_stmt_uids;
+};
+
 /* A "supergraph" is a directed graph formed by joining together all CFGs,
    linking them via interprocedural call and return edges.
 
@@ -90,6 +102,7 @@ class supergraph : public digraph<supergraph_traits>
 {
 public:
   supergraph (logger *logger);
+  ~supergraph ();
 
   supernode *get_node_for_function_entry (function *fun) const
   {
@@ -148,6 +161,8 @@ public:
   void dump_dot_to_file (FILE *fp, const dump_args_t &) const;
   void dump_dot (const char *path, const dump_args_t &) const;
 
+  json::object *to_json () const;
+
   int num_nodes () const { return m_nodes.length (); }
   int num_edges () const { return m_edges.length (); }
 
@@ -203,6 +218,8 @@ private:
 
   typedef hash_map<const function *, unsigned> function_to_num_snodes_t;
   function_to_num_snodes_t m_function_to_num_snodes;
+
+  saved_uids m_stmt_uids;
 };
 
 /* A node within a supergraph.  */
@@ -230,6 +247,8 @@ class supernode : public dnode<supergraph_traits>
 
   void dump_dot (graphviz_out *gv, const dump_args_t &args) const OVERRIDE;
   void dump_dot_id (pretty_printer *pp) const;
+
+  json::object *to_json () const;
 
   location_t get_start_location () const;
   location_t get_end_location () const;
@@ -288,6 +307,8 @@ class superedge : public dedge<supergraph_traits>
 
   virtual void dump_label_to_pp (pretty_printer *pp,
 				 bool user_facing) const = 0;
+
+  json::object *to_json () const;
 
   enum edge_kind get_kind () const { return m_kind; }
 
@@ -365,6 +386,16 @@ class callgraph_superedge : public superedge
   void dump_label_to_pp (pretty_printer *pp, bool user_facing) const
     FINAL OVERRIDE;
 
+  callgraph_superedge *dyn_cast_callgraph_superedge () FINAL OVERRIDE
+  {
+    return this;
+  }
+  const callgraph_superedge *dyn_cast_callgraph_superedge () const
+    FINAL OVERRIDE
+  {
+    return this;
+  }
+
   function *get_callee_function () const;
   function *get_caller_function () const;
   tree get_callee_decl () const;
@@ -403,16 +434,6 @@ class call_superedge : public callgraph_superedge
   : callgraph_superedge (src, dst, SUPEREDGE_CALL, cedge)
   {}
 
-  callgraph_superedge *dyn_cast_callgraph_superedge () FINAL OVERRIDE
-  {
-    return this;
-  }
-  const callgraph_superedge *dyn_cast_callgraph_superedge () const
-    FINAL OVERRIDE
-  {
-    return this;
-  }
-
   call_superedge *dyn_cast_call_superedge () FINAL OVERRIDE
   {
     return this;
@@ -448,14 +469,6 @@ class return_superedge : public callgraph_superedge
   return_superedge (supernode *src, supernode *dst, cgraph_edge *cedge)
   : callgraph_superedge (src, dst, SUPEREDGE_RETURN, cedge)
   {}
-
-  callgraph_superedge *dyn_cast_callgraph_superedge () FINAL OVERRIDE
-  {
-    return this;
-  }
-  const callgraph_superedge *dyn_cast_callgraph_superedge () const
-    FINAL OVERRIDE
-  { return this; }
 
   return_superedge *dyn_cast_return_superedge () FINAL OVERRIDE { return this; }
   const return_superedge *dyn_cast_return_superedge () const FINAL OVERRIDE

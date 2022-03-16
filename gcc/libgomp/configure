@@ -635,6 +635,7 @@ am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
 get_gcc_base_ver
+OMP_DEPEND_KIND
 OMP_NEST_LOCK_25_KIND
 OMP_LOCK_25_KIND
 OMP_NEST_LOCK_25_ALIGN
@@ -647,9 +648,11 @@ OMP_NEST_LOCK_ALIGN
 OMP_NEST_LOCK_SIZE
 OMP_LOCK_ALIGN
 OMP_LOCK_SIZE
+INTPTR_T_KIND
 USE_FORTRAN_FALSE
 USE_FORTRAN_TRUE
 link_gomp
+tmake_file
 XLDFLAGS
 XCFLAGS
 config_path
@@ -664,8 +667,6 @@ OPT_LDFLAGS
 SECTION_LDFLAGS
 PLUGIN_GCN_FALSE
 PLUGIN_GCN_TRUE
-PLUGIN_HSA_FALSE
-PLUGIN_HSA_TRUE
 PLUGIN_NVPTX_FALSE
 PLUGIN_NVPTX_TRUE
 offload_additional_lib_paths
@@ -676,10 +677,6 @@ PLUGIN_GCN_LIBS
 PLUGIN_GCN_LDFLAGS
 PLUGIN_GCN_CPPFLAGS
 PLUGIN_GCN
-PLUGIN_HSA_LIBS
-PLUGIN_HSA_LDFLAGS
-PLUGIN_HSA_CPPFLAGS
-PLUGIN_HSA
 HSA_RUNTIME_LIB
 HSA_RUNTIME_INCLUDE
 PLUGIN_NVPTX_LIBS
@@ -1501,7 +1498,7 @@ Optional Features:
   --enable-tls            Use thread-local storage [default=yes]
   --enable-symvers=STYLE  enables symbol versioning of the shared library
                           [default=yes]
-  --enable-cet            enable Intel CET in target libraries [default=no]
+  --enable-cet            enable Intel CET in target libraries [default=auto]
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -2061,60 +2058,6 @@ fi
 
 } # ac_fn_c_check_header_mongrel
 
-# ac_fn_c_check_type LINENO TYPE VAR INCLUDES
-# -------------------------------------------
-# Tests whether TYPE exists after having included INCLUDES, setting cache
-# variable VAR accordingly.
-ac_fn_c_check_type ()
-{
-  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $2" >&5
-$as_echo_n "checking for $2... " >&6; }
-if eval \${$3+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  eval "$3=no"
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-$4
-int
-main ()
-{
-if (sizeof ($2))
-	 return 0;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-$4
-int
-main ()
-{
-if (sizeof (($2)))
-	    return 0;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-
-else
-  eval "$3=yes"
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-eval ac_res=\$$3
-	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
-$as_echo "$ac_res" >&6; }
-  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
-
-} # ac_fn_c_check_type
-
 # ac_fn_c_compute_int LINENO EXPR VAR INCLUDES
 # --------------------------------------------
 # Tries to find the compile-time value of EXPR in a program that includes
@@ -2297,6 +2240,60 @@ rm -f conftest.val
   as_fn_set_status $ac_retval
 
 } # ac_fn_c_compute_int
+
+# ac_fn_c_check_type LINENO TYPE VAR INCLUDES
+# -------------------------------------------
+# Tests whether TYPE exists after having included INCLUDES, setting cache
+# variable VAR accordingly.
+ac_fn_c_check_type ()
+{
+  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $2" >&5
+$as_echo_n "checking for $2... " >&6; }
+if eval \${$3+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  eval "$3=no"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+$4
+int
+main ()
+{
+if (sizeof ($2))
+	 return 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+$4
+int
+main ()
+{
+if (sizeof (($2)))
+	    return 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+else
+  eval "$3=yes"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+eval ac_res=\$$3
+	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
+
+} # ac_fn_c_check_type
 cat >config.log <<_ACEOF
 This file contains any messages produced by compilers while
 running configure, to aid debugging if configure makes a mistake.
@@ -7634,23 +7631,25 @@ _LT_EOF
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $lt_cv_ld_force_load" >&5
 $as_echo "$lt_cv_ld_force_load" >&6; }
-    case $host_os in
-    rhapsody* | darwin1.[012])
+    # Allow for Darwin 4-7 (macOS 10.0-10.3) although these are not expect to
+    # build without first building modern cctools / linker.
+    case $host_cpu-$host_os in
+    *-rhapsody* | *-darwin1.[012])
       _lt_dar_allow_undefined='${wl}-undefined ${wl}suppress' ;;
-    darwin1.*)
+    *-darwin1.*)
       _lt_dar_allow_undefined='${wl}-flat_namespace ${wl}-undefined ${wl}suppress' ;;
-    darwin*) # darwin 5.x on
-      # if running on 10.5 or later, the deployment target defaults
-      # to the OS version, if on x86, and 10.4, the deployment
-      # target defaults to 10.4. Don't you love it?
-      case ${MACOSX_DEPLOYMENT_TARGET-10.0},$host in
-	10.0,*86*-darwin8*|10.0,*-darwin[91]*)
-	  _lt_dar_allow_undefined='${wl}-undefined ${wl}dynamic_lookup' ;;
+    *-darwin*)
+      # darwin 5.x (macOS 10.1) onwards we only need to adjust when the
+      # deployment target is forced to an earlier version.
+      case ${MACOSX_DEPLOYMENT_TARGET-UNSET},$host in
+	UNSET,*-darwin[89]*|UNSET,*-darwin[12][0123456789]*)
+	  ;;
 	10.[012][,.]*)
-	  _lt_dar_allow_undefined='${wl}-flat_namespace ${wl}-undefined ${wl}suppress' ;;
-	10.*)
-	  _lt_dar_allow_undefined='${wl}-undefined ${wl}dynamic_lookup' ;;
-      esac
+	  _lt_dar_allow_undefined='${wl}-flat_namespace ${wl}-undefined ${wl}suppress'
+	  ;;
+	*)
+	  ;;
+     esac
     ;;
   esac
     if test "$lt_cv_apple_cc_single_mod" = "yes"; then
@@ -9716,7 +9715,7 @@ if test -z "$aix_libpath"; then aix_libpath="/usr/lib:/lib"; fi
       if test "$GCC" = yes && test "$with_gnu_ld" = no; then
 	case $host_cpu in
 	hppa*64*)
-	  archive_cmds='$CC -shared ${wl}+h ${wl}$soname -o $lib $libobjs $deplibs $compiler_flags'
+	  archive_cmds='$CC -shared ${wl}+h ${wl}$soname ${wl}+nodefaultrpath -o $lib $libobjs $deplibs $compiler_flags'
 	  ;;
 	ia64*)
 	  archive_cmds='$CC -shared -fPIC ${wl}+h ${wl}$soname ${wl}+nodefaultrpath -o $lib $libobjs $deplibs $compiler_flags'
@@ -9728,7 +9727,7 @@ if test -z "$aix_libpath"; then aix_libpath="/usr/lib:/lib"; fi
       else
 	case $host_cpu in
 	hppa*64*)
-	  archive_cmds='$CC -b ${wl}+h ${wl}$soname -o $lib $libobjs $deplibs $compiler_flags'
+	  archive_cmds='$CC -b ${wl}+h ${wl}$soname ${wl}+nodefaultrpath -o $lib $libobjs $deplibs $compiler_flags'
 	  ;;
 	ia64*)
 	  archive_cmds='$CC -b ${wl}+h ${wl}$soname ${wl}+nodefaultrpath -o $lib $libobjs $deplibs $compiler_flags'
@@ -10612,16 +10611,6 @@ freebsd* | dragonfly*)
   esac
   ;;
 
-gnu*)
-  version_type=linux
-  need_lib_prefix=no
-  need_version=no
-  library_names_spec='${libname}${release}${shared_ext}$versuffix ${libname}${release}${shared_ext}${major} ${libname}${shared_ext}'
-  soname_spec='${libname}${release}${shared_ext}$major'
-  shlibpath_var=LD_LIBRARY_PATH
-  hardcode_into_libs=yes
-  ;;
-
 haiku*)
   version_type=linux
   need_lib_prefix=no
@@ -10743,7 +10732,7 @@ linux*oldld* | linux*aout* | linux*coff*)
 # project, but have not yet been accepted: they are GCC-local changes
 # for the time being.  (See
 # https://lists.gnu.org/archive/html/libtool-patches/2018-05/msg00000.html)
-linux* | k*bsd*-gnu | kopensolaris*-gnu | uclinuxfdpiceabi)
+linux* | k*bsd*-gnu | kopensolaris*-gnu | gnu* | uclinuxfdpiceabi)
   version_type=linux
   need_lib_prefix=no
   need_version=no
@@ -11432,7 +11421,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11435 "configure"
+#line 11424 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11538,7 +11527,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11541 "configure"
+#line 11530 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13574,7 +13563,7 @@ if test -z "$aix_libpath"; then aix_libpath="/usr/lib:/lib"; fi
       if test "$GCC" = yes && test "$with_gnu_ld" = no; then
 	case $host_cpu in
 	hppa*64*)
-	  archive_cmds_FC='$CC -shared ${wl}+h ${wl}$soname -o $lib $libobjs $deplibs $compiler_flags'
+	  archive_cmds_FC='$CC -shared ${wl}+h ${wl}$soname ${wl}+nodefaultrpath -o $lib $libobjs $deplibs $compiler_flags'
 	  ;;
 	ia64*)
 	  archive_cmds_FC='$CC -shared -fPIC ${wl}+h ${wl}$soname ${wl}+nodefaultrpath -o $lib $libobjs $deplibs $compiler_flags'
@@ -13586,7 +13575,7 @@ if test -z "$aix_libpath"; then aix_libpath="/usr/lib:/lib"; fi
       else
 	case $host_cpu in
 	hppa*64*)
-	  archive_cmds_FC='$CC -b ${wl}+h ${wl}$soname -o $lib $libobjs $deplibs $compiler_flags'
+	  archive_cmds_FC='$CC -b ${wl}+h ${wl}$soname ${wl}+nodefaultrpath -o $lib $libobjs $deplibs $compiler_flags'
 	  ;;
 	ia64*)
 	  archive_cmds_FC='$CC -b ${wl}+h ${wl}$soname ${wl}+nodefaultrpath -o $lib $libobjs $deplibs $compiler_flags'
@@ -14262,16 +14251,6 @@ freebsd* | dragonfly*)
   esac
   ;;
 
-gnu*)
-  version_type=linux
-  need_lib_prefix=no
-  need_version=no
-  library_names_spec='${libname}${release}${shared_ext}$versuffix ${libname}${release}${shared_ext}${major} ${libname}${shared_ext}'
-  soname_spec='${libname}${release}${shared_ext}$major'
-  shlibpath_var=LD_LIBRARY_PATH
-  hardcode_into_libs=yes
-  ;;
-
 haiku*)
   version_type=linux
   need_lib_prefix=no
@@ -14393,7 +14372,7 @@ linux*oldld* | linux*aout* | linux*coff*)
 # project, but have not yet been accepted: they are GCC-local changes
 # for the time being.  (See
 # https://lists.gnu.org/archive/html/libtool-patches/2018-05/msg00000.html)
-linux* | k*bsd*-gnu | kopensolaris*-gnu | uclinuxfdpiceabi)
+linux* | k*bsd*-gnu | kopensolaris*-gnu | gnu* | uclinuxfdpiceabi)
   version_type=linux
   need_lib_prefix=no
   need_version=no
@@ -15016,9 +14995,43 @@ $as_echo "#define LIBGOMP_OFFLOADED_ONLY 1" >>confdefs.h
 
 fi
 
+# The cast to long int works around a bug in the HP C Compiler
+# version HP92453-01 B.11.11.23709.GP, which incorrectly rejects
+# declarations like `int a3[[(sizeof (unsigned char)) >= 0]];'.
+# This bug is HP SR number 8606223364.
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking size of void *" >&5
+$as_echo_n "checking size of void *... " >&6; }
+if ${ac_cv_sizeof_void_p+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if ac_fn_c_compute_int "$LINENO" "(long int) (sizeof (void *))" "ac_cv_sizeof_void_p"        "$ac_includes_default"; then :
+
+else
+  if test "$ac_cv_type_void_p" = yes; then
+     { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error 77 "cannot compute sizeof (void *)
+See \`config.log' for more details" "$LINENO" 5; }
+   else
+     ac_cv_sizeof_void_p=0
+   fi
+fi
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_sizeof_void_p" >&5
+$as_echo "$ac_cv_sizeof_void_p" >&6; }
+
+
+
+cat >>confdefs.h <<_ACEOF
+#define SIZEOF_VOID_P $ac_cv_sizeof_void_p
+_ACEOF
+
+
+
 # Plugins for offload execution, configure.ac fragment.  -*- mode: autoconf -*-
 #
-# Copyright (C) 2014-2020 Free Software Foundation, Inc.
+# Copyright (C) 2014-2021 Free Software Foundation, Inc.
 #
 # Contributed by Mentor Embedded.
 #
@@ -15253,15 +15266,6 @@ if test "x$HSA_RUNTIME_LIB" != x; then
   HSA_RUNTIME_LDFLAGS=-L$HSA_RUNTIME_LIB
 fi
 
-PLUGIN_HSA=0
-PLUGIN_HSA_CPPFLAGS=
-PLUGIN_HSA_LDFLAGS=
-PLUGIN_HSA_LIBS=
-
-
-
-
-
 PLUGIN_GCN=0
 PLUGIN_GCN_CPPFLAGS=
 PLUGIN_GCN_LDFLAGS=
@@ -15292,21 +15296,30 @@ if test x"$enable_offload_targets" != x; then
 	tgt_plugin=intelmic
 	;;
       nvptx*)
-	tgt_plugin=nvptx
-	PLUGIN_NVPTX=$tgt
-	if test "x$CUDA_DRIVER_LIB" != xno \
-	   && test "x$CUDA_DRIVER_LIB" != xno; then
-	  PLUGIN_NVPTX_CPPFLAGS=$CUDA_DRIVER_CPPFLAGS
-	  PLUGIN_NVPTX_LDFLAGS=$CUDA_DRIVER_LDFLAGS
-	  PLUGIN_NVPTX_LIBS='-lcuda'
+	case "${target}" in
+	  aarch64*-*-* | powerpc64le-*-* | x86_64-*-*)
+	    case "$ac_cv_sizeof_void_p" in
+	      4)
+		# PR libgomp/65099: Currently, we only support offloading in
+		# 64-bit configurations.
+		PLUGIN_NVPTX=0
+		;;
+	      *)
+		tgt_plugin=nvptx
+		PLUGIN_NVPTX=$tgt
+		if test "x$CUDA_DRIVER_LIB" != xno \
+		   && test "x$CUDA_DRIVER_LIB" != xno; then
+		  PLUGIN_NVPTX_CPPFLAGS=$CUDA_DRIVER_CPPFLAGS
+		  PLUGIN_NVPTX_LDFLAGS=$CUDA_DRIVER_LDFLAGS
+		  PLUGIN_NVPTX_LIBS='-lcuda'
 
-	  PLUGIN_NVPTX_save_CPPFLAGS=$CPPFLAGS
-	  CPPFLAGS="$PLUGIN_NVPTX_CPPFLAGS $CPPFLAGS"
-	  PLUGIN_NVPTX_save_LDFLAGS=$LDFLAGS
-	  LDFLAGS="$PLUGIN_NVPTX_LDFLAGS $LDFLAGS"
-	  PLUGIN_NVPTX_save_LIBS=$LIBS
-	  LIBS="$PLUGIN_NVPTX_LIBS $LIBS"
-	  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+		  PLUGIN_NVPTX_save_CPPFLAGS=$CPPFLAGS
+		  CPPFLAGS="$PLUGIN_NVPTX_CPPFLAGS $CPPFLAGS"
+		  PLUGIN_NVPTX_save_LDFLAGS=$LDFLAGS
+		  LDFLAGS="$PLUGIN_NVPTX_LDFLAGS $LDFLAGS"
+		  PLUGIN_NVPTX_save_LIBS=$LIBS
+		  LIBS="$PLUGIN_NVPTX_LIBS $LIBS"
+		  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include "cuda.h"
 int
@@ -15322,72 +15335,40 @@ if ac_fn_c_try_link "$LINENO"; then :
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-	  CPPFLAGS=$PLUGIN_NVPTX_save_CPPFLAGS
-	  LDFLAGS=$PLUGIN_NVPTX_save_LDFLAGS
-	  LIBS=$PLUGIN_NVPTX_save_LIBS
-	fi
-	case $PLUGIN_NVPTX in
-	  nvptx*)
-	    if (test "x$CUDA_DRIVER_INCLUDE" = x \
-		|| test "x$CUDA_DRIVER_INCLUDE" = xno) \
-	       && (test "x$CUDA_DRIVER_LIB" = x \
-		   || test "x$CUDA_DRIVER_LIB" = xno); then
-	      PLUGIN_NVPTX=1
-	      PLUGIN_NVPTX_CPPFLAGS='-I$(srcdir)/plugin/cuda'
-	      PLUGIN_NVPTX_LIBS='-ldl'
-	      PLUGIN_NVPTX_DYNAMIC=1
-	    else
-	      PLUGIN_NVPTX=0
-	      as_fn_error $? "CUDA driver package required for nvptx support" "$LINENO" 5
-	    fi
-	  ;;
+		  CPPFLAGS=$PLUGIN_NVPTX_save_CPPFLAGS
+		  LDFLAGS=$PLUGIN_NVPTX_save_LDFLAGS
+		  LIBS=$PLUGIN_NVPTX_save_LIBS
+		fi
+		case $PLUGIN_NVPTX in
+		  nvptx*)
+		    if (test "x$CUDA_DRIVER_INCLUDE" = x \
+			|| test "x$CUDA_DRIVER_INCLUDE" = xno) \
+		       && (test "x$CUDA_DRIVER_LIB" = x \
+			   || test "x$CUDA_DRIVER_LIB" = xno); then
+		      PLUGIN_NVPTX=1
+		      PLUGIN_NVPTX_CPPFLAGS='-I$(srcdir)/plugin/cuda'
+		      PLUGIN_NVPTX_LIBS='-ldl'
+		      PLUGIN_NVPTX_DYNAMIC=1
+		    else
+		      PLUGIN_NVPTX=0
+		      as_fn_error $? "CUDA driver package required for nvptx support" "$LINENO" 5
+		    fi
+		    ;;
+		esac
+		;;
+	    esac
+	    ;;
+	  *-*-*)
+	    # Target architecture not supported.
+	    PLUGIN_NVPTX=0
+	    ;;
 	esac
 	;;
-      hsa*)
-	case "${target}" in
-	  x86_64-*-*)
-	    case " ${CC} ${CFLAGS} " in
-	      *" -m32 "*|*" -mx32 "*)
-	        PLUGIN_HSA=0
-		;;
-	      *)
-		tgt_plugin=hsa
-	        PLUGIN_HSA=$tgt
-	        PLUGIN_HSA_CPPFLAGS=$HSA_RUNTIME_CPPFLAGS
-	        PLUGIN_HSA_LDFLAGS="$HSA_RUNTIME_LDFLAGS"
-	        PLUGIN_HSA_LIBS="-ldl"
-
-	        PLUGIN_HSA_save_CPPFLAGS=$CPPFLAGS
-	        CPPFLAGS="$PLUGIN_HSA_CPPFLAGS $CPPFLAGS"
-	        PLUGIN_HSA_save_LDFLAGS=$LDFLAGS
-	        LDFLAGS="$PLUGIN_HSA_LDFLAGS $LDFLAGS"
-	        PLUGIN_HSA_save_LIBS=$LIBS
-	        LIBS="$PLUGIN_HSA_LIBS $LIBS"
-
-	        PLUGIN_HSA=1
-	        CPPFLAGS=$PLUGIN_HSA_save_CPPFLAGS
-	        LDFLAGS=$PLUGIN_HSA_save_LDFLAGS
-	        LIBS=$PLUGIN_HSA_save_LIBS
-	        case $PLUGIN_HSA in
-		  hsa*)
-	            HSA_PLUGIN=0
-	            as_fn_error $? "HSA run-time package required for HSA support" "$LINENO" 5
-	            ;;
-	        esac
-		;;
-	      esac
-    	    ;;
-	  *-*-*)
-	    PLUGIN_HSA=0
-            ;;
-        esac
-        ;;
-
       amdgcn*)
 	case "${target}" in
 	  x86_64-*-*)
-	    case " ${CC} ${CFLAGS} " in
-	      *" -m32 "*|*" -mx32 "*)
+	    case "$ac_cv_sizeof_void_p" in
+	      4)
 		PLUGIN_GCN=0
 		;;
 	      *)
@@ -15421,10 +15402,7 @@ rm -f core conftest.err conftest.$ac_objext \
       offload_targets=$offload_targets,$tgt
     fi
     # Configure additional search paths.
-    if test "$tgt_plugin" = hsa; then
-      # Offloading compilation is all handled by the target compiler.
-      :
-    elif test x"$tgt_dir" != x; then
+    if test x"$tgt_dir" != x; then
       offload_additional_options="$offload_additional_options -B$tgt_dir/libexec/gcc/\$(target_alias)/\$(gcc_version) -B$tgt_dir/bin"
       offload_additional_lib_paths="$offload_additional_lib_paths:$tgt_dir/lib64:$tgt_dir/lib:$tgt_dir/lib32"
     else
@@ -15456,19 +15434,6 @@ cat >>confdefs.h <<_ACEOF
 #define PLUGIN_NVPTX_DYNAMIC $PLUGIN_NVPTX_DYNAMIC
 _ACEOF
 
- if test $PLUGIN_HSA = 1; then
-  PLUGIN_HSA_TRUE=
-  PLUGIN_HSA_FALSE='#'
-else
-  PLUGIN_HSA_TRUE='#'
-  PLUGIN_HSA_FALSE=
-fi
-
-
-cat >>confdefs.h <<_ACEOF
-#define PLUGIN_HSA $PLUGIN_HSA
-_ACEOF
-
  if test $PLUGIN_GCN = 1; then
   PLUGIN_GCN_TRUE=
   PLUGIN_GCN_FALSE='#'
@@ -15480,16 +15445,6 @@ fi
 
 cat >>confdefs.h <<_ACEOF
 #define PLUGIN_GCN $PLUGIN_GCN
-_ACEOF
-
-
-if test "$HSA_RUNTIME_LIB" != ""; then
-  HSA_RUNTIME_LIB="$HSA_RUNTIME_LIB/"
-fi
-
-
-cat >>confdefs.h <<_ACEOF
-#define HSA_RUNTIME_LIB "$HSA_RUNTIME_LIB"
 _ACEOF
 
 
@@ -16740,19 +16695,22 @@ if test "${enable_cet+set}" = set; then :
                           esac
 
 else
-  enable_cet=no
+  enable_cet=auto
 fi
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for CET support" >&5
 $as_echo_n "checking for CET support... " >&6; }
 
+# NB: Avoid nested save_CFLAGS and save_LDFLAGS.
 case "$host" in
   i[34567]86-*-linux* | x86_64-*-linux*)
     case "$enable_cet" in
       auto)
 	# Check if target supports multi-byte NOPs
-	# and if assembler supports CET insn.
+	# and if compiler and assembler support CET insn.
+	cet_save_CFLAGS="$CFLAGS"
+	CFLAGS="$CFLAGS -fcf-protection"
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -16776,6 +16734,7 @@ else
   enable_cet=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+	CFLAGS="$cet_save_CFLAGS"
 	;;
       yes)
 	# Check if assembler supports CET.
@@ -16817,6 +16776,18 @@ FCFLAGS="$FCFLAGS $CET_FLAGS"
 
 
 
+
+
+# Conditionalize the makefile for this target machine.
+tmake_file_=
+for f in ${tmake_file}
+do
+	if test -f ${srcdir}/config/$f
+	then
+		tmake_file_="${tmake_file_} \$(srcdir)/config/$f"
+	fi
+done
+tmake_file="${tmake_file_}"
 
 
 # Cleanup and exit.
@@ -16945,6 +16916,25 @@ for i in $config_path; do
   fi
 done
 
+if ac_fn_c_compute_int "$LINENO" "sizeof (__INTPTR_TYPE__)" "INTPTR_T_KIND"        ""; then :
+
+fi
+
+
+if ac_fn_c_compute_int "$LINENO" "sizeof (__int128)" "OMP_INT128_SIZE"        ""; then :
+
+else
+  OMP_INT128_SIZE=0
+fi
+
+
+if ac_fn_c_compute_int "$LINENO" "2*sizeof (__INTPTR_TYPE__)" "OMP_DEPEND_KIND"        ""; then :
+
+else
+  OMP_DEPEND_KIND=0
+fi
+
+
 if ac_fn_c_compute_int "$LINENO" "sizeof (omp_lock_t)" "OMP_LOCK_SIZE"        ""; then :
 
 else
@@ -17011,6 +17001,17 @@ fi
 if test $OMP_NEST_LOCK_25_SIZE -gt 8 || test $OMP_NEST_LOCK_25_ALIGN -gt $OMP_NEST_LOCK_25_SIZE; then
   OMP_NEST_LOCK_25_KIND=8
 fi
+if test $OMP_DEPEND_KIND -eq 16; then
+  if test $OMP_INT128_SIZE -ne 16; then
+    as_fn_error $? "unsupported system, cannot find Fortran int kind=16, needed for omp_depend_kind" "$LINENO" 5
+  fi
+else
+  if test $OMP_DEPEND_KIND -ne 8; then
+    as_fn_error $? "unsupported system, cannot find Fortran integer kind for omp_depend_kind" "$LINENO" 5
+  fi
+fi
+
+
 
 
 
@@ -17196,10 +17197,6 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${PLUGIN_NVPTX_TRUE}" && test -z "${PLUGIN_NVPTX_FALSE}"; then
   as_fn_error $? "conditional \"PLUGIN_NVPTX\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
-if test -z "${PLUGIN_HSA_TRUE}" && test -z "${PLUGIN_HSA_FALSE}"; then
-  as_fn_error $? "conditional \"PLUGIN_HSA\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${PLUGIN_GCN_TRUE}" && test -z "${PLUGIN_GCN_FALSE}"; then

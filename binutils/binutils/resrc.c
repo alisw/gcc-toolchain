@@ -1,5 +1,5 @@
 /* resrc.c -- read and write Windows rc files.
-   Copyright (C) 1997-2020 Free Software Foundation, Inc.
+   Copyright (C) 1997-2022 Free Software Foundation, Inc.
    Written by Ian Lance Taylor, Cygnus Support.
    Rewritten by Kai Tietz, Onevision.
 
@@ -2841,6 +2841,10 @@ write_rc_menuitems (FILE *e, const rc_menuitem *menuitems, int menuex,
 	    fprintf (e, ", MENUBARBREAK");
 	  if ((mi->type & MENUITEM_MENUBREAK) != 0)
 	    fprintf (e, ", MENUBREAK");
+	  if ((mi->type & MENUITEM_OWNERDRAW) != 0)
+	    fprintf (e, ", OWNERDRAW");
+	  if ((mi->type & MENUITEM_BITMAP) != 0)
+	    fprintf (e, ", BITMAP");
 	}
       else
 	{

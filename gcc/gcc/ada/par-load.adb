@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -318,7 +318,7 @@ begin
 
       Spec_Name := Get_Parent_Spec_Name (Unit_Name (Cur_Unum));
 
-      if Spec_Name /= No_Unit_Name then
+      if Present (Spec_Name) then
          Unum :=
            Load_Unit
              (Load_Name  => Spec_Name,

@@ -1,6 +1,6 @@
 /* Native-dependent code for GNU/Linux x86 (i386 and x86-64).
 
-   Copyright (C) 1999-2020 Free Software Foundation, Inc.
+   Copyright (C) 1999-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -113,10 +113,7 @@ x86_linux_nat_target::read_description ()
   static uint64_t xcr0;
   uint64_t xcr0_features_bits;
 
-  /* GNU/Linux LWP ID's are process ID's.  */
-  tid = inferior_ptid.lwp ();
-  if (tid == 0)
-    tid = inferior_ptid.pid (); /* Not a threaded program.  */
+  tid = inferior_ptid.pid ();
 
 #ifdef __x86_64__
   {

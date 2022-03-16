@@ -37,7 +37,21 @@ This pragma must appear at the start of the statement sequence of a
 handled sequence of statements (right after the ``begin``).  It has
 the effect of deferring aborts for the sequence of statements (but not
 for the declarations or handlers, if any, associated with this statement
-sequence).
+sequence). This can also be useful for adding a polling point in Ada code,
+where asynchronous abort of tasks is checked when leaving the statement
+sequence, and is lighter than, for example, using ``delay 0.0;``, since with
+zero-cost exception handling, propagating exceptions (implicitly used to
+implement task abort) cannot be done reliably in an asynchronous way.
+
+An example of usage would be:
+
+.. code-block:: ada
+
+  --  Add a polling point to check for task aborts
+
+  begin
+     pragma Abort_Defer;
+  end;
 
 .. _Pragma-Abstract_State:
 
@@ -88,158 +102,6 @@ Syntax:
 
 For the semantics of this pragma, see the entry for aspect ``Abstract_State`` in
 the SPARK 2014 Reference Manual, section 7.1.4.
-
-Pragma Acc_Parallel
-===================
-Syntax:
-
-.. code-block:: ada
-
-  pragma Acc_Parallel [( ACC_PARALLEL_CLAUSE [, ACC_PARALLEL_CLAUSE... ])];
-
-  ACC_PARALLEL_CLAUSE ::=
-      Acc_If        => boolean_EXPRESSION
-    | Acc_Private   => IDENTIFIERS
-    | Async         => integer_EXPRESSION
-    | Copy          => IDENTIFIERS
-    | Copy_In       => IDENTIFIERS
-    | Copy_Out      => IDENTIFIERS
-    | Create        => IDENTIFIERS
-    | Default       => None
-    | Device_Ptr    => IDENTIFIERS
-    | First_Private => IDENTIFIERS
-    | Num_Gangs     => integer_EXPRESSION
-    | Num_Workers   => integer_EXPRESSION
-    | Present       => IDENTIFIERS
-    | Reduction     => (REDUCTION_RECORD)
-    | Vector_Length => integer_EXPRESSION
-    | Wait          => INTEGERS
-
-  REDUCTION_RECORD ::=
-      "+"   => IDENTIFIERS
-    | "*"   => IDENTIFIERS
-    | "min" => IDENTIFIERS
-    | "max" => IDENTIFIERS
-    | "or"  => IDENTIFIERS
-    | "and" => IDENTIFIERS
-
-  IDENTIFIERS ::=
-    | IDENTIFIER
-    | (IDENTIFIER, IDENTIFIERS)
-
-  INTEGERS ::=
-    | integer_EXPRESSION
-    | (integer_EXPRESSION, INTEGERS)
-
-Requires the :switch:`-fopenacc` flag.
-
-Equivalent to the ``parallel`` directive of the OpenAcc standard. This pragma
-should be placed in loops. It offloads the content of the loop to an
-accelerator device.
-
-For more information about the effect of the clauses, see the OpenAcc
-specification.
-
-Pragma Acc_Loop
-===============
-Syntax:
-
-.. code-block:: ada
-
-  pragma Acc_Loop [( ACC_LOOP_CLAUSE [, ACC_LOOP_CLAUSE... ])];
-
-  ACC_LOOP_CLAUSE ::=
-      Auto
-    | Collapse        => INTEGER_LITERAL
-    | Gang            [=> GANG_ARG]
-    | Independent
-    | Private         => IDENTIFIERS
-    | Reduction       => (REDUCTION_RECORD)
-    | Seq
-    | Tile            => SIZE_EXPRESSION
-    | Vector          [=> integer_EXPRESSION]
-    | Worker          [=> integer_EXPRESSION]
-
-  GANG_ARG ::=
-      integer_EXPRESSION
-    | Static => SIZE_EXPRESSION
-
-  SIZE_EXPRESSION ::=
-      *
-    | integer_EXPRESSION
-
-Requires the :switch:`-fopenacc` flag.
-
-Equivalent to the ``loop`` directive of the OpenAcc standard. This pragma
-should be placed in for loops after the "Acc_Parallel" pragma. It tells the
-compiler how to parallelize the loop.
-
-For more information about the effect of the clauses, see the OpenAcc
-specification.
-
-Pragma Acc_Kernels
-==================
-Syntax:
-
-.. code-block:: ada
-
-  pragma Acc_Kernels [( ACC_KERNELS_CLAUSE [, ACC_KERNELS_CLAUSE...])];
-
-  ACC_KERNELS_CLAUSE ::=
-      Acc_If        => boolean_EXPRESSION
-    | Async         => integer_EXPRESSION
-    | Copy          => IDENTIFIERS
-    | Copy_In       => IDENTIFIERS
-    | Copy_Out      => IDENTIFIERS
-    | Create        => IDENTIFIERS
-    | Default       => None
-    | Device_Ptr    => IDENTIFIERS
-    | Num_Gangs     => integer_EXPRESSION
-    | Num_Workers   => integer_EXPRESSION
-    | Present       => IDENTIFIERS
-    | Vector_Length => integer_EXPRESSION
-    | Wait          => INTEGERS
-
-  IDENTIFIERS ::=
-    | IDENTIFIER
-    | (IDENTIFIER, IDENTIFIERS)
-
-  INTEGERS ::=
-    | integer_EXPRESSION
-    | (integer_EXPRESSION, INTEGERS)
-
-Requires the :switch:`-fopenacc` flag.
-
-Equivalent to the kernels directive of the OpenAcc standard. This pragma should
-be placed in loops.
-
-For more information about the effect of the clauses, see the OpenAcc
-specification.
-
-Pragma Acc_Data
-===============
-Syntax:
-
-.. code-block:: ada
-
-  pragma Acc_Data ([ ACC_DATA_CLAUSE [, ACC_DATA_CLAUSE...]]);
-
-  ACC_DATA_CLAUSE ::=
-      Copy          => IDENTIFIERS
-    | Copy_In       => IDENTIFIERS
-    | Copy_Out      => IDENTIFIERS
-    | Create        => IDENTIFIERS
-    | Device_Ptr    => IDENTIFIERS
-    | Present       => IDENTIFIERS
-
-Requires the :switch:`-fopenacc` flag.
-
-Equivalent to the ``data`` directive of the OpenAcc standard. This pragma
-should be placed in loops.
-
-For more information about the effect of the clauses, see the OpenAcc
-specification.
-
 
 Pragma Ada_83
 =============
@@ -572,15 +434,16 @@ Syntax::
 
   ASSERTION_KIND ::= RM_ASSERTION_KIND | ID_ASSERTION_KIND
 
-  RM_ASSERTION_KIND ::= Assert               |
-                        Static_Predicate     |
-                        Dynamic_Predicate    |
-                        Pre                  |
-                        Pre'Class            |
-                        Post                 |
-                        Post'Class           |
-                        Type_Invariant       |
-                        Type_Invariant'Class
+  RM_ASSERTION_KIND ::= Assert                    |
+                        Static_Predicate          |
+                        Dynamic_Predicate         |
+                        Pre                       |
+                        Pre'Class                 |
+                        Post                      |
+                        Post'Class                |
+                        Type_Invariant            |
+                        Type_Invariant'Class      |
+                        Default_Initial_Condition
 
   ID_ASSERTION_KIND ::= Assertions           |
                         Assert_And_Cut       |
@@ -588,6 +451,7 @@ Syntax::
                         Contract_Cases       |
                         Debug                |
                         Ghost                |
+                        Initial_Condition    |
                         Invariant            |
                         Invariant'Class      |
                         Loop_Invariant       |
@@ -596,7 +460,8 @@ Syntax::
                         Precondition         |
                         Predicate            |
                         Refined_Post         |
-                        Statement_Assertions
+                        Statement_Assertions |
+                        Subprogram_Variant
 
   POLICY_IDENTIFIER ::= Check | Disable | Ignore | Suppressible
 
@@ -1078,6 +943,8 @@ support is available, then the code generator will issue a message
 indicating that the necessary attribute for implementation of this
 pragma is not available.
 
+.. _Compile_Time_Error:
+
 Pragma Compile_Time_Error
 =========================
 
@@ -1094,14 +961,14 @@ This pragma can be used to generate additional compile time
 error messages. It
 is particularly useful in generics, where errors can be issued for
 specific problematic instantiations. The first parameter is a boolean
-expression. The pragma is effective only if the value of this expression
-is known at compile time, and has the value True. The set of expressions
+expression. The pragma ensures that the value of an expression
+is known at compile time, and has the value False. The set of expressions
 whose values are known at compile time includes all static boolean
 expressions, and also other values which the compiler can determine
 at compile time (e.g., the size of a record type set by an explicit
 size representation clause, or the value of a variable which was
 initialized to a constant and is known not to have been modified).
-If these conditions are met, an error message is generated using
+If these conditions are not met, an error message is generated using
 the value given as the second argument. This string value may contain
 embedded ASCII.LF characters to break the message into multiple lines.
 
@@ -1118,7 +985,10 @@ Syntax:
 
 
 Same as pragma Compile_Time_Error, except a warning is issued instead
-of an error message. Note that if this pragma is used in a package that
+of an error message. If switch *-gnatw_C* is used, a warning is only issued
+if the value of the expression is known to be True at compile time, not when
+the value of the expression is not known at compile time.
+Note that if this pragma is used in a package that
 is with'ed by a client, the client will get the warning even though it
 is issued by a with'ed package (normally warnings in with'ed units are
 suppressed, but this is a special exception to that rule).
@@ -1127,6 +997,11 @@ One typical use is within a generic where compile time known characteristics
 of formal parameters are tested, and warnings given appropriately. Another use
 with a first parameter of True is to warn a client about use of a package,
 for example that it is not fully implemented.
+
+In previous versions of the compiler, combining *-gnatwe* with
+Compile_Time_Warning resulted in a fatal error. Now the compiler always emits
+a warning. You can use :ref:`Compile_Time_Error` to force the generation of
+an error.
 
 Pragma Compiler_Unit
 ====================
@@ -2335,15 +2210,31 @@ extension mode (the use of Off as a parameter cancels the effect
 of the *-gnatX* command switch).
 
 In extension mode, the latest version of the Ada language is
-implemented (currently Ada 2012), and in addition a small number
+implemented (currently Ada 202x), and in addition a small number
 of GNAT specific extensions are recognized as follows:
 
+* Constrained attribute for generic objects
 
-
-*Constrained attribute for generic objects*
   The ``Constrained`` attribute is permitted for objects of
   generic types. The result indicates if the corresponding actual
   is constrained.
+
+* ``Static`` aspect on intrinsic functions
+
+  The Ada 202x ``Static`` aspect can be specified on Intrinsic imported
+  functions and the compiler will evaluate some of these intrinsic statically,
+  in particular the ``Shift_Left`` and ``Shift_Right`` intrinsics.
+
+* ``'Reduce`` attribute
+
+  This attribute part of the Ada 202x language definition is provided for
+  now under -gnatX to confirm and potentially refine its usage and syntax.
+
+* ``[]`` aggregates
+
+  This new aggregate syntax for arrays and containers is provided under -gnatX
+  to experiment and confirm this new language syntax.
+
 
 .. _Pragma-Extensions_Visible:
 
@@ -4651,48 +4542,6 @@ type is potentially persistent.
 If this pragma is used on a target where this feature is not supported,
 then the pragma will be ignored. See also ``pragma Linker_Section``.
 
-Pragma Polling
-==============
-
-Syntax:
-
-
-.. code-block:: ada
-
-  pragma Polling (ON | OFF);
-
-
-This pragma controls the generation of polling code.  This is normally off.
-If ``pragma Polling (ON)`` is used then periodic calls are generated to
-the routine ``Ada.Exceptions.Poll``.  This routine is a separate unit in the
-runtime library, and can be found in file :file:`a-excpol.adb`.
-
-Pragma ``Polling`` can appear as a configuration pragma (for example it
-can be placed in the :file:`gnat.adc` file) to enable polling globally, or it
-can be used in the statement or declaration sequence to control polling
-more locally.
-
-A call to the polling routine is generated at the start of every loop and
-at the start of every subprogram call.  This guarantees that the ``Poll``
-routine is called frequently, and places an upper bound (determined by
-the complexity of the code) on the period between two ``Poll`` calls.
-
-The primary purpose of the polling interface is to enable asynchronous
-aborts on targets that cannot otherwise support it (for example Windows
-NT), but it may be used for any other purpose requiring periodic polling.
-The standard version is null, and can be replaced by a user program.  This
-will require re-compilation of the ``Ada.Exceptions`` package that can
-be found in files :file:`a-except.ads` and :file:`a-except.adb`.
-
-A standard alternative unit (in file :file:`4wexcpol.adb` in the standard GNAT
-distribution) is used to enable the asynchronous abort capability on
-targets that do not normally support the capability.  The version of
-``Poll`` in this file makes a call to the appropriate runtime routine
-to test for an abort condition.
-
-Note that polling can also be enabled by use of the *-gnatP* switch.
-See the section on switches for gcc in the :title:`GNAT User's Guide`.
-
 Pragma Post
 ===========
 .. index:: Post
@@ -5233,7 +5082,7 @@ Syntax:
 
 .. code-block:: ada
 
-  pragma Profile (Ravenscar | Restricted | Rational |
+  pragma Profile (Ravenscar | Restricted | Rational | Jorvik |
                   GNAT_Extended_Ravenscar | GNAT_Ravenscar_EDF );
 
 
@@ -5241,10 +5090,12 @@ This pragma is standard in Ada 2005, but is available in all earlier
 versions of Ada as an implementation-defined pragma. This is a
 configuration pragma that establishes a set of configuration pragmas
 that depend on the argument. ``Ravenscar`` is standard in Ada 2005.
+``Jorvik`` is standard in Ada 202x.
 The other possibilities (``Restricted``, ``Rational``,
 ``GNAT_Extended_Ravenscar``, ``GNAT_Ravenscar_EDF``)
-are implementation-defined. The set of configuration pragmas
-is defined in the following sections.
+are implementation-defined.  ``GNAT_Extended_Ravenscar`` is an alias for ``Jorvik``.
+
+The set of configuration pragmas is defined in the following sections.
 
 
 * Pragma Profile (Ravenscar)
@@ -5314,7 +5165,7 @@ is defined in the following sections.
   * ``Simple_Barriers``
 
   The Ravenscar profile also includes the following restrictions that specify
-  that there are no semantic dependences on the corresponding predefined
+  that there are no semantic dependencies on the corresponding predefined
   packages:
 
   * ``No_Dependence => Ada.Asynchronous_Task_Control``
@@ -5355,12 +5206,10 @@ is defined in the following sections.
   automatically causes the use of a simplified,
   more efficient version of the tasking run-time library.
 
-* Pragma Profile (GNAT_Extended_Ravenscar)
+* Pragma Profile (Jorvik)
 
-  This profile corresponds to a GNAT specific extension of the
-  Ravenscar profile. The profile may change in the future although
-  only in a compatible way: some restrictions may be removed or
-  relaxed. It is defined as a variation of the Ravenscar profile.
+  ``Jorvik`` is the new profile added to the Ada 202x draft standard,
+  previously implemented under the name ``GNAT_Extended_Ravenscar``.
 
   The ``No_Implicit_Heap_Allocations`` restriction has been replaced
   by ``No_Implicit_Task_Allocations`` and
@@ -5371,6 +5220,13 @@ is defined in the following sections.
 
   The ``Max_Protected_Entries``, ``Max_Entry_Queue_Length``, and
   ``No_Relative_Delay`` restrictions have been removed.
+
+  Details on the rationale for ``Jorvik`` and implications for use may be
+  found in :title:`A New Ravenscar-Based Profile` by P. Rogers, J. Ruiz,
+  T. Gingold and P. Bernardi, in :title:`Reliable Software Technologies --
+  Ada Europe 2017`, Springer-Verlag Lecture Notes in Computer Science,
+  Number 10300.
+
 
 * Pragma Profile (GNAT_Ravenscar_EDF)
 
@@ -6796,8 +6652,8 @@ expression. The following is an example of use within a package spec:
      function Sqrt (Arg : Float) return Float;
      pragma Test_Case (Name     => "Test 1",
                        Mode     => Nominal,
-                       Requires => Arg < 10000,
-                       Ensures  => Sqrt'Result < 10);
+                       Requires => Arg < 10000.0,
+                       Ensures  => Sqrt'Result < 10.0);
      ...
   end Math_Functions;
 
@@ -7439,12 +7295,6 @@ there is no guarantee that all the bits will be accessed if the reference
 is not to the whole object; the compiler is allowed (and generally will)
 access only part of the object in this case.
 
-It is not permissible to specify ``Atomic`` and ``Volatile_Full_Access`` for
-the same type or object.
-
-It is not permissible to specify ``Volatile_Full_Access`` for a composite
-(record or array) type or object that has an ``Aliased`` subcomponent.
-
 .. _Pragma-Volatile_Function:
 
 Pragma Volatile_Function
@@ -7570,7 +7420,7 @@ Syntax:
   DETAILS ::= static_string_EXPRESSION
   DETAILS ::= On | Off, static_string_EXPRESSION
 
-  TOOL_NAME ::= GNAT | GNATProve
+  TOOL_NAME ::= GNAT | GNATprove
 
   REASON ::= Reason => STRING_LITERAL {& STRING_LITERAL}
 

@@ -1,6 +1,6 @@
 /*
  * Copyright 2011      Sven Verdoolaege
- * Copyright 2012-2013 Ecole Normale Superieure
+ * Copyright 2012-2014 Ecole Normale Superieure
  *
  * Use of this software is governed by the MIT license
  *
@@ -10,7 +10,6 @@
 
 #include <isl/id.h>
 #include <isl_space_private.h>
-#include <isl_val_private.h>
 #include <isl/set.h>
 #include <isl_reordering.h>
 
@@ -33,18 +32,6 @@ __isl_keep isl_space *FN(MULTI(BASE),peek_space)(__isl_keep MULTI(BASE) *multi)
 __isl_give isl_space *FN(MULTI(BASE),get_space)(__isl_keep MULTI(BASE) *multi)
 {
 	return isl_space_copy(FN(MULTI(BASE),peek_space)(multi));
-}
-
-/* Return the position of the dimension of the given type and name
- * in "multi".
- * Return -1 if no such dimension can be found.
- */
-int FN(MULTI(BASE),find_dim_by_name)(__isl_keep MULTI(BASE) *multi,
-	enum isl_dim_type type, const char *name)
-{
-	if (!multi)
-		return -1;
-	return isl_space_find_dim_by_name(multi->space, type, name);
 }
 
 __isl_give isl_space *FN(MULTI(BASE),get_domain_space)(
@@ -157,73 +144,11 @@ isl_size FN(MULTI(BASE),dim)(__isl_keep MULTI(BASE) *multi,
 	return isl_space_dim(FN(MULTI(BASE),peek_space)(multi), type);
 }
 
-/* Return the position of the first dimension of "type" with id "id".
- * Return -1 if there is no such dimension.
+/* Return the number of base expressions in "multi".
  */
-int FN(MULTI(BASE),find_dim_by_id)(__isl_keep MULTI(BASE) *multi,
-	enum isl_dim_type type, __isl_keep isl_id *id)
+isl_size FN(MULTI(BASE),size)(__isl_keep MULTI(BASE) *multi)
 {
-	if (!multi)
-		return -1;
-	return isl_space_find_dim_by_id(multi->space, type, id);
-}
-
-/* Return the id of the given dimension.
- */
-__isl_give isl_id *FN(MULTI(BASE),get_dim_id)(__isl_keep MULTI(BASE) *multi,
-	enum isl_dim_type type, unsigned pos)
-{
-	return multi ? isl_space_get_dim_id(multi->space, type, pos) : NULL;
-}
-
-__isl_give MULTI(BASE) *FN(MULTI(BASE),set_dim_name)(
-	__isl_take MULTI(BASE) *multi,
-	enum isl_dim_type type, unsigned pos, const char *s)
-{
-	int i;
-
-	multi = FN(MULTI(BASE),cow)(multi);
-	if (!multi)
-		return NULL;
-
-	multi->space = isl_space_set_dim_name(multi->space, type, pos, s);
-	if (!multi->space)
-		return FN(MULTI(BASE),free)(multi);
-
-	if (type == isl_dim_out)
-		return multi;
-	for (i = 0; i < multi->n; ++i) {
-		multi->u.p[i] = FN(EL,set_dim_name)(multi->u.p[i],
-							type, pos, s);
-		if (!multi->u.p[i])
-			return FN(MULTI(BASE),free)(multi);
-	}
-
-	return multi;
-}
-
-const char *FN(MULTI(BASE),get_tuple_name)(__isl_keep MULTI(BASE) *multi,
-	enum isl_dim_type type)
-{
-	return multi ? isl_space_get_tuple_name(multi->space, type) : NULL;
-}
-
-/* Does the specified tuple have an id?
- */
-isl_bool FN(MULTI(BASE),has_tuple_id)(__isl_keep MULTI(BASE) *multi,
-	enum isl_dim_type type)
-{
-	if (!multi)
-		return isl_bool_error;
-	return isl_space_has_tuple_id(multi->space, type);
-}
-
-/* Return the id of the specified tuple.
- */
-__isl_give isl_id *FN(MULTI(BASE),get_tuple_id)(__isl_keep MULTI(BASE) *multi,
-	enum isl_dim_type type)
-{
-	return multi ? isl_space_get_tuple_id(multi->space, type) : NULL;
+	return multi ? multi->n : isl_size_error;
 }
 
 #undef TYPE
@@ -231,8 +156,9 @@ __isl_give isl_id *FN(MULTI(BASE),get_tuple_id)(__isl_keep MULTI(BASE) *multi,
 static
 #include "check_type_range_templ.c"
 
-__isl_give EL *FN(FN(MULTI(BASE),get),BASE)(__isl_keep MULTI(BASE) *multi,
-	int pos)
+/* Return a copy of the base expression at position "pos" in "multi".
+ */
+__isl_give EL *FN(MULTI(BASE),get_at)(__isl_keep MULTI(BASE) *multi, int pos)
 {
 	isl_ctx *ctx;
 
@@ -240,6 +166,14 @@ __isl_give EL *FN(FN(MULTI(BASE),get),BASE)(__isl_keep MULTI(BASE) *multi,
 		return NULL;
 	ctx = FN(MULTI(BASE),get_ctx)(multi);
 	return FN(EL,copy)(multi->u.p[pos]);
+}
+
+/* This is an alternative name for the function above.
+ */
+__isl_give EL *FN(FN(MULTI(BASE),get),BASE)(__isl_keep MULTI(BASE) *multi,
+	int pos)
+{
+	return FN(MULTI(BASE),get_at)(multi, pos);
 }
 
 /* Set the element at position "pos" of "multi" to "el",
@@ -281,7 +215,9 @@ static __isl_give MULTI(BASE) *FN(MULTI(BASE),restore_check_space)(
 	return FN(MULTI(BASE),restore)(multi, pos, el);
 }
 
-__isl_give MULTI(BASE) *FN(FN(MULTI(BASE),set),BASE)(
+/* Replace the base expression at position "pos" in "multi" with "el".
+ */
+__isl_give MULTI(BASE) *FN(MULTI(BASE),set_at)(
 	__isl_take MULTI(BASE) *multi, int pos, __isl_take EL *el)
 {
 	isl_space *multi_space = NULL;
@@ -312,6 +248,35 @@ error:
 	isl_space_free(multi_space);
 	isl_space_free(el_space);
 	return NULL;
+}
+
+/* This is an alternative name for the function above.
+ */
+__isl_give MULTI(BASE) *FN(FN(MULTI(BASE),set),BASE)(
+	__isl_take MULTI(BASE) *multi, int pos, __isl_take EL *el)
+{
+	return FN(MULTI(BASE),set_at)(multi, pos, el);
+}
+
+/* Return the base expressions of "multi" as a list.
+ */
+__isl_give LIST(EL) *FN(MULTI(BASE),get_list)(
+	__isl_keep MULTI(BASE) *multi)
+{
+	isl_size n;
+	int i;
+	LIST(EL) *list;
+
+	n = FN(MULTI(BASE),size)(multi);
+	if (n < 0)
+		return NULL;
+	list = FN(LIST(EL),alloc)(FN(MULTI(BASE),get_ctx(multi)), n);
+	for (i = 0; i < n; ++i) {
+		EL *el = FN(MULTI(BASE),get_at)(multi, i);
+		list = FN(LIST(EL),add)(list, el);
+	}
+
+	return list;
 }
 
 /* Reset the space of "multi".  This function is called from isl_pw_templ.c
@@ -375,85 +340,6 @@ __isl_give MULTI(BASE) *FN(MULTI(BASE),reset_space)(
 
 	domain = isl_space_domain(isl_space_copy(space));
 	return FN(MULTI(BASE),reset_space_and_domain)(multi, space, domain);
-}
-
-/* Set the id of the given dimension of "multi" to "id".
- */
-__isl_give MULTI(BASE) *FN(MULTI(BASE),set_dim_id)(
-	__isl_take MULTI(BASE) *multi,
-	enum isl_dim_type type, unsigned pos, __isl_take isl_id *id)
-{
-	isl_space *space;
-
-	multi = FN(MULTI(BASE),cow)(multi);
-	if (!multi || !id)
-		goto error;
-
-	space = FN(MULTI(BASE),get_space)(multi);
-	space = isl_space_set_dim_id(space, type, pos, id);
-
-	return FN(MULTI(BASE),reset_space)(multi, space);
-error:
-	isl_id_free(id);
-	FN(MULTI(BASE),free)(multi);
-	return NULL;
-}
-
-__isl_give MULTI(BASE) *FN(MULTI(BASE),set_tuple_name)(
-	__isl_keep MULTI(BASE) *multi, enum isl_dim_type type,
-	const char *s)
-{
-	isl_space *space;
-
-	multi = FN(MULTI(BASE),cow)(multi);
-	if (!multi)
-		return NULL;
-
-	space = FN(MULTI(BASE),get_space)(multi);
-	space = isl_space_set_tuple_name(space, type, s);
-
-	return FN(MULTI(BASE),reset_space)(multi, space);
-}
-
-__isl_give MULTI(BASE) *FN(MULTI(BASE),set_tuple_id)(
-	__isl_take MULTI(BASE) *multi, enum isl_dim_type type,
-	__isl_take isl_id *id)
-{
-	isl_space *space;
-
-	multi = FN(MULTI(BASE),cow)(multi);
-	if (!multi)
-		goto error;
-
-	space = FN(MULTI(BASE),get_space)(multi);
-	space = isl_space_set_tuple_id(space, type, id);
-
-	return FN(MULTI(BASE),reset_space)(multi, space);
-error:
-	isl_id_free(id);
-	return NULL;
-}
-
-/* Drop the id on the specified tuple.
- */
-__isl_give MULTI(BASE) *FN(MULTI(BASE),reset_tuple_id)(
-	__isl_take MULTI(BASE) *multi, enum isl_dim_type type)
-{
-	isl_space *space;
-
-	if (!multi)
-		return NULL;
-	if (!FN(MULTI(BASE),has_tuple_id)(multi, type))
-		return multi;
-
-	multi = FN(MULTI(BASE),cow)(multi);
-	if (!multi)
-		return NULL;
-
-	space = FN(MULTI(BASE),get_space)(multi);
-	space = isl_space_reset_tuple_id(space, type);
-
-	return FN(MULTI(BASE),reset_space)(multi, space);
 }
 
 /* Reset the user pointer on all identifiers of parameters and tuples
@@ -593,6 +479,15 @@ error:
 	return NULL;
 }
 
+/* This function performs the same operation as isl_multi_*_from_*_list,
+ * but is considered as a function on an isl_space when exported.
+ */
+__isl_give MULTI(BASE) *FN(isl_space_multi,BASE)(__isl_take isl_space *space,
+	__isl_take LIST(EL) *list)
+{
+	return FN(FN(MULTI(BASE),from),LIST(BASE))(space, list);
+}
+
 __isl_give MULTI(BASE) *FN(MULTI(BASE),drop_dims)(
 	__isl_take MULTI(BASE) *multi,
 	enum isl_dim_type type, unsigned first, unsigned n)
@@ -634,48 +529,20 @@ __isl_give MULTI(BASE) *FN(MULTI(BASE),drop_dims)(
 	return multi;
 }
 
-/* Align the parameters of "multi1" and "multi2" (if needed) and call "fn".
- */
-static __isl_give MULTI(BASE) *FN(MULTI(BASE),align_params_multi_multi_and)(
-	__isl_take MULTI(BASE) *multi1, __isl_take MULTI(BASE) *multi2,
-	__isl_give MULTI(BASE) *(*fn)(__isl_take MULTI(BASE) *multi1,
-		__isl_take MULTI(BASE) *multi2))
-{
-	isl_ctx *ctx;
-	isl_bool equal_params;
+#undef TYPE
+#define TYPE MULTI(BASE)
 
-	if (!multi1 || !multi2)
-		goto error;
-	equal_params = isl_space_has_equal_params(multi1->space, multi2->space);
-	if (equal_params < 0)
-		goto error;
-	if (equal_params)
-		return fn(multi1, multi2);
-	ctx = FN(MULTI(BASE),get_ctx)(multi1);
-	if (!isl_space_has_named_params(multi1->space) ||
-	    !isl_space_has_named_params(multi2->space))
-		isl_die(ctx, isl_error_invalid,
-			"unaligned unnamed parameters", goto error);
-	multi1 = FN(MULTI(BASE),align_params)(multi1,
-					    FN(MULTI(BASE),get_space)(multi2));
-	multi2 = FN(MULTI(BASE),align_params)(multi2,
-					    FN(MULTI(BASE),get_space)(multi1));
-	return fn(multi1, multi2);
-error:
-	FN(MULTI(BASE),free)(multi1);
-	FN(MULTI(BASE),free)(multi2);
-	return NULL;
-}
+#include "isl_check_named_params_templ.c"
+static
+#include "isl_align_params_bin_templ.c"
 
 /* Given two MULTI(BASE)s A -> B and C -> D,
  * construct a MULTI(BASE) (A * C) -> [B -> D].
  *
- * The parameters are assumed to have been aligned.
- *
  * If "multi1" and/or "multi2" has an explicit domain, then
  * intersect the domain of the result with these explicit domains.
  */
-static __isl_give MULTI(BASE) *FN(MULTI(BASE),range_product_aligned)(
+__isl_give MULTI(BASE) *FN(MULTI(BASE),range_product)(
 	__isl_take MULTI(BASE) *multi1, __isl_take MULTI(BASE) *multi2)
 {
 	int i;
@@ -684,8 +551,9 @@ static __isl_give MULTI(BASE) *FN(MULTI(BASE),range_product_aligned)(
 	isl_space *space;
 	MULTI(BASE) *res;
 
-	n1 = FN(MULTI(BASE),dim)(multi1, isl_dim_out);
-	n2 = FN(MULTI(BASE),dim)(multi2, isl_dim_out);
+	FN(MULTI(BASE),align_params_bin)(&multi1, &multi2);
+	n1 = FN(MULTI(BASE),size)(multi1);
+	n2 = FN(MULTI(BASE),size)(multi2);
 	if (n1 < 0 || n2 < 0)
 		goto error;
 
@@ -715,16 +583,6 @@ error:
 	FN(MULTI(BASE),free)(multi1);
 	FN(MULTI(BASE),free)(multi2);
 	return NULL;
-}
-
-/* Given two MULTI(BASE)s A -> B and C -> D,
- * construct a MULTI(BASE) (A * C) -> [B -> D].
- */
-__isl_give MULTI(BASE) *FN(MULTI(BASE),range_product)(
-	__isl_take MULTI(BASE) *multi1, __isl_take MULTI(BASE) *multi2)
-{
-	return FN(MULTI(BASE),align_params_multi_multi_and)(multi1, multi2,
-					&FN(MULTI(BASE),range_product_aligned));
 }
 
 /* Is the range of "multi" a wrapped relation?
@@ -869,7 +727,7 @@ __isl_give MULTI(BASE) *FN(MULTI(BASE),range_splice)(
 	MULTI(BASE) *res;
 	isl_size dim;
 
-	dim = FN(MULTI(BASE),dim)(multi1, isl_dim_out);
+	dim = FN(MULTI(BASE),size)(multi1);
 	if (dim < 0 || !multi2)
 		goto error;
 
@@ -890,26 +748,13 @@ error:
 	return NULL;
 }
 
-/* Check that "multi1" and "multi2" live in the same space,
- * reporting an error if they do not.
- */
-static isl_stat FN(MULTI(BASE),check_equal_space)(
-	__isl_keep MULTI(BASE) *multi1, __isl_keep MULTI(BASE) *multi2)
-{
-	isl_bool equal;
+#undef TYPE
+#define TYPE	MULTI(BASE)
 
-	if (!multi1 || !multi2)
-		return isl_stat_error;
-
-	equal = isl_space_is_equal(multi1->space, multi2->space);
-	if (equal < 0)
-		return isl_stat_error;
-	if (!equal)
-		isl_die(FN(MULTI(BASE),get_ctx)(multi1), isl_error_invalid,
-			"spaces don't match", return isl_stat_error);
-
-	return isl_stat_ok;
-}
+static
+#include "isl_type_has_equal_space_bin_templ.c"
+static
+#include "isl_type_check_equal_space_templ.c"
 
 /* This function is currently only used from isl_aff.c
  */
@@ -930,6 +775,7 @@ static __isl_give MULTI(BASE) *FN(MULTI(BASE),bin_op)(
 {
 	int i;
 
+	FN(MULTI(BASE),align_params_bin)(&multi1, &multi2);
 	multi1 = FN(MULTI(BASE),cow)(multi1);
 	if (FN(MULTI(BASE),check_equal_space)(multi1, multi2) < 0)
 		goto error;
@@ -953,227 +799,56 @@ error:
 	return NULL;
 }
 
-/* Add "multi2" to "multi1" and return the result.
- *
- * The parameters of "multi1" and "multi2" are assumed to have been aligned.
+/* Only used on some multi-expressions.
  */
-static __isl_give MULTI(BASE) *FN(MULTI(BASE),add_aligned)(
-	__isl_take MULTI(BASE) *multi1, __isl_take MULTI(BASE) *multi2)
-{
-	return FN(MULTI(BASE),bin_op)(multi1, multi2, &FN(EL,add));
-}
+static isl_bool FN(MULTI(BASE),any)(__isl_keep MULTI(BASE) *multi,
+	isl_bool (*test)(__isl_keep EL *)) __attribute__ ((unused));
 
-/* Add "multi2" to "multi1" and return the result.
+/* Does "test" succeed on any base expression of "multi"?
  */
-__isl_give MULTI(BASE) *FN(MULTI(BASE),add)(__isl_take MULTI(BASE) *multi1,
-	__isl_take MULTI(BASE) *multi2)
+static isl_bool FN(MULTI(BASE),any)(__isl_keep MULTI(BASE) *multi,
+	isl_bool (*test)(__isl_keep EL *))
 {
-	return FN(MULTI(BASE),align_params_multi_multi_and)(multi1, multi2,
-						&FN(MULTI(BASE),add_aligned));
-}
-
-/* Subtract "multi2" from "multi1" and return the result.
- *
- * The parameters of "multi1" and "multi2" are assumed to have been aligned.
- */
-static __isl_give MULTI(BASE) *FN(MULTI(BASE),sub_aligned)(
-	__isl_take MULTI(BASE) *multi1, __isl_take MULTI(BASE) *multi2)
-{
-	return FN(MULTI(BASE),bin_op)(multi1, multi2, &FN(EL,sub));
-}
-
-/* Subtract "multi2" from "multi1" and return the result.
- */
-__isl_give MULTI(BASE) *FN(MULTI(BASE),sub)(__isl_take MULTI(BASE) *multi1,
-	__isl_take MULTI(BASE) *multi2)
-{
-	return FN(MULTI(BASE),align_params_multi_multi_and)(multi1, multi2,
-						&FN(MULTI(BASE),sub_aligned));
-}
-
-/* Multiply the elements of "multi" by "v" and return the result.
- */
-__isl_give MULTI(BASE) *FN(MULTI(BASE),scale_val)(__isl_take MULTI(BASE) *multi,
-	__isl_take isl_val *v)
-{
+	isl_size n;
 	int i;
 
-	if (!multi || !v)
-		goto error;
+	n = FN(MULTI(BASE),size)(multi);
+	if (n < 0)
+		return isl_bool_error;
 
-	if (isl_val_is_one(v)) {
-		isl_val_free(v);
-		return multi;
+	for (i = 0; i < n; ++i) {
+		isl_bool any = test(multi->u.p[i]);
+		if (any < 0 || any)
+			return any;
 	}
 
-	if (!isl_val_is_rat(v))
-		isl_die(isl_val_get_ctx(v), isl_error_invalid,
-			"expecting rational factor", goto error);
-
-	multi = FN(MULTI(BASE),cow)(multi);
-	if (!multi)
-		return NULL;
-
-	for (i = 0; i < multi->n; ++i) {
-		multi->u.p[i] = FN(EL,scale_val)(multi->u.p[i],
-						isl_val_copy(v));
-		if (!multi->u.p[i])
-			goto error;
-	}
-
-	isl_val_free(v);
-	return multi;
-error:
-	isl_val_free(v);
-	return FN(MULTI(BASE),free)(multi);
+	return isl_bool_false;
 }
 
-/* Divide the elements of "multi" by "v" and return the result.
+/* Only used on some multi-expressions.
  */
-__isl_give MULTI(BASE) *FN(MULTI(BASE),scale_down_val)(
-	__isl_take MULTI(BASE) *multi, __isl_take isl_val *v)
+static isl_bool FN(MULTI(BASE),every)(__isl_keep MULTI(BASE) *multi,
+	isl_bool (*test)(__isl_keep EL *)) __attribute__ ((unused));
+
+/* Does "test" succeed on every base expression of "multi"?
+ */
+static isl_bool FN(MULTI(BASE),every)(__isl_keep MULTI(BASE) *multi,
+	isl_bool (*test)(__isl_keep EL *))
 {
+	isl_size n;
 	int i;
 
-	if (!multi || !v)
-		goto error;
+	n = FN(MULTI(BASE),size)(multi);
+	if (n < 0)
+		return isl_bool_error;
 
-	if (isl_val_is_one(v)) {
-		isl_val_free(v);
-		return multi;
+	for (i = 0; i < n; ++i) {
+		isl_bool every = test(multi->u.p[i]);
+		if (every < 0 || !every)
+			return every;
 	}
 
-	if (!isl_val_is_rat(v))
-		isl_die(isl_val_get_ctx(v), isl_error_invalid,
-			"expecting rational factor", goto error);
-	if (isl_val_is_zero(v))
-		isl_die(isl_val_get_ctx(v), isl_error_invalid,
-			"cannot scale down by zero", goto error);
-
-	multi = FN(MULTI(BASE),cow)(multi);
-	if (!multi)
-		return NULL;
-
-	for (i = 0; i < multi->n; ++i) {
-		multi->u.p[i] = FN(EL,scale_down_val)(multi->u.p[i],
-						    isl_val_copy(v));
-		if (!multi->u.p[i])
-			goto error;
-	}
-
-	isl_val_free(v);
-	return multi;
-error:
-	isl_val_free(v);
-	return FN(MULTI(BASE),free)(multi);
-}
-
-/* Multiply the elements of "multi" by the corresponding element of "mv"
- * and return the result.
- */
-__isl_give MULTI(BASE) *FN(MULTI(BASE),scale_multi_val)(
-	__isl_take MULTI(BASE) *multi, __isl_take isl_multi_val *mv)
-{
-	int i;
-
-	if (!multi || !mv)
-		goto error;
-
-	if (!isl_space_tuple_is_equal(multi->space, isl_dim_out,
-					mv->space, isl_dim_set))
-		isl_die(isl_multi_val_get_ctx(mv), isl_error_invalid,
-			"spaces don't match", goto error);
-
-	multi = FN(MULTI(BASE),cow)(multi);
-	if (!multi)
-		goto error;
-
-	for (i = 0; i < multi->n; ++i) {
-		isl_val *v;
-
-		v = isl_multi_val_get_val(mv, i);
-		multi->u.p[i] = FN(EL,scale_val)(multi->u.p[i], v);
-		if (!multi->u.p[i])
-			goto error;
-	}
-
-	isl_multi_val_free(mv);
-	return multi;
-error:
-	isl_multi_val_free(mv);
-	return FN(MULTI(BASE),free)(multi);
-}
-
-/* Divide the elements of "multi" by the corresponding element of "mv"
- * and return the result.
- */
-__isl_give MULTI(BASE) *FN(MULTI(BASE),scale_down_multi_val)(
-	__isl_take MULTI(BASE) *multi, __isl_take isl_multi_val *mv)
-{
-	int i;
-
-	if (!multi || !mv)
-		goto error;
-
-	if (!isl_space_tuple_is_equal(multi->space, isl_dim_out,
-					mv->space, isl_dim_set))
-		isl_die(isl_multi_val_get_ctx(mv), isl_error_invalid,
-			"spaces don't match", goto error);
-
-	multi = FN(MULTI(BASE),cow)(multi);
-	if (!multi)
-		return NULL;
-
-	for (i = 0; i < multi->n; ++i) {
-		isl_val *v;
-
-		v = isl_multi_val_get_val(mv, i);
-		multi->u.p[i] = FN(EL,scale_down_val)(multi->u.p[i], v);
-		if (!multi->u.p[i])
-			goto error;
-	}
-
-	isl_multi_val_free(mv);
-	return multi;
-error:
-	isl_multi_val_free(mv);
-	return FN(MULTI(BASE),free)(multi);
-}
-
-/* Compute the residues of the elements of "multi" modulo
- * the corresponding element of "mv" and return the result.
- */
-__isl_give MULTI(BASE) *FN(MULTI(BASE),mod_multi_val)(
-	__isl_take MULTI(BASE) *multi, __isl_take isl_multi_val *mv)
-{
-	int i;
-
-	if (!multi || !mv)
-		goto error;
-
-	if (!isl_space_tuple_is_equal(multi->space, isl_dim_out,
-					mv->space, isl_dim_set))
-		isl_die(isl_multi_val_get_ctx(mv), isl_error_invalid,
-			"spaces don't match", goto error);
-
-	multi = FN(MULTI(BASE),cow)(multi);
-	if (!multi)
-		goto error;
-
-	for (i = 0; i < multi->n; ++i) {
-		isl_val *v;
-
-		v = isl_multi_val_get_val(mv, i);
-		multi->u.p[i] = FN(EL,mod_val)(multi->u.p[i], v);
-		if (!multi->u.p[i])
-			goto error;
-	}
-
-	isl_multi_val_free(mv);
-	return multi;
-error:
-	isl_multi_val_free(mv);
-	return FN(MULTI(BASE),free)(multi);
+	return isl_bool_true;
 }
 
 /* Convert a multiple expression defined over a parameter domain
@@ -1228,43 +903,4 @@ isl_bool FN(MULTI(BASE),plain_is_equal)(__isl_keep MULTI(BASE) *multi1,
 	}
 
 	return isl_bool_true;
-}
-
-/* Does "multi" involve any NaNs?
- */
-isl_bool FN(MULTI(BASE),involves_nan)(__isl_keep MULTI(BASE) *multi)
-{
-	int i;
-
-	if (!multi)
-		return isl_bool_error;
-	if (multi->n == 0)
-		return isl_bool_false;
-
-	for (i = 0; i < multi->n; ++i) {
-		isl_bool has_nan = FN(EL,involves_nan)(multi->u.p[i]);
-		if (has_nan < 0 || has_nan)
-			return has_nan;
-	}
-
-	return isl_bool_false;
-}
-
-/* Return the opposite of "multi".
- */
-__isl_give MULTI(BASE) *FN(MULTI(BASE),neg)(__isl_take MULTI(BASE) *multi)
-{
-	int i;
-
-	multi = FN(MULTI(BASE),cow)(multi);
-	if (!multi)
-		return NULL;
-
-	for (i = 0; i < multi->n; ++i) {
-		multi->u.p[i] = FN(EL,neg)(multi->u.p[i]);
-		if (!multi->u.p[i])
-			return FN(MULTI(BASE),free)(multi);
-	}
-
-	return multi;
 }

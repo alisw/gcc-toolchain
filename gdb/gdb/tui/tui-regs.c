@@ -1,6 +1,6 @@
 /* TUI display registers in window.
 
-   Copyright (C) 1998-2020 Free Software Foundation, Inc.
+   Copyright (C) 1998-2022 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -112,12 +112,12 @@ tui_register_format (struct frame_info *frame, int regnum)
    changed with respect to the previous call.  */
 static void
 tui_get_register (struct frame_info *frame,
-                  struct tui_data_item_window *data, 
+		  struct tui_data_item_window *data, 
 		  int regnum, bool *changedp)
 {
   if (changedp)
     *changedp = false;
-  if (target_has_registers)
+  if (target_has_registers ())
     {
       std::string new_content = tui_register_format (frame, regnum);
 
@@ -182,7 +182,7 @@ tui_data_window::show_registers (struct reggroup *group)
   if (group == 0)
     group = general_reggroup;
 
-  if (target_has_registers && target_has_stack && target_has_memory)
+  if (target_has_registers () && target_has_stack () && target_has_memory ())
     {
       show_register_group (group, get_selected_frame (NULL),
 			   group == m_current_group);
@@ -281,7 +281,11 @@ tui_data_window::display_registers_from (int start_element_no)
 	max_len = len;
     }
   m_item_width = max_len + 1;
-  int i = start_element_no;
+
+  int i;
+  /* Mark register windows above the visible area.  */
+  for (i = 0; i < start_element_no; i++)
+    m_regs_content[i].y = 0;
 
   m_regs_column_count = (width - 2) / m_item_width;
   if (m_regs_column_count == 0)
@@ -306,6 +310,12 @@ tui_data_window::display_registers_from (int start_element_no)
 	}
       cur_y++;		/* Next row.  */
     }
+
+  /* Mark register windows below the visible area.  */
+  for (; i < m_regs_content.size (); i++)
+    m_regs_content[i].y = 0;
+
+  refresh_window ();
 }
 
 /* See tui-regs.h.  */
@@ -436,7 +446,7 @@ tui_data_window::do_scroll_vertical (int num_to_scroll)
     first_line = line_from_reg_element_no (first_element_no);
   else
     { /* Calculate the first line from the element number which is in
-        the general data content.  */
+	the general data content.  */
     }
 
   if (first_line >= 0)
@@ -468,7 +478,9 @@ tui_data_window::check_register_values (struct frame_info *frame)
 			    data_item_win.regno,
 			    &data_item_win.highlight);
 
-	  if (data_item_win.highlight || was_hilighted)
+	  /* Register windows whose y == 0 are outside the visible area.  */
+	  if ((data_item_win.highlight || was_hilighted)
+	      && data_item_win.y > 0)
 	    data_item_win.rerender (handle.get (), m_item_width);
 	}
     }
@@ -490,7 +502,8 @@ tui_data_item_window::rerender (WINDOW *handle, int field_width)
     (void) wstandout (handle);
       
   mvwaddnstr (handle, y, x, content.c_str (), field_width - 1);
-  waddstr (handle, n_spaces (field_width - content.size ()));
+  if (content.size () < field_width)
+    waddstr (handle, n_spaces (field_width - content.size ()));
 
   if (highlight)
     /* We ignore the return value, casting it to void in order to avoid
@@ -514,7 +527,7 @@ tui_reg_next (struct reggroup *current_group, struct gdbarch *gdbarch)
     {
       group = reggroup_next (gdbarch, current_group);
       if (group == NULL)
-        group = reggroup_next (gdbarch, NULL);
+	group = reggroup_next (gdbarch, NULL);
     }
   return group;
 }

@@ -1,5 +1,5 @@
 dnl Autoconf configure snippets for common.
-dnl Copyright (C) 1995-2020 Free Software Foundation, Inc.
+dnl Copyright (C) 1995-2022 Free Software Foundation, Inc.
 dnl
 dnl This file is part of GDB.
 dnl 
@@ -50,33 +50,15 @@ AC_DEFUN([GDB_AC_COMMON], [
 		   poll.h sys/poll.h sys/select.h)
 
   AC_FUNC_MMAP
-  AC_FUNC_VFORK
+  AC_FUNC_FORK
   AC_CHECK_FUNCS([fdwalk getrlimit pipe pipe2 poll socketpair sigaction \
 		  ptrace64 sbrk setns sigaltstack sigprocmask \
-		  setpgid setpgrp getrusage getauxval])
+		  setpgid setpgrp getrusage getauxval sigtimedwait])
 
-  dnl Check if we can disable the virtual address space randomization.
-  dnl The functionality of setarch -R.
+  # This is needed for RHEL 5 and uclibc-ng < 1.0.39.
+  # These did not define ADDR_NO_RANDOMIZE in sys/personality.h,
+  # only in linux/personality.h.
   AC_CHECK_DECLS([ADDR_NO_RANDOMIZE],,, [#include <sys/personality.h>])
-  define([PERSONALITY_TEST], [AC_LANG_PROGRAM([#include <sys/personality.h>], [
-  #      if !HAVE_DECL_ADDR_NO_RANDOMIZE
-  #       define ADDR_NO_RANDOMIZE 0x0040000
-  #      endif
-	 /* Test the flag could be set and stays set.  */
-	 personality (personality (0xffffffff) | ADDR_NO_RANDOMIZE);
-	 if (!(personality (personality (0xffffffff)) & ADDR_NO_RANDOMIZE))
-	     return 1])])
-  AC_RUN_IFELSE([PERSONALITY_TEST],
-		[have_personality=true],
-		[have_personality=false],
-		[AC_LINK_IFELSE([PERSONALITY_TEST],
-				[have_personality=true],
-				[have_personality=false])])
-  if $have_personality
-  then
-      AC_DEFINE([HAVE_PERSONALITY], 1,
-		[Define if you support the personality syscall.])
-  fi
 
   AC_CHECK_DECLS([strstr])
 
@@ -86,9 +68,13 @@ AC_DEFUN([GDB_AC_COMMON], [
 
   AC_CHECK_MEMBERS([struct stat.st_blocks, struct stat.st_blksize])
 
-  AC_SEARCH_LIBS(kinfo_getfile, util util-freebsd,
-    [AC_DEFINE(HAVE_KINFO_GETFILE, 1,
-	      [Define to 1 if your system has the kinfo_getfile function. ])])
+  # On FreeBSD we need libutil for the kinfo_get* functions.  On
+  # GNU/kFreeBSD systems, FreeBSD libutil is renamed to libutil-freebsd.
+  # Figure out which one to use.
+  AC_SEARCH_LIBS(kinfo_getfile, util util-freebsd)
+
+  # Define HAVE_KINFO_GETFILE if kinfo_getfile is available.
+  AC_CHECK_FUNCS(kinfo_getfile)
 
   # Check for std::thread.  This does not work on some platforms, like
   # mingw and DJGPP.
@@ -123,11 +109,20 @@ AC_DEFUN([GDB_AC_COMMON], [
 
   dnl Check if sigsetjmp is available.  Using AC_CHECK_FUNCS won't
   dnl do since sigsetjmp might only be defined as a macro.
-  AC_CACHE_CHECK([for sigsetjmp], gdb_cv_func_sigsetjmp,
-  [AC_TRY_COMPILE([
-  #include <setjmp.h>
-  ], [sigjmp_buf env; while (! sigsetjmp (env, 1)) siglongjmp (env, 1);],
-  gdb_cv_func_sigsetjmp=yes, gdb_cv_func_sigsetjmp=no)])
+  AC_CACHE_CHECK(
+    [for sigsetjmp],
+    [gdb_cv_func_sigsetjmp],
+    [AC_COMPILE_IFELSE(
+       [AC_LANG_PROGRAM(
+          [#include <setjmp.h>],
+          [sigjmp_buf env;
+           while (! sigsetjmp (env, 1))
+             siglongjmp (env, 1);]
+        )],
+       [gdb_cv_func_sigsetjmp=yes],
+       [gdb_cv_func_sigsetjmp=no]
+     )]
+  )
   if test "$gdb_cv_func_sigsetjmp" = "yes"; then
     AC_DEFINE(HAVE_SIGSETJMP, 1, [Define if sigsetjmp is available. ])
   fi

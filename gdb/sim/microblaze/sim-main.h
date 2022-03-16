@@ -1,4 +1,4 @@
-/* Copyright 2009-2020 Free Software Foundation, Inc.
+/* Copyright 2009-2022 Free Software Foundation, Inc.
 
    This file is part of the Xilinx MicroBlaze simulator.
 
@@ -46,13 +46,6 @@
 struct _sim_cpu {
   struct microblaze_regset microblaze_cpu;
   sim_cpu_base base;
-};
-
-struct sim_state {
-
-  sim_cpu *cpu[MAX_NR_PROCESSORS];
-
-  sim_state_base base;
 };
 
 #endif /* MICROBLAZE_SIM_MAIN */

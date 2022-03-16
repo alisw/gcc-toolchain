@@ -1,4 +1,4 @@
-// Copyright (C) 2016-2020 Free Software Foundation, Inc.
+// Copyright (C) 2016-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -17,7 +17,6 @@
 
 // { dg-options "-fno-show-column" }
 // { dg-do compile { target c++14 } }
-// { dg-prune-output "tuple index is in range" }
 
 #include <tuple>
 
@@ -60,4 +59,7 @@ test03()
   std::get<6>(static_cast<test_type&&>(t));	// { dg-error "no match" }
 }
 
+// { dg-prune-output "tuple index must be in range" }
 // { dg-prune-output "no type named .type" }
+// { dg-prune-output "type/value mismatch" }
+// { dg-prune-output "use of deleted function" }

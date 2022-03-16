@@ -1,5 +1,5 @@
 /* Prototypes of target machine for SPARC.
-   Copyright (C) 1999-2020 Free Software Foundation, Inc.
+   Copyright (C) 1999-2021 Free Software Foundation, Inc.
    Contributed by Michael Tiemann (tiemann@cygnus.com).
    64-bit SPARC-V9 support by Michael Tiemann, Jim Wilson, and Doug Evans,
    at Cygnus Support.
@@ -86,7 +86,6 @@ extern int mems_ok_for_ldd_peep (rtx, rtx, rtx);
 extern rtx widen_mem_for_ldd_peep (rtx, rtx, machine_mode);
 extern int empty_delay_slot (rtx_insn *);
 extern int emit_cbcond_nop (rtx_insn *);
-extern int eligible_for_call_delay (rtx_insn *);
 extern int eligible_for_return_delay (rtx_insn *);
 extern int eligible_for_sibcall_delay (rtx_insn *);
 extern int emit_move_sequence (rtx, machine_mode);
@@ -114,5 +113,6 @@ extern rtl_opt_pass *make_pass_work_around_errata (gcc::context *);
 
 /* Routines implemented in sparc-d.c  */
 extern void sparc_d_target_versions (void);
+extern void sparc_d_register_target_info (void);
 
 #endif /* __SPARC_PROTOS_H__ */

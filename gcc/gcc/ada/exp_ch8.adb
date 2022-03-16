@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -101,10 +101,6 @@ package body Exp_Ch8 is
    --  More comments needed for this para ???
 
    procedure Expand_N_Object_Renaming_Declaration (N : Node_Id) is
-      Nam  : constant Node_Id := Name (N);
-      Decl : Node_Id;
-      T    : Entity_Id;
-
       function Evaluation_Required (Nam : Node_Id) return Boolean;
       --  Determines whether it is necessary to do static name evaluation for
       --  renaming of Nam. It is considered necessary if evaluating the name
@@ -125,11 +121,11 @@ package body Exp_Ch8 is
          if Modify_Tree_For_C then
             return True;
 
-         elsif Nkind_In (Nam, N_Indexed_Component, N_Slice) then
+         elsif Nkind (Nam) in N_Indexed_Component | N_Slice then
             if Is_Packed (Etype (Prefix (Nam))) then
                return True;
 
-            elsif Is_Atomic_Or_VFA_Object (Prefix (Nam)) then
+            elsif Is_Full_Access_Object (Prefix (Nam)) then
                return True;
 
             else
@@ -152,7 +148,7 @@ package body Exp_Ch8 is
                then
                   return True;
 
-               elsif Is_Atomic_Or_VFA_Object (Prefix (Nam)) then
+               elsif Is_Full_Access_Object (Prefix (Nam)) then
                   return True;
 
                else
@@ -165,6 +161,12 @@ package body Exp_Ch8 is
          end if;
       end Evaluation_Required;
 
+      --  Local variables
+
+      Decl : Node_Id;
+      Nam  : constant Node_Id   := Name (N);
+      T    : constant Entity_Id := Etype (Defining_Identifier (N));
+
    --  Start of processing for Expand_N_Object_Renaming_Declaration
 
    begin
@@ -176,8 +178,6 @@ package body Exp_Ch8 is
       end if;
 
       --  Deal with construction of subtype in class-wide case
-
-      T := Etype (Defining_Identifier (N));
 
       if Is_Class_Wide_Type (T) then
          Expand_Subtype_From_Expr (N, T, Subtype_Mark (N), Name (N));
@@ -209,10 +209,7 @@ package body Exp_Ch8 is
       --  needing debug info if it comes from sources because the current
       --  setting in Freeze_Entity occurs too late. ???
 
-      if Comes_From_Source (Defining_Identifier (N)) then
-         Set_Debug_Info_Needed (Defining_Identifier (N));
-      end if;
-
+      Set_Debug_Info_Defining_Id (N);
       Decl := Debug_Renaming_Declaration (N);
 
       if Present (Decl) then

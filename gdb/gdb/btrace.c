@@ -1,6 +1,6 @@
 /* Branch trace support for GDB, the GNU debugger.
 
-   Copyright (C) 2013-2020 Free Software Foundation, Inc.
+   Copyright (C) 2013-2022 Free Software Foundation, Inc.
 
    Contributed by Intel Corp. <markus.t.metzger@intel.com>
 
@@ -62,7 +62,7 @@ static void btrace_add_pc (struct thread_info *tp);
   do									\
     {									\
       if (record_debug != 0)						\
-        fprintf_unfiltered (gdb_stdlog,					\
+	fprintf_unfiltered (gdb_stdlog,					\
 			    "[btrace] " msg "\n", ##args);		\
     }									\
   while (0)
@@ -265,7 +265,7 @@ ftrace_new_function (struct btrace_thread_info *btinfo,
 static void
 ftrace_update_caller (struct btrace_function *bfun,
 		      struct btrace_function *caller,
-		      enum btrace_function_flag flags)
+		      btrace_function_flags flags)
 {
   if (bfun->up != 0)
     ftrace_debug (bfun, "updating caller");
@@ -283,7 +283,7 @@ static void
 ftrace_fixup_caller (struct btrace_thread_info *btinfo,
 		     struct btrace_function *bfun,
 		     struct btrace_function *caller,
-		     enum btrace_function_flag flags)
+		     btrace_function_flags flags)
 {
   unsigned int prev, next;
 
@@ -1222,6 +1222,9 @@ handle_pt_insn_events (struct btrace_thread_info *btinfo,
 	  break;
 
 	case ptev_enabled:
+	  if (event.status_update != 0)
+	    break;
+
 	  if (event.variant.enabled.resumed == 0 && !btinfo->functions.empty ())
 	    {
 	      bfun = ftrace_new_gap (btinfo, BDE_PT_DISABLED, gaps);
@@ -3438,29 +3441,26 @@ _initialize_btrace ()
 
   add_basic_prefix_cmd ("btrace", class_maintenance,
 			_("Branch tracing maintenance commands."),
-			&maint_btrace_cmdlist, "maintenance btrace ",
-			0, &maintenancelist);
+			&maint_btrace_cmdlist, 0, &maintenancelist);
 
   add_basic_prefix_cmd ("btrace", class_maintenance, _("\
 Set branch tracing specific variables."),
-			&maint_btrace_set_cmdlist, "maintenance set btrace ",
+			&maint_btrace_set_cmdlist,
 			0, &maintenance_set_cmdlist);
 
   add_basic_prefix_cmd ("pt", class_maintenance, _("\
 Set Intel Processor Trace specific variables."),
 			&maint_btrace_pt_set_cmdlist,
-			"maintenance set btrace pt ",
 			0, &maint_btrace_set_cmdlist);
 
   add_show_prefix_cmd ("btrace", class_maintenance, _("\
 Show branch tracing specific variables."),
-		       &maint_btrace_show_cmdlist, "maintenance show btrace ",
+		       &maint_btrace_show_cmdlist,
 		       0, &maintenance_show_cmdlist);
 
   add_show_prefix_cmd ("pt", class_maintenance, _("\
 Show Intel Processor Trace specific variables."),
 		       &maint_btrace_pt_show_cmdlist,
-		       "maintenance show btrace pt ",
 		       0, &maint_btrace_show_cmdlist);
 
   add_setshow_boolean_cmd ("skip-pad", class_maintenance,

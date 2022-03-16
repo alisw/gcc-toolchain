@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 Free Software Foundation, Inc.
+/* Copyright (C) 2017-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -70,7 +70,7 @@ struct arc_arch_features
    The only external client of this must be the gdbserver which manipulates
    the returned data.  */
 
-target_desc *arc_create_target_description
+target_desc_up arc_create_target_description
 	(const struct arc_arch_features &features);
 
 #else

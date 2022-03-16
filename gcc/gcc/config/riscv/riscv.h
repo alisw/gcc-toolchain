@@ -1,5 +1,5 @@
 /* Definition of RISC-V target for GNU compiler.
-   Copyright (C) 2011-2020 Free Software Foundation, Inc.
+   Copyright (C) 2011-2021 Free Software Foundation, Inc.
    Contributed by Andrew Waterman (andrew@sifive.com).
    Based on MIPS target for GNU compiler.
 
@@ -27,8 +27,15 @@ along with GCC; see the file COPYING3.  If not see
 /* Target CPU builtins.  */
 #define TARGET_CPU_CPP_BUILTINS() riscv_cpu_cpp_builtins (pfile)
 
-/* Target CPU versions for D.  */
+/* Target hooks for D language.  */
 #define TARGET_D_CPU_VERSIONS riscv_d_target_versions
+#define TARGET_D_REGISTER_CPU_TARGET_INFO riscv_d_register_target_info
+
+#ifdef TARGET_BIG_ENDIAN_DEFAULT
+#define DEFAULT_ENDIAN_SPEC    "b"
+#else
+#define DEFAULT_ENDIAN_SPEC    "l"
+#endif
 
 /* Default target_flags if no switches are specified  */
 
@@ -40,13 +47,28 @@ along with GCC; see the file COPYING3.  If not see
 #define RISCV_TUNE_STRING_DEFAULT "rocket"
 #endif
 
+extern const char *riscv_expand_arch (int argc, const char **argv);
+extern const char *riscv_expand_arch_from_cpu (int argc, const char **argv);
+extern const char *riscv_default_mtune (int argc, const char **argv);
+
+# define EXTRA_SPEC_FUNCTIONS						\
+  { "riscv_expand_arch", riscv_expand_arch },				\
+  { "riscv_expand_arch_from_cpu", riscv_expand_arch_from_cpu },		\
+  { "riscv_default_mtune", riscv_default_mtune },
+
 /* Support for a compile-time default CPU, et cetera.  The rules are:
-   --with-arch is ignored if -march is specified.
+   --with-arch is ignored if -march or -mcpu is specified.
    --with-abi is ignored if -mabi is specified.
-   --with-tune is ignored if -mtune is specified.  */
+   --with-tune is ignored if -mtune or -mcpu is specified.
+
+   But using default -march/-mtune value if -mcpu don't have valid option.  */
 #define OPTION_DEFAULT_SPECS \
-  {"tune", "%{!mtune=*:-mtune=%(VALUE)}" }, \
-  {"arch", "%{!march=*:-march=%(VALUE)}" }, \
+  {"tune", "%{!mtune=*:"						\
+	   "  %{!mcpu=*:-mtune=%(VALUE)}"				\
+	   "  %{mcpu=*:-mtune=%:riscv_default_mtune(%* %(VALUE))}}" },	\
+  {"arch", "%{!march=*:"						\
+	   "  %{!mcpu=*:-march=%(VALUE)}"				\
+	   "  %{mcpu=*:%:riscv_expand_arch_from_cpu(%* %(VALUE))}}" },	\
   {"abi", "%{!mabi=*:-mabi=%(VALUE)}" }, \
 
 #ifdef IN_LIBGCC2
@@ -55,13 +77,36 @@ along with GCC; see the file COPYING3.  If not see
 #define TARGET_64BIT           (__riscv_xlen == 64)
 #endif /* IN_LIBGCC2 */
 
+#ifdef HAVE_AS_MISA_SPEC
+#define ASM_MISA_SPEC "%{misa-spec=*}"
+#else
+#define ASM_MISA_SPEC ""
+#endif
+
+/* Reference:
+     https://gcc.gnu.org/onlinedocs/cpp/Stringizing.html#Stringizing  */
+#define STRINGIZING(s) __STRINGIZING(s)
+#define __STRINGIZING(s) #s
+
+#define MULTILIB_DEFAULTS \
+  {"march=" STRINGIZING (TARGET_RISCV_DEFAULT_ARCH), \
+   "mabi=" STRINGIZING (TARGET_RISCV_DEFAULT_ABI) }
+
 #undef ASM_SPEC
 #define ASM_SPEC "\
 %(subtarget_asm_debugging_spec) \
 %{" FPIE_OR_FPIC_SPEC ":-fpic} \
 %{march=*} \
 %{mabi=*} \
-%(subtarget_asm_spec)"
+%{mbig-endian} \
+%{mlittle-endian} \
+%(subtarget_asm_spec)" \
+ASM_MISA_SPEC
+
+#undef DRIVER_SELF_SPECS
+#define DRIVER_SELF_SPECS					\
+"%{march=*:%:riscv_expand_arch(%*)} "				\
+"%{!march=*:%{mcpu=*:%:riscv_expand_arch_from_cpu(%*)}} "
 
 #define TARGET_DEFAULT_CMODEL CM_MEDLOW
 
@@ -90,8 +135,8 @@ along with GCC; see the file COPYING3.  If not see
 /* Target machine storage layout */
 
 #define BITS_BIG_ENDIAN 0
-#define BYTES_BIG_ENDIAN 0
-#define WORDS_BIG_ENDIAN 0
+#define BYTES_BIG_ENDIAN (TARGET_BIG_ENDIAN != 0)
+#define WORDS_BIG_ENDIAN (BYTES_BIG_ENDIAN)
 
 #define MAX_BITS_PER_WORD 64
 
@@ -322,8 +367,12 @@ along with GCC; see the file COPYING3.  If not see
    The epilogue temporary mustn't conflict with the return registers,
    the frame pointer, the EH stack adjustment, or the EH data registers. */
 
-#define RISCV_PROLOGUE_TEMP_REGNUM (GP_TEMP_FIRST + 1)
+#define RISCV_PROLOGUE_TEMP_REGNUM (GP_TEMP_FIRST)
 #define RISCV_PROLOGUE_TEMP(MODE) gen_rtx_REG (MODE, RISCV_PROLOGUE_TEMP_REGNUM)
+
+#define RISCV_CALL_ADDRESS_TEMP_REGNUM (GP_TEMP_FIRST + 1)
+#define RISCV_CALL_ADDRESS_TEMP(MODE) \
+  gen_rtx_REG (MODE, RISCV_CALL_ADDRESS_TEMP_REGNUM)
 
 #define MCOUNT_NAME "_mcount"
 
@@ -920,6 +969,7 @@ extern unsigned riscv_stack_boundary;
 #define SHIFT_RS1 15
 #define SHIFT_IMM 20
 #define IMM_BITS 12
+#define C_S_BITS 5
 #define C_SxSP_BITS 6
 
 #define IMM_REACH (1LL << IMM_BITS)
@@ -928,6 +978,10 @@ extern unsigned riscv_stack_boundary;
 
 #define SWSP_REACH (4LL << C_SxSP_BITS)
 #define SDSP_REACH (8LL << C_SxSP_BITS)
+
+/* This is the maximum value that can be represented in a compressed load/store
+   offset (an unsigned 5-bit value scaled by 4).  */
+#define CSW_MAX_OFFSET (((4LL << C_S_BITS) - 1) & ~3)
 
 /* Called from RISCV_REORG, this is defined in riscv-sr.c.  */
 

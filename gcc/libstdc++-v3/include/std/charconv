@@ -1,6 +1,6 @@
 // Primitive numeric conversions (to_chars and from_chars) -*- C++ -*-
 
-// Copyright (C) 2017-2020 Free Software Foundation, Inc.
+// Copyright (C) 2017-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -42,10 +42,11 @@
 #include <cctype>		// for isdigit
 #include <bits/charconv.h>	// for __to_chars_len, __to_chars_10_impl
 #include <bits/error_constants.h> // for std::errc
-#include <bits/int_limits.h>
+#include <ext/numeric_traits.h>
 
-// FIXME: Define when floating point is supported:
-// #define __cpp_lib_to_chars 201611L
+#if _GLIBCXX_HAVE_USELOCALE
+# define __cpp_lib_to_chars 201611L
+#endif
 
 namespace std _GLIBCXX_VISIBILITY(default)
 {
@@ -237,7 +238,7 @@ namespace __detail
       to_chars_result __res;
       unsigned __len;
 
-      if _GLIBCXX17_CONSTEXPR (__detail::__int_limits<_Tp>::digits <= 16)
+      if _GLIBCXX17_CONSTEXPR (__gnu_cxx::__int_traits<_Tp>::__digits <= 16)
 	{
 	  __len = __val > 077777u ? 6u
 	    : __val > 07777u ? 5u
@@ -432,7 +433,7 @@ namespace __detail
 	  __i++;
 	}
       __first += __i;
-      return (__i - __leading_zeroes) <= __detail::__int_limits<_Tp>::digits;
+      return (__i - __leading_zeroes) <= __gnu_cxx::__int_traits<_Tp>::__digits;
     }
 
   /// std::from_chars implementation for integers in bases 3 to 10.
@@ -551,7 +552,7 @@ namespace __detail
     case 'Z':
       return 35;
     }
-    return __detail::__int_limits<unsigned char>::max();
+    return __gnu_cxx::__int_traits<unsigned char>::__max;
   }
 
   /// std::from_chars implementation for integers in bases 11 to 26.
@@ -638,10 +639,10 @@ namespace __detail
 		}
 	      else
 		{
-		  if _GLIBCXX17_CONSTEXPR (__detail::__int_limits<_Up>::max()
-		      > __detail::__int_limits<_Tp>::max())
+		  if _GLIBCXX17_CONSTEXPR (__gnu_cxx::__int_traits<_Up>::__max
+		      > __gnu_cxx::__int_traits<_Tp>::__max)
 		    {
-		      if (__val > __detail::__int_limits<_Tp>::max())
+		      if (__val > __gnu_cxx::__int_traits<_Tp>::__max)
 			__res.ec = errc::result_out_of_range;
 		      else
 			__value = __val;
@@ -687,6 +688,47 @@ namespace __detail
   constexpr chars_format&
   operator^=(chars_format& __lhs, chars_format __rhs) noexcept
   { return __lhs = __lhs ^ __rhs; }
+
+#if _GLIBCXX_HAVE_USELOCALE
+  from_chars_result
+  from_chars(const char* __first, const char* __last, float& __value,
+	     chars_format __fmt = chars_format::general) noexcept;
+
+  from_chars_result
+  from_chars(const char* __first, const char* __last, double& __value,
+	     chars_format __fmt = chars_format::general) noexcept;
+
+  from_chars_result
+  from_chars(const char* __first, const char* __last, long double& __value,
+	     chars_format __fmt = chars_format::general) noexcept;
+#endif
+
+#if _GLIBCXX_FLOAT_IS_IEEE_BINARY32 && _GLIBCXX_DOUBLE_IS_IEEE_BINARY64 \
+    && __SIZE_WIDTH__ >= 32
+  // Floating-point std::to_chars
+
+  // Overloads for float.
+  to_chars_result to_chars(char* __first, char* __last, float __value) noexcept;
+  to_chars_result to_chars(char* __first, char* __last, float __value,
+			   chars_format __fmt) noexcept;
+  to_chars_result to_chars(char* __first, char* __last, float __value,
+			   chars_format __fmt, int __precision) noexcept;
+
+  // Overloads for double.
+  to_chars_result to_chars(char* __first, char* __last, double __value) noexcept;
+  to_chars_result to_chars(char* __first, char* __last, double __value,
+			   chars_format __fmt) noexcept;
+  to_chars_result to_chars(char* __first, char* __last, double __value,
+			   chars_format __fmt, int __precision) noexcept;
+
+  // Overloads for long double.
+  to_chars_result to_chars(char* __first, char* __last, long double __value)
+    noexcept;
+  to_chars_result to_chars(char* __first, char* __last, long double __value,
+			   chars_format __fmt) noexcept;
+  to_chars_result to_chars(char* __first, char* __last, long double __value,
+			   chars_format __fmt, int __precision) noexcept;
+#endif
 
 _GLIBCXX_END_NAMESPACE_VERSION
 } // namespace std

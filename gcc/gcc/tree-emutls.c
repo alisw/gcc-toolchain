@@ -1,5 +1,5 @@
 /* Lower TLS operations to emulation functions.
-   Copyright (C) 2006-2020 Free Software Foundation, Inc.
+   Copyright (C) 2006-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -242,15 +242,17 @@ get_emutls_init_templ_addr (tree decl)
   DECL_PRESERVE_P (to) = DECL_PRESERVE_P (decl);
 
   DECL_WEAK (to) = DECL_WEAK (decl);
-  if (DECL_ONE_ONLY (decl))
+  if (DECL_ONE_ONLY (decl) || DECL_WEAK (decl))
     {
       TREE_STATIC (to) = TREE_STATIC (decl);
       TREE_PUBLIC (to) = TREE_PUBLIC (decl);
       DECL_VISIBILITY (to) = DECL_VISIBILITY (decl);
-      make_decl_one_only (to, DECL_ASSEMBLER_NAME (to));
     }
   else
     TREE_STATIC (to) = 1;
+
+  if (DECL_ONE_ONLY (decl))
+    make_decl_one_only (to, DECL_ASSEMBLER_NAME (to));
 
   DECL_VISIBILITY_SPECIFIED (to) = DECL_VISIBILITY_SPECIFIED (decl);
   DECL_INITIAL (to) = DECL_INITIAL (decl);
@@ -259,7 +261,7 @@ get_emutls_init_templ_addr (tree decl)
   if (targetm.emutls.tmpl_section)
     set_decl_section_name (to, targetm.emutls.tmpl_section);
   else
-    set_decl_section_name (to, DECL_SECTION_NAME (decl));
+    set_decl_section_name (to, decl);
 
   /* Create varpool node for the new variable and finalize it if it is
      not external one.  */

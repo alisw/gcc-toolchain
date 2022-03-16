@@ -1,6 +1,6 @@
 /* Print GENERIC declaration (functions, variables, types) trees coming from
    the C and C++ front-ends as well as macros in Ada syntax.
-   Copyright (C) 2010-2020 Free Software Foundation, Inc.
+   Copyright (C) 2010-2021 Free Software Foundation, Inc.
    Adapted from tree-pretty-print.c by Arnaud Charlet  <charlet@adacore.com>
 
 This file is part of GCC.
@@ -713,7 +713,7 @@ collect_ada_nodes (tree t, const char *source_file)
      in the context of bindings) and namespaces (we do not handle them properly
      yet).  */
   for (n = t; n; n = TREE_CHAIN (n))
-    if (!DECL_IS_BUILTIN (n)
+    if (!DECL_IS_UNDECLARED_BUILTIN (n)
 	&& TREE_CODE (n) != NAMESPACE_DECL
 	&& LOCATION_FILE (decl_sloc (n, false)) == source_file)
       to_dump_count++;
@@ -723,7 +723,7 @@ collect_ada_nodes (tree t, const char *source_file)
 
   /* Store the relevant nodes.  */
   for (n = t; n; n = TREE_CHAIN (n))
-    if (!DECL_IS_BUILTIN (n)
+    if (!DECL_IS_UNDECLARED_BUILTIN (n)
 	&& TREE_CODE (n) != NAMESPACE_DECL
 	&& LOCATION_FILE (decl_sloc (n, false)) == source_file)
       to_dump[i++] = n;
@@ -1932,8 +1932,8 @@ dump_ada_template (pretty_printer *buffer, tree t, int spc)
   return num_inst > 0;
 }
 
-/* Return true if NODE is a simple enum types, that can be mapped to an
-   Ada enum type directly.  */
+/* Return true if NODE is a simple enumeral type that can be mapped to an
+   Ada enumeration type directly.  */
 
 static bool
 is_simple_enum (tree node)
@@ -1947,9 +1947,7 @@ is_simple_enum (tree node)
       if (TREE_CODE (int_val) != INTEGER_CST)
 	int_val = DECL_INITIAL (int_val);
 
-      if (!tree_fits_shwi_p (int_val))
-	return false;
-      else if (tree_to_shwi (int_val) != count)
+      if (!tree_fits_shwi_p (int_val) || tree_to_shwi (int_val) != count)
 	return false;
 
       count++;
@@ -1958,11 +1956,12 @@ is_simple_enum (tree node)
   return true;
 }
 
-/* Dump in BUFFER an enumeral type NODE in Ada syntax.  SPC is the indentation
-   level.  */
+/* Dump in BUFFER the declaration of enumeral NODE of type TYPE in Ada syntax.
+   PARENT is the parent node of NODE.  SPC is the indentation level.  */
 
 static void
-dump_ada_enum_type (pretty_printer *buffer, tree node, int spc)
+dump_ada_enum_type (pretty_printer *buffer, tree node, tree type, tree parent,
+		    int spc)
 {
   if (is_simple_enum (node))
     {
@@ -1993,25 +1992,29 @@ dump_ada_enum_type (pretty_printer *buffer, tree node, int spc)
 	pp_string (buffer, "unsigned");
       else
 	pp_string (buffer, "int");
+
       for (tree value = TYPE_VALUES (node); value; value = TREE_CHAIN (value))
 	{
+	  tree int_val = TREE_VALUE (value);
+
+	  if (TREE_CODE (int_val) != INTEGER_CST)
+	    int_val = DECL_INITIAL (int_val);
+
 	  pp_semicolon (buffer);
 	  newline_and_indent (buffer, spc);
 
 	  pp_ada_tree_identifier (buffer, TREE_PURPOSE (value), node, false);
 	  pp_string (buffer, " : constant ");
 
-	  if (TYPE_UNSIGNED (node))
-	    pp_string (buffer, "unsigned");
+	  if (TYPE_NAME (node))
+	    dump_ada_node (buffer, node, NULL_TREE, spc, false, true);
+	  else if (type)
+	    dump_ada_node (buffer, type, NULL_TREE, spc, false, true);
 	  else
-	    pp_string (buffer, "int");
+	    dump_anonymous_type_name (buffer, node, parent);
 
 	  pp_string (buffer, " := ");
-	  dump_ada_node (buffer,
-			 TREE_CODE (TREE_VALUE (value)) == INTEGER_CST
-			 ? TREE_VALUE (value)
-			 : DECL_INITIAL (TREE_VALUE (value)),
-			 node, spc, false, true);
+	  dump_ada_node (buffer, int_val, node, spc, false, true);
 	}
     }
 }
@@ -2098,7 +2101,7 @@ dump_ada_node (pretty_printer *buffer, tree node, tree type, int spc,
       if (name_only)
 	dump_ada_node (buffer, TYPE_NAME (node), node, spc, false, true);
       else
-	dump_ada_enum_type (buffer, node, spc);
+	dump_ada_enum_type (buffer, node, type, NULL_TREE, spc);
       break;
 
     case REAL_TYPE:
@@ -2321,7 +2324,7 @@ dump_ada_node (pretty_printer *buffer, tree node, tree type, int spc,
       return 0;
 
     case TYPE_DECL:
-      if (DECL_IS_BUILTIN (node))
+      if (DECL_IS_UNDECLARED_BUILTIN (node))
 	{
 	  /* Don't print the declaration of built-in types.  */
 	  if (name_only)
@@ -2444,7 +2447,7 @@ dump_forward_type (pretty_printer *buffer, tree type, tree t, int spc)
       return;
     }
 
-  if (DECL_IS_BUILTIN (decl) || TREE_VISITED (decl))
+  if (DECL_IS_UNDECLARED_BUILTIN (decl) || TREE_VISITED (decl))
     return;
 
   /* Forward declarations are only needed within a given file.  */
@@ -2577,7 +2580,7 @@ dump_nested_type (pretty_printer *buffer, tree field, tree t, tree parent,
       else
 	dump_anonymous_type_name (buffer, field_type, parent);
       pp_string (buffer, " is ");
-      dump_ada_enum_type (buffer, field_type, spc);
+      dump_ada_enum_type (buffer, field_type, NULL_TREE, parent, spc);
       pp_semicolon (buffer);
       newline_and_indent (buffer, spc);
       break;
@@ -2598,16 +2601,6 @@ dump_nested_type (pretty_printer *buffer, tree field, tree t, tree parent,
 
       pp_string (buffer, " is ");
       dump_ada_structure (buffer, field_type, t, true, spc);
-
-      pp_string (buffer, "with Convention => C_Pass_By_Copy");
-
-      if (TREE_CODE (field_type) == UNION_TYPE)
-	{
-	  pp_comma (buffer);
-	  newline_and_indent (buffer, spc + 5);
-	  pp_string (buffer, "Unchecked_Union => True");
-	}
-
       pp_semicolon (buffer);
       newline_and_indent (buffer, spc);
       break;
@@ -2857,8 +2850,6 @@ dump_ada_declaration (pretty_printer *buffer, tree t, tree type, int spc)
 	      pp_string (buffer, "subtype ");
 	    else
 	      {
-		dump_nested_types (buffer, t, spc);
-
                 if (separate_class_package (t))
 		  {
 		    is_class = true;
@@ -2868,6 +2859,8 @@ dump_ada_declaration (pretty_printer *buffer, tree t, tree type, int spc)
 		    spc += INDENT_INCR;
 		    newline_and_indent (buffer, spc);
 		  }
+
+		dump_nested_types (buffer, t, spc);
 
 		pp_string (buffer, "type ");
 	      }
@@ -3318,10 +3311,7 @@ dump_ada_structure (pretty_printer *buffer, tree node, tree type, bool nested,
   newline_and_indent (buffer, spc);
 
   /* We disregard the methods for anonymous nested types.  */
-  if (nested)
-    return;
-
-  if (has_nontrivial_methods (node))
+  if (has_nontrivial_methods (node) && !nested)
     {
       pp_string (buffer, "with Import => True,");
       newline_and_indent (buffer, spc + 5);
@@ -3339,11 +3329,19 @@ dump_ada_structure (pretty_printer *buffer, tree node, tree type, bool nested,
 
   if (bitfield_used)
     {
+      char buf[32];
       pp_comma (buffer);
       newline_and_indent (buffer, spc + 5);
       pp_string (buffer, "Pack => True");
+      pp_comma (buffer);
+      newline_and_indent (buffer, spc + 5);
+      sprintf (buf, "Alignment => %d", TYPE_ALIGN (node) / BITS_PER_UNIT);
+      pp_string (buffer, buf);
       bitfield_used = false;
     }
+
+  if (nested)
+    return;
 
   need_semicolon = !dump_ada_methods (buffer, node, spc);
 
@@ -3412,9 +3410,12 @@ dump_ads (const char *source_file,
       cpp_check = check;
       dump_ada_nodes (&pp, source_file);
 
-      /* We require Ada 2012 syntax, so generate corresponding pragma.
-         Also, disable style checks since this file is auto-generated.  */
-      fprintf (f, "pragma Ada_2012;\npragma Style_Checks (Off);\n\n");
+      /* We require Ada 2012 syntax, so generate corresponding pragma.  */
+      fputs ("pragma Ada_2012;\n", f);
+
+      /* Disable style checks and warnings on unused entities since this file
+	 is auto-generated and always has a with clause for Interfaces.C.  */
+      fputs ("pragma Style_Checks (Off);\npragma Warnings (\"U\");\n\n", f);
 
       /* Dump withs.  */
       dump_ada_withs (f);

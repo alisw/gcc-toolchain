@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2020 Free Software Foundation, Inc.
+# Copyright (C) 2007-2022 Free Software Foundation, Inc.
 
 # This file is part of GDB.
 
@@ -153,6 +153,7 @@ XMLTOC = \
 	rs6000/powerpc-vsx64.xml \
 	rs6000/powerpc-vsx64l.xml \
 	rs6000/rs6000.xml \
+	rx.xml \
 	s390-linux32.xml \
 	s390-linux32v1.xml \
 	s390-linux32v2.xml \
@@ -169,7 +170,8 @@ XMLTOC = \
 	s390x-tevx-linux64.xml \
 	s390x-vx-linux64.xml \
 	s390-gs-linux64.xml \
-	s390x-gs-linux64.xml
+	s390x-gs-linux64.xml \
+	z80.xml
 
 TDESC_CFILES = $(patsubst %.xml,%.c,$(XMLTOC))
 GDB = false
@@ -201,6 +203,7 @@ $(outdir)/%.dat: %.xml number-regs.xsl sort-regs.xsl gdbserver-regs.xsl
 FEATURE_XMLFILES = aarch64-core.xml \
 	aarch64-fpu.xml \
 	aarch64-pauth.xml \
+	aarch64-mte.xml \
 	arc/v1-core.xml \
 	arc/v1-aux.xml \
 	arc/v2-core.xml \
@@ -228,11 +231,11 @@ FEATURE_XMLFILES = aarch64-core.xml \
 	i386/64bit-pkeys.xml \
 	i386/64bit-sse.xml \
 	i386/x32-core.xml \
+	riscv/rv32e-xregs.xml \
 	riscv/32bit-cpu.xml \
 	riscv/32bit-fpu.xml \
 	riscv/64bit-cpu.xml \
 	riscv/64bit-fpu.xml \
-	rx.xml \
 	tic6x-c6xp.xml \
 	tic6x-core.xml \
 	tic6x-gp.xml
@@ -247,7 +250,7 @@ $(TDESC_CFILES): %.c: %.xml
 
 $(FEATURE_CFILES): %.c: %.xml.tmp
 	$(GDB) -nx -q -batch \
-	  -ex 'maint print c-tdesc $<' > $@.tmp
+	  -ex 'maint print c-tdesc -single-feature $<' > $@.tmp
 	sh ../../move-if-change $@.tmp $@
 	rm $<
 

@@ -608,6 +608,8 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
+LIBGOMP_CHECKED_INT_KINDS = @LIBGOMP_CHECKED_INT_KINDS@
+LIBGOMP_CHECKED_REAL_KINDS = @LIBGOMP_CHECKED_REAL_KINDS@
 LIBOBJS = @LIBOBJS@
 LIBQUADINCLUDE = @LIBQUADINCLUDE@
 LIBQUADLIB = @LIBQUADLIB@
@@ -707,6 +709,7 @@ target_noncanonical = @target_noncanonical@
 target_os = @target_os@
 target_subdir = @target_subdir@
 target_vendor = @target_vendor@
+tmake_file = @tmake_file@
 toolexecdir = @toolexecdir@
 toolexeclibdir = @toolexeclibdir@
 top_build_prefix = @top_build_prefix@
@@ -7016,7 +7019,7 @@ ieee_arithmetic.mod: ieee_arithmetic.lo
 @onestep_TRUE@	$(LTCOMPILE) -c -o $@ $^ -combine
 
 kinds.h: $(srcdir)/mk-kinds-h.sh
-	$(SHELL) $(srcdir)/mk-kinds-h.sh '$(FCCOMPILE)' > $@ || rm $@
+	$(SHELL) $(srcdir)/mk-kinds-h.sh '@LIBGOMP_CHECKED_INT_KINDS@' '@LIBGOMP_CHECKED_REAL_KINDS@' '$(FCCOMPILE)' > $@ || rm $@
 
 kinds.inc: kinds.h
 	grep '^#' < kinds.h > $@
@@ -7025,10 +7028,10 @@ c99_protos.inc: $(srcdir)/c99_protos.h
 	grep '^#' < $(srcdir)/c99_protos.h > $@
 
 selected_int_kind.inc: $(srcdir)/mk-sik-inc.sh
-	$(SHELL) $(srcdir)/mk-sik-inc.sh '$(FCCOMPILE)' > $@ || rm $@
+	$(SHELL) $(srcdir)/mk-sik-inc.sh '@LIBGOMP_CHECKED_INT_KINDS@' '$(FCCOMPILE)' > $@ || rm $@
 
 selected_real_kind.inc: $(srcdir)/mk-srk-inc.sh
-	$(SHELL) $(srcdir)/mk-srk-inc.sh '$(FCCOMPILE)' > $@ || rm $@
+	$(SHELL) $(srcdir)/mk-srk-inc.sh '@LIBGOMP_CHECKED_REAL_KINDS@' '$(FCCOMPILE)' > $@ || rm $@
 
 fpu-target.h: $(srcdir)/$(FPU_HOST_HEADER)
 	cp $(srcdir)/$(FPU_HOST_HEADER) $@
@@ -7189,6 +7192,9 @@ fpu-target.inc: fpu-target.h $(srcdir)/libgfortran.h
 
 @MAINTAINER_MODE_TRUE@$(gfor_misc_specifics): m4/misc_specifics.m4 m4/head.m4
 @MAINTAINER_MODE_TRUE@	$(M4) -Dfile=$@ -I$(srcdir)/m4 misc_specifics.m4 > $@
+
+# target overrides
+-include $(tmake_file)
 
 # GNU Make needs to see an explicit $(MAKE) variable in the command it
 # runs to enable its job server during parallel builds.  Hence the

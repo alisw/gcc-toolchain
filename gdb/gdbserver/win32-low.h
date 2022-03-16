@@ -1,5 +1,5 @@
 /* Internal interfaces for the Win32 specific target code for gdbserver.
-   Copyright (C) 2007-2020 Free Software Foundation, Inc.
+   Copyright (C) 2007-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -114,7 +114,7 @@ public:
   void resume (thread_resume *resume_info, size_t n) override;
 
   ptid_t wait (ptid_t ptid, target_waitstatus *status,
-	       int options) override;
+	       target_wait_flags options) override;
 
   void fetch_registers (regcache *regcache, int regno) override;
 
@@ -141,10 +141,6 @@ public:
   bool stopped_by_watchpoint () override;
 
   CORE_ADDR stopped_data_address () override;
-
-#ifdef _WIN32_WCE
-  void hostio_last_error (char *buf) override;
-#endif
 
   bool supports_qxfer_siginfo () override;
 

@@ -1,5 +1,5 @@
 /* interrupts.c -- 68HC11 Interrupts Emulation
-   Copyright 1999-2020 Free Software Foundation, Inc.
+   Copyright 1999-2022 Free Software Foundation, Inc.
    Written by Stephane Carrez (stcarrez@nerim.fr)
 
 This file is part of GDB, GAS, and the GNU binutils.
@@ -17,8 +17,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
+/* This must come before any other includes.  */
+#include "defs.h"
+
 #include "sim-main.h"
 #include "sim-options.h"
+#include "sim-signal.h"
 
 static const char *interrupt_names[] = {
   "R1",

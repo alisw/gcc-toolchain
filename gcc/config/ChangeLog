@@ -1,19 +1,83 @@
-2020-07-23  Release Manager
+2021-07-28  Release Manager
 
-	* GCC 10.2.0 released.
+	* GCC 11.2.0 released.
 
-2020-06-22  H.J. Lu  <hjl.tools@gmail.com>
+2021-04-27  Release Manager
 
-	Backported from master:
-	2020-05-12  H.J. Lu  <hjl.tools@gmail.com>
+	* GCC 11.1.0 released.
+
+2021-04-13  Martin Storsjö  <martin@martin.st>
+
+	* mh-mingw: Set __USE_MINGW_ACCESS in missed C++ flags
+	variables
+
+2021-01-05  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	PR c++/98316
+	* ax_lib_socket_nsl.m4: Import from autoconf-archive.
+
+2021-01-03  Mike Frysinger  <vapier@gentoo.org>
+
+	* pkg.m4: New file from pkg-config-0.29.2.
+
+2020-11-25  Matthew Malcomson  <matthew.malcomson@arm.com>
+
+	* bootstrap-hwasan.mk: Disable random frame tags for stack-tagging
+	during bootstrap.
+
+2020-11-25  Matthew Malcomson  <matthew.malcomson@arm.com>
+
+	* bootstrap-hwasan.mk: New file.
+
+2020-09-09  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	Sync from binutils-gdb.
+	2020-07-30  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* largefile.m4 (ACX_LARGEFILE) <sparc-*-solaris*|i?86-*-solaris*>:
+	Check for <sys/procfs.h> incompatilibity with large-file support
+	on Solaris.
+	Only disable large-file support and perhaps plugins if needed.
+	Set, substitute LARGEFILE_CPPFLAGS if so.
+
+2020-08-20  Tobias Burnus  <tobias@codesourcery.com>
+
+	PR bootstrap/96612
+	* ax_cxx_compile_stdcxx.m4: Add fourth argument to check also
+	the CXX_FOR_BUILD compiler.
+
+2020-07-30  H.J. Lu  <hjl.tools@gmail.com>
+
+	PR bootstrap/96202
+	* cet.m4 (GCC_CET_HOST_FLAGS): Don't enable CET without CET
+	support in stage1 nor for build support.
+
+2020-05-29  H.J. Lu  <hjl.tools@gmail.com>
+
+	PR bootstrap/95413
+	* cet.m4: Replace save_CFLAGS and save_LDFLAGS with
+	cet_save_CFLAGS and cet_save_LDFLAGS.
+
+2020-05-18  Jason Merrill  <jason@redhat.com>
+
+	* ax_cxx_compile_stdcxx.m4: Import from autoconf archive with
+	an adjustment to try the default mode.
+
+2020-05-15  H.J. Lu  <hongjiu.lu@intel.com>
+
+	PR bootstrap/95147
+	* cet.m4 (GCC_CET_FLAGS): Also check if -fcf-protection works
+	when defaulting to auto.
+
+2020-05-14  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* cet.m4 (GCC_CET_FLAGS): Change default to auto.
+
+2020-05-12  H.J. Lu  <hongjiu.lu@intel.com>
 
 	PR bootstrap/94998
 	* cet.m4 (GCC_CET_HOST_FLAGS): Enable CET in cross compiler if
 	possible.
-
-2020-05-07  Release Manager
-
-	* GCC 10.1.0 released.
 
 2020-04-28  H.J. Lu  <hongjiu.lu@intel.com>
 

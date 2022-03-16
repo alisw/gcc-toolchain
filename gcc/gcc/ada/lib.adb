@@ -6,23 +6,17 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
 -- ware  Foundation;  either version 3,  or (at your option) any later ver- --
 -- sion.  GNAT is distributed in the hope that it will be useful, but WITH- --
 -- OUT ANY WARRANTY;  without even the  implied warranty of MERCHANTABILITY --
--- or FITNESS FOR A PARTICULAR PURPOSE.                                     --
---                                                                          --
--- As a special exception under Section 7 of GPL version 3, you are granted --
--- additional permissions described in the GCC Runtime Library Exception,   --
--- version 3.1, as published by the Free Software Foundation.               --
---                                                                          --
--- You should have received a copy of the GNU General Public License and    --
--- a copy of the GCC Runtime Library Exception along with this program;     --
--- see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see    --
--- <http://www.gnu.org/licenses/>.                                          --
+-- or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License --
+-- for  more details.  You should have  received  a copy of the GNU General --
+-- Public License  distributed with GNAT; see file COPYING3.  If not, go to --
+-- http://www.gnu.org/licenses for a complete copy of the license.          --
 --                                                                          --
 -- GNAT was originally developed  by the GNAT team at  New York University. --
 -- Extensive contributions were provided by Ada Core Technologies Inc.      --
@@ -43,7 +37,6 @@ with Sinfo;    use Sinfo;
 with Sinput;   use Sinput;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
-with Tree_IO;  use Tree_IO;
 with Uname;    use Uname;
 with Widechar; use Widechar;
 
@@ -282,7 +275,7 @@ package body Lib is
    begin
       --  First unregister the old name, if any
 
-      if Old_N /= No_Unit_Name and then Unit_Names.Get (Old_N) = U then
+      if Present (Old_N) and then Unit_Names.Get (Old_N) = U then
          Unit_Names.Set (Old_N, No_Unit);
       end if;
 
@@ -363,6 +356,12 @@ package body Lib is
          --  Step 2: Check subunits. If a subunit is instantiated, follow the
          --  instantiation chain rather than the stub chain.
 
+         --  Note that we must handle the case where the subunit exists in the
+         --  same body as the main unit (which may happen when Naming gets
+         --  manually specified within a project file or through tools like
+         --  gprname). Otherwise, we will have an infinite loop jumping around
+         --  the same file.
+
          Unit1 := Unit (Cunit (Unum1));
          Unit2 := Unit (Cunit (Unum2));
          Inst1 := Instantiation (Sind1);
@@ -385,21 +384,35 @@ package body Lib is
                   Length_Of_Name (Unit_Name (Unum2))
                then
                   Sloc2 := Sloc (Corresponding_Stub (Unit2));
-                  Unum2 := Get_Source_Unit (Sloc2);
-                  goto Continue;
 
+                  if Unum2 /= Get_Source_Unit (Sloc2) then
+                     Unum2 := Get_Source_Unit (Sloc2);
+                     goto Continue;
+                  else
+                     null; --  Unum2 already designates the correct unit
+                  end if;
                else
                   Sloc1 := Sloc (Corresponding_Stub (Unit1));
-                  Unum1 := Get_Source_Unit (Sloc1);
-                  goto Continue;
+
+                  if Unum1 /= Get_Source_Unit (Sloc1) then
+                     Unum1 := Get_Source_Unit (Sloc1);
+                     goto Continue;
+                  else
+                     null; --  Unum1 already designates the correct unit
+                  end if;
                end if;
 
             --  Sloc1 in subunit, Sloc2 not
 
             else
                Sloc1 := Sloc (Corresponding_Stub (Unit1));
-               Unum1 := Get_Source_Unit (Sloc1);
-               goto Continue;
+
+               if Unum1 /= Get_Source_Unit (Sloc1) then
+                  Unum1 := Get_Source_Unit (Sloc1);
+                  goto Continue;
+               else
+                  null; --  Unum1 already designates the correct unit
+               end if;
             end if;
 
          --  Sloc2 in subunit, Sloc1 not
@@ -409,8 +422,13 @@ package body Lib is
            and then Inst2 = No_Location
          then
             Sloc2 := Sloc (Corresponding_Stub (Unit2));
-            Unum2 := Get_Source_Unit (Sloc2);
-            goto Continue;
+
+            if Unum2 /= Get_Source_Unit (Sloc2) then
+               Unum2 := Get_Source_Unit (Sloc2);
+               goto Continue;
+            else
+               null; --  Unum2 already designates the correct unit
+            end if;
          end if;
 
          --  Step 3: Check instances. The two locations may yield a common
@@ -1254,50 +1272,6 @@ package body Lib is
       TSN := TSN + 1;
    end Synchronize_Serial_Number;
 
-   ---------------
-   -- Tree_Read --
-   ---------------
-
-   procedure Tree_Read is
-      N : Nat;
-      S : String_Ptr;
-
-   begin
-      Units.Tree_Read;
-
-      --  Read Compilation_Switches table. First release the memory occupied
-      --  by the previously loaded switches.
-
-      for J in Compilation_Switches.First .. Compilation_Switches.Last loop
-         Free (Compilation_Switches.Table (J));
-      end loop;
-
-      Tree_Read_Int (N);
-      Compilation_Switches.Set_Last (N);
-
-      for J in 1 .. N loop
-         Tree_Read_Str (S);
-         Compilation_Switches.Table (J) := S;
-      end loop;
-   end Tree_Read;
-
-   ----------------
-   -- Tree_Write --
-   ----------------
-
-   procedure Tree_Write is
-   begin
-      Units.Tree_Write;
-
-      --  Write Compilation_Switches table
-
-      Tree_Write_Int (Compilation_Switches.Last);
-
-      for J in 1 .. Compilation_Switches.Last loop
-         Tree_Write_Str (Compilation_Switches.Table (J));
-      end loop;
-   end Tree_Write;
-
    --------------------
    -- Unit_Name_Hash --
    --------------------
@@ -1380,7 +1354,7 @@ package body Lib is
            and then (Nkind (Context_Item) /= N_With_Clause
                       or else Limited_Present (Context_Item))
          loop
-            Context_Item := Next (Context_Item);
+            Next (Context_Item);
          end loop;
 
          if Present (Context_Item) then
@@ -1404,7 +1378,7 @@ package body Lib is
                   Write_Eol;
                end if;
 
-               Context_Item := Next (Context_Item);
+               Next (Context_Item);
             end loop;
 
             Outdent;

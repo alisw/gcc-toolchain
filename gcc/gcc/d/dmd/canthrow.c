@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (C) 1999-2019 by The D Language Foundation, All Rights Reserved
+ * Copyright (C) 1999-2021 by The D Language Foundation, All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -77,7 +77,7 @@ bool canThrow(Expression *e, FuncDeclaration *func, bool mustNotThrow)
             {
                 if (ce->f)
                 {
-                    ce->error("%s '%s' is not nothrow",
+                    ce->error("%s `%s` is not nothrow",
                         ce->f->kind(), ce->f->toPrettyChars());
                 }
                 else
@@ -85,7 +85,7 @@ bool canThrow(Expression *e, FuncDeclaration *func, bool mustNotThrow)
                     Expression *e1 = ce->e1;
                     if (e1->op == TOKstar)   // print 'fp' if e1 is (*fp)
                         e1 = ((PtrExp *)e1)->e1;
-                    ce->error("'%s' is not nothrow", e1->toChars());
+                    ce->error("`%s` is not nothrow", e1->toChars());
                 }
             }
             stop = true;
@@ -103,7 +103,7 @@ bool canThrow(Expression *e, FuncDeclaration *func, bool mustNotThrow)
                     {
                         if (mustNotThrow)
                         {
-                            ne->error("%s '%s' is not nothrow",
+                            ne->error("%s `%s` is not nothrow",
                                 ne->allocator->kind(), ne->allocator->toPrettyChars());
                         }
                         stop = true;
@@ -115,7 +115,7 @@ bool canThrow(Expression *e, FuncDeclaration *func, bool mustNotThrow)
                 {
                     if (mustNotThrow)
                     {
-                        ne->error("%s '%s' is not nothrow",
+                        ne->error("%s `%s` is not nothrow",
                             ne->member->kind(), ne->member->toPrettyChars());
                     }
                     stop = true;
@@ -163,7 +163,7 @@ bool canThrow(Expression *e, FuncDeclaration *func, bool mustNotThrow)
                 {
                     if (mustNotThrow)
                     {
-                        de->error("%s '%s' is not nothrow",
+                        de->error("%s `%s` is not nothrow",
                             ad->dtor->kind(), ad->dtor->toPrettyChars());
                     }
                     stop = true;
@@ -176,7 +176,7 @@ bool canThrow(Expression *e, FuncDeclaration *func, bool mustNotThrow)
                 {
                     if (mustNotThrow)
                     {
-                        de->error("%s '%s' is not nothrow",
+                        de->error("%s `%s` is not nothrow",
                             ad->aggDelete->kind(), ad->aggDelete->toPrettyChars());
                     }
                     stop = true;
@@ -217,7 +217,7 @@ bool canThrow(Expression *e, FuncDeclaration *func, bool mustNotThrow)
             {
                 if (mustNotThrow)
                 {
-                    ae->error("%s '%s' is not nothrow",
+                    ae->error("%s `%s` is not nothrow",
                         sd->postblit->kind(), sd->postblit->toPrettyChars());
                 }
                 stop = true;
@@ -250,10 +250,10 @@ bool Dsymbol_canThrow(Dsymbol *s, FuncDeclaration *func, bool mustNotThrow)
     ad = s->isAttribDeclaration();
     if (ad)
     {
-        Dsymbols *decl = ad->include(NULL, NULL);
-        if (decl && decl->dim)
+        Dsymbols *decl = ad->include(NULL);
+        if (decl && decl->length)
         {
-            for (size_t i = 0; i < decl->dim; i++)
+            for (size_t i = 0; i < decl->length; i++)
             {
                 s = (*decl)[i];
                 if (Dsymbol_canThrow(s, func, mustNotThrow))
@@ -287,7 +287,7 @@ bool Dsymbol_canThrow(Dsymbol *s, FuncDeclaration *func, bool mustNotThrow)
         //printf("%s\n", tm->toChars());
         if (tm->members)
         {
-            for (size_t i = 0; i < tm->members->dim; i++)
+            for (size_t i = 0; i < tm->members->length; i++)
             {
                 Dsymbol *sm = (*tm->members)[i];
                 if (Dsymbol_canThrow(sm, func, mustNotThrow))
@@ -297,7 +297,7 @@ bool Dsymbol_canThrow(Dsymbol *s, FuncDeclaration *func, bool mustNotThrow)
     }
     else if ((td = s->isTupleDeclaration()) != NULL)
     {
-        for (size_t i = 0; i < td->objects->dim; i++)
+        for (size_t i = 0; i < td->objects->length; i++)
         {
             RootObject *o = (*td->objects)[i];
             if (o->dyncast() == DYNCAST_EXPRESSION)

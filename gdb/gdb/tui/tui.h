@@ -1,6 +1,6 @@
 /* External/Public TUI Header File.
 
-   Copyright (C) 1998-2020 Free Software Foundation, Inc.
+   Copyright (C) 1998-2022 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -38,6 +38,7 @@ enum tui_win_type
   DISASSEM_WIN,
   DATA_WIN,
   CMD_WIN,
+  STATUS_WIN,
   /* This must ALWAYS be AFTER the major windows last.  */
   MAX_MAJOR_WINDOWS,
 };

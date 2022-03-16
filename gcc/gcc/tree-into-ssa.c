@@ -1,5 +1,5 @@
 /* Rewrite a program in Normal form into SSA.
-   Copyright (C) 2001-2020 Free Software Foundation, Inc.
+   Copyright (C) 2001-2021 Free Software Foundation, Inc.
    Contributed by Diego Novillo <dnovillo@redhat.com>
 
 This file is part of GCC.
@@ -41,6 +41,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "stringpool.h"
 #include "attribs.h"
 #include "asan.h"
+#include "attr-fnspec.h"
 
 #define PERCENT(x,y) ((float)(x) * 100.0 / (float)(y))
 
@@ -323,7 +324,7 @@ get_ssa_name_ann (tree name)
 
   /* Re-allocate the vector at most once per update/into-SSA.  */
   if (ver >= len)
-    info_for_ssa_name.safe_grow_cleared (num_ssa_names);
+    info_for_ssa_name.safe_grow_cleared (num_ssa_names, true);
 
   /* But allocate infos lazily.  */
   info = info_for_ssa_name[ver];
@@ -944,7 +945,7 @@ mark_phi_for_rewrite (basic_block bb, gphi *phi)
     {
       n = (unsigned) last_basic_block_for_fn (cfun) + 1;
       if (phis_to_rewrite.length () < n)
-	phis_to_rewrite.safe_grow_cleared (n);
+	phis_to_rewrite.safe_grow_cleared (n, true);
 
       phis = phis_to_rewrite[idx];
       gcc_assert (!phis.exists ());
@@ -1411,6 +1412,10 @@ rewrite_stmt (gimple_stmt_iterator *si)
 	SET_DEF (def_p, name);
 	register_new_def (DEF_FROM_PTR (def_p), var);
 
+	/* Do not insert debug stmts if the stmt ends the BB.  */
+	if (stmt_ends_bb_p (stmt))
+	  continue;
+	
 	tracked_var = target_for_debug_bind (var);
 	if (tracked_var)
 	  {
@@ -2430,8 +2435,7 @@ pass_build_ssa::execute (function *fun)
   basic_block bb;
 
   /* Increase the set of variables we can rewrite into SSA form
-     by clearing TREE_ADDRESSABLE and setting DECL_GIMPLE_REG_P
-     and transform the IL to support this.  */
+     by clearing TREE_ADDRESSABLE and transform the IL to support this.  */
   if (optimize)
     execute_update_addresses_taken ();
 
@@ -2493,19 +2497,19 @@ pass_build_ssa::execute (function *fun)
     }
 
   /* Initialize SSA_NAME_POINTS_TO_READONLY_MEMORY.  */
-  tree fnspec = lookup_attribute ("fn spec",
-				  TYPE_ATTRIBUTES (TREE_TYPE (fun->decl)));
-  if (fnspec)
+  tree fnspec_tree
+	 = lookup_attribute ("fn spec",
+			     TYPE_ATTRIBUTES (TREE_TYPE (fun->decl)));
+  if (fnspec_tree)
     {
-      fnspec = TREE_VALUE (TREE_VALUE (fnspec));
-      unsigned i = 1;
+      attr_fnspec fnspec (TREE_VALUE (TREE_VALUE (fnspec_tree)));
+      unsigned i = 0;
       for (tree arg = DECL_ARGUMENTS (cfun->decl);
 	   arg; arg = DECL_CHAIN (arg), ++i)
 	{
-	  if (i >= (unsigned) TREE_STRING_LENGTH (fnspec))
-	    break;
-	  if (TREE_STRING_POINTER (fnspec)[i]  == 'R'
-	      || TREE_STRING_POINTER (fnspec)[i] == 'r')
+	  if (!fnspec.arg_specified_p (i))
+	   break;
+	  if (fnspec.arg_readonly_p (i))
 	    {
 	      tree name = ssa_default_def (fun, arg);
 	      if (name)

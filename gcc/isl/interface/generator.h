@@ -31,6 +31,19 @@ struct set_enum {
 		value(value), name(name), method_name(method_name) {}
 };
 
+/* Helper structure for sorting FunctionDecl pointers
+ * on the corresponding function names.
+ */
+struct function_name_less {
+	bool operator()(FunctionDecl *x, FunctionDecl *y) const {
+		return x->getName() < y->getName();
+	}
+};
+
+/* Set of FunctionDecl pointers sorted on function name.
+ */
+typedef std::set<FunctionDecl *, function_name_less> function_set;
+
 /* isl_class collects all constructors and methods for an isl "class".
  * "name" is the name of the class.
  * If this object describes a subclass of a C type, then
@@ -51,33 +64,51 @@ struct set_enum {
  * "fn_type" is a reference to a function that described subclasses, if any.
  * If "fn_type" is set, then "type_subclasses" maps the values returned
  * by that function to the names of the corresponding subclasses.
+ *
+ * The following fields are only used for the C++ bindings.
+ * For methods that are not derived from a function that applies
+ * directly to this class, but are rather copied from some ancestor,
+ * "copied_from" records the direct superclass from which the method
+ * was copied (where it may have been copied from a further ancestor) and
+ * "copy_depth" records the distance to the ancestor to which
+ * the function applies.
+ * "construction_types" contains the set of isl classes that can be
+ * implicitly converted to this class through a unary constructor,
+ * mapped to the single argument
+ * of this unary constructor.
  */
 struct isl_class {
 	string name;
 	string superclass_name;
 	string subclass_name;
 	RecordDecl *type;
-	set<FunctionDecl *> constructors;
+	function_set constructors;
 	set<FunctionDecl *> persistent_callbacks;
 	map<FunctionDecl *, vector<set_enum> > set_enums;
-	map<string, set<FunctionDecl *> > methods;
+	map<string, function_set> methods;
 	map<int, string> type_subclasses;
 	FunctionDecl *fn_type;
 	FunctionDecl *fn_to_str;
 	FunctionDecl *fn_copy;
 	FunctionDecl *fn_free;
 
+	std::map<clang::FunctionDecl *, const isl_class &> copied_from;
+	std::map<clang::FunctionDecl *, int> copy_depth;
+	std::map<std::string, clang::ParmVarDecl *> construction_types;
+
+	/* Is the first argument an instance of the class? */
+	bool first_arg_matches_class(FunctionDecl *method) const;
 	/* Does "method" correspond to a static method? */
 	bool is_static(FunctionDecl *method) const;
 	/* Is this class a subclass based on a type function? */
 	bool is_type_subclass() const { return name != subclass_name; }
-	/* Return name of "fd" without type suffix, if any. */
-	static string name_without_type_suffix(FunctionDecl *fd);
+	/* Return name of "fd" without type suffixes, if any. */
+	static string name_without_type_suffixes(FunctionDecl *fd);
 	/* Extract the method name corresponding to "fd"
 	 * (including "get" method prefix if any).
 	 */
 	string base_method_name(FunctionDecl *fd) const {
-		string m_name = name_without_type_suffix(fd);
+		string m_name = name_without_type_suffixes(fd);
 		return m_name.substr(subclass_name.length() + 1);
 	}
 	/* The prefix of a "get" method. */
@@ -106,6 +137,9 @@ struct isl_class {
 };
 
 /* Base class for interface generators.
+ *
+ * "conversions" maps the target type of automatic conversion
+ * to the second input argument of the conversion function.
  */
 class generator {
 protected:
@@ -129,7 +163,15 @@ protected:
 	isl_class *method2class(FunctionDecl *fd);
 	bool callback_takes_argument(ParmVarDecl *param, int pos);
 	FunctionDecl *find_by_name(const string &name, bool required);
+	std::map<const Type *, ParmVarDecl *> conversions;
+private:
+	static const std::set<std::string> automatic_conversion_functions;
+	void extract_automatic_conversion(FunctionDecl *fd);
+	void extract_class_automatic_conversions(const isl_class &clazz);
+	void extract_automatic_conversions();
 public:
+	static std::string drop_suffix(const std::string &s,
+		const std::string &suffix);
 	static void die(const char *msg) __attribute__((noreturn));
 	static void die(string msg) __attribute__((noreturn));
 	static vector<string> find_superclasses(Decl *decl);

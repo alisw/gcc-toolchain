@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
---               Copyright (C) 2019, Free Software Foundation, Inc.         --
+--               Copyright (C) 2019-2020, Free Software Foundation, Inc.    --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -47,6 +47,12 @@ package System.Bitfields is
    pragma Provide_Shift_Operators (Val_2);
    type Val is mod 2**Val_Bits with Alignment => Val_Bytes;
 
+   --  ??? It turns out that enabling checks on the instantiation of
+   --  System.Bitfield_Utils.G makes a latent visibility bug appear on strict
+   --  alignment platforms related to alignment checks. Work around it by
+   --  suppressing these checks explicitly.
+
+   pragma Suppress (Alignment_Check);
    package Utils is new System.Bitfield_Utils.G (Val, Val_2);
 
    procedure Copy_Bitfield

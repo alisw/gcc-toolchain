@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
---          Copyright (C) 2004-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 2004-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- This specification is derived from the Ada Reference Manual for use with --
 -- GNAT. The copyright notice above, and the license provisions that follow --
@@ -36,6 +36,7 @@ with Ada.Iterator_Interfaces;
 private with Ada.Containers.Hash_Tables;
 private with Ada.Finalization;
 private with Ada.Streams;
+private with Ada.Strings.Text_Output;
 
 --  The language-defined generic package Containers.Hashed_Maps provides
 --  private types Map and Cursor, and a set of operations for each type. A map
@@ -88,7 +89,9 @@ generic
    --  map values returns an unspecified value. The exact arguments and number
    --  of calls of this generic formal function by the function "=" on map
    --  values are unspecified.
-package Ada.Containers.Hashed_Maps is
+package Ada.Containers.Hashed_Maps with
+  SPARK_Mode => Off
+is
    pragma Annotate (CodePeer, Skip_Analysis);
    pragma Preelaborate;
    pragma Remote_Types;
@@ -98,7 +101,9 @@ package Ada.Containers.Hashed_Maps is
       Constant_Indexing => Constant_Reference,
       Variable_Indexing => Reference,
       Default_Iterator  => Iterate,
-      Iterator_Element  => Element_Type;
+      Iterator_Element  => Element_Type,
+      Aggregate         => (Empty     => Empty,
+                            Add_Named => Insert);
 
    pragma Preelaborable_Initialization (Map);
 
@@ -112,6 +117,8 @@ package Ada.Containers.Hashed_Maps is
    No_Element : constant Cursor;
    --  Cursor objects declared without an initialization expression are
    --  initialized to the value No_Element.
+
+   function Empty (Capacity : Count_Type := 1000) return Map;
 
    function Has_Element (Position : Cursor) return Boolean;
    --  Returns True if Position designates an element, and returns False
@@ -421,7 +428,10 @@ private
 
    type Map is new Ada.Finalization.Controlled with record
       HT : HT_Types.Hash_Table_Type;
-   end record;
+   end record with Put_Image => Put_Image;
+
+   procedure Put_Image
+     (S : in out Ada.Strings.Text_Output.Sink'Class; V : Map);
 
    overriding procedure Adjust (Container : in out Map);
 

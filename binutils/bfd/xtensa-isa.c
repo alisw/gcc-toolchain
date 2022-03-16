@@ -1,5 +1,5 @@
 /* Configurable Xtensa ISA support.
-   Copyright (C) 2003-2020 Free Software Foundation, Inc.
+   Copyright (C) 2003-2022 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -24,8 +24,8 @@
 #include "xtensa-isa.h"
 #include "xtensa-isa-internal.h"
 
-xtensa_isa_status xtisa_errno;
-char xtisa_error_msg[1024];
+static xtensa_isa_status xtisa_errno;
+static char xtisa_error_msg[1024];
 
 
 xtensa_isa_status
@@ -226,7 +226,6 @@ xtensa_insnbuf_from_chars (xtensa_isa isa,
       insn[word_inx] |= (unsigned) (*cp & 0xff) << bit_inx;
     }
 }
-
 
 
 /* ISA information.  */

@@ -1,6 +1,6 @@
 /* Test file for mpfr_set_float128 and mpfr_get_float128.
 
-Copyright 2012-2019 Free Software Foundation, Inc.
+Copyright 2012-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -28,18 +28,19 @@ https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 #ifdef MPFR_WANT_FLOAT128
 
 #include "mpfr-test.h"
+#include "ieee_floats.h"
 
 static void
 check_special (void)
 {
-  __float128 f;
+  _Float128 f;
   mpfr_t x;
 
   mpfr_init2 (x, 113);
 
 #if !defined(MPFR_ERRDIVZERO)
   /* check NaN */
-  f = 0.0 / 0.0;
+  f = MPFR_DBL_NAN;
   mpfr_set_float128 (x, f, MPFR_RNDN);
   if (! mpfr_nan_p (x))
     {
@@ -55,7 +56,7 @@ check_special (void)
     }
 
   /* check +Inf */
-  f = 1.0 / 0.0;
+  f = MPFR_DBL_INFP;
   mpfr_set_float128 (x, f, MPFR_RNDN);
   if (! mpfr_inf_p (x) || MPFR_IS_NEG (x))
     {
@@ -63,14 +64,14 @@ check_special (void)
       exit (1);
     }
   f = mpfr_get_float128 (x, MPFR_RNDN);
-  if (f != (1.0 / 0.0))
+  if (f != MPFR_DBL_INFP)
     {
       printf ("Error in mpfr_get_float128(+Inf)\n");
       exit (1);
     }
 
   /* check -Inf */
-  f = -1.0 / 0.0;
+  f = MPFR_DBL_INFM;
   mpfr_set_float128 (x, f, MPFR_RNDN);
   if (! mpfr_inf_p (x) || MPFR_IS_POS (x))
     {
@@ -78,7 +79,7 @@ check_special (void)
       exit (1);
     }
   f = mpfr_get_float128 (x, MPFR_RNDN);
-  if (f != (-1.0 / 0.0))
+  if (f != MPFR_DBL_INFM)
     {
       printf ("Error in mpfr_get_float128(-Inf)\n");
       exit (1);
@@ -100,7 +101,7 @@ check_special (void)
       exit (1);
     }
 #if !defined(MPFR_ERRDIVZERO) && defined(HAVE_SIGNEDZ)
-  if (1 / f != 1 / 0.0)  /* check the sign */
+  if (1 / f != MPFR_DBL_INFP)  /* check the sign */
     {
       printf ("Error in mpfr_get_float128(+0.0)\n");
       exit (1);
@@ -129,7 +130,7 @@ check_special (void)
       exit (1);
     }
 #if !defined(MPFR_ERRDIVZERO) && defined(HAVE_SIGNEDZ)
-  if (1 / f != 1 / -0.0)  /* check the sign */
+  if (1 / f != MPFR_DBL_INFM)  /* check the sign */
     {
       printf ("Error in mpfr_get_float128(-0.0)\n");
       exit (1);
@@ -143,7 +144,7 @@ static void
 check_large (void)
 {
   mpfr_exp_t emin, emax;
-  __float128 f, e;
+  _Float128 f, e;
   int i;
   mpfr_t x, y;
   int r;
@@ -158,9 +159,9 @@ check_large (void)
   /* check with the largest float128 number 2^16384*(1-2^(-113)) */
   for (f = 1.0, i = 0; i < 113; i++)
     f = f + f;
-  f = f - (__float128) 1.0;
+  f = f - (_Float128) 1.0;
   mpfr_set_ui (y, 1, MPFR_RNDN);
-  mpfr_mul_2exp (y, y, 113, MPFR_RNDN);
+  mpfr_mul_2ui (y, y, 113, MPFR_RNDN);
   mpfr_sub_ui (y, y, 1, MPFR_RNDN);
   for (i = 113; i < 16384; i++)
     {
@@ -239,7 +240,7 @@ check_small (void)
 {
   int t[5] = { 1, 2, 17, 111, 112 };
   mpfr_exp_t emin;
-  __float128 e, f;
+  _Float128 e, f;
   int i, j, neg, inex, r;
   mpfr_t w, x, y, z;
 
@@ -315,7 +316,7 @@ check_small (void)
             }
         }
       f =  0.5 * f;
-      mpfr_div_2exp (y, y, 1, MPFR_RNDN);
+      mpfr_div_2ui (y, y, 1, MPFR_RNDN);
     }
 
   mpfr_clears (w, x, y, z, (mpfr_ptr) 0);

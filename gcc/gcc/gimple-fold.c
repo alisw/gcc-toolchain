@@ -1,5 +1,5 @@
 /* Statement simplification on GIMPLE.
-   Copyright (C) 2010-2020 Free Software Foundation, Inc.
+   Copyright (C) 2010-2021 Free Software Foundation, Inc.
    Split out from tree-ssa-ccp.c.
 
 This file is part of GCC.
@@ -445,7 +445,8 @@ fold_gimple_assign (gimple_stmt_iterator *si)
 					   CONSTRUCTOR_ELTS (rhs));
 	  }
 
-	else if (DECL_P (rhs))
+	else if (DECL_P (rhs)
+		 && is_gimple_reg_type (TREE_TYPE (rhs)))
 	  return get_symbol_constant_value (rhs);
       }
       break;
@@ -700,7 +701,6 @@ gimple_fold_builtin_memory_op (gimple_stmt_iterator *gsi,
   gimple *stmt = gsi_stmt (*gsi);
   tree lhs = gimple_call_lhs (stmt);
   tree len = gimple_call_arg (stmt, 2);
-  tree destvar, srcvar;
   location_t loc = gimple_location (stmt);
 
   /* If the LEN parameter is a constant zero or in range where
@@ -741,15 +741,24 @@ gimple_fold_builtin_memory_op (gimple_stmt_iterator *gsi,
     }
   else
     {
-      tree srctype, desttype;
+      /* We cannot (easily) change the type of the copy if it is a storage
+	 order barrier, i.e. is equivalent to a VIEW_CONVERT_EXPR that can
+	 modify the storage order of objects (see storage_order_barrier_p).  */
+      tree srctype
+	= POINTER_TYPE_P (TREE_TYPE (src))
+	  ? TREE_TYPE (TREE_TYPE (src)) : NULL_TREE;
+      tree desttype
+	= POINTER_TYPE_P (TREE_TYPE (dest))
+	  ? TREE_TYPE (TREE_TYPE (dest)) : NULL_TREE;
+      tree destvar, srcvar, srcoff;
       unsigned int src_align, dest_align;
-      tree off0;
-      const char *tmp_str;
       unsigned HOST_WIDE_INT tmp_len;
+      const char *tmp_str;
 
       /* Build accesses at offset zero with a ref-all character type.  */
-      off0 = build_int_cst (build_pointer_type_for_mode (char_type_node,
-							 ptr_mode, true), 0);
+      tree off0
+	= build_int_cst (build_pointer_type_for_mode (char_type_node,
+						      ptr_mode, true), 0);
 
       /* If we can perform the copy efficiently with first doing all loads
          and then all stores inline it that way.  Currently efficiently
@@ -766,8 +775,14 @@ gimple_fold_builtin_memory_op (gimple_stmt_iterator *gsi,
 	     strlenopt tests that rely on it for passing are adjusted, this
 	     hack can be removed.  */
 	  && !c_strlen (src, 1)
-	  && !((tmp_str = c_getstr (src, &tmp_len)) != NULL
-	       && memchr (tmp_str, 0, tmp_len) == NULL))
+	  && !((tmp_str = getbyterep (src, &tmp_len)) != NULL
+	       && memchr (tmp_str, 0, tmp_len) == NULL)
+	  && !(srctype
+	       && AGGREGATE_TYPE_P (srctype)
+	       && TYPE_REVERSE_STORAGE_ORDER (srctype))
+	  && !(desttype
+	       && AGGREGATE_TYPE_P (desttype)
+	       && TYPE_REVERSE_STORAGE_ORDER (desttype)))
 	{
 	  unsigned ilen = tree_to_uhwi (len);
 	  if (pow2p_hwi (ilen))
@@ -947,8 +962,13 @@ gimple_fold_builtin_memory_op (gimple_stmt_iterator *gsi,
 
       if (!tree_fits_shwi_p (len))
 	return false;
-      if (!POINTER_TYPE_P (TREE_TYPE (src))
-	  || !POINTER_TYPE_P (TREE_TYPE (dest)))
+      if (!srctype
+	  || (AGGREGATE_TYPE_P (srctype)
+	      && TYPE_REVERSE_STORAGE_ORDER (srctype)))
+	return false;
+      if (!desttype
+	  || (AGGREGATE_TYPE_P (desttype)
+	      && TYPE_REVERSE_STORAGE_ORDER (desttype)))
 	return false;
       /* In the following try to find a type that is most natural to be
 	 used for the memcpy source and destination and that allows
@@ -956,11 +976,9 @@ gimple_fold_builtin_memory_op (gimple_stmt_iterator *gsi,
 	 using that type.  In theory we could always use a char[len] type
 	 but that only gains us that the destination and source possibly
 	 no longer will have their address taken.  */
-      srctype = TREE_TYPE (TREE_TYPE (src));
       if (TREE_CODE (srctype) == ARRAY_TYPE
 	  && !tree_int_cst_equal (TYPE_SIZE_UNIT (srctype), len))
 	srctype = TREE_TYPE (srctype);
-      desttype = TREE_TYPE (TREE_TYPE (dest));
       if (TREE_CODE (desttype) == ARRAY_TYPE
 	  && !tree_int_cst_equal (TYPE_SIZE_UNIT (desttype), len))
 	desttype = TREE_TYPE (desttype);
@@ -991,7 +1009,9 @@ gimple_fold_builtin_memory_op (gimple_stmt_iterator *gsi,
       /* Choose between src and destination type for the access based
          on alignment, whether the access constitutes a register access
 	 and whether it may actually expose a declaration for SSA rewrite
-	 or SRA decomposition.  */
+	 or SRA decomposition.  Also try to expose a string constant, we
+	 might be able to concatenate several of them later into a single
+	 string store.  */
       destvar = NULL_TREE;
       srcvar = NULL_TREE;
       if (TREE_CODE (dest) == ADDR_EXPR
@@ -1008,7 +1028,16 @@ gimple_fold_builtin_memory_op (gimple_stmt_iterator *gsi,
 	       && (is_gimple_reg_type (srctype)
 		   || dest_align >= TYPE_ALIGN (srctype)))
 	srcvar = fold_build2 (MEM_REF, srctype, src, off0);
-      if (srcvar == NULL_TREE && destvar == NULL_TREE)
+      /* FIXME: Don't transform copies from strings with known original length.
+	 As soon as strlenopt tests that rely on it for passing are adjusted,
+	 this hack can be removed.  */
+      else if (gimple_call_alloca_for_var_p (stmt)
+	       && (srcvar = string_constant (src, &srcoff, NULL, NULL))
+	       && integer_zerop (srcoff)
+	       && tree_int_cst_equal (TYPE_SIZE_UNIT (TREE_TYPE (srcvar)), len)
+	       && dest_align >= TYPE_ALIGN (TREE_TYPE (srcvar)))
+	srctype = TREE_TYPE (srcvar);
+      else
 	return false;
 
       /* Now that we chose an access type express the other side in
@@ -1071,19 +1100,29 @@ gimple_fold_builtin_memory_op (gimple_stmt_iterator *gsi,
 	  goto set_vop_and_replace;
 	}
 
-      /* We get an aggregate copy.  Use an unsigned char[] type to
-	 perform the copying to preserve padding and to avoid any issues
-	 with TREE_ADDRESSABLE types or float modes behavior on copying.  */
-      desttype = build_array_type_nelts (unsigned_char_type_node,
-					 tree_to_uhwi (len));
-      srctype = desttype;
-      if (src_align > TYPE_ALIGN (srctype))
-	srctype = build_aligned_type (srctype, src_align);
+      /* We get an aggregate copy.  If the source is a STRING_CST, then
+	 directly use its type to perform the copy.  */
+      if (TREE_CODE (srcvar) == STRING_CST)
+	  desttype = srctype;
+
+      /* Or else, use an unsigned char[] type to perform the copy in order
+	 to preserve padding and to avoid any issues with TREE_ADDRESSABLE
+	 types or float modes behavior on copying.  */
+      else
+	{
+	  desttype = build_array_type_nelts (unsigned_char_type_node,
+					     tree_to_uhwi (len));
+	  srctype = desttype;
+	  if (src_align > TYPE_ALIGN (srctype))
+	    srctype = build_aligned_type (srctype, src_align);
+	  srcvar = fold_build2 (MEM_REF, srctype, src, off0);
+	}
+
       if (dest_align > TYPE_ALIGN (desttype))
 	desttype = build_aligned_type (desttype, dest_align);
-      new_stmt
-	= gimple_build_assign (fold_build2 (MEM_REF, desttype, dest, off0),
-			       fold_build2 (MEM_REF, srctype, src, off0));
+      destvar = fold_build2 (MEM_REF, desttype, dest, off0);
+      new_stmt = gimple_build_assign (destvar, srcvar);
+
 set_vop_and_replace:
       gimple_move_vops (new_stmt, stmt);
       if (!lhs)
@@ -1837,7 +1876,7 @@ gimple_fold_builtin_strcpy (gimple_stmt_iterator *gsi,
     {
       /* Avoid folding calls with unterminated arrays.  */
       if (!gimple_no_warning_p (stmt))
-	warn_string_no_nul (loc, "strcpy", src, nonstr);
+	warn_string_no_nul (loc, NULL_TREE, "strcpy", src, nonstr);
       gimple_set_no_warning (stmt, true);
       return false;
     }
@@ -2426,8 +2465,8 @@ gimple_fold_builtin_string_compare (gimple_stmt_iterator *gsi)
      For nul-terminated strings then adjusted to their length so that
      LENx == NULPOSx holds.  */
   unsigned HOST_WIDE_INT len1 = HOST_WIDE_INT_MAX, len2 = len1;
-  const char *p1 = c_getstr (str1, &len1);
-  const char *p2 = c_getstr (str2, &len2);
+  const char *p1 = getbyterep (str1, &len1);
+  const char *p2 = getbyterep (str2, &len2);
 
   /* The position of the terminating nul character if one exists, otherwise
      a value greater than LENx.  */
@@ -2624,7 +2663,7 @@ gimple_fold_builtin_memchr (gimple_stmt_iterator *gsi)
 
   unsigned HOST_WIDE_INT length = tree_to_uhwi (len);
   unsigned HOST_WIDE_INT string_length;
-  const char *p1 = c_getstr (arg1, &string_length);
+  const char *p1 = getbyterep (arg1, &string_length);
 
   if (p1)
     {
@@ -2632,7 +2671,7 @@ gimple_fold_builtin_memchr (gimple_stmt_iterator *gsi)
       if (r == NULL)
 	{
 	  tree mem_size, offset_node;
-	  string_constant (arg1, &offset_node, &mem_size, NULL);
+	  byte_representation (arg1, &offset_node, &mem_size, NULL);
 	  unsigned HOST_WIDE_INT offset = (offset_node == NULL_TREE)
 					  ? 0 : tree_to_uhwi (offset_node);
 	  /* MEM_SIZE is the size of the array the string literal
@@ -2651,7 +2690,7 @@ gimple_fold_builtin_memchr (gimple_stmt_iterator *gsi)
 	  gimple_seq stmts = NULL;
 	  if (lhs != NULL_TREE)
 	    {
-	      tree offset_cst = build_int_cst (TREE_TYPE (len), offset);
+	      tree offset_cst = build_int_cst (sizetype, offset);
 	      gassign *stmt = gimple_build_assign (lhs, POINTER_PLUS_EXPR,
 						   arg1, offset_cst);
 	      gimple_seq_add_stmt_without_update (&stmts, stmt);
@@ -3036,11 +3075,16 @@ gimple_fold_builtin_stpcpy (gimple_stmt_iterator *gsi)
 
   /* Set to non-null if ARG refers to an unterminated array.  */
   c_strlen_data data = { };
+  /* The size of the unterminated array if SRC referes to one.  */
+  tree size;
+  /* True if the size is exact/constant, false if it's the lower bound
+     of a range.  */
+  bool exact;
   tree len = c_strlen (src, 1, &data, 1);
   if (!len
       || TREE_CODE (len) != INTEGER_CST)
     {
-      data.decl = unterminated_array (src);
+      data.decl = unterminated_array (src, &size, &exact);
       if (!data.decl)
 	return false;
     }
@@ -3049,7 +3093,8 @@ gimple_fold_builtin_stpcpy (gimple_stmt_iterator *gsi)
     {
       /* Avoid folding calls with unterminated arrays.  */
       if (!gimple_no_warning_p (stmt))
-	warn_string_no_nul (loc, "stpcpy", src, data.decl);
+	warn_string_no_nul (loc, NULL_TREE, "stpcpy", src, data.decl, size,
+			    exact);
       gimple_set_no_warning (stmt, true);
       return false;
     }
@@ -3273,10 +3318,6 @@ bool
 gimple_fold_builtin_sprintf (gimple_stmt_iterator *gsi)
 {
   gimple *stmt = gsi_stmt (*gsi);
-  tree dest = gimple_call_arg (stmt, 0);
-  tree fmt = gimple_call_arg (stmt, 1);
-  tree orig = NULL_TREE;
-  const char *fmt_str = NULL;
 
   /* Verify the required arguments in the original call.  We deal with two
      types of sprintf() calls: 'sprintf (str, fmt)' and
@@ -3284,25 +3325,28 @@ gimple_fold_builtin_sprintf (gimple_stmt_iterator *gsi)
   if (gimple_call_num_args (stmt) > 3)
     return false;
 
+  tree orig = NULL_TREE;
   if (gimple_call_num_args (stmt) == 3)
     orig = gimple_call_arg (stmt, 2);
 
   /* Check whether the format is a literal string constant.  */
-  fmt_str = c_getstr (fmt);
+  tree fmt = gimple_call_arg (stmt, 1);
+  const char *fmt_str = c_getstr (fmt);
   if (fmt_str == NULL)
     return false;
 
+  tree dest = gimple_call_arg (stmt, 0);
+
   if (!init_target_chars ())
+    return false;
+
+  tree fn = builtin_decl_implicit (BUILT_IN_STRCPY);
+  if (!fn)
     return false;
 
   /* If the format doesn't contain % args or %%, use strcpy.  */
   if (strchr (fmt_str, target_percent) == NULL)
     {
-      tree fn = builtin_decl_implicit (BUILT_IN_STRCPY);
-
-      if (!fn)
-	return false;
-
       /* Don't optimize sprintf (buf, "abc", ptr++).  */
       if (orig)
 	return false;
@@ -3343,14 +3387,13 @@ gimple_fold_builtin_sprintf (gimple_stmt_iterator *gsi)
   /* If the format is "%s", use strcpy if the result isn't used.  */
   else if (fmt_str && strcmp (fmt_str, target_percent_s) == 0)
     {
-      tree fn;
-      fn = builtin_decl_implicit (BUILT_IN_STRCPY);
-
-      if (!fn)
-	return false;
-
       /* Don't crash on sprintf (str1, "%s").  */
       if (!orig)
+	return false;
+
+      /* Don't fold calls with source arguments of invalid (nonpointer)
+	 types.  */
+      if (!POINTER_TYPE_P (TREE_TYPE (orig)))
 	return false;
 
       tree orig_len = NULL_TREE;
@@ -3904,6 +3947,858 @@ gimple_fold_builtin_realloc (gimple_stmt_iterator *gsi)
   return false;
 }
 
+/* Number of bytes into which any type but aggregate or vector types
+   should fit.  */
+static constexpr size_t clear_padding_unit
+  = MAX_BITSIZE_MODE_ANY_MODE / BITS_PER_UNIT;
+/* Buffer size on which __builtin_clear_padding folding code works.  */
+static const size_t clear_padding_buf_size = 32 * clear_padding_unit;
+
+/* Data passed through __builtin_clear_padding folding.  */
+struct clear_padding_struct {
+  location_t loc;
+  /* 0 during __builtin_clear_padding folding, nonzero during
+     clear_type_padding_in_mask.  In that case, instead of clearing the
+     non-padding bits in union_ptr array clear the padding bits in there.  */
+  bool clear_in_mask;
+  tree base;
+  tree alias_type;
+  gimple_stmt_iterator *gsi;
+  /* Alignment of buf->base + 0.  */
+  unsigned align;
+  /* Offset from buf->base.  Should be always a multiple of UNITS_PER_WORD.  */
+  HOST_WIDE_INT off;
+  /* Number of padding bytes before buf->off that don't have padding clear
+     code emitted yet.  */
+  HOST_WIDE_INT padding_bytes;
+  /* The size of the whole object.  Never emit code to touch
+     buf->base + buf->sz or following bytes.  */
+  HOST_WIDE_INT sz;
+  /* Number of bytes recorded in buf->buf.  */
+  size_t size;
+  /* When inside union, instead of emitting code we and bits inside of
+     the union_ptr array.  */
+  unsigned char *union_ptr;
+  /* Set bits mean padding bits that need to be cleared by the builtin.  */
+  unsigned char buf[clear_padding_buf_size + clear_padding_unit];
+};
+
+/* Emit code to clear padding requested in BUF->buf - set bits
+   in there stand for padding that should be cleared.  FULL is true
+   if everything from the buffer should be flushed, otherwise
+   it can leave up to 2 * clear_padding_unit bytes for further
+   processing.  */
+
+static void
+clear_padding_flush (clear_padding_struct *buf, bool full)
+{
+  gcc_assert ((clear_padding_unit % UNITS_PER_WORD) == 0);
+  if (!full && buf->size < 2 * clear_padding_unit)
+    return;
+  gcc_assert ((buf->off % UNITS_PER_WORD) == 0);
+  size_t end = buf->size;
+  if (!full)
+    end = ((end - clear_padding_unit - 1) / clear_padding_unit
+	   * clear_padding_unit);
+  size_t padding_bytes = buf->padding_bytes;
+  if (buf->union_ptr)
+    {
+      if (buf->clear_in_mask)
+	{
+	  /* During clear_type_padding_in_mask, clear the padding
+	     bits set in buf->buf in the buf->union_ptr mask.  */
+	  for (size_t i = 0; i < end; i++)
+	    {
+	      if (buf->buf[i] == (unsigned char) ~0)
+		padding_bytes++;
+	      else
+		{
+		  memset (&buf->union_ptr[buf->off + i - padding_bytes],
+			  0, padding_bytes);
+		  padding_bytes = 0;
+		  buf->union_ptr[buf->off + i] &= ~buf->buf[i];
+		}
+	    }
+	  if (full)
+	    {
+	      memset (&buf->union_ptr[buf->off + end - padding_bytes],
+		      0, padding_bytes);
+	      buf->off = 0;
+	      buf->size = 0;
+	      buf->padding_bytes = 0;
+	    }
+	  else
+	    {
+	      memmove (buf->buf, buf->buf + end, buf->size - end);
+	      buf->off += end;
+	      buf->size -= end;
+	      buf->padding_bytes = padding_bytes;
+	    }
+	  return;
+	}
+      /* Inside of a union, instead of emitting any code, instead
+	 clear all bits in the union_ptr buffer that are clear
+	 in buf.  Whole padding bytes don't clear anything.  */
+      for (size_t i = 0; i < end; i++)
+	{
+	  if (buf->buf[i] == (unsigned char) ~0)
+	    padding_bytes++;
+	  else
+	    {
+	      padding_bytes = 0;
+	      buf->union_ptr[buf->off + i] &= buf->buf[i];
+	    }
+	}
+      if (full)
+	{
+	  buf->off = 0;
+	  buf->size = 0;
+	  buf->padding_bytes = 0;
+	}
+      else
+	{
+	  memmove (buf->buf, buf->buf + end, buf->size - end);
+	  buf->off += end;
+	  buf->size -= end;
+	  buf->padding_bytes = padding_bytes;
+	}
+      return;
+    }
+  size_t wordsize = UNITS_PER_WORD;
+  for (size_t i = 0; i < end; i += wordsize)
+    {
+      size_t nonzero_first = wordsize;
+      size_t nonzero_last = 0;
+      size_t zero_first = wordsize;
+      size_t zero_last = 0;
+      bool all_ones = true, bytes_only = true;
+      if ((unsigned HOST_WIDE_INT) (buf->off + i + wordsize)
+	  > (unsigned HOST_WIDE_INT) buf->sz)
+	{
+	  gcc_assert (wordsize > 1);
+	  wordsize /= 2;
+	  i -= wordsize;
+	  continue;
+	}
+      for (size_t j = i; j < i + wordsize && j < end; j++)
+	{
+	  if (buf->buf[j])
+	    {
+	      if (nonzero_first == wordsize)
+		{
+		  nonzero_first = j - i;
+		  nonzero_last = j - i;
+		}
+	      if (nonzero_last != j - i)
+		all_ones = false;
+	      nonzero_last = j + 1 - i;
+	    }
+	  else
+	    {
+	      if (zero_first == wordsize)
+		zero_first = j - i;
+	      zero_last = j + 1 - i;
+	    }
+	  if (buf->buf[j] != 0 && buf->buf[j] != (unsigned char) ~0)
+	    {
+	      all_ones = false;
+	      bytes_only = false;
+	    }
+	}
+      size_t padding_end = i;
+      if (padding_bytes)
+	{
+	  if (nonzero_first == 0
+	      && nonzero_last == wordsize
+	      && all_ones)
+	    {
+	      /* All bits are padding and we had some padding
+		 before too.  Just extend it.  */
+	      padding_bytes += wordsize;
+	      continue;
+	    }
+	  if (all_ones && nonzero_first == 0)
+	    {
+	      padding_bytes += nonzero_last;
+	      padding_end += nonzero_last;
+	      nonzero_first = wordsize;
+	      nonzero_last = 0;
+	    }
+	  else if (bytes_only && nonzero_first == 0)
+	    {
+	      gcc_assert (zero_first && zero_first != wordsize);
+	      padding_bytes += zero_first;
+	      padding_end += zero_first;
+	    }
+	  tree atype, src;
+	  if (padding_bytes == 1)
+	    {
+	      atype = char_type_node;
+	      src = build_zero_cst (char_type_node);
+	    }
+	  else
+	    {
+	      atype = build_array_type_nelts (char_type_node, padding_bytes);
+	      src = build_constructor (atype, NULL);
+	    }
+	  tree dst = build2_loc (buf->loc, MEM_REF, atype, buf->base,
+				 build_int_cst (buf->alias_type,
+						buf->off + padding_end
+						- padding_bytes));
+	  gimple *g = gimple_build_assign (dst, src);
+	  gimple_set_location (g, buf->loc);
+	  gsi_insert_before (buf->gsi, g, GSI_SAME_STMT);
+	  padding_bytes = 0;
+	  buf->padding_bytes = 0;
+	}
+      if (nonzero_first == wordsize)
+	/* All bits in a word are 0, there are no padding bits.  */
+	continue;
+      if (all_ones && nonzero_last == wordsize)
+	{
+	  /* All bits between nonzero_first and end of word are padding
+	     bits, start counting padding_bytes.  */
+	  padding_bytes = nonzero_last - nonzero_first;
+	  continue;
+	}
+      if (bytes_only)
+	{
+	  /* If bitfields aren't involved in this word, prefer storing
+	     individual bytes or groups of them over performing a RMW
+	     operation on the whole word.  */
+	  gcc_assert (i + zero_last <= end);
+	  for (size_t j = padding_end; j < i + zero_last; j++)
+	    {
+	      if (buf->buf[j])
+		{
+		  size_t k;
+		  for (k = j; k < i + zero_last; k++)
+		    if (buf->buf[k] == 0)
+		      break;
+		  HOST_WIDE_INT off = buf->off + j;
+		  tree atype, src;
+		  if (k - j == 1)
+		    {
+		      atype = char_type_node;
+		      src = build_zero_cst (char_type_node);
+		    }
+		  else
+		    {
+		      atype = build_array_type_nelts (char_type_node, k - j);
+		      src = build_constructor (atype, NULL);
+		    }
+		  tree dst = build2_loc (buf->loc, MEM_REF, atype,
+					 buf->base,
+					 build_int_cst (buf->alias_type, off));
+		  gimple *g = gimple_build_assign (dst, src);
+		  gimple_set_location (g, buf->loc);
+		  gsi_insert_before (buf->gsi, g, GSI_SAME_STMT);
+		  j = k;
+		}
+	    }
+	  if (nonzero_last == wordsize)
+	    padding_bytes = nonzero_last - zero_last;
+	  continue;
+	}
+      for (size_t eltsz = 1; eltsz <= wordsize; eltsz <<= 1)
+	{
+	  if (nonzero_last - nonzero_first <= eltsz
+	      && ((nonzero_first & ~(eltsz - 1))
+		  == ((nonzero_last - 1) & ~(eltsz - 1))))
+	    {
+	      tree type;
+	      if (eltsz == 1)
+		type = char_type_node;
+	      else
+		type = lang_hooks.types.type_for_size (eltsz * BITS_PER_UNIT,
+						       0);
+	      size_t start = nonzero_first & ~(eltsz - 1);
+	      HOST_WIDE_INT off = buf->off + i + start;
+	      tree atype = type;
+	      if (eltsz > 1 && buf->align < TYPE_ALIGN (type))
+		atype = build_aligned_type (type, buf->align);
+	      tree dst = build2_loc (buf->loc, MEM_REF, atype, buf->base,
+				     build_int_cst (buf->alias_type, off));
+	      tree src;
+	      gimple *g;
+	      if (all_ones
+		  && nonzero_first == start
+		  && nonzero_last == start + eltsz)
+		src = build_zero_cst (type);
+	      else
+		{
+		  src = make_ssa_name (type);
+		  g = gimple_build_assign (src, unshare_expr (dst));
+		  gimple_set_location (g, buf->loc);
+		  gsi_insert_before (buf->gsi, g, GSI_SAME_STMT);
+		  tree mask = native_interpret_expr (type,
+						     buf->buf + i + start,
+						     eltsz);
+		  gcc_assert (mask && TREE_CODE (mask) == INTEGER_CST);
+		  mask = fold_build1 (BIT_NOT_EXPR, type, mask);
+		  tree src_masked = make_ssa_name (type);
+		  g = gimple_build_assign (src_masked, BIT_AND_EXPR,
+					   src, mask);
+		  gimple_set_location (g, buf->loc);
+		  gsi_insert_before (buf->gsi, g, GSI_SAME_STMT);
+		  src = src_masked;
+		}
+	      g = gimple_build_assign (dst, src);
+	      gimple_set_location (g, buf->loc);
+	      gsi_insert_before (buf->gsi, g, GSI_SAME_STMT);
+	      break;
+	    }
+	}
+    }
+  if (full)
+    {
+      if (padding_bytes)
+	{
+	  tree atype, src;
+	  if (padding_bytes == 1)
+	    {
+	      atype = char_type_node;
+	      src = build_zero_cst (char_type_node);
+	    }
+	  else
+	    {
+	      atype = build_array_type_nelts (char_type_node, padding_bytes);
+	      src = build_constructor (atype, NULL);
+	    }
+	  tree dst = build2_loc (buf->loc, MEM_REF, atype, buf->base,
+				 build_int_cst (buf->alias_type,
+						buf->off + end
+						- padding_bytes));
+	  gimple *g = gimple_build_assign (dst, src);
+	  gimple_set_location (g, buf->loc);
+	  gsi_insert_before (buf->gsi, g, GSI_SAME_STMT);
+	}
+      size_t end_rem = end % UNITS_PER_WORD;
+      buf->off += end - end_rem;
+      buf->size = end_rem;
+      memset (buf->buf, 0, buf->size);
+      buf->padding_bytes = 0;
+    }
+  else
+    {
+      memmove (buf->buf, buf->buf + end, buf->size - end);
+      buf->off += end;
+      buf->size -= end;
+      buf->padding_bytes = padding_bytes;
+    }
+}
+
+/* Append PADDING_BYTES padding bytes.  */
+
+static void
+clear_padding_add_padding (clear_padding_struct *buf,
+			   HOST_WIDE_INT padding_bytes)
+{
+  if (padding_bytes == 0)
+    return;
+  if ((unsigned HOST_WIDE_INT) padding_bytes + buf->size
+      > (unsigned HOST_WIDE_INT) clear_padding_buf_size)
+    clear_padding_flush (buf, false);
+  if ((unsigned HOST_WIDE_INT) padding_bytes + buf->size
+      > (unsigned HOST_WIDE_INT) clear_padding_buf_size)
+    {
+      memset (buf->buf + buf->size, ~0, clear_padding_buf_size - buf->size);
+      padding_bytes -= clear_padding_buf_size - buf->size;
+      buf->size = clear_padding_buf_size;
+      clear_padding_flush (buf, false);
+      gcc_assert (buf->padding_bytes);
+      /* At this point buf->buf[0] through buf->buf[buf->size - 1]
+	 is guaranteed to be all ones.  */
+      padding_bytes += buf->size;
+      buf->size = padding_bytes % UNITS_PER_WORD;
+      memset (buf->buf, ~0, buf->size);
+      buf->off += padding_bytes - buf->size;
+      buf->padding_bytes += padding_bytes - buf->size;
+    }
+  else
+    {
+      memset (buf->buf + buf->size, ~0, padding_bytes);
+      buf->size += padding_bytes;
+    }
+}
+
+static void clear_padding_type (clear_padding_struct *, tree, HOST_WIDE_INT);
+
+/* Clear padding bits of union type TYPE.  */
+
+static void
+clear_padding_union (clear_padding_struct *buf, tree type, HOST_WIDE_INT sz)
+{
+  clear_padding_struct *union_buf;
+  HOST_WIDE_INT start_off = 0, next_off = 0;
+  size_t start_size = 0;
+  if (buf->union_ptr)
+    {
+      start_off = buf->off + buf->size;
+      next_off = start_off + sz;
+      start_size = start_off % UNITS_PER_WORD;
+      start_off -= start_size;
+      clear_padding_flush (buf, true);
+      union_buf = buf;
+    }
+  else
+    {
+      if (sz + buf->size > clear_padding_buf_size)
+	clear_padding_flush (buf, false);
+      union_buf = XALLOCA (clear_padding_struct);
+      union_buf->loc = buf->loc;
+      union_buf->clear_in_mask = buf->clear_in_mask;
+      union_buf->base = NULL_TREE;
+      union_buf->alias_type = NULL_TREE;
+      union_buf->gsi = NULL;
+      union_buf->align = 0;
+      union_buf->off = 0;
+      union_buf->padding_bytes = 0;
+      union_buf->sz = sz;
+      union_buf->size = 0;
+      if (sz + buf->size <= clear_padding_buf_size)
+	union_buf->union_ptr = buf->buf + buf->size;
+      else
+	union_buf->union_ptr = XNEWVEC (unsigned char, sz);
+      memset (union_buf->union_ptr, ~0, sz);
+    }
+
+  for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
+    if (TREE_CODE (field) == FIELD_DECL && !DECL_PADDING_P (field))
+      {
+	if (DECL_SIZE_UNIT (field) == NULL_TREE)
+	  {
+	    if (TREE_TYPE (field) == error_mark_node)
+	      continue;
+	    gcc_assert (TREE_CODE (TREE_TYPE (field)) == ARRAY_TYPE
+			&& !COMPLETE_TYPE_P (TREE_TYPE (field)));
+	    if (!buf->clear_in_mask)
+	      error_at (buf->loc, "flexible array member %qD does not have "
+				  "well defined padding bits for %qs",
+			field, "__builtin_clear_padding");
+	    continue;
+	  }
+	HOST_WIDE_INT fldsz = tree_to_shwi (DECL_SIZE_UNIT (field));
+	gcc_assert (union_buf->size == 0);
+	union_buf->off = start_off;
+	union_buf->size = start_size;
+	memset (union_buf->buf, ~0, start_size);
+	clear_padding_type (union_buf, TREE_TYPE (field), fldsz);
+	clear_padding_add_padding (union_buf, sz - fldsz);
+	clear_padding_flush (union_buf, true);
+      }
+
+  if (buf == union_buf)
+    {
+      buf->off = next_off;
+      buf->size = next_off % UNITS_PER_WORD;
+      buf->off -= buf->size;
+      memset (buf->buf, ~0, buf->size);
+    }
+  else if (sz + buf->size <= clear_padding_buf_size)
+    buf->size += sz;
+  else
+    {
+      unsigned char *union_ptr = union_buf->union_ptr;
+      while (sz)
+	{
+	  clear_padding_flush (buf, false);
+	  HOST_WIDE_INT this_sz
+	    = MIN ((unsigned HOST_WIDE_INT) sz,
+		   clear_padding_buf_size - buf->size);
+	  memcpy (buf->buf + buf->size, union_ptr, this_sz);
+	  buf->size += this_sz;
+	  union_ptr += this_sz;
+	  sz -= this_sz;
+	}
+      XDELETE (union_buf->union_ptr);
+    }
+}
+
+/* The only known floating point formats with padding bits are the
+   IEEE extended ones.  */
+
+static bool
+clear_padding_real_needs_padding_p (tree type)
+{
+  const struct real_format *fmt = REAL_MODE_FORMAT (TYPE_MODE (type));
+  return (fmt->b == 2
+	  && fmt->signbit_ro == fmt->signbit_rw
+	  && (fmt->signbit_ro == 79 || fmt->signbit_ro == 95));
+}
+
+/* Return true if TYPE might contain any padding bits.  */
+
+static bool
+clear_padding_type_may_have_padding_p (tree type)
+{
+  switch (TREE_CODE (type))
+    {
+    case RECORD_TYPE:
+    case UNION_TYPE:
+      return true;
+    case ARRAY_TYPE:
+    case COMPLEX_TYPE:
+    case VECTOR_TYPE:
+      return clear_padding_type_may_have_padding_p (TREE_TYPE (type));
+    case REAL_TYPE:
+      return clear_padding_real_needs_padding_p (type);
+    default:
+      return false;
+    }
+}
+
+/* Emit a runtime loop:
+   for (; buf.base != end; buf.base += sz)
+     __builtin_clear_padding (buf.base);  */
+
+static void
+clear_padding_emit_loop (clear_padding_struct *buf, tree type, tree end)
+{
+  tree l1 = create_artificial_label (buf->loc);
+  tree l2 = create_artificial_label (buf->loc);
+  tree l3 = create_artificial_label (buf->loc);
+  gimple *g = gimple_build_goto (l2);
+  gimple_set_location (g, buf->loc);
+  gsi_insert_before (buf->gsi, g, GSI_SAME_STMT);
+  g = gimple_build_label (l1);
+  gimple_set_location (g, buf->loc);
+  gsi_insert_before (buf->gsi, g, GSI_SAME_STMT);
+  clear_padding_type (buf, type, buf->sz);
+  clear_padding_flush (buf, true);
+  g = gimple_build_assign (buf->base, POINTER_PLUS_EXPR, buf->base,
+			   size_int (buf->sz));
+  gimple_set_location (g, buf->loc);
+  gsi_insert_before (buf->gsi, g, GSI_SAME_STMT);
+  g = gimple_build_label (l2);
+  gimple_set_location (g, buf->loc);
+  gsi_insert_before (buf->gsi, g, GSI_SAME_STMT);
+  g = gimple_build_cond (NE_EXPR, buf->base, end, l1, l3);
+  gimple_set_location (g, buf->loc);
+  gsi_insert_before (buf->gsi, g, GSI_SAME_STMT);
+  g = gimple_build_label (l3);
+  gimple_set_location (g, buf->loc);
+  gsi_insert_before (buf->gsi, g, GSI_SAME_STMT);
+}
+
+/* Clear padding bits for TYPE.  Called recursively from
+   gimple_fold_builtin_clear_padding.  */
+
+static void
+clear_padding_type (clear_padding_struct *buf, tree type, HOST_WIDE_INT sz)
+{
+  switch (TREE_CODE (type))
+    {
+    case RECORD_TYPE:
+      HOST_WIDE_INT cur_pos;
+      cur_pos = 0;
+      for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
+	if (TREE_CODE (field) == FIELD_DECL && !DECL_PADDING_P (field))
+	  {
+	    tree ftype = TREE_TYPE (field);
+	    if (DECL_BIT_FIELD (field))
+	      {
+		HOST_WIDE_INT fldsz = TYPE_PRECISION (ftype);
+		if (fldsz == 0)
+		  continue;
+		HOST_WIDE_INT pos = int_byte_position (field);
+		HOST_WIDE_INT bpos
+		  = tree_to_uhwi (DECL_FIELD_BIT_OFFSET (field));
+		bpos %= BITS_PER_UNIT;
+		HOST_WIDE_INT end
+		  = ROUND_UP (bpos + fldsz, BITS_PER_UNIT) / BITS_PER_UNIT;
+		if (pos + end > cur_pos)
+		  {
+		    clear_padding_add_padding (buf, pos + end - cur_pos);
+		    cur_pos = pos + end;
+		  }
+		gcc_assert (cur_pos > pos
+			    && ((unsigned HOST_WIDE_INT) buf->size
+				>= (unsigned HOST_WIDE_INT) cur_pos - pos));
+		unsigned char *p = buf->buf + buf->size - (cur_pos - pos);
+		if (BYTES_BIG_ENDIAN != WORDS_BIG_ENDIAN)
+		  sorry_at (buf->loc, "PDP11 bit-field handling unsupported"
+				      " in %qs", "__builtin_clear_padding");
+		else if (BYTES_BIG_ENDIAN)
+		  {
+		    /* Big endian.  */
+		    if (bpos + fldsz <= BITS_PER_UNIT)
+		      *p &= ~(((1 << fldsz) - 1)
+			      << (BITS_PER_UNIT - bpos - fldsz));
+		    else
+		      {
+			if (bpos)
+			  {
+			    *p &= ~(((1U << BITS_PER_UNIT) - 1) >> bpos);
+			    p++;
+			    fldsz -= BITS_PER_UNIT - bpos;
+			  }
+			memset (p, 0, fldsz / BITS_PER_UNIT);
+			p += fldsz / BITS_PER_UNIT;
+			fldsz %= BITS_PER_UNIT;
+			if (fldsz)
+			  *p &= ((1U << BITS_PER_UNIT) - 1) >> fldsz;
+		      }
+		  }
+		else
+		  {
+		    /* Little endian.  */
+		    if (bpos + fldsz <= BITS_PER_UNIT)
+		      *p &= ~(((1 << fldsz) - 1) << bpos);
+		    else
+		      {
+			if (bpos)
+			  {
+			    *p &= ~(((1 << BITS_PER_UNIT) - 1) << bpos);
+			    p++;
+			    fldsz -= BITS_PER_UNIT - bpos;
+			  }
+			memset (p, 0, fldsz / BITS_PER_UNIT);
+			p += fldsz / BITS_PER_UNIT;
+			fldsz %= BITS_PER_UNIT;
+			if (fldsz)
+			  *p &= ~((1 << fldsz) - 1);
+		      }
+		  }
+	      }
+	    else if (DECL_SIZE_UNIT (field) == NULL_TREE)
+	      {
+		if (ftype == error_mark_node)
+		  continue;
+		gcc_assert (TREE_CODE (ftype) == ARRAY_TYPE
+			    && !COMPLETE_TYPE_P (ftype));
+		if (!buf->clear_in_mask)
+		  error_at (buf->loc, "flexible array member %qD does not "
+				      "have well defined padding bits for %qs",
+			    field, "__builtin_clear_padding");
+	      }
+	    else if (is_empty_type (TREE_TYPE (field)))
+	      continue;
+	    else
+	      {
+		HOST_WIDE_INT pos = int_byte_position (field);
+		HOST_WIDE_INT fldsz = tree_to_shwi (DECL_SIZE_UNIT (field));
+		gcc_assert (pos >= 0 && fldsz >= 0 && pos >= cur_pos);
+		clear_padding_add_padding (buf, pos - cur_pos);
+		cur_pos = pos;
+		clear_padding_type (buf, TREE_TYPE (field), fldsz);
+		cur_pos += fldsz;
+	      }
+	  }
+      gcc_assert (sz >= cur_pos);
+      clear_padding_add_padding (buf, sz - cur_pos);
+      break;
+    case ARRAY_TYPE:
+      HOST_WIDE_INT nelts, fldsz;
+      fldsz = int_size_in_bytes (TREE_TYPE (type));
+      if (fldsz == 0)
+	break;
+      nelts = sz / fldsz;
+      if (nelts > 1
+	  && sz > 8 * UNITS_PER_WORD
+	  && buf->union_ptr == NULL
+	  && clear_padding_type_may_have_padding_p (TREE_TYPE (type)))
+	{
+	  /* For sufficiently large array of more than one elements,
+	     emit a runtime loop to keep code size manageable.  */
+	  tree base = buf->base;
+	  unsigned int prev_align = buf->align;
+	  HOST_WIDE_INT off = buf->off + buf->size;
+	  HOST_WIDE_INT prev_sz = buf->sz;
+	  clear_padding_flush (buf, true);
+	  tree elttype = TREE_TYPE (type);
+	  buf->base = create_tmp_var (build_pointer_type (elttype));
+	  tree end = make_ssa_name (TREE_TYPE (buf->base));
+	  gimple *g = gimple_build_assign (buf->base, POINTER_PLUS_EXPR,
+					   base, size_int (off));
+	  gimple_set_location (g, buf->loc);
+	  gsi_insert_before (buf->gsi, g, GSI_SAME_STMT);
+	  g = gimple_build_assign (end, POINTER_PLUS_EXPR, buf->base,
+				   size_int (sz));
+	  gimple_set_location (g, buf->loc);
+	  gsi_insert_before (buf->gsi, g, GSI_SAME_STMT);
+	  buf->sz = fldsz;
+	  buf->align = TYPE_ALIGN (elttype);
+	  buf->off = 0;
+	  buf->size = 0;
+	  clear_padding_emit_loop (buf, elttype, end);
+	  buf->base = base;
+	  buf->sz = prev_sz;
+	  buf->align = prev_align;
+	  buf->size = off % UNITS_PER_WORD;
+	  buf->off = off - buf->size;
+	  memset (buf->buf, 0, buf->size);
+	  break;
+	}
+      for (HOST_WIDE_INT i = 0; i < nelts; i++)
+	clear_padding_type (buf, TREE_TYPE (type), fldsz);
+      break;
+    case UNION_TYPE:
+      clear_padding_union (buf, type, sz);
+      break;
+    case REAL_TYPE:
+      gcc_assert ((size_t) sz <= clear_padding_unit);
+      if ((unsigned HOST_WIDE_INT) sz + buf->size > clear_padding_buf_size)
+	clear_padding_flush (buf, false);
+      if (clear_padding_real_needs_padding_p (type))
+	{
+	  /* Use native_interpret_expr + native_encode_expr to figure out
+	     which bits are padding.  */
+	  memset (buf->buf + buf->size, ~0, sz);
+	  tree cst = native_interpret_expr (type, buf->buf + buf->size, sz);
+	  gcc_assert (cst && TREE_CODE (cst) == REAL_CST);
+	  int len = native_encode_expr (cst, buf->buf + buf->size, sz);
+	  gcc_assert (len > 0 && (size_t) len == (size_t) sz);
+	  for (size_t i = 0; i < (size_t) sz; i++)
+	    buf->buf[buf->size + i] ^= ~0;
+	}
+      else
+	memset (buf->buf + buf->size, 0, sz);
+      buf->size += sz;
+      break;
+    case COMPLEX_TYPE:
+      fldsz = int_size_in_bytes (TREE_TYPE (type));
+      clear_padding_type (buf, TREE_TYPE (type), fldsz);
+      clear_padding_type (buf, TREE_TYPE (type), fldsz);
+      break;
+    case VECTOR_TYPE:
+      nelts = TYPE_VECTOR_SUBPARTS (type).to_constant ();
+      fldsz = int_size_in_bytes (TREE_TYPE (type));
+      for (HOST_WIDE_INT i = 0; i < nelts; i++)
+	clear_padding_type (buf, TREE_TYPE (type), fldsz);
+      break;
+    case NULLPTR_TYPE:
+      gcc_assert ((size_t) sz <= clear_padding_unit);
+      if ((unsigned HOST_WIDE_INT) sz + buf->size > clear_padding_buf_size)
+	clear_padding_flush (buf, false);
+      memset (buf->buf + buf->size, ~0, sz);
+      buf->size += sz;
+      break;
+    default:
+      gcc_assert ((size_t) sz <= clear_padding_unit);
+      if ((unsigned HOST_WIDE_INT) sz + buf->size > clear_padding_buf_size)
+	clear_padding_flush (buf, false);
+      memset (buf->buf + buf->size, 0, sz);
+      buf->size += sz;
+      break;
+    }
+}
+
+/* Clear padding bits of TYPE in MASK.  */
+
+void
+clear_type_padding_in_mask (tree type, unsigned char *mask)
+{
+  clear_padding_struct buf;
+  buf.loc = UNKNOWN_LOCATION;
+  buf.clear_in_mask = true;
+  buf.base = NULL_TREE;
+  buf.alias_type = NULL_TREE;
+  buf.gsi = NULL;
+  buf.align = 0;
+  buf.off = 0;
+  buf.padding_bytes = 0;
+  buf.sz = int_size_in_bytes (type);
+  buf.size = 0;
+  buf.union_ptr = mask;
+  clear_padding_type (&buf, type, buf.sz);
+  clear_padding_flush (&buf, true);
+}
+
+/* Fold __builtin_clear_padding builtin.  */
+
+static bool
+gimple_fold_builtin_clear_padding (gimple_stmt_iterator *gsi)
+{
+  gimple *stmt = gsi_stmt (*gsi);
+  gcc_assert (gimple_call_num_args (stmt) == 2);
+  tree ptr = gimple_call_arg (stmt, 0);
+  tree typearg = gimple_call_arg (stmt, 1);
+  tree type = TREE_TYPE (TREE_TYPE (typearg));
+  location_t loc = gimple_location (stmt);
+  clear_padding_struct buf;
+  gimple_stmt_iterator gsiprev = *gsi;
+  /* This should be folded during the lower pass.  */
+  gcc_assert (!gimple_in_ssa_p (cfun) && cfun->cfg == NULL);
+  gcc_assert (COMPLETE_TYPE_P (type));
+  gsi_prev (&gsiprev);
+
+  buf.loc = loc;
+  buf.clear_in_mask = false;
+  buf.base = ptr;
+  buf.alias_type = NULL_TREE;
+  buf.gsi = gsi;
+  buf.align = get_pointer_alignment (ptr);
+  unsigned int talign = min_align_of_type (type) * BITS_PER_UNIT;
+  buf.align = MAX (buf.align, talign);
+  buf.off = 0;
+  buf.padding_bytes = 0;
+  buf.size = 0;
+  buf.sz = int_size_in_bytes (type);
+  buf.union_ptr = NULL;
+  if (buf.sz < 0 && int_size_in_bytes (strip_array_types (type)) < 0)
+    sorry_at (loc, "%s not supported for variable length aggregates",
+	      "__builtin_clear_padding");
+  /* The implementation currently assumes 8-bit host and target
+     chars which is the case for all currently supported targets
+     and hosts and is required e.g. for native_{encode,interpret}* APIs.  */
+  else if (CHAR_BIT != 8 || BITS_PER_UNIT != 8)
+    sorry_at (loc, "%s not supported on this target",
+	      "__builtin_clear_padding");
+  else if (!clear_padding_type_may_have_padding_p (type))
+    ;
+  else if (TREE_CODE (type) == ARRAY_TYPE && buf.sz < 0)
+    {
+      tree sz = TYPE_SIZE_UNIT (type);
+      tree elttype = type;
+      /* Only supports C/C++ VLAs and flattens all the VLA levels.  */
+      while (TREE_CODE (elttype) == ARRAY_TYPE
+	     && int_size_in_bytes (elttype) < 0)
+	elttype = TREE_TYPE (elttype);
+      HOST_WIDE_INT eltsz = int_size_in_bytes (elttype);
+      gcc_assert (eltsz >= 0);
+      if (eltsz)
+	{
+	  buf.base = create_tmp_var (build_pointer_type (elttype));
+	  tree end = make_ssa_name (TREE_TYPE (buf.base));
+	  gimple *g = gimple_build_assign (buf.base, ptr);
+	  gimple_set_location (g, loc);
+	  gsi_insert_before (gsi, g, GSI_SAME_STMT);
+	  g = gimple_build_assign (end, POINTER_PLUS_EXPR, buf.base, sz);
+	  gimple_set_location (g, loc);
+	  gsi_insert_before (gsi, g, GSI_SAME_STMT);
+	  buf.sz = eltsz;
+	  buf.align = TYPE_ALIGN (elttype);
+	  buf.alias_type = build_pointer_type (elttype);
+	  clear_padding_emit_loop (&buf, elttype, end);
+	}
+    }
+  else
+    {
+      if (!is_gimple_mem_ref_addr (buf.base))
+	{
+	  buf.base = make_ssa_name (TREE_TYPE (ptr));
+	  gimple *g = gimple_build_assign (buf.base, ptr);
+	  gimple_set_location (g, loc);
+	  gsi_insert_before (gsi, g, GSI_SAME_STMT);
+	}
+      buf.alias_type = build_pointer_type (type);
+      clear_padding_type (&buf, type, buf.sz);
+      clear_padding_flush (&buf, true);
+    }
+
+  gimple_stmt_iterator gsiprev2 = *gsi;
+  gsi_prev (&gsiprev2);
+  if (gsi_stmt (gsiprev) == gsi_stmt (gsiprev2))
+    gsi_replace (gsi, gimple_build_nop (), true);
+  else
+    {
+      gsi_remove (gsi, true);
+      *gsi = gsiprev2;
+    }
+  return true;
+}
+
 /* Fold the non-target builtin at *GSI and return whether any simplification
    was made.  */
 
@@ -4060,6 +4955,9 @@ gimple_fold_builtin (gimple_stmt_iterator *gsi)
 						gimple_call_arg (stmt, 0));
     case BUILT_IN_REALLOC:
       return gimple_fold_builtin_realloc (gsi);
+
+    case BUILT_IN_CLEAR_PADDING:
+      return gimple_fold_builtin_clear_padding (gsi);
 
     default:;
     }
@@ -4302,7 +5200,7 @@ gimple_fold_mask_load_store_mem_ref (gcall *call, tree vectype)
   if (!tree_fits_uhwi_p (alias_align) || !integer_all_onesp (mask))
     return NULL_TREE;
 
-  unsigned HOST_WIDE_INT align = tree_to_uhwi (alias_align) * BITS_PER_UNIT;
+  unsigned HOST_WIDE_INT align = tree_to_uhwi (alias_align);
   if (TYPE_ALIGN (vectype) != align)
     vectype = build_aligned_type (vectype, align);
   tree offset = build_zero_cst (TREE_TYPE (alias_align));
@@ -4837,9 +5735,10 @@ replace_stmt_with_simplification (gimple_stmt_iterator *gsi,
 /* Canonicalize MEM_REFs invariant address operand after propagation.  */
 
 static bool
-maybe_canonicalize_mem_ref_addr (tree *t)
+maybe_canonicalize_mem_ref_addr (tree *t, bool is_debug = false)
 {
   bool res = false;
+  tree *orig_t = t;
 
   if (TREE_CODE (*t) == ADDR_EXPR)
     t = &TREE_OPERAND (*t, 0);
@@ -4900,7 +5799,11 @@ maybe_canonicalize_mem_ref_addr (tree *t)
 	  base = get_addr_base_and_unit_offset (TREE_OPERAND (addr, 0),
 						&coffset);
 	  if (!base)
-	    gcc_unreachable ();
+	    {
+	      if (is_debug)
+		return false;
+	      gcc_unreachable ();
+	    }
 
 	  TREE_OPERAND (*t, 0) = build_fold_addr_expr (base);
 	  TREE_OPERAND (*t, 1) = int_const_binop (PLUS_EXPR,
@@ -4940,6 +5843,31 @@ maybe_canonicalize_mem_ref_addr (tree *t)
 	}
     }
 
+  else if (TREE_CODE (*orig_t) == ADDR_EXPR
+	   && TREE_CODE (*t) == MEM_REF
+	   && TREE_CODE (TREE_OPERAND (*t, 0)) == INTEGER_CST)
+    {
+      tree base;
+      poly_int64 coffset;
+      base = get_addr_base_and_unit_offset (TREE_OPERAND (*orig_t, 0),
+					    &coffset);
+      if (base)
+	{
+	  gcc_assert (TREE_CODE (base) == MEM_REF);
+	  poly_int64 moffset;
+	  if (mem_ref_offset (base).to_shwi (&moffset))
+	    {
+	      coffset += moffset;
+	      if (wi::to_poly_wide (TREE_OPERAND (base, 0)).to_shwi (&moffset))
+		{
+		  coffset += moffset;
+		  *orig_t = build_int_cst (TREE_TYPE (*orig_t), coffset);
+		  return true;
+		}
+	    }
+	}
+    }
+
   /* Canonicalize TARGET_MEM_REF in particular with respect to
      the indexes becoming constant.  */
   else if (TREE_CODE (*t) == TARGET_MEM_REF)
@@ -4948,6 +5876,8 @@ maybe_canonicalize_mem_ref_addr (tree *t)
       if (tem)
 	{
 	  *t = tem;
+	  if (TREE_CODE (*orig_t) == ADDR_EXPR)
+	    recompute_tree_invariant_for_addr_expr (*orig_t);
 	  res = true;
 	}
     }
@@ -5055,7 +5985,7 @@ fold_stmt_1 (gimple_stmt_iterator *gsi, bool inplace, tree (*valueize) (tree))
 	  if (*val
 	      && (REFERENCE_CLASS_P (*val)
 		  || TREE_CODE (*val) == ADDR_EXPR)
-	      && maybe_canonicalize_mem_ref_addr (val))
+	      && maybe_canonicalize_mem_ref_addr (val, true))
 	    changed = true;
 	}
       break;
@@ -7078,7 +8008,7 @@ fold_const_aggregate_ref_1 (tree t, tree (*valueize) (tree))
 	      poly_offset_int woffset
 		= wi::sext (wi::to_poly_offset (idx)
 			    - wi::to_poly_offset (low_bound),
-			    TYPE_PRECISION (TREE_TYPE (idx)));
+			    TYPE_PRECISION (sizetype));
 	      woffset *= tree_to_uhwi (unit_size);
 	      woffset *= BITS_PER_UNIT;
 	      if (woffset.to_shwi (&offset))
@@ -7125,8 +8055,64 @@ fold_const_aggregate_ref_1 (tree t, tree (*valueize) (tree))
       if (maybe_lt (offset, 0))
 	return NULL_TREE;
 
-      return fold_ctor_reference (TREE_TYPE (t), ctor, offset, size,
-				  base);
+      tem = fold_ctor_reference (TREE_TYPE (t), ctor, offset, size, base);
+      if (tem)
+	return tem;
+
+      /* For bit field reads try to read the representative and
+	 adjust.  */
+      if (TREE_CODE (t) == COMPONENT_REF
+	  && DECL_BIT_FIELD (TREE_OPERAND (t, 1))
+	  && DECL_BIT_FIELD_REPRESENTATIVE (TREE_OPERAND (t, 1)))
+	{
+	  HOST_WIDE_INT csize, coffset;
+	  tree field = TREE_OPERAND (t, 1);
+	  tree repr = DECL_BIT_FIELD_REPRESENTATIVE (field);
+	  if (INTEGRAL_TYPE_P (TREE_TYPE (repr))
+	      && size.is_constant (&csize)
+	      && offset.is_constant (&coffset)
+	      && (coffset % BITS_PER_UNIT != 0
+		  || csize % BITS_PER_UNIT != 0)
+	      && !reverse
+	      && BYTES_BIG_ENDIAN == WORDS_BIG_ENDIAN)
+	    {
+	      poly_int64 bitoffset;
+	      poly_uint64 field_offset, repr_offset;
+	      if (poly_int_tree_p (DECL_FIELD_OFFSET (field), &field_offset)
+		  && poly_int_tree_p (DECL_FIELD_OFFSET (repr), &repr_offset))
+		bitoffset = (field_offset - repr_offset) * BITS_PER_UNIT;
+	      else
+		bitoffset = 0;
+	      bitoffset += (tree_to_uhwi (DECL_FIELD_BIT_OFFSET (field))
+			    - tree_to_uhwi (DECL_FIELD_BIT_OFFSET (repr)));
+	      HOST_WIDE_INT bitoff;
+	      int diff = (TYPE_PRECISION (TREE_TYPE (repr))
+			  - TYPE_PRECISION (TREE_TYPE (field)));
+	      if (bitoffset.is_constant (&bitoff)
+		  && bitoff >= 0
+		  && bitoff <= diff)
+		{
+		  offset -= bitoff;
+		  size = tree_to_uhwi (DECL_SIZE (repr));
+
+		  tem = fold_ctor_reference (TREE_TYPE (repr), ctor, offset,
+					     size, base);
+		  if (tem && TREE_CODE (tem) == INTEGER_CST)
+		    {
+		      if (!BYTES_BIG_ENDIAN)
+			tem = wide_int_to_tree (TREE_TYPE (field),
+						wi::lrshift (wi::to_wide (tem),
+							     bitoff));
+		      else
+			tem = wide_int_to_tree (TREE_TYPE (field),
+						wi::lrshift (wi::to_wide (tem),
+							     diff - bitoff));
+		      return tem;
+		    }
+		}
+	    }
+	}
+      break;
 
     case REALPART_EXPR:
     case IMAGPART_EXPR:
@@ -7558,6 +8544,32 @@ gimple_build (gimple_seq *seq, location_t loc,
   return res;
 }
 
+/* Build the call FN () with a result of type TYPE (or no result if TYPE is
+   void) with a location LOC.  Returns the built expression value (or NULL_TREE
+   if TYPE is void) and appends statements possibly defining it to SEQ.  */
+
+tree
+gimple_build (gimple_seq *seq, location_t loc, combined_fn fn, tree type)
+{
+  tree res = NULL_TREE;
+  gcall *stmt;
+  if (internal_fn_p (fn))
+    stmt = gimple_build_call_internal (as_internal_fn (fn), 0);
+  else
+    {
+      tree decl = builtin_decl_implicit (as_builtin_fn (fn));
+      stmt = gimple_build_call (decl, 0);
+    }
+  if (!VOID_TYPE_P (type))
+    {
+      res = create_tmp_reg_or_ssa_name (type);
+      gimple_call_set_lhs (stmt, res);
+    }
+  gimple_set_location (stmt, loc);
+  gimple_seq_add_stmt_without_update (seq, stmt);
+  return res;
+}
+
 /* Build the call FN (ARG0) with a result of type TYPE
    (or no result if TYPE is void) with location LOC,
    simplifying it first if possible.  Returns the built
@@ -7725,7 +8737,7 @@ gimple_build_vector (gimple_seq *seq, location_t loc,
   gcc_assert (builder->nelts_per_pattern () <= 2);
   unsigned int encoded_nelts = builder->encoded_nelts ();
   for (unsigned int i = 0; i < encoded_nelts; ++i)
-    if (!TREE_CONSTANT ((*builder)[i]))
+    if (!CONSTANT_CLASS_P ((*builder)[i]))
       {
 	tree type = builder->type ();
 	unsigned int nelts = TYPE_VECTOR_SUBPARTS (type).to_constant ();
@@ -7745,6 +8757,26 @@ gimple_build_vector (gimple_seq *seq, location_t loc,
 	return res;
       }
   return builder->build ();
+}
+
+/* Emit gimple statements into &stmts that take a value given in OLD_SIZE
+   and generate a value guaranteed to be rounded upwards to ALIGN.
+
+   Return the tree node representing this size, it is of TREE_TYPE TYPE.  */
+
+tree
+gimple_build_round_up (gimple_seq *seq, location_t loc, tree type,
+		       tree old_size, unsigned HOST_WIDE_INT align)
+{
+  unsigned HOST_WIDE_INT tg_mask = align - 1;
+  /* tree new_size = (old_size + tg_mask) & ~tg_mask;  */
+  gcc_assert (INTEGRAL_TYPE_P (type));
+  tree tree_mask = build_int_cst (type, tg_mask);
+  tree oversize = gimple_build (seq, loc, PLUS_EXPR, type, old_size,
+				tree_mask);
+
+  tree mask = build_int_cst (type, -align);
+  return gimple_build (seq, loc, BIT_AND_EXPR, type, oversize, mask);
 }
 
 /* Return true if the result of assignment STMT is known to be non-negative.

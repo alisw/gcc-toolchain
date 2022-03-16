@@ -1,6 +1,6 @@
 // unique_ptr implementation -*- C++ -*-
 
-// Copyright (C) 2008-2020 Free Software Foundation, Inc.
+// Copyright (C) 2008-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -906,7 +906,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       return compare_three_way()(__x.get(), static_cast<pointer>(nullptr));
     }
 #endif
-  // @} relates unique_ptr
+  /// @} relates unique_ptr
 
   /// @cond undocumented
   template<typename _Up, typename _Ptr = typename _Up::pointer,
@@ -969,9 +969,29 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   /// Disable std::make_unique for arrays of known bound
   template<typename _Tp, typename... _Args>
-    inline typename _MakeUniq<_Tp>::__invalid_type
+    typename _MakeUniq<_Tp>::__invalid_type
     make_unique(_Args&&...) = delete;
-  // @} relates unique_ptr
+
+#if __cplusplus > 201703L
+  /// std::make_unique_for_overwrite for single objects
+  template<typename _Tp>
+    inline typename _MakeUniq<_Tp>::__single_object
+    make_unique_for_overwrite()
+    { return unique_ptr<_Tp>(new _Tp); }
+
+  /// std::make_unique_for_overwrite for arrays of unknown bound
+  template<typename _Tp>
+    inline typename _MakeUniq<_Tp>::__array
+    make_unique_for_overwrite(size_t __n)
+    { return unique_ptr<_Tp>(new remove_extent_t<_Tp>[__n]); }
+
+  /// Disable std::make_unique_for_overwrite for arrays of known bound
+  template<typename _Tp, typename... _Args>
+    typename _MakeUniq<_Tp>::__invalid_type
+    make_unique_for_overwrite(_Args&&...) = delete;
+#endif // C++20
+
+  /// @} relates unique_ptr
 #endif // C++14
 
 #if __cplusplus > 201703L && __cpp_concepts
@@ -989,7 +1009,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 #endif // C++20
 
-  // @} group pointer_abstractions
+  /// @} group pointer_abstractions
 
 #if __cplusplus >= 201703L
   namespace __detail::__variant

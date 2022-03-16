@@ -1,7 +1,7 @@
 /* Miscellaneous utilities for tree streaming.  Things that are used
    in both input and output are here.
 
-   Copyright (C) 2011-2020 Free Software Foundation, Inc.
+   Copyright (C) 2011-2021 Free Software Foundation, Inc.
    Contributed by Diego Novillo <dnovillo@google.com>
 
 This file is part of GCC.
@@ -299,10 +299,11 @@ record_common_node (struct streamer_tree_cache_d *cache, tree node)
   if (!node)
     node = error_mark_node;
 
-  /* ???  FIXME, devise a better hash value.  But the hash needs to be equal
-     for all frontend and lto1 invocations.  So just use the position
-     in the cache as hash value.  */
-  streamer_tree_cache_append (cache, node, cache->nodes.length ());
+  /* This hash needs to be equal for all frontend and lto1 invocations.  So
+     just use the position in the cache as hash value.
+     Small integers are used by hash_tree to record positions within scc
+     hash. Values are not in same range.  */
+  streamer_tree_cache_append (cache, node, cache->next_idx + 0xc001);
 
   switch (TREE_CODE (node))
     {
@@ -316,6 +317,7 @@ record_common_node (struct streamer_tree_cache_d *cache, tree node)
     case TREE_LIST:
     case VOID_CST:
     case VOID_TYPE:
+    case OPAQUE_TYPE:
       /* No recursive trees.  */
       break;
     case ARRAY_TYPE:

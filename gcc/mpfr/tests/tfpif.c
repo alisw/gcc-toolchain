@@ -1,6 +1,6 @@
 /* Test file for mpfr_fpif.
 
-Copyright 2012-2019 Free Software Foundation, Inc.
+Copyright 2012-2020 Free Software Foundation, Inc.
 Contributed by Olivier Demengeon.
 
 This file is part of the GNU MPFR Library.
@@ -20,6 +20,8 @@ along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
 https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
+#include <errno.h>
+
 #include "mpfr-test.h"
 
 #define FILE_NAME_RW "tfpif_rw.dat" /* temporary name (written then read) */
@@ -27,11 +29,15 @@ https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 #define FILE_NAME_R2 "tfpif_r2.dat" /* fixed file name (read only) with a
                                        precision > MPFR_PREC_MAX */
 
+/* Note: The perror below must be called just after the failing function,
+   thus before fprintf (otherwise one could get an error associated with
+   fprintf). */
+
 static void
 doit (int argc, char *argv[], mpfr_prec_t p1, mpfr_prec_t p2)
 {
-  char *filenameCompressed = FILE_NAME_RW;
-  char *data = FILE_NAME_R;
+  const char *filenameCompressed = FILE_NAME_RW;
+  const char *data = FILE_NAME_R;
   int status;
   FILE *fh;
   mpfr_t x[9];
@@ -58,7 +64,9 @@ doit (int argc, char *argv[], mpfr_prec_t p1, mpfr_prec_t p2)
   fh = fopen (filenameCompressed, "w");
   if (fh == NULL)
     {
-      printf ("Failed to open for writing %s\n", filenameCompressed);
+      perror ("doit");
+      fprintf (stderr, "Failed to open \"%s\" for writing\n",
+               filenameCompressed);
       exit (1);
     }
 
@@ -80,13 +88,20 @@ doit (int argc, char *argv[], mpfr_prec_t p1, mpfr_prec_t p2)
           MPFR_CHANGE_SIGN (x[i]);
       }
 
-  fclose (fh);
+  if (fclose (fh) != 0)
+    {
+      perror ("doit");
+      fprintf (stderr, "Failed to close \"%s\"\n", filenameCompressed);
+      exit (1);
+    }
 
   /* we then read back FILE_NAME_RW and check we get the same numbers x[i] */
   fh = fopen (filenameCompressed, "r");
   if (fh == NULL)
     {
-      printf ("Failed to open for reading %s\n", filenameCompressed);
+      perror ("doit");
+      fprintf (stderr, "Failed to open \"%s\" for reading\n",
+               filenameCompressed);
       exit (1);
     }
 
@@ -141,7 +156,8 @@ doit (int argc, char *argv[], mpfr_prec_t p1, mpfr_prec_t p2)
   fh = src_fopen (data, "r");
   if (fh == NULL)
     {
-      printf ("Failed to open for reading %s in srcdir\n", data);
+      perror ("doit");
+      fprintf (stderr, "Failed to open \"%s\" in srcdir for reading\n", data);
       exit (1);
     }
 
@@ -198,7 +214,7 @@ doit (int argc, char *argv[], mpfr_prec_t p1, mpfr_prec_t p2)
 static void
 check_bad (void)
 {
-  char *filenameCompressed = FILE_NAME_RW;
+  const char *filenameCompressed = FILE_NAME_RW;
   int status;
   FILE *fh;
   mpfr_t x;
@@ -219,20 +235,33 @@ check_bad (void)
   if (status == 0)
     {
       printf ("mpfr_fpif_export did not fail with a NULL file\n");
-      exit(1);
+      exit (1);
     }
   status = mpfr_fpif_import (x, NULL);
   if (status == 0)
     {
       printf ("mpfr_fpif_import did not fail with a NULL file\n");
-      exit(1);
+      exit (1);
     }
 
+  /* Since the file will be read after writing to it and a rewind, we need
+     to open it in mode "w+".
+     Note: mode "w" was used previously, and the issue remained undetected
+     until a test on AIX, where the fclose failed with the error:
+       check_bad: A file descriptor does not refer to an open file.
+     (the exit code of fclose has been checked since r13549 / 2019-08-09,
+     at the same time "w+" was changed to "w" by mistake).
+     What actually happened is that the fread in mpfr_fpif_import failed,
+     but this was not tested. So a test of errno has been added below;
+     with mode "w" (instead of "w+"), it yields:
+       check_bad: Bad file descriptor
+     as expected. */
   fh = fopen (filenameCompressed, "w+");
   if (fh == NULL)
     {
-      printf ("Failed to open for reading/writing %s, exiting...\n",
-            filenameCompressed);
+      perror ("check_bad");
+      fprintf (stderr, "Failed to open \"%s\" for writing\n",
+              filenameCompressed);
       fclose (fh);
       remove (filenameCompressed);
       exit (1);
@@ -243,7 +272,7 @@ check_bad (void)
       printf ("mpfr_fpif_import did not fail on a empty file\n");
       fclose (fh);
       remove (filenameCompressed);
-      exit(1);
+      exit (1);
     }
 
   for (i = 0; i < BAD; i++)
@@ -266,10 +295,23 @@ check_bad (void)
           printf ("Write error on the test file\n");
           fclose (fh);
           remove (filenameCompressed);
-          exit(1);
+          exit (1);
         }
       rewind (fh);
+      /* The check of errno below is needed to make sure that
+         mpfr_fpif_import fails due to bad data, not for some
+         arbitrary system error. */
+      errno = 0;
       status = mpfr_fpif_import (x, fh);
+      if (errno != 0)
+        {
+          perror ("check_bad");
+          fprintf (stderr, "mpfr_fpif_import failed with unexpected"
+                   " errno = %d (and status = %d)\n", errno, status);
+          fclose (fh);
+          remove (filenameCompressed);
+          exit (1);
+        }
       if (status == 0)
         {
           printf ("mpfr_fpif_import did not fail on a bad imported data\n");
@@ -307,20 +349,27 @@ check_bad (void)
             }
           fclose (fh);
           remove (filenameCompressed);
-          exit(1);
+          exit (1);
         }
       if (i == 9)
         mpfr_set_emax (emax);
     }
 
-  fclose (fh);
+  if (fclose (fh) != 0)
+    {
+      perror ("check_bad");
+      fprintf (stderr, "Failed to close \"%s\"\n", filenameCompressed);
+      exit (1);
+    }
+
   mpfr_clear (x);
 
   fh = fopen (filenameCompressed, "r");
   if (fh == NULL)
     {
-      printf ("Failed to open for reading %s, exiting...\n",
-              filenameCompressed);
+      perror ("check_bad");
+      fprintf (stderr, "Failed to open \"%s\" for reading\n",
+               filenameCompressed);
       exit (1);
     }
 
@@ -329,7 +378,7 @@ check_bad (void)
   if (status == 0)
     {
       printf ("mpfr_fpif_export did not fail on a read only stream\n");
-      exit(1);
+      exit (1);
     }
   fclose (fh);
   remove (filenameCompressed);
@@ -340,7 +389,7 @@ check_bad (void)
 static void
 extra (void)
 {
-  char *data = FILE_NAME_R2;
+  const char *data = FILE_NAME_R2;
   mpfr_t x;
   FILE *fp;
   int ret;
@@ -350,7 +399,8 @@ extra (void)
   fp = src_fopen (data, "r");
   if (fp == NULL)
     {
-      printf ("Failed to open for reading %s in srcdir, exiting...\n", data);
+      perror ("extra");
+      fprintf (stderr, "Failed to open \"%s\" in srcdir for reading\n", data);
       exit (1);
     }
   ret = mpfr_fpif_import (x, fp);

@@ -1,5 +1,5 @@
 /* Vector API for GNU compiler.
-   Copyright (C) 2004-2020 Free Software Foundation, Inc.
+   Copyright (C) 2004-2021 Free Software Foundation, Inc.
    Contributed by Nathan Sidwell <nathan@codesourcery.com>
    Re-implemented in C++ by Diego Novillo <dnovillo@google.com>
 
@@ -419,6 +419,16 @@ struct GTY((user)) vec
 {
 };
 
+/* Allow C++11 range-based 'for' to work directly on vec<T>*.  */
+template<typename T, typename A, typename L>
+T* begin (vec<T,A,L> *v) { return v ? v->begin () : nullptr; }
+template<typename T, typename A, typename L>
+T* end (vec<T,A,L> *v) { return v ? v->end () : nullptr; }
+template<typename T, typename A, typename L>
+const T* begin (const vec<T,A,L> *v) { return v ? v->begin () : nullptr; }
+template<typename T, typename A, typename L>
+const T* end (const vec<T,A,L> *v) { return v ? v->end () : nullptr; }
+
 /* Generic vec<> debug helpers.
 
    These need to be instantiated for each vec<TYPE> used throughout
@@ -540,7 +550,7 @@ vec_copy_construct (T *dst, const T *src, unsigned n)
 struct vnull
 {
   template <typename T, typename A, typename L>
-  CONSTEXPR operator vec<T, A, L> () { return vec<T, A, L>(); }
+  CONSTEXPR operator vec<T, A, L> () const { return vec<T, A, L>(); }
 };
 extern vnull vNULL;
 
@@ -723,11 +733,12 @@ vec_free (vec<T, A, vl_embed> *&v)
 /* Grow V to length LEN.  Allocate it, if necessary.  */
 template<typename T, typename A>
 inline void
-vec_safe_grow (vec<T, A, vl_embed> *&v, unsigned len CXX_MEM_STAT_INFO)
+vec_safe_grow (vec<T, A, vl_embed> *&v, unsigned len,
+	       bool exact = false CXX_MEM_STAT_INFO)
 {
   unsigned oldlen = vec_safe_length (v);
   gcc_checking_assert (len >= oldlen);
-  vec_safe_reserve_exact (v, len - oldlen PASS_MEM_STAT);
+  vec_safe_reserve (v, len - oldlen, exact PASS_MEM_STAT);
   v->quick_grow (len);
 }
 
@@ -735,10 +746,11 @@ vec_safe_grow (vec<T, A, vl_embed> *&v, unsigned len CXX_MEM_STAT_INFO)
 /* If V is NULL, allocate it.  Call V->safe_grow_cleared(LEN).  */
 template<typename T, typename A>
 inline void
-vec_safe_grow_cleared (vec<T, A, vl_embed> *&v, unsigned len CXX_MEM_STAT_INFO)
+vec_safe_grow_cleared (vec<T, A, vl_embed> *&v, unsigned len,
+		       bool exact = false CXX_MEM_STAT_INFO)
 {
   unsigned oldlen = vec_safe_length (v);
-  vec_safe_grow (v, len PASS_MEM_STAT);
+  vec_safe_grow (v, len, exact PASS_MEM_STAT);
   vec_default_construct (v->address () + oldlen, len - oldlen);
 }
 
@@ -748,9 +760,20 @@ vec_safe_grow_cleared (vec<T, A, vl_embed> *&v, unsigned len CXX_MEM_STAT_INFO)
 template<typename T>
 inline void
 vec_safe_grow_cleared (vec<T, va_heap, vl_ptr> *&v,
-		       unsigned len CXX_MEM_STAT_INFO)
+		       unsigned len, bool exact = false CXX_MEM_STAT_INFO)
 {
-  v->safe_grow_cleared (len PASS_MEM_STAT);
+  v->safe_grow_cleared (len, exact PASS_MEM_STAT);
+}
+
+/* If V does not have space for NELEMS elements, call
+   V->reserve(NELEMS, EXACT).  */
+
+template<typename T>
+inline bool
+vec_safe_reserve (vec<T, va_heap, vl_ptr> *&v, unsigned nelems, bool exact = false
+		  CXX_MEM_STAT_INFO)
+{
+  return v->reserve (nelems, exact);
 }
 
 
@@ -1270,8 +1293,13 @@ template<typename T, typename A>
 inline size_t
 vec<T, A, vl_embed>::embedded_size (unsigned alloc)
 {
-  typedef vec<T, A, vl_embed> vec_embedded;
-  return offsetof (vec_embedded, m_vecdata) + alloc * sizeof (T);
+  struct alignas (T) U { char data[sizeof (T)]; };
+  typedef vec<U, A, vl_embed> vec_embedded;
+  typedef typename std::conditional<std::is_standard_layout<T>::value,
+				    vec, vec_embedded>::type vec_stdlayout;
+  static_assert (sizeof (vec_stdlayout) == sizeof (vec), "");
+  static_assert (alignof (vec_stdlayout) == alignof (vec), "");
+  return offsetof (vec_stdlayout, m_vecdata) + alloc * sizeof (T);
 }
 
 
@@ -1449,8 +1477,8 @@ public:
   T *safe_push (const T &CXX_MEM_STAT_INFO);
   T &pop (void);
   void truncate (unsigned);
-  void safe_grow (unsigned CXX_MEM_STAT_INFO);
-  void safe_grow_cleared (unsigned CXX_MEM_STAT_INFO);
+  void safe_grow (unsigned, bool = false CXX_MEM_STAT_INFO);
+  void safe_grow_cleared (unsigned, bool = false CXX_MEM_STAT_INFO);
   void quick_grow (unsigned);
   void quick_grow_cleared (unsigned);
   void quick_insert (unsigned, const T &);
@@ -1491,11 +1519,11 @@ public:
     this->m_vec = &m_auto;
   }
 
-  auto_vec (size_t s)
+  auto_vec (size_t s CXX_MEM_STAT_INFO)
   {
     if (s > N)
       {
-	this->create (s);
+	this->create (s PASS_MEM_STAT);
 	return;
       }
 
@@ -1520,8 +1548,23 @@ class auto_vec<T, 0> : public vec<T, va_heap>
 {
 public:
   auto_vec () { this->m_vec = NULL; }
-  auto_vec (size_t n) { this->create (n); }
+  auto_vec (size_t n CXX_MEM_STAT_INFO) { this->create (n PASS_MEM_STAT); }
   ~auto_vec () { this->release (); }
+
+  auto_vec (vec<T, va_heap>&& r)
+    {
+      gcc_assert (!r.using_auto_storage ());
+      this->m_vec = r.m_vec;
+      r.m_vec = NULL;
+    }
+  auto_vec& operator= (vec<T, va_heap>&& r)
+    {
+      gcc_assert (!r.using_auto_storage ());
+      this->release ();
+      this->m_vec = r.m_vec;
+      r.m_vec = NULL;
+      return *this;
+    }
 };
 
 
@@ -1569,7 +1612,7 @@ class auto_delete_vec : public auto_vec <T *>
   ~auto_delete_vec ();
 
 private:
-  DISABLE_COPY_AND_ASSIGN(auto_delete_vec<T>);
+  DISABLE_COPY_AND_ASSIGN(auto_delete_vec);
 };
 
 /* Conditionally allocate heap memory for VEC and its internal vector.  */
@@ -1698,7 +1741,7 @@ vec<T, va_heap, vl_ptr>::copy (ALONE_MEM_STAT_DECL) const
 {
   vec<T, va_heap, vl_ptr> new_vec = vNULL;
   if (length ())
-    new_vec.m_vec = m_vec->copy ();
+    new_vec.m_vec = m_vec->copy (ALONE_PASS_MEM_STAT);
   return new_vec;
 }
 
@@ -1876,11 +1919,11 @@ vec<T, va_heap, vl_ptr>::truncate (unsigned size)
 
 template<typename T>
 inline void
-vec<T, va_heap, vl_ptr>::safe_grow (unsigned len MEM_STAT_DECL)
+vec<T, va_heap, vl_ptr>::safe_grow (unsigned len, bool exact MEM_STAT_DECL)
 {
   unsigned oldlen = length ();
   gcc_checking_assert (oldlen <= len);
-  reserve_exact (len - oldlen PASS_MEM_STAT);
+  reserve (len - oldlen, exact PASS_MEM_STAT);
   if (m_vec)
     m_vec->quick_grow (len);
   else
@@ -1894,11 +1937,12 @@ vec<T, va_heap, vl_ptr>::safe_grow (unsigned len MEM_STAT_DECL)
 
 template<typename T>
 inline void
-vec<T, va_heap, vl_ptr>::safe_grow_cleared (unsigned len MEM_STAT_DECL)
+vec<T, va_heap, vl_ptr>::safe_grow_cleared (unsigned len, bool exact
+					    MEM_STAT_DECL)
 {
   unsigned oldlen = length ();
   size_t growby = len - oldlen;
-  safe_grow (len PASS_MEM_STAT);
+  safe_grow (len, exact PASS_MEM_STAT);
   if (growby != 0)
     vec_default_construct (address () + oldlen, growby);
 }
@@ -2092,6 +2136,126 @@ release_vec_vec (vec<vec<T> > &vec)
     vec[i].release ();
 
   vec.release ();
+}
+
+// Provide a subset of the std::span functionality.  (We can't use std::span
+// itself because it's a C++20 feature.)
+//
+// In addition, provide an invalid value that is distinct from all valid
+// sequences (including the empty sequence).  This can be used to return
+// failure without having to use std::optional.
+//
+// There is no operator bool because it would be ambiguous whether it is
+// testing for a valid value or an empty sequence.
+template<typename T>
+class array_slice
+{
+  template<typename OtherT> friend class array_slice;
+
+public:
+  using value_type = T;
+  using iterator = T *;
+  using const_iterator = const T *;
+
+  array_slice () : m_base (nullptr), m_size (0) {}
+
+  template<typename OtherT>
+  array_slice (array_slice<OtherT> other)
+    : m_base (other.m_base), m_size (other.m_size) {}
+
+  array_slice (iterator base, unsigned int size)
+    : m_base (base), m_size (size) {}
+
+  template<size_t N>
+  array_slice (T (&array)[N]) : m_base (array), m_size (N) {}
+
+  template<typename OtherT>
+  array_slice (const vec<OtherT> &v)
+    : m_base (v.address ()), m_size (v.length ()) {}
+
+  iterator begin () { return m_base; }
+  iterator end () { return m_base + m_size; }
+
+  const_iterator begin () const { return m_base; }
+  const_iterator end () const { return m_base + m_size; }
+
+  value_type &front ();
+  value_type &back ();
+  value_type &operator[] (unsigned int i);
+
+  const value_type &front () const;
+  const value_type &back () const;
+  const value_type &operator[] (unsigned int i) const;
+
+  size_t size () const { return m_size; }
+  size_t size_bytes () const { return m_size * sizeof (T); }
+  bool empty () const { return m_size == 0; }
+
+  // An invalid array_slice that represents a failed operation.  This is
+  // distinct from an empty slice, which is a valid result in some contexts.
+  static array_slice invalid () { return { nullptr, ~0U }; }
+
+  // True if the array is valid, false if it is an array like INVALID.
+  bool is_valid () const { return m_base || m_size == 0; }
+
+private:
+  iterator m_base;
+  unsigned int m_size;
+};
+
+template<typename T>
+inline typename array_slice<T>::value_type &
+array_slice<T>::front ()
+{
+  gcc_checking_assert (m_size);
+  return m_base[0];
+}
+
+template<typename T>
+inline const typename array_slice<T>::value_type &
+array_slice<T>::front () const
+{
+  gcc_checking_assert (m_size);
+  return m_base[0];
+}
+
+template<typename T>
+inline typename array_slice<T>::value_type &
+array_slice<T>::back ()
+{
+  gcc_checking_assert (m_size);
+  return m_base[m_size - 1];
+}
+
+template<typename T>
+inline const typename array_slice<T>::value_type &
+array_slice<T>::back () const
+{
+  gcc_checking_assert (m_size);
+  return m_base[m_size - 1];
+}
+
+template<typename T>
+inline typename array_slice<T>::value_type &
+array_slice<T>::operator[] (unsigned int i)
+{
+  gcc_checking_assert (i < m_size);
+  return m_base[i];
+}
+
+template<typename T>
+inline const typename array_slice<T>::value_type &
+array_slice<T>::operator[] (unsigned int i) const
+{
+  gcc_checking_assert (i < m_size);
+  return m_base[i];
+}
+
+template<typename T>
+array_slice<T>
+make_array_slice (T *base, unsigned int size)
+{
+  return array_slice<T> (base, size);
 }
 
 #if (GCC_VERSION >= 3000)

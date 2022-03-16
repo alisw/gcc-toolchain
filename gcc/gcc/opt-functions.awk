@@ -1,4 +1,4 @@
-#  Copyright (C) 2003-2020 Free Software Foundation, Inc.
+#  Copyright (C) 2003-2021 Free Software Foundation, Inc.
 #  Contributed by Kelley Cook, June 2004.
 #  Original code from Neil Booth, May 2003.
 #
@@ -70,6 +70,16 @@ function opt_args(name, flags)
 		sub("\\).*", "", flags)
 
 	return flags
+}
+
+# If FLAGS contains a "NAME(...argument...)" flag, return the value
+# of the argument.  Print error message otherwise.
+function opt_args_non_empty(name, flags, description)
+{
+	args = opt_args(name, flags)
+	if (args == "")
+		print "#error Empty option argument '" name "' during parsing of: " flags
+	return args
 }
 
 # Return the Nth comma-separated element of S.  Return the empty string
@@ -156,8 +166,10 @@ function switch_bit_fields (flags)
 	  uinteger_flag \
 	  hwi_flag \
 	  flag_init("ToLower", flags) \
-	  flag_init("Report", flags) \
 	  byte_size_flag
+
+	if (flag_set_p("Report", flags))
+	    print "#error Report option property is dropped"
 
 	sub(", $", "", result)
 	return result

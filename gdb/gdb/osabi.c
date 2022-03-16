@@ -1,6 +1,6 @@
 /* OS ABI variant handling for GDB.
 
-   Copyright (C) 2001-2020 Free Software Foundation, Inc.
+   Copyright (C) 2001-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -23,6 +23,7 @@
 #include "arch-utils.h"
 #include "gdbcmd.h"
 #include "command.h"
+#include "gdb_bfd.h"
 
 #include "elf-bfd.h"
 
@@ -76,7 +77,6 @@ static const struct osabi_names gdb_osabi_names[] =
   { "AIX", NULL },
   { "DICOS", NULL },
   { "Darwin", NULL },
-  { "Symbian", NULL },
   { "OpenVMS", NULL },
   { "LynxOS178", NULL },
   { "Newlib", NULL },
@@ -439,9 +439,9 @@ check_note (bfd *abfd, asection *sect, char *note, unsigned int *sectsize,
 /* Generic sniffer for ELF flavoured files.  */
 
 void
-generic_elf_osabi_sniff_abi_tag_sections (bfd *abfd, asection *sect, void *obj)
+generic_elf_osabi_sniff_abi_tag_sections (bfd *abfd, asection *sect,
+					  enum gdb_osabi *osabi)
 {
-  enum gdb_osabi *osabi = (enum gdb_osabi *) obj;
   const char *name;
   unsigned int sectsize;
   char *note;
@@ -561,9 +561,8 @@ generic_elf_osabi_sniffer (bfd *abfd)
       /* And likewise ELFOSABI_HPUX.  For some reason the default
 	 value for the EI_OSABI field is ELFOSABI_HPUX for all PA-RISC
 	 targets (with the exception of GNU/Linux).  */
-      bfd_map_over_sections (abfd,
-			     generic_elf_osabi_sniff_abi_tag_sections,
-			     &osabi);
+      for (asection *sect : gdb_bfd_sections (abfd))
+	generic_elf_osabi_sniff_abi_tag_sections (abfd, sect, &osabi);
       break;
 
     case ELFOSABI_FREEBSD:
@@ -599,8 +598,6 @@ generic_elf_osabi_sniffer (bfd *abfd)
 static void
 set_osabi (const char *args, int from_tty, struct cmd_list_element *c)
 {
-  struct gdbarch_info info;
-
   if (strcmp (set_osabi_string, "auto") == 0)
     user_osabi_state = osabi_auto;
   else if (strcmp (set_osabi_string, "default") == 0)
@@ -613,7 +610,7 @@ set_osabi (const char *args, int from_tty, struct cmd_list_element *c)
       int i;
 
       for (i = 1; i < GDB_OSABI_INVALID; i++)
-        {
+	{
 	  enum gdb_osabi osabi = (enum gdb_osabi) i;
 
 	  if (strcmp (set_osabi_string, gdbarch_osabi_name (osabi)) == 0)
@@ -631,7 +628,7 @@ set_osabi (const char *args, int from_tty, struct cmd_list_element *c)
 
   /* NOTE: At some point (true multiple architectures) we'll need to be more
      graceful here.  */
-  gdbarch_info_init (&info);
+  gdbarch_info info;
   if (! gdbarch_update_p (info))
     internal_error (__FILE__, __LINE__, _("Updating OS ABI failed."));
 }

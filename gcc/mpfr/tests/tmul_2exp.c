@@ -1,6 +1,6 @@
 /* Test file for mpfr_{mul,div}_2{ui,si}.
 
-Copyright 1999, 2001-2004, 2006-2019 Free Software Foundation, Inc.
+Copyright 1999, 2001-2004, 2006-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -258,7 +258,7 @@ overflow0 (mpfr_exp_t emax)
   mpfr_exp_t old_emax;
   mpfr_t x, y1, y2;
   int neg, r, op;
-  static char *sop[4] = { "mul_2ui", "mul_2si", "div_2ui", "div_2si" };
+  static const char *sop[4] = { "mul_2ui", "mul_2si", "div_2ui", "div_2si" };
 
   old_emax = mpfr_get_emax ();
   set_emax (emax);

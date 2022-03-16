@@ -1,5 +1,5 @@
 /* BFD back-end for Intel 386 COFF files (DJGPP variant).
-   Copyright (C) 1990-2020 Free Software Foundation, Inc.
+   Copyright (C) 1990-2021 Free Software Foundation, Inc.
    Written by DJ Delorie.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -51,7 +51,7 @@
 
 /* The following functions are not static, because they are also
    used for coff-go32-exe (coff-stgo32.c).  */
-bfd_boolean _bfd_go32_mkobject (bfd *);
+bool _bfd_go32_mkobject (bfd *);
 void _bfd_go32_swap_scnhdr_in (bfd *, void *, void *);
 unsigned int _bfd_go32_swap_scnhdr_out (bfd *, void *, void *);
 
@@ -61,18 +61,18 @@ unsigned int _bfd_go32_swap_scnhdr_out (bfd *, void *, void *);
 
 #include "coff-i386.c"
 
-bfd_boolean
+bool
 _bfd_go32_mkobject (bfd * abfd)
 {
   const bfd_size_type amt = sizeof (coff_data_type);
 
   abfd->tdata.coff_obj_data = bfd_zalloc (abfd, amt);
   if (abfd->tdata.coff_obj_data == NULL)
-    return FALSE;
+    return false;
 
-  coff_data (abfd)->go32 = TRUE;
+  coff_data (abfd)->go32 = true;
 
-  return TRUE;
+  return true;
 }
 
 void

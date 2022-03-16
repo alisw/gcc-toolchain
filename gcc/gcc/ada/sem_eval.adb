@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -43,8 +43,10 @@ with Rtsfind;  use Rtsfind;
 with Sem;      use Sem;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Cat;  use Sem_Cat;
+with Sem_Ch3;  use Sem_Ch3;
 with Sem_Ch6;  use Sem_Ch6;
 with Sem_Ch8;  use Sem_Ch8;
+with Sem_Elab; use Sem_Elab;
 with Sem_Res;  use Sem_Res;
 with Sem_Util; use Sem_Util;
 with Sem_Type; use Sem_Type;
@@ -123,13 +125,18 @@ package body Sem_Eval is
 
    type CV_Cache_Array is array (CV_Range) of CV_Entry;
 
-   CV_Cache : CV_Cache_Array := (others => (Node_High_Bound, Uint_0));
+   CV_Cache : CV_Cache_Array;
    --  This is the actual cache, with entries consisting of node/value pairs,
    --  and the impossible value Node_High_Bound used for unset entries.
 
    type Range_Membership is (In_Range, Out_Of_Range, Unknown);
    --  Range membership may either be statically known to be in range or out
    --  of range, or not statically known. Used for Test_In_Range below.
+
+   Checking_For_Potentially_Static_Expression : Boolean := False;
+   --  Global flag that is set True during Analyze_Static_Expression_Function
+   --  in order to verify that the result expression of a static expression
+   --  function is a potentially static function (see RM202x 6.8(5.3)).
 
    -----------------------
    -- Local Subprograms --
@@ -166,6 +173,9 @@ package body Sem_Eval is
    --  discrete, real, or string type and must be a compile-time-known value
    --  (it is an error to make the call if these conditions are not met).
 
+   procedure Eval_Intrinsic_Call (N : Node_Id; E : Entity_Id);
+   --  Evaluate a call N to an intrinsic subprogram E.
+
    function Find_Universal_Operator_Type (N : Node_Id) return Entity_Id;
    --  Check whether an arithmetic operation with universal operands which is a
    --  rewritten function call with an explicit scope indication is ambiguous:
@@ -173,6 +183,22 @@ package body Sem_Eval is
    --  type declared in P and the context does not impose a type on the result
    --  (e.g. in the expression of a type conversion). If ambiguous, emit an
    --  error and return Empty, else return the result type of the operator.
+
+   procedure Fold_Dummy (N : Node_Id; Typ : Entity_Id);
+   --  Rewrite N as a constant dummy value in the relevant type if possible.
+
+   procedure Fold_Shift
+     (N          : Node_Id;
+      Left       : Node_Id;
+      Right      : Node_Id;
+      Op         : Node_Kind;
+      Static     : Boolean := False;
+      Check_Elab : Boolean := False);
+   --  Rewrite N as the result of evaluating Left <shift op> Right if possible.
+   --  Op represents the shift operation.
+   --  Static indicates whether the resulting node should be marked static.
+   --  Check_Elab indicates whether checks for elaboration calls should be
+   --  inserted when relevant.
 
    function From_Bits (B : Bits; T : Entity_Id) return Uint;
    --  Converts a bit string of length B'Length to a Uint value to be used for
@@ -324,8 +350,9 @@ package body Sem_Eval is
    -----------------------------------------------
 
    procedure Check_Expression_Against_Static_Predicate
-     (Expr : Node_Id;
-      Typ  : Entity_Id)
+     (Expr                    : Node_Id;
+      Typ                     : Entity_Id;
+      Static_Failure_Is_Error : Boolean := False)
    is
    begin
       --  Nothing to do if expression is not known at compile time, or the
@@ -383,18 +410,28 @@ package body Sem_Eval is
       --  Here we know that the predicate will fail
 
       --  Special case of static expression failing a predicate (other than one
-      --  that was explicitly specified with a Dynamic_Predicate aspect). This
-      --  is the case where the expression is no longer considered static.
+      --  that was explicitly specified with a Dynamic_Predicate aspect). If
+      --  the expression comes from a qualified_expression or type_conversion
+      --  this is an error (Static_Failure_Is_Error); otherwise we only issue
+      --  a warning and the expression is no longer considered static.
 
       if Is_Static_Expression (Expr)
         and then not Has_Dynamic_Predicate_Aspect (Typ)
       then
-         Error_Msg_NE
-           ("??static expression fails static predicate check on &",
-            Expr, Typ);
-         Error_Msg_N
-           ("\??expression is no longer considered static", Expr);
-         Set_Is_Static_Expression (Expr, False);
+         if Static_Failure_Is_Error then
+            Error_Msg_NE
+              ("static expression fails static predicate check on &",
+               Expr, Typ);
+
+         else
+            Error_Msg_NE
+              ("??static expression fails static predicate check on &",
+               Expr, Typ);
+            Error_Msg_N
+              ("\??expression is no longer considered static", Expr);
+
+            Set_Is_Static_Expression (Expr, False);
+         end if;
 
       --  In all other cases, this is just a warning that a test will fail.
       --  It does not matter if the expression is static or not, or if the
@@ -403,6 +440,17 @@ package body Sem_Eval is
       else
          Error_Msg_NE
            ("??expression fails predicate check on &", Expr, Typ);
+
+         --  Force a check here, which is potentially a redundant check, but
+         --  this ensures a check will be done in cases where the expression
+         --  is folded, and since this is definitely a failure, extra checks
+         --  are OK.
+
+         if Predicate_Enabled (Typ) then
+            Insert_Action (Expr,
+              Make_Predicate_Check
+                (Typ, Duplicate_Subexpr (Expr)), Suppress => All_Checks);
+         end if;
       end if;
    end Check_Expression_Against_Static_Predicate;
 
@@ -575,14 +623,14 @@ package body Sem_Eval is
             --  mode since the actual target compiler may provide a wider
             --  range.
 
-            if CodePeer_Mode and then T = RTE (RE_Priority) then
+            if CodePeer_Mode and then Is_RTE (T, RE_Priority) then
                Set_Do_Range_Check (N, False);
 
             --  Determine if the out-of-range violation constitutes a warning
             --  or an error based on context, according to RM 4.9 (34/3).
 
-            elsif Nkind_In (Original_Node (N), N_Type_Conversion,
-                                               N_Qualified_Expression)
+            elsif Nkind (Original_Node (N)) in
+                    N_Type_Conversion | N_Qualified_Expression
               and then Comes_From_Source (Original_Node (N))
             then
                Apply_Compile_Time_Constraint_Error
@@ -618,6 +666,15 @@ package body Sem_Eval is
          end if;
       end if;
    end Check_String_Literal_Length;
+
+   --------------------------------------------
+   -- Checking_Potentially_Static_Expression --
+   --------------------------------------------
+
+   function Checking_Potentially_Static_Expression return Boolean is
+   begin
+      return Checking_For_Potentially_Static_Expression;
+   end Checking_Potentially_Static_Expression;
 
    --------------------
    -- Choice_Matches --
@@ -904,7 +961,7 @@ package body Sem_Eval is
          --  Fixup only required for First/Last attribute reference
 
          if Nkind (N) = N_Attribute_Reference
-           and then Nam_In (Attribute_Name (N), Name_First, Name_Last)
+           and then Attribute_Name (N) in Name_First | Name_Last
          then
             Xtyp := Etype (Prefix (N));
 
@@ -954,7 +1011,7 @@ package body Sem_Eval is
                Subs := UI_To_Int (Expr_Value (First (Expressions (N))));
 
                for J in 2 .. Subs loop
-                  Indx := Next_Index (Indx);
+                  Next_Index (Indx);
                end loop;
             end if;
 
@@ -981,7 +1038,7 @@ package body Sem_Eval is
                     (Is_Known_Valid (Entity (Opnd))
                       or else Ekind (Entity (Opnd)) = E_In_Parameter
                       or else
-                        (Ekind (Entity (Opnd)) in Object_Kind
+                        (Is_Object (Entity (Opnd))
                           and then Present (Current_Value (Entity (Opnd))))))
            or else Is_OK_Static_Expression (Opnd);
       end Is_Known_Valid_Operand;
@@ -1057,8 +1114,8 @@ package body Sem_Eval is
          --  Values are the same if they refer to the same entity and the
          --  entity is nonvolatile.
 
-         elsif Nkind_In (Lf, N_Identifier, N_Expanded_Name)
-           and then Nkind_In (Rf, N_Identifier, N_Expanded_Name)
+         elsif Nkind (Lf) in N_Identifier | N_Expanded_Name
+           and then Nkind (Rf) in N_Identifier | N_Expanded_Name
            and then Entity (Lf) = Entity (Rf)
 
            --  If the entity is a discriminant, the two expressions may be
@@ -1100,9 +1157,9 @@ package body Sem_Eval is
 
          elsif Nkind (Lf) = N_Attribute_Reference
            and then Attribute_Name (Lf) = Attribute_Name (Rf)
-           and then Nam_In (Attribute_Name (Lf), Name_First, Name_Last)
-           and then Nkind_In (Prefix (Lf), N_Identifier, N_Expanded_Name)
-           and then Nkind_In (Prefix (Rf), N_Identifier, N_Expanded_Name)
+           and then Attribute_Name (Lf) in Name_First | Name_Last
+           and then Nkind (Prefix (Lf)) in N_Identifier | N_Expanded_Name
+           and then Nkind (Prefix (Rf)) in N_Identifier | N_Expanded_Name
            and then Entity (Prefix (Lf)) = Entity (Prefix (Rf))
            and then Is_Same_Subscript (Expressions (Lf), Expressions (Rf))
          then
@@ -1795,12 +1852,15 @@ package body Sem_Eval is
 
          --  Other literals and NULL are known at compile time
 
-         elsif
-            Nkind_In (K, N_Character_Literal,
-                         N_Real_Literal,
-                         N_String_Literal,
-                         N_Null)
+         elsif K in
+           N_Character_Literal | N_Real_Literal | N_String_Literal | N_Null
          then
+            return True;
+
+         --  Evaluate static discriminants, to eliminate dead paths and
+         --  redundant discriminant checks.
+
+         elsif Is_Static_Discriminant_Component (Op) then
             return True;
          end if;
       end if;
@@ -1814,6 +1874,13 @@ package body Sem_Eval is
 
    exception
       when others =>
+         --  With debug flag K we will get an exception unless an error has
+         --  already occurred (useful for debugging).
+
+         if Debug_Flag_K then
+            Check_Error_Detected;
+         end if;
+
          return False;
    end Compile_Time_Known_Value;
 
@@ -2176,9 +2243,8 @@ package body Sem_Eval is
    --  Only the latter case is handled here, predefined operators are
    --  constant-folded elsewhere.
 
-   --  If the function is itself inherited (see 7423-001) the literal of
-   --  the parent type must be explicitly converted to the return type
-   --  of the function.
+   --  If the function is itself inherited the literal of the parent type must
+   --  be explicitly converted to the return type of the function.
 
    procedure Eval_Call (N : Node_Id) is
       Loc : constant Source_Ptr := Sloc (N);
@@ -2204,6 +2270,23 @@ package body Sem_Eval is
 
             Resolve (N, Typ);
          end if;
+
+      elsif Nkind (N) = N_Function_Call
+        and then Is_Entity_Name (Name (N))
+        and then Is_Intrinsic_Subprogram (Entity (Name (N)))
+      then
+         Eval_Intrinsic_Call (N, Entity (Name (N)));
+
+      --  Ada 202x (AI12-0075): If checking for potentially static expressions
+      --  is enabled and we have a call to a static function, substitute a
+      --  static value for the call, to allow folding the expression. This
+      --  supports checking the requirement of RM 6.8(5.3/5) in
+      --  Analyze_Expression_Function.
+
+      elsif Checking_Potentially_Static_Expression
+        and then Is_Static_Function_Call (N)
+      then
+         Fold_Dummy (N, Typ);
       end if;
    end Eval_Call;
 
@@ -2484,6 +2567,18 @@ package body Sem_Eval is
 
             return;
          end if;
+
+      --  Ada 202x (AI12-0075): If checking for potentially static expressions
+      --  is enabled and we have a reference to a formal parameter of mode in,
+      --  substitute a static value for the reference, to allow folding the
+      --  expression. This supports checking the requirement of RM 6.8(5.3/5)
+      --  in Analyze_Expression_Function.
+
+      elsif Ekind (Def_Id) = E_In_Parameter
+        and then Checking_Potentially_Static_Expression
+        and then Is_Static_Function (Scope (Def_Id))
+      then
+         Fold_Dummy (N, Etype (Def_Id));
       end if;
 
       --  Fall through if the name is not static
@@ -2605,7 +2700,7 @@ package body Sem_Eval is
 
       --  Similarly if the indexed component appears as the prefix of an
       --  attribute we don't want to evaluate it, because at least for
-      --  some cases of attributes we need the identify (e.g. Access, Size)
+      --  some cases of attributes we need the identify (e.g. Access, Size).
 
       elsif Nkind (Parent (N)) = N_Attribute_Reference then
          return;
@@ -2741,11 +2836,11 @@ package body Sem_Eval is
          --  so we can safely ignore these cases.
 
          return
-           Nkind_In (Context, N_Attribute_Definition_Clause,
-                              N_Attribute_Reference,
-                              N_Modular_Type_Definition,
-                              N_Number_Declaration,
-                              N_Signed_Integer_Type_Definition);
+           Nkind (Context) in N_Attribute_Definition_Clause
+                            | N_Attribute_Reference
+                            | N_Modular_Type_Definition
+                            | N_Number_Declaration
+                            | N_Signed_Integer_Type_Definition;
       end In_Any_Integer_Context;
 
       --  Local variables
@@ -2768,10 +2863,10 @@ package body Sem_Eval is
       --  Check_Non_Static_Context on an expanded literal may lead to spurious
       --  and misleading warnings.
 
-      if (Nkind_In (Par, N_Case_Expression_Alternative, N_If_Expression)
-           or else Nkind (Parent (N)) not in N_Subexpr)
-        and then (not Nkind_In (Par, N_Case_Expression_Alternative,
-                                     N_If_Expression)
+      if (Nkind (Par) in N_Case_Expression_Alternative | N_If_Expression
+           or else Nkind (Par) not in N_Subexpr)
+        and then (Nkind (Par) not in N_Case_Expression_Alternative
+                                   | N_If_Expression
                    or else Comes_From_Source (N))
         and then not In_Any_Integer_Context (Par)
       then
@@ -2786,6 +2881,85 @@ package body Sem_Eval is
          Out_Of_Range (N);
       end if;
    end Eval_Integer_Literal;
+
+   -------------------------
+   -- Eval_Intrinsic_Call --
+   -------------------------
+
+   procedure Eval_Intrinsic_Call (N : Node_Id; E : Entity_Id) is
+
+      procedure Eval_Shift (N : Node_Id; E : Entity_Id; Op : Node_Kind);
+      --  Evaluate an intrinsic shift call N on the given subprogram E.
+      --  Op is the kind for the shift node.
+
+      ----------------
+      -- Eval_Shift --
+      ----------------
+
+      procedure Eval_Shift (N : Node_Id; E : Entity_Id; Op : Node_Kind) is
+         Left   : constant Node_Id := First_Actual (N);
+         Right  : constant Node_Id := Next_Actual (Left);
+         Static : constant Boolean := Is_Static_Function (E);
+
+      begin
+         if Static then
+            if Checking_Potentially_Static_Expression then
+               Fold_Dummy (N, Etype (N));
+               return;
+            end if;
+         end if;
+
+         Fold_Shift
+           (N, Left, Right, Op, Static => Static, Check_Elab => not Static);
+      end Eval_Shift;
+
+      Nam : Name_Id;
+
+   begin
+      --  Nothing to do if the intrinsic is handled by the back end.
+
+      if Present (Interface_Name (E)) then
+         return;
+      end if;
+
+      --  Intrinsic calls as part of a static function is a language extension.
+
+      if Checking_Potentially_Static_Expression
+        and then not Extensions_Allowed
+      then
+         return;
+      end if;
+
+      --  If we have a renaming, expand the call to the original operation,
+      --  which must itself be intrinsic, since renaming requires matching
+      --  conventions and this has already been checked.
+
+      if Present (Alias (E)) then
+         Eval_Intrinsic_Call (N, Alias (E));
+         return;
+      end if;
+
+      --  If the intrinsic subprogram is generic, gets its original name
+
+      if Present (Parent (E))
+        and then Present (Generic_Parent (Parent (E)))
+      then
+         Nam := Chars (Generic_Parent (Parent (E)));
+      else
+         Nam := Chars (E);
+      end if;
+
+      case Nam is
+         when Name_Shift_Left  =>
+            Eval_Shift (N, E, N_Op_Shift_Left);
+         when Name_Shift_Right =>
+            Eval_Shift (N, E, N_Op_Shift_Right);
+         when Name_Shift_Right_Arithmetic =>
+            Eval_Shift (N, E, N_Op_Shift_Right_Arithmetic);
+         when others           =>
+            null;
+      end case;
+   end Eval_Intrinsic_Call;
 
    ---------------------
    -- Eval_Logical_Op --
@@ -2826,7 +3000,9 @@ package body Sem_Eval is
                To_Bits (Right_Int, Right_Bits);
 
                --  Note: should really be able to use array ops instead of
-               --  these loops, but they weren't working at the time ???
+               --  these loops, but they break the build with a cryptic error
+               --  during the bind of gnat1 likely due to a wrong computation
+               --  of a date or checksum.
 
                if Nkind (N) = N_Op_And then
                   for J in Left_Bits'Range loop
@@ -3062,7 +3238,7 @@ package body Sem_Eval is
    -- Eval_Op_Not --
    -----------------
 
-   --  The not operation is a static functions, so the result is potentially
+   --  The not operation is a static function, so the result is potentially
    --  static if the operand is potentially static (RM 4.9(7), 4.9(20)).
 
    procedure Eval_Op_Not (N : Node_Id) is
@@ -3106,7 +3282,7 @@ package body Sem_Eval is
    -------------------------------
 
    --  A qualified expression is potentially static if its subtype mark denotes
-   --  a static subtype and its expression is potentially static (RM 4.9 (11)).
+   --  a static subtype and its expression is potentially static (RM 4.9 (10)).
 
    procedure Eval_Qualified_Expression (N : Node_Id) is
       Operand     : constant Node_Id   := Expression (N);
@@ -3129,13 +3305,21 @@ package body Sem_Eval is
       then
          Check_Non_Static_Context (Operand);
 
-         --  If operand is known to raise constraint_error, set the flag on the
+         --  If operand is known to raise Constraint_Error, set the flag on the
          --  expression so it does not get optimized away.
 
          if Nkind (Operand) = N_Raise_Constraint_Error then
             Set_Raises_Constraint_Error (N);
          end if;
 
+         return;
+
+      --  Also return if a semantic error has been posted on the node, as we
+      --  don't want to fold in that case (for GNATprove, the node might lead
+      --  to Constraint_Error but won't have been replaced with a raise node
+      --  or marked as raising CE).
+
+      elsif Error_Posted (N) then
          return;
       end if;
 
@@ -3153,14 +3337,15 @@ package body Sem_Eval is
          return;
       end if;
 
-      --  Here we will fold, save Print_In_Hex indication
-
-      Hex := Nkind (Operand) = N_Integer_Literal
-               and then Print_In_Hex (Operand);
-
       --  Fold the result of qualification
 
       if Is_Discrete_Type (Target_Type) then
+
+         --  Save Print_In_Hex indication
+
+         Hex := Nkind (Operand) = N_Integer_Literal
+                  and then Print_In_Hex (Operand);
+
          Fold_Uint (N, Expr_Value (Operand), Stat);
 
          --  Preserve Print_In_Hex indication
@@ -3221,8 +3406,9 @@ package body Sem_Eval is
    ------------------------
 
    --  Relational operations are static functions, so the result is static if
-   --  both operands are static (RM 4.9(7), 4.9(20)), except that for strings,
-   --  the result is never static, even if the operands are.
+   --  both operands are static (RM 4.9(7), 4.9(20)), except that up to Ada
+   --  2012, for strings the result is never static, even if the operands are.
+   --  The string case was relaxed in Ada 2020, see AI12-0201.
 
    --  However, for internally generated nodes, we allow string equality and
    --  inequality to be static. This is because we rewrite A in "ABC" as an
@@ -3545,77 +3731,88 @@ package body Sem_Eval is
       if Is_Array_Type (Left_Typ)
         and then Left_Typ /= Any_Composite
         and then Number_Dimensions (Left_Typ) = 1
-        and then Nkind_In (N, N_Op_Eq, N_Op_Ne)
+        and then Nkind (N) in N_Op_Eq | N_Op_Ne
       then
          if Raises_Constraint_Error (Left)
               or else
             Raises_Constraint_Error (Right)
          then
             return;
+         end if;
 
          --  OK, we have the case where we may be able to do this fold
 
-         else
-            Left_Len  := Static_Length (Left);
-            Right_Len := Static_Length (Right);
+         Left_Len  := Static_Length (Left);
+         Right_Len := Static_Length (Right);
 
-            if Left_Len /= Uint_Minus_1
-              and then Right_Len /= Uint_Minus_1
-              and then Left_Len /= Right_Len
-            then
-               Fold_Uint (N, Test (Nkind (N) = N_Op_Ne), False);
-               Warn_On_Known_Condition (N);
-               return;
-            end if;
+         if Left_Len /= Uint_Minus_1
+           and then Right_Len /= Uint_Minus_1
+           and then Left_Len /= Right_Len
+         then
+            --  AI12-0201: comparison of string is static in Ada 202x
+
+            Fold_Uint
+              (N,
+               Test (Nkind (N) = N_Op_Ne),
+               Static => Ada_Version >= Ada_2020
+                           and then Is_String_Type (Left_Typ));
+            Warn_On_Known_Condition (N);
+            return;
          end if;
+      end if;
 
       --  General case
 
-      else
-         --  Initialize the value of Is_Static_Expression. The value of Fold
-         --  returned by Test_Expression_Is_Foldable is not needed since, even
-         --  when some operand is a variable, we can still perform the static
-         --  evaluation of the expression in some cases (for example, for a
-         --  variable of a subtype of Integer we statically know that any value
-         --  stored in such variable is smaller than Integer'Last).
+      --  Initialize the value of Is_Static_Expression. The value of Fold
+      --  returned by Test_Expression_Is_Foldable is not needed since, even
+      --  when some operand is a variable, we can still perform the static
+      --  evaluation of the expression in some cases (for example, for a
+      --  variable of a subtype of Integer we statically know that any value
+      --  stored in such variable is smaller than Integer'Last).
 
-         Test_Expression_Is_Foldable
-           (N, Left, Right, Is_Static_Expression, Fold);
+      Test_Expression_Is_Foldable
+        (N, Left, Right, Is_Static_Expression, Fold);
 
-         --  Only comparisons of scalars can give static results. A comparison
-         --  of strings never yields a static result, even if both operands are
-         --  static strings, except that as noted above, we allow equality and
-         --  inequality for strings.
+      --  Comparisons of scalars can give static results.
+      --  In addition starting with Ada 202x (AI12-0201), comparison of strings
+      --  can also give static results, and as noted above, we also allow for
+      --  earlier Ada versions internally generated equality and inequality for
+      --  strings.
+      --  ??? The Comes_From_Source test below isn't correct and will accept
+      --  some cases that are illegal in Ada 2012. and before. Now that Ada
+      --  202x has relaxed the rules, this doesn't really matter.
 
-         if Is_String_Type (Left_Typ)
-           and then not Comes_From_Source (N)
-           and then Nkind_In (N, N_Op_Eq, N_Op_Ne)
+      if Is_String_Type (Left_Typ) then
+         if Ada_Version < Ada_2020
+           and then (Comes_From_Source (N)
+                      or else Nkind (N) not in N_Op_Eq | N_Op_Ne)
          then
-            null;
-
-         elsif not Is_Scalar_Type (Left_Typ) then
             Is_Static_Expression := False;
             Set_Is_Static_Expression (N, False);
          end if;
 
-         --  For operators on universal numeric types called as functions with
-         --  an explicit scope, determine appropriate specific numeric type,
-         --  and diagnose possible ambiguity.
+      elsif not Is_Scalar_Type (Left_Typ) then
+         Is_Static_Expression := False;
+         Set_Is_Static_Expression (N, False);
+      end if;
 
-         if Is_Universal_Numeric_Type (Left_Typ)
-              and then
-            Is_Universal_Numeric_Type (Right_Typ)
-         then
-            Op_Typ := Find_Universal_Operator_Type (N);
-         end if;
+      --  For operators on universal numeric types called as functions with an
+      --  explicit scope, determine appropriate specific numeric type, and
+      --  diagnose possible ambiguity.
 
-         --  Attempt to fold the relational operator
+      if Is_Universal_Numeric_Type (Left_Typ)
+           and then
+         Is_Universal_Numeric_Type (Right_Typ)
+      then
+         Op_Typ := Find_Universal_Operator_Type (N);
+      end if;
 
-         if Is_Static_Expression and then Is_Real_Type (Left_Typ) then
-            Fold_Static_Real_Op;
-         else
-            Fold_General_Op (Is_Static_Expression);
-         end if;
+      --  Attempt to fold the relational operator
+
+      if Is_Static_Expression and then Is_Real_Type (Left_Typ) then
+         Fold_Static_Real_Op;
+      else
+         Fold_General_Op (Is_Static_Expression);
       end if;
 
       --  For the case of a folded relational operator on a specific numeric
@@ -3628,20 +3825,35 @@ package body Sem_Eval is
       Warn_On_Known_Condition (N);
    end Eval_Relational_Op;
 
+   -----------------------------
+   -- Eval_Selected_Component --
+   -----------------------------
+
+   procedure Eval_Selected_Component (N : Node_Id) is
+   begin
+      --  If an attribute reference or a LHS, nothing to do.
+      --  Also do not fold if N is an [in] out subprogram parameter.
+      --  Fold will perform the other relevant tests.
+
+      if Nkind (Parent (N)) /= N_Attribute_Reference
+        and then Is_LHS (N) = No
+        and then not Is_Actual_Out_Or_In_Out_Parameter (N)
+      then
+         Fold (N);
+      end if;
+   end Eval_Selected_Component;
+
    ----------------
    -- Eval_Shift --
    ----------------
 
-   --  Shift operations are intrinsic operations that can never be static, so
-   --  the only processing required is to perform the required check for a non
-   --  static context for the two operands.
-
-   --  Actually we could do some compile time evaluation here some time ???
-
    procedure Eval_Shift (N : Node_Id) is
    begin
-      Check_Non_Static_Context (Left_Opnd (N));
-      Check_Non_Static_Context (Right_Opnd (N));
+      --  This procedure is only called for compiler generated code (e.g.
+      --  packed arrays), so there is nothing to do except attempting to fold
+      --  the expression.
+
+      Fold_Shift (N, Left_Opnd (N), Right_Opnd (N), Nkind (N));
    end Eval_Shift;
 
    ------------------------
@@ -3755,6 +3967,7 @@ package body Sem_Eval is
 
    procedure Eval_Slice (N : Node_Id) is
       Drange : constant Node_Id := Discrete_Range (N);
+      Name   : constant Node_Id := Prefix (N);
 
    begin
       if Nkind (Drange) = N_Range then
@@ -3766,13 +3979,13 @@ package body Sem_Eval is
       --  the type of A, is redundant, the slice can be replaced with A, and
       --  this is worth a warning.
 
-      if Is_Entity_Name (Prefix (N)) then
+      if Is_Entity_Name (Name) then
          declare
-            E : constant Entity_Id := Entity (Prefix (N));
+            E : constant Entity_Id := Entity (Name);
             T : constant Entity_Id := Etype (E);
 
          begin
-            if Ekind (E) = E_Constant
+            if Is_Object (E)
               and then Is_Array_Type (T)
               and then Is_Entity_Name (Drange)
             then
@@ -3834,8 +4047,11 @@ package body Sem_Eval is
       end if;
 
       --  If original node was a type conversion, then result if non-static
+      --  up to Ada 2012. AI12-0201 changes that with Ada 202x.
 
-      if Nkind (Original_Node (N)) = N_Type_Conversion then
+      if Nkind (Original_Node (N)) = N_Type_Conversion
+        and then Ada_Version <= Ada_2012
+      then
          Set_Is_Static_Expression (N, False);
          return;
       end if;
@@ -3918,6 +4134,7 @@ package body Sem_Eval is
    --  A type conversion is potentially static if its subtype mark is for a
    --  static scalar subtype, and its operand expression is potentially static
    --  (RM 4.9(10)).
+   --  Also add support for static string types.
 
    procedure Eval_Type_Conversion (N : Node_Id) is
       Operand     : constant Node_Id   := Expression (N);
@@ -3991,10 +4208,14 @@ package body Sem_Eval is
       --  following type test, fixed-point counts as real unless the flag
       --  Conversion_OK is set, in which case it counts as integer.
 
-      --  Fold conversion, case of string type. The result is not static
+      --  Fold conversion, case of string type. The result is static starting
+      --  with Ada 202x (AI12-0201).
 
       if Is_String_Type (Target_Type) then
-         Fold_Str (N, Strval (Get_String_Val (Operand)), Static => False);
+         Fold_Str
+           (N,
+            Strval (Get_String_Val (Operand)),
+            Static => Ada_Version >= Ada_2020);
          return;
 
       --  Fold conversion, case of integer target type
@@ -4011,8 +4232,13 @@ package body Sem_Eval is
 
             --  Real to integer conversion
 
-            else
+            elsif To_Be_Treated_As_Real (Source_Type) then
                Result := UR_To_Uint (Expr_Value_R (Operand));
+
+            --  Enumeration to integer conversion, aka 'Enum_Rep
+
+            else
+               Result := Expr_Rep_Value (Operand);
             end if;
 
             --  If fixed-point type (Conversion_OK must be set), then the
@@ -4056,7 +4282,6 @@ package body Sem_Eval is
       if Is_Out_Of_Range (N, Etype (N), Assume_Valid => True) then
          Out_Of_Range (N);
       end if;
-
    end Eval_Type_Conversion;
 
    -------------------
@@ -4159,8 +4384,62 @@ package body Sem_Eval is
    --  processing is to check for a non-static context for the operand.
 
    procedure Eval_Unchecked_Conversion (N : Node_Id) is
+      Target_Type  : constant Entity_Id := Etype (N);
+      Operand      : constant Node_Id   := Expression (N);
+      Operand_Type : constant Entity_Id := Etype (Operand);
+
    begin
-      Check_Non_Static_Context (Expression (N));
+      Check_Non_Static_Context (Operand);
+
+      --  If we have a conversion of a compile time known value to a target
+      --  type and the value is in range of the target type, then we can simply
+      --  replace the construct by an integer literal of the correct type. We
+      --  only apply this to discrete types being converted. Possibly it may
+      --  apply in other cases, but it is too much trouble to worry about.
+
+      --  Note that we do not do this transformation if the Kill_Range_Check
+      --  flag is set, since then the value may be outside the expected range.
+      --  This happens in the Normalize_Scalars case.
+
+      --  We also skip this if either the target or operand type is biased
+      --  because in this case, the unchecked conversion is supposed to
+      --  preserve the bit pattern, not the integer value.
+
+      if Is_Integer_Type (Target_Type)
+        and then not Has_Biased_Representation (Target_Type)
+        and then Is_Discrete_Type (Operand_Type)
+        and then not Has_Biased_Representation (Operand_Type)
+        and then Compile_Time_Known_Value (Operand)
+        and then not Kill_Range_Check (N)
+      then
+         declare
+            Val : constant Uint := Expr_Rep_Value (Operand);
+
+         begin
+            if Compile_Time_Known_Value (Type_Low_Bound (Target_Type))
+                 and then
+               Compile_Time_Known_Value (Type_High_Bound (Target_Type))
+                 and then
+               Val >= Expr_Value (Type_Low_Bound (Target_Type))
+                 and then
+               Val <= Expr_Value (Type_High_Bound (Target_Type))
+            then
+               Rewrite (N, Make_Integer_Literal (Sloc (N), Val));
+
+               --  If Address is the target type, just set the type to avoid a
+               --  spurious type error on the literal when Address is a visible
+               --  integer type.
+
+               if Is_Descendant_Of_Address (Target_Type) then
+                  Set_Etype (N, Target_Type);
+               else
+                  Analyze_And_Resolve (N, Target_Type);
+               end if;
+
+               return;
+            end if;
+         end;
+      end if;
    end Eval_Unchecked_Conversion;
 
    --------------------
@@ -4203,10 +4482,16 @@ package body Sem_Eval is
          pragma Assert (Is_Fixed_Point_Type (Underlying_Type (Etype (N))));
          return Corresponding_Integer_Value (N);
 
-      --  Otherwise must be character literal
+      --  The NULL access value
 
-      else
-         pragma Assert (Kind = N_Character_Literal);
+      elsif Kind = N_Null then
+         pragma Assert (Is_Access_Type (Underlying_Type (Etype (N)))
+           or else Error_Posted (N));
+         return Uint_0;
+
+      --  Character literal
+
+      elsif Kind = N_Character_Literal then
          Ent := Entity (N);
 
          --  Since Character literals of type Standard.Character don't have any
@@ -4220,6 +4505,24 @@ package body Sem_Eval is
          else
             return Enumeration_Rep (Ent);
          end if;
+
+      --  Unchecked conversion, which can come from System'To_Address (X)
+      --  where X is a static integer expression. Recursively evaluate X.
+
+      elsif Kind = N_Unchecked_Type_Conversion then
+         return Expr_Rep_Value (Expression (N));
+
+      --  Static discriminant value
+
+      elsif Is_Static_Discriminant_Component (N) then
+         return Expr_Rep_Value
+                  (Get_Discriminant_Value
+                     (Entity (Selector_Name (N)),
+                      Etype (Prefix (N)),
+                      Discriminant_Constraint (Etype (Prefix (N)))));
+
+      else
+         raise Program_Error;
       end if;
    end Expr_Rep_Value;
 
@@ -4304,6 +4607,15 @@ package body Sem_Eval is
 
       elsif Kind = N_Unchecked_Type_Conversion then
          Val := Expr_Value (Expression (N));
+
+      --  Static discriminant value
+
+      elsif Is_Static_Discriminant_Component (N) then
+         Val := Expr_Value
+                  (Get_Discriminant_Value
+                     (Entity (Selector_Name (N)),
+                      Etype (Prefix (N)),
+                      Discriminant_Constraint (Etype (Prefix (N)))));
 
       else
          raise Program_Error;
@@ -4532,6 +4844,208 @@ package body Sem_Eval is
       end if;
    end Flag_Non_Static_Expr;
 
+   ----------
+   -- Fold --
+   ----------
+
+   procedure Fold (N : Node_Id) is
+      Typ : constant Entity_Id := Etype (N);
+   begin
+      --  If not known at compile time or if already a literal, nothing to do
+
+      if Nkind (N) in N_Numeric_Or_String_Literal
+        or else not Compile_Time_Known_Value (N)
+      then
+         null;
+
+      elsif Is_Discrete_Type (Typ) then
+         Fold_Uint (N, Expr_Value (N), Static => Is_Static_Expression (N));
+
+      elsif Is_Real_Type (Typ) then
+         Fold_Ureal (N, Expr_Value_R (N), Static => Is_Static_Expression (N));
+
+      elsif Is_String_Type (Typ) then
+         Fold_Str
+           (N, Strval (Expr_Value_S (N)), Static => Is_Static_Expression (N));
+      end if;
+   end Fold;
+
+   ----------------
+   -- Fold_Dummy --
+   ----------------
+
+   procedure Fold_Dummy (N : Node_Id; Typ : Entity_Id) is
+   begin
+      if Is_Integer_Type (Typ) then
+         Fold_Uint (N, Uint_1, Static => True);
+
+      elsif Is_Real_Type (Typ) then
+         Fold_Ureal (N, Ureal_1, Static => True);
+
+      elsif Is_Enumeration_Type (Typ) then
+         Fold_Uint
+           (N,
+            Expr_Value (Type_Low_Bound (Base_Type (Typ))),
+            Static => True);
+
+      elsif Is_String_Type (Typ) then
+         Fold_Str
+           (N,
+            Strval (Make_String_Literal (Sloc (N), "")),
+            Static => True);
+      end if;
+   end Fold_Dummy;
+
+   ----------------
+   -- Fold_Shift --
+   ----------------
+
+   procedure Fold_Shift
+     (N          : Node_Id;
+      Left       : Node_Id;
+      Right      : Node_Id;
+      Op         : Node_Kind;
+      Static     : Boolean := False;
+      Check_Elab : Boolean := False)
+   is
+      Typ : constant Entity_Id := Base_Type (Etype (Left));
+
+      procedure Check_Elab_Call;
+      --  Add checks related to calls in elaboration code
+
+      ---------------------
+      -- Check_Elab_Call --
+      ---------------------
+
+      procedure Check_Elab_Call is
+      begin
+         if Check_Elab then
+            if Legacy_Elaboration_Checks then
+               Check_Elab_Call (N);
+            end if;
+
+            Build_Call_Marker (N);
+         end if;
+      end Check_Elab_Call;
+
+      Modulus : Uint;
+
+   begin
+      if Compile_Time_Known_Value (Left)
+        and then Compile_Time_Known_Value (Right)
+      then
+         pragma Assert (not Non_Binary_Modulus (Typ));
+
+         if Op = N_Op_Shift_Left then
+            Check_Elab_Call;
+
+            declare
+               Modulus : Uint;
+            begin
+               if Is_Modular_Integer_Type (Typ) then
+                  Modulus := Einfo.Modulus (Typ);
+               else
+                  Modulus := Uint_2 ** RM_Size (Typ);
+               end if;
+
+               --  Fold Shift_Left (X, Y) by computing (X * 2**Y) rem modulus
+
+               Fold_Uint
+                 (N,
+                  (Expr_Value (Left) * (Uint_2 ** Expr_Value (Right)))
+                    rem Modulus,
+                  Static => Static);
+            end;
+
+         elsif Op = N_Op_Shift_Right then
+            Check_Elab_Call;
+
+            --  X >> 0 is a no-op
+
+            if Expr_Value (Right) = Uint_0 then
+               Fold_Uint (N, Expr_Value (Left), Static => Static);
+            else
+               if Is_Modular_Integer_Type (Typ) then
+                  Modulus := Einfo.Modulus (Typ);
+               else
+                  Modulus := Uint_2 ** RM_Size (Typ);
+               end if;
+
+               --  Fold X >> Y by computing (X [+ Modulus]) / 2**Y
+               --  Note that after a Shift_Right operation (with Y > 0), the
+               --  result is always positive, even if the original operand was
+               --  negative.
+
+               Fold_Uint
+                 (N,
+                  (Expr_Value (Left) +
+                     (if Expr_Value (Left) >= Uint_0 then Uint_0 else Modulus))
+                  / (Uint_2 ** Expr_Value (Right)),
+                  Static => Static);
+            end if;
+         elsif Op = N_Op_Shift_Right_Arithmetic then
+            Check_Elab_Call;
+
+            declare
+               Two_Y   : constant Uint := Uint_2 ** Expr_Value (Right);
+            begin
+               if Is_Modular_Integer_Type (Typ) then
+                  Modulus := Einfo.Modulus (Typ);
+               else
+                  Modulus := Uint_2 ** RM_Size (Typ);
+               end if;
+
+               --  X / 2**Y if X if positive or a small enough modular integer
+
+               if (Is_Modular_Integer_Type (Typ)
+                    and then Expr_Value (Left) < Modulus / Uint_2)
+                 or else
+                   (not Is_Modular_Integer_Type (Typ)
+                     and then Expr_Value (Left) >= 0)
+               then
+                  Fold_Uint (N, Expr_Value (Left) / Two_Y, Static => Static);
+
+               --  -1 (aka all 1's) if Y is larger than the number of bits
+               --  available or if X = -1.
+
+               elsif Two_Y > Modulus
+                 or else Expr_Value (Left) = Uint_Minus_1
+               then
+                  if Is_Modular_Integer_Type (Typ) then
+                     Fold_Uint (N, Modulus - Uint_1, Static => Static);
+                  else
+                     Fold_Uint (N, Uint_Minus_1, Static => Static);
+                  end if;
+
+               --  Large modular integer, compute via multiply/divide the
+               --  following: X >> Y + (1 << Y - 1) << (RM_Size - Y)
+
+               elsif Is_Modular_Integer_Type (Typ) then
+                  Fold_Uint
+                    (N,
+                     (Expr_Value (Left)) / Two_Y
+                        + (Two_Y - Uint_1)
+                          * Uint_2 ** (RM_Size (Typ) - Expr_Value (Right)),
+                     Static => Static);
+
+               --  Negative signed integer, compute via multiple/divide the
+               --  following:
+               --  (Modulus + X) >> Y + (1 << Y - 1) << (RM_Size - Y) - Modulus
+
+               else
+                  Fold_Uint
+                    (N,
+                     (Modulus + Expr_Value (Left)) / Two_Y
+                        + (Two_Y - Uint_1)
+                          * Uint_2 ** (RM_Size (Typ) - Expr_Value (Right))
+                        - Modulus,
+                     Static => Static);
+               end if;
+            end;
+         end if;
+      end if;
+   end Fold_Shift;
+
    --------------
    -- Fold_Str --
    --------------
@@ -4579,8 +5093,8 @@ package body Sem_Eval is
          return;
       end if;
 
-      --  If we are folding a named number, retain the entity in the literal,
-      --  for ASIS use.
+      --  If we are folding a named number, retain the entity in the literal
+      --  in the original tree.
 
       if Is_Entity_Name (N) and then Ekind (Entity (N)) = E_Named_Integer then
          Ent := Entity (N);
@@ -4594,8 +5108,8 @@ package body Sem_Eval is
 
       --  For a result of type integer, substitute an N_Integer_Literal node
       --  for the result of the compile time evaluation of the expression.
-      --  For ASIS use, set a link to the original named number when not in
-      --  a generic context.
+      --  Set a link to the original named number when not in a generic context
+      --  for reference in the original tree.
 
       if Is_Integer_Type (Typ) then
          Rewrite (N, Make_Integer_Literal (Loc, Val));
@@ -4641,8 +5155,8 @@ package body Sem_Eval is
          return;
       end if;
 
-      --  If we are folding a named number, retain the entity in the literal,
-      --  for ASIS use.
+      --  If we are folding a named number, retain the entity in the literal
+      --  in the original tree.
 
       if Is_Entity_Name (N) and then Ekind (Entity (N)) = E_Named_Real then
          Ent := Entity (N);
@@ -4652,7 +5166,7 @@ package body Sem_Eval is
 
       Rewrite (N, Make_Real_Literal (Loc, Realval => Val));
 
-      --  Set link to original named number, for ASIS use
+      --  Set link to original named number
 
       Set_Original_Entity (N, Ent);
 
@@ -4703,7 +5217,7 @@ package body Sem_Eval is
 
    function Get_String_Val (N : Node_Id) return Node_Id is
    begin
-      if Nkind_In (N, N_String_Literal, N_Character_Literal) then
+      if Nkind (N) in N_String_Literal | N_Character_Literal then
          return N;
       else
          pragma Assert (Is_Entity_Name (N));
@@ -4821,14 +5335,14 @@ package body Sem_Eval is
 
    exception
       when others =>
-
-         --  Debug flag K disables this behavior (useful for debugging)
+         --  With debug flag K we will get an exception unless an error has
+         --  already occurred (useful for debugging).
 
          if Debug_Flag_K then
-            raise;
-         else
-            return False;
+            Check_Error_Detected;
          end if;
+
+         return False;
    end In_Subrange_Of;
 
    -----------------
@@ -5555,45 +6069,125 @@ package body Sem_Eval is
       end if;
    end Out_Of_Range;
 
-   ----------------------
-   -- Predicates_Match --
-   ----------------------
+   ---------------------------
+   -- Predicates_Compatible --
+   ---------------------------
 
-   function Predicates_Match (T1, T2 : Entity_Id) return Boolean is
-      Pred1 : Node_Id;
-      Pred2 : Node_Id;
+   function Predicates_Compatible (T1, T2 : Entity_Id) return Boolean is
+
+      function T2_Rep_Item_Applies_To_T1 (Nam : Name_Id) return Boolean;
+      --  Return True if the rep item for Nam is either absent on T2 or also
+      --  applies to T1.
+
+      -------------------------------
+      -- T2_Rep_Item_Applies_To_T1 --
+      -------------------------------
+
+      function T2_Rep_Item_Applies_To_T1 (Nam : Name_Id) return Boolean is
+         Rep_Item : constant Node_Id := Get_Rep_Item (T2, Nam);
+
+      begin
+         return No (Rep_Item) or else Get_Rep_Item (T1, Nam) = Rep_Item;
+      end T2_Rep_Item_Applies_To_T1;
+
+   --  Start of processing for Predicates_Compatible
 
    begin
       if Ada_Version < Ada_2012 then
          return True;
 
-         --  Both types must have predicates or lack them
+      --  If T2 has no predicates, there is no compatibility issue
 
-      elsif Has_Predicates (T1) /= Has_Predicates (T2) then
-         return False;
+      elsif not Has_Predicates (T2) then
+         return True;
 
-         --  Check matching predicates
+      --  T2 has predicates, if T1 has none then we defer to the static check
+
+      elsif not Has_Predicates (T1) then
+         null;
+
+      --  Both T2 and T1 have predicates, check that all predicates that apply
+      --  to T2 apply also to T1 (RM 4.9.1(9/3)).
+
+      elsif T2_Rep_Item_Applies_To_T1 (Name_Static_Predicate)
+        and then T2_Rep_Item_Applies_To_T1 (Name_Dynamic_Predicate)
+        and then T2_Rep_Item_Applies_To_T1 (Name_Predicate)
+      then
+         return True;
+      end if;
+
+      --  Implement the static check prescribed by RM 4.9.1(10/3)
+
+      if Is_Static_Subtype (T1) and then Is_Static_Subtype (T2) then
+         --  We just need to query Interval_Lists for discrete types
+
+         if Is_Discrete_Type (T1) and then Is_Discrete_Type (T2) then
+            declare
+               Interval_List1 : constant Interval_Lists.Discrete_Interval_List
+                 := Interval_Lists.Type_Intervals (T1);
+               Interval_List2 : constant Interval_Lists.Discrete_Interval_List
+                 := Interval_Lists.Type_Intervals (T2);
+            begin
+               return Interval_Lists.Is_Subset (Interval_List1, Interval_List2)
+                 and then not (Has_Predicates (T1)
+                                and then not Predicate_Checks_Suppressed (T2)
+                                and then Predicate_Checks_Suppressed (T1));
+            end;
+
+         else
+            --  TBD: Implement Interval_Lists for real types
+
+            return False;
+         end if;
+
+      --  If either subtype is not static, the predicates are not compatible
 
       else
-         Pred1 :=
-           Get_Rep_Item
-             (T1, Name_Static_Predicate, Check_Parents => False);
-         Pred2 :=
-           Get_Rep_Item
-             (T2, Name_Static_Predicate, Check_Parents => False);
+         return False;
+      end if;
+   end Predicates_Compatible;
 
-         --  Subtypes statically match if the predicate comes from the
-         --  same declaration, which can only happen if one is a subtype
-         --  of the other and has no explicit predicate.
+   ----------------------
+   -- Predicates_Match --
+   ----------------------
 
-         --  Suppress warnings on order of actuals, which is otherwise
-         --  triggered by one of the two calls below.
+   function Predicates_Match (T1, T2 : Entity_Id) return Boolean is
 
-         pragma Warnings (Off);
-         return Pred1 = Pred2
-           or else (No (Pred1) and then Is_Subtype_Of (T1, T2))
-           or else (No (Pred2) and then Is_Subtype_Of (T2, T1));
-         pragma Warnings (On);
+      function Have_Same_Rep_Item (Nam : Name_Id) return Boolean;
+      --  Return True if T1 and T2 have the same rep item for Nam
+
+      ------------------------
+      -- Have_Same_Rep_Item --
+      ------------------------
+
+      function Have_Same_Rep_Item (Nam : Name_Id) return Boolean is
+      begin
+         return Get_Rep_Item (T1, Nam) = Get_Rep_Item (T2, Nam);
+      end Have_Same_Rep_Item;
+
+   --  Start of processing for Predicates_Match
+
+   begin
+      if Ada_Version < Ada_2012 then
+         return True;
+
+      --  If T2 has no predicates, match if and only if T1 has none
+
+      elsif not Has_Predicates (T2) then
+         return not Has_Predicates (T1);
+
+      --  T2 has predicates, no match if T1 has none
+
+      elsif not Has_Predicates (T1) then
+         return False;
+
+      --  Both T2 and T1 have predicates, check that they all come
+      --  from the same declarations.
+
+      else
+         return Have_Same_Rep_Item (Name_Static_Predicate)
+           and then Have_Same_Rep_Item (Name_Dynamic_Predicate)
+           and then Have_Same_Rep_Item (Name_Predicate);
       end if;
    end Predicates_Match;
 
@@ -5793,6 +6387,21 @@ package body Sem_Eval is
       Set_Is_Static_Expression (N, Stat);
    end Rewrite_In_Raise_CE;
 
+   ------------------------------------------------
+   -- Set_Checking_Potentially_Static_Expression --
+   ------------------------------------------------
+
+   procedure Set_Checking_Potentially_Static_Expression (Value : Boolean) is
+   begin
+      --  Verify that we're not currently checking for a potentially static
+      --  expression unless we're disabling such checking.
+
+      pragma Assert
+        (not Checking_For_Potentially_Static_Expression or else not Value);
+
+      Checking_For_Potentially_Static_Expression := Value;
+   end Set_Checking_Potentially_Static_Expression;
+
    ---------------------
    -- String_Type_Len --
    ---------------------
@@ -5822,20 +6431,32 @@ package body Sem_Eval is
       Formal_Derived_Matching : Boolean := False) return Boolean
    is
    begin
+      --  A type is always statically compatible with itself
+
+      if T1 = T2 then
+         return True;
+
+      --  Not compatible if predicates are not compatible
+
+      elsif not Predicates_Compatible (T1, T2) then
+         return False;
+
       --  Scalar types
 
-      if Is_Scalar_Type (T1) then
+      elsif Is_Scalar_Type (T1) then
 
          --  Definitely compatible if we match
 
          if Subtypes_Statically_Match (T1, T2) then
             return True;
 
-         --  If either subtype is nonstatic then they're not compatible
+         --  A scalar subtype S1 is compatible with S2 if their bounds
+         --  are static and compatible, even if S1 has dynamic predicates
+         --  and is thus non-static. Predicate compatibility has been
+         --  checked above.
 
-         elsif not Is_OK_Static_Subtype (T1)
-                 or else
-               not Is_OK_Static_Subtype (T2)
+         elsif not Is_Static_Range (Scalar_Range (T1))
+                 or else not Is_Static_Range (Scalar_Range (T2))
          then
             return False;
 
@@ -5882,6 +6503,14 @@ package body Sem_Eval is
                        (Designated_Type (T1), Designated_Type (T2)))
            and then not (Can_Never_Be_Null (T2)
                           and then not Can_Never_Be_Null (T1));
+
+      --  Private types without discriminants can be handled specially.
+      --  Predicate matching has been checked above.
+
+      elsif Is_Private_Type (T1)
+        and then not Has_Discriminants (T1)
+      then
+         return not Has_Discriminants (T2);
 
       --  All other cases
 
@@ -6031,6 +6660,29 @@ package body Sem_Eval is
 
       elsif Has_Discriminants (T1) or else Has_Discriminants (T2) then
 
+         --  Handle derivations of private subtypes. For example S1 statically
+         --  matches the full view of T1 in the following example:
+
+         --      type T1(<>) is new Root with private;
+         --      subtype S1 is new T1;
+         --      overriding proc P1 (P : S1);
+         --    private
+         --      type T1 (D : Disc) is new Root with ...
+
+         if Ekind (T2) = E_Record_Subtype_With_Private
+           and then not Has_Discriminants (T2)
+           and then Partial_View_Has_Unknown_Discr (T1)
+           and then Etype (T2) = T1
+         then
+            return True;
+
+         elsif Ekind (T1) = E_Record_Subtype_With_Private
+           and then not Has_Discriminants (T1)
+           and then Partial_View_Has_Unknown_Discr (T2)
+           and then Etype (T1) = T2
+         then
+            return True;
+
          --  Because of view exchanges in multiple instantiations, conformance
          --  checking might try to match a partial view of a type with no
          --  discriminants with a full view that has defaulted discriminants.
@@ -6038,7 +6690,7 @@ package body Sem_Eval is
          --  which must exist because we know that the two subtypes have the
          --  same base type.
 
-         if Has_Discriminants (T1) /= Has_Discriminants (T2) then
+         elsif Has_Discriminants (T1) /= Has_Discriminants (T2) then
             if In_Instance then
                if Is_Private_Type (T2)
                  and then Present (Full_View (T2))
@@ -6061,8 +6713,65 @@ package body Sem_Eval is
          end if;
 
          declare
-            DL1 : constant Elist_Id := Discriminant_Constraint (T1);
-            DL2 : constant Elist_Id := Discriminant_Constraint (T2);
+
+            function Original_Discriminant_Constraint
+              (Typ : Entity_Id) return Elist_Id;
+            --  Returns Typ's discriminant constraint, or if the constraint
+            --  is inherited from an ancestor type, then climbs the parent
+            --  types to locate and return the constraint farthest up the
+            --  parent chain that Typ's constraint is ultimately inherited
+            --  from (stopping before a parent that doesn't impose a constraint
+            --  or a parent that has new discriminants). This ensures a proper
+            --  result from the equality comparison of Elist_Ids below (as
+            --  otherwise, derived types that inherit constraints may appear
+            --  to be unequal, because each level of derivation can have its
+            --  own copy of the constraint).
+
+            function Original_Discriminant_Constraint
+              (Typ : Entity_Id) return Elist_Id
+            is
+            begin
+               if not Has_Discriminants (Typ) then
+                  return No_Elist;
+
+               --  If Typ is not a derived type, then directly return the
+               --  its constraint.
+
+               elsif not Is_Derived_Type (Typ) then
+                  return Discriminant_Constraint (Typ);
+
+               --  If the parent type doesn't have discriminants, doesn't
+               --  have a constraint, or has new discriminants, then stop
+               --  and return Typ's constraint.
+
+               elsif not Has_Discriminants (Etype (Typ))
+
+                 --  No constraint on the parent type
+
+                 or else not Present (Discriminant_Constraint (Etype (Typ)))
+                 or else Is_Empty_Elmt_List
+                           (Discriminant_Constraint (Etype (Typ)))
+
+                 --  The parent type defines new discriminants
+
+                 or else
+                   (Is_Base_Type (Etype (Typ))
+                     and then Present (Discriminant_Specifications
+                                         (Parent (Etype (Typ)))))
+               then
+                  return Discriminant_Constraint (Typ);
+
+               --  Otherwise, make a recursive call on the parent type
+
+               else
+                  return Original_Discriminant_Constraint (Etype (Typ));
+               end if;
+            end Original_Discriminant_Constraint;
+
+            --  Local variables
+
+            DL1 : constant Elist_Id := Original_Discriminant_Constraint (T1);
+            DL2 : constant Elist_Id := Original_Discriminant_Constraint (T2);
 
             DA1 : Elmt_Id;
             DA2 : Elmt_Id;
@@ -6163,8 +6872,8 @@ package body Sem_Eval is
          if Can_Never_Be_Null (T1) /= Can_Never_Be_Null (T2) then
             return False;
 
-         elsif Ekind_In (T1, E_Access_Subprogram_Type,
-                             E_Anonymous_Access_Subprogram_Type)
+         elsif Ekind (T1) in E_Access_Subprogram_Type
+                           | E_Anonymous_Access_Subprogram_Type
          then
             return
               Subtype_Conformant
@@ -6768,7 +7477,7 @@ package body Sem_Eval is
 
             elsif Ekind (E) = E_Constant then
 
-               --  One case we can give a metter message is when we have a
+               --  One case we can give a better message is when we have a
                --  string literal created by concatenating an aggregate with
                --  an others expression.
 
@@ -6872,9 +7581,8 @@ package body Sem_Eval is
             --  Flag array cases
 
             elsif Is_Array_Type (E) then
-               if not Nam_In (Attribute_Name (N), Name_First,
-                                                  Name_Last,
-                                                  Name_Length)
+               if Attribute_Name (N)
+                    not in Name_First | Name_Last | Name_Length
                then
                   Error_Msg_N
                     ("!static array attribute must be Length, First, or Last "

@@ -1,5 +1,5 @@
 /* Loop manipulation code for GNU compiler.
-   Copyright (C) 2002-2020 Free Software Foundation, Inc.
+   Copyright (C) 2002-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -126,7 +126,7 @@ fix_loop_placement (class loop *loop, bool *irred_invalidated)
 {
   unsigned i;
   edge e;
-  vec<edge> exits = get_loop_exit_edges (loop);
+  auto_vec<edge> exits = get_loop_exit_edges (loop);
   class loop *father = current_loops->tree_root, *act;
   bool ret = false;
 
@@ -157,7 +157,6 @@ fix_loop_placement (class loop *loop, bool *irred_invalidated)
       ret = true;
     }
 
-  exits.release ();
   return ret;
 }
 
@@ -1734,6 +1733,7 @@ loop_version (class loop *loop,
 		   then_scale, else_scale);
 
   copy_loop_info (loop, nloop);
+  set_loop_copy (loop, nloop);
 
   /* loopify redirected latch_edge. Update its PENDING_STMTS.  */
   lv_flush_pending_stmts (latch_edge);

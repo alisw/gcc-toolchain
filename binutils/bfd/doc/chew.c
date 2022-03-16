@@ -1,5 +1,5 @@
 /* chew
-   Copyright (C) 1990-2020 Free Software Foundation, Inc.
+   Copyright (C) 1990-2022 Free Software Foundation, Inc.
    Contributed by steve chamberlain @cygnus
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -1301,12 +1301,12 @@ perform (void)
 	    {
 	      if (warning)
 		fprintf (stderr, "warning, %s is not recognised\n", next);
-	      skip_past_newline ();
+	      idx = skip_past_newline_1 (ptr, idx);
 	    }
 	  free (next);
 	}
       else
-	skip_past_newline ();
+	idx = skip_past_newline_1 (ptr, idx);
     }
 }
 
