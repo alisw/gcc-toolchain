@@ -1,6 +1,6 @@
 /* Command-line output logging for GDB, the GNU debugger.
 
-   Copyright (C) 2003-2020 Free Software Foundation, Inc.
+   Copyright (C) 2003-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -173,10 +173,10 @@ _initialize_cli_logging ()
 
   add_basic_prefix_cmd ("logging", class_support,
 			_("Set logging options."), &set_logging_cmdlist,
-			"set logging ", 0, &setlist);
+			0, &setlist);
   add_show_prefix_cmd ("logging", class_support,
 		       _("Show logging options."), &show_logging_cmdlist,
-		       "show logging ", 0, &showlist);
+		       0, &showlist);
   add_setshow_boolean_cmd ("overwrite", class_support, &logging_overwrite, _("\
 Set whether logging overwrites or appends to the log file."), _("\
 Show whether logging overwrites or appends to the log file."), _("\

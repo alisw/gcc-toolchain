@@ -1,5 +1,5 @@
 /* Call stacks at program points.
-   Copyright (C) 2019-2020 Free Software Foundation, Inc.
+   Copyright (C) 2019-2021 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -46,6 +46,8 @@ public:
   bool operator== (const call_string &other) const;
 
   void print (pretty_printer *pp) const;
+
+  json::value *to_json () const;
 
   hashval_t hash () const;
 

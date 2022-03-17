@@ -1,4 +1,4 @@
-// { dg-do compile { target c++2a } }
+// { dg-do compile { target c++20 } }
 
 template<typename T>
 concept Fooable = requires(T t) { foo(t); };
@@ -8,5 +8,5 @@ void foo(T t) { }
 
 void test()
 {
-  foo(0); // { dg-error "unsatisfied constraints" }
+  foo(0); // { dg-error "no match" }
 }

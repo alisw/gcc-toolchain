@@ -22,16 +22,20 @@
 #
 #
 
-import sys
-import json
 import argparse
+import sys
+from itertools import dropwhile, takewhile
 
-from itertools import *
 
 def get_param_tuple(line):
-    line = line.strip()
+    line = line.strip().replace('--param=', '')
     i = line.find(' ')
-    return (line[:i], line[i:].strip())
+    name = line[:i]
+    if '=' in name:
+        name = name[:name.find('=')]
+    description = line[i:].strip()
+    return (name, description)
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('texi_file')
@@ -39,7 +43,7 @@ parser.add_argument('params_output')
 
 args = parser.parse_args()
 
-ignored = set(['logical-op-non-short-circuit'])
+ignored = {'logical-op-non-short-circuit'}
 params = {}
 
 for line in open(args.params_output).readlines():
@@ -49,21 +53,27 @@ for line in open(args.params_output).readlines():
 
 # Find section in .texi manual with parameters
 texi = ([x.strip() for x in open(args.texi_file).readlines()])
-texi = dropwhile(lambda x: not 'item --param' in x, texi)
-texi = takewhile(lambda x: not '@node Instrumentation Options' in x, texi)
+texi = dropwhile(lambda x: 'item --param' not in x, texi)
+texi = takewhile(lambda x: '@node Instrumentation Options' not in x, texi)
 texi = list(texi)[1:]
 
 token = '@item '
 texi = [x[len(token):] for x in texi if x.startswith(token)]
+# skip digits
+texi = [x for x in texi if not x[0].isdigit()]
+# skip aarch64 params
+texi = [x for x in texi if not x.startswith('aarch64')]
 sorted_texi = sorted(texi)
 
 texi_set = set(texi) - ignored
 params_set = set(params.keys()) - ignored
 
+success = True
 extra = texi_set - params_set
 if len(extra):
     print('Extra:')
     print(extra)
+    success = False
 
 missing = params_set - texi_set
 if len(missing):
@@ -72,6 +82,9 @@ if len(missing):
         print('@item ' + m)
         print(params[m])
         print()
+    success = False
 
 if texi != sorted_texi:
     print('WARNING: not sorted alphabetically!')
+
+sys.exit(0 if success else 1)

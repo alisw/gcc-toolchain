@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 2015-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 2015-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -47,6 +47,7 @@ with Sem_Disp; use Sem_Disp;
 with Sem_Prag; use Sem_Prag;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
+with Sinput;   use Sinput;
 with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
@@ -61,11 +62,16 @@ package body Contracts is
    --
    --    Part_Of
 
+   procedure Check_Type_Or_Object_External_Properties
+     (Type_Or_Obj_Id : Entity_Id);
+   --  Perform checking of external properties pragmas that is common to both
+   --  type declarations and object declarations.
+
    procedure Expand_Subprogram_Contract (Body_Id : Entity_Id);
    --  Expand the contracts of a subprogram body and its correspoding spec (if
    --  any). This routine processes all [refined] pre- and postconditions as
-   --  well as Contract_Cases, invariants and predicates. Body_Id denotes the
-   --  entity of the subprogram body.
+   --  well as Contract_Cases, Subprogram_Variant, invariants and predicates.
+   --  Body_Id denotes the entity of the subprogram body.
 
    -----------------------
    -- Add_Contract_Item --
@@ -149,7 +155,7 @@ package body Contracts is
       --    Refined_Post
 
       elsif Is_Entry_Body (Id) then
-         if Nam_In (Prag_Nam, Name_Refined_Depends, Name_Refined_Global) then
+         if Prag_Nam in Name_Refined_Depends | Name_Refined_Global then
             Add_Classification;
 
          elsif Prag_Nam = Name_Refined_Post then
@@ -174,31 +180,34 @@ package body Contracts is
       --    Volatile_Function
 
       elsif Is_Entry_Declaration (Id)
-        or else Ekind_In (Id, E_Function,
-                              E_Generic_Function,
-                              E_Generic_Procedure,
-                              E_Procedure)
+        or else Ekind (Id) in E_Function
+                            | E_Generic_Function
+                            | E_Generic_Procedure
+                            | E_Procedure
       then
-         if Nam_In (Prag_Nam, Name_Attach_Handler, Name_Interrupt_Handler)
-           and then Ekind_In (Id, E_Generic_Procedure, E_Procedure)
+         if Prag_Nam in Name_Attach_Handler | Name_Interrupt_Handler
+           and then Ekind (Id) in E_Generic_Procedure | E_Procedure
          then
             Add_Classification;
 
-         elsif Nam_In (Prag_Nam, Name_Depends,
-                                 Name_Extensions_Visible,
-                                 Name_Global)
+         elsif Prag_Nam in Name_Depends
+                         | Name_Extensions_Visible
+                         | Name_Global
          then
             Add_Classification;
 
          elsif Prag_Nam = Name_Volatile_Function
-           and then Ekind_In (Id, E_Function, E_Generic_Function)
+           and then Ekind (Id) in E_Function | E_Generic_Function
          then
             Add_Classification;
 
-         elsif Nam_In (Prag_Nam, Name_Contract_Cases, Name_Test_Case) then
+         elsif Prag_Nam in Name_Contract_Cases
+                         | Name_Subprogram_Variant
+                         | Name_Test_Case
+         then
             Add_Contract_Test_Case;
 
-         elsif Nam_In (Prag_Nam, Name_Postcondition, Name_Precondition) then
+         elsif Prag_Nam in Name_Postcondition | Name_Precondition then
             Add_Pre_Post_Condition;
 
          --  The pragma is not a proper contract item
@@ -213,10 +222,10 @@ package body Contracts is
       --    Initializes
       --    Part_Of (instantiation only)
 
-      elsif Ekind_In (Id, E_Generic_Package, E_Package) then
-         if Nam_In (Prag_Nam, Name_Abstract_State,
-                              Name_Initial_Condition,
-                              Name_Initializes)
+      elsif Is_Package_Or_Generic_Package (Id) then
+         if Prag_Nam in Name_Abstract_State
+                      | Name_Initial_Condition
+                      | Name_Initializes
          then
             Add_Classification;
 
@@ -244,18 +253,33 @@ package body Contracts is
             raise Program_Error;
          end if;
 
-      --  Protected units, the applicable pragmas are:
-      --    Part_Of
+      --  The four volatility refinement pragmas are ok for all types.
+      --  Part_Of is ok for task types and protected types.
+      --  Depends and Global are ok for task types.
 
-      elsif Ekind (Id) = E_Protected_Type then
-         if Prag_Nam = Name_Part_Of then
-            Add_Classification;
+      elsif Is_Type (Id) then
+         declare
+            Is_OK : constant Boolean :=
+              Prag_Nam in Name_Async_Readers
+                        | Name_Async_Writers
+                        | Name_Effective_Reads
+                        | Name_Effective_Writes
+              or else (Ekind (Id) = E_Task_Type
+                         and Prag_Nam in Name_Part_Of
+                                       | Name_Depends
+                                       | Name_Global)
+              or else (Ekind (Id) = E_Protected_Type
+                         and Prag_Nam = Name_Part_Of);
+         begin
+            if Is_OK then
+               Add_Classification;
+            else
 
-         --  The pragma is not a proper contract item
+               --  The pragma is not a proper contract item
 
-         else
-            raise Program_Error;
-         end if;
+               raise Program_Error;
+            end if;
+         end;
 
       --  Subprogram bodies, the applicable pragmas are:
       --    Postcondition
@@ -265,12 +289,12 @@ package body Contracts is
       --    Refined_Post
 
       elsif Ekind (Id) = E_Subprogram_Body then
-         if Nam_In (Prag_Nam, Name_Refined_Depends, Name_Refined_Global) then
+         if Prag_Nam in Name_Refined_Depends | Name_Refined_Global then
             Add_Classification;
 
-         elsif Nam_In (Prag_Nam, Name_Postcondition,
-                                 Name_Precondition,
-                                 Name_Refined_Post)
+         elsif Prag_Nam in Name_Postcondition
+                         | Name_Precondition
+                         | Name_Refined_Post
          then
             Add_Pre_Post_Condition;
 
@@ -285,7 +309,7 @@ package body Contracts is
       --    Refined_Global
 
       elsif Ekind (Id) = E_Task_Body then
-         if Nam_In (Prag_Nam, Name_Refined_Depends, Name_Refined_Global) then
+         if Prag_Nam in Name_Refined_Depends | Name_Refined_Global then
             Add_Classification;
 
          --  The pragma is not a proper contract item
@@ -299,16 +323,6 @@ package body Contracts is
       --    Global
       --    Part_Of
 
-      elsif Ekind (Id) = E_Task_Type then
-         if Nam_In (Prag_Nam, Name_Depends, Name_Global, Name_Part_Of) then
-            Add_Classification;
-
-         --  The pragma is not a proper contract item
-
-         else
-            raise Program_Error;
-         end if;
-
       --  Variables, the applicable pragmas are:
       --    Async_Readers
       --    Async_Writers
@@ -321,15 +335,15 @@ package body Contracts is
       --    Part_Of
 
       elsif Ekind (Id) = E_Variable then
-         if Nam_In (Prag_Nam, Name_Async_Readers,
-                              Name_Async_Writers,
-                              Name_Constant_After_Elaboration,
-                              Name_Depends,
-                              Name_Effective_Reads,
-                              Name_Effective_Writes,
-                              Name_Global,
-                              Name_No_Caching,
-                              Name_Part_Of)
+         if Prag_Nam in Name_Async_Readers
+                      | Name_Async_Writers
+                      | Name_Constant_After_Elaboration
+                      | Name_Depends
+                      | Name_Effective_Reads
+                      | Name_Effective_Writes
+                      | Name_Global
+                      | Name_No_Caching
+                      | Name_Part_Of
          then
             Add_Classification;
 
@@ -338,6 +352,9 @@ package body Contracts is
          else
             raise Program_Error;
          end if;
+
+      else
+         raise Program_Error;
       end if;
    end Add_Contract_Item;
 
@@ -354,10 +371,10 @@ package body Contracts is
 
          --  Entry or subprogram declarations
 
-         if Nkind_In (Decl, N_Abstract_Subprogram_Declaration,
-                            N_Entry_Declaration,
-                            N_Generic_Subprogram_Declaration,
-                            N_Subprogram_Declaration)
+         if Nkind (Decl) in N_Abstract_Subprogram_Declaration
+                          | N_Entry_Declaration
+                          | N_Generic_Subprogram_Declaration
+                          | N_Subprogram_Declaration
          then
             declare
                Subp_Id : constant Entity_Id := Defining_Entity (Decl);
@@ -379,7 +396,7 @@ package body Contracts is
 
          --  Entry or subprogram bodies
 
-         elsif Nkind_In (Decl, N_Entry_Body, N_Subprogram_Body) then
+         elsif Nkind (Decl) in N_Entry_Body | N_Subprogram_Body then
             Analyze_Entry_Or_Subprogram_Body_Contract (Defining_Entity (Decl));
 
          --  Objects
@@ -394,8 +411,8 @@ package body Contracts is
 
          --  Protected units
 
-         elsif Nkind_In (Decl, N_Protected_Type_Declaration,
-                               N_Single_Protected_Declaration)
+         elsif Nkind (Decl) in N_Protected_Type_Declaration
+                             | N_Single_Protected_Declaration
          then
             Analyze_Protected_Contract (Defining_Entity (Decl));
 
@@ -406,13 +423,13 @@ package body Contracts is
 
          --  Task units
 
-         elsif Nkind_In (Decl, N_Single_Task_Declaration,
-                               N_Task_Type_Declaration)
+         elsif Nkind (Decl) in N_Single_Task_Declaration
+                             | N_Task_Type_Declaration
          then
             Analyze_Task_Contract (Defining_Entity (Decl));
 
          --  For type declarations, we need to do the preanalysis of Iterable
-         --  aspect specifications.
+         --  and the 3 Xxx_Literal aspect specifications.
 
          --  Other type aspects need to be resolved here???
 
@@ -420,14 +437,39 @@ package body Contracts is
            and then Present (Aspect_Specifications (Decl))
          then
             declare
-               E  : constant Entity_Id := Defining_Identifier (Decl);
-               It : constant Node_Id   := Find_Aspect (E, Aspect_Iterable);
+               E  : constant Entity_Id  := Defining_Identifier (Decl);
+               It : constant Node_Id    := Find_Aspect (E, Aspect_Iterable);
+               I_Lit : constant Node_Id :=
+                 Find_Aspect (E, Aspect_Integer_Literal);
+               R_Lit : constant Node_Id :=
+                 Find_Aspect (E, Aspect_Real_Literal);
+               S_Lit : constant Node_Id :=
+                 Find_Aspect (E, Aspect_String_Literal);
 
             begin
                if Present (It) then
                   Validate_Iterable_Aspect (E, It);
                end if;
+
+               if Present (I_Lit) then
+                  Validate_Literal_Aspect (E, I_Lit);
+               end if;
+               if Present (R_Lit) then
+                  Validate_Literal_Aspect (E, R_Lit);
+               end if;
+               if Present (S_Lit) then
+                  Validate_Literal_Aspect (E, S_Lit);
+               end if;
             end;
+         end if;
+
+         if Nkind (Decl) in N_Full_Type_Declaration
+                          | N_Private_Type_Declaration
+                          | N_Task_Type_Declaration
+                          | N_Protected_Type_Declaration
+                          | N_Formal_Type_Declaration
+         then
+            Analyze_Type_Contract (Defining_Identifier (Decl));
          end if;
 
          Next (Decl);
@@ -490,7 +532,7 @@ package body Contracts is
       --  subprograms.
 
       if SPARK_Mode = On
-        and then Ekind_In (Body_Id, E_Function, E_Generic_Function)
+        and then Ekind (Body_Id) in E_Function | E_Generic_Function
         and then Comes_From_Source (Spec_Id)
         and then not Is_Volatile_Function (Body_Id)
       then
@@ -512,8 +554,8 @@ package body Contracts is
       end if;
 
       --  Deal with preconditions, [refined] postconditions, Contract_Cases,
-      --  invariants and predicates associated with body and its spec. Do not
-      --  expand the contract of subprogram body stubs.
+      --  Subprogram_Variant, invariants and predicates associated with body
+      --  and its spec. Do not expand the contract of subprogram body stubs.
 
       if Nkind (Body_Decl) = N_Subprogram_Body then
          Expand_Subprogram_Contract (Body_Id);
@@ -540,9 +582,7 @@ package body Contracts is
       --  Save the SPARK_Mode-related data to restore on exit
 
       Skip_Assert_Exprs : constant Boolean :=
-                            Ekind_In (Subp_Id, E_Entry, E_Entry_Family)
-                              and then not ASIS_Mode
-                              and then not GNATprove_Mode;
+                            Is_Entry (Subp_Id) and then not GNATprove_Mode;
 
       Depends  : Node_Id := Empty;
       Global   : Node_Id := Empty;
@@ -576,7 +616,7 @@ package body Contracts is
       elsif Present (Items) then
 
          --  Do not analyze the pre/postconditions of an entry declaration
-         --  unless annotating the original tree for ASIS or GNATprove. The
+         --  unless annotating the original tree for GNATprove. The
          --  real analysis occurs when the pre/postconditons are relocated to
          --  the contract wrapper procedure (see Build_Contract_Wrapper).
 
@@ -617,7 +657,9 @@ package body Contracts is
                      Freeze_Expr_Types
                        (Def_Id => Subp_Id,
                         Typ    => Standard_Boolean,
-                        Expr   => Expression (Corresponding_Aspect (Prag)),
+                        Expr   =>
+                          Expression
+                            (First (Pragma_Argument_Associations (Prag))),
                         N      => Bod);
                   end if;
 
@@ -627,7 +669,7 @@ package body Contracts is
             end;
          end if;
 
-         --  Analyze contract-cases and test-cases
+         --  Analyze contract-cases, subprogram-variant and test-cases
 
          Prag := Contract_Test_Cases (Items);
          while Present (Prag) loop
@@ -636,7 +678,7 @@ package body Contracts is
             if Prag_Nam = Name_Contract_Cases then
 
                --  Do not analyze the contract cases of an entry declaration
-               --  unless annotating the original tree for ASIS or GNATprove.
+               --  unless annotating the original tree for GNATprove.
                --  The real analysis occurs when the contract cases are moved
                --  to the contract wrapper procedure (Build_Contract_Wrapper).
 
@@ -648,6 +690,10 @@ package body Contracts is
                else
                   Analyze_Contract_Cases_In_Decl_Part (Prag, Freeze_Id);
                end if;
+
+            elsif Prag_Nam = Name_Subprogram_Variant then
+               Analyze_Subprogram_Variant_In_Decl_Part (Prag);
+
             else
                pragma Assert (Prag_Nam = Name_Test_Case);
                Analyze_Test_Case_In_Decl_Part (Prag);
@@ -699,7 +745,7 @@ package body Contracts is
       --  processed after the analysis of the related subprogram declaration.
 
       if SPARK_Mode = On
-        and then Ekind_In (Subp_Id, E_Function, E_Generic_Function)
+        and then Ekind (Subp_Id) in E_Function | E_Generic_Function
         and then Comes_From_Source (Subp_Id)
         and then not Is_Volatile_Function (Subp_Id)
       then
@@ -721,6 +767,236 @@ package body Contracts is
       end if;
    end Analyze_Entry_Or_Subprogram_Contract;
 
+   ----------------------------------------------
+   -- Check_Type_Or_Object_External_Properties --
+   ----------------------------------------------
+
+   procedure Check_Type_Or_Object_External_Properties
+     (Type_Or_Obj_Id : Entity_Id)
+   is
+      function Decl_Kind (Is_Type     : Boolean;
+                          Object_Kind : String) return String;
+      --  Returns "type" or Object_Kind, depending on Is_Type
+
+      ---------------
+      -- Decl_Kind --
+      ---------------
+
+      function Decl_Kind (Is_Type     : Boolean;
+                          Object_Kind : String) return String is
+      begin
+         if Is_Type then
+            return "type";
+         else
+            return Object_Kind;
+         end if;
+      end Decl_Kind;
+
+      Is_Type_Id : constant Boolean := Is_Type (Type_Or_Obj_Id);
+
+      --  Local variables
+
+      AR_Val  : Boolean := False;
+      AW_Val  : Boolean := False;
+      ER_Val  : Boolean := False;
+      EW_Val  : Boolean := False;
+      Seen    : Boolean := False;
+      Prag    : Node_Id;
+      Obj_Typ : Entity_Id;
+
+   --  Start of processing for Check_Type_Or_Object_External_Properties
+
+   begin
+      --  Analyze all external properties
+
+      if Is_Type_Id then
+         Obj_Typ := Type_Or_Obj_Id;
+
+         --  If the parent type of a derived type is volatile
+         --  then the derived type inherits volatility-related flags.
+
+         if Is_Derived_Type (Type_Or_Obj_Id) then
+            declare
+               Parent_Type : constant Entity_Id :=
+                 Etype (Base_Type (Type_Or_Obj_Id));
+            begin
+               if Is_Effectively_Volatile (Parent_Type) then
+                  AR_Val := Async_Readers_Enabled (Parent_Type);
+                  AW_Val := Async_Writers_Enabled (Parent_Type);
+                  ER_Val := Effective_Reads_Enabled (Parent_Type);
+                  EW_Val := Effective_Writes_Enabled (Parent_Type);
+               end if;
+            end;
+         end if;
+      else
+         Obj_Typ := Etype (Type_Or_Obj_Id);
+      end if;
+
+      Prag := Get_Pragma (Type_Or_Obj_Id, Pragma_Async_Readers);
+
+      if Present (Prag) then
+         declare
+            Saved_AR_Val : constant Boolean := AR_Val;
+         begin
+            Analyze_External_Property_In_Decl_Part (Prag, AR_Val);
+            Seen := True;
+            if Saved_AR_Val and not AR_Val then
+               Error_Msg_N
+                 ("illegal non-confirming Async_Readers specification",
+                  Prag);
+            end if;
+         end;
+      end if;
+
+      Prag := Get_Pragma (Type_Or_Obj_Id, Pragma_Async_Writers);
+
+      if Present (Prag) then
+         declare
+            Saved_AW_Val : constant Boolean := AW_Val;
+         begin
+            Analyze_External_Property_In_Decl_Part (Prag, AW_Val);
+            Seen := True;
+            if Saved_AW_Val and not AW_Val then
+               Error_Msg_N
+                 ("illegal non-confirming Async_Writers specification",
+                  Prag);
+            end if;
+         end;
+      end if;
+
+      Prag := Get_Pragma (Type_Or_Obj_Id, Pragma_Effective_Reads);
+
+      if Present (Prag) then
+         declare
+            Saved_ER_Val : constant Boolean := ER_Val;
+         begin
+            Analyze_External_Property_In_Decl_Part (Prag, ER_Val);
+            Seen := True;
+            if Saved_ER_Val and not ER_Val then
+               Error_Msg_N
+                 ("illegal non-confirming Effective_Reads specification",
+                  Prag);
+            end if;
+         end;
+      end if;
+
+      Prag := Get_Pragma (Type_Or_Obj_Id, Pragma_Effective_Writes);
+
+      if Present (Prag) then
+         declare
+            Saved_EW_Val : constant Boolean := EW_Val;
+         begin
+            Analyze_External_Property_In_Decl_Part (Prag, EW_Val);
+            Seen := True;
+            if Saved_EW_Val and not EW_Val then
+               Error_Msg_N
+                 ("illegal non-confirming Effective_Writes specification",
+                  Prag);
+            end if;
+         end;
+      end if;
+
+      --  Verify the mutual interaction of the various external properties
+
+      if Seen then
+         Check_External_Properties
+           (Type_Or_Obj_Id, AR_Val, AW_Val, ER_Val, EW_Val);
+      end if;
+
+      --  The following checks are relevant only when SPARK_Mode is on, as
+      --  they are not standard Ada legality rules. Internally generated
+      --  temporaries are ignored, as well as return objects.
+
+      if SPARK_Mode = On
+        and then Comes_From_Source (Type_Or_Obj_Id)
+        and then not Is_Return_Object (Type_Or_Obj_Id)
+      then
+         if Is_Effectively_Volatile (Type_Or_Obj_Id) then
+
+            --  The declaration of an effectively volatile object or type must
+            --  appear at the library level (SPARK RM 7.1.3(3), C.6(6)).
+
+            if not Is_Library_Level_Entity (Type_Or_Obj_Id) then
+               Error_Msg_N
+                 ("effectively volatile "
+                    & Decl_Kind (Is_Type     => Is_Type_Id,
+                                 Object_Kind => "variable")
+                    & " & must be declared at library level "
+                    & "(SPARK RM 7.1.3(3))", Type_Or_Obj_Id);
+
+            --  An object of a discriminated type cannot be effectively
+            --  volatile except for protected objects (SPARK RM 7.1.3(5)).
+
+            elsif Has_Discriminants (Obj_Typ)
+              and then not Is_Protected_Type (Obj_Typ)
+            then
+               Error_Msg_N
+                ("discriminated "
+                   & Decl_Kind (Is_Type     => Is_Type_Id,
+                                Object_Kind => "object")
+                   & " & cannot be volatile",
+                 Type_Or_Obj_Id);
+            end if;
+
+            --  An object decl shall be compatible with respect to volatility
+            --  with its type (SPARK RM 7.1.3(2)).
+
+            if not Is_Type_Id then
+               if Is_Effectively_Volatile (Obj_Typ) then
+                  Check_Volatility_Compatibility
+                    (Type_Or_Obj_Id, Obj_Typ,
+                     "volatile object", "its type",
+                     Srcpos_Bearer => Type_Or_Obj_Id);
+               end if;
+
+            --  A component of a composite type (in this case, the composite
+            --  type is an array type) shall be compatible with respect to
+            --  volatility with the composite type (SPARK RM 7.1.3(6)).
+
+            elsif Is_Array_Type (Obj_Typ) then
+               Check_Volatility_Compatibility
+                 (Component_Type (Obj_Typ), Obj_Typ,
+                  "component type", "its enclosing array type",
+                  Srcpos_Bearer => Obj_Typ);
+
+            --  A component of a composite type (in this case, the composite
+            --  type is a record type) shall be compatible with respect to
+            --  volatility with the composite type (SPARK RM 7.1.3(6)).
+
+            elsif Is_Record_Type (Obj_Typ) then
+               declare
+                  Comp : Entity_Id := First_Component (Obj_Typ);
+               begin
+                  while Present (Comp) loop
+                     Check_Volatility_Compatibility
+                       (Etype (Comp), Obj_Typ,
+                        "record component " & Get_Name_String (Chars (Comp)),
+                        "its enclosing record type",
+                        Srcpos_Bearer => Comp);
+                     Next_Component (Comp);
+                  end loop;
+               end;
+            end if;
+
+         --  The type or object is not effectively volatile
+
+         else
+            --  A non-effectively volatile type cannot have effectively
+            --  volatile components (SPARK RM 7.1.3(6)).
+
+            if Is_Type_Id
+              and then not Is_Effectively_Volatile (Type_Or_Obj_Id)
+              and then Has_Volatile_Component (Type_Or_Obj_Id)
+            then
+               Error_Msg_N
+                 ("non-volatile type & cannot have volatile"
+                    & " components",
+                  Type_Or_Obj_Id);
+            end if;
+         end if;
+      end if;
+   end Check_Type_Or_Object_External_Properties;
+
    -----------------------------
    -- Analyze_Object_Contract --
    -----------------------------
@@ -739,15 +1015,10 @@ package body Contracts is
       Saved_SMP : constant Node_Id         := SPARK_Mode_Pragma;
       --  Save the SPARK_Mode-related data to restore on exit
 
-      AR_Val   : Boolean := False;
-      AW_Val   : Boolean := False;
-      ER_Val   : Boolean := False;
-      EW_Val   : Boolean := False;
       NC_Val   : Boolean := False;
       Items    : Node_Id;
       Prag     : Node_Id;
       Ref_Elmt : Elmt_Id;
-      Seen     : Boolean := False;
 
    begin
       --  The loop parameter in an element iterator over a formal container
@@ -814,41 +1085,8 @@ package body Contracts is
 
       else pragma Assert (Ekind (Obj_Id) = E_Variable);
 
-         --  Analyze all external properties
-
-         Prag := Get_Pragma (Obj_Id, Pragma_Async_Readers);
-
-         if Present (Prag) then
-            Analyze_External_Property_In_Decl_Part (Prag, AR_Val);
-            Seen := True;
-         end if;
-
-         Prag := Get_Pragma (Obj_Id, Pragma_Async_Writers);
-
-         if Present (Prag) then
-            Analyze_External_Property_In_Decl_Part (Prag, AW_Val);
-            Seen := True;
-         end if;
-
-         Prag := Get_Pragma (Obj_Id, Pragma_Effective_Reads);
-
-         if Present (Prag) then
-            Analyze_External_Property_In_Decl_Part (Prag, ER_Val);
-            Seen := True;
-         end if;
-
-         Prag := Get_Pragma (Obj_Id, Pragma_Effective_Writes);
-
-         if Present (Prag) then
-            Analyze_External_Property_In_Decl_Part (Prag, EW_Val);
-            Seen := True;
-         end if;
-
-         --  Verify the mutual interaction of the various external properties
-
-         if Seen then
-            Check_External_Properties (Obj_Id, AR_Val, AW_Val, ER_Val, EW_Val);
-         end if;
+         Check_Type_Or_Object_External_Properties
+           (Type_Or_Obj_Id => Obj_Id);
 
          --  Analyze the non-external volatility property No_Caching
 
@@ -858,10 +1096,10 @@ package body Contracts is
             Analyze_External_Property_In_Decl_Part (Prag, NC_Val);
          end if;
 
-         --  The anonymous object created for a single concurrent type carries
-         --  pragmas Depends and Globat of the type.
+         --  The anonymous object created for a single task type carries
+         --  pragmas Depends and Global of the type.
 
-         if Is_Single_Concurrent_Object (Obj_Id) then
+         if Is_Single_Task_Object (Obj_Id) then
 
             --  Analyze Global first, as Depends may mention items classified
             --  in the global categorization.
@@ -911,47 +1149,6 @@ package body Contracts is
 
          else
             Check_Missing_Part_Of (Obj_Id);
-         end if;
-
-         --  The following checks are relevant only when SPARK_Mode is on, as
-         --  they are not standard Ada legality rules. Internally generated
-         --  temporaries are ignored.
-
-         if SPARK_Mode = On and then Comes_From_Source (Obj_Id) then
-            if Is_Effectively_Volatile (Obj_Id) then
-
-               --  The declaration of an effectively volatile object must
-               --  appear at the library level (SPARK RM 7.1.3(3), C.6(6)).
-
-               if not Is_Library_Level_Entity (Obj_Id) then
-                  Error_Msg_N
-                    ("volatile variable & must be declared at library level "
-                     & "(SPARK RM 7.1.3(3))", Obj_Id);
-
-               --  An object of a discriminated type cannot be effectively
-               --  volatile except for protected objects (SPARK RM 7.1.3(5)).
-
-               elsif Has_Discriminants (Obj_Typ)
-                 and then not Is_Protected_Type (Obj_Typ)
-               then
-                  Error_Msg_N
-                    ("discriminated object & cannot be volatile", Obj_Id);
-               end if;
-
-            --  The object is not effectively volatile
-
-            else
-               --  A non-effectively volatile object cannot have effectively
-               --  volatile components (SPARK RM 7.1.3(6)).
-
-               if not Is_Effectively_Volatile (Obj_Id)
-                 and then Has_Volatile_Component (Obj_Typ)
-               then
-                  Error_Msg_N
-                    ("non-volatile object & cannot have volatile components",
-                     Obj_Id);
-               end if;
-            end if;
          end if;
       end if;
 
@@ -1239,6 +1436,7 @@ package body Contracts is
       --    Global
       --    Postcondition
       --    Precondition
+      --    Subprogram_Variant
       --    Test_Case
 
       else
@@ -1304,6 +1502,16 @@ package body Contracts is
 
       Restore_SPARK_Mode (Saved_SM, Saved_SMP);
    end Analyze_Task_Contract;
+
+   ---------------------------
+   -- Analyze_Type_Contract --
+   ---------------------------
+
+   procedure Analyze_Type_Contract (Type_Id : Entity_Id) is
+   begin
+      Check_Type_Or_Object_External_Properties
+        (Type_Or_Obj_Id => Type_Id);
+   end Analyze_Type_Contract;
 
    -----------------------------
    -- Create_Generic_Contract --
@@ -1463,6 +1671,12 @@ package body Contracts is
       --  routine appends all the checks to list Stmts. If Subp_Id denotes a
       --  function, Result contains the entity of parameter _Result, to be
       --  used in the creation of procedure _Postconditions.
+
+      procedure Add_Stable_Property_Contracts
+        (Subp_Id : Entity_Id; Class_Present : Boolean);
+      --  Augment postcondition contracts to reflect Stable_Property aspect
+      --  (if Class_Present = False) or Stable_Property'Class aspect (if
+      --  Class_Present = True).
 
       procedure Append_Enabled_Item (Item : Node_Id; List : in out List_Id);
       --  Append a node to a list. If there is no list, create a new one. When
@@ -1670,13 +1884,15 @@ package body Contracts is
             Add_Invariant_Access_Checks (Result);
          end if;
 
-         --  Add invariant and predicates for all formals that qualify
+         --  Add invariant checks for all formals that qualify (see AI05-0289
+         --  and AI12-0044).
 
          Formal := First_Formal (Subp_Id);
          while Present (Formal) loop
             Typ := Etype (Formal);
 
             if Ekind (Formal) /= E_In_Parameter
+              or else Ekind (Subp_Id) = E_Procedure
               or else Is_Access_Type (Typ)
             then
                if Invariant_Checks_OK (Typ) then
@@ -1698,6 +1914,244 @@ package body Contracts is
             Next_Formal (Formal);
          end loop;
       end Add_Invariant_And_Predicate_Checks;
+
+      -----------------------------------
+      -- Add_Stable_Property_Contracts --
+      -----------------------------------
+
+      procedure Add_Stable_Property_Contracts
+        (Subp_Id : Entity_Id; Class_Present : Boolean)
+      is
+         Loc         : constant Source_Ptr := Sloc (Subp_Id);
+
+         procedure Insert_Stable_Property_Check
+           (Formal : Entity_Id; Property_Function : Entity_Id);
+         --  Build the pragma for one check and insert it in the tree.
+
+         function Make_Stable_Property_Condition
+           (Formal : Entity_Id; Property_Function : Entity_Id) return Node_Id;
+         --  Builds tree for "Func (Formal) = Func (Formal)'Old" expression.
+
+         function Stable_Properties
+           (Aspect_Bearer : Entity_Id; Negated : out Boolean)
+           return Subprogram_List;
+         --  If no aspect specified, then returns length-zero result.
+         --  Negated indicates that reserved word NOT was specified.
+
+         ----------------------------------
+         -- Insert_Stable_Property_Check --
+         ----------------------------------
+
+         procedure Insert_Stable_Property_Check
+           (Formal : Entity_Id; Property_Function : Entity_Id) is
+
+            Args : constant List_Id :=
+              New_List
+                (Make_Pragma_Argument_Association
+                   (Sloc => Loc,
+                    Expression =>
+                      Make_Stable_Property_Condition
+                         (Formal            => Formal,
+                          Property_Function => Property_Function)),
+                 Make_Pragma_Argument_Association
+                   (Sloc => Loc,
+                    Expression =>
+                      Make_String_Literal
+                        (Sloc => Loc,
+                         Strval =>
+                           "failed stable property check at "
+                           & Build_Location_String (Loc)
+                           & " for parameter "
+                           & To_String (Fully_Qualified_Name_String
+                               (Formal, Append_NUL => False))
+                           & " and property function "
+                           & To_String (Fully_Qualified_Name_String
+                               (Property_Function, Append_NUL => False))
+                        )));
+
+            Prag : constant Node_Id :=
+              Make_Pragma (Loc,
+                Pragma_Identifier            =>
+                  Make_Identifier (Loc, Name_Postcondition),
+                Pragma_Argument_Associations => Args,
+                Class_Present                => Class_Present);
+
+            Subp_Decl : Node_Id := Subp_Id;
+         begin
+            --  Enclosing_Declaration may return, for example,
+            --  a N_Procedure_Specification node. Cope with this.
+            loop
+               Subp_Decl := Enclosing_Declaration (Subp_Decl);
+               exit when Is_Declaration (Subp_Decl);
+               Subp_Decl := Parent (Subp_Decl);
+               pragma Assert (Present (Subp_Decl));
+            end loop;
+
+            Insert_After_And_Analyze (Subp_Decl, Prag);
+         end Insert_Stable_Property_Check;
+
+         ------------------------------------
+         -- Make_Stable_Property_Condition --
+         ------------------------------------
+
+         function Make_Stable_Property_Condition
+           (Formal : Entity_Id; Property_Function : Entity_Id) return Node_Id
+         is
+            function Call_Property_Function return Node_Id is
+              (Make_Function_Call
+                 (Loc,
+                  Name                   =>
+                    New_Occurrence_Of (Property_Function, Loc),
+                  Parameter_Associations =>
+                    New_List (New_Occurrence_Of (Formal, Loc))));
+         begin
+            return Make_Op_Eq
+              (Loc,
+               Call_Property_Function,
+               Make_Attribute_Reference
+                 (Loc,
+                  Prefix         => Call_Property_Function,
+                  Attribute_Name => Name_Old));
+         end Make_Stable_Property_Condition;
+
+         -----------------------
+         -- Stable_Properties --
+         -----------------------
+
+         function Stable_Properties
+           (Aspect_Bearer : Entity_Id; Negated : out Boolean)
+           return Subprogram_List
+         is
+            Aspect_Spec : Node_Id :=
+              Find_Value_Of_Aspect
+                (Aspect_Bearer, Aspect_Stable_Properties,
+                 Class_Present => Class_Present);
+         begin
+            --  ??? For a derived type, we wish Find_Value_Of_Aspect
+            --  somehow knew that this aspect is not inherited.
+            --  But it doesn't, so we cope with that here.
+            --
+            --  There are probably issues here with inheritance from
+            --  interface types, where just looking for the one parent type
+            --  isn't enough. But this is far from the only work needed for
+            --  Stable_Properties'Class for interface types.
+
+            if Is_Derived_Type (Aspect_Bearer) then
+               declare
+                  Parent_Type : constant Entity_Id :=
+                    Etype (Base_Type (Aspect_Bearer));
+               begin
+                  if Aspect_Spec =
+                     Find_Value_Of_Aspect
+                       (Parent_Type, Aspect_Stable_Properties,
+                        Class_Present => Class_Present)
+                  then
+                     --  prevent inheritance
+                     Aspect_Spec := Empty;
+                  end if;
+               end;
+            end if;
+
+            if No (Aspect_Spec) then
+               Negated := Aspect_Bearer = Subp_Id;
+               --  This is a little bit subtle.
+               --  We need to assign True in the Subp_Id case in order to
+               --  distinguish between no aspect spec at all vs. an
+               --  explicitly specified "with S_P => []" empty list.
+               --  In both cases Stable_Properties will return a length-0
+               --  array, but the two cases are not equivalent.
+               --  Very roughly speaking the lack of an S_P aspect spec for
+               --  a subprogram would be equivalent to something like
+               --  "with S_P => [not]", where we apply the "not" modifier to
+               --  an empty set of subprograms, if such a construct existed.
+               --  We could just assign True here, but it seems untidy to
+               --  return True in the case of an aspect spec for a type
+               --  (since negation is only allowed for subp S_P aspects).
+
+               return (1 .. 0 => <>);
+            else
+               return Parse_Aspect_Stable_Properties
+                        (Aspect_Spec, Negated => Negated);
+            end if;
+         end Stable_Properties;
+
+         Formal                  : Entity_Id := First_Formal (Subp_Id);
+         Type_Of_Formal          : Entity_Id;
+
+         Subp_Properties_Negated : Boolean;
+         Subp_Properties         : constant Subprogram_List :=
+           Stable_Properties (Subp_Id, Subp_Properties_Negated);
+
+         --  start of processing for Add_Stable_Property_Contracts
+
+      begin
+         if not (Is_Primitive (Subp_Id) and then Comes_From_Source (Subp_Id))
+         then
+            return;
+         end if;
+
+         while Present (Formal) loop
+            Type_Of_Formal := Base_Type (Etype (Formal));
+
+            if not Subp_Properties_Negated then
+
+               for SPF_Id of Subp_Properties loop
+                  if Type_Of_Formal = Base_Type (Etype (First_Formal (SPF_Id)))
+                     and then Scope (Type_Of_Formal) = Scope (Subp_Id)
+                  then
+                     --  ??? Need to filter out checks for SPFs that are
+                     --  mentioned explicitly in the postcondition of
+                     --  Subp_Id.
+
+                     Insert_Stable_Property_Check
+                       (Formal => Formal, Property_Function => SPF_Id);
+                  end if;
+               end loop;
+
+            elsif Scope (Type_Of_Formal) = Scope (Subp_Id) then
+               declare
+                  Ignored : Boolean range False .. False;
+
+                  Typ_Property_Funcs : constant Subprogram_List :=
+                     Stable_Properties (Type_Of_Formal, Negated => Ignored);
+
+                  function Excluded_By_Aspect_Spec_Of_Subp
+                    (SPF_Id : Entity_Id) return Boolean;
+                  --  Examine Subp_Properties to determine whether SPF should
+                  --  be excluded.
+
+                  -------------------------------------
+                  -- Excluded_By_Aspect_Spec_Of_Subp --
+                  -------------------------------------
+
+                  function Excluded_By_Aspect_Spec_Of_Subp
+                    (SPF_Id : Entity_Id) return Boolean is
+                  begin
+                     pragma Assert (Subp_Properties_Negated);
+                     --  Look through renames for equality test here ???
+                     return  (for some F of Subp_Properties => F = SPF_Id);
+                  end Excluded_By_Aspect_Spec_Of_Subp;
+
+                  --  Look through renames for equality test here ???
+                  Subp_Is_Stable_Property_Function : constant Boolean :=
+                    (for some F of Typ_Property_Funcs => F = Subp_Id);
+               begin
+                  if not Subp_Is_Stable_Property_Function then
+                     for SPF_Id of Typ_Property_Funcs loop
+                        if not Excluded_By_Aspect_Spec_Of_Subp (SPF_Id) then
+                           --  ??? Need to filter out checks for SPFs that are
+                           --  mentioned explicitly in the postcondition of
+                           --  Subp_Id.
+                           Insert_Stable_Property_Check
+                             (Formal => Formal, Property_Function => SPF_Id);
+                        end if;
+                     end loop;
+                  end if;
+               end;
+            end if;
+            Next_Formal (Formal);
+         end loop;
+      end Add_Stable_Property_Contracts;
 
       -------------------------
       -- Append_Enabled_Item --
@@ -1743,55 +2197,22 @@ package body Contracts is
          Stmts   : List_Id;
          Result  : Entity_Id)
       is
-         procedure Insert_Before_First_Source_Declaration (Stmt : Node_Id);
-         --  Insert node Stmt before the first source declaration of the
-         --  related subprogram's body. If no such declaration exists, Stmt
-         --  becomes the last declaration.
-
-         --------------------------------------------
-         -- Insert_Before_First_Source_Declaration --
-         --------------------------------------------
-
-         procedure Insert_Before_First_Source_Declaration (Stmt : Node_Id) is
-            Decls : constant List_Id := Declarations (Body_Decl);
-            Decl  : Node_Id;
-
-         begin
-            --  Inspect the declarations of the related subprogram body looking
-            --  for the first source declaration.
-
-            if Present (Decls) then
-               Decl := First (Decls);
-               while Present (Decl) loop
-                  if Comes_From_Source (Decl) then
-                     Insert_Before (Decl, Stmt);
-                     return;
-                  end if;
-
-                  Next (Decl);
-               end loop;
-
-               --  If we get there, then the subprogram body lacks any source
-               --  declarations. The body of _Postconditions now acts as the
-               --  last declaration.
-
-               Append (Stmt, Decls);
-
-            --  Ensure that the body has a declaration list
-
-            else
-               Set_Declarations (Body_Decl, New_List (Stmt));
-            end if;
-         end Insert_Before_First_Source_Declaration;
-
-         --  Local variables
-
          Loc       : constant Source_Ptr := Sloc (Body_Decl);
+         Last_Decl : Node_Id;
          Params    : List_Id := No_List;
          Proc_Bod  : Node_Id;
          Proc_Decl : Node_Id;
          Proc_Id   : Entity_Id;
          Proc_Spec : Node_Id;
+
+         --  Extra declarations needed to handle interactions between
+         --  postconditions and finalization.
+
+         Postcond_Enabled_Decl : Node_Id;
+         Return_Success_Decl   : Node_Id;
+         Result_Obj_Decl       : Node_Id;
+         Result_Obj_Type_Decl  : Node_Id;
+         Result_Obj_Type       : Entity_Id;
 
       --  Start of processing for Build_Postconditions_Procedure
 
@@ -1801,6 +2222,29 @@ package body Contracts is
          if No (Stmts) then
             return;
          end if;
+
+         --  Otherwise, we generate the postcondition procedure and add
+         --  associated objects and conditions used to coordinate postcondition
+         --  evaluation with finalization.
+
+         --  Generate:
+         --
+         --    procedure _postconditions (Return_Exp : Result_Typ);
+         --
+         --    --  Result_Obj_Type created when Result_Type is non-elementary
+         --    [type Result_Obj_Type is access all Result_Typ;]
+         --
+         --    Result_Obj : Result_Obj_Type;
+         --
+         --    Postcond_Enabled            : Boolean := True;
+         --    Return_Success_For_Postcond : Boolean := False;
+         --
+         --    procedure _postconditions (Return_Exp : Result_Typ) is
+         --    begin
+         --       if Postcond_Enabled and then Return_Success_For_Postcond then
+         --          [stmts];
+         --       end if;
+         --    end;
 
          Proc_Id := Make_Defining_Identifier (Loc, Name_uPostconditions);
          Set_Debug_Info_Needed   (Proc_Id);
@@ -1839,12 +2283,14 @@ package body Contracts is
          --  body. This ensures that the body will not cause any premature
          --  freezing, as it may mention types:
 
+         --  Generate:
+         --
          --    procedure Proc (Obj : Array_Typ) is
          --       procedure _postconditions is
          --       begin
          --          ... Obj ...
          --       end _postconditions;
-
+         --
          --       subtype T is Array_Typ (Obj'First (1) .. Obj'Last (1));
          --    begin
 
@@ -1853,13 +2299,123 @@ package body Contracts is
          --  order reference. The body of _Postconditions must be placed after
          --  the declaration of Temp to preserve correct visibility.
 
-         Insert_Before_First_Source_Declaration (Proc_Decl);
+         Insert_Before_First_Source_Declaration
+           (Proc_Decl, Declarations (Body_Decl));
          Analyze (Proc_Decl);
+         Last_Decl := Proc_Decl;
+
+         --  When Result is present (e.g. the postcondition checks apply to a
+         --  function) we make a local object to capture the result, so, if
+         --  needed, we can call the generated postconditions procedure during
+         --  finalization instead of at the point of return.
+
+         --  Note: The placement of the following declarations before the
+         --  declaration of the body of the postconditions, but after the
+         --  declaration of the postconditions spec is deliberate and required
+         --  since other code within the expander expects them to be located
+         --  here. Perhaps when more space is available in the tree this will
+         --  no longer be necessary ???
+
+         if Present (Result) then
+            --  Elementary result types mean a copy is cheap and preferred over
+            --  using pointers.
+
+            if Is_Elementary_Type (Etype (Result)) then
+               Result_Obj_Type := Etype (Result);
+
+            --  Otherwise, we create a named access type to capture the result
+
+            --  Generate:
+            --
+            --  type Result_Obj_Type is access all [Result_Type];
+
+            else
+               Result_Obj_Type := Make_Temporary (Loc, 'R');
+
+               Result_Obj_Type_Decl :=
+                 Make_Full_Type_Declaration (Loc,
+                   Defining_Identifier => Result_Obj_Type,
+                   Type_Definition     =>
+                     Make_Access_To_Object_Definition (Loc,
+                       All_Present        => True,
+                       Subtype_Indication => New_Occurrence_Of
+                                               (Etype (Result), Loc)));
+               Insert_After_And_Analyze (Proc_Decl, Result_Obj_Type_Decl);
+               Last_Decl := Result_Obj_Type_Decl;
+            end if;
+
+            --  Create the result obj declaration
+
+            --  Generate:
+            --
+            --  Result_Object_For_Postcond : Result_Obj_Type;
+
+            Result_Obj_Decl :=
+              Make_Object_Declaration (Loc,
+                Defining_Identifier =>
+                  Make_Defining_Identifier
+                    (Loc, Name_uResult_Object_For_Postcond),
+                Object_Definition   =>
+                  New_Occurrence_Of
+                    (Result_Obj_Type, Loc));
+            Set_No_Initialization (Result_Obj_Decl);
+            Insert_After_And_Analyze (Last_Decl, Result_Obj_Decl);
+            Last_Decl := Result_Obj_Decl;
+         end if;
+
+         --  Build the Postcond_Enabled flag used to delay evaluation of
+         --  postconditions until finalization has been performed when cleanup
+         --  actions are present.
+
+         --  Generate:
+         --
+         --    Postcond_Enabled : Boolean := True;
+
+         Postcond_Enabled_Decl :=
+           Make_Object_Declaration (Loc,
+             Defining_Identifier =>
+               Make_Defining_Identifier
+                 (Loc, Name_uPostcond_Enabled),
+             Object_Definition   => New_Occurrence_Of (Standard_Boolean, Loc),
+             Expression          => New_Occurrence_Of (Standard_True, Loc));
+         Insert_After_And_Analyze (Last_Decl, Postcond_Enabled_Decl);
+         Last_Decl := Postcond_Enabled_Decl;
+
+         --  Create a flag to indicate that return has been reached
+
+         --  This is necessary for deciding whether to execute _postconditions
+         --  during finalization.
+
+         --  Generate:
+         --
+         --    Return_Success_For_Postcond : Boolean := False;
+
+         Return_Success_Decl :=
+           Make_Object_Declaration (Loc,
+             Defining_Identifier =>
+               Make_Defining_Identifier
+                 (Loc, Name_uReturn_Success_For_Postcond),
+             Object_Definition   => New_Occurrence_Of (Standard_Boolean, Loc),
+             Expression          => New_Occurrence_Of (Standard_False, Loc));
+         Insert_After_And_Analyze (Last_Decl, Return_Success_Decl);
+         Last_Decl := Return_Success_Decl;
 
          --  Set an explicit End_Label to override the sloc of the implicit
          --  RETURN statement, and prevent it from inheriting the sloc of one
          --  the postconditions: this would cause confusing debug info to be
          --  produced, interfering with coverage-analysis tools.
+
+         --  Also, wrap the postcondition checks in a conditional which can be
+         --  used to delay their evaluation when clean-up actions are present.
+
+         --  Generate:
+         --
+         --    procedure _postconditions is
+         --    begin
+         --       if Postcond_Enabled and then Return_Success_For_Postcond then
+         --          [Stmts];
+         --       end if;
+         --    end;
 
          Proc_Bod :=
            Make_Subprogram_Body (Loc,
@@ -1868,10 +2424,22 @@ package body Contracts is
              Declarations               => Empty_List,
              Handled_Statement_Sequence =>
                Make_Handled_Sequence_Of_Statements (Loc,
-                 Statements => Stmts,
-                 End_Label  => Make_Identifier (Loc, Chars (Proc_Id))));
+                 End_Label  => Make_Identifier (Loc, Chars (Proc_Id)),
+                 Statements => New_List (
+                   Make_If_Statement (Loc,
+                     Condition      =>
+                       Make_And_Then (Loc,
+                         Left_Opnd  =>
+                           New_Occurrence_Of
+                             (Defining_Identifier
+                               (Postcond_Enabled_Decl), Loc),
+                         Right_Opnd =>
+                           New_Occurrence_Of
+                             (Defining_Identifier
+                               (Return_Success_Decl), Loc)),
+                      Then_Statements => Stmts))));
+         Insert_After_And_Analyze (Last_Decl, Proc_Bod);
 
-         Insert_After_And_Analyze (Proc_Decl, Proc_Bod);
       end Build_Postconditions_Procedure;
 
       ----------------------------
@@ -1894,14 +2462,20 @@ package body Contracts is
             if Present (Items) then
                Prag := Contract_Test_Cases (Items);
                while Present (Prag) loop
-                  if Pragma_Name (Prag) = Name_Contract_Cases
-                    and then Is_Checked (Prag)
-                  then
-                     Expand_Pragma_Contract_Cases
-                       (CCs     => Prag,
-                        Subp_Id => Subp_Id,
-                        Decls   => Declarations (Body_Decl),
-                        Stmts   => Stmts);
+                  if Is_Checked (Prag) then
+                     if Pragma_Name (Prag) = Name_Contract_Cases then
+                        Expand_Pragma_Contract_Cases
+                          (CCs     => Prag,
+                           Subp_Id => Subp_Id,
+                           Decls   => Declarations (Body_Decl),
+                           Stmts   => Stmts);
+
+                     elsif Pragma_Name (Prag) = Name_Subprogram_Variant then
+                        Expand_Pragma_Subprogram_Variant
+                          (Prag       => Prag,
+                           Subp_Id    => Subp_Id,
+                           Body_Decls => Declarations (Body_Decl));
+                     end if;
                   end if;
 
                   Prag := Next_Pragma (Prag);
@@ -2166,7 +2740,7 @@ package body Contracts is
                   --  A renamed private component is just a component of
                   --  _object, with an arbitrary name.
 
-                  elsif Ekind (Obj) = E_Variable
+                  elsif Ekind (Obj) in E_Variable | E_Constant
                     and then Nkind (Pref) = N_Identifier
                     and then Chars (Pref) = Name_uObject
                     and then Nkind (Sel) = N_Identifier
@@ -2391,9 +2965,7 @@ package body Contracts is
               Was_Expression_Function (Body_Decl)
                 and then Sloc (Body_Id) /= Sloc (Subp_Id)
                 and then In_Same_Source_Unit (Body_Id, Subp_Id)
-                and then List_Containing (Body_Decl) /=
-                         List_Containing (Subp_Decl)
-                and then not In_Instance;
+                and then not In_Same_List (Body_Decl, Subp_Decl);
 
             if Present (Items) then
                Prag := Pre_Post_Conditions (Items);
@@ -2407,7 +2979,9 @@ package body Contracts is
                         Freeze_Expr_Types
                           (Def_Id => Subp_Id,
                            Typ    => Standard_Boolean,
-                           Expr   => Expression (Corresponding_Aspect (Prag)),
+                           Expr   =>
+                             Expression
+                               (First (Pragma_Argument_Associations (Prag))),
                            N      => Body_Decl);
                      end if;
 
@@ -2543,11 +3117,6 @@ package body Contracts is
       if not Expander_Active then
          return;
 
-      --  ASIS requires an unaltered tree
-
-      elsif ASIS_Mode then
-         return;
-
       --  GNATprove does not need the executable semantics of a contract
 
       elsif GNATprove_Mode then
@@ -2630,30 +3199,39 @@ package body Contracts is
       --  Routine _Postconditions holds all contract assertions that must be
       --  verified on exit from the related subprogram.
 
-      --  Step 1: Handle all preconditions. This action must come before the
+      --  Step 1: augment contracts list with postconditions associated with
+      --  Stable_Properties and Stable_Properties'Class aspects. This must
+      --  precede Process_Postconditions.
+
+      for Class_Present in Boolean loop
+         Add_Stable_Property_Contracts
+           (Subp_Id, Class_Present => Class_Present);
+      end loop;
+
+      --  Step 2: Handle all preconditions. This action must come before the
       --  processing of pragma Contract_Cases because the pragma prepends items
       --  to the body declarations.
 
       Process_Preconditions;
 
-      --  Step 2: Handle all postconditions. This action must come before the
+      --  Step 3: Handle all postconditions. This action must come before the
       --  processing of pragma Contract_Cases because the pragma appends items
       --  to list Stmts.
 
       Process_Postconditions (Stmts);
 
-      --  Step 3: Handle pragma Contract_Cases. This action must come before
+      --  Step 4: Handle pragma Contract_Cases. This action must come before
       --  the processing of invariants and predicates because those append
       --  items to list Stmts.
 
       Process_Contract_Cases (Stmts);
 
-      --  Step 4: Apply invariant and predicate checks on a function result and
+      --  Step 5: Apply invariant and predicate checks on a function result and
       --  all formals. The resulting checks are accumulated in list Stmts.
 
       Add_Invariant_And_Predicate_Checks (Subp_Id, Stmts, Result);
 
-      --  Step 5: Construct procedure _Postconditions
+      --  Step 6: Construct procedure _Postconditions
 
       Build_Postconditions_Procedure (Subp_Id, Stmts, Result);
 
@@ -2669,7 +3247,10 @@ package body Contracts is
    procedure Freeze_Previous_Contracts (Body_Decl : Node_Id) is
       function Causes_Contract_Freezing (N : Node_Id) return Boolean;
       pragma Inline (Causes_Contract_Freezing);
-      --  Determine whether arbitrary node N causes contract freezing
+      --  Determine whether arbitrary node N causes contract freezing. This is
+      --  used as an assertion for the current body declaration that caused
+      --  contract freezing, and as a condition to detect body declaration that
+      --  already caused contract freezing before.
 
       procedure Freeze_Contracts;
       pragma Inline (Freeze_Contracts);
@@ -2687,12 +3268,17 @@ package body Contracts is
 
       function Causes_Contract_Freezing (N : Node_Id) return Boolean is
       begin
-         return Nkind_In (N, N_Entry_Body,
-                             N_Package_Body,
-                             N_Protected_Body,
-                             N_Subprogram_Body,
-                             N_Subprogram_Body_Stub,
-                             N_Task_Body);
+         --  The following condition matches guards for calls to
+         --  Freeze_Previous_Contracts from routines that analyze various body
+         --  declarations. In particular, it detects expression functions, as
+         --  described in the call from Analyze_Subprogram_Body_Helper.
+
+         return
+           Comes_From_Source (Original_Node (N))
+             and then
+           Nkind (N) in
+             N_Entry_Body      | N_Package_Body         | N_Protected_Body |
+             N_Subprogram_Body | N_Subprogram_Body_Stub | N_Task_Body;
       end Causes_Contract_Freezing;
 
       ----------------------
@@ -2727,10 +3313,10 @@ package body Contracts is
 
             --  Entry or subprogram declarations
 
-            elsif Nkind_In (Decl, N_Abstract_Subprogram_Declaration,
-                                  N_Entry_Declaration,
-                                  N_Generic_Subprogram_Declaration,
-                                  N_Subprogram_Declaration)
+            elsif Nkind (Decl) in N_Abstract_Subprogram_Declaration
+                                | N_Entry_Declaration
+                                | N_Generic_Subprogram_Declaration
+                                | N_Subprogram_Declaration
             then
                Analyze_Entry_Or_Subprogram_Contract
                  (Subp_Id   => Defining_Entity (Decl),
@@ -2745,8 +3331,8 @@ package body Contracts is
 
             --  Protected units
 
-            elsif Nkind_In (Decl, N_Protected_Type_Declaration,
-                                  N_Single_Protected_Declaration)
+            elsif Nkind (Decl) in N_Protected_Type_Declaration
+                                | N_Single_Protected_Declaration
             then
                Analyze_Protected_Contract (Defining_Entity (Decl));
 
@@ -2757,10 +3343,19 @@ package body Contracts is
 
             --  Task units
 
-            elsif Nkind_In (Decl, N_Single_Task_Declaration,
-                                  N_Task_Type_Declaration)
+            elsif Nkind (Decl) in N_Single_Task_Declaration
+                                | N_Task_Type_Declaration
             then
                Analyze_Task_Contract (Defining_Entity (Decl));
+            end if;
+
+            if Nkind (Decl) in N_Full_Type_Declaration
+                             | N_Private_Type_Declaration
+                             | N_Task_Type_Declaration
+                             | N_Protected_Type_Declaration
+                             | N_Formal_Type_Declaration
+            then
+               Analyze_Type_Contract (Defining_Identifier (Decl));
             end if;
 
             Prev (Decl);
@@ -2842,6 +3437,81 @@ package body Contracts is
       Freeze_Enclosing_Package_Body;
       Freeze_Contracts;
    end Freeze_Previous_Contracts;
+
+   --------------------------
+   -- Get_Postcond_Enabled --
+   --------------------------
+
+   function Get_Postcond_Enabled (Subp : Entity_Id) return Node_Id is
+      Decl : Node_Id;
+   begin
+      Decl :=
+        Next (Unit_Declaration_Node (Postconditions_Proc (Subp)));
+      while Present (Decl) loop
+
+         if Nkind (Decl) = N_Object_Declaration
+          and then Chars (Defining_Identifier (Decl))
+                     = Name_uPostcond_Enabled
+         then
+            return Defining_Identifier (Decl);
+         end if;
+
+         Next (Decl);
+      end loop;
+
+      return Empty;
+   end Get_Postcond_Enabled;
+
+   ------------------------------------
+   -- Get_Result_Object_For_Postcond --
+   ------------------------------------
+
+   function Get_Result_Object_For_Postcond
+     (Subp : Entity_Id) return Node_Id
+   is
+      Decl : Node_Id;
+   begin
+      Decl :=
+        Next (Unit_Declaration_Node (Postconditions_Proc (Subp)));
+      while Present (Decl) loop
+
+         if Nkind (Decl) = N_Object_Declaration
+           and then Chars (Defining_Identifier (Decl))
+                      = Name_uResult_Object_For_Postcond
+         then
+            return Defining_Identifier (Decl);
+         end if;
+
+         Next (Decl);
+      end loop;
+
+      return Empty;
+   end Get_Result_Object_For_Postcond;
+
+   -------------------------------------
+   -- Get_Return_Success_For_Postcond --
+   -------------------------------------
+
+   function Get_Return_Success_For_Postcond (Subp : Entity_Id) return Node_Id
+   is
+      Decl : Node_Id;
+   begin
+      Decl :=
+        Next (Unit_Declaration_Node (Postconditions_Proc (Subp)));
+      while Present (Decl) loop
+
+         if Nkind (Decl) = N_Object_Declaration
+          and then Chars (Defining_Identifier (Decl))
+                     = Name_uReturn_Success_For_Postcond
+         then
+            return Defining_Identifier (Decl);
+         end if;
+
+         Next (Decl);
+      end loop;
+
+      return Empty;
+   end Get_Return_Success_For_Postcond;
 
    ---------------------------------
    -- Inherit_Subprogram_Contract --

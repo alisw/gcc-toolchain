@@ -1,6 +1,6 @@
 /* Target dependent code for the remote server for GNU/Linux ARC.
 
-   Copyright 2020 Free Software Foundation, Inc.
+   Copyright 2020-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -112,12 +112,12 @@ arc_linux_read_description (void)
 #else
   arc_arch_features features (4, ARC_ISA_ARCV2);
 #endif
-  struct target_desc *tdesc = arc_create_target_description (features);
+  target_desc_up tdesc = arc_create_target_description (features);
 
   static const char *expedite_regs[] = { "sp", "status32", nullptr };
-  init_target_desc (tdesc, expedite_regs);
+  init_target_desc (tdesc.get (), expedite_regs);
 
-  return tdesc;
+  return tdesc.release ();
 }
 
 void

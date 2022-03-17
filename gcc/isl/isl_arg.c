@@ -17,6 +17,7 @@
 
 static struct isl_arg help_arg[] = {
 ISL_ARG_PHANTOM_BOOL('h', "help", NULL, "print this help, then exit")
+{ isl_arg_end }
 };
 
 static void set_default_choice(struct isl_arg *arg, void *opt)
@@ -1240,7 +1241,7 @@ static int next_arg(struct isl_arg *arg, int a)
 }
 
 /* Unless ISL_ARG_SKIP_HELP is set, check if "arg" is
- * equal to "--help" and if so call print_help_and_exit.
+ * equal to "--help" or "-h" and if so call print_help_and_exit.
  */
 static void check_help(struct isl_args *args, char *arg, char *prog, void *opt,
 	unsigned flags)
@@ -1248,7 +1249,7 @@ static void check_help(struct isl_args *args, char *arg, char *prog, void *opt,
 	if (ISL_FL_ISSET(flags, ISL_ARG_SKIP_HELP))
 		return;
 
-	if (strcmp(arg, "--help") == 0)
+	if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0)
 		print_help_and_exit(args->args, prog, opt);
 }
 

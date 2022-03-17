@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2020 Free Software Foundation, Inc.
+# Copyright (C) 2012-2022 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,7 +54,11 @@ proc run_elf_list_test { name suffix opts readelf_opts readelf_pipe } {
 
 # We're testing bits in obj-elf -- don't run on anything else.
 if { [is_elf_format] } then {
-    set target_machine ""
+    if { [is_elf_unused_section_symbols ] } {
+	set target_machine -unused
+    } else {
+	set target_machine ""
+    }
     set dump_opts ""
     if {[istarget "arc*-*-*"]} {
 	set target_machine -arc
@@ -64,6 +68,9 @@ if { [is_elf_format] } then {
     }
     if {[istarget "avr*-*-*"]} {
 	set dump_opts {{as -mno-link-relax}}
+    }
+    if {[istarget "csky*-*-*"]} {
+	set target_machine -csky
     }
     if {[istarget "m32r*-*-*"]} then {
 	set target_machine -m32r
@@ -136,6 +143,10 @@ if { [is_elf_format] } then {
     run_dump_test "group1b"
     run_dump_test "group2"
     run_dump_test "group3"
+
+    run_dump_test "attach-1"
+    run_dump_test "attach-err"
+
     switch -glob $target_triplet {
 	hppa64*-*-hpux* { }
 	riscv*-*-* { }
@@ -167,12 +178,13 @@ if { [is_elf_format] } then {
 	rl78-*-* { }
 	riscv*-*-* { }
 	rx-*-* { }
+	loongarch*-*-* { }
 	default {
 	    # The next test can fail if the target does not convert fixups
 	    # against ordinary symbols into relocations against section symbols.
 	    # This is usually revealed by the error message:
 	    #  symbol `sym' required but not present
-	    setup_xfail "m681*-*-*" "m68hc*-*-*" "xgate-*-*" "vax-*-*"
+	    setup_xfail "m681*-*-*" "m68hc*-*-*" "xgate-*-*" "vax-*-*" "avr-*-*"
 	    run_dump_test redef
 	    run_dump_test equ-reloc
 	}
@@ -254,6 +266,17 @@ if { [is_elf_format] } then {
     run_dump_test "section19"
     run_dump_test "section20"
     run_dump_test "section21"
+    run_dump_test "section22"
+    run_dump_test "section23a"
+    run_dump_test "section23b"
+    run_dump_test "section24a"
+    run_dump_test "section24b"
+    run_dump_test "section25"
+    run_dump_test "section26"
+    run_dump_test "section27"
+    run_dump_test "section28"
+    run_dump_test "section29"
+    run_dump_test "sh-link-zero"
     run_dump_test "dwarf2-1" $dump_opts
     run_dump_test "dwarf2-2" $dump_opts
     run_dump_test "dwarf2-3" $dump_opts
@@ -273,7 +296,13 @@ if { [is_elf_format] } then {
     run_dump_test "dwarf2-17" $dump_opts
     run_dump_test "dwarf2-18" $dump_opts
     run_dump_test "dwarf2-19" $dump_opts
+    run_dump_test "dwarf2-20" $dump_opts
+    run_dump_test "dwarf2-21" $dump_opts
     run_dump_test "dwarf-5-file0" $dump_opts
+    run_dump_test "dwarf-5-file0-2" $dump_opts
+    run_dump_test "dwarf-5-file0-3" $dump_opts
+    run_dump_test "dwarf-5-dir0" $dump_opts
+    run_dump_test "dwarf-5-loc0" $dump_opts
     run_dump_test "dwarf-4-cu" $dump_opts
     run_dump_test "dwarf-5-cu" $dump_opts
     run_dump_test "dwarf-5-nop-for-line-table" $dump_opts
@@ -283,8 +312,10 @@ if { [is_elf_format] } then {
     run_dump_test "bad-section-flag"
     run_dump_test "bad-size"
     run_dump_test "bad-group"
+    run_dump_test "pr27355"
 
     run_dump_test "syms"
+    run_dump_test "startof"
 
     run_dump_test "missing-build-notes"
     
@@ -306,9 +337,6 @@ if { [is_elf_format] } then {
     run_dump_test "strtab"
 
     run_dump_test "bignums"
-    
-    load_lib gas-dg.exp
-    dg-init
-    dg-runtest [lsort [glob -nocomplain $srcdir/$subdir/err-*.s $srcdir/$subdir/warn-*.s]] "" ""
-    dg-finish
+    run_dump_test "section-symbol-redef"
+    run_dump_test "pr27228"
 }

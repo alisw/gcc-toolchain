@@ -1,5 +1,5 @@
 /* Some code common to C++ and ObjC++ front ends.
-   Copyright (C) 2004-2020 Free Software Foundation, Inc.
+   Copyright (C) 2004-2021 Free Software Foundation, Inc.
    Contributed by Ziemowit Laski  <zlaski@apple.com>
 
 This file is part of GCC.
@@ -314,13 +314,8 @@ cxx_block_may_fallthru (const_tree stmt)
 	return true;
       return block_may_fallthru (ELSE_CLAUSE (stmt));
 
-    case SWITCH_STMT:
-      return (!SWITCH_STMT_ALL_CASES_P (stmt)
-	      || !SWITCH_STMT_NO_BREAK_P (stmt)
-	      || block_may_fallthru (SWITCH_STMT_BODY (stmt)));
-
     default:
-      return true;
+      return c_block_may_fallthru (stmt);
     }
 }
 
@@ -332,11 +327,12 @@ cp_get_global_decls ()
   return NAMESPACE_LEVEL (global_namespace)->names;
 }
 
-/* Push DECL into the current scope.  */
+/* Push DECL into the current (namespace) scope.  */
 
 tree
 cp_pushdecl (tree decl)
 {
+  DECL_CONTEXT (decl) = FROB_CONTEXT (current_namespace);
   return pushdecl (decl);
 }
 
@@ -354,7 +350,7 @@ identifier_global_value (tree name)
 tree
 identifier_global_tag (tree name)
 {
-  tree ret = lookup_qualified_name (global_namespace, name, /*prefer_type*/2,
+  tree ret = lookup_qualified_name (global_namespace, name, LOOK_want::TYPE,
 				    /*complain*/false);
   if (ret == error_mark_node)
     return NULL_TREE;
@@ -370,7 +366,8 @@ names_builtin_p (const char *name)
   tree id = get_identifier (name);
   if (tree binding = get_global_binding (id))
     {
-      if (TREE_CODE (binding) == FUNCTION_DECL && DECL_IS_BUILTIN (binding))
+      if (TREE_CODE (binding) == FUNCTION_DECL
+	  && DECL_IS_UNDECLARED_BUILTIN (binding))
 	return true;
 
       /* Handle the case when an overload for a  built-in name exists.  */
@@ -380,7 +377,7 @@ names_builtin_p (const char *name)
       for (ovl_iterator it (binding); it; ++it)
 	{
 	  tree decl = *it;
-	  if (DECL_IS_BUILTIN (decl))
+	  if (DECL_IS_UNDECLARED_BUILTIN (decl))
 	    return true;
 	}
     }
@@ -394,6 +391,7 @@ names_builtin_p (const char *name)
     case RID_BUILTIN_HAS_ATTRIBUTE:
     case RID_BUILTIN_SHUFFLE:
     case RID_BUILTIN_LAUNDER:
+    case RID_BUILTIN_BIT_CAST:
     case RID_OFFSETOF:
     case RID_HAS_NOTHROW_ASSIGN:
     case RID_HAS_NOTHROW_CONSTRUCTOR:
@@ -440,6 +438,9 @@ cp_register_dumps (gcc::dump_manager *dumps)
   class_dump_id = dumps->dump_register
     (".class", "lang-class", "lang-class", DK_lang, OPTGROUP_NONE, false);
 
+  module_dump_id = dumps->dump_register
+    (".module", "lang-module", "lang-module", DK_lang, OPTGROUP_NONE, false);
+
   raw_dump_id = dumps->dump_register
     (".raw", "lang-raw", "lang-raw", DK_lang, OPTGROUP_NONE, false);
 }
@@ -477,20 +478,14 @@ cp_common_init_ts (void)
   MARK_TS_TYPE_NON_COMMON (TYPE_PACK_EXPANSION);
 
   /* Statements.  */
-  MARK_TS_EXP (BREAK_STMT);
   MARK_TS_EXP (CLEANUP_STMT);
-  MARK_TS_EXP (CONTINUE_STMT);
-  MARK_TS_EXP (DO_STMT);
   MARK_TS_EXP (EH_SPEC_BLOCK);
-  MARK_TS_EXP (FOR_STMT);
   MARK_TS_EXP (HANDLER);
   MARK_TS_EXP (IF_STMT);
   MARK_TS_EXP (OMP_DEPOBJ);
   MARK_TS_EXP (RANGE_FOR_STMT);
-  MARK_TS_EXP (SWITCH_STMT);
   MARK_TS_EXP (TRY_BLOCK);
   MARK_TS_EXP (USING_STMT);
-  MARK_TS_EXP (WHILE_STMT);
 
   /* Random expressions.  */
   MARK_TS_EXP (ADDRESSOF_EXPR);
@@ -498,6 +493,7 @@ cp_common_init_ts (void)
   MARK_TS_EXP (ALIGNOF_EXPR);
   MARK_TS_EXP (ARROW_EXPR);
   MARK_TS_EXP (AT_ENCODE_EXPR);
+  MARK_TS_EXP (BIT_CAST_EXPR);
   MARK_TS_EXP (CAST_EXPR);
   MARK_TS_EXP (CONST_CAST_EXPR);
   MARK_TS_EXP (CTOR_INITIALIZER);
@@ -556,6 +552,18 @@ cp_common_init_ts (void)
   MARK_TS_EXP (CO_RETURN_EXPR);
 
   c_common_init_ts ();
+}
+
+/* Handle C++-specficic options here.  Punt to c_common otherwise.  */
+
+bool
+cp_handle_option (size_t scode, const char *arg, HOST_WIDE_INT value,
+		  int kind, location_t loc,
+		  const struct cl_option_handlers *handlers)
+{
+  if (handle_module_option (unsigned (scode), arg, value))
+    return true;
+  return c_common_handle_option (scode, arg, value, kind, loc, handlers);
 }
 
 #include "gt-cp-cp-objcp-common.h"

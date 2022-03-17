@@ -1,5 +1,5 @@
 /* Check calls to formatted I/O functions (-Wformat).
-   Copyright (C) 1992-2020 Free Software Foundation, Inc.
+   Copyright (C) 1992-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -2997,6 +2997,7 @@ static const struct
    NAME ("decl", "declaration"),
    NAME ("enumeral", "enumerated"),
    NAME ("floating point", "floating-point"),
+   NAME ("nonstatic", "non-static"),
    NAME ("non-zero", "nonzero"),
    NAME ("reg", "register"),
    NAME ("stmt", "statement"),

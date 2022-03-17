@@ -1,6 +1,6 @@
 /* Command line option handling.  Code involving global state that
    should not be shared with the driver.
-   Copyright (C) 2002-2020 Free Software Foundation, Inc.
+   Copyright (C) 2002-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -327,8 +327,14 @@ decode_options (struct gcc_options *opts, struct gcc_options *opts_set,
   unsigned i;
   const char *arg;
 
-  FOR_EACH_VEC_ELT (help_option_arguments, i, arg)
-    print_help (opts, lang_mask, arg);
+  if (!help_option_arguments.is_empty ())
+    {
+      /* Make sure --help=* sees the overridden values.  */
+      target_option_override_hook ();
+
+      FOR_EACH_VEC_ELT (help_option_arguments, i, arg)
+	print_help (opts, lang_mask, arg);
+    }
 }
 
 /* Hold command-line options associated with stack limitation.  */
@@ -372,10 +378,6 @@ handle_common_deferred_options (void)
 	  dbg_cnt_process_opt (opt->arg);
 	  break;
 
-	case OPT_fdbg_cnt_list:
-	  dbg_cnt_list_all_counters ();
-	  break;
-
 	case OPT_fdebug_prefix_map_:
 	  add_debug_prefix_map (opt->arg);
 	  break;
@@ -385,8 +387,7 @@ handle_common_deferred_options (void)
 	  break;
 
 	case OPT_fdump_:
-	  if (!g->get_dumps ()->dump_switch_p (opt->arg))
-	    error ("unrecognized command-line option %<-fdump-%s%>", opt->arg);
+	  g->get_dumps ()->dump_switch_p (opt->arg);
 	  break;
 
         case OPT_fopt_info_:

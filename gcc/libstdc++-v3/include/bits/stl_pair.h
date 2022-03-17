@@ -1,6 +1,6 @@
 // Pair implementation -*- C++ -*-
 
-// Copyright (C) 2001-2020 Free Software Foundation, Inc.
+// Copyright (C) 2001-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -89,7 +89,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   template<typename...>
     class tuple;
 
-  template<std::size_t...>
+  template<size_t...>
     struct _Index_tuple;
 
   // Concept utility functions, reused in conditionally-explicit
@@ -446,11 +446,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 
     private:
-      template<typename... _Args1, std::size_t... _Indexes1,
-               typename... _Args2, std::size_t... _Indexes2>
+      template<typename... _Args1, size_t... _Indexes1,
+	       typename... _Args2, size_t... _Indexes2>
 	_GLIBCXX20_CONSTEXPR
         pair(tuple<_Args1...>&, tuple<_Args2...>&,
-             _Index_tuple<_Indexes1...>, _Index_tuple<_Indexes2...>);
+	     _Index_tuple<_Indexes1...>, _Index_tuple<_Indexes2...>);
 #endif // C++11
     };
 
@@ -542,7 +542,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #endif
 #endif // __cplusplus >= 201103L
 
-  // @} relates pair
+  /// @} relates pair
 
   /**
    *  @brief A convenience wrapper for creating a pair from two objects.

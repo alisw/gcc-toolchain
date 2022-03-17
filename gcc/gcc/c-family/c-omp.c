@@ -1,7 +1,7 @@
 /* This file contains routines to construct OpenACC and OpenMP constructs,
    called from parsing in the C and C++ front ends.
 
-   Copyright (C) 2005-2020 Free Software Foundation, Inc.
+   Copyright (C) 2005-2021 Free Software Foundation, Inc.
    Contributed by Richard Henderson <rth@redhat.com>,
 		  Diego Novillo <dnovillo@redhat.com>.
 
@@ -34,6 +34,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "memmodel.h"
 #include "attribs.h"
 #include "gimplify.h"
+#include "langhooks.h"
+#include "bitmap.h"
 
 
 /* Complete a #pragma oacc wait construct.  LOC is the location of
@@ -105,6 +107,17 @@ c_finish_omp_taskgroup (location_t loc, tree body, tree clauses)
 tree
 c_finish_omp_critical (location_t loc, tree body, tree name, tree clauses)
 {
+  gcc_assert (!clauses || OMP_CLAUSE_CODE (clauses) == OMP_CLAUSE_HINT);
+  if (name == NULL_TREE
+      && clauses != NULL_TREE
+      && integer_nonzerop (OMP_CLAUSE_HINT_EXPR (clauses)))
+    {
+      error_at (OMP_CLAUSE_LOCATION (clauses),
+		"%<#pragma omp critical%> with %<hint%> clause requires "
+		"a name, except when %<omp_sync_hint_none%> is used");
+      return error_mark_node;
+    }
+
   tree stmt = make_node (OMP_CRITICAL);
   TREE_TYPE (stmt) = void_type_node;
   OMP_CRITICAL_BODY (stmt) = body;
@@ -1041,12 +1054,36 @@ struct c_omp_check_loop_iv_data
 {
   tree declv;
   bool fail;
+  bool maybe_nonrect;
   location_t stmt_loc;
   location_t expr_loc;
   int kind;
+  int idx;
   walk_tree_lh lh;
   hash_set<tree> *ppset;
 };
+
+/* Return -1 if DECL is not a loop iterator in loop nest D, otherwise
+   return the index of the loop in which it is an iterator.
+   Return TREE_VEC_LENGTH (d->declv) if it is a C++ range for iterator.  */
+
+static int
+c_omp_is_loop_iterator (tree decl, struct c_omp_check_loop_iv_data *d)
+{
+  for (int i = 0; i < TREE_VEC_LENGTH (d->declv); i++)
+    if (decl == TREE_VEC_ELT (d->declv, i)
+	|| (TREE_CODE (TREE_VEC_ELT (d->declv, i)) == TREE_LIST
+	    && decl == TREE_PURPOSE (TREE_VEC_ELT (d->declv, i))))
+      return i;
+    else if (TREE_CODE (TREE_VEC_ELT (d->declv, i)) == TREE_LIST
+	     && TREE_CHAIN (TREE_VEC_ELT (d->declv, i))
+	     && (TREE_CODE (TREE_CHAIN (TREE_VEC_ELT (d->declv, i)))
+		 == TREE_VEC)
+	     && decl == TREE_VEC_ELT (TREE_CHAIN (TREE_VEC_ELT (d->declv,
+						  i)), 2))
+      return TREE_VEC_LENGTH (d->declv);
+  return -1;
+}
 
 /* Helper function called via walk_tree, to diagnose uses
    of associated loop IVs inside of lb, b and incr expressions
@@ -1059,49 +1096,232 @@ c_omp_check_loop_iv_r (tree *tp, int *walk_subtrees, void *data)
     = (struct c_omp_check_loop_iv_data *) data;
   if (DECL_P (*tp))
     {
-      int i;
-      for (i = 0; i < TREE_VEC_LENGTH (d->declv); i++)
-	if (*tp == TREE_VEC_ELT (d->declv, i)
-	    || (TREE_CODE (TREE_VEC_ELT (d->declv, i)) == TREE_LIST
-		&& *tp == TREE_PURPOSE (TREE_VEC_ELT (d->declv, i)))
-	    || (TREE_CODE (TREE_VEC_ELT (d->declv, i)) == TREE_LIST
-		&& TREE_CHAIN (TREE_VEC_ELT (d->declv, i))
-		&& (TREE_CODE (TREE_CHAIN (TREE_VEC_ELT (d->declv, i)))
-		    == TREE_VEC)
-		&& *tp == TREE_VEC_ELT (TREE_CHAIN (TREE_VEC_ELT (d->declv,
-								  i)), 2)))
-	  {
-	    location_t loc = d->expr_loc;
-	    if (loc == UNKNOWN_LOCATION)
-	      loc = d->stmt_loc;
-	    switch (d->kind)
-	      {
-	      case 0:
-		error_at (loc, "initializer expression refers to "
-			       "iteration variable %qD", *tp);
-		break;
-	      case 1:
-		error_at (loc, "condition expression refers to "
-			       "iteration variable %qD", *tp);
-		break;
-	      case 2:
-		error_at (loc, "increment expression refers to "
-			       "iteration variable %qD", *tp);
-		break;
-	      }
-	    d->fail = true;
-	  }
+      int idx = c_omp_is_loop_iterator (*tp, d);
+      if (idx == -1)
+	return NULL_TREE;
+
+      if ((d->kind & 4) && idx < d->idx)
+	{
+	  d->maybe_nonrect = true;
+	  return NULL_TREE;
+	}
+
+      if (d->ppset->add (*tp))
+	return NULL_TREE;
+
+      location_t loc = d->expr_loc;
+      if (loc == UNKNOWN_LOCATION)
+	loc = d->stmt_loc;
+
+      switch (d->kind & 3)
+	{
+	case 0:
+	  error_at (loc, "initializer expression refers to "
+			 "iteration variable %qD", *tp);
+	  break;
+	case 1:
+	  error_at (loc, "condition expression refers to "
+			 "iteration variable %qD", *tp);
+	  break;
+	case 2:
+	  error_at (loc, "increment expression refers to "
+			 "iteration variable %qD", *tp);
+	  break;
+	}
+      d->fail = true;
     }
+  else if (d->ppset->add (*tp))
+    *walk_subtrees = 0;
   /* Don't walk dtors added by C++ wrap_cleanups_r.  */
   else if (TREE_CODE (*tp) == TRY_CATCH_EXPR
 	   && TRY_CATCH_IS_CLEANUP (*tp))
     {
       *walk_subtrees = 0;
       return walk_tree_1 (&TREE_OPERAND (*tp, 0), c_omp_check_loop_iv_r, data,
-			  d->ppset, d->lh);
+			  NULL, d->lh);
     }
 
   return NULL_TREE;
+}
+
+/* Check the allowed expressions for non-rectangular loop nest lb and b
+   expressions.  Return the outer var decl referenced in the expression.  */
+
+static tree
+c_omp_check_nonrect_loop_iv (tree *tp, struct c_omp_check_loop_iv_data *d,
+			     walk_tree_lh lh)
+{
+  d->maybe_nonrect = false;
+  if (d->fail)
+    return NULL_TREE;
+
+  hash_set<tree> pset;
+  hash_set<tree> *ppset = d->ppset;
+  d->ppset = &pset;
+
+  tree t = *tp;
+  if (TREE_CODE (t) == TREE_VEC
+      && TREE_VEC_LENGTH (t) == 3
+      && DECL_P (TREE_VEC_ELT (t, 0))
+      && c_omp_is_loop_iterator (TREE_VEC_ELT (t, 0), d) >= 0)
+    {
+      d->kind &= 3;
+      walk_tree_1 (&TREE_VEC_ELT (t, 1), c_omp_check_loop_iv_r, d, NULL, lh);
+      walk_tree_1 (&TREE_VEC_ELT (t, 1), c_omp_check_loop_iv_r, d, NULL, lh);
+      d->ppset = ppset;
+      return d->fail ? NULL_TREE : TREE_VEC_ELT (t, 0);
+    }
+
+  while (CONVERT_EXPR_P (t))
+    t = TREE_OPERAND (t, 0);
+
+  tree a1 = t, a2 = integer_zero_node;
+  bool neg_a1 = false, neg_a2 = false;
+  switch (TREE_CODE (t))
+    {
+    case PLUS_EXPR:
+    case MINUS_EXPR:
+      a1 = TREE_OPERAND (t, 0);
+      a2 = TREE_OPERAND (t, 1);
+      while (CONVERT_EXPR_P (a1))
+	a1 = TREE_OPERAND (a1, 0);
+      while (CONVERT_EXPR_P (a2))
+	a2 = TREE_OPERAND (a2, 0);
+      if (DECL_P (a1) && c_omp_is_loop_iterator (a1, d) >= 0)
+	{
+	  a2 = TREE_OPERAND (t, 1);
+	  if (TREE_CODE (t) == MINUS_EXPR)
+	    neg_a2 = true;
+	  t = a1;
+	  break;
+	}
+      if (DECL_P (a2) && c_omp_is_loop_iterator (a2, d) >= 0)
+	{
+	  a1 = TREE_OPERAND (t, 0);
+	  if (TREE_CODE (t) == MINUS_EXPR)
+	    neg_a1 = true;
+	  t = a2;
+	  a2 = a1;
+	  break;
+	}
+      if (TREE_CODE (a1) == MULT_EXPR && TREE_CODE (a2) == MULT_EXPR)
+	{
+	  tree o1 = TREE_OPERAND (a1, 0);
+	  tree o2 = TREE_OPERAND (a1, 1);
+	  while (CONVERT_EXPR_P (o1))
+	    o1 = TREE_OPERAND (o1, 0);
+	  while (CONVERT_EXPR_P (o2))
+	    o2 = TREE_OPERAND (o2, 0);
+	  if ((DECL_P (o1) && c_omp_is_loop_iterator (o1, d) >= 0)
+	      || (DECL_P (o2) && c_omp_is_loop_iterator (o2, d) >= 0))
+	    {
+	      a2 = TREE_OPERAND (t, 1);
+	      if (TREE_CODE (t) == MINUS_EXPR)
+		neg_a2 = true;
+	      t = a1;
+	      break;
+	    }
+	}
+      if (TREE_CODE (a2) == MULT_EXPR)
+	{
+	  a1 = TREE_OPERAND (t, 0);
+	  if (TREE_CODE (t) == MINUS_EXPR)
+	    neg_a1 = true;
+	  t = a2;
+	  a2 = a1;
+	  break;
+	}
+      if (TREE_CODE (a1) == MULT_EXPR)
+	{
+	  a2 = TREE_OPERAND (t, 1);
+	  if (TREE_CODE (t) == MINUS_EXPR)
+	    neg_a2 = true;
+	  t = a1;
+	  break;
+	}
+      a2 = integer_zero_node;
+      break;
+    default:
+      break;
+    }
+
+  a1 = integer_one_node;
+  if (TREE_CODE (t) == MULT_EXPR)
+    {
+      tree o1 = TREE_OPERAND (t, 0);
+      tree o2 = TREE_OPERAND (t, 1);
+      while (CONVERT_EXPR_P (o1))
+	o1 = TREE_OPERAND (o1, 0);
+      while (CONVERT_EXPR_P (o2))
+	o2 = TREE_OPERAND (o2, 0);
+      if (DECL_P (o1) && c_omp_is_loop_iterator (o1, d) >= 0)
+	{
+	  a1 = TREE_OPERAND (t, 1);
+	  t = o1;
+	}
+      else if (DECL_P (o2) && c_omp_is_loop_iterator (o2, d) >= 0)
+	{
+	  a1 = TREE_OPERAND (t, 0);
+	  t = o2;
+	}
+    }
+
+  d->kind &= 3;
+  tree ret = NULL_TREE;
+  if (DECL_P (t) && c_omp_is_loop_iterator (t, d) >= 0)
+    {
+      location_t loc = d->expr_loc;
+      if (loc == UNKNOWN_LOCATION)
+	loc = d->stmt_loc;
+      if (!lang_hooks.types_compatible_p (TREE_TYPE (*tp), TREE_TYPE (t)))
+	{
+	  if (d->kind == 0)
+	    error_at (loc, "outer iteration variable %qD used in initializer"
+			   " expression has type other than %qT",
+		      t, TREE_TYPE (*tp));
+	  else
+	    error_at (loc, "outer iteration variable %qD used in condition"
+			   " expression has type other than %qT",
+		      t, TREE_TYPE (*tp));
+	  d->fail = true;
+	}
+      else if (!INTEGRAL_TYPE_P (TREE_TYPE (a1)))
+	{
+	  error_at (loc, "outer iteration variable %qD multiplier expression"
+			 " %qE is not integral", t, a1);
+	  d->fail = true;
+	}
+      else if (!INTEGRAL_TYPE_P (TREE_TYPE (a2)))
+	{
+	  error_at (loc, "outer iteration variable %qD addend expression"
+			 " %qE is not integral", t, a2);
+	  d->fail = true;
+	}
+      else
+	{
+	  walk_tree_1 (&a1, c_omp_check_loop_iv_r, d, NULL, lh);
+	  walk_tree_1 (&a2, c_omp_check_loop_iv_r, d, NULL, lh);
+        }
+      if (!d->fail)
+	{
+	  a1 = fold_convert (TREE_TYPE (*tp), a1);
+	  a2 = fold_convert (TREE_TYPE (*tp), a2);
+	  if (neg_a1)
+	    a1 = fold_build1 (NEGATE_EXPR, TREE_TYPE (a1), a1);
+	  if (neg_a2)
+	    a2 = fold_build1 (NEGATE_EXPR, TREE_TYPE (a2), a2);
+	  ret = t;
+	  *tp = make_tree_vec (3);
+	  TREE_VEC_ELT (*tp, 0) = t;
+	  TREE_VEC_ELT (*tp, 1) = a1;
+	  TREE_VEC_ELT (*tp, 2) = a2;
+	}
+    }
+  else
+    walk_tree_1 (&t, c_omp_check_loop_iv_r, d, NULL, lh);
+
+  d->ppset = ppset;
+  return ret;
 }
 
 /* Diagnose invalid references to loop iterators in lb, b and incr
@@ -1116,6 +1336,7 @@ c_omp_check_loop_iv (tree stmt, tree declv, walk_tree_lh lh)
 
   data.declv = declv;
   data.fail = false;
+  data.maybe_nonrect = false;
   data.stmt_loc = EXPR_LOCATION (stmt);
   data.lh = lh;
   data.ppset = &pset;
@@ -1129,9 +1350,31 @@ c_omp_check_loop_iv (tree stmt, tree declv, walk_tree_lh lh)
       gcc_assert (TREE_OPERAND (cond, 0) == decl);
       tree incr = TREE_VEC_ELT (OMP_FOR_INCR (stmt), i);
       data.expr_loc = EXPR_LOCATION (TREE_OPERAND (init, 1));
-      data.kind = 0;
+      tree vec_outer1 = NULL_TREE, vec_outer2 = NULL_TREE;
+      int kind = 0;
+      if (i > 0
+	  && (unsigned) c_omp_is_loop_iterator (decl, &data) < (unsigned) i)
+	{
+	  location_t loc = data.expr_loc;
+	  if (loc == UNKNOWN_LOCATION)
+	    loc = data.stmt_loc;
+	  error_at (loc, "the same loop iteration variables %qD used in "
+			 "multiple associated loops", decl);
+	  data.fail = true;
+	}
+      /* Handle non-rectangular loop nests.  */
+      if (TREE_CODE (stmt) != OACC_LOOP
+	  && (TREE_CODE (TREE_OPERAND (init, 1)) == TREE_VEC
+	      || INTEGRAL_TYPE_P (TREE_TYPE (TREE_OPERAND (init, 1))))
+	  && i > 0)
+	kind = 4;
+      data.kind = kind;
+      data.idx = i;
       walk_tree_1 (&TREE_OPERAND (init, 1),
-		   c_omp_check_loop_iv_r, &data, &pset, lh);
+		   c_omp_check_loop_iv_r, &data, NULL, lh);
+      if (data.maybe_nonrect)
+	vec_outer1 = c_omp_check_nonrect_loop_iv (&TREE_OPERAND (init, 1),
+						  &data, lh);
       /* Don't warn for C++ random access iterators here, the
 	 expression then involves the subtraction and always refers
 	 to the original value.  The C++ FE needs to warn on those
@@ -1141,10 +1384,24 @@ c_omp_check_loop_iv (tree stmt, tree declv, walk_tree_lh lh)
 	      && decl == TREE_PURPOSE (TREE_VEC_ELT (declv, i))))
 	{
 	  data.expr_loc = EXPR_LOCATION (cond);
-	  data.kind = 1;
+	  data.kind = kind | 1;
 	  walk_tree_1 (&TREE_OPERAND (cond, 1),
-		       c_omp_check_loop_iv_r, &data, &pset, lh);
+		       c_omp_check_loop_iv_r, &data, NULL, lh);
+	  if (data.maybe_nonrect)
+	    vec_outer2 = c_omp_check_nonrect_loop_iv (&TREE_OPERAND (cond, 1),
+						      &data, lh);
 	}
+      if (vec_outer1 && vec_outer2 && vec_outer1 != vec_outer2)
+	{
+	  location_t loc = data.expr_loc;
+	  if (loc == UNKNOWN_LOCATION)
+	    loc = data.stmt_loc;
+	  error_at (loc, "two different outer iteration variables %qD and %qD"
+			 " used in a single loop", vec_outer1, vec_outer2);
+	  data.fail = true;
+	}
+      if (vec_outer1 || vec_outer2)
+	OMP_FOR_NON_RECTANGULAR (stmt) = 1;
       if (TREE_CODE (incr) == MODIFY_EXPR)
 	{
 	  gcc_assert (TREE_OPERAND (incr, 0) == decl);
@@ -1155,13 +1412,13 @@ c_omp_check_loop_iv (tree stmt, tree declv, walk_tree_lh lh)
 	    {
 	      data.expr_loc = EXPR_LOCATION (TREE_OPERAND (incr, 0));
 	      walk_tree_1 (&TREE_OPERAND (incr, 0),
-			   c_omp_check_loop_iv_r, &data, &pset, lh);
+			   c_omp_check_loop_iv_r, &data, NULL, lh);
 	    }
 	  else
 	    {
 	      data.expr_loc = EXPR_LOCATION (TREE_OPERAND (incr, 1));
 	      walk_tree_1 (&TREE_OPERAND (incr, 1),
-			   c_omp_check_loop_iv_r, &data, &pset, lh);
+			   c_omp_check_loop_iv_r, &data, NULL, lh);
 	    }
 	}
     }
@@ -1171,7 +1428,7 @@ c_omp_check_loop_iv (tree stmt, tree declv, walk_tree_lh lh)
 /* Similar, but allows to check the init or cond expressions individually.  */
 
 bool
-c_omp_check_loop_iv_exprs (location_t stmt_loc, tree declv, tree decl,
+c_omp_check_loop_iv_exprs (location_t stmt_loc, tree declv, int i, tree decl,
 			   tree init, tree cond, walk_tree_lh lh)
 {
   hash_set<tree> pset;
@@ -1179,15 +1436,24 @@ c_omp_check_loop_iv_exprs (location_t stmt_loc, tree declv, tree decl,
 
   data.declv = declv;
   data.fail = false;
+  data.maybe_nonrect = false;
   data.stmt_loc = stmt_loc;
   data.lh = lh;
   data.ppset = &pset;
+  data.idx = i;
+  if (i > 0
+      && (unsigned) c_omp_is_loop_iterator (decl, &data) < (unsigned) i)
+    {
+      error_at (stmt_loc, "the same loop iteration variables %qD used in "
+      			  "multiple associated loops", decl);
+      data.fail = true;
+    }
   if (init)
     {
       data.expr_loc = EXPR_LOCATION (init);
       data.kind = 0;
       walk_tree_1 (&init,
-		   c_omp_check_loop_iv_r, &data, &pset, lh);
+		   c_omp_check_loop_iv_r, &data, NULL, lh);
     }
   if (cond)
     {
@@ -1196,10 +1462,10 @@ c_omp_check_loop_iv_exprs (location_t stmt_loc, tree declv, tree decl,
       data.kind = 1;
       if (TREE_OPERAND (cond, 0) == decl)
 	walk_tree_1 (&TREE_OPERAND (cond, 1),
-		     c_omp_check_loop_iv_r, &data, &pset, lh);
+		     c_omp_check_loop_iv_r, &data, NULL, lh);
       else
 	walk_tree_1 (&TREE_OPERAND (cond, 0),
-		     c_omp_check_loop_iv_r, &data, &pset, lh);
+		     c_omp_check_loop_iv_r, &data, NULL, lh);
     }
   return !data.fail;
 }
@@ -1310,6 +1576,7 @@ c_omp_split_clauses (location_t loc, enum tree_code code,
   tree next, c;
   enum c_omp_clause_split s;
   int i;
+  bool has_dup_allocate = false;
 
   for (i = 0; i < C_OMP_CLAUSE_SPLIT_COUNT; i++)
     cclauses[i] = NULL;
@@ -1933,11 +2200,201 @@ c_omp_split_clauses (location_t loc, enum tree_code code,
 	  else
 	    s = C_OMP_CLAUSE_SPLIT_FOR;
 	  break;
+	/* Allocate clause is allowed on target, teams, distribute, parallel,
+	   for, sections and taskloop.  Distribute it to all.  */
+	case OMP_CLAUSE_ALLOCATE:
+	  s = C_OMP_CLAUSE_SPLIT_COUNT;
+	  for (i = 0; i < C_OMP_CLAUSE_SPLIT_COUNT; i++)
+	    {
+	      switch (i)
+		{
+		case C_OMP_CLAUSE_SPLIT_TARGET:
+		  if ((mask & (OMP_CLAUSE_MASK_1
+			       << PRAGMA_OMP_CLAUSE_MAP)) == 0)
+		    continue;
+		  break;
+		case C_OMP_CLAUSE_SPLIT_TEAMS:
+		  if ((mask & (OMP_CLAUSE_MASK_1
+			       << PRAGMA_OMP_CLAUSE_NUM_TEAMS)) == 0)
+		    continue;
+		  break;
+		case C_OMP_CLAUSE_SPLIT_DISTRIBUTE:
+		  if ((mask & (OMP_CLAUSE_MASK_1
+			       << PRAGMA_OMP_CLAUSE_DIST_SCHEDULE)) == 0)
+		    continue;
+		  break;
+		case C_OMP_CLAUSE_SPLIT_PARALLEL:
+		  if ((mask & (OMP_CLAUSE_MASK_1
+			       << PRAGMA_OMP_CLAUSE_NUM_THREADS)) == 0)
+		    continue;
+		  break;
+		case C_OMP_CLAUSE_SPLIT_FOR:
+		  STATIC_ASSERT (C_OMP_CLAUSE_SPLIT_SECTIONS
+				 == C_OMP_CLAUSE_SPLIT_FOR
+				 && (C_OMP_CLAUSE_SPLIT_TASKLOOP
+				     == C_OMP_CLAUSE_SPLIT_FOR)
+				 && (C_OMP_CLAUSE_SPLIT_LOOP
+				     == C_OMP_CLAUSE_SPLIT_FOR));
+		  if (code == OMP_SECTIONS)
+		    break;
+		  if ((mask & (OMP_CLAUSE_MASK_1
+			       << PRAGMA_OMP_CLAUSE_SCHEDULE)) != 0)
+		    break;
+		  if ((mask & (OMP_CLAUSE_MASK_1
+			       << PRAGMA_OMP_CLAUSE_NOGROUP)) != 0)
+		    break;
+		  continue;
+		case C_OMP_CLAUSE_SPLIT_SIMD:
+		  continue;
+		default:
+		  gcc_unreachable ();
+		}
+	      if (s != C_OMP_CLAUSE_SPLIT_COUNT)
+		{
+		  c = build_omp_clause (OMP_CLAUSE_LOCATION (clauses),
+					OMP_CLAUSE_ALLOCATE);
+		  OMP_CLAUSE_DECL (c)
+		    = OMP_CLAUSE_DECL (clauses);
+		  OMP_CLAUSE_ALLOCATE_ALLOCATOR (c)
+		    = OMP_CLAUSE_ALLOCATE_ALLOCATOR (clauses);
+		  OMP_CLAUSE_CHAIN (c) = cclauses[s];
+		  cclauses[s] = c;
+		  has_dup_allocate = true;
+		}
+	      s = (enum c_omp_clause_split) i;
+	    }
+	  gcc_assert (s != C_OMP_CLAUSE_SPLIT_COUNT);
+	  break;
 	default:
 	  gcc_unreachable ();
 	}
       OMP_CLAUSE_CHAIN (clauses) = cclauses[s];
       cclauses[s] = clauses;
+    }
+
+  if (has_dup_allocate)
+    {
+      bool need_prune = false;
+      bitmap_obstack_initialize (NULL);
+      for (i = 0; i < C_OMP_CLAUSE_SPLIT_SIMD - (code == OMP_LOOP); i++)
+	if (cclauses[i])
+	  {
+	    bitmap_head allocate_head;
+	    bitmap_initialize (&allocate_head, &bitmap_default_obstack);
+	    for (c = cclauses[i]; c; c = OMP_CLAUSE_CHAIN (c))
+	      if (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_ALLOCATE
+		  && DECL_P (OMP_CLAUSE_DECL (c)))
+		bitmap_set_bit (&allocate_head,
+				DECL_UID (OMP_CLAUSE_DECL (c)));
+	    for (c = cclauses[i]; c; c = OMP_CLAUSE_CHAIN (c))
+	      switch (OMP_CLAUSE_CODE (c))
+		{
+		case OMP_CLAUSE_REDUCTION:
+		case OMP_CLAUSE_IN_REDUCTION:
+		case OMP_CLAUSE_TASK_REDUCTION:
+		  if (TREE_CODE (OMP_CLAUSE_DECL (c)) == MEM_REF)
+		    {
+		      tree t = TREE_OPERAND (OMP_CLAUSE_DECL (c), 0);
+		      if (TREE_CODE (t) == POINTER_PLUS_EXPR)
+			t = TREE_OPERAND (t, 0);
+		      if (TREE_CODE (t) == ADDR_EXPR
+			  || TREE_CODE (t) == INDIRECT_REF)
+			t = TREE_OPERAND (t, 0);
+		      if (DECL_P (t))
+			bitmap_clear_bit (&allocate_head, DECL_UID (t));
+		      break;
+		    }
+		  else if (TREE_CODE (OMP_CLAUSE_DECL (c)) == TREE_LIST)
+		    {
+		      tree t;
+		      for (t = OMP_CLAUSE_DECL (c);
+			   TREE_CODE (t) == TREE_LIST; t = TREE_CHAIN (t))
+			;
+		      if (DECL_P (t))
+			bitmap_clear_bit (&allocate_head, DECL_UID (t));
+		      break;
+		    }
+		  /* FALLTHRU */
+		case OMP_CLAUSE_PRIVATE:
+		case OMP_CLAUSE_FIRSTPRIVATE:
+		case OMP_CLAUSE_LASTPRIVATE:
+		case OMP_CLAUSE_LINEAR:
+		  if (DECL_P (OMP_CLAUSE_DECL (c)))
+		    bitmap_clear_bit (&allocate_head,
+				      DECL_UID (OMP_CLAUSE_DECL (c)));
+		  break;
+		default:
+		  break;
+		}
+	    for (c = cclauses[i]; c; c = OMP_CLAUSE_CHAIN (c))
+	      if (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_ALLOCATE
+		  && DECL_P (OMP_CLAUSE_DECL (c))
+		  && bitmap_bit_p (&allocate_head,
+				   DECL_UID (OMP_CLAUSE_DECL (c))))
+		{
+		  /* Mark allocate clauses which don't have corresponding
+		     explicit data sharing clause.  */
+		  OMP_CLAUSE_ALLOCATE_COMBINED (c) = 1;
+		  need_prune = true;
+		}
+	  }
+      bitmap_obstack_release (NULL);
+      if (need_prune)
+	{
+	  /* At least one allocate clause has been marked.  Walk all the
+	     duplicated allocate clauses in sync.  If it is marked in all
+	     constituent constructs, diagnose it as invalid and remove
+	     them.  Otherwise, remove all marked inner clauses inside
+	     a construct that doesn't have them marked.  Keep the outer
+	     marked ones, because some clause duplication is done only
+	     during gimplification.  */
+	  tree *p[C_OMP_CLAUSE_SPLIT_COUNT];
+	  for (i = 0; i < C_OMP_CLAUSE_SPLIT_COUNT; i++)
+	    if (cclauses[i] == NULL_TREE
+		|| i == C_OMP_CLAUSE_SPLIT_SIMD
+		|| (i == C_OMP_CLAUSE_SPLIT_LOOP && code == OMP_LOOP))
+	      p[i] = NULL;
+	    else
+	      p[i] = &cclauses[i];
+	  do
+	    {
+	      int j = -1;
+	      tree seen = NULL_TREE;
+	      for (i = C_OMP_CLAUSE_SPLIT_COUNT - 1; i >= 0; i--)
+		if (p[i])
+		  {
+		    while (*p[i]
+			   && OMP_CLAUSE_CODE (*p[i]) != OMP_CLAUSE_ALLOCATE)
+		      p[i] = &OMP_CLAUSE_CHAIN (*p[i]);
+		    if (*p[i] == NULL_TREE)
+		      {
+			i = C_OMP_CLAUSE_SPLIT_COUNT;
+			break;
+		      }
+		    if (!OMP_CLAUSE_ALLOCATE_COMBINED (*p[i]) && j == -1)
+		      j = i;
+		    seen = *p[i];
+		  }
+	      if (i == C_OMP_CLAUSE_SPLIT_COUNT)
+		break;
+	      if (j == -1)
+		error_at (OMP_CLAUSE_LOCATION (seen),
+			  "%qD specified in %<allocate%> clause but not in "
+			  "an explicit privatization clause",
+			  OMP_CLAUSE_DECL (seen));
+	      for (i = 0; i < C_OMP_CLAUSE_SPLIT_COUNT; i++)
+		if (p[i])
+		  {
+		    if (i > j)
+		      /* Remove.  */
+		      *p[i] = OMP_CLAUSE_CHAIN (*p[i]);
+		    else
+		      /* Keep.  */
+		      p[i] = &OMP_CLAUSE_CHAIN (*p[i]);
+		  }
+	    }
+	  while (1);
+	}
     }
 
   if (!flag_checking)
@@ -2104,7 +2561,8 @@ c_omp_predefined_variable (tree decl)
   return false;
 }
 
-/* True if OpenMP sharing attribute of DECL is predetermined.  */
+/* OMP_CLAUSE_DEFAULT_UNSPECIFIED unless OpenMP sharing attribute of DECL
+   is predetermined.  */
 
 enum omp_clause_default_kind
 c_omp_predetermined_sharing (tree decl)
@@ -2122,6 +2580,27 @@ c_omp_predetermined_sharing (tree decl)
 
   return OMP_CLAUSE_DEFAULT_UNSPECIFIED;
 }
+
+/* OMP_CLAUSE_DEFAULTMAP_CATEGORY_UNSPECIFIED unless OpenMP mapping attribute
+   of DECL is predetermined.  */
+
+enum omp_clause_defaultmap_kind
+c_omp_predetermined_mapping (tree decl)
+{
+  /* Predetermine artificial variables holding integral values, those
+     are usually result of gimplify_one_sizepos or SAVE_EXPR
+     gimplification.  */
+  if (VAR_P (decl)
+      && DECL_ARTIFICIAL (decl)
+      && INTEGRAL_TYPE_P (TREE_TYPE (decl)))
+    return OMP_CLAUSE_DEFAULTMAP_FIRSTPRIVATE;
+
+  if (c_omp_predefined_variable (decl))
+    return OMP_CLAUSE_DEFAULTMAP_TO;
+
+  return OMP_CLAUSE_DEFAULTMAP_CATEGORY_UNSPECIFIED;
+}
+
 
 /* Diagnose errors in an OpenMP context selector, return CTX if
    it is correct or error_mark_node otherwise.  */
@@ -2291,4 +2770,94 @@ c_omp_map_clause_name (tree clause, bool oacc)
     default: break;
     }
   return omp_clause_code_name[OMP_CLAUSE_CODE (clause)];
+}
+
+/* Used to merge map clause information in c_omp_adjust_map_clauses.  */
+struct map_clause
+{
+  tree clause;
+  bool firstprivate_ptr_p;
+  bool decl_mapped;
+  bool omp_declare_target;
+  map_clause (void) : clause (NULL_TREE), firstprivate_ptr_p (false),
+    decl_mapped (false), omp_declare_target (false) { }
+};
+
+/* Adjust map clauses after normal clause parsing, mainly to turn specific
+   base-pointer map cases into attach/detach and mark them addressable.  */
+void
+c_omp_adjust_map_clauses (tree clauses, bool is_target)
+{
+  if (!is_target)
+    {
+      /* If this is not a target construct, just turn firstprivate pointers
+	 into attach/detach, the runtime will check and do the rest.  */
+
+      for (tree c = clauses; c; c = OMP_CLAUSE_CHAIN (c))
+	if (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_MAP
+	    && OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_FIRSTPRIVATE_POINTER
+	    && DECL_P (OMP_CLAUSE_DECL (c))
+	    && POINTER_TYPE_P (TREE_TYPE (OMP_CLAUSE_DECL (c))))
+	  {
+	    tree ptr = OMP_CLAUSE_DECL (c);
+	    OMP_CLAUSE_SET_MAP_KIND (c, GOMP_MAP_ATTACH_DETACH);
+	    c_common_mark_addressable_vec (ptr);
+	  }
+      return;
+    }
+
+  hash_map<tree, map_clause> maps;
+
+  for (tree c = clauses; c; c = OMP_CLAUSE_CHAIN (c))
+    if (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_MAP
+	&& DECL_P (OMP_CLAUSE_DECL (c)))
+      {
+	/* If this is for a target construct, the firstprivate pointer
+	   is changed to attach/detach if either is true:
+	   (1) the base-pointer is mapped in this same construct, or
+	   (2) the base-pointer is a variable place on the device by
+	       "declare target" directives.
+
+	   Here we iterate through all map clauses collecting these cases,
+	   and merge them with a hash_map to process below.  */
+
+	if (OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_FIRSTPRIVATE_POINTER
+	    && POINTER_TYPE_P (TREE_TYPE (OMP_CLAUSE_DECL (c))))
+	  {
+	    tree ptr = OMP_CLAUSE_DECL (c);
+	    map_clause &mc = maps.get_or_insert (ptr);
+	    if (mc.clause == NULL_TREE)
+	      mc.clause = c;
+	    mc.firstprivate_ptr_p = true;
+
+	    if (is_global_var (ptr)
+		&& lookup_attribute ("omp declare target",
+				     DECL_ATTRIBUTES (ptr)))
+	      mc.omp_declare_target = true;
+	  }
+	else if (OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_ALLOC
+		 || OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_TO
+		 || OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_FROM
+		 || OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_TOFROM
+		 || OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_ALWAYS_TO
+		 || OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_ALWAYS_FROM
+		 || OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_ALWAYS_TOFROM)
+	  {
+	    map_clause &mc = maps.get_or_insert (OMP_CLAUSE_DECL (c));
+	    mc.decl_mapped = true;
+	  }
+      }
+
+  for (hash_map<tree, map_clause>::iterator i = maps.begin ();
+       i != maps.end (); ++i)
+    {
+      map_clause &mc = (*i).second;
+
+      if (mc.firstprivate_ptr_p
+	  && (mc.decl_mapped || mc.omp_declare_target))
+	{
+	  OMP_CLAUSE_SET_MAP_KIND (mc.clause, GOMP_MAP_ATTACH_DETACH);
+	  c_common_mark_addressable_vec (OMP_CLAUSE_DECL (mc.clause));
+	}
+    }
 }

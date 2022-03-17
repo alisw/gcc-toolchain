@@ -1,6 +1,6 @@
 /* hist.c  -  Histogram related operations.
 
-   Copyright (C) 1999-2020 Free Software Foundation, Inc.
+   Copyright (C) 1999-2022 Free Software Foundation, Inc.
 
    This file is part of GNU Binutils.
 
@@ -571,7 +571,7 @@ hist_print (void)
   bfd_vma addr;
 
   if (first_output)
-    first_output = FALSE;
+    first_output = false;
   else
     printf ("\f\n");
 

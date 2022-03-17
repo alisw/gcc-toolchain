@@ -1,5 +1,5 @@
 /* d-diagnostics.cc -- D frontend interface to gcc diagnostics.
-   Copyright (C) 2017-2020 Free Software Foundation, Inc.
+   Copyright (C) 2017-2021 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -36,38 +36,53 @@ along with GCC; see the file COPYING3.  If not see
    `...`: text within backticks gets quoted as '%<...%>'.
    %-10s: left-justify format flag is removed leaving '%s' remaining.
    %02x: zero-padding format flag is removed leaving '%x' remaining.
-   %X: uppercase unsigned hexadecimals are rewritten as '%x'.
-
-   The result should be freed by the caller.  */
+   %X: uppercase unsigned hexadecimals are rewritten as '%x'.  */
 
 static char *
 expand_d_format (const char *format)
 {
-  OutBuffer buf;
+  obstack buf;
   bool inbacktick = false;
+
+  gcc_obstack_init (&buf);
 
   for (const char *p = format; *p;)
     {
-      while (*p != '\0' && *p != '%' && *p != '`')
+      while (*p != '\0' && *p != '\\' && *p != '%' && *p != '`')
 	{
-	  buf.writeByte (*p);
+	  obstack_1grow (&buf, *p);
 	  p++;
 	}
 
       if (*p == '\0')
 	break;
 
+      if (*p == '\\')
+	{
+	  if (p[1] == '`')
+	    {
+	      /* Escaped backtick, don't expand it as a quoted string.  */
+	      obstack_1grow (&buf, '`');
+	      p++;;
+	    }
+	  else
+	    obstack_1grow (&buf, *p);
+
+	  p++;
+	  continue;
+	}
+
       if (*p == '`')
 	{
 	  /* Text enclosed by `...` are translated as a quoted string.  */
 	  if (inbacktick)
 	    {
-	      buf.writestring ("%>");
+	      obstack_grow (&buf, "%>", 2);
 	      inbacktick = false;
 	    }
 	  else
 	    {
-	      buf.writestring ("%<");
+	      obstack_grow (&buf, "%<", 2);
 	      inbacktick = true;
 	    }
 	  p++;
@@ -75,7 +90,7 @@ expand_d_format (const char *format)
 	}
 
       /* Check the conversion specification for unhandled flags.  */
-      buf.writeByte (*p);
+      obstack_1grow (&buf, *p);
       p++;
 
     Lagain:
@@ -100,7 +115,7 @@ expand_d_format (const char *format)
 
 	case 'X':
 	  /* Hex format only supports lower-case.  */
-	  buf.writeByte ('x');
+	  obstack_1grow (&buf, 'x');
 	  p++;
 	  break;
 
@@ -110,7 +125,45 @@ expand_d_format (const char *format)
     }
 
   gcc_assert (!inbacktick);
-  return buf.extractString ();
+  obstack_1grow (&buf, '\0');
+  return (char *) obstack_finish (&buf);
+}
+
+/* Rewrite the format string FORMAT to deal with any characters that require
+   escaping before expand_d_format expands it.  */
+
+static char *
+escape_d_format (const char *format)
+{
+  obstack buf;
+
+  gcc_obstack_init (&buf);
+
+  for (const char *p = format; *p; p++)
+    {
+      switch (*p)
+	{
+	case '%':
+	  /* Escape `%' characters so that pp_format does not confuse them
+	     for actual format specifiers.  */
+	  obstack_1grow (&buf, '%');
+	  break;
+
+	case '`':
+	  /* Escape '`' characters so that expand_d_format does not confuse them
+	     for a quoted string.  */
+	  obstack_1grow (&buf, '\\');
+	  break;
+
+	default:
+	  break;
+	}
+
+      obstack_1grow (&buf, *p);
+    }
+
+  obstack_1grow (&buf, '\0');
+  return (char *) obstack_finish (&buf);
 }
 
 /* Helper routine for all error routines.  Reports a diagnostic specified by
@@ -118,7 +171,7 @@ expand_d_format (const char *format)
    front-end, which does not get translated by the gcc diagnostic routines.  */
 
 static void ATTRIBUTE_GCC_DIAG(3,0)
-d_diagnostic_report_diagnostic (const Loc& loc, int opt, const char *format,
+d_diagnostic_report_diagnostic (const Loc &loc, int opt, const char *format,
 				va_list ap, diagnostic_t kind, bool verbatim)
 {
   va_list argp;
@@ -136,7 +189,6 @@ d_diagnostic_report_diagnostic (const Loc& loc, int opt, const char *format,
 	diagnostic.option_index = opt;
 
       diagnostic_report_diagnostic (global_dc, &diagnostic);
-      free (xformat);
     }
   else
     {
@@ -159,7 +211,7 @@ d_diagnostic_report_diagnostic (const Loc& loc, int opt, const char *format,
    error count.  */
 
 void ATTRIBUTE_GCC_DIAG(2,3)
-error (const Loc& loc, const char *format, ...)
+error (const Loc &loc, const char *format, ...)
 {
   va_list ap;
   va_start (ap, format);
@@ -168,7 +220,7 @@ error (const Loc& loc, const char *format, ...)
 }
 
 void ATTRIBUTE_GCC_DIAG(2,0)
-verror (const Loc& loc, const char *format, va_list ap,
+verror (const Loc &loc, const char *format, va_list ap,
 	const char *prefix1, const char *prefix2, const char *)
 {
   if (!global.gag || global.params.showGaggedErrors)
@@ -177,9 +229,10 @@ verror (const Loc& loc, const char *format, va_list ap,
 
       /* Build string and emit.  */
       if (prefix2 != NULL)
-	xformat = xasprintf ("%s %s %s", prefix1, prefix2, format);
+	xformat = xasprintf ("%s %s %s", escape_d_format (prefix1),
+			     escape_d_format (prefix2), format);
       else if (prefix1 != NULL)
-	xformat = xasprintf ("%s %s", prefix1, format);
+	xformat = xasprintf ("%s %s", escape_d_format (prefix1), format);
       else
 	xformat = xasprintf ("%s", format);
 
@@ -199,7 +252,7 @@ verror (const Loc& loc, const char *format, va_list ap,
    This doesn't increase the global error count.  */
 
 void ATTRIBUTE_GCC_DIAG(2,3)
-errorSupplemental (const Loc& loc, const char *format, ...)
+errorSupplemental (const Loc &loc, const char *format, ...)
 {
   va_list ap;
   va_start (ap, format);
@@ -208,7 +261,7 @@ errorSupplemental (const Loc& loc, const char *format, ...)
 }
 
 void ATTRIBUTE_GCC_DIAG(2,0)
-verrorSupplemental (const Loc& loc, const char *format, va_list ap)
+verrorSupplemental (const Loc &loc, const char *format, va_list ap)
 {
   if (global.gag && !global.params.showGaggedErrors)
     return;
@@ -220,7 +273,7 @@ verrorSupplemental (const Loc& loc, const char *format, va_list ap)
    global warning count.  */
 
 void ATTRIBUTE_GCC_DIAG(2,3)
-warning (const Loc& loc, const char *format, ...)
+warning (const Loc &loc, const char *format, ...)
 {
   va_list ap;
   va_start (ap, format);
@@ -229,7 +282,7 @@ warning (const Loc& loc, const char *format, ...)
 }
 
 void ATTRIBUTE_GCC_DIAG(2,0)
-vwarning (const Loc& loc, const char *format, va_list ap)
+vwarning (const Loc &loc, const char *format, va_list ap)
 {
   if (!global.gag && global.params.warnings != DIAGNOSTICoff)
     {
@@ -239,13 +292,15 @@ vwarning (const Loc& loc, const char *format, va_list ap)
 
       d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_WARNING, false);
     }
+  else if (global.gag)
+    global.gaggedWarnings++;
 }
 
 /* Print supplementary message about the last warning with explicit location
    LOC.  This doesn't increase the global warning count.  */
 
 void ATTRIBUTE_GCC_DIAG(2,3)
-warningSupplemental (const Loc& loc, const char *format, ...)
+warningSupplemental (const Loc &loc, const char *format, ...)
 {
   va_list ap;
   va_start (ap, format);
@@ -254,7 +309,7 @@ warningSupplemental (const Loc& loc, const char *format, ...)
 }
 
 void ATTRIBUTE_GCC_DIAG(2,0)
-vwarningSupplemental (const Loc& loc, const char *format, va_list ap)
+vwarningSupplemental (const Loc &loc, const char *format, va_list ap)
 {
   if (global.params.warnings == DIAGNOSTICoff || global.gag)
     return;
@@ -267,7 +322,7 @@ vwarningSupplemental (const Loc& loc, const char *format, va_list ap)
    error count depending on how deprecations are treated.  */
 
 void ATTRIBUTE_GCC_DIAG(2,3)
-deprecation (const Loc& loc, const char *format, ...)
+deprecation (const Loc &loc, const char *format, ...)
 {
   va_list ap;
   va_start (ap, format);
@@ -276,7 +331,7 @@ deprecation (const Loc& loc, const char *format, ...)
 }
 
 void ATTRIBUTE_GCC_DIAG(2,0)
-vdeprecation (const Loc& loc, const char *format, va_list ap,
+vdeprecation (const Loc &loc, const char *format, va_list ap,
 	      const char *prefix1, const char *prefix2)
 {
   if (global.params.useDeprecated == DIAGNOSTICerror)
@@ -287,9 +342,10 @@ vdeprecation (const Loc& loc, const char *format, va_list ap,
 
       /* Build string and emit.  */
       if (prefix2 != NULL)
-	xformat = xasprintf ("%s %s %s", prefix1, prefix2, format);
+	xformat = xasprintf ("%s %s %s", escape_d_format (prefix1),
+			     escape_d_format (prefix2), format);
       else if (prefix1 != NULL)
-	xformat = xasprintf ("%s %s", prefix1, format);
+	xformat = xasprintf ("%s %s", escape_d_format (prefix1), format);
       else
 	xformat = xasprintf ("%s", format);
 
@@ -297,13 +353,15 @@ vdeprecation (const Loc& loc, const char *format, va_list ap,
 				      DK_WARNING, false);
       free (xformat);
     }
+  else if (global.gag)
+    global.gaggedWarnings++;
 }
 
 /* Print supplementary message about the last deprecation with explicit
    location LOC.  This does not increase the global error count.  */
 
 void ATTRIBUTE_GCC_DIAG(2,3)
-deprecationSupplemental (const Loc& loc, const char *format, ...)
+deprecationSupplemental (const Loc &loc, const char *format, ...)
 {
   va_list ap;
   va_start (ap, format);
@@ -312,7 +370,7 @@ deprecationSupplemental (const Loc& loc, const char *format, ...)
 }
 
 void ATTRIBUTE_GCC_DIAG(2,0)
-vdeprecationSupplemental (const Loc& loc, const char *format, va_list ap)
+vdeprecationSupplemental (const Loc &loc, const char *format, va_list ap)
 {
   if (global.params.useDeprecated == DIAGNOSTICerror)
     verrorSupplemental (loc, format, ap);
@@ -323,7 +381,7 @@ vdeprecationSupplemental (const Loc& loc, const char *format, va_list ap)
 /* Print a verbose message with explicit location LOC.  */
 
 void ATTRIBUTE_GCC_DIAG(2, 3)
-message (const Loc& loc, const char *format, ...)
+message (const Loc &loc, const char *format, ...)
 {
   va_list ap;
   va_start (ap, format);
@@ -332,7 +390,7 @@ message (const Loc& loc, const char *format, ...)
 }
 
 void ATTRIBUTE_GCC_DIAG(2,0)
-vmessage (const Loc& loc, const char *format, va_list ap)
+vmessage (const Loc &loc, const char *format, va_list ap)
 {
   d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE, true);
 }

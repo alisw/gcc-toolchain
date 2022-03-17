@@ -1,5 +1,5 @@
 /* C preprocessor macro expansion commands for GDB.
-   Copyright (C) 2002-2020 Free Software Foundation, Inc.
+   Copyright (C) 2002-2022 Free Software Foundation, Inc.
    Contributed by Red Hat, Inc.
 
    This file is part of GDB.
@@ -54,8 +54,8 @@ macro_expand_command (const char *exp, int from_tty)
      evaluated, just its value.  */
   if (! exp || ! *exp)
     error (_("You must follow the `macro expand' command with the"
-           " expression you\n"
-           "want to expand."));
+	   " expression you\n"
+	   "want to expand."));
 
   gdb::unique_xmalloc_ptr<macro_scope> ms = default_macro_scope ();
 
@@ -82,8 +82,8 @@ macro_expand_once_command (const char *exp, int from_tty)
      see the expression expanded one level at a time.  */
   if (! exp || ! *exp)
     error (_("You must follow the `macro expand-once' command with"
-           " the expression\n"
-           "you want to expand."));
+	   " the expression\n"
+	   "you want to expand."));
 
   gdb::unique_xmalloc_ptr<macro_scope> ms = default_macro_scope ();
 
@@ -105,8 +105,8 @@ macro_expand_once_command (const char *exp, int from_tty)
     the splay tree so that it can be safely used while iterating.  */
 static void
 show_pp_source_pos (struct ui_file *stream,
-                    struct macro_source_file *file,
-                    int line)
+		    struct macro_source_file *file,
+		    int line)
 {
   std::string fullname = macro_source_fullname (file);
   fprintf_filtered (stream, "%ps:%d\n",
@@ -184,8 +184,8 @@ info_macro_command (const char *args, int from_tty)
 	  || strncmp (arg_start, "-all", p - arg_start) == 0)
 	show_all_macros_named = 1;
       else if (strncmp (arg_start, "--", p - arg_start) == 0)
-          /* Our macro support seems rather C specific but this would
-             seem necessary for languages allowing - in macro names.
+	  /* Our macro support seems rather C specific but this would
+	     seem necessary for languages allowing - in macro names.
 	     e.g. Scheme's (defmacro ->foo () "bar\n")  */
 	processing_args = 0;
       else
@@ -228,12 +228,12 @@ info_macro_command (const char *args, int from_tty)
 	  print_macro_definition (name, d, file, line);
 	}
       else
-        {
-          fprintf_filtered (gdb_stdout,
-                            "The symbol `%s' has no definition as a C/C++"
-                            " preprocessor macro\n"
-                            "at ", name);
-          show_pp_source_pos (gdb_stdout, ms->file, ms->line);
+	{
+	  fprintf_filtered (gdb_stdout,
+			    "The symbol `%s' has no definition as a C/C++"
+			    " preprocessor macro\n"
+			    "at ", name);
+	  show_pp_source_pos (gdb_stdout, ms->file, ms->line);
 	}
     }
 }
@@ -455,14 +455,17 @@ _initialize_macrocmd ()
      the various commands for working with preprocessor macros.  */
   add_basic_prefix_cmd ("macro", class_info,
 			_("Prefix for commands dealing with C preprocessor macros."),
-			&macrolist, "macro ", 0, &cmdlist);
+			&macrolist, 0, &cmdlist);
 
-  add_cmd ("expand", no_class, macro_expand_command, _("\
+  cmd_list_element *macro_expand_cmd
+    = add_cmd ("expand", no_class, macro_expand_command, _("\
 Fully expand any C/C++ preprocessor macro invocations in EXPRESSION.\n\
 Show the expanded expression."),
-	   &macrolist);
-  add_alias_cmd ("exp", "expand", no_class, 1, &macrolist);
-  add_cmd ("expand-once", no_class, macro_expand_once_command, _("\
+	       &macrolist);
+  add_alias_cmd ("exp", macro_expand_cmd, no_class, 1, &macrolist);
+
+  cmd_list_element *macro_expand_once_cmd
+    = add_cmd ("expand-once", no_class, macro_expand_once_command, _("\
 Expand C/C++ preprocessor macro invocations appearing directly in EXPRESSION.\n\
 Show the expanded expression.\n\
 \n\
@@ -473,8 +476,8 @@ introduces further macro invocations, those are left unexpanded.\n\
 `macro expand-once' helps you see how a particular macro expands,\n\
 whereas `macro expand' shows you how all the macros involved in an\n\
 expression work together to yield a pre-processed expression."),
-	   &macrolist);
-  add_alias_cmd ("exp1", "expand-once", no_class, 1, &macrolist);
+	       &macrolist);
+  add_alias_cmd ("exp1", macro_expand_once_cmd, no_class, 1, &macrolist);
 
   add_info ("macro", info_macro_command,
 	    _("Show the definition of MACRO, and it's source location.\n\

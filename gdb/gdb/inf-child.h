@@ -1,6 +1,6 @@
 /* Base/prototype target for default child (native) targets.
 
-   Copyright (C) 2004-2020 Free Software Foundation, Inc.
+   Copyright (C) 2004-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -56,6 +56,9 @@ public:
   void pass_ctrlc () override;
 
   void post_startup_inferior (ptid_t) override;
+
+  void follow_exec (inferior *follow_inf, ptid_t ptid,
+		    const char *execd_pathname) override;
 
   void mourn_inferior () override;
 

@@ -1,6 +1,6 @@
 /* Scheme interface to symbol tables.
 
-   Copyright (C) 2008-2020 Free Software Foundation, Inc.
+   Copyright (C) 2008-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -29,7 +29,7 @@
 
 /* A <gdb:symtab> smob.  */
 
-typedef struct
+struct symtab_smob
 {
   /* This always appears first.
      eqable_gdb_smob is used so that symtabs are eq?-able.
@@ -42,7 +42,7 @@ typedef struct
      If this is NULL the symtab is invalid.  This can happen when the
      underlying objfile is freed.  */
   struct symtab *symtab;
-} symtab_smob;
+};
 
 /* A <gdb:sal> smob.
    A smob describing a gdb symtab-and-line object.
@@ -50,7 +50,7 @@ typedef struct
    the validity of symtab_scm.
    TODO: Sals are not eq?-able at the moment, or even comparable.  */
 
-typedef struct
+struct sal_smob
 {
   /* This always appears first.  */
   gdb_smob base;
@@ -67,7 +67,7 @@ typedef struct
      this pointer will not be updated.  Use symtab_scm instead to determine
      if this sal is valid.  */
   struct symtab_and_line sal;
-} sal_smob;
+};
 
 static const char symtab_smob_name[] = "gdb:symtab";
 /* "symtab-and-line" is pretty long, and "sal" is short and unique.  */
@@ -688,7 +688,12 @@ gdbscm_initialize_symtabs (void)
   scm_set_smob_print (sal_smob_tag, stscm_print_sal_smob);
 
   gdbscm_define_functions (symtab_functions, 1);
+}
 
+void _initialize_scm_symtab ();
+void
+_initialize_scm_symtab ()
+{
   /* Register an objfile "free" callback so we can properly
      invalidate symbol tables, and symbol table and line data
      structures when an object file that is about to be deleted.  */

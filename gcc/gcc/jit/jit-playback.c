@@ -1,5 +1,5 @@
 /* Internals of libgccjit: classes for playing back recorded API calls.
-   Copyright (C) 2013-2020 Free Software Foundation, Inc.
+   Copyright (C) 2013-2021 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -39,6 +39,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "opt-suggestions.h"
 #include "gcc.h"
 #include "diagnostic.h"
+#include "stmt.h"
 
 #include <pthread.h>
 
@@ -46,6 +47,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "jit-result.h"
 #include "jit-builtins.h"
 #include "jit-tempdir.h"
+
+#ifdef _WIN32
+#include "jit-w32.h"
+#endif
 
 /* Compare with gcc/c-family/c-common.h: DECL_C_BIT_FIELD,
    SET_DECL_C_BIT_FIELD.
@@ -81,6 +86,18 @@ namespace jit {
 /**********************************************************************
  Playback.
  **********************************************************************/
+
+/* Build a STRING_CST tree for STR, or return NULL if it is NULL.
+   The TREE_TYPE is not initialized.  */
+
+static tree
+build_string (const char *str)
+{
+  if (str)
+    return ::build_string (strlen (str), str);
+  else
+    return NULL_TREE;
+}
 
 /* The constructor for gcc::jit::playback::context.  */
 
@@ -506,14 +523,14 @@ new_function (location *loc,
   return func;
 }
 
-/* Construct a playback::lvalue instance (wrapping a tree).  */
+/* In use by new_global and new_global_initialized.  */
 
-playback::lvalue *
+tree
 playback::context::
-new_global (location *loc,
-	    enum gcc_jit_global_kind kind,
-	    type *type,
-	    const char *name)
+global_new_decl (location *loc,
+		 enum gcc_jit_global_kind kind,
+		 type *type,
+		 const char *name)
 {
   gcc_assert (type);
   gcc_assert (name);
@@ -543,6 +560,15 @@ new_global (location *loc,
   if (loc)
     set_tree_location (inner, loc);
 
+  return inner;
+}
+
+/* In use by new_global and new_global_initialized.  */
+
+playback::lvalue *
+playback::context::
+global_finalize_lvalue (tree inner)
+{
   varpool_node::get_create (inner);
 
   varpool_node::finalize_decl (inner);
@@ -550,6 +576,92 @@ new_global (location *loc,
   m_globals.safe_push (inner);
 
   return new lvalue (this, inner);
+}
+
+/* Construct a playback::lvalue instance (wrapping a tree).  */
+
+playback::lvalue *
+playback::context::
+new_global (location *loc,
+	    enum gcc_jit_global_kind kind,
+	    type *type,
+	    const char *name)
+{
+  tree inner = global_new_decl (loc, kind, type, name);
+
+  return global_finalize_lvalue (inner);
+}
+
+/* Fill 'constructor_elements' with the memory content of
+   'initializer'.  Each element of the initializer is of the size of
+   type T.  In use by new_global_initialized.*/
+
+template<typename T>
+static void
+load_blob_in_ctor (vec<constructor_elt, va_gc> *&constructor_elements,
+		   size_t num_elem,
+		   const void *initializer)
+{
+  /* Loosely based on 'output_init_element' c-typeck.c:9691.  */
+  const T *p = (const T *)initializer;
+  tree node = make_unsigned_type (BITS_PER_UNIT * sizeof (T));
+  for (size_t i = 0; i < num_elem; i++)
+    {
+      constructor_elt celt =
+	{ build_int_cst (long_unsigned_type_node, i),
+	  build_int_cst (node, p[i]) };
+      vec_safe_push (constructor_elements, celt);
+    }
+}
+
+/* Construct an initialized playback::lvalue instance (wrapping a
+   tree).  */
+
+playback::lvalue *
+playback::context::
+new_global_initialized (location *loc,
+			enum gcc_jit_global_kind kind,
+			type *type,
+                        size_t element_size,
+			size_t initializer_num_elem,
+			const void *initializer,
+			const char *name)
+{
+  tree inner = global_new_decl (loc, kind, type, name);
+
+  vec<constructor_elt, va_gc> *constructor_elements = NULL;
+
+  switch (element_size)
+    {
+    case 1:
+      load_blob_in_ctor<uint8_t> (constructor_elements, initializer_num_elem,
+				  initializer);
+      break;
+    case 2:
+      load_blob_in_ctor<uint16_t> (constructor_elements, initializer_num_elem,
+				   initializer);
+      break;
+    case 4:
+      load_blob_in_ctor<uint32_t> (constructor_elements, initializer_num_elem,
+				   initializer);
+      break;
+    case 8:
+      load_blob_in_ctor<uint64_t> (constructor_elements, initializer_num_elem,
+				   initializer);
+      break;
+    default:
+      /* This function is serving on sizes returned by 'get_size',
+	 these are all covered by the previous cases.  */
+      gcc_unreachable ();
+    }
+  /* Compare with 'pop_init_level' c-typeck.c:8780.  */
+  tree ctor = build_constructor (type->as_tree (), constructor_elements);
+  constructor_elements = NULL;
+
+  /* Compare with 'store_init_value' c-typeck.c:7555.  */
+  DECL_INITIAL (inner) = ctor;
+
+  return global_finalize_lvalue (inner);
 }
 
 /* Implementation of the various
@@ -675,7 +787,7 @@ new_string_literal (const char *value)
   tree a_type = build_array_type (char_type_node, i_type);
   /* build_string len parameter must include NUL terminator when
      building C strings.  */
-  tree t_str = build_string (len + 1, value);
+  tree t_str = ::build_string (len + 1, value);
   TREE_TYPE (t_str) = a_type;
 
   /* Convert to (const char*), loosely based on
@@ -720,6 +832,18 @@ as_truth_value (tree expr, location *loc)
     set_tree_location (expr, loc);
 
   return expr;
+}
+
+/* Add a "top-level" basic asm statement (i.e. one outside of any functions)
+   containing ASM_STMTS.
+
+   Compare with c_parser_asm_definition.  */
+
+void
+playback::context::add_top_level_asm (const char *asm_stmts)
+{
+  tree asm_str = build_string (asm_stmts);
+  symtab->finalize_toplevel_asm (asm_str);
 }
 
 /* Construct a playback::rvalue instance (wrapping a tree) for a
@@ -1798,6 +1922,104 @@ add_switch (location *loc,
   add_stmt (switch_stmt);
 }
 
+/* Convert OPERANDS to a tree-based chain suitable for creating an
+   extended asm stmt.
+   Compare with c_parser_asm_operands.  */
+
+static tree
+build_operand_chain (const auto_vec <playback::asm_operand> *operands)
+{
+  tree result = NULL_TREE;
+  unsigned i;
+  playback::asm_operand *asm_op;
+  FOR_EACH_VEC_ELT (*operands, i, asm_op)
+    {
+      tree name = build_string (asm_op->m_asm_symbolic_name);
+      tree str = build_string (asm_op->m_constraint);
+      tree value = asm_op->m_expr;
+      result = chainon (result,
+			build_tree_list (build_tree_list (name, str),
+					 value));
+    }
+  return result;
+}
+
+/* Convert CLOBBERS to a tree-based list suitable for creating an
+   extended asm stmt.
+   Compare with c_parser_asm_clobbers.  */
+
+static tree
+build_clobbers (const auto_vec <const char *> *clobbers)
+{
+  tree list = NULL_TREE;
+  unsigned i;
+  const char *clobber;
+  FOR_EACH_VEC_ELT (*clobbers, i, clobber)
+    {
+      tree str = build_string (clobber);
+      list = tree_cons (NULL_TREE, str, list);
+    }
+  return list;
+}
+
+/* Convert BLOCKS to a tree-based list suitable for creating an
+   extended asm stmt.
+   Compare with c_parser_asm_goto_operands.  */
+
+static tree
+build_goto_operands (const auto_vec <playback::block *> *blocks)
+{
+  tree list = NULL_TREE;
+  unsigned i;
+  playback::block *b;
+  FOR_EACH_VEC_ELT (*blocks, i, b)
+    {
+      tree label = b->as_label_decl ();
+      tree name = build_string (IDENTIFIER_POINTER (DECL_NAME (label)));
+      TREE_USED (label) = 1;
+      list = tree_cons (name, label, list);
+    }
+  return nreverse (list);
+}
+
+/* Add an extended asm statement to this block.
+
+   Compare with c_parser_asm_statement (in c/c-parser.c)
+   and build_asm_expr (in c/c-typeck.c).  */
+
+void
+playback::block::add_extended_asm (location *loc,
+				   const char *asm_template,
+				   bool is_volatile,
+				   bool is_inline,
+				   const auto_vec <asm_operand> *outputs,
+				   const auto_vec <asm_operand> *inputs,
+				   const auto_vec <const char *> *clobbers,
+				   const auto_vec <block *> *goto_blocks)
+{
+  tree t_string = build_string (asm_template);
+  tree t_outputs = build_operand_chain (outputs);
+  tree t_inputs = build_operand_chain (inputs);
+  tree t_clobbers = build_clobbers (clobbers);
+  tree t_labels = build_goto_operands (goto_blocks);
+  t_string
+    = resolve_asm_operand_names (t_string, t_outputs, t_inputs, t_labels);
+  tree asm_stmt
+    = build5 (ASM_EXPR, void_type_node,
+	      t_string, t_outputs, t_inputs, t_clobbers, t_labels);
+
+  /* asm statements without outputs, including simple ones, are treated
+     as volatile.  */
+  ASM_VOLATILE_P (asm_stmt) = (outputs->length () == 0);
+  ASM_INPUT_P (asm_stmt) = 0; /* extended asm stmts are not "simple".  */
+  ASM_INLINE_P (asm_stmt) = is_inline;
+  if (is_volatile)
+    ASM_VOLATILE_P (asm_stmt) = 1;
+  if (loc)
+    set_tree_location (asm_stmt, loc);
+  add_stmt (asm_stmt);
+}
+
 /* Constructor for gcc::jit::playback::block.  */
 
 playback::block::
@@ -2159,8 +2381,10 @@ playback::compile_to_file::copy_file (const char *src_path,
 
   gcc_assert (total_sz_in == total_sz_out);
   if (get_logger ())
-    get_logger ()->log ("total bytes copied: %ld", total_sz_out);
+    get_logger ()->log ("total bytes copied: %zu", total_sz_out);
 
+  /* fchmod does not exist in Windows. */
+#ifndef _WIN32
   /* Set the permissions of the copy to those of the original file,
      in particular the "executable" bits.  */
   if (fchmod (fileno (f_out), stat_buf.st_mode) == -1)
@@ -2168,6 +2392,7 @@ playback::compile_to_file::copy_file (const char *src_path,
 	       "error setting mode of %s: %s",
 	       dst_path,
 	       xstrerror (errno));
+#endif
 
   fclose (f_out);
 }
@@ -2644,10 +2869,19 @@ dlopen_built_dso ()
 {
   JIT_LOG_SCOPE (get_logger ());
   auto_timevar load_timevar (get_timer (), TV_LOAD);
-  void *handle = NULL;
-  const char *error = NULL;
+  result::handle handle = NULL;
   result *result_obj = NULL;
 
+#ifdef _WIN32
+  /* Clear any existing error.  */
+  SetLastError(0);
+
+  handle = LoadLibrary(m_tempdir->get_path_so_file ());
+  if (GetLastError() != 0)  {
+    print_last_error();
+  }
+#else
+  const char *error = NULL;
   /* Clear any existing error.  */
   dlerror ();
 
@@ -2656,6 +2890,8 @@ dlopen_built_dso ()
   if ((error = dlerror()) != NULL)  {
     add_error (NULL, "%s", error);
   }
+#endif
+
   if (handle)
     {
       /* We've successfully dlopened the result; create a
@@ -2713,6 +2949,11 @@ replay ()
   /* Replay the recorded events:  */
   timevar_push (TV_JIT_REPLAY);
 
+  /* Ensure that builtins that could be needed during optimization
+     get created ahead of time.  */
+  builtins_manager *bm = m_recording_ctxt->get_builtins_manager ();
+  bm->ensure_optimization_builtins_exist ();
+
   m_recording_ctxt->replay_into (this);
 
   /* Clean away the temporary references from recording objects
@@ -2721,13 +2962,11 @@ replay ()
      refs.  Hence we must stop using them before the GC can run.  */
   m_recording_ctxt->disassociate_from_playback ();
 
-  /* The builtins_manager, if any, is associated with the recording::context
+  /* The builtins_manager is associated with the recording::context
      and might be reused for future compiles on other playback::contexts,
      but its m_attributes array is not GTY-labeled and hence will become
      nonsense if the GC runs.  Purge this state.  */
-  builtins_manager *bm = get_builtins_manager ();
-  if (bm)
-    bm->finish_playback ();
+  bm->finish_playback ();
 
   timevar_pop (TV_JIT_REPLAY);
 

@@ -1,7 +1,7 @@
 /* Scalar Replacement of Aggregates (SRA) converts some structure
    references into scalar references, exposing them to the scalar
    optimizers.
-   Copyright (C) 2008-2020 Free Software Foundation, Inc.
+   Copyright (C) 2008-2021 Free Software Foundation, Inc.
    Contributed by Martin Jambor <mjambor@suse.cz>
 
 This file is part of GCC.
@@ -931,9 +931,19 @@ create_access (tree expr, gimple *stmt, bool write)
     }
   if (size == 0)
     return NULL;
+  if (offset < 0)
+    {
+      disqualify_candidate (base, "Encountered a negative offset access.");
+      return NULL;
+    }
   if (size < 0)
     {
       disqualify_candidate (base, "Encountered an unconstrained access.");
+      return NULL;
+    }
+  if (offset + size > tree_to_shwi (DECL_SIZE (base)))
+    {
+      disqualify_candidate (base, "Encountered an access beyond the base.");
       return NULL;
     }
 
@@ -1667,6 +1677,7 @@ build_ref_for_model (location_t loc, tree base, HOST_WIDE_INT offset,
 		     struct access *model, gimple_stmt_iterator *gsi,
 		     bool insert_after)
 {
+  gcc_assert (offset >= 0);
   if (TREE_CODE (model->expr) == COMPONENT_REF
       && DECL_BIT_FIELD (TREE_OPERAND (model->expr, 1)))
     {
@@ -1874,12 +1885,12 @@ maybe_add_sra_candidate (tree var)
       reject (var, "has incomplete type");
       return false;
     }
-  if (!tree_fits_uhwi_p (TYPE_SIZE (type)))
+  if (!tree_fits_shwi_p (TYPE_SIZE (type)))
     {
       reject (var, "type size not fixed");
       return false;
     }
-  if (tree_to_uhwi (TYPE_SIZE (type)) == 0)
+  if (tree_to_shwi (TYPE_SIZE (type)) == 0)
     {
       reject (var, "type size is zero");
       return false;
@@ -2168,15 +2179,9 @@ create_access_replacement (struct access *access, tree reg_type = NULL_TREE)
        variant.  This avoids issues with weirdo ABIs like AAPCS.  */
     repl = create_tmp_var (build_qualified_type (TYPE_MAIN_VARIANT (type),
 						 TYPE_QUALS (type)), "SR");
-  if (TREE_CODE (type) == COMPLEX_TYPE
-      || TREE_CODE (type) == VECTOR_TYPE)
-    {
-      if (!access->grp_partial_lhs)
-	DECL_GIMPLE_REG_P (repl) = 1;
-    }
-  else if (access->grp_partial_lhs
-	   && is_gimple_reg_type (type))
-    TREE_ADDRESSABLE (repl) = 1;
+  if (access->grp_partial_lhs
+      && is_gimple_reg_type (type))
+    DECL_NOT_GIMPLE_REG_P (repl) = 1;
 
   DECL_SOURCE_LOCATION (repl) = DECL_SOURCE_LOCATION (access->base);
   DECL_ARTIFICIAL (repl) = 1;
@@ -2718,6 +2723,19 @@ budget_for_propagation_access (tree decl)
   return true;
 }
 
+/* Return true if ACC or any of its subaccesses has grp_child set.  */
+
+static bool
+access_or_its_child_written (struct access *acc)
+{
+  if (acc->grp_write)
+    return true;
+  for (struct access *sub = acc->first_child; sub; sub = sub->next_sibling)
+    if (access_or_its_child_written (sub))
+      return true;
+  return false;
+}
+
 /* Propagate subaccesses and grp_write flags of RACC across an assignment link
    to LACC.  Enqueue sub-accesses as necessary so that the write flag is
    propagated transitively.  Return true if anything changed.  Additionally, if
@@ -2764,6 +2782,9 @@ propagate_subaccesses_from_rhs (struct access *lacc, struct access *racc)
 	}
       if (!lacc->first_child && !racc->first_child)
 	{
+	  /* We are about to change the access type from aggregate to scalar,
+	     so we need to put the reverse flag onto the access, if any.  */
+	  const bool reverse = TYPE_REVERSE_STORAGE_ORDER (lacc->type);
 	  tree t = lacc->base;
 
 	  lacc->type = racc->type;
@@ -2778,9 +2799,12 @@ propagate_subaccesses_from_rhs (struct access *lacc, struct access *racc)
 	      lacc->expr = build_ref_for_model (EXPR_LOCATION (lacc->base),
 						lacc->base, lacc->offset,
 						racc, NULL, false);
+	      if (TREE_CODE (lacc->expr) == MEM_REF)
+		REF_REVERSE_STORAGE_ORDER (lacc->expr) = reverse;
 	      lacc->grp_no_warning = true;
 	      lacc->grp_same_access_path = false;
 	    }
+	  lacc->reverse = reverse;
 	}
       return ret;
     }
@@ -2825,7 +2849,7 @@ propagate_subaccesses_from_rhs (struct access *lacc, struct access *racc)
       if (rchild->grp_unscalarizable_region
 	  || !budget_for_propagation_access (lacc->base))
 	{
-	  if (rchild->grp_write && !lacc->grp_write)
+	  if (!lacc->grp_write && access_or_its_child_written (rchild))
 	    {
 	      ret = true;
 	      subtree_mark_written_and_rhs_enqueue (lacc);

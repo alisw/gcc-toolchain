@@ -1,6 +1,6 @@
 /* Core dump and executable file functions above target vector, for GDB.
 
-   Copyright (C) 1986-2020 Free Software Foundation, Inc.
+   Copyright (C) 1986-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -88,8 +88,8 @@ specify_exec_file_hook (void (*hook) (const char *))
 	}
 
       /* Grow the hook array by one and add the new hook to the end.
-         Yes, it's inefficient to grow it by one each time but since
-         this is hardly ever called it's not a big deal.  */
+	 Yes, it's inefficient to grow it by one each time but since
+	 this is hardly ever called it's not a big deal.  */
       exec_file_hook_count++;
       new_array = (hook_type *)
 	xrealloc (exec_file_extra_hooks,
@@ -108,14 +108,16 @@ reopen_exec_file (void)
   struct stat st;
 
   /* Don't do anything if there isn't an exec file.  */
-  if (exec_bfd == NULL)
+  if (current_program_space->exec_bfd () == NULL)
     return;
 
   /* If the timestamp of the exec file has changed, reopen it.  */
-  std::string filename = bfd_get_filename (exec_bfd);
+  std::string filename = bfd_get_filename (current_program_space->exec_bfd ());
   res = stat (filename.c_str (), &st);
 
-  if (res == 0 && exec_bfd_mtime && exec_bfd_mtime != st.st_mtime)
+  if (res == 0
+      && current_program_space->ebfd_mtime
+      && current_program_space->ebfd_mtime != st.st_mtime)
     exec_file_attach (filename.c_str (), 0);
   else
     /* If we accessed the file since last opening it, close it now;
@@ -130,11 +132,13 @@ reopen_exec_file (void)
 void
 validate_files (void)
 {
-  if (exec_bfd && core_bfd)
+  if (current_program_space->exec_bfd () && core_bfd)
     {
-      if (!core_file_matches_executable_p (core_bfd, exec_bfd))
+      if (!core_file_matches_executable_p (core_bfd,
+					   current_program_space->exec_bfd ()))
 	warning (_("core file may not match specified executable file."));
-      else if (bfd_get_mtime (exec_bfd) > bfd_get_mtime (core_bfd))
+      else if (bfd_get_mtime (current_program_space->exec_bfd ())
+	       > bfd_get_mtime (core_bfd))
 	warning (_("exec file is newer than core file."));
     }
 }
@@ -144,8 +148,8 @@ validate_files (void)
 const char *
 get_exec_file (int err)
 {
-  if (exec_filename)
-    return exec_filename;
+  if (current_program_space->exec_filename != nullptr)
+    return current_program_space->exec_filename.get ();
   if (!err)
     return NULL;
 
@@ -214,8 +218,8 @@ read_memory_object (enum target_object object, CORE_ADDR memaddr,
       enum target_xfer_status status;
       ULONGEST xfered_len;
 
-      status = target_xfer_partial (current_top_target (), object, NULL,
-				    myaddr + xfered, NULL,
+      status = target_xfer_partial (current_inferior ()->top_target (), object,
+				    NULL, myaddr + xfered, NULL,
 				    memaddr + xfered, len - xfered,
 				    &xfered_len);
 
@@ -454,17 +458,17 @@ void _initialize_core ();
 void
 _initialize_core ()
 {
-  struct cmd_list_element *c;
-
-  c = add_cmd ("core-file", class_files, core_file_command, _("\
+  cmd_list_element *core_file_cmd
+    = add_cmd ("core-file", class_files, core_file_command, _("\
 Use FILE as core dump for examining memory and registers.\n\
 Usage: core-file FILE\n\
 No arg means have no core file.  This command has been superseded by the\n\
 `target core' and `detach' commands."), &cmdlist);
-  set_cmd_completer (c, filename_completer);
+  set_cmd_completer (core_file_cmd, filename_completer);
 
   
-  c = add_setshow_string_noescape_cmd ("gnutarget", class_files,
+  set_show_commands set_show_gnutarget
+    = add_setshow_string_noescape_cmd ("gnutarget", class_files,
 				       &gnutarget_string, _("\
 Set the current BFD target."), _("\
 Show the current BFD target."), _("\
@@ -472,9 +476,9 @@ Use `set gnutarget auto' to specify automatic detection."),
 				       set_gnutarget_command,
 				       show_gnutarget_string,
 				       &setlist, &showlist);
-  set_cmd_completer (c, complete_set_gnutarget);
+  set_cmd_completer (set_show_gnutarget.set, complete_set_gnutarget);
 
-  add_alias_cmd ("g", "gnutarget", class_files, 1, &setlist);
+  add_alias_cmd ("g", set_show_gnutarget.set, class_files, 1, &setlist);
 
   if (getenv ("GNUTARGET"))
     set_gnutarget (getenv ("GNUTARGET"));

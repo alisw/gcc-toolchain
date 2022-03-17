@@ -1,6 +1,6 @@
 // Filesystem declarations -*- C++ -*-
 
-// Copyright (C) 2014-2020 Free Software Foundation, Inc.
+// Copyright (C) 2014-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -339,7 +339,7 @@ _GLIBCXX_END_NAMESPACE_CXX11
   bool is_symlink(file_status) noexcept;
 
 } // namespace filesystem
-// @}
+/// @}
 _GLIBCXX_END_NAMESPACE_VERSION
 } // namespace std
 #endif // C++17

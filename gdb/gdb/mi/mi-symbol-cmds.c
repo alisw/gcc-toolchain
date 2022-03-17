@@ -1,5 +1,5 @@
 /* MI Command Set - symbol commands.
-   Copyright (C) 2003-2020 Free Software Foundation, Inc.
+   Copyright (C) 2003-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -55,11 +55,11 @@ mi_cmd_symbol_list_lines (const char *command, char **argv, int argc)
   ui_out_emit_list list_emitter (uiout, "lines");
   if (SYMTAB_LINETABLE (s) != NULL && SYMTAB_LINETABLE (s)->nitems > 0)
     for (i = 0; i < SYMTAB_LINETABLE (s)->nitems; i++)
-    {
-      ui_out_emit_tuple tuple_emitter (uiout, NULL);
-      uiout->field_core_addr ("pc", gdbarch, SYMTAB_LINETABLE (s)->item[i].pc);
-      uiout->field_signed ("line", SYMTAB_LINETABLE (s)->item[i].line);
-    }
+      {
+	ui_out_emit_tuple tuple_emitter (uiout, NULL);
+	uiout->field_core_addr ("pc", gdbarch, SYMTAB_LINETABLE (s)->item[i].pc);
+	uiout->field_signed ("line", SYMTAB_LINETABLE (s)->item[i].line);
+      }
 }
 
 /* Used by the -symbol-info-* and -symbol-info-module-* commands to print

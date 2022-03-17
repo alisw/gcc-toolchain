@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
---          Copyright (C) 2009-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 2009-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -117,8 +117,11 @@ package System.Object_Reader is
       PPC,
       --  32-bit PowerPC
 
-      PPC64);
+      PPC64,
       --  64-bit PowerPC
+
+      ARM);
+      --  32-bit ARM
 
    ------------------
    -- Target types --

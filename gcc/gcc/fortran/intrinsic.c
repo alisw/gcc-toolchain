@@ -1,6 +1,6 @@
 /* Build up a list of intrinsic subroutines and functions for the
    name-resolution stage.
-   Copyright (C) 2000-2020 Free Software Foundation, Inc.
+   Copyright (C) 2000-2021 Free Software Foundation, Inc.
    Contributed by Andy Vaught & Katherine Holcomb
 
 This file is part of GCC.
@@ -119,6 +119,43 @@ gfc_get_intrinsic_sub_symbol (const char *name)
 
   gfc_commit_symbol (sym);
 
+  return sym;
+}
+
+/* Get a symbol for a resolved function, with its special name.  The
+   actual argument list needs to be set by the caller.  */
+
+gfc_symbol *
+gfc_get_intrinsic_function_symbol (gfc_expr *expr)
+{
+  gfc_symbol *sym;
+
+  gfc_get_symbol (expr->value.function.name, gfc_intrinsic_namespace, &sym);
+  sym->attr.external = 1;
+  sym->attr.function = 1;
+  sym->attr.always_explicit = 1;
+  sym->attr.proc = PROC_INTRINSIC;
+  sym->attr.flavor = FL_PROCEDURE;
+  sym->result = sym;
+  if (expr->rank > 0)
+    {
+      sym->attr.dimension = 1;
+      sym->as = gfc_get_array_spec ();
+      sym->as->type = AS_ASSUMED_SHAPE;
+      sym->as->rank = expr->rank;
+    }
+  return sym;
+}
+
+/* Find a symbol for a resolved intrinsic procedure, return NULL if
+   not found.  */
+
+gfc_symbol *
+gfc_find_intrinsic_symbol (gfc_expr *expr)
+{
+  gfc_symbol *sym;
+  gfc_find_symbol (expr->value.function.name, gfc_intrinsic_namespace,
+		   0, &sym);
   return sym;
 }
 
@@ -3423,7 +3460,7 @@ add_subroutines (void)
   /* Argument names.  These are used as argument keywords and so need to
      match the documentation.  Please keep this list in sorted order.  */
   static const char
-    *a = "a", *c = "count", *cm = "count_max", *com = "command",
+    *a = "a", *c_ = "c", *c = "count", *cm = "count_max", *com = "command",
     *cr = "count_rate", *dt = "date", *errmsg = "errmsg", *f = "from",
     *fp = "frompos", *gt = "get", *h = "harvest", *han = "handler",
     *length = "length", *ln = "len", *md = "mode", *msk = "mask",
@@ -3803,12 +3840,12 @@ add_subroutines (void)
   add_sym_3s ("fgetc", GFC_ISYM_FGETC, CLASS_IMPURE, BT_UNKNOWN, 0, GFC_STD_GNU,
 	      gfc_check_fgetputc_sub, NULL, gfc_resolve_fgetc_sub,
 	      ut, BT_INTEGER, di, REQUIRED, INTENT_IN,
-	      c, BT_CHARACTER, dc, REQUIRED, INTENT_OUT,
+	      c_, BT_CHARACTER, dc, REQUIRED, INTENT_OUT,
 	      st, BT_INTEGER, di, OPTIONAL, INTENT_OUT);
 
   add_sym_2s ("fget", GFC_ISYM_FGET, CLASS_IMPURE, BT_UNKNOWN, 0, GFC_STD_GNU,
 	      gfc_check_fgetput_sub, NULL, gfc_resolve_fget_sub,
-	      c, BT_CHARACTER, dc, REQUIRED, INTENT_OUT,
+	      c_, BT_CHARACTER, dc, REQUIRED, INTENT_OUT,
 	      st, BT_INTEGER, di, OPTIONAL, INTENT_OUT);
 
   add_sym_1s ("flush", GFC_ISYM_FLUSH, CLASS_IMPURE, BT_UNKNOWN, 0, GFC_STD_GNU,
@@ -3818,12 +3855,12 @@ add_subroutines (void)
   add_sym_3s ("fputc", GFC_ISYM_FPUTC, CLASS_IMPURE, BT_UNKNOWN, 0, GFC_STD_GNU,
 	      gfc_check_fgetputc_sub, NULL, gfc_resolve_fputc_sub,
 	      ut, BT_INTEGER, di, REQUIRED, INTENT_IN,
-	      c, BT_CHARACTER, dc, REQUIRED, INTENT_IN,
+	      c_, BT_CHARACTER, dc, REQUIRED, INTENT_IN,
 	      st, BT_INTEGER, di, OPTIONAL, INTENT_OUT);
 
   add_sym_2s ("fput", GFC_ISYM_FPUT, CLASS_IMPURE, BT_UNKNOWN, 0, GFC_STD_GNU,
 	      gfc_check_fgetput_sub, NULL, gfc_resolve_fput_sub,
-	      c, BT_CHARACTER, dc, REQUIRED, INTENT_IN,
+	      c_, BT_CHARACTER, dc, REQUIRED, INTENT_IN,
 	      st, BT_INTEGER, di, OPTIONAL, INTENT_OUT);
 
   add_sym_1s ("free", GFC_ISYM_FREE, CLASS_IMPURE, BT_UNKNOWN, 0, GFC_STD_GNU,
@@ -4775,8 +4812,8 @@ check_specific (gfc_intrinsic_sym *specific, gfc_expr *expr, int error_flag)
 
       for ( ; arg && arg->expr; arg = arg->next, n++)
 	if (!gfc_check_conformance (first_expr, arg->expr,
-				    "arguments '%s' and '%s' for "
-				    "intrinsic '%s'",
+				    _("arguments '%s' and '%s' for "
+				    "intrinsic '%s'"),
 				    gfc_current_intrinsic_arg[0]->name,
 				    gfc_current_intrinsic_arg[n]->name,
 				    gfc_current_intrinsic))
@@ -4812,39 +4849,39 @@ gfc_check_intrinsic_standard (const gfc_intrinsic_sym* isym,
   switch (isym->standard)
     {
     case GFC_STD_F77:
-      symstd_msg = "available since Fortran 77";
+      symstd_msg = _("available since Fortran 77");
       break;
 
     case GFC_STD_F95_OBS:
-      symstd_msg = "obsolescent in Fortran 95";
+      symstd_msg = _("obsolescent in Fortran 95");
       break;
 
     case GFC_STD_F95_DEL:
-      symstd_msg = "deleted in Fortran 95";
+      symstd_msg = _("deleted in Fortran 95");
       break;
 
     case GFC_STD_F95:
-      symstd_msg = "new in Fortran 95";
+      symstd_msg = _("new in Fortran 95");
       break;
 
     case GFC_STD_F2003:
-      symstd_msg = "new in Fortran 2003";
+      symstd_msg = _("new in Fortran 2003");
       break;
 
     case GFC_STD_F2008:
-      symstd_msg = "new in Fortran 2008";
+      symstd_msg = _("new in Fortran 2008");
       break;
 
     case GFC_STD_F2018:
-      symstd_msg = "new in Fortran 2018";
+      symstd_msg = _("new in Fortran 2018");
       break;
 
     case GFC_STD_GNU:
-      symstd_msg = "a GNU Fortran extension";
+      symstd_msg = _("a GNU Fortran extension");
       break;
 
     case GFC_STD_LEGACY:
-      symstd_msg = "for backward compatibility";
+      symstd_msg = _("for backward compatibility");
       break;
 
     default:
@@ -4857,8 +4894,8 @@ gfc_check_intrinsic_standard (const gfc_intrinsic_sym* isym,
     {
       /* Do only print a warning if not a GNU extension.  */
       if (!silent && isym->standard != GFC_STD_GNU)
-	gfc_warning (0, "Intrinsic %qs (is %s) is used at %L",
-		     isym->name, _(symstd_msg), &where);
+	gfc_warning (0, "Intrinsic %qs (%s) used at %L",
+		     isym->name, symstd_msg, &where);
 
       return true;
     }
@@ -4869,7 +4906,7 @@ gfc_check_intrinsic_standard (const gfc_intrinsic_sym* isym,
 
   /* Otherwise, fail.  */
   if (symstd)
-    *symstd = _(symstd_msg);
+    *symstd = symstd_msg;
   return false;
 }
 
@@ -5034,9 +5071,19 @@ got_specific:
       sym->attr.intrinsic = 1;
       sym->attr.flavor = FL_PROCEDURE;
     }
+  if (sym->attr.flavor == FL_PROCEDURE)
+    {
+      sym->attr.function = 1;
+      sym->attr.proc = PROC_INTRINSIC;
+    }
 
   if (!sym->module)
     gfc_intrinsic_symbol (sym);
+
+  /* Have another stab at simplification since elemental intrinsics with array
+     actual arguments would be missed by the calls above to do_simplify.  */
+  if (isym->elemental)
+    gfc_simplify_expr (expr, 1);
 
   return MATCH_YES;
 }
@@ -5245,8 +5292,10 @@ gfc_convert_type_warn (gfc_expr *expr, gfc_typespec *ts, int eflag, int wflag,
 	{
 	  /* Larger kinds can hold values of smaller kinds without problems.
 	     Hence, only warn if target kind is smaller than the source
-	     kind - or if -Wconversion-extra is specified.  */
-	  if (expr->expr_type != EXPR_CONSTANT)
+	     kind - or if -Wconversion-extra is specified.  LOGICAL values
+	     will always fit regardless of kind so ignore conversion.  */
+	  if (expr->expr_type != EXPR_CONSTANT
+	      && ts->type != BT_LOGICAL)
 	    {
 	      if (warn_conversion && from_ts.kind > ts->kind)
 		gfc_warning_now (OPT_Wconversion, "Possible change of value in "

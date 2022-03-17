@@ -1,6 +1,6 @@
 // Safe iterator implementation  -*- C++ -*-
 
-// Copyright (C) 2003-2020 Free Software Foundation, Inc.
+// Copyright (C) 2003-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -40,7 +40,9 @@
 #endif
 
 #define _GLIBCXX_DEBUG_VERIFY_OPERANDS(_Lhs, _Rhs, _BadMsgId, _DiffMsgId) \
-  _GLIBCXX_DEBUG_VERIFY(!_Lhs._M_singular() && !_Rhs._M_singular(),	\
+  _GLIBCXX_DEBUG_VERIFY(!_Lhs._M_singular() && !_Rhs._M_singular()	\
+			|| (_Lhs.base() == _Iterator()			\
+			    && _Rhs.base() == _Iterator()),		\
 			_M_message(_BadMsgId)				\
 			._M_iterator(_Lhs, #_Lhs)			\
 			._M_iterator(_Rhs, #_Rhs));			\
@@ -170,7 +172,7 @@ namespace __gnu_debug
        * @brief Copy construction.
        */
       _Safe_iterator(const _Safe_iterator& __x) _GLIBCXX_NOEXCEPT
-      : _Iter_base(__x.base())
+      : _Iter_base(__x.base()), _Safe_base()
       {
 	// _GLIBCXX_RESOLVE_LIB_DEFECTS
 	// DR 408. Is vector<reverse_iterator<char*> > forbidden?
@@ -263,14 +265,14 @@ namespace __gnu_debug
       _Safe_iterator&
       operator=(_Safe_iterator&& __x) noexcept
       {
-	_GLIBCXX_DEBUG_VERIFY(this != &__x,
-			      _M_message(__msg_self_move_assign)
-			      ._M_iterator(*this, "this"));
 	_GLIBCXX_DEBUG_VERIFY(!__x._M_singular()
 			      || __x.base() == _Iterator(),
 			      _M_message(__msg_copy_singular)
 			      ._M_iterator(*this, "this")
 			      ._M_iterator(__x, "other"));
+
+	if (std::__addressof(__x) == this)
+	  return *this;
 
 	if (this->_M_sequence && this->_M_sequence == __x._M_sequence)
 	  {
@@ -404,6 +406,12 @@ namespace __gnu_debug
       // Can we advance the iterator @p __n steps (@p __n may be negative)
       bool
       _M_can_advance(difference_type __n, bool __strict = false) const;
+
+      // Can we advance the iterator using @p __dist in @p __way direction.
+      template<typename _Diff>
+	bool
+	_M_can_advance(const std::pair<_Diff, _Distance_precision>& __dist,
+		       int __way) const;
 
       // Is the iterator range [*this, __rhs) valid?
       bool
@@ -955,6 +963,14 @@ namespace __gnu_debug
     __can_advance(const _Safe_iterator<_Iterator, _Sequence, _Category>& __it,
 		  _Size __n)
     { return __it._M_can_advance(__n); }
+
+  template<typename _Iterator, typename _Sequence, typename _Category,
+	   typename _Diff>
+    inline bool
+    __can_advance(const _Safe_iterator<_Iterator, _Sequence, _Category>& __it,
+		  const std::pair<_Diff, _Distance_precision>& __dist,
+		  int __way)
+    { return __it._M_can_advance(__dist, __way); }
 
   template<typename _Iterator, typename _Sequence>
     _Iterator

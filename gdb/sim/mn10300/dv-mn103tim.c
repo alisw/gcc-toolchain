@@ -1,6 +1,6 @@
 /*  This file is part of the program GDB, the GNU debugger.
     
-    Copyright (C) 1998-2020 Free Software Foundation, Inc.
+    Copyright (C) 1998-2022 Free Software Foundation, Inc.
     Contributed by Cygnus Solutions.
     
     This program is free software; you can redistribute it and/or modify
@@ -17,6 +17,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
     
     */
+
+/* This must come before any other includes.  */
+#include "defs.h"
 
 #include "sim-main.h"
 #include "hw-main.h"

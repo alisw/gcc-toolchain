@@ -1,5 +1,5 @@
 # Process this file with autoreconf to produce a configure script.
-#  Copyright (C) 2012-2020 Free Software Foundation, Inc.
+#  Copyright (C) 2012-2021 Free Software Foundation, Inc.
 #
 #  This file is part of the GNU Atomic Library (libatomic).
 #
@@ -267,6 +267,19 @@ AC_SUBST(XCFLAGS)
 AC_SUBST(XLDFLAGS)
 AC_SUBST(LIBS)
 AC_SUBST(SIZES)
+
+# Conditionalize the makefile for this target machine.
+tmake_file_=
+for f in ${tmake_file}
+do
+	if test -f ${srcdir}/config/$f
+	then
+		tmake_file_="${tmake_file_} \$(srcdir)/config/$f"
+	fi
+done
+tmake_file="${tmake_file_}"
+AC_SUBST(tmake_file)
+
 
 AM_CONDITIONAL(HAVE_IFUNC, test x$libat_cv_have_ifunc = xyes)
 AM_CONDITIONAL(ARCH_AARCH64_LINUX,

@@ -1,5 +1,5 @@
 /* Emit RTL for the GCC expander.
-   Copyright (C) 1987-2020 Free Software Foundation, Inc.
+   Copyright (C) 1987-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -939,11 +939,13 @@ validate_subreg (machine_mode omode, machine_mode imode,
 	   && GET_MODE_INNER (imode) == omode)
     ;
   /* ??? x86 sse code makes heavy use of *paradoxical* vector subregs,
-     i.e. (subreg:V4SF (reg:SF) 0).  This surely isn't the cleanest way to
-     represent this.  It's questionable if this ought to be represented at
-     all -- why can't this all be hidden in post-reload splitters that make
-     arbitrarily mode changes to the registers themselves.  */
-  else if (VECTOR_MODE_P (omode) && GET_MODE_INNER (omode) == imode)
+     i.e. (subreg:V4SF (reg:SF) 0) or (subreg:V4SF (reg:V2SF) 0).  This
+     surely isn't the cleanest way to represent this.  It's questionable
+     if this ought to be represented at all -- why can't this all be hidden
+     in post-reload splitters that make arbitrarily mode changes to the
+     registers themselves.  */
+  else if (VECTOR_MODE_P (omode)
+	   && GET_MODE_INNER (omode) == GET_MODE_INNER (imode))
     ;
   /* Subregs involving floating point modes are not allowed to
      change size.  Therefore (subreg:DI (reg:DF) 0) is fine, but
@@ -3820,10 +3822,6 @@ try_split (rtx pat, rtx_insn *trial, int last)
   int njumps = 0;
   rtx_insn *call_insn = NULL;
 
-  /* We're not good at redistributing frame information.  */
-  if (RTX_FRAME_RELATED_P (trial))
-    return trial;
-
   if (any_condjump_p (trial)
       && (note = find_reg_note (trial, REG_BR_PROB, 0)))
     split_branch_probability
@@ -3840,6 +3838,7 @@ try_split (rtx pat, rtx_insn *trial, int last)
   if (!seq)
     return trial;
 
+  int split_insn_count = 0;
   /* Avoid infinite loop if any insn of the result matches
      the original pattern.  */
   insn_last = seq;
@@ -3848,9 +3847,23 @@ try_split (rtx pat, rtx_insn *trial, int last)
       if (INSN_P (insn_last)
 	  && rtx_equal_p (PATTERN (insn_last), pat))
 	return trial;
+      split_insn_count++;
       if (!NEXT_INSN (insn_last))
 	break;
       insn_last = NEXT_INSN (insn_last);
+    }
+
+  /* We're not good at redistributing frame information if
+     the split occurs before reload or if it results in more
+     than one insn.  */
+  if (RTX_FRAME_RELATED_P (trial))
+    {
+      if (!reload_completed || split_insn_count != 1)
+        return trial;
+
+      rtx_insn *new_insn = seq;
+      rtx_insn *old_insn = trial;
+      copy_frame_info_to_split_insn (old_insn, new_insn);
     }
 
   /* We will be adding the new sequence to the function.  The splitters
@@ -3951,6 +3964,7 @@ try_split (rtx pat, rtx_insn *trial, int last)
 	  break;
 
 	case REG_CALL_DECL:
+	case REG_UNTYPED_CALL:
 	  gcc_assert (call_insn != NULL_RTX);
 	  add_reg_note (call_insn, REG_NOTE_KIND (note), XEXP (note, 0));
 	  break;
@@ -5936,6 +5950,7 @@ bool
 valid_for_const_vector_p (machine_mode, rtx x)
 {
   return (CONST_SCALAR_INT_P (x)
+	  || CONST_POLY_INT_P (x)
 	  || CONST_DOUBLE_AS_FLOAT_P (x)
 	  || CONST_FIXED_P (x));
 }

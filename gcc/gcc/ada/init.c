@@ -6,7 +6,7 @@
  *                                                                          *
  *                          C Implementation File                           *
  *                                                                          *
- *          Copyright (C) 1992-2019, Free Software Foundation, Inc.         *
+ *          Copyright (C) 1992-2020, Free Software Foundation, Inc.         *
  *                                                                          *
  * GNAT is free software;  you can  redistribute it  and/or modify it under *
  * terms of the  GNU General Public License as published  by the Free Soft- *
@@ -122,6 +122,7 @@ int   __gl_default_stack_size            = -1;
 int   __gl_leap_seconds_support          = 0;
 int   __gl_canonical_streams             = 0;
 char *__gl_bind_env_addr                 = NULL;
+int   __gl_xdr_stream                    = 0;
 
 /* This value is not used anymore, but kept for bootstrapping purpose.  */
 int   __gl_zero_cost_exceptions          = 0;
@@ -578,12 +579,8 @@ __gnat_error_handler (int sig, siginfo_t *si ATTRIBUTE_UNUSED, void *ucontext)
 
 #ifndef __ia64__
 #define HAVE_GNAT_ALTERNATE_STACK 1
-/* This must be in keeping with System.OS_Interface.Alternate_Stack_Size.
-   It must be larger than MINSIGSTKSZ and hopefully near 2 * SIGSTKSZ.  */
-# if 16 * 1024 < MINSIGSTKSZ
-#  error "__gnat_alternate_stack too small"
-# endif
-char __gnat_alternate_stack[16 * 1024];
+/* This must be in keeping with System.OS_Interface.Alternate_Stack_Size.  */
+char __gnat_alternate_stack[32 * 1024];
 #endif
 
 #ifdef __XENO__

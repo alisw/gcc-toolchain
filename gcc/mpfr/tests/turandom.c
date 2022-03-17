@@ -1,6 +1,6 @@
 /* Test file for mpfr_urandom
 
-Copyright 1999-2004, 2006-2019 Free Software Foundation, Inc.
+Copyright 1999-2004, 2006-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -526,7 +526,7 @@ reprod_abi (void)
 #define N 6
   /* Run this program with the MPFR_REPROD_ABI_OUTPUT environment variable
      set to get the array of strings. */
-  char *t[5 * N] = {
+  const char *t[5 * N] = {
     "1.0@-1",
     "3.0@-1",
     "7.0@-1",

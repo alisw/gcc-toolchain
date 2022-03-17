@@ -1,7 +1,7 @@
 #name: PR ld/20830 (.plt.got, -z now)
 #source: pr20830.s
 #as: --x32
-#ld: -z now -melf32_x86_64 -shared -z relro --ld-generated-unwind-info --hash-style=sysv -z max-page-size=0x200000 -z noseparate-code
+#ld: -z now -melf32_x86_64 -shared -z relro --ld-generated-unwind-info --hash-style=sysv -z max-page-size=0x200000 -z noseparate-code $NO_DT_RELR_LDFLAGS
 #objdump: -dw -Wf
 
 .*: +file format .*
@@ -42,19 +42,19 @@ Contents of the .eh_frame section:
 Disassembly of section .plt:
 
 0+120 <.plt>:
- +[a-f0-9]+:	ff 35 c2 0e 20 00    	pushq  0x200ec2\(%rip\)        # 200fe8 <_GLOBAL_OFFSET_TABLE_\+0x8>
- +[a-f0-9]+:	ff 25 c4 0e 20 00    	jmpq   \*0x200ec4\(%rip\)        # 200ff0 <_GLOBAL_OFFSET_TABLE_\+0x10>
+ +[a-f0-9]+:	ff 35 c2 0e 20 00    	push   0x200ec2\(%rip\)        # 200fe8 <_GLOBAL_OFFSET_TABLE_\+0x8>
+ +[a-f0-9]+:	ff 25 c4 0e 20 00    	jmp    \*0x200ec4\(%rip\)        # 200ff0 <_GLOBAL_OFFSET_TABLE_\+0x10>
  +[a-f0-9]+:	0f 1f 40 00          	nopl   0x0\(%rax\)
 
 Disassembly of section .plt.got:
 
 0+130 <func@plt>:
- +[a-f0-9]+:	ff 25 c2 0e 20 00    	jmpq   \*0x200ec2\(%rip\)        # 200ff8 <func>
+ +[a-f0-9]+:	ff 25 c2 0e 20 00    	jmp    \*0x200ec2\(%rip\)        # 200ff8 <func>
  +[a-f0-9]+:	66 90                	xchg   %ax,%ax
 
 Disassembly of section .text:
 
 0+138 <foo>:
- +[a-f0-9]+:	e8 f3 ff ff ff       	callq  130 <func@plt>
+ +[a-f0-9]+:	e8 f3 ff ff ff       	call   130 <func@plt>
  +[a-f0-9]+:	48 8b 05 b4 0e 20 00 	mov    0x200eb4\(%rip\),%rax        # 200ff8 <func>
 #pass

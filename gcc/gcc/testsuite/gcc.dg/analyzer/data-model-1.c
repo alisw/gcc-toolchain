@@ -1,7 +1,8 @@
+/* { dg-require-effective-target alloca } */
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <alloca.h>
 #include "analyzer-decls.h"
 
 struct foo
@@ -138,8 +139,8 @@ void test_11 (void)
 
 void test_12 (void)
 {
-  void *p = alloca (256);
-  void *q = alloca (256);
+  void *p = __builtin_alloca (256);
+  void *q = __builtin_alloca (256);
 
   /* alloca results should be unique.  */
   __analyzer_eval (p == q); /* { dg-warning "FALSE" } */
@@ -179,15 +180,8 @@ int test_12d (struct coord c)
 {
   struct coord d;
   d = c;
-  __analyzer_eval (d.x == c.x); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "actual" { target *-*-* } .-1 } */
-  /* TODO(xfail): c and d share the same unknown value of type "coord", but
-     attempts to access the fields lead to different unknown values.  */
-
-  __analyzer_eval (d.y == c.y); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "actual" { target *-*-* } .-1 } */
-  // TODO(xfail): likewise
-
+  __analyzer_eval (d.x == c.x); /* { dg-warning "TRUE" } */
+  __analyzer_eval (d.y == c.y); /* { dg-warning "TRUE" } */
   __analyzer_eval (d.x == d.y); /* { dg-warning "UNKNOWN" } */
   /* d and c share an unknown value of type "struct coord".
      But d.x and d.y should be different unknown values (although they inherit
@@ -209,25 +203,21 @@ void test_13 (struct outer *o)
 {
   __analyzer_eval (o->mid.in.f == 0.f); /* { dg-warning "UNKNOWN" } */
   o->mid.in.f = 0.f;
-  __analyzer_eval (o->mid.in.f == 0.f); /* { dg-warning "TRUE" "PR 93356" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "disabled float comparisons" { target *-*-* } .-1 } */
+  __analyzer_eval (o->mid.in.f == 0.f); /* { dg-warning "TRUE" } */
 }
 
 void test_14 (struct outer o)
 {
   __analyzer_eval (o.mid.in.f == 0.f); /* { dg-warning "UNKNOWN" } */
   o.mid.in.f = 0.f;
-  __analyzer_eval (o.mid.in.f == 0.f); /* { dg-warning "TRUE" "PR 93356" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "disabled float comparisons" { target *-*-* } .-1 } */
+  __analyzer_eval (o.mid.in.f == 0.f); /* { dg-warning "TRUE" } */
 }
 
 void test_15 (const char *str)
 {
   char ch = str[0];
   __analyzer_eval (ch == 'a'); /* { dg-warning "UNKNOWN" } */
-  __analyzer_eval (ch == str[0]); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "status quo" { target *-*-* } .-1 } */
-  // TODO(xfail)
+  __analyzer_eval (ch == str[0]); /* { dg-warning "TRUE" } */
 
   ch = 'a';
   __analyzer_eval (ch == 'a'); /* { dg-warning "TRUE" } */
@@ -240,15 +230,15 @@ void test_16 (void)
 
   __analyzer_eval (msg != NULL); /* { dg-warning "TRUE" } */
 
-  __analyzer_eval (msg[0] == 'h'); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "status quo" { target *-*-* } .-1 } */
-  // TODO(xfail)
+  __analyzer_eval (msg[0] == 'h'); /* { dg-warning "TRUE" } */
 
-  __analyzer_eval (msg[1] == 'e'); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "status quo" { target *-*-* } .-1 } */
-  // TODO(xfail)
+  __analyzer_eval (msg[1] == 'e'); /* { dg-warning "TRUE" } */
 
   __analyzer_eval (strlen (msg) == 11); /* { dg-warning "TRUE" } */
+
+  /* Out-of-bounds.  */
+  __analyzer_eval (msg[100] == 'e'); /* { dg-warning "UNKNOWN" } */
+  // TODO: some kind of warning for the out-of-bounds access
 }
 
 static const char *__attribute__((noinline))
@@ -263,13 +253,9 @@ void test_16_alt (void)
 
   __analyzer_eval (msg != NULL); /* { dg-warning "TRUE" } */
 
-  __analyzer_eval (msg[0] == 'h'); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "status quo" { target *-*-* } .-1 } */
-  // TODO(xfail)
+  __analyzer_eval (msg[0] == 'h'); /* { dg-warning "TRUE" } */
 
-  __analyzer_eval (msg[1] == 'e'); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "status quo" { target *-*-* } .-1 } */
-  // TODO(xfail)
+  __analyzer_eval (msg[1] == 'e'); /* { dg-warning "TRUE" } */
 
   __analyzer_eval (strlen (msg) == 11); /* { dg-warning "TRUE" } */
 }
@@ -331,9 +317,6 @@ void test_16e (int i)
   might_write_to (&j);
   __analyzer_eval (j == i); /* { dg-warning "UNKNOWN" } */
 }
-
-/* TODO: and more complicated graph-like examples, where anything that's
-   reachable from the pointer might be modified.  */
 
 void test_17 (int i)
 {
@@ -475,13 +458,7 @@ void test_23 (struct foo *f, struct foo *g)
   i = f->i + g->i;
   j = f->i + g->i;
   k = f->i * g->i;
-  __analyzer_eval (i == j); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "status quo" { target *-*-* } .-1 } */
-  /* TODO(xfail): we'd need to record that the two unknown values are both
-     the sum of the two unknown input values (and thus are the same); not
-     yet sure if we want arbitrary expression trees in the representation
-     (analysis termination concerns).  */
-
+  __analyzer_eval (i == j); /* { dg-warning "TRUE" } */
   __analyzer_eval (i == k); /* { dg-warning "UNKNOWN" } */
 }
 
@@ -494,9 +471,7 @@ void test_24 (struct foo *f)
   /* Overwriting a whole struct should invalidate our knowledge
      about fields within it.  */
   g = *f;
-  __analyzer_eval (g.i == 42); /* { dg-warning "UNKNOWN" "desired" { xfail *-*-* } } */
-  /* { dg-warning "TRUE" "status quo" { target *-*-* } .-1 } */
-  // TODO(xfail)
+  __analyzer_eval (g.i == 42); /* { dg-warning "UNKNOWN" } */
 }
 
 void test_25 (struct foo *f)
@@ -511,16 +486,14 @@ void test_25 (struct foo *f)
      source value should update our knowledge about fields within
      the dest value.  */
   g = *f;
-  __analyzer_eval (g.i == 43); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "FALSE" "status quo" { target *-*-* } .-1 } */
-  // TODO(xfail)
+  __analyzer_eval (g.i == 43); /* { dg-warning "TRUE" } */
 }
 
 void test_26 (struct coord *p, struct coord *q)
 {
   p->x = 42;
-  q->y = 17;
-  __analyzer_eval (p->x == 42); /* { dg-warning "TRUE" } */
+  q->y = 17; /* could clobber p->x.  */
+  __analyzer_eval (p->x == 42); /* { dg-warning "UNKNOWN" } */
   __analyzer_eval (p->y); /* { dg-warning "UNKNOWN" } */
   __analyzer_eval (q->x); /* { dg-warning "UNKNOWN" } */
   __analyzer_eval (q->y == 17); /* { dg-warning "TRUE" } */
@@ -529,26 +502,21 @@ void test_26 (struct coord *p, struct coord *q)
      source value should update our knowledge about fields within
      the dest value.  */
   *p = *q;
-  __analyzer_eval (p->x); /* { dg-warning "UNKNOWN" "desired" { xfail *-*-* } } */
-  /* { dg-warning "TRUE" "status quo" { target *-*-* } .-1 } */
-  // TODO(xfail): should have been overwritten
+  __analyzer_eval (p->x); /* { dg-warning "UNKNOWN" } */
   __analyzer_eval (p->y == 17); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
   /* { dg-warning "UNKNOWN" "status quo" { target *-*-* } .-1 } */
   // TODO(xfail): should have been overwritten with q->y
 
   __analyzer_eval (q->x); /* { dg-warning "UNKNOWN" } */
-  __analyzer_eval (q->y == 17); /* { dg-warning "TRUE" } */
+  __analyzer_eval (q->y == 17); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
+  /* { dg-warning "UNKNOWN" "status quo" { target *-*-* } .-1 } */
 }
 
 void test_27 (struct coord *p)
 {
   memset (p, 0, sizeof (struct coord));
-  __analyzer_eval (p->x == 0); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "status quo" { target *-*-* } .-1 } */
-  // TODO(xfail):
-  __analyzer_eval (p->y == 0); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "status quo" { target *-*-* } .-1 } */
-  // TODO(xfail):
+  __analyzer_eval (p->x == 0); /* { dg-warning "TRUE" } */
+  __analyzer_eval (p->y == 0); /* { dg-warning "TRUE" } */
 }
 
 void test_28 (struct coord *p)
@@ -661,6 +629,8 @@ void test_29a (struct coord p[])
   __analyzer_eval (q[-2].y == 107025); /* { dg-warning "TRUE" } */
 
   q -= 2;
+  __analyzer_eval (q == &p[7]); /* { dg-warning "UNKNOWN" } */
+  // TODO: make this be TRUE
 
   __analyzer_eval (q->x == 107024); /* { dg-warning "TRUE" } */
   __analyzer_eval (q->y == 107025); /* { dg-warning "TRUE" } */
@@ -709,6 +679,7 @@ void test_29b (void)
   __analyzer_eval (q[-2].y == 107025); /* { dg-warning "TRUE" } */
 
   q -= 2;
+  __analyzer_eval (q == &p[7]); /* { dg-warning "TRUE" } */
 
   __analyzer_eval (q->x == 107024); /* { dg-warning "TRUE" } */
   __analyzer_eval (q->y == 107025); /* { dg-warning "TRUE" } */
@@ -757,6 +728,7 @@ void test_29c (int len)
   __analyzer_eval (q[-2].y == 107025); /* { dg-warning "TRUE" } */
 
   q -= 2;
+  __analyzer_eval (q == &p[7]); /* { dg-warning "TRUE" } */
 
   __analyzer_eval (q->x == 107024); /* { dg-warning "TRUE" } */
   __analyzer_eval (q->y == 107025); /* { dg-warning "TRUE" } */
@@ -810,7 +782,7 @@ void test_33 (void)
 }
 
 static int __attribute__((noinline))
-only_called_by_test_34 (int parm)
+__analyzer_only_called_by_test_34 (int parm)
 {
   __analyzer_eval (parm == 42); /* { dg-warning "TRUE" } */
 
@@ -819,7 +791,7 @@ only_called_by_test_34 (int parm)
 
 void test_34 (void)
 {
-  int result = only_called_by_test_34 (42);
+  int result = __analyzer_only_called_by_test_34 (42);
   __analyzer_eval (result == 84); /* { dg-warning "TRUE" } */
 }
 
@@ -934,12 +906,12 @@ void test_41 (void)
   union u u;
   u.i = 42;
   __analyzer_eval (u.i == 42); /* { dg-warning "TRUE" } */
-  __analyzer_eval (u.ptr == NULL); /* { dg-warning "UNKNOWN" } */
+  __analyzer_eval (u.ptr == NULL); /* { dg-warning "UNKNOWN|FALSE" } */
 
   /* Writes to a union member should invalidate knowledge about other members.  */
   u.ptr = NULL;
   __analyzer_eval (u.ptr == NULL); /* { dg-warning "TRUE" } */
-  __analyzer_eval (u.i == 42); /* { dg-warning "UNKNOWN" } */
+  __analyzer_eval (u.i == 42); /* { dg-warning "UNKNOWN|FALSE" } */
 }
 
 void test_42 (void)
@@ -948,8 +920,7 @@ void test_42 (void)
   float f;
   i = 42;
   f = i;
-  __analyzer_eval (f == 42.0); /* { dg-warning "TRUE" "PR 93356" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "disabled float comparisons" { target *-*-* } .-1 } */
+  __analyzer_eval (f == 42.0); /* { dg-warning "TRUE" } */
 }
 
 void test_43 (void)
@@ -963,24 +934,20 @@ void test_43 (void)
 
 struct sbits
 {
-  int b0 : 1;
-  int b123 : 3;
-  int b456 : 3;
-  int b7 : 1;
+  signed int b0 : 1;
+  signed int b123 : 3;
+  signed int b456 : 3;
+  signed int b7 : 1;
 };
 
 void test_44 (void)
 {
   struct sbits bits;
-  bits.b0 = 1;
-  __analyzer_eval (bits.b0 == 1); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "FALSE" "status quo" { target *-*-* } .-1 } */
-  // TODO(xfail): ^^^^
+  bits.b0 = -1;
+  __analyzer_eval (bits.b0 == -1); /* { dg-warning "TRUE" } */
 
-  bits.b456 = 5;
-  __analyzer_eval (bits.b456 == 5); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "FALSE" "status quo" { target *-*-* } .-1 } */
-  // TODO(xfail): ^^^^
+  bits.b456 = -4;
+  __analyzer_eval (bits.b456 == -4); /* { dg-warning "TRUE" } */
 };
 
 struct ubits
@@ -991,20 +958,14 @@ struct ubits
   unsigned int b7 : 1;
 };
 
-/* FIXME: this requires BIT_FIELD_REF to work.  */
-
 void test_45 (void)
 {
   struct ubits bits;
   bits.b0 = 1;
-  __analyzer_eval (bits.b0 == 1); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "status quo" { target *-*-* } .-1 } */
-  // TODO(xfail): ^^^^
+  __analyzer_eval (bits.b0 == 1); /* { dg-warning "TRUE" } */
 
   bits.b456 = 5;
-  __analyzer_eval (bits.b456 == 5); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "status quo" { target *-*-* } .-1 } */
-  // TODO(xfail): ^^^^
+  __analyzer_eval (bits.b456 == 5); /* { dg-warning "TRUE" } */
 };
 
 extern const char *char_ptr;
@@ -1061,10 +1022,8 @@ void test_51 (struct coord c)
 {
   struct coord d;
   memcpy (&d, &c, sizeof (struct coord));
-  __analyzer_eval (c.x == d.x); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "status quo" { target *-*-* } .-1 } */
-  __analyzer_eval (c.y == d.y); /* { dg-warning "TRUE" "desired" { xfail *-*-* } } */
-  /* { dg-warning "UNKNOWN" "status quo" { target *-*-* } .-1 } */
+  __analyzer_eval (c.x == d.x); /* { dg-warning "TRUE" } */
+  __analyzer_eval (c.y == d.y); /* { dg-warning "TRUE" } */
 }
 
 struct big

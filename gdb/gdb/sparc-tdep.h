@@ -1,6 +1,6 @@
 /* Target-dependent code for SPARC.
 
-   Copyright (C) 2003-2020 Free Software Foundation, Inc.
+   Copyright (C) 2003-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -64,9 +64,9 @@ struct gdbarch_tdep
   int npc_regnum;
 
   /* Register names specific for architecture (sparc32 vs. sparc64) */
-  const char **fpu_register_names;
+  const char * const *fpu_register_names;
   size_t fpu_registers_num;
-  const char **cp0_register_names;
+  const char * const *cp0_register_names;
   size_t cp0_registers_num;
 
   /* Register sets.  */
@@ -245,7 +245,7 @@ extern int sparc_is_annulled_branch_insn (CORE_ADDR pc);
 extern const struct sparc_gregmap sparc32_sol2_gregmap;
 extern const struct sparc_fpregmap sparc32_sol2_fpregmap;
 
-/* Functions and variables exported from sparcnbsd-tdep.c.  */
+/* Functions and variables exported from sparc-netbsd-tdep.c.  */
 
 /* Register offsets for NetBSD.  */
 extern const struct sparc_gregmap sparc32nbsd_gregmap;

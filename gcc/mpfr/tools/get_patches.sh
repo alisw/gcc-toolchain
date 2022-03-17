@@ -1,9 +1,18 @@
 #!/bin/sh
 
+set -e
+
+if [ $# -ne 1 ]; then
+  echo "Usage: $0 <PATCHES_file>" >&2
+  exit 1
+fi
+
+patches=`cat "$1"`
+
 cat <<EOF
 /* mpfr_get_patches -- Patches that have been applied
 
-Copyright 2007-2019 Free Software Foundation, Inc.
+Copyright 2007-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -30,5 +39,6 @@ mpfr_get_patches (void)
 {
 EOF
 
-echo '  return "'`cat PATCHES`'";'
+# $patches is written as a list of words separated by a space character.
+echo '  return "'$patches'";'
 echo '}'

@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (C) 1999-2019 by The D Language Foundation, All Rights Reserved
+ * Copyright (C) 1999-2021 by The D Language Foundation, All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -13,6 +13,7 @@
 #include "root/root.h"
 
 #include "arraytypes.h"
+#include "ast_node.h"
 #include "dsymbol.h"
 #include "visitor.h"
 #include "tokens.h"
@@ -22,6 +23,7 @@ struct Scope;
 class Expression;
 class LabelDsymbol;
 class Identifier;
+class Statement;
 class IfStatement;
 class ExpStatement;
 class DefaultStatement;
@@ -37,6 +39,7 @@ class StaticAssert;
 class AsmStatement;
 class GotoStatement;
 class ScopeStatement;
+class Catch;
 class TryCatchStatement;
 class TryFinallyStatement;
 class CaseStatement;
@@ -46,6 +49,11 @@ class StaticForeach;
 
 // Back end
 struct code;
+
+Statement *statementSemantic(Statement *s, Scope *sc);
+Statement *semanticNoScope(Statement *s, Scope *sc);
+Statement *semanticScope(Statement *s, Scope *sc, Statement *sbreak, Statement *scontinue);
+void catchSemantic(Catch *c, Scope *sc);
 
 bool inferAggregate(ForeachStatement *fes, Scope *sc, Dsymbol *&sapply);
 bool inferApplyArgTypes(ForeachStatement *fes, Scope *sc, Dsymbol *&sapply);
@@ -66,13 +74,14 @@ enum BE
     BEany = (BEfallthru | BEthrow | BEreturn | BEgoto | BEhalt)
 };
 
-class Statement : public RootObject
+class Statement : public ASTNode
 {
 public:
     Loc loc;
 
     Statement(Loc loc);
     virtual Statement *syntaxCopy();
+    static Statements *arraySyntaxCopy(Statements *a);
 
     void print();
     const char *toChars();
@@ -105,7 +114,7 @@ public:
     virtual BreakStatement *isBreakStatement() { return NULL; }
     virtual DtorExpStatement *isDtorExpStatement() { return NULL; }
     virtual ForwardingStatement *isForwardingStatement() { return NULL; }
-    virtual void accept(Visitor *v) { v->visit(this); }
+    void accept(Visitor *v) { v->visit(this); }
 };
 
 /** Any Statement that fails semantic() or has a component that is an ErrorExp or
@@ -164,9 +173,10 @@ public:
 class CompileStatement : public Statement
 {
 public:
-    Expression *exp;
+    Expressions *exps;
 
     CompileStatement(Loc loc, Expression *exp);
+    CompileStatement(Loc loc, Expressions *exps);
     Statement *syntaxCopy();
     Statements *flatten(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
@@ -625,13 +635,13 @@ public:
     void accept(Visitor *v) { v->visit(this); }
 };
 
-class OnScopeStatement : public Statement
+class ScopeGuardStatement : public Statement
 {
 public:
     TOK tok;
     Statement *statement;
 
-    OnScopeStatement(Loc loc, TOK tok, Statement *statement);
+    ScopeGuardStatement(Loc loc, TOK tok, Statement *statement);
     Statement *syntaxCopy();
     Statement *scopeCode(Scope *sc, Statement **sentry, Statement **sexit, Statement **sfinally);
 
@@ -669,7 +679,7 @@ public:
     Identifier *ident;
     LabelDsymbol *label;
     TryFinallyStatement *tf;
-    OnScopeStatement *os;
+    ScopeGuardStatement *os;
     VarDeclaration *lastVar;
 
     GotoStatement(Loc loc, Identifier *ident);
@@ -685,7 +695,7 @@ public:
     Identifier *ident;
     Statement *statement;
     TryFinallyStatement *tf;
-    OnScopeStatement *os;
+    ScopeGuardStatement *os;
     VarDeclaration *lastVar;
     Statement *gotoTarget;      // interpret
 

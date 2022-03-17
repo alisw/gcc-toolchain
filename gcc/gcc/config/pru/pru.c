@@ -1,5 +1,5 @@
 /* Target machine subroutines for TI PRU.
-   Copyright (C) 2014-2020 Free Software Foundation, Inc.
+   Copyright (C) 2014-2021 Free Software Foundation, Inc.
    Dimitar Dimitrov <dimitar@dinux.eu>
 
    This file is part of GCC.
@@ -556,37 +556,6 @@ pru_hard_regno_scratch_ok (unsigned int regno)
 }
 
 
-/* Implement TARGET_HARD_REGNO_CALL_PART_CLOBBERED.  */
-
-static bool
-pru_hard_regno_call_part_clobbered (unsigned, unsigned regno,
-				    machine_mode mode)
-{
-  HARD_REG_SET caller_saved_set;
-  HARD_REG_SET callee_saved_set;
-
-  CLEAR_HARD_REG_SET (caller_saved_set);
-  CLEAR_HARD_REG_SET (callee_saved_set);
-
-  /* r0 and r1 are caller saved.  */
-  add_range_to_hard_reg_set (&caller_saved_set, 0, 2 * 4);
-
-  add_range_to_hard_reg_set (&caller_saved_set, FIRST_ARG_REGNUM,
-			     LAST_ARG_REGNUM + 1 - FIRST_ARG_REGNUM);
-
-  /* Treat SP as callee saved.  */
-  add_range_to_hard_reg_set (&callee_saved_set, STACK_POINTER_REGNUM, 4);
-
-  /* r3 to r13 are callee saved.  */
-  add_range_to_hard_reg_set (&callee_saved_set, FIRST_CALLEE_SAVED_REGNUM,
-			     LAST_CALEE_SAVED_REGNUM + 1
-			     - FIRST_CALLEE_SAVED_REGNUM);
-
-  return overlaps_hard_reg_set_p (caller_saved_set, mode, regno)
-	 && overlaps_hard_reg_set_p (callee_saved_set, mode, regno);
-}
-
-
 /* Worker function for `HARD_REGNO_RENAME_OK'.
    Return nonzero if register OLD_REG can be renamed to register NEW_REG.  */
 
@@ -652,7 +621,7 @@ pru_option_override (void)
   /* Save the initial options in case the user does function specific
      options.  */
   target_option_default_node = target_option_current_node
-    = build_target_option_node (&global_options);
+    = build_target_option_node (&global_options, &global_options_set);
 
   /* Due to difficulties in implementing the TI ABI with GCC,
      at least check and error-out if GCC cannot compile a
@@ -1650,7 +1619,7 @@ pru_print_operand (FILE *file, rtx op, int letter)
 	  return;
 	case 'Q':
 	  cond = swap_condition (cond);
-	  /* Fall through to reverse.  */
+	  /* Fall through.  */
 	case 'R':
 	  fprintf (file, "%s", pru_comparison_str (reverse_condition (cond)));
 	  return;
@@ -2345,26 +2314,14 @@ pru_emit_doloop (rtx *operands, int is_end)
 
   tag = GEN_INT (cfun->machine->doloop_tags - 1);
   machine_mode opmode = GET_MODE (operands[0]);
+  gcc_assert (opmode == HImode || opmode == SImode);
+
   if (is_end)
-    {
-      if (opmode == HImode)
-	emit_jump_insn (gen_doloop_end_internalhi (operands[0],
-						   operands[1], tag));
-      else if (opmode == SImode)
-	emit_jump_insn (gen_doloop_end_internalsi (operands[0],
-						   operands[1], tag));
-      else
-	gcc_unreachable ();
-    }
+    emit_jump_insn (gen_doloop_end_internal (opmode, operands[0],
+					     operands[1], tag));
   else
-    {
-      if (opmode == HImode)
-	emit_insn (gen_doloop_begin_internalhi (operands[0], operands[0], tag));
-      else if (opmode == SImode)
-	emit_insn (gen_doloop_begin_internalsi (operands[0], operands[0], tag));
-      else
-	gcc_unreachable ();
-    }
+    emit_insn (gen_doloop_begin_internal (opmode, operands[0],
+					  operands[0], tag));
 }
 
 
@@ -2607,6 +2564,7 @@ pru_reorg_loop (rtx_insn *insns)
 	/* Case (1) or (2).  */
 	rtx_code_label *repeat_label;
 	rtx label_ref;
+	rtx loop_rtx;
 
 	/* Create a new label for the repeat insn.  */
 	repeat_label = gen_label_rtx ();
@@ -2616,23 +2574,16 @@ pru_reorg_loop (rtx_insn *insns)
 	   will utilize an internal for the PRU core LOOP register.  */
 	label_ref = gen_rtx_LABEL_REF (VOIDmode, repeat_label);
 	machine_mode loop_mode = GET_MODE (loop->begin->loop_count);
-	if (loop_mode == HImode)
-	  emit_insn_before (gen_pruloophi (loop->begin->loop_count, label_ref),
-			    loop->begin->insn);
-	else if (loop_mode == SImode)
-	  {
-	    rtx loop_rtx = gen_pruloopsi (loop->begin->loop_count, label_ref);
-	    emit_insn_before (loop_rtx, loop->begin->insn);
-	  }
-	else if (loop_mode == VOIDmode)
+	if (loop_mode == VOIDmode)
 	  {
 	    gcc_assert (CONST_INT_P (loop->begin->loop_count));
 	    gcc_assert (UBYTE_INT ( INTVAL (loop->begin->loop_count)));
-	    rtx loop_rtx = gen_pruloopsi (loop->begin->loop_count, label_ref);
-	    emit_insn_before (loop_rtx, loop->begin->insn);
+	    loop_mode = SImode;
 	  }
-	else
-	  gcc_unreachable ();
+	gcc_assert (loop_mode == HImode || loop_mode == SImode);
+	loop_rtx = gen_pruloop (loop_mode, loop->begin->loop_count, label_ref);
+	emit_insn_before (loop_rtx, loop->begin->insn);
+
 	delete_insn (loop->begin->insn);
 
 	/* Insert the repeat label before the first doloop_end.
@@ -2754,6 +2705,8 @@ pru_reorg (void)
 enum pru_builtin
 {
   PRU_BUILTIN_DELAY_CYCLES,
+  PRU_BUILTIN_HALT,
+  PRU_BUILTIN_LMBD,
   PRU_BUILTIN_max
 };
 
@@ -2768,10 +2721,30 @@ pru_init_builtins (void)
     = build_function_type_list (void_type_node,
 				long_long_integer_type_node,
 				NULL);
+  tree uint_ftype_uint_uint
+    = build_function_type_list (unsigned_type_node,
+				unsigned_type_node,
+				unsigned_type_node,
+				NULL);
+
+  tree void_ftype_void
+    = build_function_type_list (void_type_node,
+				void_type_node,
+				NULL);
 
   pru_builtins[PRU_BUILTIN_DELAY_CYCLES]
     = add_builtin_function ("__delay_cycles", void_ftype_longlong,
 			    PRU_BUILTIN_DELAY_CYCLES, BUILT_IN_MD, NULL,
+			    NULL_TREE);
+
+  pru_builtins[PRU_BUILTIN_HALT]
+    = add_builtin_function ("__halt", void_ftype_void,
+			    PRU_BUILTIN_HALT, BUILT_IN_MD, NULL,
+			    NULL_TREE);
+
+  pru_builtins[PRU_BUILTIN_LMBD]
+    = add_builtin_function ("__lmbd", uint_ftype_uint_uint,
+			    PRU_BUILTIN_LMBD, BUILT_IN_MD, NULL,
 			    NULL_TREE);
 }
 
@@ -2783,6 +2756,8 @@ pru_builtin_decl (unsigned code, bool initialize_p ATTRIBUTE_UNUSED)
   switch (code)
     {
     case PRU_BUILTIN_DELAY_CYCLES:
+    case PRU_BUILTIN_HALT:
+    case PRU_BUILTIN_LMBD:
       return pru_builtins[code];
     default:
       return error_mark_node;
@@ -2855,19 +2830,45 @@ pru_expand_delay_cycles (rtx arg)
    IGNORE is nonzero if the value is to be ignored.  */
 
 static rtx
-pru_expand_builtin (tree exp, rtx target ATTRIBUTE_UNUSED,
+pru_expand_builtin (tree exp, rtx target,
 		    rtx subtarget ATTRIBUTE_UNUSED,
-		    machine_mode mode ATTRIBUTE_UNUSED,
+		    machine_mode mode,
 		    int ignore ATTRIBUTE_UNUSED)
 {
   tree fndecl = TREE_OPERAND (CALL_EXPR_FN (exp), 0);
   unsigned int fcode = DECL_MD_FUNCTION_CODE (fndecl);
-  rtx arg1 = expand_normal (CALL_EXPR_ARG (exp, 0));
 
-  if (fcode == PRU_BUILTIN_DELAY_CYCLES)
-    return pru_expand_delay_cycles (arg1);
+  switch (fcode)
+    {
+    case PRU_BUILTIN_DELAY_CYCLES:
+	{
+	  rtx arg1 = expand_normal (CALL_EXPR_ARG (exp, 0));
+	  return pru_expand_delay_cycles (arg1);
+	}
+      break;
+    case PRU_BUILTIN_HALT:
+	{
+	  emit_insn (gen_pru_halt ());
+	  return NULL_RTX;
+	}
+      break;
+    case PRU_BUILTIN_LMBD:
+	{
+	  rtx arg1 = expand_normal (CALL_EXPR_ARG (exp, 0));
+	  rtx arg2 = expand_normal (CALL_EXPR_ARG (exp, 1));
 
-  internal_error ("bad builtin code");
+	  if (target == NULL_RTX || GET_MODE (target) != mode)
+	    {
+	      target = gen_reg_rtx (mode);
+	    }
+
+	  emit_insn (gen_pru_lmbd (mode, target, arg1, arg2));
+	  return target;
+	}
+      break;
+    default:
+      internal_error ("bad builtin code");
+    }
 
   return NULL_RTX;
 }
@@ -2897,7 +2898,7 @@ pru_set_current_function (tree fndecl)
 
       else if (new_tree)
 	{
-	  cl_target_option_restore (&global_options,
+	  cl_target_option_restore (&global_options, &global_options_set,
 				    TREE_TARGET_OPTION (new_tree));
 	  target_reinit ();
 	}
@@ -2907,7 +2908,7 @@ pru_set_current_function (tree fndecl)
 	  struct cl_target_option *def
 	    = TREE_TARGET_OPTION (target_option_current_node);
 
-	  cl_target_option_restore (&global_options, def);
+	  cl_target_option_restore (&global_options, &global_options_set, def);
 	  target_reinit ();
 	}
     }
@@ -2953,9 +2954,6 @@ pru_unwind_word_mode (void)
 
 #undef  TARGET_HARD_REGNO_SCRATCH_OK
 #define TARGET_HARD_REGNO_SCRATCH_OK pru_hard_regno_scratch_ok
-#undef  TARGET_HARD_REGNO_CALL_PART_CLOBBERED
-#define TARGET_HARD_REGNO_CALL_PART_CLOBBERED \
-  pru_hard_regno_call_part_clobbered
 
 #undef TARGET_FUNCTION_ARG
 #define TARGET_FUNCTION_ARG pru_function_arg

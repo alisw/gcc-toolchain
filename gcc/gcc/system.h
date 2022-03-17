@@ -1,6 +1,6 @@
 /* Get common system includes and various definitions and declarations based
    on autoconf macros.
-   Copyright (C) 1998-2020 Free Software Foundation, Inc.
+   Copyright (C) 1998-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -232,9 +232,16 @@ extern int errno;
 #ifdef INCLUDE_VECTOR
 # include <vector>
 #endif
+#ifdef INCLUDE_ARRAY
+# include <array>
+#endif
+#ifdef INCLUDE_FUNCTIONAL
+# include <functional>
+#endif
 # include <cstring>
 # include <new>
 # include <utility>
+# include <type_traits>
 #endif
 
 /* Some of glibc's string inlines cause warnings.  Plus we'd rather
@@ -528,6 +535,10 @@ extern void *realloc (void *, size_t);
 #include <inttypes.h>
 #endif
 
+#ifndef SIZE_MAX
+# define SIZE_MAX INTTYPE_MAXIMUM (size_t)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -731,8 +742,29 @@ extern int vsnprintf (char *, size_t, const char *, va_list);
 #endif
 
 #ifdef INCLUDE_MALLOC_H
-#ifdef HAVE_MALLINFO
+#if defined(HAVE_MALLINFO) || defined(HAVE_MALLINFO2)
 #include <malloc.h>
+#endif
+#endif
+
+#ifdef INCLUDE_ISL
+#ifdef HAVE_isl
+#include <isl/options.h>
+#include <isl/ctx.h>
+#include <isl/val.h>
+#include <isl/set.h>
+#include <isl/union_set.h>
+#include <isl/map.h>
+#include <isl/union_map.h>
+#include <isl/aff.h>
+#include <isl/constraint.h>
+#include <isl/flow.h>
+#include <isl/ilp.h>
+#include <isl/schedule.h>
+#include <isl/ast_build.h>
+#include <isl/schedule_node.h>
+#include <isl/id.h>
+#include <isl/space.h>
 #endif
 #endif
 
@@ -765,6 +797,12 @@ extern void fancy_abort (const char *, int, const char *)
 #define ALWAYS_INLINE inline __attribute__ ((always_inline))
 #else
 #define ALWAYS_INLINE inline
+#endif
+
+#if GCC_VERSION >= 3004
+#define WARN_UNUSED_RESULT __attribute__ ((__warn_unused_result__))
+#else
+#define WARN_UNUSED_RESULT
 #endif
 
 /* Use gcc_unreachable() to mark unreachable locations (like an
@@ -866,12 +904,10 @@ extern void fancy_abort (const char *, int, const char *)
    etc don't spuriously fail.  */
 #ifdef IN_GCC
 
-#ifndef USES_ISL
 #undef calloc
 #undef strdup
 #undef strndup
  #pragma GCC poison calloc strdup strndup
-#endif
 
 #if !defined(FLEX_SCANNER) && !defined(YYBISON)
 #undef malloc
@@ -1217,6 +1253,7 @@ void gcc_stablesort (void *, size_t, size_t,
 
 #define ONE_K 1024
 #define ONE_M (ONE_K * ONE_K)
+#define ONE_G (ONE_K * ONE_M)
 
 /* Display a number as an integer multiple of either:
    - 1024, if said integer is >= to 10 K (in base 2)
@@ -1243,5 +1280,15 @@ void gcc_stablesort (void *, size_t, size_t,
 /* Format string particle for printing a SIZE_AMOUNT with N being the width
    of the number.  */
 #define PRsa(n) "%" #n PRIu64 "%c"
+
+/* System headers may define NULL to be an integer (e.g. 0L), which cannot be
+   used safely in certain contexts (e.g. as sentinels).  Redefine NULL to
+   nullptr in order to make it safer.  Note that this might confuse system
+   headers, however, by convention they must not be included after this point.
+*/
+#ifdef __cplusplus
+#undef NULL
+#define NULL nullptr
+#endif
 
 #endif /* ! GCC_SYSTEM_H */

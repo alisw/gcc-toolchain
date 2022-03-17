@@ -1,5 +1,5 @@
 /* Disassemble AVR instructions.
-   Copyright (C) 1999-2020 Free Software Foundation, Inc.
+   Copyright (C) 1999-2021 Free Software Foundation, Inc.
 
    Contributed by Denis Chertykov <denisc@overta.ru>
 
@@ -25,7 +25,7 @@
 #include "disassemble.h"
 #include "opintl.h"
 #include "libiberty.h"
-#include "bfd_stdint.h"
+#include <stdint.h>
 
 struct avr_opcodes_s
 {

@@ -1,5 +1,5 @@
 /* CPP Library. (Directive handling.)
-   Copyright (C) 1986-2020 Free Software Foundation, Inc.
+   Copyright (C) 1986-2021 Free Software Foundation, Inc.
    Contributed by Per Bothner, 1994-95.
    Based on CCCP program by Paul Rubin, June 1986
    Adapted to ANSI C, Richard Stallman, Jan 1987
@@ -667,7 +667,8 @@ do_undef (cpp_reader *pfile)
 				   pfile->directive_line, 0,
 				   "undefining \"%s\"", NODE_NAME (node));
 
-	  if (CPP_OPTION (pfile, warn_unused_macros))
+	  if (node->value.macro
+	      && CPP_OPTION (pfile, warn_unused_macros))
 	    _cpp_warn_if_unused_macro (pfile, node, NULL);
 
 	  _cpp_free_definition (node);
@@ -877,7 +878,7 @@ do_include_next (cpp_reader *pfile)
 
   /* If this is the primary source file, warn and use the normal
      search logic.  */
-  if (cpp_in_primary_file (pfile))
+  if (_cpp_in_main_source_file (pfile))
     {
       cpp_error (pfile, CPP_DL_WARNING,
 		 "#include_next in primary source file");
@@ -914,12 +915,11 @@ read_flag (cpp_reader *pfile, unsigned int last)
 /* Subroutine of do_line and do_linemarker.  Convert a number in STR,
    of length LEN, to binary; store it in NUMP, and return false if the
    number was well-formed, true if not. WRAPPED is set to true if the
-   number did not fit into 'unsigned long'.  */
+   number did not fit into 'linenum_type'.  */
 static bool
 strtolinenum (const uchar *str, size_t len, linenum_type *nump, bool *wrapped)
 {
   linenum_type reg = 0;
-  linenum_type reg_prev = 0;
 
   uchar c;
   *wrapped = false;
@@ -928,11 +928,12 @@ strtolinenum (const uchar *str, size_t len, linenum_type *nump, bool *wrapped)
       c = *str++;
       if (!ISDIGIT (c))
 	return true;
-      reg *= 10;
-      reg += c - '0';
-      if (reg < reg_prev) 
+      if (reg > ((linenum_type) -1) / 10)
 	*wrapped = true;
-      reg_prev = reg;
+      reg *= 10;
+      if (reg > ((linenum_type) -1) - (c - '0'))
+	*wrapped = true;
+      reg += c - '0';
     }
   *nump = reg;
   return false;
@@ -940,7 +941,7 @@ strtolinenum (const uchar *str, size_t len, linenum_type *nump, bool *wrapped)
 
 /* Interpret #line command.
    Note that the filename string (if any) is a true string constant
-   (escapes are interpreted), unlike in #line.  */
+   (escapes are interpreted).  */
 static void
 do_line (cpp_reader *pfile)
 {
@@ -1115,26 +1116,43 @@ do_linemarker (cpp_reader *pfile)
   line_table->seen_line_directive = true;
 }
 
-/* Arrange the file_change callback.  pfile->line has changed to
-   FILE_LINE of TO_FILE, for reason REASON.  SYSP is 1 for a system
-   header, 2 for a system header that needs to be extern "C" protected,
-   and zero otherwise.  */
+/* Arrange the file_change callback.  Changing to TO_FILE:TO_LINE for
+   REASON.  SYSP is 1 for a system header, 2 for a system header that
+   needs to be extern "C" protected, and zero otherwise.  */
 void
 _cpp_do_file_change (cpp_reader *pfile, enum lc_reason reason,
-		     const char *to_file, linenum_type file_line,
+		     const char *to_file, linenum_type to_line,
 		     unsigned int sysp)
 {
   linemap_assert (reason != LC_ENTER_MACRO);
-  const struct line_map *map = linemap_add (pfile->line_table, reason, sysp,
-					    to_file, file_line);
+
   const line_map_ordinary *ord_map = NULL;
-  if (map != NULL)
+  if (!to_line && reason == LC_RENAME_VERBATIM)
     {
-      ord_map = linemap_check_ordinary (map);
-      linemap_line_start (pfile->line_table,
-			  ORDINARY_MAP_STARTING_LINE_NUMBER (ord_map),
-			  127);
+      /* A linemarker moving to line zero.  If we're on the second
+         line of the current map, and it also starts at zero, just
+         rewind -- we're probably reading the builtins of a
+         preprocessed source.  */
+      line_map_ordinary *last = LINEMAPS_LAST_ORDINARY_MAP (pfile->line_table);
+      if (!ORDINARY_MAP_STARTING_LINE_NUMBER (last)
+	  && 0 == filename_cmp (to_file, ORDINARY_MAP_FILE_NAME (last))
+	  && SOURCE_LINE (last, pfile->line_table->highest_line) == 2)
+	{
+	  ord_map = last;
+	  pfile->line_table->highest_location
+	    = pfile->line_table->highest_line = MAP_START_LOCATION (last);
+	}
     }
+
+  if (!ord_map)
+    if (const line_map *map = linemap_add (pfile->line_table, reason, sysp,
+					   to_file, to_line))
+      {
+	ord_map = linemap_check_ordinary (map);
+	linemap_line_start (pfile->line_table,
+			    ORDINARY_MAP_STARTING_LINE_NUMBER (ord_map),
+			    127);
+      }
 
   if (pfile->cb.file_change)
     pfile->cb.file_change (pfile, ord_map);
@@ -1529,7 +1547,7 @@ do_pragma (cpp_reader *pfile)
 static void
 do_pragma_once (cpp_reader *pfile)
 {
-  if (cpp_in_primary_file (pfile))
+  if (_cpp_in_main_source_file (pfile))
     cpp_error (pfile, CPP_DL_WARNING, "#pragma once in main file");
 
   check_eol (pfile, false);
@@ -1691,7 +1709,7 @@ do_pragma_poison (cpp_reader *pfile)
 static void
 do_pragma_system_header (cpp_reader *pfile)
 {
-  if (cpp_in_primary_file (pfile))
+  if (_cpp_in_main_source_file (pfile))
     cpp_error (pfile, CPP_DL_WARNING,
 	       "#pragma system_header ignored outside include file");
   else
@@ -1964,8 +1982,10 @@ do_ifdef (cpp_reader *pfile)
       if (node)
 	{
 	  skip = !_cpp_defined_macro_p (node);
+	  if (!_cpp_maybe_notify_macro_use (pfile, node, pfile->directive_line))
+	    /* It wasn't a macro after all.  */
+	    skip = true;
 	  _cpp_mark_macro_used (node);
-	  _cpp_maybe_notify_macro_use (pfile, node);
 	  if (pfile->cb.used)
 	    pfile->cb.used (pfile, pfile->directive_line, node);
 	  check_eol (pfile, false);
@@ -1988,13 +2008,11 @@ do_ifndef (cpp_reader *pfile)
 
       if (node)
 	{
-	  /* Do not treat conditional macros as being defined.  This is due to
-	     the powerpc port using conditional macros for 'vector', 'bool',
-	     and 'pixel' to act as conditional keywords.  This messes up tests
-	     like #ifndef bool.  */
 	  skip = _cpp_defined_macro_p (node);
+	  if (!_cpp_maybe_notify_macro_use (pfile, node, pfile->directive_line))
+	    /* It wasn't a macro after all.  */
+	    skip = false;
 	  _cpp_mark_macro_used (node);
-	  _cpp_maybe_notify_macro_use (pfile, node);
 	  if (pfile->cb.used)
 	    pfile->cb.used (pfile, pfile->directive_line, node);
 	  check_eol (pfile, false);
@@ -2399,6 +2417,15 @@ cpp_define (cpp_reader *pfile, const char *str)
   run_directive (pfile, T_DEFINE, buf, count);
 }
 
+/* Like cpp_define, but does not warn about unused macro.  */
+void
+cpp_define_unused (cpp_reader *pfile, const char *str)
+{
+    unsigned char warn_unused_macros = CPP_OPTION (pfile, warn_unused_macros);
+    CPP_OPTION (pfile, warn_unused_macros) = 0;
+    cpp_define (pfile, str);
+    CPP_OPTION (pfile, warn_unused_macros) = warn_unused_macros;
+}
 
 /* Use to build macros to be run through cpp_define() as
    described above.
@@ -2418,6 +2445,20 @@ cpp_define_formatted (cpp_reader *pfile, const char *fmt, ...)
   free (ptr);
 }
 
+/* Like cpp_define_formatted, but does not warn about unused macro.  */
+void
+cpp_define_formatted_unused (cpp_reader *pfile, const char *fmt, ...)
+{
+  char *ptr;
+
+  va_list ap;
+  va_start (ap, fmt);
+  ptr = xvasprintf (fmt, ap);
+  va_end (ap);
+
+  cpp_define_unused (pfile, ptr);
+  free (ptr);
+}
 
 /* Slight variant of the above for use by initialize_builtins.  */
 void
@@ -2555,11 +2596,25 @@ cpp_set_callbacks (cpp_reader *pfile, cpp_callbacks *cb)
   pfile->cb = *cb;
 }
 
+/* The narrow character set identifier.  */
+const char *
+cpp_get_narrow_charset_name (cpp_reader *pfile)
+{
+  return pfile->narrow_cset_desc.to;
+}
+
+/* The wide character set identifier.  */
+const char *
+cpp_get_wide_charset_name (cpp_reader *pfile)
+{
+  return pfile->wide_cset_desc.to;
+}
+
 /* The dependencies structure.  (Creates one if it hasn't already been.)  */
 class mkdeps *
 cpp_get_deps (cpp_reader *pfile)
 {
-  if (!pfile->deps)
+  if (!pfile->deps && CPP_OPTION (pfile, deps.style) != DEPS_NONE)
     pfile->deps = deps_init ();
   return pfile->deps;
 }

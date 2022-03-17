@@ -1,6 +1,6 @@
 /* Output generating routines for GDB.
 
-   Copyright (C) 1999-2020 Free Software Foundation, Inc.
+   Copyright (C) 1999-2022 Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions.
    Written by Fernando Nasser for Cygnus.
@@ -525,12 +525,6 @@ ui_out::field_string (const char *fldname, const char *string,
   verify_field (&fldno, &width, &align);
 
   do_field_string (fldno, width, align, fldname, string, style);
-}
-
-void
-ui_out::field_string (const char *fldname, const std::string &string)
-{
-  field_string (fldname, string.c_str ());
 }
 
 /* VARARGS */

@@ -1,6 +1,6 @@
 /* Test file for mpfr_version.
 
-Copyright 2004-2019 Free Software Foundation, Inc.
+Copyright 2004-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -20,14 +20,9 @@ along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
 https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
-/* Needed due to the inclusion of mpfr-intmax.h */
-#ifdef HAVE_CONFIG_H
-# include "config.h"
-#endif
-
 #include <errno.h>
 
-#include "mpfr-intmax.h"
+#define MPFR_NEED_INTMAX_H
 #include "mpfr-test.h"
 
 /* Warning about the usage of printf/puts below:
@@ -79,7 +74,7 @@ main (void)
    * http://nadeausoftware.com/articles/2012/10/c_c_tip_how_detect_compiler_name_and_version_using_compiler_predefined_macros
    *
    * For ICC, do not check the __ICC macro as it is obsolete and not always
-   * defined.
+   * defined (in particular, on MS Windows).
    */
 #define COMP "[tversion] Compiler: "
 #ifdef __INTEL_COMPILER
@@ -127,6 +122,9 @@ main (void)
 #else
           "undef"
 #endif
+#if defined(__STRICT_ANSI__)
+          ", __STRICT_ANSI__"
+#endif
           );
 #endif
 
@@ -156,6 +154,25 @@ main (void)
           ", _MSC_VER = "
 #if defined(_MSC_VER)
           MAKE_STR(_MSC_VER)
+#else
+          "undef"
+#endif
+          );
+#endif
+
+  /* With MinGW64, both __MINGW32__ and __MINGW64__ seem to be defined,
+     but test both, just in case this will change in the future. Tested
+     with "x86_64-w64-mingw32-gcc -dM -E -xc /dev/null" under Debian. */
+#if defined(__MINGW32__) || defined(__MINGW64__)
+  (puts) ("[tversion] MinGW"
+#if defined(__MINGW64__)
+          "64"
+#else
+          "32"
+#endif
+          ": __USE_MINGW_ANSI_STDIO = "
+#if defined(__USE_MINGW_ANSI_STDIO)
+          MAKE_STR(__USE_MINGW_ANSI_STDIO)
 #else
           "undef"
 #endif
@@ -268,6 +285,12 @@ main (void)
       err = 1;
     }
 
+#if defined(MPFR_HAVE_GMP_IMPL)
+  (puts) ("[tversion] MPFR built with the GMP build (--with-gmp-build)");
+#else
+  (printf) ("[tversion] MPFR_ALLOCA_MAX = %ld\n", (long) MPFR_ALLOCA_MAX);
+#endif
+
   if (
 #ifdef MPFR_WANT_SHARED_CACHE
       !
@@ -283,13 +306,13 @@ main (void)
             " GMP internals = %s\n",
             mpfr_buildopt_tls_p () ? "yes" : "no",
             mpfr_buildopt_float128_p () ? "yes" : "no",
-            mpfr_buildopt_decimal_p () ? "yes ("
-#ifdef DPD_FORMAT
-            "DPD"
-#else
-            "BID"
+            mpfr_buildopt_decimal_p () ? "yes"
+#if defined(DECIMAL_BID_FORMAT)
+            " (BID)"
+#elif defined(DECIMAL_DPD_FORMAT)
+            " (DPD)"
 #endif
-            ")" : "no",
+            : "no",
             mpfr_buildopt_gmpinternals_p () ? "yes" : "no");
 
 #ifdef MPFR_THREAD_LOCK_METHOD
@@ -377,11 +400,11 @@ main (void)
 
   /**************************** ABI information ****************************/
 
-  (printf) ("[tversion] sizeof(long) = %ld"
+  (printf) ("[tversion] sizeof(long) = %ld, sizeof(mpfr_intmax_t) = %ld"
 #if defined(_MPFR_H_HAVE_INTMAX_T)
             ", sizeof(intmax_t) = %ld"
 #endif
-            "\n", (long) sizeof(long)
+            "\n", (long) sizeof(long), (long) sizeof(mpfr_intmax_t)
 #if defined(_MPFR_H_HAVE_INTMAX_T)
             , (long) sizeof(intmax_t)
 #endif
@@ -396,6 +419,40 @@ main (void)
 
   printf ("[tversion] GMP_NUMB_BITS = %ld, sizeof(mp_limb_t) = %ld\n",
           (long) GMP_NUMB_BITS, (long) sizeof(mp_limb_t));
+
+  /* Concerning the MPFR_LONG_WITHIN_LIMB and MPFR_INTMAX_WITHIN_LIMB macros,
+     if defined, code may be optimized to take these properties into account.
+     If not defined, MPFR should select portable code. So one should ideally
+     get either "y/y" or "n/n"; "n/y" is allowed, but "y/n" is forbidden.
+     Note: MPFR_LONG_WITHIN_LIMB should be defined by the configure script,
+     but may also be defined by the src/mpfr-impl.h header file. */
+#define WITHIN_LIMB(T)                         \
+  (MPFR_LIMB_MAX >= (T) -1 ?                   \
+   ((WM) ? "y/y" : "n/y") :                    \
+   ((WM) ? (err = 1, "y/n (WRONG!)") : "n/n"))
+
+  (printf) ("[tversion] Within limb: long = %s"
+#if defined(_MPFR_H_HAVE_INTMAX_T)
+            ", intmax_t = %s"
+#endif
+            "\n"
+#undef WM
+#if defined(MPFR_LONG_WITHIN_LIMB)
+# define WM 1
+#else
+# define WM 0
+#endif
+            , WITHIN_LIMB (unsigned long)
+#if defined(_MPFR_H_HAVE_INTMAX_T)
+#undef WM
+#if defined(MPFR_INTMAX_WITHIN_LIMB)
+# define WM 1
+#else
+# define WM 0
+#endif
+            , WITHIN_LIMB (uintmax_t)
+#endif
+            );
 
   printf ("[tversion] _MPFR_PREC_FORMAT = %ld, sizeof(mpfr_prec_t) = %ld\n",
           (long) _MPFR_PREC_FORMAT, (long) sizeof(mpfr_prec_t));
@@ -438,7 +495,15 @@ main (void)
 #endif
           );
 
-  /************************** Runtime information **************************/
+  (puts) ("[tversion] Enable formally proven code: "
+#if defined(MPFR_WANT_PROVEN_CODE)
+          "yes"
+#else
+          "no"
+#endif
+          );
+
+  /************************* Run-time information **************************/
 
   if (locale != NULL)
     printf ("[tversion] Locale: %s\n", locale);

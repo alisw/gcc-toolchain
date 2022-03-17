@@ -1,5 +1,5 @@
 /* debuginfod utilities for GDB.
-   Copyright (C) 2020 Free Software Foundation, Inc.
+   Copyright (C) 2020-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -21,6 +21,7 @@
 #include "cli/cli-style.h"
 #include "gdbsupport/scoped_fd.h"
 #include "debuginfod-support.h"
+#include "gdbsupport/gdb_optional.h"
 
 #ifndef HAVE_LIBDEBUGINFOD
 scoped_fd
@@ -46,18 +47,32 @@ debuginfod_debuginfo_query (const unsigned char *build_id,
 struct user_data
 {
   user_data (const char *desc, const char *fname)
-    : desc (desc), fname (fname), has_printed (false)
+    : desc (desc), fname (fname)
   { }
 
   const char * const desc;
   const char * const fname;
-  bool has_printed;
+  gdb::optional<ui_out::progress_meter> meter;
 };
+
+/* Deleter for a debuginfod_client.  */
+
+struct debuginfod_client_deleter
+{
+  void operator() (debuginfod_client *c)
+  {
+    debuginfod_end (c);
+  }
+};
+
+using debuginfod_client_up
+  = std::unique_ptr<debuginfod_client, debuginfod_client_deleter>;
 
 static int
 progressfn (debuginfod_client *c, long cur, long total)
 {
   user_data *data = static_cast<user_data *> (debuginfod_get_user_data (c));
+  gdb_assert (data != nullptr);
 
   if (check_quit_flag ())
     {
@@ -67,27 +82,42 @@ progressfn (debuginfod_client *c, long cur, long total)
       return 1;
     }
 
-  if (!data->has_printed && total != 0)
+  if (total == 0)
+    return 0;
+
+  if (!data->meter.has_value ())
     {
-      /* Print this message only once.  */
-      data->has_printed = true;
-      printf_filtered ("Downloading %s %ps...\n",
-		       data->desc,
-		       styled_string (file_name_style.style (), data->fname));
+      float size_in_mb = 1.0f * total / (1024 * 1024);
+      string_file styled_filename (current_uiout->can_emit_style_escape ());
+      fprintf_styled (&styled_filename,
+		      file_name_style.style (),
+		      "%s",
+		      data->fname);
+      std::string message
+	= string_printf ("Downloading %.2f MB %s %s", size_in_mb, data->desc,
+			 styled_filename.c_str());
+      data->meter.emplace (current_uiout, message, 1);
     }
+
+  current_uiout->progress ((double)cur / (double)total);
 
   return 0;
 }
 
 static debuginfod_client *
-debuginfod_init ()
+get_debuginfod_client ()
 {
-  debuginfod_client *c = debuginfod_begin ();
+  static debuginfod_client_up global_client;
 
-  if (c != nullptr)
-    debuginfod_set_progressfn (c, progressfn);
+  if (global_client == nullptr)
+    {
+      global_client.reset (debuginfod_begin ());
 
-  return c;
+      if (global_client != nullptr)
+	debuginfod_set_progressfn (global_client.get (), progressfn);
+    }
+
+  return global_client.get ();
 }
 
 /* See debuginfod-support.h  */
@@ -98,10 +128,11 @@ debuginfod_source_query (const unsigned char *build_id,
 			 const char *srcpath,
 			 gdb::unique_xmalloc_ptr<char> *destname)
 {
-  if (getenv (DEBUGINFOD_URLS_ENV_VAR) == NULL)
+  const char *urls_env_var = getenv (DEBUGINFOD_URLS_ENV_VAR);
+  if (urls_env_var == NULL || urls_env_var[0] == '\0')
     return scoped_fd (-ENOSYS);
 
-  debuginfod_client *c = debuginfod_init ();
+  debuginfod_client *c = get_debuginfod_client ();
 
   if (c == nullptr)
     return scoped_fd (-ENOMEM);
@@ -114,16 +145,17 @@ debuginfod_source_query (const unsigned char *build_id,
 					build_id_len,
 					srcpath,
 					nullptr));
+  debuginfod_set_user_data (c, nullptr);
 
   /* TODO: Add 'set debug debuginfod' command to control when error messages are shown.  */
   if (fd.get () < 0 && fd.get () != -ENOENT)
     printf_filtered (_("Download failed: %s.  Continuing without source file %ps.\n"),
 		     safe_strerror (-fd.get ()),
 		     styled_string (file_name_style.style (),  srcpath));
-  else
-    destname->reset (xstrdup (srcpath));
 
-  debuginfod_end (c);
+  if (fd.get () >= 0)
+    *destname = make_unique_xstrdup (srcpath);
+
   return fd;
 }
 
@@ -135,10 +167,11 @@ debuginfod_debuginfo_query (const unsigned char *build_id,
 			    const char *filename,
 			    gdb::unique_xmalloc_ptr<char> *destname)
 {
-  if (getenv (DEBUGINFOD_URLS_ENV_VAR) == NULL)
+  const char *urls_env_var = getenv (DEBUGINFOD_URLS_ENV_VAR);
+  if (urls_env_var == NULL || urls_env_var[0] == '\0')
     return scoped_fd (-ENOSYS);
 
-  debuginfod_client *c = debuginfod_init ();
+  debuginfod_client *c = get_debuginfod_client ();
 
   if (c == nullptr)
     return scoped_fd (-ENOMEM);
@@ -147,15 +180,18 @@ debuginfod_debuginfo_query (const unsigned char *build_id,
   user_data data ("separate debug info for", filename);
 
   debuginfod_set_user_data (c, &data);
-  scoped_fd fd (debuginfod_find_debuginfo (c, build_id, build_id_len, &dname));
+  scoped_fd fd (debuginfod_find_debuginfo (c, build_id, build_id_len,
+					   &dname));
+  debuginfod_set_user_data (c, nullptr);
 
   if (fd.get () < 0 && fd.get () != -ENOENT)
     printf_filtered (_("Download failed: %s.  Continuing without debug info for %ps.\n"),
 		     safe_strerror (-fd.get ()),
 		     styled_string (file_name_style.style (),  filename));
 
-  destname->reset (dname);
-  debuginfod_end (c);
+  if (fd.get () >= 0)
+    destname->reset (dname);
+
   return fd;
 }
 #endif

@@ -7,13 +7,13 @@
 Disassembly of section .text:
 
 0+ <.text>:
-[ 	]*[a-f0-9]+:	41 ff 10             	callq  \*\(%r8\)
-[ 	]*[a-f0-9]+:	ff 10                	callq  \*\(%rax\)
-[ 	]*[a-f0-9]+:	41 ff 10             	callq  \*\(%r8\)
-[ 	]*[a-f0-9]+:	ff 10                	callq  \*\(%rax\)
+[ 	]*[a-f0-9]+:	41 ff 10             	call   \*\(%r8\)
+[ 	]*[a-f0-9]+:	ff 10                	call   \*\(%rax\)
+[ 	]*[a-f0-9]+:	41 ff 10             	call   \*\(%r8\)
+[ 	]*[a-f0-9]+:	ff 10                	call   \*\(%rax\)
 [ 	]*[a-f0-9]+:	cb                   	lret   
 [ 	]*[a-f0-9]+:	48 cb                	lretq *
-[ 	]*[a-f0-9]+:	c3                   	retq   
+[ 	]*[a-f0-9]+:	c3                   	ret *
 [ 	]*[a-f0-9]+:	cf                   	iret   
 [ 	]*[a-f0-9]+:	66 cf                	iretw  
 [ 	]*[a-f0-9]+:	48 cf                	iretq  
@@ -265,22 +265,22 @@ Disassembly of section .text:
 [ 	]*[a-f0-9]+:	0f 7f 00             	movq   %mm0,\(%rax\)
 [ 	]*[a-f0-9]+:	41 0f 7f 38          	movq   %mm7,\(%r8\)
 [ 	]*[a-f0-9]+:	0f 7f 38             	movq   %mm7,\(%rax\)
-[ 	]*[a-f0-9]+:	41 8f 00             	popq   \(%r8\)
-[ 	]*[a-f0-9]+:	8f 00                	popq   \(%rax\)
-[ 	]*[a-f0-9]+:	0f a1                	popq   %fs
-[ 	]*[a-f0-9]+:	0f a1                	popq   %fs
-[ 	]*[a-f0-9]+:	0f a9                	popq   %gs
-[ 	]*[a-f0-9]+:	0f a9                	popq   %gs
-[ 	]*[a-f0-9]+:	9d                   	popfq  
-[ 	]*[a-f0-9]+:	9d                   	popfq  
-[ 	]*[a-f0-9]+:	41 ff 30             	pushq  \(%r8\)
-[ 	]*[a-f0-9]+:	ff 30                	pushq  \(%rax\)
-[ 	]*[a-f0-9]+:	0f a0                	pushq  %fs
-[ 	]*[a-f0-9]+:	0f a0                	pushq  %fs
-[ 	]*[a-f0-9]+:	0f a8                	pushq  %gs
-[ 	]*[a-f0-9]+:	0f a8                	pushq  %gs
-[ 	]*[a-f0-9]+:	9c                   	pushfq 
-[ 	]*[a-f0-9]+:	9c                   	pushfq 
+[ 	]*[a-f0-9]+:	41 8f 00             	pop    \(%r8\)
+[ 	]*[a-f0-9]+:	8f 00                	pop    \(%rax\)
+[ 	]*[a-f0-9]+:	0f a1                	pop    %fs
+[ 	]*[a-f0-9]+:	0f a1                	pop    %fs
+[ 	]*[a-f0-9]+:	0f a9                	pop    %gs
+[ 	]*[a-f0-9]+:	0f a9                	pop    %gs
+[ 	]*[a-f0-9]+:	9d                   	popf *
+[ 	]*[a-f0-9]+:	9d                   	popf *
+[ 	]*[a-f0-9]+:	41 ff 30             	push   \(%r8\)
+[ 	]*[a-f0-9]+:	ff 30                	push   \(%rax\)
+[ 	]*[a-f0-9]+:	0f a0                	push   %fs
+[ 	]*[a-f0-9]+:	0f a0                	push   %fs
+[ 	]*[a-f0-9]+:	0f a8                	push   %gs
+[ 	]*[a-f0-9]+:	0f a8                	push   %gs
+[ 	]*[a-f0-9]+:	9c                   	pushf *
+[ 	]*[a-f0-9]+:	9c                   	pushf *
 [ 	]*[a-f0-9]+:	0f 77                	emms   
 [ 	]*[a-f0-9]+:	0f 0e                	femms  
 [ 	]*[a-f0-9]+:	0f 08                	invd   
@@ -321,10 +321,13 @@ Disassembly of section .text:
 [ 	]*[a-f0-9]+:	66 0f 00 c8          	str    %ax
 [ 	]*[a-f0-9]+:	0f 00 08             	str    \(%rax\)
 [ 	]*[a-f0-9]+:	0f 05                	syscall 
-[ 	]*[a-f0-9]+:	0f 07                	sysret 
+[ 	]*[a-f0-9]+:	0f 07                	sysretl 
 [ 	]*[a-f0-9]+:	48 0f 07             	sysretq *
 [ 	]*[a-f0-9]+:	0f 01 f8             	swapgs 
 [ 	]*[a-f0-9]+:	66 68 22 22          	pushw  \$0x2222
+[ 	]*[a-f0-9]+:	f1                   	int1 +
+[ 	]*[a-f0-9]+:	cc                   	int3 +
+[ 	]*[a-f0-9]+:	cd 90                	int    \$0x90
 [ 	]*[a-f0-9]+:	f6 c9 01             	test   \$(0x)?0*1,%cl
 [ 	]*[a-f0-9]+:	66 f7 c9 02 00       	test   \$(0x)?0*2,%cx
 [ 	]*[a-f0-9]+:	f7 c9 04 00 00 00    	test   \$(0x)?0*4,%ecx

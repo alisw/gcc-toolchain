@@ -1,5 +1,5 @@
 /* BFD support for handling relocation entries.
-   Copyright (C) 1990-2020 Free Software Foundation, Inc.
+   Copyright (C) 1990-2022 Free Software Foundation, Inc.
    Written by Cygnus Support.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -51,6 +51,7 @@ SECTION
 #include "bfdlink.h"
 #include "libbfd.h"
 #include "bfdver.h"
+
 /*
 DOCDD
 INODE
@@ -383,8 +384,8 @@ DESCRIPTION
 	This is used to fill in an empty howto entry in an array.
 
 .#define EMPTY_HOWTO(C) \
-.  HOWTO ((C), 0, 0, 0, FALSE, 0, complain_overflow_dont, NULL, \
-.	  NULL, FALSE, 0, 0, FALSE)
+.  HOWTO ((C), 0, 0, 0, false, 0, complain_overflow_dont, NULL, \
+.	  NULL, false, 0, 0, false)
 .
 */
 
@@ -432,8 +433,9 @@ DESCRIPTION
 .
 */
 
-/* N_ONES produces N one bits, without overflowing machine arithmetic.  */
-#define N_ONES(n) (((((bfd_vma) 1 << ((n) - 1)) - 1) << 1) | 1)
+/* N_ONES produces N one bits, without undefined behaviour for N
+   between zero and the number of bits in a bfd_vma.  */
+#define N_ONES(n) ((n) == 0 ? 0 : ((bfd_vma) 1 << ((n) - 1) << 1) - 1)
 
 /*
 FUNCTION
@@ -465,6 +467,9 @@ bfd_check_overflow (enum complain_overflow how,
 {
   bfd_vma fieldmask, addrmask, signmask, ss, a;
   bfd_reloc_status_type flag = bfd_reloc_ok;
+
+  if (bitsize == 0)
+    return flag;
 
   /* Note: BITSIZE should always be <= ADDRSIZE, but in case it's not,
      we'll be permissive: extra bits in the field mask will
@@ -515,7 +520,7 @@ FUNCTION
 	bfd_reloc_offset_in_range
 
 SYNOPSIS
-	bfd_boolean bfd_reloc_offset_in_range
+	bool bfd_reloc_offset_in_range
 	  (reloc_howto_type *howto,
 	   bfd *abfd,
 	   asection *section,
@@ -530,7 +535,7 @@ DESCRIPTION
 /* HOWTO describes a relocation, at offset OCTET.  Return whether the
    relocation field is within SECTION of ABFD.  */
 
-bfd_boolean
+bool
 bfd_reloc_offset_in_range (reloc_howto_type *howto,
 			   bfd *abfd,
 			   asection *section,
@@ -542,7 +547,7 @@ bfd_reloc_offset_in_range (reloc_howto_type *howto,
   /* The reloc field must be contained entirely within the section.
      Allow zero length fields (marker relocs or NONE relocs where no
      relocation will be performed) at the end of the section.  */
-  return octet <= octet_end && octet + reloc_size <= octet_end;
+  return octet <= octet_end && reloc_size <= octet_end - octet;
 }
 
 /* Read and return the section contents at DATA converted to a host
@@ -2732,6 +2737,10 @@ ENUMX
 ENUMX
   BFD_RELOC_PPC_TOC16
 ENUMX
+  BFD_RELOC_PPC_TOC16_LO
+ENUMX
+  BFD_RELOC_PPC_TOC16_HI
+ENUMX
   BFD_RELOC_PPC_B16
 ENUMX
   BFD_RELOC_PPC_B16_BRTAKEN
@@ -2824,6 +2833,8 @@ ENUMX
 ENUMX
   BFD_RELOC_PPC_REL16DX_HA
 ENUMX
+  BFD_RELOC_PPC_NEG
+ENUMX
   BFD_RELOC_PPC64_HIGHER
 ENUMX
   BFD_RELOC_PPC64_HIGHER_S
@@ -2892,6 +2903,8 @@ ENUMX
 ENUMX
   BFD_RELOC_PPC64_REL24_NOTOC
 ENUMX
+  BFD_RELOC_PPC64_REL24_P9NOTOC
+ENUMX
   BFD_RELOC_PPC64_D34
 ENUMX
   BFD_RELOC_PPC64_D34_LO
@@ -2934,6 +2947,14 @@ ENUMX
   BFD_RELOC_PPC_TLSGD
 ENUMX
   BFD_RELOC_PPC_TLSLD
+ENUMX
+  BFD_RELOC_PPC_TLSLE
+ENUMX
+  BFD_RELOC_PPC_TLSIE
+ENUMX
+  BFD_RELOC_PPC_TLSM
+ENUMX
+  BFD_RELOC_PPC_TLSML
 ENUMX
   BFD_RELOC_PPC_DTPMOD
 ENUMX
@@ -2988,6 +3009,18 @@ ENUMX
   BFD_RELOC_PPC_GOT_DTPREL16_HI
 ENUMX
   BFD_RELOC_PPC_GOT_DTPREL16_HA
+ENUMX
+  BFD_RELOC_PPC64_TLSGD
+ENUMX
+  BFD_RELOC_PPC64_TLSLD
+ENUMX
+  BFD_RELOC_PPC64_TLSLE
+ENUMX
+  BFD_RELOC_PPC64_TLSIE
+ENUMX
+  BFD_RELOC_PPC64_TLSM
+ENUMX
+  BFD_RELOC_PPC64_TLSML
 ENUMX
   BFD_RELOC_PPC64_TPREL16_DS
 ENUMX
@@ -6176,6 +6209,8 @@ ENUMX
 ENUMX
   BFD_RELOC_OR1K_GOTPC_LO16
 ENUMX
+  BFD_RELOC_OR1K_GOT_AHI16
+ENUMX
   BFD_RELOC_OR1K_GOT16
 ENUMX
   BFD_RELOC_OR1K_GOT_PG21
@@ -6363,6 +6398,11 @@ ENUMX
   BFD_RELOC_MSP430_PREL31
 ENUMX
   BFD_RELOC_MSP430_SYM_DIFF
+ENUMX
+  BFD_RELOC_MSP430_SET_ULEB128
+ENUMX
+  BFD_RELOC_MSP430_SUB_ULEB128
+
 ENUMDOC
   msp430 specific relocation codes
 
@@ -8133,6 +8173,95 @@ ENUM
 ENUMDOC
   S12Z relocations.
 
+ENUM
+  BFD_RELOC_LARCH_TLS_DTPMOD32
+ENUMX
+  BFD_RELOC_LARCH_TLS_DTPREL32
+ENUMX
+  BFD_RELOC_LARCH_TLS_DTPMOD64
+ENUMX
+  BFD_RELOC_LARCH_TLS_DTPREL64
+ENUMX
+  BFD_RELOC_LARCH_TLS_TPREL32
+ENUMX
+  BFD_RELOC_LARCH_TLS_TPREL64
+ENUMX
+  BFD_RELOC_LARCH_MARK_LA
+ENUMX
+  BFD_RELOC_LARCH_MARK_PCREL
+ENUMX
+  BFD_RELOC_LARCH_SOP_PUSH_PCREL
+ENUMX
+  BFD_RELOC_LARCH_SOP_PUSH_ABSOLUTE
+ENUMX
+  BFD_RELOC_LARCH_SOP_PUSH_DUP
+ENUMX
+  BFD_RELOC_LARCH_SOP_PUSH_GPREL
+ENUMX
+  BFD_RELOC_LARCH_SOP_PUSH_TLS_TPREL
+ENUMX
+  BFD_RELOC_LARCH_SOP_PUSH_TLS_GOT
+ENUMX
+  BFD_RELOC_LARCH_SOP_PUSH_TLS_GD
+ENUMX
+  BFD_RELOC_LARCH_SOP_PUSH_PLT_PCREL
+ENUMX
+  BFD_RELOC_LARCH_SOP_ASSERT
+ENUMX
+  BFD_RELOC_LARCH_SOP_NOT
+ENUMX
+  BFD_RELOC_LARCH_SOP_SUB
+ENUMX
+  BFD_RELOC_LARCH_SOP_SL
+ENUMX
+  BFD_RELOC_LARCH_SOP_SR
+ENUMX
+  BFD_RELOC_LARCH_SOP_ADD
+ENUMX
+  BFD_RELOC_LARCH_SOP_AND
+ENUMX
+  BFD_RELOC_LARCH_SOP_IF_ELSE
+ENUMX
+  BFD_RELOC_LARCH_SOP_POP_32_S_10_5
+ENUMX
+  BFD_RELOC_LARCH_SOP_POP_32_U_10_12
+ENUMX
+  BFD_RELOC_LARCH_SOP_POP_32_S_10_12
+ENUMX
+  BFD_RELOC_LARCH_SOP_POP_32_S_10_16
+ENUMX
+  BFD_RELOC_LARCH_SOP_POP_32_S_10_16_S2
+ENUMX
+  BFD_RELOC_LARCH_SOP_POP_32_S_5_20
+ENUMX
+  BFD_RELOC_LARCH_SOP_POP_32_S_0_5_10_16_S2
+ENUMX
+  BFD_RELOC_LARCH_SOP_POP_32_S_0_10_10_16_S2
+ENUMX
+  BFD_RELOC_LARCH_SOP_POP_32_U
+ENUMX
+  BFD_RELOC_LARCH_ADD8
+ENUMX
+  BFD_RELOC_LARCH_ADD16
+ENUMX
+  BFD_RELOC_LARCH_ADD24
+ENUMX
+  BFD_RELOC_LARCH_ADD32
+ENUMX
+  BFD_RELOC_LARCH_ADD64
+ENUMX
+  BFD_RELOC_LARCH_SUB8
+ENUMX
+  BFD_RELOC_LARCH_SUB16
+ENUMX
+  BFD_RELOC_LARCH_SUB24
+ENUMX
+  BFD_RELOC_LARCH_SUB32
+ENUMX
+  BFD_RELOC_LARCH_SUB64
+ENUMDOC
+  LARCH relocations.
+
 ENDSENUM
   BFD_RELOC_UNUSED
 CODE_FRAGMENT
@@ -8171,7 +8300,7 @@ bfd_reloc_name_lookup (bfd *abfd, const char *reloc_name)
 }
 
 static reloc_howto_type bfd_howto_32 =
-HOWTO (0, 00, 2, 32, FALSE, 0, complain_overflow_dont, 0, "VRT32", FALSE, 0xffffffff, 0xffffffff, TRUE);
+HOWTO (0, 00, 2, 32, false, 0, complain_overflow_dont, 0, "VRT32", false, 0xffffffff, 0xffffffff, true);
 
 /*
 INTERNAL_FUNCTION
@@ -8222,29 +8351,29 @@ INTERNAL_FUNCTION
 	bfd_generic_relax_section
 
 SYNOPSIS
-	bfd_boolean bfd_generic_relax_section
+	bool bfd_generic_relax_section
 	  (bfd *abfd,
 	   asection *section,
 	   struct bfd_link_info *,
-	   bfd_boolean *);
+	   bool *);
 
 DESCRIPTION
 	Provides default handling for relaxing for back ends which
 	don't do relaxing.
 */
 
-bfd_boolean
+bool
 bfd_generic_relax_section (bfd *abfd ATTRIBUTE_UNUSED,
 			   asection *section ATTRIBUTE_UNUSED,
 			   struct bfd_link_info *link_info ATTRIBUTE_UNUSED,
-			   bfd_boolean *again)
+			   bool *again)
 {
   if (bfd_link_relocatable (link_info))
     (*link_info->callbacks->einfo)
       (_("%P%F: --relax and -r may not be used together\n"));
 
-  *again = FALSE;
-  return TRUE;
+  *again = false;
+  return true;
 }
 
 /*
@@ -8252,7 +8381,7 @@ INTERNAL_FUNCTION
 	bfd_generic_gc_sections
 
 SYNOPSIS
-	bfd_boolean bfd_generic_gc_sections
+	bool bfd_generic_gc_sections
 	  (bfd *, struct bfd_link_info *);
 
 DESCRIPTION
@@ -8260,11 +8389,11 @@ DESCRIPTION
 	don't do section gc -- i.e., does nothing.
 */
 
-bfd_boolean
+bool
 bfd_generic_gc_sections (bfd *abfd ATTRIBUTE_UNUSED,
 			 struct bfd_link_info *info ATTRIBUTE_UNUSED)
 {
-  return TRUE;
+  return true;
 }
 
 /*
@@ -8272,7 +8401,7 @@ INTERNAL_FUNCTION
 	bfd_generic_lookup_section_flags
 
 SYNOPSIS
-	bfd_boolean bfd_generic_lookup_section_flags
+	bool bfd_generic_lookup_section_flags
 	  (struct bfd_link_info *, struct flag_info *, asection *);
 
 DESCRIPTION
@@ -8281,7 +8410,7 @@ DESCRIPTION
 	Returns FALSE if the section should be omitted, otherwise TRUE.
 */
 
-bfd_boolean
+bool
 bfd_generic_lookup_section_flags (struct bfd_link_info *info ATTRIBUTE_UNUSED,
 				  struct flag_info *flaginfo,
 				  asection *section ATTRIBUTE_UNUSED)
@@ -8289,9 +8418,9 @@ bfd_generic_lookup_section_flags (struct bfd_link_info *info ATTRIBUTE_UNUSED,
   if (flaginfo != NULL)
     {
       _bfd_error_handler (_("INPUT_SECTION_FLAGS are not supported"));
-      return FALSE;
+      return false;
     }
-  return TRUE;
+  return true;
 }
 
 /*
@@ -8299,7 +8428,7 @@ INTERNAL_FUNCTION
 	bfd_generic_merge_sections
 
 SYNOPSIS
-	bfd_boolean bfd_generic_merge_sections
+	bool bfd_generic_merge_sections
 	  (bfd *, struct bfd_link_info *);
 
 DESCRIPTION
@@ -8307,11 +8436,11 @@ DESCRIPTION
 	which don't have SEC_MERGE support -- i.e., does nothing.
 */
 
-bfd_boolean
+bool
 bfd_generic_merge_sections (bfd *abfd ATTRIBUTE_UNUSED,
 			    struct bfd_link_info *link_info ATTRIBUTE_UNUSED)
 {
-  return TRUE;
+  return true;
 }
 
 /*
@@ -8324,7 +8453,7 @@ SYNOPSIS
 	   struct bfd_link_info *link_info,
 	   struct bfd_link_order *link_order,
 	   bfd_byte *data,
-	   bfd_boolean relocatable,
+	   bool relocatable,
 	   asymbol **symbols);
 
 DESCRIPTION
@@ -8338,7 +8467,7 @@ bfd_generic_get_relocated_section_contents (bfd *abfd,
 					    struct bfd_link_info *link_info,
 					    struct bfd_link_order *link_order,
 					    bfd_byte *data,
-					    bfd_boolean relocatable,
+					    bool relocatable,
 					    asymbol **symbols)
 {
   bfd *input_bfd = link_order->u.indirect.section->owner;
@@ -8409,8 +8538,8 @@ bfd_generic_get_relocated_section_contents (bfd *abfd,
 	    {
 	      bfd_vma off;
 	      static reloc_howto_type none_howto
-		= HOWTO (0, 0, 0, 0, FALSE, 0, complain_overflow_dont, NULL,
-			 "unused", FALSE, 0, 0, FALSE);
+		= HOWTO (0, 0, 0, 0, false, 0, complain_overflow_dont, NULL,
+			 "unused", false, 0, 0, false);
 
 	      off = ((*parent)->address
 		     * bfd_octets_per_byte (input_bfd, input_section));
@@ -8445,7 +8574,7 @@ bfd_generic_get_relocated_section_contents (bfd *abfd,
 		case bfd_reloc_undefined:
 		  (*link_info->callbacks->undefined_symbol)
 		    (link_info, bfd_asymbol_name (*(*parent)->sym_ptr_ptr),
-		     input_bfd, input_section, (*parent)->address, TRUE);
+		     input_bfd, input_section, (*parent)->address, true);
 		  break;
 		case bfd_reloc_dangerous:
 		  BFD_ASSERT (error_message != NULL);
@@ -8533,7 +8662,7 @@ INTERNAL_FUNCTION
 	_bfd_unrecognized_reloc
 
 SYNOPSIS
-	bfd_boolean _bfd_unrecognized_reloc
+	bool _bfd_unrecognized_reloc
 	  (bfd * abfd,
 	   sec_ptr section,
 	   unsigned int r_type);
@@ -8544,7 +8673,7 @@ DESCRIPTION
 	Returns FALSE so that it can be called from a return statement.
 */
 
-bfd_boolean
+bool
 _bfd_unrecognized_reloc (bfd * abfd, sec_ptr section, unsigned int r_type)
 {
    /* xgettext:c-format */
@@ -8556,7 +8685,7 @@ _bfd_unrecognized_reloc (bfd * abfd, sec_ptr section, unsigned int r_type)
 		      BFD_VERSION_STRING);
 
   bfd_set_error (bfd_error_bad_value);
-  return FALSE;
+  return false;
 }
 
 reloc_howto_type *

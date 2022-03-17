@@ -1,6 +1,6 @@
 /* Test file for mpfr_cmp2.
 
-Copyright 1999-2003, 2006-2019 Free Software Foundation, Inc.
+Copyright 1999-2003, 2006-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -57,7 +57,7 @@ worst_cases (void)
   for (i = 1; i < MPFR_PREC(x); i++)
     {
       mpfr_set_ui (x, 1, MPFR_RNDN);
-      mpfr_div_2exp (y, y, 1, MPFR_RNDN); /* y = 1/2^i */
+      mpfr_div_2ui (y, y, 1, MPFR_RNDN); /* y = 1/2^i */
 
       l = 0;
       if (mpfr_cmp2 (x, y, &l) <= 0 || l != 1)

@@ -1,5 +1,5 @@
 /* Generic stabs parsing for gas.
-   Copyright (C) 1989-2020 Free Software Foundation, Inc.
+   Copyright (C) 1989-2022 Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
 
@@ -49,7 +49,7 @@ static void generate_asm_file (int, const char *);
    stabs_generate_asm_lineno emits function relative line number stabs.
    Otherwise it emits line number stabs with absolute addresses.  Note that
    both cases only apply to assembler code assembled with -gstabs.  */
-static bfd_boolean in_dot_func_p = FALSE;
+static bool in_dot_func_p = false;
 
 /* Label at start of current function if in_dot_func_p != FALSE.  */
 static const char *current_function_label;
@@ -80,7 +80,7 @@ static const char *current_function_label;
 
 unsigned int
 get_stab_string_offset (const char *string, const char *stabstr_secname,
-			bfd_boolean free_stabstr_secname)
+			bool free_stabstr_secname)
 {
   unsigned int length;
   unsigned int retval;
@@ -144,8 +144,7 @@ aout_process_stab (int what, const char *string, int type, int other, int desc)
      symbol chain.  This is to avoid "continuation symbols" (where one
      ends in "\" and the debug info is continued in the next .stabs
      directive) from being separated by other random symbols.  */
-  symbol = symbol_create (string, undefined_section, 0,
-			  &zero_address_frag);
+  symbol = symbol_create (string, undefined_section, &zero_address_frag, 0);
   if (what == 's' || what == 'n')
     {
       /* Pick up the value from the input line.  */
@@ -378,7 +377,7 @@ s_stab_generic (int what,
 	  expressionS exp;
 
 	  /* Arrange for a value representing the current location.  */
-	  symbol = symbol_temp_new (saved_seg, dot, saved_frag);
+	  symbol = symbol_temp_new (saved_seg, saved_frag, dot);
 
 	  exp.X_op = O_symbol;
 	  exp.X_add_symbol = symbol;
@@ -653,7 +652,7 @@ stabs_generate_asm_lineno (void)
 void
 stabs_generate_asm_func (const char *funcname, const char *startlabname)
 {
-  static bfd_boolean void_emitted_p = FALSE;
+  static bool void_emitted_p = false;
   char *buf;
   unsigned int lineno;
 
@@ -662,7 +661,7 @@ stabs_generate_asm_func (const char *funcname, const char *startlabname)
       temp_ilp ((char *) "\"void:t1=1\",128,0,0,0");
       s_stab ('s');
       restore_ilp ();
-      void_emitted_p = TRUE;
+      void_emitted_p = true;
     }
 
   as_where (&lineno);
@@ -676,7 +675,7 @@ stabs_generate_asm_func (const char *funcname, const char *startlabname)
   free (buf);
 
   current_function_label = xstrdup (startlabname);
-  in_dot_func_p = TRUE;
+  in_dot_func_p = true;
 }
 
 /* Emit a stab to record the end of a function.  */
@@ -701,6 +700,6 @@ stabs_generate_asm_endfunc (const char *funcname ATTRIBUTE_UNUSED,
   restore_ilp ();
   free (buf);
 
-  in_dot_func_p = FALSE;
+  in_dot_func_p = false;
   current_function_label = NULL;
 }

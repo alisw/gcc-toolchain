@@ -1,5 +1,5 @@
 /* Definitions for computing resource usage of specific insns.
-   Copyright (C) 1999-2020 Free Software Foundation, Inc.
+   Copyright (C) 1999-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -21,6 +21,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 #include "backend.h"
+#include "target.h"
 #include "rtl.h"
 #include "df.h"
 #include "memmodel.h"
@@ -1185,7 +1186,7 @@ init_resource_info (rtx_insn *epilogue_insn)
 			       &end_of_function_needs, true);
 
   for (i = 0; i < FIRST_PSEUDO_REGISTER; i++)
-    if (global_regs[i] || EPILOGUE_USES (i))
+    if (global_regs[i] || df_epilogue_uses_p (i))
       SET_HARD_REG_BIT (end_of_function_needs.regs, i);
 
   /* The registers required to be live at the end of the function are
@@ -1214,6 +1215,11 @@ init_resource_info (rtx_insn *epilogue_insn)
       if (return_insn_p (epilogue_insn))
 	break;
     }
+
+  /* Filter-out the flags register from those additionally required
+     registers. */
+  if (targetm.flags_regnum != INVALID_REGNUM)
+    CLEAR_HARD_REG_BIT (end_of_function_needs.regs, targetm.flags_regnum);
 
   /* Allocate and initialize the tables used by mark_target_live_regs.  */
   target_hash_table = XCNEWVEC (struct target_info *, TARGET_HASH_PRIME);

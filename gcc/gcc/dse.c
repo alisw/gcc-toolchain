@@ -1,5 +1,5 @@
 /* RTL dead store elimination.
-   Copyright (C) 2005-2020 Free Software Foundation, Inc.
+   Copyright (C) 2005-2021 Free Software Foundation, Inc.
 
    Contributed by Richard Sandiford <rsandifor@codesourcery.com>
    and Kenneth Zadeck <zadeck@naturalbridge.com>
@@ -1720,6 +1720,35 @@ find_shift_sequence (poly_int64 access_size,
   scalar_int_mode new_mode;
   rtx read_reg = NULL;
 
+  /* If a constant was stored into memory, try to simplify it here,
+     otherwise the cost of the shift might preclude this optimization
+     e.g. at -Os, even when no actual shift will be needed.  */
+  if (store_info->const_rhs)
+    {
+      auto new_mode = smallest_int_mode_for_size (access_size * BITS_PER_UNIT);
+      auto byte = subreg_lowpart_offset (new_mode, store_mode);
+      rtx ret
+	= simplify_subreg (new_mode, store_info->const_rhs, store_mode, byte);
+      if (ret && CONSTANT_P (ret))
+	{
+	  rtx shift_rtx = gen_int_shift_amount (new_mode, shift);
+	  ret = simplify_const_binary_operation (LSHIFTRT, new_mode, ret,
+						 shift_rtx);
+	  if (ret && CONSTANT_P (ret))
+	    {
+	      byte = subreg_lowpart_offset (read_mode, new_mode);
+	      ret = simplify_subreg (read_mode, ret, new_mode, byte);
+	      if (ret && CONSTANT_P (ret)
+		  && (set_src_cost (ret, read_mode, speed)
+		      <= COSTS_N_INSNS (1)))
+		return ret;
+	    }
+	}
+    }
+
+  if (require_cst)
+    return NULL_RTX;
+
   /* Some machines like the x86 have shift insns for each size of
      operand.  Other machines like the ppc or the ia-64 may only have
      shift insns that shift values within 32 or 64 bit registers.
@@ -1728,8 +1757,7 @@ find_shift_sequence (poly_int64 access_size,
      the machine.  */
 
   opt_scalar_int_mode new_mode_iter;
-  FOR_EACH_MODE_FROM (new_mode_iter,
-		      smallest_int_mode_for_size (access_size * BITS_PER_UNIT))
+  FOR_EACH_MODE_IN_CLASS (new_mode_iter, MODE_INT)
     {
       rtx target, new_reg, new_lhs;
       rtx_insn *shift_seq, *insn;
@@ -1738,34 +1766,8 @@ find_shift_sequence (poly_int64 access_size,
       new_mode = new_mode_iter.require ();
       if (GET_MODE_BITSIZE (new_mode) > BITS_PER_WORD)
 	break;
-
-      /* If a constant was stored into memory, try to simplify it here,
-	 otherwise the cost of the shift might preclude this optimization
-	 e.g. at -Os, even when no actual shift will be needed.  */
-      if (store_info->const_rhs)
-	{
-	  poly_uint64 byte = subreg_lowpart_offset (new_mode, store_mode);
-	  rtx ret = simplify_subreg (new_mode, store_info->const_rhs,
-				     store_mode, byte);
-	  if (ret && CONSTANT_P (ret))
-	    {
-	      rtx shift_rtx = gen_int_shift_amount (new_mode, shift);
-	      ret = simplify_const_binary_operation (LSHIFTRT, new_mode,
-						     ret, shift_rtx);
-	      if (ret && CONSTANT_P (ret))
-		{
-		  byte = subreg_lowpart_offset (read_mode, new_mode);
-		  ret = simplify_subreg (read_mode, ret, new_mode, byte);
-		  if (ret && CONSTANT_P (ret)
-		      && (set_src_cost (ret, read_mode, speed)
-			  <= COSTS_N_INSNS (1)))
-		    return ret;
-		}
-	    }
-	}
-
-      if (require_cst)
-	return NULL_RTX;
+      if (maybe_lt (GET_MODE_SIZE (new_mode), GET_MODE_SIZE (read_mode)))
+	continue;
 
       /* Try a wider mode if truncating the store mode to NEW_MODE
 	 requires a real instruction.  */
@@ -1777,6 +1779,25 @@ find_shift_sequence (poly_int64 access_size,
 	 desirable or not possible.  */
       if (!CONSTANT_P (store_info->rhs)
 	  && !targetm.modes_tieable_p (new_mode, store_mode))
+	continue;
+
+      if (multiple_p (shift, GET_MODE_BITSIZE (new_mode))
+	  && known_le (GET_MODE_SIZE (new_mode), GET_MODE_SIZE (store_mode)))
+	{
+	  /* Try to implement the shift using a subreg.  */
+	  poly_int64 offset
+	    = subreg_offset_from_lsb (new_mode, store_mode, shift);
+	  rtx rhs_subreg = simplify_gen_subreg (new_mode, store_info->rhs,
+						store_mode, offset);
+	  if (rhs_subreg)
+	    {
+	      read_reg
+		= extract_low_bits (read_mode, new_mode, copy_rtx (rhs_subreg));
+	      break;
+	    }
+	}
+
+      if (maybe_lt (GET_MODE_SIZE (new_mode), access_size))
 	continue;
 
       new_reg = gen_reg_rtx (new_mode);
@@ -1949,8 +1970,7 @@ get_stored_val (store_info *store_info, machine_mode read_mode,
 
 static bool
 replace_read (store_info *store_info, insn_info_t store_insn,
-	      read_info_t read_info, insn_info_t read_insn, rtx *loc,
-	      bitmap regs_live)
+	      read_info_t read_info, insn_info_t read_insn, rtx *loc)
 {
   machine_mode store_mode = GET_MODE (store_info->mem);
   machine_mode read_mode = GET_MODE (read_info->mem);
@@ -2019,7 +2039,8 @@ replace_read (store_info *store_info, insn_info_t store_insn,
 	  note_stores (this_insn, look_for_hardregs, regs_set);
 	}
 
-      bitmap_and_into (regs_set, regs_live);
+      if (store_insn->fixed_regs_live)
+	bitmap_and_into (regs_set, store_insn->fixed_regs_live);
       if (!bitmap_empty_p (regs_set))
 	{
 	  if (dump_file && (dump_flags & TDF_DETAILS))
@@ -2198,6 +2219,11 @@ check_mem_read_rtx (rtx *loc, bb_info_t bb_info)
     }
   if (maybe_ne (offset, 0))
     mem_addr = plus_constant (get_address_mode (mem), mem_addr, offset);
+  /* Avoid passing VALUE RTXen as mem_addr to canon_true_dependence
+     which will over and over re-create proper RTL and re-apply the
+     offset above.  See PR80960 where we almost allocate 1.6GB of PLUS
+     RTXen that way.  */
+  mem_addr = get_addr (mem_addr);
 
   if (group_id >= 0)
     {
@@ -2260,7 +2286,7 @@ check_mem_read_rtx (rtx *loc, bb_info_t bb_info)
 						 offset - store_info->offset,
 						 width)
 		      && replace_read (store_info, i_ptr, read_info,
-				       insn_info, loc, bb_info->regs_live))
+				       insn_info, loc))
 		    return;
 
 		  /* The bases are the same, just see if the offsets
@@ -2326,8 +2352,7 @@ check_mem_read_rtx (rtx *loc, bb_info_t bb_info)
 				   store_info->width)
 	      && all_positions_needed_p (store_info,
 					 offset - store_info->offset, width)
-	      && replace_read (store_info, i_ptr,  read_info, insn_info, loc,
-			       bb_info->regs_live))
+	      && replace_read (store_info, i_ptr,  read_info, insn_info, loc))
 	    return;
 
 	  remove = canon_true_dependence (store_info->mem,

@@ -1,5 +1,5 @@
 /* SSA name expresssons routines
-   Copyright (C) 2013-2020 Free Software Foundation, Inc.
+   Copyright (C) 2013-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -73,7 +73,7 @@ extern void set_range_info (tree, const value_range &);
 /* Gets the value range from SSA.  */
 extern enum value_range_kind get_range_info (const_tree, wide_int *,
 					     wide_int *);
-extern enum value_range_kind get_range_info (const_tree, value_range &);
+extern enum value_range_kind get_range_info (const_tree, irange &);
 extern void set_nonzero_bits (tree, const wide_int_ref &);
 extern wide_int get_nonzero_bits (const_tree);
 extern bool ssa_name_has_boolean_range (tree);

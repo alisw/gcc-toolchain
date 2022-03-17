@@ -1,5 +1,5 @@
 /* Register to Stack convert for GNU compiler.
-   Copyright (C) 1992-2020 Free Software Foundation, Inc.
+   Copyright (C) 1992-2021 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -318,7 +318,7 @@ stack_regs_mentioned (const_rtx insn)
       /* Allocate some extra size to avoid too many reallocs, but
 	 do not grow too quickly.  */
       max = uid + uid / 20 + 1;
-      stack_regs_mentioned_data.safe_grow_cleared (max);
+      stack_regs_mentioned_data.safe_grow_cleared (max, true);
     }
 
   test = stack_regs_mentioned_data[uid];
@@ -3426,7 +3426,8 @@ static unsigned int
 rest_of_handle_stack_regs (void)
 {
 #ifdef STACK_REGS
-  reg_to_stack ();
+  if (reg_to_stack ())
+    df_insn_rescan_all ();
   regstack_completed = 1;
 #endif
   return 0;

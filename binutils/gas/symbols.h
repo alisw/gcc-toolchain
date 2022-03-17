@@ -1,5 +1,5 @@
 /* symbols.h -
-   Copyright (C) 1987-2020 Free Software Foundation, Inc.
+   Copyright (C) 1987-2022 Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
 
@@ -45,17 +45,14 @@ symbolS *symbol_find_exact (const char *name);
 symbolS *symbol_find_exact_noref (const char *name, int noref);
 symbolS *symbol_find_or_make (const char *name);
 symbolS *symbol_make (const char *name);
-symbolS *symbol_new (const char *name, segT segment, valueT value,
-		     fragS * frag);
-symbolS *symbol_create (const char *name, segT segment, valueT value,
-			fragS * frag);
-struct local_symbol *local_symbol_make (const char *name, segT section,
-					valueT val, fragS *frag);
+symbolS *symbol_new (const char *, segT, fragS *, valueT);
+symbolS *symbol_create (const char *, segT, fragS *, valueT);
+struct local_symbol *local_symbol_make (const char *, segT, fragS *, valueT);
 symbolS *symbol_clone (symbolS *, int);
 #undef symbol_clone_if_forward_ref
 symbolS *symbol_clone_if_forward_ref (symbolS *, int);
 #define symbol_clone_if_forward_ref(s) symbol_clone_if_forward_ref (s, 0)
-symbolS *symbol_temp_new (segT, valueT, fragS *);
+symbolS *symbol_temp_new (segT, fragS *, valueT);
 symbolS *symbol_temp_new_now (void);
 symbolS *symbol_temp_new_now_octets (void);
 symbolS *symbol_temp_make (void);
@@ -196,6 +193,8 @@ extern int symbol_mri_common_p (symbolS *);
 extern void symbol_mark_written (symbolS *);
 extern void symbol_clear_written (symbolS *);
 extern int symbol_written_p (symbolS *);
+extern void symbol_mark_removed (symbolS *);
+extern int symbol_removed_p (symbolS *);
 extern void symbol_mark_resolved (symbolS *);
 extern int symbol_resolved_p (symbolS *);
 extern int symbol_section_p (symbolS *);

@@ -1,5 +1,5 @@
 /* Fold a constant sub-tree into a single node for C-compiler
-   Copyright (C) 1987-2020 Free Software Foundation, Inc.
+   Copyright (C) 1987-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -82,6 +82,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "attribs.h"
 #include "tree-vector-builder.h"
 #include "vec-perm-indices.h"
+#include "asan.h"
 
 /* Nonzero if we are folding constants inside an initializer; zero
    otherwise.  */
@@ -511,7 +512,7 @@ negate_expr_p (tree t)
       if (TREE_CODE (TREE_OPERAND (t, 1)) == INTEGER_CST)
 	{
 	  tree op1 = TREE_OPERAND (t, 1);
-	  if (wi::to_wide (op1) == TYPE_PRECISION (type) - 1)
+	  if (wi::to_wide (op1) == element_precision (type) - 1)
 	    return true;
 	}
       break;
@@ -704,7 +705,7 @@ fold_negate_expr_1 (location_t loc, tree t)
       if (TREE_CODE (TREE_OPERAND (t, 1)) == INTEGER_CST)
 	{
 	  tree op1 = TREE_OPERAND (t, 1);
-	  if (wi::to_wide (op1) == TYPE_PRECISION (type) - 1)
+	  if (wi::to_wide (op1) == element_precision (type) - 1)
 	    {
 	      tree ntype = TYPE_UNSIGNED (type)
 			   ? signed_type_for (type)
@@ -992,26 +993,19 @@ wide_int_binop (wide_int &res,
       res = wi::bit_and (arg1, arg2);
       break;
 
-    case RSHIFT_EXPR:
     case LSHIFT_EXPR:
       if (wi::neg_p (arg2))
-	{
-	  tmp = -arg2;
-	  if (code == RSHIFT_EXPR)
-	    code = LSHIFT_EXPR;
-	  else
-	    code = RSHIFT_EXPR;
-	}
-      else
-        tmp = arg2;
+	return false;
+      res = wi::lshift (arg1, arg2);
+      break;
 
-      if (code == RSHIFT_EXPR)
-	/* It's unclear from the C standard whether shifts can overflow.
-	   The following code ignores overflow; perhaps a C standard
-	   interpretation ruling is needed.  */
-	res = wi::rshift (arg1, tmp, sign);
-      else
-	res = wi::lshift (arg1, tmp);
+    case RSHIFT_EXPR:
+      if (wi::neg_p (arg2))
+	return false;
+      /* It's unclear from the C standard whether shifts can overflow.
+	 The following code ignores overflow; perhaps a C standard
+	 interpretation ruling is needed.  */
+      res = wi::rshift (arg1, arg2, sign);
       break;
 
     case RROTATE_EXPR:
@@ -3312,10 +3306,37 @@ operand_compare::operand_equal_p (const_tree arg0, const_tree arg1,
 	case COMPONENT_REF:
 	  /* Handle operand 2 the same as for ARRAY_REF.  Operand 0
 	     may be NULL when we're called to compare MEM_EXPRs.  */
-	  if (!OP_SAME_WITH_NULL (0)
-	      || !OP_SAME (1))
+	  if (!OP_SAME_WITH_NULL (0))
 	    return false;
-	  flags &= ~OEP_ADDRESS_OF;
+	  {
+	    bool compare_address = flags & OEP_ADDRESS_OF;
+
+	    /* Most of time we only need to compare FIELD_DECLs for equality.
+	       However when determining address look into actual offsets.
+	       These may match for unions and unshared record types.  */
+	    flags &= ~OEP_ADDRESS_OF;
+	    if (!OP_SAME (1))
+	      {
+		if (compare_address
+		    && (flags & OEP_ADDRESS_OF_SAME_FIELD) == 0)
+		  {
+		    if (TREE_OPERAND (arg0, 2)
+			|| TREE_OPERAND (arg1, 2))
+		      return OP_SAME_WITH_NULL (2);
+		    tree field0 = TREE_OPERAND (arg0, 1);
+		    tree field1 = TREE_OPERAND (arg1, 1);
+
+		    if (!operand_equal_p (DECL_FIELD_OFFSET (field0),
+					  DECL_FIELD_OFFSET (field1), flags)
+			|| !operand_equal_p (DECL_FIELD_BIT_OFFSET (field0),
+					     DECL_FIELD_BIT_OFFSET (field1),
+					     flags))
+		      return false;
+		  }
+		else
+		  return false;
+	      }
+	  }
 	  return OP_SAME_WITH_NULL (2);
 
 	case BIT_FIELD_REF:
@@ -3323,24 +3344,6 @@ operand_compare::operand_equal_p (const_tree arg0, const_tree arg1,
 	    return false;
 	  flags &= ~OEP_ADDRESS_OF;
 	  return OP_SAME (1) && OP_SAME (2);
-
-	/* Virtual table call.  */
-	case OBJ_TYPE_REF:
-	  {
-	    if (!operand_equal_p (OBJ_TYPE_REF_EXPR (arg0),
-				  OBJ_TYPE_REF_EXPR (arg1), flags))
-	      return false;
-	    if (tree_to_uhwi (OBJ_TYPE_REF_TOKEN (arg0))
-		!= tree_to_uhwi (OBJ_TYPE_REF_TOKEN (arg1)))
-	      return false;
-	    if (!operand_equal_p (OBJ_TYPE_REF_OBJECT (arg0),
-				  OBJ_TYPE_REF_OBJECT (arg1), flags))
-	      return false;
-	    if (!types_same_for_odr (obj_type_ref_class (arg0),
-				     obj_type_ref_class (arg1)))
-	      return false;
-	    return true;
-	  }
 
 	default:
 	  return false;
@@ -3419,6 +3422,27 @@ operand_compare::operand_equal_p (const_tree arg0, const_tree arg1,
 	  if (flags & OEP_LEXICOGRAPHIC)
 	    return OP_SAME (0);
 	  return false;
+
+	case OBJ_TYPE_REF:
+	/* Virtual table reference.  */
+	if (!operand_equal_p (OBJ_TYPE_REF_EXPR (arg0),
+			      OBJ_TYPE_REF_EXPR (arg1), flags))
+	  return false;
+	flags &= ~OEP_ADDRESS_OF;
+	if (tree_to_uhwi (OBJ_TYPE_REF_TOKEN (arg0))
+	    != tree_to_uhwi (OBJ_TYPE_REF_TOKEN (arg1)))
+	  return false;
+	if (!operand_equal_p (OBJ_TYPE_REF_OBJECT (arg0),
+			      OBJ_TYPE_REF_OBJECT (arg1), flags))
+	  return false;
+	if (virtual_method_call_p (arg0))
+	  {
+	    if (!virtual_method_call_p (arg1))
+	      return false;
+	    return types_same_for_odr (obj_type_ref_class (arg0),
+				       obj_type_ref_class (arg1));
+	  }
+	return false;
 
 	default:
 	  return false;
@@ -3787,9 +3811,26 @@ operand_compare::hash_operand (const_tree t, inchash::hash &hstate,
 	      sflags = flags;
 	      break;
 
+	    case COMPONENT_REF:
+	      if (sflags & OEP_ADDRESS_OF)
+		{
+		  hash_operand (TREE_OPERAND (t, 0), hstate, flags);
+		  if (TREE_OPERAND (t, 2))
+		    hash_operand (TREE_OPERAND (t, 2), hstate,
+				  flags & ~OEP_ADDRESS_OF);
+		  else
+		    {
+		      tree field = TREE_OPERAND (t, 1);
+		      hash_operand (DECL_FIELD_OFFSET (field),
+				    hstate, flags & ~OEP_ADDRESS_OF);
+		      hash_operand (DECL_FIELD_BIT_OFFSET (field),
+				    hstate, flags & ~OEP_ADDRESS_OF);
+		    }
+		  return;
+		}
+	      break;
 	    case ARRAY_REF:
 	    case ARRAY_RANGE_REF:
-	    case COMPONENT_REF:
 	    case BIT_FIELD_REF:
 	      sflags &= ~OEP_ADDRESS_OF;
 	      break;
@@ -3822,11 +3863,25 @@ operand_compare::hash_operand (const_tree t, inchash::hash &hstate,
 	      hash_operand (TARGET_EXPR_SLOT (t), hstate, flags);
 	      return;
 
-	    /* Virtual table call.  */
 	    case OBJ_TYPE_REF:
+	    /* Virtual table reference.  */
 	      inchash::add_expr (OBJ_TYPE_REF_EXPR (t), hstate, flags);
+	      flags &= ~OEP_ADDRESS_OF;
 	      inchash::add_expr (OBJ_TYPE_REF_TOKEN (t), hstate, flags);
 	      inchash::add_expr (OBJ_TYPE_REF_OBJECT (t), hstate, flags);
+	      if (!virtual_method_call_p (t))
+		return;
+	      if (tree c = obj_type_ref_class (t))
+		{
+		  c = TYPE_NAME (TYPE_MAIN_VARIANT (c));
+		  /* We compute mangled names only when free_lang_data is run.
+		     In that case we can hash precisely.  */
+		  if (TREE_CODE (c) == TYPE_DECL
+		      && DECL_ASSEMBLER_NAME_SET_P (c))
+		    hstate.add_object
+			   (IDENTIFIER_HASH_VALUE
+				   (DECL_ASSEMBLER_NAME (c)));
+		}
 	      return;
 	    default:
 	      break;
@@ -5931,6 +5986,13 @@ fold_range_test (location_t loc, enum tree_code code, tree type,
     return 0;
 
   lhs = make_range (op0, &in0_p, &low0, &high0, &strict_overflow_p);
+  /* If op0 is known true or false and this is a short-circuiting
+     operation we must not merge with op1 since that makes side-effects
+     unconditional.  So special-case this.  */
+  if (!lhs
+      && ((code == TRUTH_ORIF_EXPR && in0_p)
+	  || (code == TRUTH_ANDIF_EXPR && !in0_p)))
+    return op0;
   rhs = make_range (op1, &in1_p, &low1, &high1, &strict_overflow_p);
 
   /* If this is an OR operation, invert both sides; we will invert
@@ -6651,6 +6713,8 @@ extract_muldiv_1 (tree t, tree c, enum tree_code code, tree wide_type,
       break;
 
     CASE_CONVERT: case NON_LVALUE_EXPR:
+      if (!INTEGRAL_TYPE_P (TREE_TYPE (op0)))
+	break;
       /* If op0 is an expression ...  */
       if ((COMPARISON_CLASS_P (op0)
 	   || UNARY_CLASS_P (op0)
@@ -6659,8 +6723,7 @@ extract_muldiv_1 (tree t, tree c, enum tree_code code, tree wide_type,
 	   || EXPRESSION_CLASS_P (op0))
 	  /* ... and has wrapping overflow, and its type is smaller
 	     than ctype, then we cannot pass through as widening.  */
-	  && (((ANY_INTEGRAL_TYPE_P (TREE_TYPE (op0))
-		&& TYPE_OVERFLOW_WRAPS (TREE_TYPE (op0)))
+	  && ((TYPE_OVERFLOW_WRAPS (TREE_TYPE (op0))
 	       && (TYPE_PRECISION (ctype)
 	           > TYPE_PRECISION (TREE_TYPE (op0))))
 	      /* ... or this is a truncation (t is narrower than op0),
@@ -6675,8 +6738,7 @@ extract_muldiv_1 (tree t, tree c, enum tree_code code, tree wide_type,
 	      /* ... or has undefined overflow while the converted to
 		 type has not, we cannot do the operation in the inner type
 		 as that would introduce undefined overflow.  */
-	      || ((ANY_INTEGRAL_TYPE_P (TREE_TYPE (op0))
-		   && TYPE_OVERFLOW_UNDEFINED (TREE_TYPE (op0)))
+	      || (TYPE_OVERFLOW_UNDEFINED (TREE_TYPE (op0))
 		  && !TYPE_OVERFLOW_UNDEFINED (type))))
 	break;
 
@@ -7328,7 +7390,7 @@ fold_single_bit_test (location_t loc, enum tree_code code,
   return NULL_TREE;
 }
 
-/* Test whether it is preferable two swap two operands, ARG0 and
+/* Test whether it is preferable to swap two operands, ARG0 and
    ARG1, for example because ARG0 is an integer constant and ARG1
    isn't.  */
 
@@ -7868,11 +7930,12 @@ native_encode_string (const_tree expr, unsigned char *ptr, int len, int off)
 }
 
 
-/* Subroutine of fold_view_convert_expr.  Encode the INTEGER_CST,
-   REAL_CST, COMPLEX_CST or VECTOR_CST specified by EXPR into the
-   buffer PTR of length LEN bytes.  If PTR is NULL, don't actually store
-   anything, just do a dry run.  If OFF is not -1 then start
-   the encoding at byte offset OFF and encode at most LEN bytes.
+/* Subroutine of fold_view_convert_expr.  Encode the INTEGER_CST, REAL_CST,
+   FIXED_CST, COMPLEX_CST, STRING_CST, or VECTOR_CST specified by EXPR into
+   the buffer PTR of size LEN bytes.  If PTR is NULL, don't actually store
+   anything, just do a dry run.  Fail either if OFF is -1 and LEN isn't
+   sufficient to encode the entire EXPR, or if OFF is out of bounds.
+   Otherwise, start at byte offset OFF and encode at most LEN bytes.
    Return the number of bytes placed in the buffer, or zero upon failure.  */
 
 int
@@ -7907,25 +7970,78 @@ native_encode_expr (const_tree expr, unsigned char *ptr, int len, int off)
     }
 }
 
+/* Try to find a type whose byte size is smaller or equal to LEN bytes larger
+   or equal to FIELDSIZE bytes, with underlying mode precision/size multiple
+   of BITS_PER_UNIT.  As native_{interpret,encode}_int works in term of
+   machine modes, we can't just use build_nonstandard_integer_type.  */
+
+tree
+find_bitfield_repr_type (int fieldsize, int len)
+{
+  machine_mode mode;
+  for (int pass = 0; pass < 2; pass++)
+    {
+      enum mode_class mclass = pass ? MODE_PARTIAL_INT : MODE_INT;
+      FOR_EACH_MODE_IN_CLASS (mode, mclass)
+	if (known_ge (GET_MODE_SIZE (mode), fieldsize)
+	    && known_eq (GET_MODE_PRECISION (mode),
+			 GET_MODE_BITSIZE (mode))
+	    && known_le (GET_MODE_SIZE (mode), len))
+	  {
+	    tree ret = lang_hooks.types.type_for_mode (mode, 1);
+	    if (ret && TYPE_MODE (ret) == mode)
+	      return ret;
+	  }
+    }
+
+  for (int i = 0; i < NUM_INT_N_ENTS; i ++)
+    if (int_n_enabled_p[i]
+	&& int_n_data[i].bitsize >= (unsigned) (BITS_PER_UNIT * fieldsize)
+	&& int_n_trees[i].unsigned_type)
+      {
+	tree ret = int_n_trees[i].unsigned_type;
+	mode = TYPE_MODE (ret);
+	if (known_ge (GET_MODE_SIZE (mode), fieldsize)
+	    && known_eq (GET_MODE_PRECISION (mode),
+			 GET_MODE_BITSIZE (mode))
+	    && known_le (GET_MODE_SIZE (mode), len))
+	  return ret;
+      }
+
+  return NULL_TREE;
+}
+
 /* Similar to native_encode_expr, but also handle CONSTRUCTORs, VCEs,
-   NON_LVALUE_EXPRs and nops.  */
+   NON_LVALUE_EXPRs and nops.  If MASK is non-NULL (then PTR has
+   to be non-NULL and OFF zero), then in addition to filling the
+   bytes pointed by PTR with the value also clear any bits pointed
+   by MASK that are known to be initialized, keep them as is for
+   e.g. uninitialized padding bits or uninitialized fields.  */
 
 int
 native_encode_initializer (tree init, unsigned char *ptr, int len,
-			   int off)
+			   int off, unsigned char *mask)
 {
+  int r;
+
   /* We don't support starting at negative offset and -1 is special.  */
   if (off < -1 || init == NULL_TREE)
     return 0;
+
+  gcc_assert (mask == NULL || (off == 0 && ptr));
 
   STRIP_NOPS (init);
   switch (TREE_CODE (init))
     {
     case VIEW_CONVERT_EXPR:
     case NON_LVALUE_EXPR:
-      return native_encode_initializer (TREE_OPERAND (init, 0), ptr, len, off);
+      return native_encode_initializer (TREE_OPERAND (init, 0), ptr, len, off,
+					mask);
     default:
-      return native_encode_expr (init, ptr, len, off);
+      r = native_encode_expr (init, ptr, len, off);
+      if (mask)
+	memset (mask, 0, r);
+      return r;
     case CONSTRUCTOR:
       tree type = TREE_TYPE (init);
       HOST_WIDE_INT total_bytes = int_size_in_bytes (type);
@@ -7936,44 +8052,96 @@ native_encode_initializer (tree init, unsigned char *ptr, int len,
       int o = off == -1 ? 0 : off;
       if (TREE_CODE (type) == ARRAY_TYPE)
 	{
-	  HOST_WIDE_INT min_index;
+	  tree min_index;
 	  unsigned HOST_WIDE_INT cnt;
-	  HOST_WIDE_INT curpos = 0, fieldsize;
+	  HOST_WIDE_INT curpos = 0, fieldsize, valueinit = -1;
 	  constructor_elt *ce;
 
-	  if (TYPE_DOMAIN (type) == NULL_TREE
-	      || !tree_fits_shwi_p (TYPE_MIN_VALUE (TYPE_DOMAIN (type))))
+	  if (!TYPE_DOMAIN (type)
+	      || TREE_CODE (TYPE_MIN_VALUE (TYPE_DOMAIN (type))) != INTEGER_CST)
 	    return 0;
 
 	  fieldsize = int_size_in_bytes (TREE_TYPE (type));
 	  if (fieldsize <= 0)
 	    return 0;
 
-	  min_index = tree_to_shwi (TYPE_MIN_VALUE (TYPE_DOMAIN (type)));
-	  if (ptr != NULL)
+	  min_index = TYPE_MIN_VALUE (TYPE_DOMAIN (type));
+	  if (ptr)
 	    memset (ptr, '\0', MIN (total_bytes - off, len));
 
-	  FOR_EACH_VEC_SAFE_ELT (CONSTRUCTOR_ELTS (init), cnt, ce)
+	  for (cnt = 0; ; cnt++)
 	    {
-	      tree val = ce->value;
-	      tree index = ce->index;
+	      tree val = NULL_TREE, index = NULL_TREE;
 	      HOST_WIDE_INT pos = curpos, count = 0;
 	      bool full = false;
+	      if (vec_safe_iterate (CONSTRUCTOR_ELTS (init), cnt, &ce))
+		{
+		  val = ce->value;
+		  index = ce->index;
+		}
+	      else if (mask == NULL
+		       || CONSTRUCTOR_NO_CLEARING (init)
+		       || curpos >= total_bytes)
+		break;
+	      else
+		pos = total_bytes;
+
 	      if (index && TREE_CODE (index) == RANGE_EXPR)
 		{
-		  if (!tree_fits_shwi_p (TREE_OPERAND (index, 0))
-		      || !tree_fits_shwi_p (TREE_OPERAND (index, 1)))
+		  if (TREE_CODE (TREE_OPERAND (index, 0)) != INTEGER_CST
+		      || TREE_CODE (TREE_OPERAND (index, 1)) != INTEGER_CST)
 		    return 0;
-		  pos = (tree_to_shwi (TREE_OPERAND (index, 0)) - min_index)
-			* fieldsize;
-		  count = (tree_to_shwi (TREE_OPERAND (index, 1))
-			   - tree_to_shwi (TREE_OPERAND (index, 0)));
+		  offset_int wpos
+		    = wi::sext (wi::to_offset (TREE_OPERAND (index, 0))
+				- wi::to_offset (min_index),
+				TYPE_PRECISION (sizetype));
+		  wpos *= fieldsize;
+		  if (!wi::fits_shwi_p (pos))
+		    return 0;
+		  pos = wpos.to_shwi ();
+		  offset_int wcount
+		    = wi::sext (wi::to_offset (TREE_OPERAND (index, 1))
+				- wi::to_offset (TREE_OPERAND (index, 0)),
+				TYPE_PRECISION (sizetype));
+		  if (!wi::fits_shwi_p (wcount))
+		    return 0;
+		  count = wcount.to_shwi ();
 		}
 	      else if (index)
 		{
-		  if (!tree_fits_shwi_p (index))
+		  if (TREE_CODE (index) != INTEGER_CST)
 		    return 0;
-		  pos = (tree_to_shwi (index) - min_index) * fieldsize;
+		  offset_int wpos
+		    = wi::sext (wi::to_offset (index)
+				- wi::to_offset (min_index),
+				TYPE_PRECISION (sizetype));
+		  wpos *= fieldsize;
+		  if (!wi::fits_shwi_p (wpos))
+		    return 0;
+		  pos = wpos.to_shwi ();
+		}
+
+	      if (mask && !CONSTRUCTOR_NO_CLEARING (init) && curpos != pos)
+		{
+		  if (valueinit == -1)
+		    {
+		      tree zero = build_zero_cst (TREE_TYPE (type));
+		      r = native_encode_initializer (zero, ptr + curpos,
+						     fieldsize, 0,
+						     mask + curpos);
+		      if (TREE_CODE (zero) == CONSTRUCTOR)
+			ggc_free (zero);
+		      if (!r)
+			return 0;
+		      valueinit = curpos;
+		      curpos += fieldsize;
+		    }
+		  while (curpos != pos)
+		    {
+		      memcpy (ptr + curpos, ptr + valueinit, fieldsize);
+		      memcpy (mask + curpos, mask + valueinit, fieldsize);
+		      curpos += fieldsize;
+		    }
 		}
 
 	      curpos = pos;
@@ -7990,6 +8158,8 @@ native_encode_initializer (tree init, unsigned char *ptr, int len,
 			    if (ptr)
 			      memcpy (ptr + (curpos - o), ptr + (pos - o),
 				      fieldsize);
+			    if (mask)
+			      memcpy (mask + curpos, mask + pos, fieldsize);
 			  }
 			else if (!native_encode_initializer (val,
 							     ptr
@@ -7997,7 +8167,10 @@ native_encode_initializer (tree init, unsigned char *ptr, int len,
 							     : NULL,
 							     fieldsize,
 							     off == -1 ? -1
-								       : 0))
+								       : 0,
+							     mask
+							     ? mask + curpos
+							     : NULL))
 			  return 0;
 			else
 			  {
@@ -8012,6 +8185,7 @@ native_encode_initializer (tree init, unsigned char *ptr, int len,
 			unsigned char *p = NULL;
 			int no = 0;
 			int l;
+			gcc_assert (mask == NULL);
 			if (curpos >= off)
 			  {
 			    if (ptr)
@@ -8025,7 +8199,7 @@ native_encode_initializer (tree init, unsigned char *ptr, int len,
 			    no = off - curpos;
 			    l = len;
 			  }
-			if (!native_encode_initializer (val, p, l, no))
+			if (!native_encode_initializer (val, p, l, no, NULL))
 			  return 0;
 		      }
 		    curpos += fieldsize;
@@ -8039,51 +8213,300 @@ native_encode_initializer (tree init, unsigned char *ptr, int len,
 	{
 	  unsigned HOST_WIDE_INT cnt;
 	  constructor_elt *ce;
+	  tree fld_base = TYPE_FIELDS (type);
+	  tree to_free = NULL_TREE;
 
+	  gcc_assert (TREE_CODE (type) == RECORD_TYPE || mask == NULL);
 	  if (ptr != NULL)
-	    memset (ptr, '\0', MIN (total_bytes - off, len));
-	  FOR_EACH_VEC_SAFE_ELT (CONSTRUCTOR_ELTS (init), cnt, ce)
+	    memset (ptr, '\0', MIN (total_bytes - o, len));
+	  for (cnt = 0; ; cnt++)
 	    {
-	      tree field = ce->index;
-	      tree val = ce->value;
-	      HOST_WIDE_INT pos, fieldsize;
+	      tree val = NULL_TREE, field = NULL_TREE;
+	      HOST_WIDE_INT pos = 0, fieldsize;
+	      unsigned HOST_WIDE_INT bpos = 0, epos = 0;
 
-	      if (field == NULL_TREE)
-		return 0;
+	      if (to_free)
+		{
+		  ggc_free (to_free);
+		  to_free = NULL_TREE;
+		}
 
-	      pos = int_byte_position (field);
-	      if (off != -1 && (HOST_WIDE_INT) off + len <= pos)
-		continue;
+	      if (vec_safe_iterate (CONSTRUCTOR_ELTS (init), cnt, &ce))
+		{
+		  val = ce->value;
+		  field = ce->index;
+		  if (field == NULL_TREE)
+		    return 0;
+
+		  pos = int_byte_position (field);
+		  if (off != -1 && (HOST_WIDE_INT) off + len <= pos)
+		    continue;
+		}
+	      else if (mask == NULL
+		       || CONSTRUCTOR_NO_CLEARING (init))
+		break;
+	      else
+		pos = total_bytes;
+
+	      if (mask && !CONSTRUCTOR_NO_CLEARING (init))
+		{
+		  tree fld;
+		  for (fld = fld_base; fld; fld = DECL_CHAIN (fld))
+		    {
+		      if (TREE_CODE (fld) != FIELD_DECL)
+			continue;
+		      if (fld == field)
+			break;
+		      if (DECL_PADDING_P (fld))
+			continue;
+		      if (DECL_SIZE_UNIT (fld) == NULL_TREE
+			  || !tree_fits_shwi_p (DECL_SIZE_UNIT (fld)))
+			return 0;
+		      if (integer_zerop (DECL_SIZE_UNIT (fld)))
+			continue;
+		      break;
+		    }
+		  if (fld == NULL_TREE)
+		    {
+		      if (ce == NULL)
+			break;
+		      return 0;
+		    }
+		  fld_base = DECL_CHAIN (fld);
+		  if (fld != field)
+		    {
+		      cnt--;
+		      field = fld;
+		      pos = int_byte_position (field);
+		      val = build_zero_cst (TREE_TYPE (fld));
+		      if (TREE_CODE (val) == CONSTRUCTOR)
+			to_free = val;
+		    }
+		}
 
 	      if (TREE_CODE (TREE_TYPE (field)) == ARRAY_TYPE
 		  && TYPE_DOMAIN (TREE_TYPE (field))
 		  && ! TYPE_MAX_VALUE (TYPE_DOMAIN (TREE_TYPE (field))))
-		return 0;
-	      if (DECL_SIZE_UNIT (field) == NULL_TREE
-		  || !tree_fits_shwi_p (DECL_SIZE_UNIT (field)))
-		return 0;
-	      fieldsize = tree_to_shwi (DECL_SIZE_UNIT (field));
+		{
+		  if (mask || off != -1)
+		    return 0;
+		  if (val == NULL_TREE)
+		    continue;
+		  if (TREE_CODE (TREE_TYPE (val)) != ARRAY_TYPE)
+		    return 0;
+		  fieldsize = int_size_in_bytes (TREE_TYPE (val));
+		  if (fieldsize < 0
+		      || (int) fieldsize != fieldsize
+		      || (pos + fieldsize) > INT_MAX)
+		    return 0;
+		  if (pos + fieldsize > total_bytes)
+		    {
+		      if (ptr != NULL && total_bytes < len)
+			memset (ptr + total_bytes, '\0',
+				MIN (pos + fieldsize, len) - total_bytes);
+		      total_bytes = pos + fieldsize;
+		    }
+		}
+	      else
+		{
+		  if (DECL_SIZE_UNIT (field) == NULL_TREE
+		      || !tree_fits_shwi_p (DECL_SIZE_UNIT (field)))
+		    return 0;
+		  fieldsize = tree_to_shwi (DECL_SIZE_UNIT (field));
+		}
 	      if (fieldsize == 0)
 		continue;
+
+	      if (DECL_BIT_FIELD (field))
+		{
+		  if (!tree_fits_uhwi_p (DECL_FIELD_BIT_OFFSET (field)))
+		    return 0;
+		  fieldsize = TYPE_PRECISION (TREE_TYPE (field));
+		  bpos = tree_to_uhwi (DECL_FIELD_BIT_OFFSET (field));
+		  if (bpos % BITS_PER_UNIT)
+		    bpos %= BITS_PER_UNIT;
+		  else
+		    bpos = 0;
+		  fieldsize += bpos;
+		  epos = fieldsize % BITS_PER_UNIT;
+		  fieldsize += BITS_PER_UNIT - 1;
+		  fieldsize /= BITS_PER_UNIT;
+		}
 
 	      if (off != -1 && pos + fieldsize <= off)
 		continue;
 
-	      if (DECL_BIT_FIELD (field))
-		return 0;
-
 	      if (val == NULL_TREE)
 		continue;
+
+	      if (DECL_BIT_FIELD (field))
+		{
+		  /* FIXME: Handle PDP endian.  */
+		  if (BYTES_BIG_ENDIAN != WORDS_BIG_ENDIAN)
+		    return 0;
+
+		  if (TREE_CODE (val) != INTEGER_CST)
+		    return 0;
+
+		  tree repr = DECL_BIT_FIELD_REPRESENTATIVE (field);
+		  tree repr_type = NULL_TREE;
+		  HOST_WIDE_INT rpos = 0;
+		  if (repr && INTEGRAL_TYPE_P (TREE_TYPE (repr)))
+		    {
+		      rpos = int_byte_position (repr);
+		      repr_type = TREE_TYPE (repr);
+		    }
+		  else
+		    {
+		      repr_type = find_bitfield_repr_type (fieldsize, len);
+		      if (repr_type == NULL_TREE)
+			return 0;
+		      HOST_WIDE_INT repr_size = int_size_in_bytes (repr_type);
+		      gcc_assert (repr_size > 0 && repr_size <= len);
+		      if (pos + repr_size <= o + len)
+			rpos = pos;
+		      else
+			{
+			  rpos = o + len - repr_size;
+			  gcc_assert (rpos <= pos);
+			}
+		    }
+
+		  if (rpos > pos)
+		    return 0;
+		  wide_int w = wi::to_wide (val, TYPE_PRECISION (repr_type));
+		  int diff = (TYPE_PRECISION (repr_type)
+			      - TYPE_PRECISION (TREE_TYPE (field)));
+		  HOST_WIDE_INT bitoff = (pos - rpos) * BITS_PER_UNIT + bpos;
+		  if (!BYTES_BIG_ENDIAN)
+		    w = wi::lshift (w, bitoff);
+		  else
+		    w = wi::lshift (w, diff - bitoff);
+		  val = wide_int_to_tree (repr_type, w);
+
+		  unsigned char buf[MAX_BITSIZE_MODE_ANY_INT
+				    / BITS_PER_UNIT + 1];
+		  int l = native_encode_int (val, buf, sizeof buf, 0);
+		  if (l * BITS_PER_UNIT != TYPE_PRECISION (repr_type))
+		    return 0;
+
+		  if (ptr == NULL)
+		    continue;
+
+		  /* If the bitfield does not start at byte boundary, handle
+		     the partial byte at the start.  */
+		  if (bpos
+		      && (off == -1 || (pos >= off && len >= 1)))
+		    {
+		      if (!BYTES_BIG_ENDIAN)
+			{
+			  int msk = (1 << bpos) - 1;
+			  buf[pos - rpos] &= ~msk;
+			  buf[pos - rpos] |= ptr[pos - o] & msk;
+			  if (mask)
+			    {
+			      if (fieldsize > 1 || epos == 0)
+				mask[pos] &= msk;
+			      else
+				mask[pos] &= (msk | ~((1 << epos) - 1));
+			    }
+			}
+		      else
+			{
+			  int msk = (1 << (BITS_PER_UNIT - bpos)) - 1;
+			  buf[pos - rpos] &= msk;
+			  buf[pos - rpos] |= ptr[pos - o] & ~msk;
+			  if (mask)
+			    {
+			      if (fieldsize > 1 || epos == 0)
+				mask[pos] &= ~msk;
+			      else
+				mask[pos] &= (~msk
+					      | ((1 << (BITS_PER_UNIT - epos))
+						 - 1));
+			    }
+			}
+		    }
+		  /* If the bitfield does not end at byte boundary, handle
+		     the partial byte at the end.  */
+		  if (epos
+		      && (off == -1
+			  || pos + fieldsize <= (HOST_WIDE_INT) off + len))
+		    {
+		      if (!BYTES_BIG_ENDIAN)
+			{
+			  int msk = (1 << epos) - 1;
+			  buf[pos - rpos + fieldsize - 1] &= msk;
+			  buf[pos - rpos + fieldsize - 1]
+			    |= ptr[pos + fieldsize - 1 - o] & ~msk;
+			  if (mask && (fieldsize > 1 || bpos == 0))
+			    mask[pos + fieldsize - 1] &= ~msk;
+			}
+		       else
+			{
+			  int msk = (1 << (BITS_PER_UNIT - epos)) - 1;
+			  buf[pos - rpos + fieldsize - 1] &= ~msk;
+			  buf[pos - rpos + fieldsize - 1]
+			    |= ptr[pos + fieldsize - 1 - o] & msk;
+			  if (mask && (fieldsize > 1 || bpos == 0))
+			    mask[pos + fieldsize - 1] &= msk;
+			}
+		    }
+		  if (off == -1
+		      || (pos >= off
+			  && (pos + fieldsize <= (HOST_WIDE_INT) off + len)))
+		    {
+		      memcpy (ptr + pos - o, buf + (pos - rpos), fieldsize);
+		      if (mask && (fieldsize > (bpos != 0) + (epos != 0)))
+			memset (mask + pos + (bpos != 0), 0,
+				fieldsize - (bpos != 0) - (epos != 0));
+		    }
+		  else
+		    {
+		      /* Partial overlap.  */
+		      HOST_WIDE_INT fsz = fieldsize;
+		      gcc_assert (mask == NULL);
+		      if (pos < off)
+			{
+			  fsz -= (off - pos);
+			  pos = off;
+			}
+		      if (pos + fsz > (HOST_WIDE_INT) off + len)
+			fsz = (HOST_WIDE_INT) off + len - pos;
+		      memcpy (ptr + pos - off, buf + (pos - rpos), fsz);
+		    }
+		  continue;
+		}
 
 	      if (off == -1
 		  || (pos >= off
 		      && (pos + fieldsize <= (HOST_WIDE_INT) off + len)))
 		{
-		  if (!native_encode_initializer (val, ptr ? ptr + pos - o
-							   : NULL,
-						  fieldsize,
-						  off == -1 ? -1 : 0))
+		  int fldsize = fieldsize;
+		  if (off == -1)
+		    {
+		      tree fld = DECL_CHAIN (field);
+		      while (fld)
+			{
+			  if (TREE_CODE (fld) == FIELD_DECL)
+			    break;
+			  fld = DECL_CHAIN (fld);
+			}
+		      if (fld == NULL_TREE)
+			fldsize = len - pos;
+		    }
+		  r = native_encode_initializer (val, ptr ? ptr + pos - o
+							  : NULL,
+						 fldsize,
+						 off == -1 ? -1 : 0,
+						 mask ? mask + pos : NULL);
+		  if (!r)
 		    return 0;
+		  if (off == -1
+		      && fldsize != fieldsize
+		      && r > fieldsize
+		      && pos + r > total_bytes)
+		    total_bytes = pos + r;
 		}
 	      else
 		{
@@ -8091,6 +8514,7 @@ native_encode_initializer (tree init, unsigned char *ptr, int len,
 		  unsigned char *p = NULL;
 		  int no = 0;
 		  int l;
+		  gcc_assert (mask == NULL);
 		  if (pos >= off)
 		    {
 		      if (ptr)
@@ -8104,7 +8528,7 @@ native_encode_initializer (tree init, unsigned char *ptr, int len,
 		      no = off - pos;
 		      l = len;
 		    }
-		  if (!native_encode_initializer (val, p, l, no))
+		  if (!native_encode_initializer (val, p, l, no, NULL))
 		    return 0;
 		}
 	    }
@@ -8212,7 +8636,19 @@ native_interpret_real (tree type, const unsigned char *ptr, int len)
     }
 
   real_from_target (&r, tmp, mode);
-  return build_real (type, r);
+  tree ret = build_real (type, r);
+  if (MODE_COMPOSITE_P (mode))
+    {
+      /* For floating point values in composite modes, punt if this folding
+	 doesn't preserve bit representation.  As the mode doesn't have fixed
+	 precision while GCC pretends it does, there could be valid values that
+	 GCC can't really represent accurately.  See PR95450.  */
+      unsigned char buf[24];
+      if (native_encode_expr (ret, buf, total_bytes, 0) != total_bytes
+	  || memcmp (ptr, buf, total_bytes) != 0)
+	ret = NULL_TREE;
+    }
+  return ret;
 }
 
 
@@ -8366,6 +8802,168 @@ can_native_interpret_type_p (tree type)
     default:
       return false;
     }
+}
+
+/* Attempt to interpret aggregate of TYPE from bytes encoded in target
+   byte order at PTR + OFF with LEN bytes.  Does not handle unions.  */
+
+tree
+native_interpret_aggregate (tree type, const unsigned char *ptr, int off,
+			    int len)
+{
+  vec<constructor_elt, va_gc> *elts = NULL;
+  if (TREE_CODE (type) == ARRAY_TYPE)
+    {
+      HOST_WIDE_INT eltsz = int_size_in_bytes (TREE_TYPE (type));
+      if (eltsz < 0 || eltsz > len || TYPE_DOMAIN (type) == NULL_TREE)
+	return NULL_TREE;
+
+      HOST_WIDE_INT cnt = 0;
+      if (TYPE_MAX_VALUE (TYPE_DOMAIN (type)))
+	{
+	  if (!tree_fits_shwi_p (TYPE_MAX_VALUE (TYPE_DOMAIN (type))))
+	    return NULL_TREE;
+	  cnt = tree_to_shwi (TYPE_MAX_VALUE (TYPE_DOMAIN (type))) + 1;
+	}
+      if (eltsz == 0)
+	cnt = 0;
+      HOST_WIDE_INT pos = 0;
+      for (HOST_WIDE_INT i = 0; i < cnt; i++, pos += eltsz)
+	{
+	  tree v = NULL_TREE;
+	  if (pos >= len || pos + eltsz > len)
+	    return NULL_TREE;
+	  if (can_native_interpret_type_p (TREE_TYPE (type)))
+	    {
+	      v = native_interpret_expr (TREE_TYPE (type),
+					 ptr + off + pos, eltsz);
+	      if (v == NULL_TREE)
+		return NULL_TREE;
+	    }
+	  else if (TREE_CODE (TREE_TYPE (type)) == RECORD_TYPE
+		   || TREE_CODE (TREE_TYPE (type)) == ARRAY_TYPE)
+	    v = native_interpret_aggregate (TREE_TYPE (type), ptr, off + pos,
+					    eltsz);
+	  if (v == NULL_TREE)
+	    return NULL_TREE;
+	  CONSTRUCTOR_APPEND_ELT (elts, size_int (i), v);
+	}
+      return build_constructor (type, elts);
+    }
+  if (TREE_CODE (type) != RECORD_TYPE)
+    return NULL_TREE;
+  for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
+    {
+      if (TREE_CODE (field) != FIELD_DECL || DECL_PADDING_P (field))
+	continue;
+      tree fld = field;
+      HOST_WIDE_INT bitoff = 0, pos = 0, sz = 0;
+      int diff = 0;
+      tree v = NULL_TREE;
+      if (DECL_BIT_FIELD (field))
+	{
+	  fld = DECL_BIT_FIELD_REPRESENTATIVE (field);
+	  if (fld && INTEGRAL_TYPE_P (TREE_TYPE (fld)))
+	    {
+	      poly_int64 bitoffset;
+	      poly_uint64 field_offset, fld_offset;
+	      if (poly_int_tree_p (DECL_FIELD_OFFSET (field), &field_offset)
+		  && poly_int_tree_p (DECL_FIELD_OFFSET (fld), &fld_offset))
+		bitoffset = (field_offset - fld_offset) * BITS_PER_UNIT;
+	      else
+		bitoffset = 0;
+	      bitoffset += (tree_to_uhwi (DECL_FIELD_BIT_OFFSET (field))
+			    - tree_to_uhwi (DECL_FIELD_BIT_OFFSET (fld)));
+	      diff = (TYPE_PRECISION (TREE_TYPE (fld))
+		      - TYPE_PRECISION (TREE_TYPE (field)));
+	      if (!bitoffset.is_constant (&bitoff)
+		  || bitoff < 0
+		  || bitoff > diff)
+		return NULL_TREE;
+	    }
+	  else
+	    {
+	      if (!tree_fits_uhwi_p (DECL_FIELD_BIT_OFFSET (field)))
+		return NULL_TREE;
+	      int fieldsize = TYPE_PRECISION (TREE_TYPE (field));
+	      int bpos = tree_to_uhwi (DECL_FIELD_BIT_OFFSET (field));
+	      bpos %= BITS_PER_UNIT;
+	      fieldsize += bpos;
+	      fieldsize += BITS_PER_UNIT - 1;
+	      fieldsize /= BITS_PER_UNIT;
+	      tree repr_type = find_bitfield_repr_type (fieldsize, len);
+	      if (repr_type == NULL_TREE)
+		return NULL_TREE;
+	      sz = int_size_in_bytes (repr_type);
+	      if (sz < 0 || sz > len)
+		return NULL_TREE;
+	      pos = int_byte_position (field);
+	      if (pos < 0 || pos > len || pos + fieldsize > len)
+		return NULL_TREE;
+	      HOST_WIDE_INT rpos;
+	      if (pos + sz <= len)
+		rpos = pos;
+	      else
+		{
+		  rpos = len - sz;
+		  gcc_assert (rpos <= pos);
+		}
+	      bitoff = (HOST_WIDE_INT) (pos - rpos) * BITS_PER_UNIT + bpos;
+	      pos = rpos;
+	      diff = (TYPE_PRECISION (repr_type)
+		      - TYPE_PRECISION (TREE_TYPE (field)));
+	      v = native_interpret_expr (repr_type, ptr + off + pos, sz);
+	      if (v == NULL_TREE)
+		return NULL_TREE;
+	      fld = NULL_TREE;
+	    }
+	}
+
+      if (fld)
+	{
+	  sz = int_size_in_bytes (TREE_TYPE (fld));
+	  if (sz < 0 || sz > len)
+	    return NULL_TREE;
+	  tree byte_pos = byte_position (fld);
+	  if (!tree_fits_shwi_p (byte_pos))
+	    return NULL_TREE;
+	  pos = tree_to_shwi (byte_pos);
+	  if (pos < 0 || pos > len || pos + sz > len)
+	    return NULL_TREE;
+	}
+      if (fld == NULL_TREE)
+	/* Already handled above.  */;
+      else if (can_native_interpret_type_p (TREE_TYPE (fld)))
+	{
+	  v = native_interpret_expr (TREE_TYPE (fld),
+				     ptr + off + pos, sz);
+	  if (v == NULL_TREE)
+	    return NULL_TREE;
+	}
+      else if (TREE_CODE (TREE_TYPE (fld)) == RECORD_TYPE
+	       || TREE_CODE (TREE_TYPE (fld)) == ARRAY_TYPE)
+	v = native_interpret_aggregate (TREE_TYPE (fld), ptr, off + pos, sz);
+      if (v == NULL_TREE)
+	return NULL_TREE;
+      if (fld != field)
+	{
+	  if (TREE_CODE (v) != INTEGER_CST)
+	    return NULL_TREE;
+
+	  /* FIXME: Figure out how to handle PDP endian bitfields.  */
+	  if (BYTES_BIG_ENDIAN != WORDS_BIG_ENDIAN)
+	    return NULL_TREE;
+	  if (!BYTES_BIG_ENDIAN)
+	    v = wide_int_to_tree (TREE_TYPE (field),
+				  wi::lrshift (wi::to_wide (v), bitoff));
+	  else
+	    v = wide_int_to_tree (TREE_TYPE (field),
+				  wi::lrshift (wi::to_wide (v),
+					       diff - bitoff));
+	}
+      CONSTRUCTOR_APPEND_ELT (elts, field, v);
+    }
+  return build_constructor (type, elts);
 }
 
 /* Routines for manipulation of native_encode_expr encoded data if the encoded
@@ -8815,8 +9413,17 @@ fold_unary_loc (location_t loc, enum tree_code code, tree type, tree op0)
 	  tree arg00 = TREE_OPERAND (arg0, 0);
 	  tree arg01 = TREE_OPERAND (arg0, 1);
 
-	  return fold_build_pointer_plus_loc
-		   (loc, fold_convert_loc (loc, type, arg00), arg01);
+	  /* If -fsanitize=alignment, avoid this optimization in GENERIC
+	     when the pointed type needs higher alignment than
+	     the p+ first operand's pointed type.  */
+	  if (!in_gimple_form
+	      && sanitize_flags_p (SANITIZE_ALIGNMENT)
+	      && (min_align_of_type (TREE_TYPE (type))
+		  > min_align_of_type (TREE_TYPE (TREE_TYPE (arg00)))))
+	    return NULL_TREE;
+
+	  arg00 = fold_convert_loc (loc, type, arg00);
+	  return fold_build_pointer_plus_loc (loc, arg00, arg01);
 	}
 
       /* Convert (T1)(~(T2)X) into ~(T1)X if T1 and T2 are integral types
@@ -10079,8 +10686,7 @@ tree_expr_nonzero_p (tree t)
 bool
 expr_not_equal_to (tree t, const wide_int &w)
 {
-  wide_int min, max, nz;
-  value_range_kind rtype;
+  value_range vr;
   switch (TREE_CODE (t))
     {
     case INTEGER_CST:
@@ -10089,17 +10695,9 @@ expr_not_equal_to (tree t, const wide_int &w)
     case SSA_NAME:
       if (!INTEGRAL_TYPE_P (TREE_TYPE (t)))
 	return false;
-      rtype = get_range_info (t, &min, &max);
-      if (rtype == VR_RANGE)
-	{
-	  if (wi::lt_p (max, w, TYPE_SIGN (TREE_TYPE (t))))
-	    return true;
-	  if (wi::lt_p (w, min, TYPE_SIGN (TREE_TYPE (t))))
-	    return true;
-	}
-      else if (rtype == VR_ANTI_RANGE
-	       && wi::le_p (min, w, TYPE_SIGN (TREE_TYPE (t)))
-	       && wi::le_p (w, max, TYPE_SIGN (TREE_TYPE (t))))
+      get_range_info (t, vr);
+      if (!vr.undefined_p ()
+	  && !vr.contains_p (wide_int_to_tree (TREE_TYPE (t), w)))
 	return true;
       /* If T has some known zero bits and W has any of those bits set,
 	 then T is known not to be equal to W.  */
@@ -11466,23 +12064,23 @@ fold_binary_loc (location_t loc, enum tree_code code, tree type,
 	      && integer_onep (TREE_OPERAND (arg00, 0)))
 	    {
 	      tree tem = fold_build2_loc (loc, RSHIFT_EXPR, TREE_TYPE (arg00),
-				      arg01, TREE_OPERAND (arg00, 1));
+					  arg01, TREE_OPERAND (arg00, 1));
 	      tem = fold_build2_loc (loc, BIT_AND_EXPR, TREE_TYPE (arg0), tem,
-				 build_int_cst (TREE_TYPE (arg0), 1));
+				     build_one_cst (TREE_TYPE (arg0)));
 	      return fold_build2_loc (loc, code, type,
-				  fold_convert_loc (loc, TREE_TYPE (arg1), tem),
-				  arg1);
+				      fold_convert_loc (loc, TREE_TYPE (arg1),
+							tem), arg1);
 	    }
 	  else if (TREE_CODE (arg01) == LSHIFT_EXPR
 		   && integer_onep (TREE_OPERAND (arg01, 0)))
 	    {
 	      tree tem = fold_build2_loc (loc, RSHIFT_EXPR, TREE_TYPE (arg01),
-				      arg00, TREE_OPERAND (arg01, 1));
+					  arg00, TREE_OPERAND (arg01, 1));
 	      tem = fold_build2_loc (loc, BIT_AND_EXPR, TREE_TYPE (arg0), tem,
-				 build_int_cst (TREE_TYPE (arg0), 1));
+				     build_one_cst (TREE_TYPE (arg0)));
 	      return fold_build2_loc (loc, code, type,
-				  fold_convert_loc (loc, TREE_TYPE (arg1), tem),
-				  arg1);
+				      fold_convert_loc (loc, TREE_TYPE (arg1),
+							tem), arg1);
 	    }
 	}
 
@@ -11490,45 +12088,53 @@ fold_binary_loc (location_t loc, enum tree_code code, tree type,
 	 C1 is a valid shift constant, and C2 is a power of two, i.e.
 	 a single bit.  */
       if (TREE_CODE (arg0) == BIT_AND_EXPR
-	  && TREE_CODE (TREE_OPERAND (arg0, 0)) == RSHIFT_EXPR
-	  && TREE_CODE (TREE_OPERAND (TREE_OPERAND (arg0, 0), 1))
-	     == INTEGER_CST
 	  && integer_pow2p (TREE_OPERAND (arg0, 1))
 	  && integer_zerop (arg1))
 	{
-	  tree itype = TREE_TYPE (arg0);
-	  tree arg001 = TREE_OPERAND (TREE_OPERAND (arg0, 0), 1);
-	  prec = TYPE_PRECISION (itype);
-
-	  /* Check for a valid shift count.  */
-	  if (wi::ltu_p (wi::to_wide (arg001), prec))
+	  tree arg00 = TREE_OPERAND (arg0, 0);
+	  STRIP_NOPS (arg00);
+	  if (TREE_CODE (arg00) == RSHIFT_EXPR
+	      && TREE_CODE (TREE_OPERAND (arg00, 1)) == INTEGER_CST)
 	    {
-	      tree arg01 = TREE_OPERAND (arg0, 1);
-	      tree arg000 = TREE_OPERAND (TREE_OPERAND (arg0, 0), 0);
-	      unsigned HOST_WIDE_INT log2 = tree_log2 (arg01);
-	      /* If (C2 << C1) doesn't overflow, then ((X >> C1) & C2) != 0
-		 can be rewritten as (X & (C2 << C1)) != 0.  */
-	      if ((log2 + TREE_INT_CST_LOW (arg001)) < prec)
+	      tree itype = TREE_TYPE (arg00);
+	      tree arg001 = TREE_OPERAND (arg00, 1);
+	      prec = TYPE_PRECISION (itype);
+
+	      /* Check for a valid shift count.  */
+	      if (wi::ltu_p (wi::to_wide (arg001), prec))
 		{
-		  tem = fold_build2_loc (loc, LSHIFT_EXPR, itype, arg01, arg001);
-		  tem = fold_build2_loc (loc, BIT_AND_EXPR, itype, arg000, tem);
-		  return fold_build2_loc (loc, code, type, tem,
-					  fold_convert_loc (loc, itype, arg1));
-		}
-	      /* Otherwise, for signed (arithmetic) shifts,
-		 ((X >> C1) & C2) != 0 is rewritten as X < 0, and
-		 ((X >> C1) & C2) == 0 is rewritten as X >= 0.  */
-	      else if (!TYPE_UNSIGNED (itype))
-		return fold_build2_loc (loc, code == EQ_EXPR ? GE_EXPR : LT_EXPR, type,
-				    arg000, build_int_cst (itype, 0));
-	      /* Otherwise, of unsigned (logical) shifts,
-		 ((X >> C1) & C2) != 0 is rewritten as (X,false), and
-		 ((X >> C1) & C2) == 0 is rewritten as (X,true).  */
-	      else
-		return omit_one_operand_loc (loc, type,
+		  tree arg01 = TREE_OPERAND (arg0, 1);
+		  tree arg000 = TREE_OPERAND (arg00, 0);
+		  unsigned HOST_WIDE_INT log2 = tree_log2 (arg01);
+		  /* If (C2 << C1) doesn't overflow, then
+		     ((X >> C1) & C2) != 0 can be rewritten as
+		     (X & (C2 << C1)) != 0.  */
+		  if ((log2 + TREE_INT_CST_LOW (arg001)) < prec)
+		    {
+		      tem = fold_build2_loc (loc, LSHIFT_EXPR, itype,
+					     arg01, arg001);
+		      tem = fold_build2_loc (loc, BIT_AND_EXPR, itype,
+					     arg000, tem);
+		      return fold_build2_loc (loc, code, type, tem,
+				fold_convert_loc (loc, itype, arg1));
+		    }
+		  /* Otherwise, for signed (arithmetic) shifts,
+		     ((X >> C1) & C2) != 0 is rewritten as X < 0, and
+		     ((X >> C1) & C2) == 0 is rewritten as X >= 0.  */
+		  else if (!TYPE_UNSIGNED (itype))
+		    return fold_build2_loc (loc, code == EQ_EXPR ? GE_EXPR
+								 : LT_EXPR,
+					    type, arg000,
+					    build_int_cst (itype, 0));
+		  /* Otherwise, of unsigned (logical) shifts,
+		     ((X >> C1) & C2) != 0 is rewritten as (X,false), and
+		     ((X >> C1) & C2) == 0 is rewritten as (X,true).  */
+		  else
+		    return omit_one_operand_loc (loc, type,
 					 code == EQ_EXPR ? integer_one_node
 							 : integer_zero_node,
 					 arg000);
+		}
 	    }
 	}
 
@@ -11643,50 +12249,6 @@ fold_binary_loc (location_t loc, enum tree_code code, tree type,
         {
 	  tree res = constant_boolean_node (code==NE_EXPR, type);
 	  return omit_one_operand_loc (loc, type, res, arg0);
-	}
-
-      /* Fold (X & C) op (Y & C) as (X ^ Y) & C op 0", and symmetries.  */
-      if (TREE_CODE (arg0) == BIT_AND_EXPR
-	  && TREE_CODE (arg1) == BIT_AND_EXPR)
-	{
-	  tree arg00 = TREE_OPERAND (arg0, 0);
-	  tree arg01 = TREE_OPERAND (arg0, 1);
-	  tree arg10 = TREE_OPERAND (arg1, 0);
-	  tree arg11 = TREE_OPERAND (arg1, 1);
-	  tree itype = TREE_TYPE (arg0);
-
-	  if (operand_equal_p (arg01, arg11, 0))
-	    {
-	      tem = fold_convert_loc (loc, itype, arg10);
-	      tem = fold_build2_loc (loc, BIT_XOR_EXPR, itype, arg00, tem);
-	      tem = fold_build2_loc (loc, BIT_AND_EXPR, itype, tem, arg01);
-	      return fold_build2_loc (loc, code, type, tem,
-				      build_zero_cst (itype));
-	    }
-	  if (operand_equal_p (arg01, arg10, 0))
-	    {
-	      tem = fold_convert_loc (loc, itype, arg11);
-	      tem = fold_build2_loc (loc, BIT_XOR_EXPR, itype, arg00, tem);
-	      tem = fold_build2_loc (loc, BIT_AND_EXPR, itype, tem, arg01);
-	      return fold_build2_loc (loc, code, type, tem,
-				      build_zero_cst (itype));
-	    }
-	  if (operand_equal_p (arg00, arg11, 0))
-	    {
-	      tem = fold_convert_loc (loc, itype, arg10);
-	      tem = fold_build2_loc (loc, BIT_XOR_EXPR, itype, arg01, tem);
-	      tem = fold_build2_loc (loc, BIT_AND_EXPR, itype, tem, arg00);
-	      return fold_build2_loc (loc, code, type, tem,
-				      build_zero_cst (itype));
-	    }
-	  if (operand_equal_p (arg00, arg10, 0))
-	    {
-	      tem = fold_convert_loc (loc, itype, arg11);
-	      tem = fold_build2_loc (loc, BIT_XOR_EXPR, itype, arg01, tem);
-	      tem = fold_build2_loc (loc, BIT_AND_EXPR, itype, tem, arg00);
-	      return fold_build2_loc (loc, code, type, tem,
-				      build_zero_cst (itype));
-	    }
 	}
 
       if (TREE_CODE (arg0) == BIT_XOR_EXPR
@@ -12498,7 +13060,9 @@ fold_ternary_loc (location_t loc, enum tree_code code, tree type,
 	  && tree_fits_uhwi_p (op2))
 	{
 	  tree eltype = TREE_TYPE (TREE_TYPE (arg0));
-	  unsigned HOST_WIDE_INT width = tree_to_uhwi (TYPE_SIZE (eltype));
+	  unsigned HOST_WIDE_INT width
+	    = (TREE_CODE (eltype) == BOOLEAN_TYPE
+	       ? TYPE_PRECISION (eltype) : tree_to_uhwi (TYPE_SIZE (eltype)));
 	  unsigned HOST_WIDE_INT n = tree_to_uhwi (arg1);
 	  unsigned HOST_WIDE_INT idx = tree_to_uhwi (op2);
 
@@ -13577,6 +14141,248 @@ multiple_of_p (tree type, const_tree top, const_tree bottom)
     }
 }
 
+/* Return true if expression X cannot be (or contain) a NaN or infinity.
+   This function returns true for integer expressions, and returns
+   false if uncertain.  */
+
+bool
+tree_expr_finite_p (const_tree x)
+{
+  machine_mode mode = element_mode (x);
+  if (!HONOR_NANS (mode) && !HONOR_INFINITIES (mode))
+    return true;
+  switch (TREE_CODE (x))
+    {
+    case REAL_CST:
+      return real_isfinite (TREE_REAL_CST_PTR (x));
+    case COMPLEX_CST:
+      return tree_expr_finite_p (TREE_REALPART (x))
+	     && tree_expr_finite_p (TREE_IMAGPART (x));
+    case FLOAT_EXPR:
+      return true;
+    case ABS_EXPR:
+    case CONVERT_EXPR:
+    case NON_LVALUE_EXPR:
+    case NEGATE_EXPR:
+    case SAVE_EXPR:
+      return tree_expr_finite_p (TREE_OPERAND (x, 0));
+    case MIN_EXPR:
+    case MAX_EXPR:
+      return tree_expr_finite_p (TREE_OPERAND (x, 0))
+	     && tree_expr_finite_p (TREE_OPERAND (x, 1));
+    case COND_EXPR:
+      return tree_expr_finite_p (TREE_OPERAND (x, 1))
+	     && tree_expr_finite_p (TREE_OPERAND (x, 2));
+    case CALL_EXPR:
+      switch (get_call_combined_fn (x))
+	{
+	CASE_CFN_FABS:
+	  return tree_expr_finite_p (CALL_EXPR_ARG (x, 0));
+	CASE_CFN_FMAX:
+	CASE_CFN_FMIN:
+	  return tree_expr_finite_p (CALL_EXPR_ARG (x, 0))
+		 && tree_expr_finite_p (CALL_EXPR_ARG (x, 1));
+	default:
+	  return false;
+	}
+
+    default:
+      return false;
+    }
+}
+
+/* Return true if expression X evaluates to an infinity.
+   This function returns false for integer expressions.  */
+
+bool
+tree_expr_infinite_p (const_tree x)
+{
+  if (!HONOR_INFINITIES (x))
+    return false;
+  switch (TREE_CODE (x))
+    {
+    case REAL_CST:
+      return real_isinf (TREE_REAL_CST_PTR (x));
+    case ABS_EXPR:
+    case NEGATE_EXPR:
+    case NON_LVALUE_EXPR:
+    case SAVE_EXPR:
+      return tree_expr_infinite_p (TREE_OPERAND (x, 0));
+    case COND_EXPR:
+      return tree_expr_infinite_p (TREE_OPERAND (x, 1))
+	     && tree_expr_infinite_p (TREE_OPERAND (x, 2));
+    default:
+      return false;
+    }
+}
+
+/* Return true if expression X could evaluate to an infinity.
+   This function returns false for integer expressions, and returns
+   true if uncertain.  */
+
+bool
+tree_expr_maybe_infinite_p (const_tree x)
+{
+  if (!HONOR_INFINITIES (x))
+    return false;
+  switch (TREE_CODE (x))
+    {
+    case REAL_CST:
+      return real_isinf (TREE_REAL_CST_PTR (x));
+    case FLOAT_EXPR:
+      return false;
+    case ABS_EXPR:
+    case NEGATE_EXPR:
+      return tree_expr_maybe_infinite_p (TREE_OPERAND (x, 0));
+    case COND_EXPR:
+      return tree_expr_maybe_infinite_p (TREE_OPERAND (x, 1))
+	     || tree_expr_maybe_infinite_p (TREE_OPERAND (x, 2));
+    default:
+      return true;
+    }
+}
+
+/* Return true if expression X evaluates to a signaling NaN.
+   This function returns false for integer expressions.  */
+
+bool
+tree_expr_signaling_nan_p (const_tree x)
+{
+  if (!HONOR_SNANS (x))
+    return false;
+  switch (TREE_CODE (x))
+    {
+    case REAL_CST:
+      return real_issignaling_nan (TREE_REAL_CST_PTR (x));
+    case NON_LVALUE_EXPR:
+    case SAVE_EXPR:
+      return tree_expr_signaling_nan_p (TREE_OPERAND (x, 0));
+    case COND_EXPR:
+      return tree_expr_signaling_nan_p (TREE_OPERAND (x, 1))
+	     && tree_expr_signaling_nan_p (TREE_OPERAND (x, 2));
+    default:
+      return false;
+    }
+}
+
+/* Return true if expression X could evaluate to a signaling NaN.
+   This function returns false for integer expressions, and returns
+   true if uncertain.  */
+
+bool
+tree_expr_maybe_signaling_nan_p (const_tree x)
+{
+  if (!HONOR_SNANS (x))
+    return false;
+  switch (TREE_CODE (x))
+    {
+    case REAL_CST:
+      return real_issignaling_nan (TREE_REAL_CST_PTR (x));
+    case FLOAT_EXPR:
+      return false;
+    case ABS_EXPR:
+    case CONVERT_EXPR:
+    case NEGATE_EXPR:
+    case NON_LVALUE_EXPR:
+    case SAVE_EXPR:
+      return tree_expr_maybe_signaling_nan_p (TREE_OPERAND (x, 0));
+    case MIN_EXPR:
+    case MAX_EXPR:
+      return tree_expr_maybe_signaling_nan_p (TREE_OPERAND (x, 0))
+	     || tree_expr_maybe_signaling_nan_p (TREE_OPERAND (x, 1));
+    case COND_EXPR:
+      return tree_expr_maybe_signaling_nan_p (TREE_OPERAND (x, 1))
+	     || tree_expr_maybe_signaling_nan_p (TREE_OPERAND (x, 2));
+    case CALL_EXPR:
+      switch (get_call_combined_fn (x))
+	{
+	CASE_CFN_FABS:
+	  return tree_expr_maybe_signaling_nan_p (CALL_EXPR_ARG (x, 0));
+	CASE_CFN_FMAX:
+	CASE_CFN_FMIN:
+	  return tree_expr_maybe_signaling_nan_p (CALL_EXPR_ARG (x, 0))
+		 || tree_expr_maybe_signaling_nan_p (CALL_EXPR_ARG (x, 1));
+	default:
+	  return true;
+	}
+    default:
+      return true;
+    }
+}
+
+/* Return true if expression X evaluates to a NaN.
+   This function returns false for integer expressions.  */
+
+bool
+tree_expr_nan_p (const_tree x)
+{
+  if (!HONOR_NANS (x))
+    return false;
+  switch (TREE_CODE (x))
+    {
+    case REAL_CST:
+      return real_isnan (TREE_REAL_CST_PTR (x));
+    case NON_LVALUE_EXPR:
+    case SAVE_EXPR:
+      return tree_expr_nan_p (TREE_OPERAND (x, 0));
+    case COND_EXPR:
+      return tree_expr_nan_p (TREE_OPERAND (x, 1))
+	     && tree_expr_nan_p (TREE_OPERAND (x, 2));
+    default:
+      return false;
+    }
+}
+
+/* Return true if expression X could evaluate to a NaN.
+   This function returns false for integer expressions, and returns
+   true if uncertain.  */
+
+bool
+tree_expr_maybe_nan_p (const_tree x)
+{
+  if (!HONOR_NANS (x))
+    return false;
+  switch (TREE_CODE (x))
+    {
+    case REAL_CST:
+      return real_isnan (TREE_REAL_CST_PTR (x));
+    case FLOAT_EXPR:
+      return false;
+    case PLUS_EXPR:
+    case MINUS_EXPR:
+    case MULT_EXPR:
+      return !tree_expr_finite_p (TREE_OPERAND (x, 0))
+	     || !tree_expr_finite_p (TREE_OPERAND (x, 1));
+    case ABS_EXPR:
+    case CONVERT_EXPR:
+    case NEGATE_EXPR:
+    case NON_LVALUE_EXPR:
+    case SAVE_EXPR:
+      return tree_expr_maybe_nan_p (TREE_OPERAND (x, 0));
+    case MIN_EXPR:
+    case MAX_EXPR:
+      return tree_expr_maybe_nan_p (TREE_OPERAND (x, 0))
+	     || tree_expr_maybe_nan_p (TREE_OPERAND (x, 1));
+    case COND_EXPR:
+      return tree_expr_maybe_nan_p (TREE_OPERAND (x, 1))
+	     || tree_expr_maybe_nan_p (TREE_OPERAND (x, 2));
+    case CALL_EXPR:
+      switch (get_call_combined_fn (x))
+	{
+	CASE_CFN_FABS:
+	  return tree_expr_maybe_nan_p (CALL_EXPR_ARG (x, 0));
+	CASE_CFN_FMAX:
+	CASE_CFN_FMIN:
+	  return tree_expr_maybe_nan_p (CALL_EXPR_ARG (x, 0))
+		 || tree_expr_maybe_nan_p (CALL_EXPR_ARG (x, 1));
+	default:
+	  return true;
+	}
+    default:
+      return true;
+    }
+}
+
 #define tree_expr_nonnegative_warnv_p(X, Y) \
   _Pragma ("GCC error \"Use RECURSE for recursive calls\"") 0
 
@@ -13754,7 +14560,13 @@ tree_binary_nonnegative_warnv_p (enum tree_code code, tree type, tree op0,
       return false;
 
     case BIT_AND_EXPR:
+      return RECURSE (op0) || RECURSE (op1);
+
     case MAX_EXPR:
+      /* Usually RECURSE (op0) || RECURSE (op1) but NaNs complicate
+	 things.  */
+      if (tree_expr_maybe_nan_p (op0) || tree_expr_maybe_nan_p (op1))
+	return RECURSE (op0) && RECURSE (op1);
       return RECURSE (op0) || RECURSE (op1);
 
     case BIT_IOR_EXPR:
@@ -13852,8 +14664,10 @@ tree_call_nonnegative_warnv_p (tree type, combined_fn fn, tree arg0, tree arg1,
     CASE_CFN_POPCOUNT:
     CASE_CFN_CLZ:
     CASE_CFN_CLRSB:
+    case CFN_BUILT_IN_BSWAP16:
     case CFN_BUILT_IN_BSWAP32:
     case CFN_BUILT_IN_BSWAP64:
+    case CFN_BUILT_IN_BSWAP128:
       /* Always true.  */
       return true;
 
@@ -13912,8 +14726,18 @@ tree_call_nonnegative_warnv_p (tree type, combined_fn fn, tree arg0, tree arg1,
 
     CASE_CFN_FMAX:
     CASE_CFN_FMAX_FN:
-      /* True if the 1st OR 2nd arguments are nonnegative.  */
-      return RECURSE (arg0) || RECURSE (arg1);
+      /* Usually RECURSE (arg0) || RECURSE (arg1) but NaNs complicate
+	 things.  In the presence of sNaNs, we're only guaranteed to be
+	 non-negative if both operands are non-negative.  In the presence
+	 of qNaNs, we're non-negative if either operand is non-negative
+	 and can't be a qNaN, or if both operands are non-negative.  */
+      if (tree_expr_maybe_signaling_nan_p (arg0) ||
+	  tree_expr_maybe_signaling_nan_p (arg1))
+        return RECURSE (arg0) && RECURSE (arg1);
+      return RECURSE (arg0) ? (!tree_expr_maybe_nan_p (arg0)
+			       || RECURSE (arg1))
+			    : (RECURSE (arg1)
+			       && !tree_expr_maybe_nan_p (arg1));
 
     CASE_CFN_FMIN:
     CASE_CFN_FMIN_FN:
@@ -14629,7 +15453,7 @@ fold_read_from_constant_string (tree exp)
       if (string
 	  && TYPE_MODE (TREE_TYPE (exp)) == TYPE_MODE (TREE_TYPE (TREE_TYPE (string)))
 	  && TREE_CODE (string) == STRING_CST
-	  && TREE_CODE (index) == INTEGER_CST
+	  && tree_fits_uhwi_p (index)
 	  && compare_tree_int (index, TREE_STRING_LENGTH (string)) < 0
 	  && is_int_mode (TYPE_MODE (TREE_TYPE (TREE_TYPE (string))),
 			  &char_mode)
@@ -14655,6 +15479,9 @@ fold_read_from_vector (tree arg, poly_uint64 idx)
 	return VECTOR_CST_ELT (arg, i);
       else if (TREE_CODE (arg) == CONSTRUCTOR)
 	{
+	  if (CONSTRUCTOR_NELTS (arg)
+	      && VECTOR_TYPE_P (TREE_TYPE (CONSTRUCTOR_ELT (arg, 0)->value)))
+	    return NULL_TREE;
 	  if (i >= CONSTRUCTOR_NELTS (arg))
 	    return build_zero_cst (TREE_TYPE (TREE_TYPE (arg)));
 	  return CONSTRUCTOR_ELT (arg, i)->value;
@@ -15402,6 +16229,8 @@ ptr_difference_const (tree e1, tree e2, poly_int64_pod *diff)
 tree
 convert_to_ptrofftype_loc (location_t loc, tree off)
 {
+  if (ptrofftype_p (TREE_TYPE (off)))
+    return off;
   return fold_convert_loc (loc, sizetype, off);
 }
 
@@ -15421,24 +16250,32 @@ fold_build_pointer_plus_hwi_loc (location_t loc, tree ptr, HOST_WIDE_INT off)
 			  ptr, size_int (off));
 }
 
-/* Return a pointer P to a NUL-terminated string representing the sequence
-   of constant characters referred to by SRC (or a subsequence of such
-   characters within it if SRC is a reference to a string plus some
-   constant offset).  If STRLEN is non-null, store the number of bytes
-   in the string constant including the terminating NUL char.  *STRLEN is
-   typically strlen(P) + 1 in the absence of embedded NUL characters.  */
+/* Return a pointer to a NUL-terminated string containing the sequence
+   of bytes corresponding to the representation of the object referred to
+   by SRC (or a subsequence of such bytes within it if SRC is a reference
+   to an initialized constant array plus some constant offset).
+   Set *STRSIZE the number of bytes in the constant sequence including
+   the terminating NUL byte.  *STRSIZE is equal to sizeof(A) - OFFSET
+   where A is the array that stores the constant sequence that SRC points
+   to and OFFSET is the byte offset of SRC from the beginning of A.  SRC
+   need not point to a string or even an array of characters but may point
+   to an object of any type.  */
 
 const char *
-c_getstr (tree src, unsigned HOST_WIDE_INT *strlen /* = NULL */)
+getbyterep (tree src, unsigned HOST_WIDE_INT *strsize)
 {
+  /* The offset into the array A storing the string, and A's byte size.  */
   tree offset_node;
   tree mem_size;
 
-  if (strlen)
-    *strlen = 0;
+  if (strsize)
+    *strsize = 0;
 
-  src = string_constant (src, &offset_node, &mem_size, NULL);
-  if (src == 0)
+  if (strsize)
+    src = byte_representation (src, &offset_node, &mem_size, NULL);
+  else
+    src = string_constant (src, &offset_node, &mem_size, NULL);
+  if (!src)
     return NULL;
 
   unsigned HOST_WIDE_INT offset = 0;
@@ -15453,34 +16290,39 @@ c_getstr (tree src, unsigned HOST_WIDE_INT *strlen /* = NULL */)
   if (!tree_fits_uhwi_p (mem_size))
     return NULL;
 
-  /* STRING_LENGTH is the size of the string literal, including any
-     embedded NULs.  STRING_SIZE is the size of the array the string
-     literal is stored in.  */
-  unsigned HOST_WIDE_INT string_length = TREE_STRING_LENGTH (src);
-  unsigned HOST_WIDE_INT string_size = tree_to_uhwi (mem_size);
-
-  /* Ideally this would turn into a gcc_checking_assert over time.  */
-  if (string_length > string_size)
-    string_length = string_size;
-
+  /* ARRAY_SIZE is the byte size of the array the constant sequence
+     is stored in and equal to sizeof A.  INIT_BYTES is the number
+     of bytes in the constant sequence used to initialize the array,
+     including any embedded NULs as well as the terminating NUL (for
+     strings), but not including any trailing zeros/NULs past
+     the terminating one appended implicitly to a string literal to
+     zero out the remainder of the array it's stored in.  For example,
+     given:
+       const char a[7] = "abc\0d";
+       n = strlen (a + 1);
+     ARRAY_SIZE is 7, INIT_BYTES is 6, and OFFSET is 1.  For a valid
+     (i.e., nul-terminated) string with no embedded nuls, INIT_BYTES
+     is equal to strlen (A) + 1.  */
+  const unsigned HOST_WIDE_INT array_size = tree_to_uhwi (mem_size);
+  unsigned HOST_WIDE_INT init_bytes = TREE_STRING_LENGTH (src);
   const char *string = TREE_STRING_POINTER (src);
 
   /* Ideally this would turn into a gcc_checking_assert over time.  */
-  if (string_length > string_size)
-    string_length = string_size;
+  if (init_bytes > array_size)
+    init_bytes = array_size;
 
-  if (string_length == 0
-      || offset >= string_size)
+  if (init_bytes == 0 || offset >= array_size)
     return NULL;
 
-  if (strlen)
+  if (strsize)
     {
-      /* Compute and store the length of the substring at OFFSET.
-	 All offsets past the initial length refer to null strings.  */
-      if (offset < string_length)
-	*strlen = string_length - offset;
+      /* Compute and store the number of characters from the beginning
+	 of the substring at OFFSET to the end, including the terminating
+	 nul.  Offsets past the initial length refer to null strings.  */
+      if (offset < init_bytes)
+	*strsize = init_bytes - offset;
       else
-	*strlen = 1;
+	*strsize = 1;
     }
   else
     {
@@ -15488,11 +16330,23 @@ c_getstr (tree src, unsigned HOST_WIDE_INT *strlen /* = NULL */)
       /* Support only properly NUL-terminated single byte strings.  */
       if (tree_to_uhwi (TYPE_SIZE_UNIT (eltype)) != 1)
 	return NULL;
-      if (string[string_length - 1] != '\0')
+      if (string[init_bytes - 1] != '\0')
 	return NULL;
     }
 
-  return offset < string_length ? string + offset : "";
+  return offset < init_bytes ? string + offset : "";
+}
+
+/* Return a pointer to a NUL-terminated string corresponding to
+   the expression STR referencing a constant string, possibly
+   involving a constant offset.  Return null if STR either doesn't
+   reference a constant string or if it involves a nonconstant
+   offset.  */
+
+const char *
+c_getstr (tree str)
+{
+  return getbyterep (str, NULL);
 }
 
 /* Given a tree T, compute which bits in T may be nonzero.  */

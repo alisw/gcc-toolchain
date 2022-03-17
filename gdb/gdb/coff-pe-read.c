@@ -2,7 +2,7 @@
    convert to internal format, for GDB. Used as a last resort if no
    debugging symbols recognized.
 
-   Copyright (C) 2003-2020 Free Software Foundation, Inc.
+   Copyright (C) 2003-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -133,7 +133,7 @@ get_section_vmas (bfd *abfd, asection *sectp, void *context)
   if (sectix != PE_SECTION_INDEX_INVALID)
     {
       /* Data within the section start at rva_start in the pe and at
-         bfd_get_section_vma() within memory.  Store the offset.  */
+	 bfd_get_section_vma() within memory.  Store the offset.  */
 
       sections[sectix].vma_offset
 	= bfd_section_vma (sectp) - sections[sectix].rva_start;
@@ -246,7 +246,7 @@ add_pe_forwarded_sym (minimal_symbol_reader &reader,
 
   vma = BMSYMBOL_VALUE_ADDRESS (msymbol);
   msymtype = MSYMBOL_TYPE (msymbol.minsym);
-  section = MSYMBOL_SECTION (msymbol.minsym);
+  section = msymbol.minsym->section_index ();
 
   /* Generate a (hopefully unique) qualified name using the first part
      of the dll name, e.g. KERNEL32!AddAtomA.  This matches the style
@@ -549,7 +549,7 @@ read_pe_exported_syms (minimal_symbol_reader &reader,
       /* Pointer to the function address vector.  */
       /* This is relative to ordinal value. */
       unsigned long func_rva = pe_as32 (erva + exp_funcbase +
-                                        ordinal * 4);
+					ordinal * 4);
 
       /* Find this symbol's section in our own array.  */
       int sectix = 0;

@@ -1,7 +1,7 @@
 /* An experimental state machine, for tracking bad calls from within
    signal handlers.
 
-   Copyright (C) 2019-2020 Free Software Foundation, Inc.
+   Copyright (C) 2019-2021 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -32,6 +32,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "diagnostic-path.h"
 #include "diagnostic-metadata.h"
 #include "function.h"
+#include "json.h"
 #include "analyzer/analyzer.h"
 #include "diagnostic-event-id.h"
 #include "analyzer/analyzer-logging.h"
@@ -41,6 +42,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "tristate.h"
 #include "ordered-hash-map.h"
 #include "selftest.h"
+#include "analyzer/call-string.h"
+#include "analyzer/program-point.h"
+#include "analyzer/store.h"
 #include "analyzer/region-model.h"
 #include "analyzer/program-state.h"
 #include "analyzer/checker-path.h"
@@ -49,8 +53,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "gimple-iterator.h"
 #include "cgraph.h"
 #include "analyzer/supergraph.h"
-#include "analyzer/call-string.h"
-#include "analyzer/program-point.h"
 #include "alloc-pool.h"
 #include "fibonacci_heap.h"
 #include "analyzer/diagnostic-manager.h"
@@ -90,9 +92,6 @@ public:
 
   /* These states are "global", rather than per-expression.  */
 
-  /* Start state.  */
-  state_t m_start;
-
   /* State for when we're in a signal handler.  */
   state_t m_in_signal_handler;
 
@@ -123,13 +122,32 @@ public:
 
   bool emit (rich_location *rich_loc) FINAL OVERRIDE
   {
+    auto_diagnostic_group d;
     diagnostic_metadata m;
     /* CWE-479: Signal Handler Use of a Non-reentrant Function.  */
     m.add_cwe (479);
-    return warning_meta (rich_loc, m,
-			 OPT_Wanalyzer_unsafe_call_within_signal_handler,
-			 "call to %qD from within signal handler",
-			 m_unsafe_fndecl);
+    if (warning_meta (rich_loc, m,
+		      OPT_Wanalyzer_unsafe_call_within_signal_handler,
+		      "call to %qD from within signal handler",
+		      m_unsafe_fndecl))
+      {
+	/* If we know a possible alternative function, add a note
+	   suggesting the replacement.  */
+	if (const char *replacement = get_replacement_fn ())
+	  {
+	    location_t note_loc = gimple_location (m_unsafe_call);
+	    /* It would be nice to add a fixit, but the gimple call
+	       location covers the whole call expression.  It isn't
+	       currently possible to cut this down to just the call
+	       symbol.  So the fixit would replace too much.
+	       note_rich_loc.add_fixit_replace (replacement); */
+	    inform (note_loc,
+		    "%qs is a possible signal-safe alternative for %qD",
+		    replacement, m_unsafe_fndecl);
+	  }
+	return true;
+      }
+    return false;
   }
 
   label_text describe_state_change (const evdesc::state_change &change)
@@ -138,8 +156,7 @@ public:
     if (change.is_global_p ()
 	&& change.m_new_state == m_sm.m_in_signal_handler)
       {
-	function *handler
-	  = change.m_event.m_dst_state.m_region_model->get_current_function ();
+	function *handler = change.m_event.get_dest_function ();
 	return change.formatted_print ("registering %qD as signal handler",
 				       handler->decl);
       }
@@ -156,6 +173,20 @@ private:
   const signal_state_machine &m_sm;
   const gcall *m_unsafe_call;
   tree m_unsafe_fndecl;
+
+  /* Returns a replacement function as text if it exists.  Currently
+     only "exit" has a signal-safe replacement "_exit", which does
+     slightly less, but can be used in a signal handler.  */
+  const char *
+  get_replacement_fn ()
+  {
+    gcc_assert (m_unsafe_fndecl && DECL_P (m_unsafe_fndecl));
+
+    if (id_equal ("exit", DECL_NAME (m_unsafe_fndecl)))
+      return "_exit";
+
+    return NULL;
+  }
 };
 
 /* signal_state_machine's ctor.  */
@@ -163,7 +194,6 @@ private:
 signal_state_machine::signal_state_machine (logger *logger)
 : state_machine ("signal", logger)
 {
-  m_start = add_state ("start");
   m_in_signal_handler = add_state ("in_signal_handler");
   m_stop = add_state ("stop");
 }
@@ -175,8 +205,9 @@ static void
 update_model_for_signal_handler (region_model *model,
 				 function *handler_fun)
 {
+  gcc_assert (model);
   /* Purge all state within MODEL.  */
-  *model = region_model ();
+  *model = region_model (model->get_manager ());
   model->push_frame (handler_fun, NULL, NULL);
 }
 
@@ -188,6 +219,12 @@ public:
   void print (pretty_printer *pp) FINAL OVERRIDE
   {
     pp_string (pp, "signal delivered");
+  }
+
+  json::object *to_json () const
+  {
+    json::object *custom_obj = new json::object ();
+    return custom_obj;
   }
 
   void update_model (region_model *model,
@@ -240,9 +277,9 @@ public:
 
     exploded_node *dst_enode = eg->get_or_create_node (entering_handler,
 						       state_entering_handler,
-						       NULL);
+						       src_enode);
     if (dst_enode)
-      eg->add_edge (src_enode, dst_enode, NULL, state_change (),
+      eg->add_edge (src_enode, dst_enode, NULL, /*state_change (),*/
 		    new signal_delivery_edge_info_t ());
   }
 
@@ -259,6 +296,7 @@ get_async_signal_unsafe_fns ()
   // TODO: populate this list more fully
   static const char * const async_signal_unsafe_fns[] = {
     /* This array must be kept sorted.  */
+    "exit",
     "fprintf",
     "free",
     "malloc",
@@ -274,7 +312,7 @@ get_async_signal_unsafe_fns ()
     = sizeof(async_signal_unsafe_fns) / sizeof (async_signal_unsafe_fns[0]);
   function_set fs (async_signal_unsafe_fns, count);
   return fs;
-};
+}
 
 /* Return true if FNDECL is known to be unsafe to call from a signal
    handler.  */
@@ -315,9 +353,10 @@ signal_state_machine::on_stmt (sm_context *sm_ctxt,
       if (const gcall *call = dyn_cast <const gcall *> (stmt))
 	if (tree callee_fndecl = sm_ctxt->get_fndecl_for_call (call))
 	  if (signal_unsafe_p (callee_fndecl))
-	    sm_ctxt->warn_for_state (node, stmt, NULL_TREE, m_in_signal_handler,
-				     new signal_unsafe_call (*this, call,
-							     callee_fndecl));
+	    if (sm_ctxt->get_global_state () == m_in_signal_handler)
+	      sm_ctxt->warn (node, stmt, NULL_TREE,
+			     new signal_unsafe_call (*this, call,
+						     callee_fndecl));
     }
 
   return false;

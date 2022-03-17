@@ -1,10 +1,45 @@
-2020-07-23  Release Manager
+2021-07-28  Release Manager
 
-	* GCC 10.2.0 released.
+	* GCC 11.2.0 released.
 
-2020-05-07  Release Manager
+2021-04-27  Release Manager
 
-	* GCC 10.1.0 released.
+	* GCC 11.1.0 released.
+
+2021-01-05  Jakub Jelinek  <jakub@redhat.com>
+
+	* Make-lang.in (cc1objplus-checksum, cc1objplus$(exeext): Add
+	$(CODYLIB) after $(BACKEND).
+
+2021-01-05  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	PR c++/98316
+	* Make-lang.in (cc1objplus$(exeext)): Add $(CODYLIB), $(NETLIBS).
+
+2020-11-20  Jakub Jelinek  <jakub@redhat.com>
+
+	PR other/97911
+	* Make-lang.in (obj-c++.serial): Change from goal to a variable.
+	(.PHONY): Drop obj-c++.serial and obj-c++.prev.
+	(cc1objplus$(exeext)): Depend on $(obj-c++.serial) rather than
+	obj-c++.serial.
+
+2020-11-18  Jakub Jelinek  <jakub@redhat.com>
+
+	* Make-lang.in (obj-c++.serial): New goal.
+	(.PHONY): Add obj-c++.serial obj-c++.prev.
+	(cc1objplus$(exeext)): Depend on obj-c++.prev.  Call LINK_PROGRESS.
+
+2020-09-25  Nathan Sidwell  <nathan@acm.org>
+
+	* objcp-decl.c (objcp_start_struct): Use TAG_how not tag_scope.
+	(objcp_xref_tag): Likewise.
+
+2020-09-24  Nathan Sidwell  <nathan@acm.org>
+
+	* objcp-decl.c (objcp_start_struct): Drop default args to
+	xref_tag.
+	(objcp_xref_tag): Likewise.
 
 2020-01-01  Jakub Jelinek  <jakub@redhat.com>
 
@@ -563,7 +598,7 @@
 	* objcp-lang.c: Likewise.
 
 
-Copyright (C) 2005-2020 Free Software Foundation, Inc.
+Copyright (C) 2005-2021 Free Software Foundation, Inc.
 
 Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright

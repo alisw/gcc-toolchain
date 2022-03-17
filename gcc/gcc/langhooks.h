@@ -1,5 +1,5 @@
 /* The lang_hooks data structure.
-   Copyright (C) 2001-2020 Free Software Foundation, Inc.
+   Copyright (C) 2001-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -252,6 +252,10 @@ struct lang_hooks_for_decls
      predetermined, OMP_CLAUSE_DEFAULT_UNSPECIFIED otherwise.  */
   enum omp_clause_default_kind (*omp_predetermined_sharing) (tree);
 
+  /* Return mapping kind if OpenMP mapping attribute of DECL is
+     predetermined, OMP_CLAUSE_DEFAULTMAP_CATEGORY_UNSPECIFIED otherwise.  */
+  enum omp_clause_defaultmap_kind (*omp_predetermined_mapping) (tree);
+
   /* Return decl that should be reported for DEFAULT(NONE) failure
      diagnostics.  Usually the DECL passed in.  */
   tree (*omp_report_decl) (tree);
@@ -290,11 +294,21 @@ struct lang_hooks_for_decls
   tree (*omp_clause_dtor) (tree clause, tree decl);
 
   /* Do language specific checking on an implicitly determined clause.  */
-  void (*omp_finish_clause) (tree clause, gimple_seq *pre_p);
+  void (*omp_finish_clause) (tree clause, gimple_seq *pre_p, bool);
 
   /* Return true if DECL is a scalar variable (for the purpose of
      implicit firstprivatization).  */
   bool (*omp_scalar_p) (tree decl);
+
+  /* Return a pointer to the tree representing the initializer
+     expression for the non-local variable DECL.  Return NULL if
+     DECL is not initialized.  */
+  tree *(*omp_get_decl_init) (tree decl);
+
+  /* Free any extra memory used to hold initializer information for
+     variable declarations.  omp_get_decl_init must not be called
+     after calling this.  */
+  void (*omp_finish_decl_inits) (void);
 };
 
 /* Language hooks related to LTO serialization.  */
@@ -351,6 +365,24 @@ struct lang_hooks
   /* Callback used to perform language-specific initialization for the
      global diagnostic context structure.  */
   void (*initialize_diagnostics) (diagnostic_context *);
+
+  /* Beginning the main source file.  */
+  void (*preprocess_main_file) (cpp_reader *, line_maps *,
+				const line_map_ordinary *);
+
+  /* Adjust libcpp options and callbacks.  */
+  void (*preprocess_options) (cpp_reader *);
+
+  /* Undefining a macro.  */
+  void (*preprocess_undef) (cpp_reader *, location_t, cpp_hashnode *);
+
+  /* Observer for preprocessing stream.  */
+  uintptr_t (*preprocess_token) (cpp_reader *, const cpp_token *, uintptr_t);
+  /* Various flags it can return about the token.  */
+  enum PT_flags
+    {
+     PT_begin_pragma = 1 << 0
+    };
 
   /* Register language-specific dumps.  */
   void (*register_dumps) (gcc::dump_manager *);
@@ -575,6 +607,9 @@ struct lang_hooks
      for GCC developers (to help debugging) rather than for end-users.  */
   const char *(*get_substring_location) (const substring_loc &,
 					 location_t *out_loc);
+
+  /* Invoked before the early_finish debug hook is invoked.  */
+  void (*finalize_early_debug) (void);
 
   /* Whenever you add entries here, make sure you adjust langhooks-def.h
      and langhooks.c accordingly.  */

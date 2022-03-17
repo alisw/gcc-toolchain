@@ -1,7 +1,7 @@
 /* tbuildopt.c -- test file for mpfr_buildopt_tls_p and
    mpfr_buildopt_decimal_p.
 
-Copyright 2009-2019 Free Software Foundation, Inc.
+Copyright 2009-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -95,6 +95,24 @@ check_gmpinternals_p (void)
 #endif
 }
 
+static void
+check_sharedcache_p (void)
+{
+#if defined(MPFR_WANT_SHARED_CACHE)
+  if (!mpfr_buildopt_sharedcache_p ())
+    {
+      printf ("Error: mpfr_buildopt_sharedcache_p should return true\n");
+      exit (1);
+    }
+#else
+  if (mpfr_buildopt_sharedcache_p ())
+    {
+      printf ("Error: mpfr_buildopt_sharedcache_p should return false\n");
+      exit (1);
+    }
+#endif
+}
+
 int
 main (void)
 {
@@ -104,6 +122,7 @@ main (void)
   check_decimal_p();
   check_float128_p();
   check_gmpinternals_p();
+  check_sharedcache_p ();
   {
     const char *s = mpfr_buildopt_tune_case ();
     (void) strlen (s);

@@ -1,4 +1,4 @@
-/* Copyright (C) 1995-2020 Free Software Foundation, Inc.
+/* Copyright (C) 1995-2022 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,10 +13,9 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#include "config.h"
 #include "ansidecl.h"
-#include "gdb/callback.h"
-#include "gdb/remote-sim.h"
+#include "sim/callback.h"
+#include "sim/sim.h"
 #include <sim-config.h>
 #include <stdint.h>
 

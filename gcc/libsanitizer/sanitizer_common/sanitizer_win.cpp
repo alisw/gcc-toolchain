@@ -94,6 +94,10 @@ uptr internal_getpid() {
   return GetProcessId(GetCurrentProcess());
 }
 
+int internal_dlinfo(void *handle, int request, void *p) {
+  UNIMPLEMENTED();
+}
+
 // In contrast to POSIX, on Windows GetCurrentThreadId()
 // returns a system-unique identifier.
 tid_t GetTid() {
@@ -344,6 +348,22 @@ bool DontDumpShadowMemory(uptr addr, uptr length) {
   return true;
 }
 
+uptr MapDynamicShadow(uptr shadow_size_bytes, uptr shadow_scale,
+                      uptr min_shadow_base_alignment,
+                      UNUSED uptr &high_mem_end) {
+  const uptr granularity = GetMmapGranularity();
+  const uptr alignment =
+      Max<uptr>(granularity << shadow_scale, 1ULL << min_shadow_base_alignment);
+  const uptr left_padding =
+      Max<uptr>(granularity, 1ULL << min_shadow_base_alignment);
+  uptr space_size = shadow_size_bytes + left_padding;
+  uptr shadow_start = FindAvailableMemoryRange(space_size, alignment,
+                                               granularity, nullptr, nullptr);
+  CHECK_NE((uptr)0, shadow_start);
+  CHECK(IsAligned(shadow_start, alignment));
+  return shadow_start;
+}
+
 uptr FindAvailableMemoryRange(uptr size, uptr alignment, uptr left_padding,
                               uptr *largest_gap_found,
                               uptr *max_occupied_addr) {
@@ -470,8 +490,6 @@ void DumpProcessMap() {
   }
 }
 #endif
-
-void PrintModuleMap() { }
 
 void DisableCoreDumperIfNecessary() {
   // Do nothing.
@@ -787,7 +805,7 @@ uptr GetRSS() {
   return counters.WorkingSetSize;
 }
 
-void *internal_start_thread(void (*func)(void *arg), void *arg) { return 0; }
+void *internal_start_thread(void *(*func)(void *arg), void *arg) { return 0; }
 void internal_join_thread(void *th) { }
 
 // ---------------------- BlockingMutex ---------------- {{{1
@@ -1060,7 +1078,8 @@ char **GetEnviron() {
 }
 
 pid_t StartSubprocess(const char *program, const char *const argv[],
-                      fd_t stdin_fd, fd_t stdout_fd, fd_t stderr_fd) {
+                      const char *const envp[], fd_t stdin_fd, fd_t stdout_fd,
+                      fd_t stderr_fd) {
   // FIXME: implement on this platform
   // Should be implemented based on
   // SymbolizerProcess::StarAtSymbolizerSubprocess
@@ -1118,6 +1137,8 @@ void LogFullErrorReport(const char *buffer) {
   }
 }
 #endif // SANITIZER_WIN_TRACE
+
+void InitializePlatformCommonFlags(CommonFlags *cf) {}
 
 }  // namespace __sanitizer
 

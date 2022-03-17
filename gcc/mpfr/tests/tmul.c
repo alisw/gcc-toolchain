@@ -1,6 +1,6 @@
 /* Test file for mpfr_mul.
 
-Copyright 1999, 2001-2019 Free Software Foundation, Inc.
+Copyright 1999, 2001-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -334,10 +334,10 @@ check_max (void)
   MPFR_ASSERTN(mpfr_cmp (zz, yy) == 0);
   set_emin (emin);
 
-  /* coverage test for mulders.c, case n > 8448 (MUL_FFT_THRESHOLD default) */
-  mpfr_set_prec (xx, (8448 + 1) * GMP_NUMB_BITS);
-  mpfr_set_prec (yy, (8448 + 1) * GMP_NUMB_BITS);
-  mpfr_set_prec (zz, (8448 + 1) * GMP_NUMB_BITS);
+  /* coverage test for mulders.c, case n > MUL_FFT_THRESHOLD */
+  mpfr_set_prec (xx, (MUL_FFT_THRESHOLD + 1) * GMP_NUMB_BITS);
+  mpfr_set_prec (yy, (MUL_FFT_THRESHOLD + 1) * GMP_NUMB_BITS);
+  mpfr_set_prec (zz, (MUL_FFT_THRESHOLD + 1) * GMP_NUMB_BITS);
   mpfr_set_ui (xx, 1, MPFR_RNDN);
   mpfr_nextbelow (xx);
   mpfr_set_ui (yy, 1, MPFR_RNDN);
@@ -746,7 +746,7 @@ test_underflow (mpfr_prec_t pmax)
           printf ("c="); mpfr_dump (c);
           printf ("a="); mpfr_dump (a);
           mpfr_set_prec (a, mpfr_get_prec (b) + mpfr_get_prec (c));
-          mpfr_mul_2exp (b, b, 1, MPFR_RNDN);
+          mpfr_mul_2ui (b, b, 1, MPFR_RNDN);
           inex = mpfr_mul (a, b, c, MPFR_RNDN);
           MPFR_ASSERTN (inex == 0);
           printf ("Exact 2*a="); mpfr_dump (a);
@@ -789,7 +789,7 @@ test_underflow (mpfr_prec_t pmax)
           printf ("c="); mpfr_dump (c);
           printf ("a="); mpfr_dump (a);
           mpfr_set_prec (a, mpfr_get_prec (b) + mpfr_get_prec (c));
-          mpfr_mul_2exp (b, b, 1, MPFR_RNDN);
+          mpfr_mul_2ui (b, b, 1, MPFR_RNDN);
           inex = mpfr_mul (a, b, c, MPFR_RNDN);
           MPFR_ASSERTN (inex == 0);
           printf ("Exact 2*a="); mpfr_dump (a);
@@ -1032,8 +1032,9 @@ small_prec (void)
         inex2 = mpfr_mul (z2, x, y, rnd);
         flags2 = __gmpfr_flags;
         if (!(mpfr_equal_p (z1, z2) &&
-              SAME_SIGN (inex1, inex2) &&
-              flags1 == flags2))
+              SAME_SIGN (inex1, inex2)
+              && flags1 == flags2
+              ))
           {
             printf ("Error in small_prec on i = %d, j = %d\n", i, j);
             printf ("r = 0x%x, xq = %d, yq = %d, zq = %d, rnd = %s\n",
@@ -1265,12 +1266,42 @@ coverage (mpfr_prec_t pmax)
     }
 }
 
+/* check special underflow case for precision = 64 */
+static void
+coverage2 (void)
+{
+  mpfr_t a, b, c;
+  int inex;
+  mpfr_exp_t emin;
+
+  emin = mpfr_get_emin (); /* save emin */
+  mpfr_set_emin (0);
+
+  mpfr_init2 (a, 64);
+  mpfr_init2 (b, 64);
+  mpfr_init2 (c, 64);
+
+  mpfr_set_str_binary (b, "1111110110100001011100100000100000110110001100100010011010011001E-64"); /* 18276014142440744601/2^64 */
+  mpfr_set_str_binary (c, "1000000100110010000111000100010010010001000100101010111101010100E-64"); /* 9309534460545511252/2^64 */
+  /* since 1/2-2^-66 < b0*c0 < 1/2, b0*c0 should be rounded to 1/2 */
+  inex = mpfr_mul (a, b, c, MPFR_RNDN);
+  MPFR_ASSERTN(mpfr_cmp_ui_2exp (a, 1, -1) == 0);
+  MPFR_ASSERTN(inex > 0);
+
+  mpfr_clear (a);
+  mpfr_clear (b);
+  mpfr_clear (c);
+
+  mpfr_set_emin (emin); /* restore emin */
+}
+
 int
 main (int argc, char *argv[])
 {
   tests_start_mpfr ();
 
   coverage (1024);
+  coverage2 ();
   testall_rndf (9);
   check_nans ();
   check_exact ();

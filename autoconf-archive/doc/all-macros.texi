@@ -26,6 +26,7 @@
 * ax_blas::
 * ax_blas_f77_func::
 * ax_boost_asio::
+* ax_boost_atomic::
 * ax_boost_base::
 * ax_boost_chrono::
 * ax_boost_context::
@@ -39,6 +40,7 @@
 * ax_boost_process::
 * ax_boost_program_options::
 * ax_boost_python::
+* ax_boost_random::
 * ax_boost_regex::
 * ax_boost_serialization::
 * ax_boost_signals::
@@ -405,6 +407,7 @@
 * ax_missing_prog::
 * ax_mpi::
 * ax_mpip::
+* ax_ms_cpprest::
 * ax_need_awk::
 * ax_normalize_path::
 * ax_not_enable_frame_pointer::
@@ -605,6 +608,7 @@
 @include ax_blas.texi
 @include ax_blas_f77_func.texi
 @include ax_boost_asio.texi
+@include ax_boost_atomic.texi
 @include ax_boost_base.texi
 @include ax_boost_chrono.texi
 @include ax_boost_context.texi
@@ -618,6 +622,7 @@
 @include ax_boost_process.texi
 @include ax_boost_program_options.texi
 @include ax_boost_python.texi
+@include ax_boost_random.texi
 @include ax_boost_regex.texi
 @include ax_boost_serialization.texi
 @include ax_boost_signals.texi
@@ -984,6 +989,7 @@
 @include ax_missing_prog.texi
 @include ax_mpi.texi
 @include ax_mpip.texi
+@include ax_ms_cpprest.texi
 @include ax_need_awk.texi
 @include ax_normalize_path.texi
 @include ax_not_enable_frame_pointer.texi

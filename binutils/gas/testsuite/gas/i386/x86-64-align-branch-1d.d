@@ -19,7 +19,7 @@ Disassembly of section .text:
   1d:	89 75 f4             	mov    %esi,-0xc\(%rbp\)
   20:	48 39 c5             	cmp    %rax,%rbp
   23:	74 5b                	je     (0x)?80( .*)?
-  25:	2e 89 75 f4          	mov    %esi,%cs:-0xc\(%rbp\)
+  25:	2e 89 75 f4          	cs mov %esi,-0xc\(%rbp\)
   29:	89 75 f4             	mov    %esi,-0xc\(%rbp\)
   2c:	89 7d f8             	mov    %edi,-0x8\(%rbp\)
   2f:	89 75 f4             	mov    %esi,-0xc\(%rbp\)
@@ -72,5 +72,5 @@ Disassembly of section .text:
   bc:	89 b5 50 fb ff ff    	mov    %esi,-0x4b0\(%rbp\)
   c2:	eb c2                	jmp    (0x)?86( .*)?
   c4:	5d                   	pop    %rbp
-  c5:	c3                   	retq   
+  c5:	c3                   	ret *
 #pass

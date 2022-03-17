@@ -13,6 +13,7 @@
 package runtime
 
 import (
+	"runtime/internal/atomic"
 	"runtime/internal/sys"
 	"unsafe"
 )
@@ -181,9 +182,15 @@ func traceBufPtrOf(b *traceBuf) traceBufPtr {
 // Most clients should use the runtime/trace package or the testing package's
 // -test.trace flag instead of calling StartTrace directly.
 func StartTrace() error {
-	// Stop the world, so that we can take a consistent snapshot
+	// Stop the world so that we can take a consistent snapshot
 	// of all goroutines at the beginning of the trace.
-	stopTheWorld("start tracing")
+	// Do not stop the world during GC so we ensure we always see
+	// a consistent view of GC-related events (e.g. a start is always
+	// paired with an end).
+	stopTheWorldGC("start tracing")
+
+	// Prevent sysmon from running any code that could generate events.
+	lock(&sched.sysmonlock)
 
 	// We are in stop-the-world, but syscalls can finish and write to trace concurrently.
 	// Exitsyscall could check trace.enabled long before and then suddenly wake up
@@ -194,7 +201,8 @@ func StartTrace() error {
 
 	if trace.enabled || trace.shutdown {
 		unlock(&trace.bufLock)
-		startTheWorld()
+		unlock(&sched.sysmonlock)
+		startTheWorldGC()
 		return errorString("tracing is already enabled")
 	}
 
@@ -265,7 +273,9 @@ func StartTrace() error {
 
 	unlock(&trace.bufLock)
 
-	startTheWorld()
+	unlock(&sched.sysmonlock)
+
+	startTheWorldGC()
 	return nil
 }
 
@@ -274,14 +284,18 @@ func StartTrace() error {
 func StopTrace() {
 	// Stop the world so that we can collect the trace buffers from all p's below,
 	// and also to avoid races with traceEvent.
-	stopTheWorld("stop tracing")
+	stopTheWorldGC("stop tracing")
+
+	// See the comment in StartTrace.
+	lock(&sched.sysmonlock)
 
 	// See the comment in StartTrace.
 	lock(&trace.bufLock)
 
 	if !trace.enabled {
 		unlock(&trace.bufLock)
-		startTheWorld()
+		unlock(&sched.sysmonlock)
+		startTheWorldGC()
 		return
 	}
 
@@ -318,7 +332,9 @@ func StopTrace() {
 	trace.shutdown = true
 	unlock(&trace.bufLock)
 
-	startTheWorld()
+	unlock(&sched.sysmonlock)
+
+	startTheWorldGC()
 
 	// The world is started but we've set trace.shutdown, so new tracing can't start.
 	// Wait for the trace reader to flush pending buffers and stop.
@@ -859,6 +875,7 @@ func (tab *traceStackTable) dump() {
 
 	tab.mem.drop()
 	*tab = traceStackTable{}
+	lockInit(&((*tab).lock), lockRankTraceStackTab)
 }
 
 type traceFrame struct {
@@ -1042,7 +1059,7 @@ func traceGoStart() {
 	_g_ := getg().m.curg
 	_p_ := _g_.m.p
 	_g_.traceseq++
-	if _g_ == _p_.ptr().gcBgMarkWorker.ptr() {
+	if _p_.ptr().gcMarkWorkerMode != gcMarkWorkerNotWorker {
 		traceEvent(traceEvGoStartLabel, -1, uint64(_g_.goid), _g_.traceseq, trace.markWorkerLabels[_p_.ptr().gcMarkWorkerMode])
 	} else if _g_.tracelastp == _p_ {
 		traceEvent(traceEvGoStartLocal, -1, uint64(_g_.goid))
@@ -1125,18 +1142,18 @@ func traceHeapAlloc() {
 }
 
 func traceNextGC() {
-	if memstats.next_gc == ^uint64(0) {
+	if nextGC := atomic.Load64(&memstats.next_gc); nextGC == ^uint64(0) {
 		// Heap-based triggering is disabled.
 		traceEvent(traceEvNextGC, -1, 0)
 	} else {
-		traceEvent(traceEvNextGC, -1, memstats.next_gc)
+		traceEvent(traceEvNextGC, -1, nextGC)
 	}
 }
 
 // To access runtime functions from runtime/trace.
 // See runtime/trace/annotation.go
 
-//go:linkname trace_userTaskCreate runtime..z2ftrace.userTaskCreate
+//go:linkname trace_userTaskCreate runtime_1trace.userTaskCreate
 func trace_userTaskCreate(id, parentID uint64, taskType string) {
 	if !trace.enabled {
 		return
@@ -1154,12 +1171,12 @@ func trace_userTaskCreate(id, parentID uint64, taskType string) {
 	traceReleaseBuffer(pid)
 }
 
-//go:linkname trace_userTaskEnd runtime..z2ftrace.userTaskEnd
+//go:linkname trace_userTaskEnd runtime_1trace.userTaskEnd
 func trace_userTaskEnd(id uint64) {
 	traceEvent(traceEvUserTaskEnd, 2, id)
 }
 
-//go:linkname trace_userRegion runtime..z2ftrace.userRegion
+//go:linkname trace_userRegion runtime_1trace.userRegion
 func trace_userRegion(id, mode uint64, name string) {
 	if !trace.enabled {
 		return
@@ -1176,7 +1193,7 @@ func trace_userRegion(id, mode uint64, name string) {
 	traceReleaseBuffer(pid)
 }
 
-//go:linkname trace_userLog runtime..z2ftrace.userLog
+//go:linkname trace_userLog runtime_1trace.userLog
 func trace_userLog(id uint64, category, message string) {
 	if !trace.enabled {
 		return

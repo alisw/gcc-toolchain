@@ -1,6 +1,6 @@
 /* Test file for l2b constants.
 
-Copyright 2007-2019 Free Software Foundation, Inc.
+Copyright 2007-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -26,7 +26,7 @@ https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 #include "mpfr-test.h"
 
 /* Must be a multiple of 4 */
-static const int bits2use[] = {16, 32, 64, 96, 128, 256};
+static const int bits2use[] = {8, 16, 32, 64, 96, 128, 256};
 #define size_of_bits2use (numberof (bits2use))
 
 static __mpfr_struct l2b[BASE_MAX-1][2];

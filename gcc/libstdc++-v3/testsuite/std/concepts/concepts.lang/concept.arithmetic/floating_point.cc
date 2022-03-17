@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2020 Free Software Foundation, Inc.
+// Copyright (C) 2019-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -23,7 +23,7 @@
 static_assert( std::floating_point<float> );
 static_assert( std::floating_point<double> );
 static_assert( std::floating_point<long double> );
-#ifdef _GLIBCXX_USE_FLOAT128
+#if !defined(__STRICT_ANSI__) && defined(_GLIBCXX_USE_FLOAT128)
 static_assert( std::floating_point<__float128> );
 #endif
 

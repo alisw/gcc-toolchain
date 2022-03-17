@@ -1,6 +1,6 @@
 /* Chi-squared test for mpfr_erandom
 
-Copyright 2011-2019 Free Software Foundation, Inc.
+Copyright 2011-2020 Free Software Foundation, Inc.
 Contributed by Charles Karney <charles@karney.com>, SRI International.
 
 This file is part of the GNU MPFR Library.
@@ -311,7 +311,7 @@ run_chisq (double (*f)(long, mpfr_prec_t, int, double, double, int),
       else if (Q < Qbad)
         {
           printf ("Error: mpfr_erandom chi-squared failure "
-                  "(prob = %.2e)\n", Q);
+                  "(prob = %.2e < %.2e)\n", Q, Qbad);
           exit (1);
         }
       num *= 10;

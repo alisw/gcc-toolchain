@@ -1,6 +1,6 @@
 /* Target dependent code for GNU/Linux ARC.
 
-   Copyright 2020 Free Software Foundation, Inc.
+   Copyright 2020-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -31,7 +31,66 @@
 #include "arc-tdep.h"
 #include "arch/arc.h"
 
+/* Print an "arc-linux" debug statement.  */
+
+#define arc_linux_debug_printf(fmt, ...) \
+  debug_prefixed_printf_cond (arc_debug, "arc-linux", fmt, ##__VA_ARGS__)
+
 #define REGOFF(offset) (offset * ARC_REGISTER_SIZE)
+
+/* arc_linux_sc_reg_offsets[i] is the offset of register i in the `struct
+   sigcontext'.  Array index is an internal GDB register number, as defined in
+   arc-tdep.h:arc_regnum.
+
+   From <include/uapi/asm/sigcontext.h> and <include/uapi/asm/ptrace.h>.
+
+   The layout of this struct is tightly bound to "arc_regnum" enum
+   in arc-tdep.h.  Any change of order in there, must be reflected
+   here as well.  */
+static const int arc_linux_sc_reg_offsets[] = {
+  /* R0 - R12.  */
+  REGOFF (22), REGOFF (21), REGOFF (20), REGOFF (19),
+  REGOFF (18), REGOFF (17), REGOFF (16), REGOFF (15),
+  REGOFF (14), REGOFF (13), REGOFF (12), REGOFF (11),
+  REGOFF (10),
+
+  /* R13 - R25.  */
+  ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER,
+  ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER,
+  ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER,
+  ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER,
+  ARC_OFFSET_NO_REGISTER,
+
+  REGOFF (9),			/* R26 (GP) */
+  REGOFF (8),			/* FP */
+  REGOFF (23),			/* SP */
+  ARC_OFFSET_NO_REGISTER,	/* ILINK */
+  ARC_OFFSET_NO_REGISTER,	/* R30 */
+  REGOFF (7),			/* BLINK */
+
+  /* R32 - R59.  */
+  ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER,
+  ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER,
+  ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER,
+  ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER,
+  ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER,
+  ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER,
+  ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER,
+  ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER,
+  ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER, ARC_OFFSET_NO_REGISTER,
+  ARC_OFFSET_NO_REGISTER,
+
+  REGOFF (4),			/* LP_COUNT */
+  ARC_OFFSET_NO_REGISTER,	/* RESERVED */
+  ARC_OFFSET_NO_REGISTER,	/* LIMM */
+  ARC_OFFSET_NO_REGISTER,	/* PCL */
+
+  REGOFF (6),			/* PC  */
+  REGOFF (5),			/* STATUS32 */
+  REGOFF (2),			/* LP_START */
+  REGOFF (3),			/* LP_END */
+  REGOFF (1),			/* BTA */
+};
 
 /* arc_linux_core_reg_offsets[i] is the offset in the .reg section of GDB
    regnum i.  Array index is an internal GDB register number, as defined in
@@ -86,6 +145,123 @@ static const int arc_linux_core_reg_offsets[] = {
   REGOFF (1),			/* BTA */
   REGOFF (6)			/* ERET */
 };
+
+/* Is THIS_FRAME a sigtramp function - the function that returns from
+   signal handler into normal execution flow? This is the case if the PC is
+   either at the start of, or in the middle of the two instructions:
+
+     mov r8, __NR_rt_sigreturn ; __NR_rt_sigreturn == 139
+     trap_s 0 ; `swi' for ARC700
+
+   On ARC uClibc Linux this function is called __default_rt_sa_restorer.
+
+   Returns TRUE if this is a sigtramp frame.  */
+
+static bool
+arc_linux_is_sigtramp (struct frame_info *this_frame)
+{
+  struct gdbarch *gdbarch = get_frame_arch (this_frame);
+  CORE_ADDR pc = get_frame_pc (this_frame);
+
+  arc_linux_debug_printf ("pc=%s", paddress(gdbarch, pc));
+
+  static const gdb_byte insns_be_hs[] = {
+    0x20, 0x8a, 0x12, 0xc2,	/* mov  r8,nr_rt_sigreturn */
+    0x78, 0x1e			/* trap_s 0 */
+  };
+  static const gdb_byte insns_be_700[] = {
+    0x20, 0x8a, 0x12, 0xc2,	/* mov  r8,nr_rt_sigreturn */
+    0x22, 0x6f, 0x00, 0x3f	/* swi */
+  };
+
+  gdb_byte arc_sigtramp_insns[sizeof (insns_be_700)];
+  size_t insns_sz;
+  if (arc_mach_is_arcv2 (gdbarch))
+    {
+      insns_sz = sizeof (insns_be_hs);
+      memcpy (arc_sigtramp_insns, insns_be_hs, insns_sz);
+    }
+  else
+    {
+      insns_sz = sizeof (insns_be_700);
+      memcpy (arc_sigtramp_insns, insns_be_700, insns_sz);
+    }
+  if (gdbarch_byte_order (gdbarch) == BFD_ENDIAN_LITTLE)
+    {
+      /* On little endian targets, ARC code section is in what is called
+	 "middle endian", where half-words are in the big-endian order,
+	 only bytes inside the halfwords are in the little endian order.
+	 As a result it is very easy to convert big endian instruction to
+	 little endian, since it is needed to swap bytes in the halfwords,
+	 so there is no need to have information on whether that is a
+	 4-byte instruction or 2-byte.  */
+      gdb_assert ((insns_sz % 2) == 0);
+      for (int i = 0; i < insns_sz; i += 2)
+	std::swap (arc_sigtramp_insns[i], arc_sigtramp_insns[i+1]);
+    }
+
+  gdb_byte buf[insns_sz];
+
+  /* Read the memory at the PC.  Since we are stopped, any breakpoint must
+     have been removed.  */
+  if (!safe_frame_unwind_memory (this_frame, pc, {buf, insns_sz}))
+    {
+      /* Failed to unwind frame.  */
+      return FALSE;
+    }
+
+  /* Is that code the sigtramp instruction sequence?  */
+  if (memcmp (buf, arc_sigtramp_insns, insns_sz) == 0)
+    return TRUE;
+
+  /* No - look one instruction earlier in the code...  */
+  if (!safe_frame_unwind_memory (this_frame, pc - 4, {buf, insns_sz}))
+    {
+      /* Failed to unwind frame.  */
+      return FALSE;
+    }
+
+  return (memcmp (buf, arc_sigtramp_insns, insns_sz) == 0);
+}
+
+/* Get sigcontext structure of sigtramp frame - it contains saved
+   registers of interrupted frame.
+
+   Stack pointer points to the rt_sigframe structure, and sigcontext can
+   be found as in:
+
+   struct rt_sigframe {
+     struct siginfo info;
+     struct ucontext uc;
+     ...
+   };
+
+   struct ucontext {
+     unsigned long uc_flags;
+     struct ucontext *uc_link;
+     stack_t uc_stack;
+     struct sigcontext uc_mcontext;
+     sigset_t uc_sigmask;
+   };
+
+   sizeof (struct siginfo) == 0x80
+   offsetof (struct ucontext, uc_mcontext) == 0x14
+
+   GDB cannot include linux headers and use offsetof () because those are
+   target headers and GDB might be built for a different run host.  There
+   doesn't seem to be an established mechanism to figure out those offsets
+   via gdbserver, so the only way is to hardcode values in the GDB,
+   meaning that GDB will be broken if values will change.  That seems to
+   be a very unlikely scenario and other arches (aarch64, alpha, amd64,
+   etc) in GDB hardcode values.  */
+
+static CORE_ADDR
+arc_linux_sigcontext_addr (struct frame_info *this_frame)
+{
+  const int ucontext_offset = 0x80;
+  const int sigcontext_offset = 0x14;
+  return get_frame_sp (this_frame) + ucontext_offset + sigcontext_offset;
+}
 
 /* Implement the "cannot_fetch_register" gdbarch method.  */
 
@@ -149,10 +325,83 @@ static const gdb_byte *
 arc_linux_sw_breakpoint_from_kind (struct gdbarch *gdbarch,
 				   int kind, int *size)
 {
+  gdb_assert (kind == trap_size);
   *size = kind;
   return ((gdbarch_byte_order (gdbarch) == BFD_ENDIAN_BIG)
 	  ? arc_linux_trap_s_be
 	  : arc_linux_trap_s_le);
+}
+
+/* Check for an atomic sequence of instructions beginning with an
+   LLOCK instruction and ending with a SCOND instruction.
+
+   These patterns are hand coded in libc's (glibc and uclibc). Take
+   a look at [1] for instance:
+
+   main+14: llock   r2,[r0]
+   main+18: brne.nt r2,0,main+30
+   main+22: scond   r3,[r0]
+   main+26: bne     main+14
+   main+30: mov_s   r0,0
+
+   If such a sequence is found, attempt to step over it.
+   A breakpoint is placed at the end of the sequence.
+
+   This function expects the INSN to be a "llock(d)" instruction.
+
+   [1]
+   https://cgit.uclibc-ng.org/cgi/cgit/uclibc-ng.git/tree/libc/ \
+     sysdeps/linux/arc/bits/atomic.h#n46
+   */
+
+static std::vector<CORE_ADDR>
+handle_atomic_sequence (arc_instruction insn, disassemble_info &di)
+{
+  const int atomic_seq_len = 24;    /* Instruction sequence length.  */
+  std::vector<CORE_ADDR> next_pcs;
+
+  /* Sanity check.  */
+  gdb_assert (insn.insn_class == LLOCK);
+
+  /* Data size we are dealing with: LLOCK vs. LLOCKD  */
+  arc_ldst_data_size llock_data_size_mode = insn.data_size_mode;
+  /* Indicator if any conditional branch is found in the sequence.  */
+  bool found_bc = false;
+  /* Becomes true if "LLOCK(D) .. SCOND(D)" sequence is found.  */
+  bool is_pattern_valid = false;
+
+  for (int insn_count = 0; insn_count < atomic_seq_len; ++insn_count)
+    {
+      arc_insn_decode (arc_insn_get_linear_next_pc (insn),
+		       &di, arc_delayed_print_insn, &insn);
+
+      if (insn.insn_class == BRCC)
+        {
+          /* If more than one conditional branch is found, this is not
+             the pattern we are interested in.  */
+          if (found_bc)
+	    break;
+	  found_bc = true;
+	  continue;
+        }
+
+      /* This is almost a happy ending.  */
+      if (insn.insn_class == SCOND)
+        {
+	  /* SCOND should match the LLOCK's data size.  */
+	  if (insn.data_size_mode == llock_data_size_mode)
+	    is_pattern_valid = true;
+	  break;
+        }
+    }
+
+  if (is_pattern_valid)
+    {
+      /* Get next instruction after scond(d).  There is no limm.  */
+      next_pcs.push_back (insn.address + insn.length);
+    }
+
+  return next_pcs;
 }
 
 /* Implement the "software_single_step" gdbarch method.  */
@@ -168,8 +417,11 @@ arc_linux_software_single_step (struct regcache *regcache)
   struct arc_instruction curr_insn;
   arc_insn_decode (regcache_read_pc (regcache), &di, arc_delayed_print_insn,
 		   &curr_insn);
-  CORE_ADDR next_pc = arc_insn_get_linear_next_pc (curr_insn);
 
+  if (curr_insn.insn_class == LLOCK)
+    return handle_atomic_sequence (curr_insn, di);
+
+  CORE_ADDR next_pc = arc_insn_get_linear_next_pc (curr_insn);
   std::vector<CORE_ADDR> next_pcs;
 
   /* For instructions with delay slots, the fall thru is not the
@@ -207,15 +459,12 @@ arc_linux_software_single_step (struct regcache *regcache)
 	  regcache_cooked_read_unsigned (regcache, ARC_LP_COUNT_REGNUM,
 					 &lp_count);
 
-	  if (arc_debug)
-	    {
-	      debug_printf ("arc-linux: lp_start = %s, lp_end = %s, "
-			    "lp_count = %s, next_pc = %s\n",
-			    paddress (gdbarch, lp_start),
-			    paddress (gdbarch, lp_end),
-			    pulongest (lp_count),
-			    paddress (gdbarch, next_pc));
-	    }
+	  arc_linux_debug_printf ("lp_start = %s, lp_end = %s, "
+				  "lp_count = %s, next_pc = %s",
+				  paddress (gdbarch, lp_start),
+				  paddress (gdbarch, lp_end),
+				  pulongest (lp_count),
+				  paddress (gdbarch, next_pc));
 
 	  if (next_pc == lp_end && lp_count > 1)
 	    {
@@ -260,17 +509,13 @@ arc_linux_skip_solib_resolver (struct gdbarch *gdbarch, CORE_ADDR pc)
       if (resolver.minsym != nullptr)
 	{
 	  CORE_ADDR res_addr = BMSYMBOL_VALUE_ADDRESS (resolver);
-	  debug_printf ("arc-linux: skip_solib_resolver (): "
-			"pc = %s, resolver at %s\n",
-			print_core_address (gdbarch, pc),
-			print_core_address (gdbarch, res_addr));
+	  arc_linux_debug_printf ("pc = %s, resolver at %s",
+				  print_core_address (gdbarch, pc),
+				  print_core_address (gdbarch, res_addr));
 	}
       else
-	{
-	  debug_printf ("arc-linux: skip_solib_resolver (): "
-			"pc = %s, no resolver found\n",
-			print_core_address (gdbarch, pc));
-	}
+	arc_linux_debug_printf ("pc = %s, no resolver found",
+				print_core_address (gdbarch, pc));
     }
 
   if (resolver.minsym != nullptr && BMSYMBOL_VALUE_ADDRESS (resolver) == pc)
@@ -285,6 +530,18 @@ arc_linux_skip_solib_resolver (struct gdbarch *gdbarch, CORE_ADDR pc)
     }
 }
 
+/* Populate REGCACHE with register REGNUM from BUF.  */
+
+static void
+supply_register (struct regcache *regcache, int regnum, const gdb_byte *buf)
+{
+  /* Skip non-existing registers.  */
+  if ((arc_linux_core_reg_offsets[regnum] == ARC_OFFSET_NO_REGISTER))
+    return;
+
+  regcache->raw_supply (regnum, buf + arc_linux_core_reg_offsets[regnum]);
+}
+
 void
 arc_linux_supply_gregset (const struct regset *regset,
 			  struct regcache *regcache,
@@ -295,9 +552,14 @@ arc_linux_supply_gregset (const struct regset *regset,
 
   const bfd_byte *buf = (const bfd_byte *) gregs;
 
-  for (int reg = 0; reg <= ARC_LAST_REGNUM; reg++)
-      if (arc_linux_core_reg_offsets[reg] != ARC_OFFSET_NO_REGISTER)
-	regcache->raw_supply (reg, buf + arc_linux_core_reg_offsets[reg]);
+  /* REGNUM == -1 means writing all the registers.  */
+  if (regnum == -1)
+    for (int reg = 0; reg <= ARC_LAST_REGNUM; reg++)
+      supply_register (regcache, reg, buf);
+  else if (regnum <= ARC_LAST_REGNUM)
+    supply_register (regcache, regnum, buf);
+  else
+    gdb_assert_not_reached ("Invalid regnum in arc_linux_supply_gregset.");
 }
 
 void
@@ -308,9 +570,12 @@ arc_linux_supply_v2_regset (const struct regset *regset,
   const bfd_byte *buf = (const bfd_byte *) v2_regs;
 
   /* user_regs_arcv2 is defined in linux arch/arc/include/uapi/asm/ptrace.h.  */
-  regcache->raw_supply (ARC_R30_REGNUM, buf);
-  regcache->raw_supply (ARC_R58_REGNUM, buf + REGOFF (1));
-  regcache->raw_supply (ARC_R59_REGNUM, buf + REGOFF (2));
+  if (regnum == -1 || regnum == ARC_R30_REGNUM)
+    regcache->raw_supply (ARC_R30_REGNUM, buf);
+  if (regnum == -1 || regnum == ARC_R58_REGNUM)
+    regcache->raw_supply (ARC_R58_REGNUM, buf + REGOFF (1));
+  if (regnum == -1 || regnum == ARC_R59_REGNUM)
+    regcache->raw_supply (ARC_R59_REGNUM, buf + REGOFF (2));
 }
 
 /* Populate BUF with register REGNUM from the REGCACHE.  */
@@ -319,8 +584,10 @@ static void
 collect_register (const struct regcache *regcache, struct gdbarch *gdbarch,
 		  int regnum, gdb_byte *buf)
 {
+  int offset;
+
   /* Skip non-existing registers.  */
-  if ((arc_linux_core_reg_offsets[regnum] == ARC_OFFSET_NO_REGISTER))
+  if (arc_linux_core_reg_offsets[regnum] == ARC_OFFSET_NO_REGISTER)
     return;
 
   /* The address where the execution has stopped is in pseudo-register
@@ -332,8 +599,10 @@ collect_register (const struct regcache *regcache, struct gdbarch *gdbarch,
      the program will continue at the address after the current instruction.
      */
   if (regnum == gdbarch_pc_regnum (gdbarch))
-    regnum = ARC_ERET_REGNUM;
-  regcache->raw_collect (regnum, buf + arc_linux_core_reg_offsets[regnum]);
+    offset = arc_linux_core_reg_offsets[ARC_ERET_REGNUM];
+  else
+    offset = arc_linux_core_reg_offsets[regnum];
+  regcache->raw_collect (regnum, buf + offset);
 }
 
 void
@@ -347,7 +616,7 @@ arc_linux_collect_gregset (const struct regset *regset,
   gdb_byte *buf = (gdb_byte *) gregs;
   struct gdbarch *gdbarch = regcache->arch ();
 
-  /* regnum == -1 means writing all the registers.  */
+  /* REGNUM == -1 means writing all the registers.  */
   if (regnum == -1)
     for (int reg = 0; reg <= ARC_LAST_REGNUM; reg++)
       collect_register (regcache, gdbarch, reg, buf);
@@ -364,9 +633,12 @@ arc_linux_collect_v2_regset (const struct regset *regset,
 {
   bfd_byte *buf = (bfd_byte *) v2_regs;
 
-  regcache->raw_collect (ARC_R30_REGNUM, buf);
-  regcache->raw_collect (ARC_R58_REGNUM, buf + REGOFF (1));
-  regcache->raw_collect (ARC_R59_REGNUM, buf + REGOFF (2));
+  if (regnum == -1 || regnum == ARC_R30_REGNUM)
+    regcache->raw_collect (ARC_R30_REGNUM, buf);
+  if (regnum == -1 || regnum == ARC_R58_REGNUM)
+    regcache->raw_collect (ARC_R58_REGNUM, buf + REGOFF (1));
+  if (regnum == -1 || regnum == ARC_R59_REGNUM)
+    regcache->raw_collect (ARC_R59_REGNUM, buf + REGOFF (2));
 }
 
 /* Linux regset definitions.  */
@@ -422,8 +694,13 @@ arc_linux_init_osabi (struct gdbarch_info info, struct gdbarch *gdbarch)
 {
   struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
 
-  if (arc_debug)
-    debug_printf ("arc-linux: GNU/Linux OS/ABI initialization.\n");
+  arc_linux_debug_printf ("GNU/Linux OS/ABI initialization.");
+
+  /* Fill in target-dependent info in ARC-private structure.  */
+  tdep->is_sigtramp = arc_linux_is_sigtramp;
+  tdep->sigcontext_addr = arc_linux_sigcontext_addr;
+  tdep->sc_reg_offset = arc_linux_sc_reg_offsets;
+  tdep->sc_num_regs = ARRAY_SIZE (arc_linux_sc_reg_offsets);
 
   /* If we are using Linux, we have in uClibc
      (libc/sysdeps/linux/arc/bits/setjmp.h):
@@ -434,7 +711,7 @@ arc_linux_init_osabi (struct gdbarch_info info, struct gdbarch *gdbarch)
    */
   tdep->jb_pc = 15;
 
-  linux_init_abi (info, gdbarch);
+  linux_init_abi (info, gdbarch, 0);
 
   /* Set up target dependent GDB architecture entries.  */
   set_gdbarch_cannot_fetch_register (gdbarch, arc_linux_cannot_fetch_register);

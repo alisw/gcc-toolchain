@@ -1,6 +1,6 @@
 /* Scheme interface to objfiles.
 
-   Copyright (C) 2008-2020 Free Software Foundation, Inc.
+   Copyright (C) 2008-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -25,10 +25,9 @@
 #include "language.h"
 #include "guile-internal.h"
 
-/* The <gdb:objfile> smob.
-   The typedef for this struct is in guile-internal.h.  */
+/* The <gdb:objfile> smob.  */
 
-struct _objfile_smob
+struct objfile_smob
 {
   /* This always appears first.  */
   gdb_smob base;
@@ -311,16 +310,11 @@ gdbscm_source_objfile_script (const struct extension_language_defn *extlang,
 			      struct objfile *objfile, FILE *file,
 			      const char *filename)
 {
-  char *msg;
-
   ofscm_current_objfile = objfile;
 
-  msg = gdbscm_safe_source_script (filename);
+  gdb::unique_xmalloc_ptr<char> msg = gdbscm_safe_source_script (filename);
   if (msg != NULL)
-    {
-      fprintf_filtered (gdb_stderr, "%s", msg);
-      xfree (msg);
-    }
+    fprintf_filtered (gdb_stderr, "%s", msg.get ());
 
   ofscm_current_objfile = NULL;
 }
@@ -429,7 +423,12 @@ gdbscm_initialize_objfiles (void)
   scm_set_smob_print (objfile_smob_tag, ofscm_print_objfile_smob);
 
   gdbscm_define_functions (objfile_functions, 1);
+}
 
+void _initialize_scm_objfile ();
+void
+_initialize_scm_objfile ()
+{
   ofscm_objfile_data_key
     = register_objfile_data_with_cleanup (NULL, ofscm_handle_objfile_deleted);
 }

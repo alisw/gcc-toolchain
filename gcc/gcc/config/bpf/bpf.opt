@@ -1,6 +1,6 @@
 ; Options for the eBPF compiler port.
 
-; Copyright (C) 2019-2020 Free Software Foundation, Inc.
+; Copyright (C) 2019-2021 Free Software Foundation, Inc.
 ;
 ; This file is part of GCC.
 ;
@@ -108,14 +108,20 @@ Enum(bpf_kernel) String(5.1) Value(LINUX_V5_1)
 EnumValue
 Enum(bpf_kernel) String(5.2) Value(LINUX_V5_2)
 
+; Use xBPF extensions.
+
+mxbpf
+Target Mask(XBPF)
+Generate xBPF.
+
 ; Selecting big endian or little endian targets.
 
 mbig-endian
-Target RejectNegative Report Mask(BIG_ENDIAN)
+Target RejectNegative Mask(BIG_ENDIAN)
 Generate big-endian eBPF.
 
 mlittle-endian
-Target RejectNegative Report InverseMask(BIG_ENDIAN)
+Target RejectNegative InverseMask(BIG_ENDIAN)
 Generate little-endian eBPF.
 
 mframe-limit=

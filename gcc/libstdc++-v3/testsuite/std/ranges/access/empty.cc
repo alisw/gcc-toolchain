@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2020 Free Software Foundation, Inc.
+// Copyright (C) 2019-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -35,7 +35,9 @@ test01()
   constexpr R r;
   static_assert( !std::ranges::empty(r) );
   static_assert( same_as<decltype(std::ranges::empty(r)), bool> );
-  static_assert( std::ranges::empty(std::move(r)) );
+  // PR libstdc++/100824
+  // ranges::empty should treat the subexpression as an lvalue
+  static_assert( !std::ranges::empty(std::move(r)) );
   static_assert( same_as<decltype(std::ranges::empty(std::move(r))), bool> );
 }
 
@@ -68,9 +70,60 @@ test02()
   VERIFY( !std::ranges::empty(so) );
 }
 
+void
+test03()
+{
+  // PR libstdc++/100824
+  // ranges::empty should treat the subexpression as an lvalue
+
+  struct R
+  {
+    constexpr bool empty() & { return true; }
+  };
+  static_assert( std::ranges::empty(R{}) );
+
+  struct R2
+  {
+    constexpr unsigned size() & { return 0; }
+  };
+  static_assert( std::ranges::empty(R2{}) );
+}
+
+void
+test04()
+{
+  struct E1
+  {
+    bool empty() const noexcept { return {}; }
+  };
+
+  static_assert( noexcept(std::ranges::empty(E1{})) );
+
+  struct E2
+  {
+    bool empty() const noexcept(false) { return {}; }
+  };
+
+  static_assert( ! noexcept(std::ranges::empty(E2{})) );
+
+  struct E3
+  {
+    struct B
+    {
+      explicit operator bool() const noexcept(false) { return true; }
+    };
+
+    B empty() const noexcept { return {}; }
+  };
+
+  static_assert( ! noexcept(std::ranges::empty(E3{})) );
+}
+
 int
 main()
 {
   test01();
   test02();
+  test03();
+  test04();
 }

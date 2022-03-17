@@ -1,4 +1,4 @@
-.. Copyright (C) 2015-2020 Free Software Foundation, Inc.
+.. Copyright (C) 2015-2021 Free Software Foundation, Inc.
    Originally contributed by David Malcolm <dmalcolm@redhat.com>
 
    This is free software: you can redistribute it and/or modify it
@@ -62,7 +62,7 @@ You can see the symbol tags provided by libgccjit.so using ``objdump``:
    [...snip...]
 
 Programmatically checking version
-***************
+*********************************
 
 Client code can programmatically check libgccjit version using:
 
@@ -200,10 +200,14 @@ entrypoints:
 ``LIBGCCJIT_ABI_11`` covers the addition of
 :func:`gcc_jit_context_add_driver_option`
 
+.. _LIBGCCJIT_ABI_12:
+
 ``LIBGCCJIT_ABI_12``
 --------------------
 ``LIBGCCJIT_ABI_12`` covers the addition of
 :func:`gcc_jit_context_new_bitfield`
+
+.. _LIBGCCJIT_ABI_13:
 
 ``LIBGCCJIT_ABI_13``
 --------------------
@@ -215,3 +219,27 @@ entrypoints:
   * :func:`gcc_jit_version_minor`
 
   * :func:`gcc_jit_version_patchlevel`
+
+.. _LIBGCCJIT_ABI_14:
+
+``LIBGCCJIT_ABI_14``
+--------------------
+``LIBGCCJIT_ABI_14`` covers the addition of
+:func:`gcc_jit_global_set_initializer`
+
+.. _LIBGCCJIT_ABI_15:
+
+``LIBGCCJIT_ABI_15``
+-----------------------
+``LIBGCCJIT_ABI_15`` covers the addition of API entrypoints for directly
+embedding assembler instructions:
+
+  * :func:`gcc_jit_block_add_extended_asm`
+  * :func:`gcc_jit_block_end_with_extended_asm_goto`
+  * :func:`gcc_jit_extended_asm_as_object`
+  * :func:`gcc_jit_extended_asm_set_volatile_flag`
+  * :func:`gcc_jit_extended_asm_set_inline_flag`
+  * :func:`gcc_jit_extended_asm_add_output_operand`
+  * :func:`gcc_jit_extended_asm_add_input_operand`
+  * :func:`gcc_jit_extended_asm_add_clobber`
+  * :func:`gcc_jit_context_add_top_level_asm`

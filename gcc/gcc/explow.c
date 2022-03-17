@@ -1,5 +1,5 @@
 /* Subroutines for manipulating rtx's in semantically interesting ways.
-   Copyright (C) 1987-2020 Free Software Foundation, Inc.
+   Copyright (C) 1987-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -27,9 +27,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree.h"
 #include "memmodel.h"
 #include "tm_p.h"
+#include "optabs.h"
 #include "expmed.h"
 #include "profile-count.h"
-#include "optabs.h"
 #include "emit-rtl.h"
 #include "recog.h"
 #include "diagnostic-core.h"
@@ -43,7 +43,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "output.h"
 
 static rtx break_out_memory_refs (rtx);
-static void anti_adjust_stack_and_probe_stack_clash (rtx);
 
 
 /* Truncate and perhaps sign-extend C as appropriate for MODE.  */
@@ -376,6 +375,26 @@ convert_memory_address_addr_space_1 (scalar_int_mode to_mode ATTRIBUTE_UNUSED,
 	  return (temp ? gen_rtx_fmt_ee (GET_CODE (x), to_mode,
 					 temp, XEXP (x, 1))
 		       : temp);
+	}
+      break;
+
+    case UNSPEC:
+      /* Assume that all UNSPECs in a constant address can be converted
+	 operand-by-operand.  We could add a target hook if some targets
+	 require different behavior.  */
+      if (in_const && GET_MODE (x) == from_mode)
+	{
+	  unsigned int n = XVECLEN (x, 0);
+	  rtvec v = gen_rtvec (n);
+	  for (unsigned int i = 0; i < n; ++i)
+	    {
+	      rtx op = XVECEXP (x, 0, i);
+	      if (GET_MODE (op) == from_mode)
+		op = convert_memory_address_addr_space_1 (to_mode, op, as,
+							  in_const, no_emit);
+	      RTVEC_ELT (v, i) = op;
+	    }
+	  return gen_rtx_UNSPEC (to_mode, v, XINT (x, 1));
 	}
       break;
 
@@ -1294,9 +1313,9 @@ get_dynamic_stack_size (rtx *psize, unsigned size_align,
 
 /* Return the number of bytes to "protect" on the stack for -fstack-check.
 
-   "protect" in the context of -fstack-check means how many bytes we
-   should always ensure are available on the stack.  More importantly
-   this is how many bytes are skipped when probing the stack.
+   "protect" in the context of -fstack-check means how many bytes we need
+   to always ensure are available on the stack; as a consequence, this is
+   also how many bytes are first skipped when probing the stack.
 
    On some targets we want to reuse the -fstack-check prologue support
    to give a degree of protection against stack clashing style attacks.
@@ -1304,14 +1323,16 @@ get_dynamic_stack_size (rtx *psize, unsigned size_align,
    In that scenario we do not want to skip bytes before probing as that
    would render the stack clash protections useless.
 
-   So we never use STACK_CHECK_PROTECT directly.  Instead we indirect though
-   this helper which allows us to provide different values for
-   -fstack-check and -fstack-clash-protection.  */
+   So we never use STACK_CHECK_PROTECT directly.  Instead we indirectly
+   use it through this helper, which allows to provide different values
+   for -fstack-check and -fstack-clash-protection.  */
+
 HOST_WIDE_INT
 get_stack_check_protect (void)
 {
   if (flag_stack_clash_protection)
     return 0;
+
  return STACK_CHECK_PROTECT;
 }
 
@@ -1533,6 +1554,8 @@ allocate_dynamic_stack_space (rtx size, unsigned size_align,
 
       saved_stack_pointer_delta = stack_pointer_delta;
 
+      /* If stack checking or stack clash protection is requested,
+	 then probe the stack while allocating space from it.  */
       if (flag_stack_check && STACK_CHECK_MOVING_SP)
 	anti_adjust_stack_and_probe (size, false);
       else if (flag_stack_clash_protection)
@@ -1580,10 +1603,14 @@ allocate_dynamic_stack_space (rtx size, unsigned size_align,
    OFFSET is the offset of the area into the virtual stack vars area.
 
    REQUIRED_ALIGN is the alignment (in bits) required for the region
-   of memory.  */
+   of memory.
+
+   BASE is the rtx of the base of this virtual stack vars area.
+   The only time this is not `virtual_stack_vars_rtx` is when tagging pointers
+   on the stack.  */
 
 rtx
-get_dynamic_stack_base (poly_int64 offset, unsigned required_align)
+get_dynamic_stack_base (poly_int64 offset, unsigned required_align, rtx base)
 {
   rtx target;
 
@@ -1591,7 +1618,7 @@ get_dynamic_stack_base (poly_int64 offset, unsigned required_align)
     crtl->preferred_stack_boundary = PREFERRED_STACK_BOUNDARY;
 
   target = gen_reg_rtx (Pmode);
-  emit_move_insn (target, virtual_stack_vars_rtx);
+  emit_move_insn (target, base);
   target = expand_binop (Pmode, add_optab, target,
 			 gen_int_mode (offset, Pmode),
 			 NULL_RTX, 1, OPTAB_LIB_WIDEN);
@@ -1941,14 +1968,14 @@ emit_stack_clash_protection_probe_loop_end (rtx loop_lab, rtx end_loop,
 	probes were not emitted.
 
      2. It never skips probes, whereas anti_adjust_stack_and_probe will
-	skip probes on the first couple PROBE_INTERVALs on the assumption
-	they're done elsewhere.
+	skip the probe on the first PROBE_INTERVAL on the assumption it
+	was already done in the prologue and in previous allocations.
 
      3. It only allocates and probes SIZE bytes, it does not need to
 	allocate/probe beyond that because this probing style does not
 	guarantee signal handling capability if the guard is hit.  */
 
-static void
+void
 anti_adjust_stack_and_probe_stack_clash (rtx size)
 {
   /* First ensure SIZE is Pmode.  */

@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (C) 1999-2019 by The D Language Foundation, All Rights Reserved
+ * Copyright (C) 1999-2021 by The D Language Foundation, All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -47,7 +47,7 @@ const char *DebugSymbol::toChars()
     {
         OutBuffer buf;
         buf.printf("%d", level);
-        return buf.extractString();
+        return buf.extractChars();
     }
 }
 
@@ -81,8 +81,8 @@ void DebugSymbol::addMember(Scope *, ScopeDsymbol *sds)
                 errors = true;
             }
             if (!m->debugids)
-                m->debugids = new Strings();
-            m->debugids->push(ident->toChars());
+                m->debugids = new Identifiers();
+            m->debugids->push(ident);
         }
     }
     else
@@ -95,13 +95,6 @@ void DebugSymbol::addMember(Scope *, ScopeDsymbol *sds)
         else
             m->debuglevel = level;
     }
-}
-
-void DebugSymbol::semantic(Scope *)
-{
-    //printf("DebugSymbol::semantic() %s\n", toChars());
-    if (semanticRun < PASSsemanticdone)
-        semanticRun = PASSsemanticdone;
 }
 
 const char *DebugSymbol::kind() const
@@ -137,7 +130,7 @@ const char *VersionSymbol::toChars()
     {
         OutBuffer buf;
         buf.printf("%d", level);
-        return buf.extractString();
+        return buf.extractChars();
     }
 }
 
@@ -172,8 +165,8 @@ void VersionSymbol::addMember(Scope *, ScopeDsymbol *sds)
                 errors = true;
             }
             if (!m->versionids)
-                m->versionids = new Strings();
-            m->versionids->push(ident->toChars());
+                m->versionids = new Identifiers();
+            m->versionids->push(ident);
         }
     }
     else
@@ -186,12 +179,6 @@ void VersionSymbol::addMember(Scope *, ScopeDsymbol *sds)
         else
             m->versionlevel = level;
     }
-}
-
-void VersionSymbol::semantic(Scope *)
-{
-    if (semanticRun < PASSsemanticdone)
-        semanticRun = PASSsemanticdone;
 }
 
 const char *VersionSymbol::kind() const

@@ -1,5 +1,5 @@
 /*  dv-m68hc11.c -- CPU 68HC11&68HC12 as a device.
-    Copyright (C) 1999-2020 Free Software Foundation, Inc.
+    Copyright (C) 1999-2022 Free Software Foundation, Inc.
     Written by Stephane Carrez (stcarrez@nerim.fr)
     (From a driver model Contributed by Cygnus Solutions.)
     
@@ -18,6 +18,8 @@
     
     */
 
+/* This must come before any other includes.  */
+#include "defs.h"
 
 #include "sim-main.h"
 #include "sim-hw.h"
@@ -25,6 +27,7 @@
 #include "sim-options.h"
 #include "hw-base.h"
 #include <limits.h>
+#include <stdlib.h>
 
 /* DEVICE
 
@@ -141,7 +144,7 @@ struct m68hc11cpu {
   int              pending_level;
   struct hw_event  *event;
   unsigned_word    attach_address;
-  int              attach_size;
+  unsigned int     attach_size;
   int              attach_space;
   int              last_oscillator;
   struct input_osc oscillators[NR_OSC];

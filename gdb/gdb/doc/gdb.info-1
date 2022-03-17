@@ -1,6 +1,6 @@
 This is gdb.info, produced by makeinfo version 6.7 from gdb.texinfo.
 
-Copyright (C) 1988-2020 Free Software Foundation, Inc.
+Copyright (C) 1988-2022 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -21,9 +21,9 @@ END-INFO-DIR-ENTRY
    This file documents the GNU debugger GDB.
 
    This is the Tenth Edition, of 'Debugging with GDB: the GNU
-Source-Level Debugger' for GDB (GDB) Version 10.1.
+Source-Level Debugger' for GDB (GDB) Version 11.2.
 
-   Copyright (C) 1988-2020 Free Software Foundation, Inc.
+   Copyright (C) 1988-2022 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -44,9 +44,9 @@ Debugging with GDB
 
 This file describes GDB, the GNU symbolic debugger.
 
-   This is the Tenth Edition, for GDB (GDB) Version 10.1.
+   This is the Tenth Edition, for GDB (GDB) Version 11.2.
 
-   Copyright (C) 1988-2020 Free Software Foundation, Inc.
+   Copyright (C) 1988-2022 Free Software Foundation, Inc.
 
    This edition of the GDB manual is dedicated to the memory of Fred
 Fish.  Fred was a long-standing contributor to GDB and to Free software
@@ -511,7 +511,7 @@ Let us use GDB to try to see what is going on.
      There is absolutely no warranty for GDB; type "show warranty"
       for details.
 
-     GDB 10.1, Copyright 1999 Free Software Foundation, Inc...
+     GDB 11.2, Copyright 1999 Free Software Foundation, Inc...
      (gdb)
 
 GDB reads only enough symbol data to know where to find the rest when
@@ -766,6 +766,7 @@ used.
 * File Options::                Choosing files
 * Mode Options::                Choosing modes
 * Startup::                     What GDB does during startup
+* Initialization Files::        Initialization Files
 
 
 File: gdb.info,  Node: File Options,  Next: Mode Options,  Up: Invoking GDB
@@ -842,6 +843,16 @@ though we illustrate the more usual convention.)
      Execute a single GDB command before loading the inferior (but after
      loading gdbinit files).  *Note Startup::.
 
+'-early-init-command FILE'
+'-eix FILE'
+     Execute commands from FILE very early in the initialization
+     process, before any output is produced.  *Note Startup::.
+
+'-early-init-eval-command COMMAND'
+'-eiex COMMAND'
+     Execute a single GDB command very early in the initialization
+     process, before any output is produced.
+
 '-directory DIRECTORY'
 '-d DIRECTORY'
      Add DIRECTORY to the path to search for source and script files.
@@ -873,48 +884,26 @@ or quiet mode.
 
 '-nx'
 '-n'
-     Do not execute commands found in any initialization file.  There
-     are three init files, loaded in the following order:
-
-     'system.gdbinit'
-          This is the system-wide init file.  Its location is specified
-          with the '--with-system-gdbinit' configure option (*note
-          System-wide configuration::).  It is loaded first when GDB
-          starts, before command line options have been processed.
-     'system.gdbinit.d'
-          This is the system-wide init directory.  Its location is
-          specified with the '--with-system-gdbinit-dir' configure
-          option (*note System-wide configuration::).  Files in this
-          directory are loaded in alphabetical order immediately after
-          system.gdbinit (if enabled) when GDB starts, before command
-          line options have been processed.  Files need to have a
-          recognized scripting language extension ('.py'/'.scm') or be
-          named with a '.gdb' extension to be interpreted as regular GDB
-          commands.  GDB will not recurse into any subdirectories of
-          this directory.
-     '~/.gdbinit'
-          This is the init file in your home directory.  It is loaded
-          next, after 'system.gdbinit', and before command options have
-          been processed.
-     './.gdbinit'
-          This is the init file in the current directory.  It is loaded
-          last, after command line options other than '-x' and '-ex'
-          have been processed.  Command line options '-x' and '-ex' are
-          processed last, after './.gdbinit' has been loaded.
-
-     For further documentation on startup processing, *Note Startup::.
-     For documentation on how to write command files, *Note Command
-     Files: Command Files.
+     Do not execute commands found in any initialization files (*note
+     Initialization Files::).
 
 '-nh'
-     Do not execute commands found in '~/.gdbinit', the init file in
-     your home directory.  *Note Startup::.
+     Do not execute commands found in any home directory initialization
+     file (*note Home directory initialization file: Initialization
+     Files.).  The system wide and current directory initialization
+     files are still loaded.
 
 '-quiet'
 '-silent'
 '-q'
      "Quiet".  Do not print the introductory and copyright messages.
      These messages are also suppressed in batch mode.
+
+     This can also be enabled using 'set startup-quietly on'.  The
+     default is 'off'.  Use 'show startup-quietly' to see the current
+     setting.  Place 'set startup-quietly on' into your early
+     initialization file (*note Initialization Files: Initialization
+     Files.) to have future GDB sessions startup quietly.
 
 '-batch'
      Run in batch mode.  Exit with status '0' after processing all the
@@ -1062,44 +1051,54 @@ or quiet mode.
      important when reporting GDB bugs (*note GDB Bugs::).
 
 
-File: gdb.info,  Node: Startup,  Prev: Mode Options,  Up: Invoking GDB
+File: gdb.info,  Node: Startup,  Next: Initialization Files,  Prev: Mode Options,  Up: Invoking GDB
 
 2.1.3 What GDB Does During Startup
 ----------------------------------
 
 Here's the description of what GDB does during session startup:
 
-  1. Sets up the command interpreter as specified by the command line
+  1. Performs minimal setup required to initialize basic internal state.
+
+  2. Reads commands from the early initialization file (if any) in your
+     home directory.  Only a restricted set of commands can be placed
+     into an early initialization file, see *note Initialization
+     Files::, for details.
+
+  3. Executes commands and command files specified by the '-eiex' and
+     '-eix' command line options in their specified order.  Only a
+     restricted set of commands can be used with '-eiex' and 'eix', see
+     *note Initialization Files::, for details.
+
+  4. Sets up the command interpreter as specified by the command line
      (*note interpreter: Mode Options.).
 
-  2. Reads the system-wide "init file" (if '--with-system-gdbinit' was
-     used when building GDB; *note System-wide configuration and
-     settings: System-wide configuration.) and the files in the
-     system-wide gdbinit directory (if '--with-system-gdbinit-dir' was
-     used) and executes all the commands in those files.  The files need
-     to be named with a '.gdb' extension to be interpreted as GDB
-     commands, or they can be written in a supported scripting language
-     with an appropriate file extension.
+  5. Reads the system wide initialization file and the files from the
+     system wide initialization directory, *note System Wide Init
+     Files::.
 
-  3. Reads the init file (if any) in your home directory(1) and executes
-     all the commands in that file.
+  6. Reads the initialization file (if any) in your home directory and
+     executes all the commands in that file, *note Home Directory Init
+     File::.
 
-  4. Executes commands and command files specified by the '-iex' and
+  7. Executes commands and command files specified by the '-iex' and
      '-ix' options in their specified order.  Usually you should use the
      '-ex' and '-x' options instead, but this way you can apply settings
      before GDB init files get executed and before inferior gets loaded.
 
-  5. Processes command line options and operands.
+  8. Processes command line options and operands.
 
-  6. Reads and executes the commands from init file (if any) in the
-     current working directory as long as 'set auto-load local-gdbinit'
-     is set to 'on' (*note Init File in the Current Directory::).  This
-     is only done if the current directory is different from your home
-     directory.  Thus, you can have more than one init file, one generic
-     in your home directory, and another, specific to the program you
-     are debugging, in the directory where you invoke GDB.
+  9. Reads and executes the commands from the initialization file (if
+     any) in the current working directory as long as 'set auto-load
+     local-gdbinit' is set to 'on' (*note Init File in the Current
+     Directory::).  This is only done if the current directory is
+     different from your home directory.  Thus, you can have more than
+     one init file, one generic in your home directory, and another,
+     specific to the program you are debugging, in the directory where
+     you invoke GDB.  *Note Init File in the Current Directory during
+     Startup::.
 
-  7. If the command line specified a program to debug, or a process to
+  10. If the command line specified a program to debug, or a process to
      attach to, or a core file, GDB loads any auto-loaded scripts
      provided for the program or for its loaded shared libraries.  *Note
      Auto-loading::.
@@ -1112,33 +1111,168 @@ Here's the description of what GDB does during session startup:
      Option '-ex' does not work because the auto-loading is then turned
      off too late.
 
-  8. Executes commands and command files specified by the '-ex' and '-x'
-     options in their specified order.  *Note Command Files::, for more
-     details about GDB command files.
+  11. Executes commands and command files specified by the '-ex' and
+     '-x' options in their specified order.  *Note Command Files::, for
+     more details about GDB command files.
 
-  9. Reads the command history recorded in the "history file".  *Note
+  12. Reads the command history recorded in the "history file".  *Note
      Command History::, for more details about the command history and
      the files where GDB records it.
 
-   Init files use the same syntax as "command files" (*note Command
-Files::) and are processed by GDB in the same way.  The init file in
-your home directory can set options (such as 'set complaints') that
-affect subsequent processing of command line options and operands.  Init
-files are not executed if you use the '-nx' option (*note Choosing
-Modes: Mode Options.).
+
+File: gdb.info,  Node: Initialization Files,  Prev: Startup,  Up: Invoking GDB
 
-   To display the list of init files loaded by gdb at startup, you can
-use 'gdb --help'.
+2.1.4 Initialization Files
+--------------------------
 
-   The GDB init files are normally called '.gdbinit'.  The DJGPP port of
-GDB uses the name 'gdb.ini', due to the limitations of file names
-imposed by DOS filesystems.  The Windows port of GDB uses the standard
-name, but if it finds a 'gdb.ini' file in your home directory, it warns
-you about that and suggests to rename the file to the standard name.
+During startup (*note Startup::) GDB will execute commands from several
+initialization files.  These initialization files use the same syntax as
+"command files" (*note Command Files::) and are processed by GDB in the
+same way.
+
+   To display the list of initialization files loaded by GDB at startup,
+in the order they will be loaded, you can use 'gdb --help'.
+
+   The "early initialization" file is loaded very early in GDB's
+initialization process, before the interpreter (*note Interpreters::)
+has been initialized, and before the default target (*note Targets::) is
+initialized.  Only 'set' or 'source' commands should be placed into an
+early initialization file, and the only 'set' commands that can be used
+are those that control how GDB starts up.
+
+   Commands that can be placed into an early initialization file will be
+documented as such throughout this manual.  Any command that is not
+documented as being suitable for an early initialization file should
+instead be placed into a general initialization file.  Command files
+passed to '--early-init-command' or '-eix' are also early initialization
+files, with the same command restrictions.  Only commands that can
+appear in an early initialization file should be passed to
+'--early-init-eval-command' or '-eiex'.
+
+   In contrast, the "general initialization" files are processed later,
+after GDB has finished its own internal initialization process, any
+valid command can be used in these files.
+
+   Throughout the rest of this document the term "initialization file"
+refers to one of the general initialization files, not the early
+initialization file.  Any discussion of the early initialization file
+will specifically mention that it is the early initialization file being
+discussed.
+
+   As the system wide and home directory initialization files are
+processed before most command line options, changes to settings (e.g.
+'set complaints') can affect subsequent processing of command line
+options and operands.
+
+   The following sections describe where GDB looks for the early
+initialization and initialization files, and the order that the files
+are searched for.
+
+2.1.4.1 Home directory early initialization files
+.................................................
+
+GDB initially looks for an early initialization file in the users home
+directory(1).  There are a number of locations that GDB will search in
+the home directory, these locations are searched in order and GDB will
+load the first file that it finds, and subsequent locations will not be
+checked.
+
+   On non-macOS hosts the locations searched are:
+   * The file 'gdb/gdbearlyinit' within the directory pointed to by the
+     environment variable 'XDG_CONFIG_HOME', if it is defined.
+   * The file '.config/gdb/gdbearlyinit' within the directory pointed to
+     by the environment variable 'HOME', if it is defined.
+   * The file '.gdbearlyinit' within the directory pointed to by the
+     environment variable 'HOME', if it is defined.
+
+   By contrast, on macOS hosts the locations searched are:
+   * The file 'Library/Preferences/gdb/gdbearlyinit' within the
+     directory pointed to by the environment variable 'HOME', if it is
+     defined.
+   * The file '.gdbearlyinit' within the directory pointed to by the
+     environment variable 'HOME', if it is defined.
+
+   It is possible to prevent the home directory early initialization
+file from being loaded using the '-nx' or '-nh' command line options,
+*note Choosing Modes: Mode Options.
+
+2.1.4.2 System wide initialization files
+........................................
+
+There are two locations that are searched for system wide initialization
+files.  Both of these locations are always checked:
+
+'system.gdbinit'
+     This is a single system-wide initialization file.  Its location is
+     specified with the '--with-system-gdbinit' configure option (*note
+     System-wide configuration::).  It is loaded first when GDB starts,
+     before command line options have been processed.
+
+'system.gdbinit.d'
+     This is the system-wide initialization directory.  Its location is
+     specified with the '--with-system-gdbinit-dir' configure option
+     (*note System-wide configuration::).  Files in this directory are
+     loaded in alphabetical order immediately after 'system.gdbinit' (if
+     enabled) when GDB starts, before command line options have been
+     processed.  Files need to have a recognized scripting language
+     extension ('.py'/'.scm') or be named with a '.gdb' extension to be
+     interpreted as regular GDB commands.  GDB will not recurse into any
+     subdirectories of this directory.
+
+   It is possible to prevent the system wide initialization files from
+being loaded using the '-nx' command line option, *note Choosing Modes:
+Mode Options.
+
+2.1.4.3 Home directory initialization file
+..........................................
+
+After loading the system wide initialization files GDB will look for an
+initialization file in the users home directory(2).  There are a number
+of locations that GDB will search in the home directory, these locations
+are searched in order and GDB will load the first file that it finds,
+and subsequent locations will not be checked.
+
+   On non-Apple hosts the locations searched are:
+'$XDG_CONFIG_HOME/gdb/gdbinit'
+'$HOME/.config/gdb/gdbinit'
+'$HOME/.gdbinit'
+
+   While on Apple hosts the locations searched are:
+'$HOME/Library/Preferences/gdb/gdbinit'
+'$HOME/.gdbinit'
+
+   It is possible to prevent the home directory initialization file from
+being loaded using the '-nx' or '-nh' command line options, *note
+Choosing Modes: Mode Options.
+
+   The DJGPP port of GDB uses the name 'gdb.ini' instead of '.gdbinit'
+or 'gdbinit', due to the limitations of file names imposed by DOS
+filesystems.  The Windows port of GDB uses the standard name, but if it
+finds a 'gdb.ini' file in your home directory, it warns you about that
+and suggests to rename the file to the standard name.
+
+2.1.4.4 Local directory initialization file
+...........................................
+
+GDB will check the current directory for a file called '.gdbinit'.  It
+is loaded last, after command line options other than '-x' and '-ex'
+have been processed.  The command line options '-x' and '-ex' are
+processed last, after '.gdbinit' has been loaded, *note Choosing Files:
+File Options.
+
+   If the file in the current directory was already loaded as the home
+directory initialization file then it will not be loaded a second time.
+
+   It is possible to prevent the local directory initialization file
+from being loaded using the '-nx' command line option, *note Choosing
+Modes: Mode Options.
 
    ---------- Footnotes ----------
 
    (1) On DOS/Windows systems, the home directory is the one pointed to
+by the 'HOME' environment variable.
+
+   (2) On DOS/Windows systems, the home directory is the one pointed to
 by the 'HOME' environment variable.
 
 
@@ -1287,7 +1421,6 @@ alternatives available, if there is more than one possibility).
 * Command Settings::            How to change default behavior of commands
 * Completion::                  Command completion
 * Command Options::             Command options
-* Command aliases default args::        Automatically prepend default arguments to user-defined aliases
 * Help::                        How to ask GDB for help
 
 
@@ -1576,7 +1709,7 @@ expressions.  Also, it only examines the static type of the expression,
 not the dynamic type.
 
 
-File: gdb.info,  Node: Command Options,  Next: Command aliases default args,  Prev: Completion,  Up: Commands
+File: gdb.info,  Node: Command Options,  Next: Help,  Prev: Completion,  Up: Commands
 
 3.4 Command options
 ===================
@@ -1631,86 +1764,9 @@ uppercase.
 Data.)
 
 
-File: gdb.info,  Node: Command aliases default args,  Next: Help,  Prev: Command Options,  Up: Commands
+File: gdb.info,  Node: Help,  Prev: Command Options,  Up: Commands
 
-3.5 Automatically prepend default arguments to user-defined aliases
-===================================================================
-
-You can tell GDB to always prepend some default arguments to the list of
-arguments provided explicitly by the user when using a user-defined
-alias.
-
-   If you repeatedly use the same arguments or options for a command,
-you can define an alias for this command and tell GDB to automatically
-prepend these arguments or options to the list of arguments you type
-explicitly when using the alias(1).
-
-   For example, if you often use the command 'thread apply all'
-specifying to work on the threads in ascending order and to continue in
-case it encounters an error, you can tell GDB to automatically preprend
-the '-ascending' and '-c' options by using:
-
-     (gdb) alias thread apply asc-all = thread apply all -ascending -c
-
-   Once you have defined this alias with its default args, any time you
-type the 'thread apply asc-all' followed by 'some arguments', GDB will
-execute 'thread apply all -ascending -c some arguments'.
-
-   To have even less to type, you can also define a one word alias:
-     (gdb) alias t_a_c = thread apply all -ascending -c
-
-   As usual, unambiguous abbreviations can be used for ALIAS and
-DEFAULT-ARGS.
-
-   The different aliases of a command do not share their default args.
-For example, you define a new alias 'bt_ALL' showing all possible
-information and another alias 'bt_SMALL' showing very limited
-information using:
-     (gdb) alias bt_ALL = backtrace -entry-values both -frame-arg all \
-        -past-main -past-entry -full
-     (gdb) alias bt_SMALL = backtrace -entry-values no -frame-arg none \
-        -past-main off -past-entry off
-
-   (For more on using the 'alias' command, see *note Aliases::.)
-
-   Default args are not limited to the arguments and options of COMMAND,
-but can specify nested commands if COMMAND accepts such a nested command
-as argument.  For example, the below defines 'faalocalsoftype' that
-lists the frames having locals of a certain type, together with the
-matching local vars:
-     (gdb) alias faalocalsoftype = frame apply all info locals -q -t
-     (gdb) faalocalsoftype int
-     #1  0x55554f5e in sleeper_or_burner (v=0xdf50) at sleepers.c:86
-     i = 0
-     ret = 21845
-
-   This is also very useful to define an alias for a set of nested
-'with' commands to have a particular combination of temporary settings.
-For example, the below defines the alias 'pp10' that pretty prints an
-expression argument, with a maximum of 10 elements if the expression is
-a string or an array:
-     (gdb) alias pp10 = with print pretty -- with print elements 10 -- print
-   This defines the alias 'pp10' as being a sequence of 3 commands.  The
-first part 'with print pretty --' temporarily activates the setting 'set
-print pretty', then launches the command that follows the separator
-'--'.  The command following the first part is also a 'with' command
-that temporarily changes the setting 'set print elements' to 10, then
-launches the command that follows the second separator '--'.  The third
-part 'print' is the command the 'pp10' alias will launch, using the
-temporary values of the settings and the arguments explicitly given by
-the user.  For more information about the 'with' command usage, see
-*note Command Settings::.
-
-   ---------- Footnotes ----------
-
-   (1) GDB could easily accept default arguments for pre-defined
-commands and aliases, but it was deemed this would be confusing, and so
-is not allowed.
-
-
-File: gdb.info,  Node: Help,  Prev: Command aliases default args,  Up: Commands
-
-3.6 Getting Help
+3.5 Getting Help
 ================
 
 You can always ask GDB itself for information on its commands, using the
@@ -2604,6 +2660,16 @@ Each inferior may in turn have multiple threads running in it.
        Num  Description       Connection                      Executable
      * 1    process 3401      1 (native)                      goodbye
        2    process 2307      2 (extended-remote host:10000)  hello
+
+   To get informations about the current inferior, use 'inferior':
+
+'inferior'
+     Shows information about the current inferior.
+
+     For example,
+
+     (gdb) inferior
+     [Current inferior is 1 [process 3401] (helloworld)]
 
    To find out what open target connections exist at any moment, use
 'info connections':
@@ -3522,6 +3588,61 @@ variables.
      of the possible arguments described above (or no argument)
      specifying where to break.  *Note Break Conditions: Conditions, for
      more information on breakpoint conditions.
+
+     The breakpoint may be mapped to multiple locations.  If the
+     breakpoint condition COND is invalid at some but not all of the
+     locations, the locations for which the condition is invalid are
+     disabled.  For example, GDB reports below that two of the three
+     locations are disabled.
+
+          (gdb) break func if a == 10
+          warning: failed to validate condition at location 0x11ce, disabling:
+            No symbol "a" in current context.
+          warning: failed to validate condition at location 0x11b6, disabling:
+            No symbol "a" in current context.
+          Breakpoint 1 at 0x11b6: func. (3 locations)
+
+     Locations that are disabled because of the condition are denoted by
+     an uppercase 'N' in the output of the 'info breakpoints' command:
+
+          (gdb) info breakpoints
+          Num     Type           Disp Enb Address            What
+          1       breakpoint     keep y   <MULTIPLE>
+                  stop only if a == 10
+          1.1                         N*  0x00000000000011b6 in ...
+          1.2                         y   0x00000000000011c2 in ...
+          1.3                         N*  0x00000000000011ce in ...
+          (*): Breakpoint condition is invalid at this location.
+
+     If the breakpoint condition COND is invalid in the context of _all_
+     the locations of the breakpoint, GDB refuses to define the
+     breakpoint.  For example, if variable 'foo' is an undefined
+     variable:
+
+          (gdb) break func if foo
+          No symbol "foo" in current context.
+
+'break ... -force-condition if COND'
+     There may be cases where the condition COND is invalid at all the
+     current locations, but the user knows that it will be valid at a
+     future location; for example, because of a library load.  In such
+     cases, by using the '-force-condition' keyword before 'if', GDB can
+     be forced to define the breakpoint with the given condition
+     expression instead of refusing it.
+
+          (gdb) break func -force-condition if foo
+          warning: failed to validate condition at location 1, disabling:
+            No symbol "foo" in current context.
+          warning: failed to validate condition at location 2, disabling:
+            No symbol "foo" in current context.
+          warning: failed to validate condition at location 3, disabling:
+            No symbol "foo" in current context.
+          Breakpoint 1 at 0x1158: test.c:18. (3 locations)
+
+     This causes all the present locations where the breakpoint would
+     otherwise be inserted, to be disabled, as seen in the example
+     above.  However, if there exist locations at which the condition is
+     valid, the '-force-condition' keyword has no effect.
 
 'tbreak ARGS'
      Set a breakpoint enabled only for one stop.  The ARGS are the same
@@ -4543,6 +4664,12 @@ only way to impose a further condition on a catchpoint.
      'condition' command (or a command that sets a breakpoint with a
      condition, like 'break if ...') is given, however.  *Note
      Expressions: Expressions.
+
+'condition -force BNUM EXPRESSION'
+     When the '-force' flag is used, define the condition even if
+     EXPRESSION is invalid at all the current locations of breakpoint
+     BNUM.  This is similar to the '-force-condition' option of the
+     'break' command.
 
 'condition BNUM'
      Remove the condition from breakpoint number BNUM.  It becomes an
@@ -6524,14 +6651,14 @@ GDB provides the following commands:
      instruction-history' command.
 
 'record function-call-history'
-     Prints the execution history at function granularity.  It prints
-     one line for each sequence of instructions that belong to the same
-     function giving the name of that function, the source lines for
-     this instruction sequence (if the '/l' modifier is specified), and
-     the instructions numbers that form the sequence (if the '/i'
-     modifier is specified).  The function names are indented to reflect
-     the call stack depth if the '/c' modifier is specified.  The '/l',
-     '/i', and '/c' modifiers can be given together.
+     Prints the execution history at function granularity.  For each
+     sequence of instructions that belong to the same function, it
+     prints the name of that function, the source lines for this
+     instruction sequence (if the '/l' modifier is specified), and the
+     instructions numbers that form the sequence (if the '/i' modifier
+     is specified).  The function names are indented to reflect the call
+     stack depth if the '/c' modifier is specified.  The '/l', '/i', and
+     '/c' modifiers can be given together.
 
           (gdb) list 1, 10
           1   void foo (void)
@@ -6549,8 +6676,8 @@ GDB provides the following commands:
           2    foo   inst 5,10    at foo.c:2,3
           3  bar     inst 11,13   at foo.c:9,10
 
-     By default, ten lines are printed.  This can be changed using the
-     'set record function-call-history-size' command.  Functions are
+     By default, ten functions are printed.  This can be changed using
+     the 'set record function-call-history-size' command.  Functions are
      printed in execution order.  There are several ways to specify what
      to print:
 
@@ -6564,10 +6691,10 @@ GDB provides the following commands:
           function number FUNC.
 
      'record function-call-history'
-          Prints ten more functions after the last ten-line print.
+          Prints ten more functions after the last ten-function print.
 
      'record function-call-history -'
-          Prints ten more functions before the last ten-line print.
+          Prints ten more functions before the last ten-function print.
 
      'record function-call-history BEGIN, END'
           Prints functions beginning with function number BEGIN until
@@ -6577,13 +6704,13 @@ GDB provides the following commands:
 
 'set record function-call-history-size SIZE'
 'set record function-call-history-size unlimited'
-     Define how many lines to print in the 'record
+     Define how many functions to print in the 'record
      function-call-history' command.  The default value is 10.  A size
-     of 'unlimited' means unlimited lines.
+     of 'unlimited' means unlimited functions.
 
 'show record function-call-history-size'
-     Show how many lines to print in the 'record function-call-history'
-     command.
+     Show how many functions to print in the 'record
+     function-call-history' command.
 
 
 File: gdb.info,  Node: Stack,  Next: Source,  Prev: Process Record and Replay,  Up: Top
@@ -6887,118 +7014,4 @@ levels in a backtrace, you can change this behavior:
    (1) Note that embedded programs (the so-called "free-standing"
 environment) are not required to have a 'main' function as the entry
 point.  They could even have multiple entry points.
-
-
-File: gdb.info,  Node: Selection,  Next: Frame Info,  Prev: Backtrace,  Up: Stack
-
-8.3 Selecting a Frame
-=====================
-
-Most commands for examining the stack and other data in your program
-work on whichever stack frame is selected at the moment.  Here are the
-commands for selecting a stack frame; all of them finish by printing a
-brief description of the stack frame just selected.
-
-'frame [ FRAME-SELECTION-SPEC ]'
-'f [ FRAME-SELECTION-SPEC ]'
-     The 'frame' command allows different stack frames to be selected.
-     The FRAME-SELECTION-SPEC can be any of the following:
-
-     'NUM'
-     'level NUM'
-          Select frame level NUM.  Recall that frame zero is the
-          innermost (currently executing) frame, frame one is the frame
-          that called the innermost one, and so on.  The highest level
-          frame is usually the one for 'main'.
-
-          As this is the most common method of navigating the frame
-          stack, the string 'level' can be omitted.  For example, the
-          following two commands are equivalent:
-
-               (gdb) frame 3
-               (gdb) frame level 3
-
-     'address STACK-ADDRESS'
-          Select the frame with stack address STACK-ADDRESS.  The
-          STACK-ADDRESS for a frame can be seen in the output of 'info
-          frame', for example:
-
-               (gdb) info frame
-               Stack level 1, frame at 0x7fffffffda30:
-                rip = 0x40066d in b (amd64-entry-value.cc:59); saved rip 0x4004c5
-                tail call frame, caller of frame at 0x7fffffffda30
-                source language c++.
-                Arglist at unknown address.
-                Locals at unknown address, Previous frame's sp is 0x7fffffffda30
-
-          The STACK-ADDRESS for this frame is '0x7fffffffda30' as
-          indicated by the line:
-
-               Stack level 1, frame at 0x7fffffffda30:
-
-     'function FUNCTION-NAME'
-          Select the stack frame for function FUNCTION-NAME.  If there
-          are multiple stack frames for function FUNCTION-NAME then the
-          inner most stack frame is selected.
-
-     'view STACK-ADDRESS [ PC-ADDR ]'
-          View a frame that is not part of GDB's backtrace.  The frame
-          viewed has stack address STACK-ADDR, and optionally, a program
-          counter address of PC-ADDR.
-
-          This is useful mainly if the chaining of stack frames has been
-          damaged by a bug, making it impossible for GDB to assign
-          numbers properly to all frames.  In addition, this can be
-          useful when your program has multiple stacks and switches
-          between them.
-
-          When viewing a frame outside the current backtrace using
-          'frame view' then you can always return to the original stack
-          using one of the previous stack frame selection instructions,
-          for example 'frame level 0'.
-
-'up N'
-     Move N frames up the stack; N defaults to 1.  For positive numbers
-     N, this advances toward the outermost frame, to higher frame
-     numbers, to frames that have existed longer.
-
-'down N'
-     Move N frames down the stack; N defaults to 1.  For positive
-     numbers N, this advances toward the innermost frame, to lower frame
-     numbers, to frames that were created more recently.  You may
-     abbreviate 'down' as 'do'.
-
-   All of these commands end by printing two lines of output describing
-the frame.  The first line shows the frame number, the function name,
-the arguments, and the source file and line number of execution in that
-frame.  The second line shows the text of that source line.
-
-   For example:
-
-     (gdb) up
-     #1  0x22f0 in main (argc=1, argv=0xf7fffbf4, env=0xf7fffbfc)
-         at env.c:10
-     10              read_input_file (argv[i]);
-
-   After such a printout, the 'list' command with no arguments prints
-ten lines centered on the point of execution in the frame.  You can also
-edit the program at the point of execution with your favorite editing
-program by typing 'edit'.  *Note Printing Source Lines: List, for
-details.
-
-'select-frame [ FRAME-SELECTION-SPEC ]'
-     The 'select-frame' command is a variant of 'frame' that does not
-     display the new frame after selecting it.  This command is intended
-     primarily for use in GDB command scripts, where the output might be
-     unnecessary and distracting.  The FRAME-SELECTION-SPEC is as for
-     the 'frame' command described in *note Selecting a Frame:
-     Selection.
-
-'up-silently N'
-'down-silently N'
-     These two commands are variants of 'up' and 'down', respectively;
-     they differ in that they do their work silently, without causing
-     display of the new frame.  They are intended primarily for use in
-     GDB command scripts, where the output might be unnecessary and
-     distracting.
 

@@ -464,6 +464,13 @@ Aspect Refined_State
 
 This aspect is equivalent to :ref:`pragma Refined_State<Pragma-Refined_State>`.
 
+Aspect Relaxed_Initialization
+=============================
+.. index:: Refined_Initialization
+
+For the syntax and semantics of this aspect, see the SPARK 2014 Reference
+Manual, section 6.10.
+
 Aspect Remote_Access_Type
 =========================
 .. index:: Remote_Access_Type
@@ -557,9 +564,11 @@ Aspect Unreferenced
 ===================
 .. index:: Unreferenced
 
-This boolean aspect is equivalent to :ref:`pragma Unreferenced<Pragma-Unreferenced>`. Note that
-in the case of formal parameters, it is not permitted to have aspects for
-a formal parameter, so in this case the pragma form must be used.
+This boolean aspect is equivalent to :ref:`pragma Unreferenced<Pragma-Unreferenced>`.
+
+When using the ``-gnat2020`` switch, this aspect is also supported on formal
+parameters, which is in particular the only form possible for expression
+functions.
 
 Aspect Unreferenced_Objects
 ===========================

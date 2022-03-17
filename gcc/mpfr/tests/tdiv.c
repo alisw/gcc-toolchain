@@ -1,6 +1,6 @@
 /* Test file for mpfr_div (and some mpfr_div_ui, etc. tests).
 
-Copyright 1999, 2001-2019 Free Software Foundation, Inc.
+Copyright 1999, 2001-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -23,7 +23,7 @@ https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 #include "mpfr-test.h"
 
 static void
-check_equal (mpfr_srcptr a, mpfr_srcptr a2, char *s,
+check_equal (mpfr_srcptr a, mpfr_srcptr a2, const char *s,
              mpfr_srcptr b, mpfr_srcptr c, mpfr_rnd_t r)
 {
   if (SAME_VAL (a, a2))
@@ -69,8 +69,18 @@ mpfr_all_div (mpfr_ptr a, mpfr_srcptr b, mpfr_srcptr c, mpfr_rnd_t r)
         {
           __gmpfr_flags = oldflags;
           inex2 = mpfr_ui_div (a2, mpfr_get_ui (b, MPFR_RNDN), c, r);
-          MPFR_ASSERTN (SAME_SIGN (inex2, inex));
-          MPFR_ASSERTN (__gmpfr_flags == newflags);
+          if (!SAME_SIGN (inex2, inex))
+            {
+              printf ("Error for ternary value (rnd=%s), mpfr_div %d, mpfr_ui_div %d\n",
+                      mpfr_print_rnd_mode (r), inex, inex2);
+              exit (1);
+            }
+          if (__gmpfr_flags != newflags)
+            {
+              printf ("Error for flags, mpfr_div %d, mpfr_ui_div %d\n",
+                      newflags, __gmpfr_flags);
+              exit (1);
+            }
           check_equal (a, a2, "mpfr_ui_div", b, c, r);
         }
       if (mpfr_fits_slong_p (b, MPFR_RNDA))
@@ -913,7 +923,7 @@ check_special (void)
   set_emax (1);
   mpfr_set_ui (a, 1, MPFR_RNDZ);
   mpfr_set_ui (d, 1, MPFR_RNDZ);
-  mpfr_div_2exp (d, d, 1, MPFR_RNDZ);
+  mpfr_div_2ui (d, d, 1, MPFR_RNDZ);
   mpfr_clear_flags ();
   test_div (q, a, d, MPFR_RNDU); /* 1 / 0.5 = 2 -> overflow */
   MPFR_ASSERTN (mpfr_inf_p (q) && mpfr_sgn (q) > 0);
@@ -924,7 +934,7 @@ check_special (void)
   emin = mpfr_get_emin ();
   set_emin (-1);
   mpfr_set_ui (a, 1, MPFR_RNDZ);
-  mpfr_div_2exp (a, a, 2, MPFR_RNDZ);
+  mpfr_div_2ui (a, a, 2, MPFR_RNDZ);
   mpfr_set_prec (d, mpfr_get_prec (q) + 8);
   for (i = -1; i <= 1; i++)
     {
@@ -1389,7 +1399,7 @@ test_mpfr_divsp2 (void)
   mpfr_set_str (v, "241810647971575979588130185988987264768", 10, MPFR_RNDN);
   mpfr_div (q, u, v, MPFR_RNDN);
   mpfr_set_str (u, "5732952910203749289426944", 10, MPFR_RNDN);
-  mpfr_div_2exp (u, u, 82, MPFR_RNDN);
+  mpfr_div_2ui (u, u, 82, MPFR_RNDN);
   MPFR_ASSERTN(mpfr_equal_p (q, u));
 
   mpfr_clear (u);
@@ -1418,7 +1428,7 @@ test_20160831 (void)
   mpfr_set_str (v, "205987256581218236405412302590110119580", 10, MPFR_RNDN);
   mpfr_div (q, u, v, MPFR_RNDN);
   mpfr_set_str (u, "19217137613667309953639458782352244736", 10, MPFR_RNDN);
-  mpfr_div_2exp (u, u, 124, MPFR_RNDN);
+  mpfr_div_2ui (u, u, 124, MPFR_RNDN);
   MPFR_ASSERTN (mpfr_equal_p (q, u));
 
   mpfr_clears (u, v, q, (mpfr_ptr) 0);

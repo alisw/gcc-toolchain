@@ -1,5 +1,5 @@
 /* Branch prediction routines for the GNU compiler.
-   Copyright (C) 2000-2020 Free Software Foundation, Inc.
+   Copyright (C) 2000-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -243,7 +243,7 @@ probably_never_executed_bb_p (struct function *fun, const_basic_block bb)
 static bool
 unlikely_executed_edge_p (edge e)
 {
-  return (e->count () == profile_count::zero ()
+  return (e->src->count == profile_count::zero ()
 	  || e->probability == profile_probability::never ())
 	 || (e->flags & (EDGE_EH | EDGE_FAKE));
 }
@@ -260,13 +260,15 @@ probably_never_executed_edge_p (struct function *fun, edge e)
 
 /* Return true if function FUN should always be optimized for size.  */
 
-bool
+optimize_size_level
 optimize_function_for_size_p (struct function *fun)
 {
   if (!fun || !fun->decl)
-    return optimize_size;
+    return optimize_size ? OPTIMIZE_SIZE_MAX : OPTIMIZE_SIZE_NO;
   cgraph_node *n = cgraph_node::get (fun->decl);
-  return n && n->optimize_for_size_p ();
+  if (n)
+    return n->optimize_for_size_p ();
+  return OPTIMIZE_SIZE_NO;
 }
 
 /* Return true if function FUN should always be optimized for speed.  */
@@ -289,11 +291,16 @@ function_optimization_type (struct function *fun)
 
 /* Return TRUE if basic block BB should be optimized for size.  */
 
-bool
+optimize_size_level
 optimize_bb_for_size_p (const_basic_block bb)
 {
-  return (optimize_function_for_size_p (cfun)
-	  || (bb && !maybe_hot_bb_p (cfun, bb)));
+  enum optimize_size_level ret = optimize_function_for_size_p (cfun);
+
+  if (bb && ret < OPTIMIZE_SIZE_MAX && bb->count == profile_count::zero ())
+    ret = OPTIMIZE_SIZE_MAX;
+  if (bb && ret < OPTIMIZE_SIZE_BALANCED && !maybe_hot_bb_p (cfun, bb))
+    ret = OPTIMIZE_SIZE_BALANCED;
+  return ret;
 }
 
 /* Return TRUE if basic block BB should be optimized for speed.  */
@@ -316,10 +323,16 @@ bb_optimization_type (const_basic_block bb)
 
 /* Return TRUE if edge E should be optimized for size.  */
 
-bool
+optimize_size_level
 optimize_edge_for_size_p (edge e)
 {
-  return optimize_function_for_size_p (cfun) || !maybe_hot_edge_p (e);
+  enum optimize_size_level ret = optimize_function_for_size_p (cfun);
+
+  if (ret < OPTIMIZE_SIZE_MAX && unlikely_executed_edge_p (e))
+    ret = OPTIMIZE_SIZE_MAX;
+  if (ret < OPTIMIZE_SIZE_BALANCED && !maybe_hot_edge_p (e))
+    ret = OPTIMIZE_SIZE_BALANCED;
+  return ret;
 }
 
 /* Return TRUE if edge E should be optimized for speed.  */
@@ -332,10 +345,13 @@ optimize_edge_for_speed_p (edge e)
 
 /* Return TRUE if the current function is optimized for size.  */
 
-bool
+optimize_size_level
 optimize_insn_for_size_p (void)
 {
-  return optimize_function_for_size_p (cfun) || !crtl->maybe_hot_insn_p;
+  enum optimize_size_level ret = optimize_function_for_size_p (cfun);
+  if (ret < OPTIMIZE_SIZE_BALANCED && !crtl->maybe_hot_insn_p)
+    ret = OPTIMIZE_SIZE_BALANCED;
+  return ret;
 }
 
 /* Return TRUE if the current function is optimized for speed.  */
@@ -348,7 +364,7 @@ optimize_insn_for_speed_p (void)
 
 /* Return TRUE if LOOP should be optimized for size.  */
 
-bool
+optimize_size_level
 optimize_loop_for_size_p (class loop *loop)
 {
   return optimize_bb_for_size_p (loop->header);
@@ -392,10 +408,31 @@ optimize_loop_nest_for_speed_p (class loop *loop)
 
 /* Return TRUE if nest rooted at LOOP should be optimized for size.  */
 
-bool
+optimize_size_level
 optimize_loop_nest_for_size_p (class loop *loop)
 {
-  return !optimize_loop_nest_for_speed_p (loop);
+  enum optimize_size_level ret = optimize_loop_for_size_p (loop);
+  class loop *l = loop;
+
+  l = loop->inner;
+  while (l && l != loop)
+    {
+      if (ret == OPTIMIZE_SIZE_NO)
+	break;
+      ret = MIN (optimize_loop_for_size_p (l), ret);
+      if (l->inner)
+        l = l->inner;
+      else if (l->next)
+        l = l->next;
+      else
+        {
+	  while (l != loop && !l->next)
+	    l = loop_outer (l);
+	  if (l != loop)
+	    l = l->next;
+	}
+    }
+  return ret;
 }
 
 /* Return true if edge E is likely to be well predictable by branch
@@ -595,10 +632,11 @@ gimple_predict_edge (edge e, enum br_predictor predictor, int probability)
     }
 }
 
-/* Filter edge predictions PREDS by a function FILTER.  DATA are passed
-   to the filter function.  */
+/* Filter edge predictions PREDS by a function FILTER: if FILTER return false
+   the prediction is removed.
+   DATA are passed to the filter function.  */
 
-void
+static void
 filter_predictions (edge_prediction **preds,
 		    bool (*filter) (edge_prediction *, void *), void *data)
 {
@@ -627,10 +665,10 @@ filter_predictions (edge_prediction **preds,
 /* Filter function predicate that returns true for a edge predicate P
    if its edge is equal to DATA.  */
 
-bool
-equal_edge_p (edge_prediction *p, void *data)
+static bool
+not_equal_edge_p (edge_prediction *p, void *data)
 {
-  return p->ep_edge == (edge)data;
+  return p->ep_edge != (edge)data;
 }
 
 /* Remove all predictions on given basic block that are attached
@@ -642,7 +680,7 @@ remove_predictions_associated_with_edge (edge e)
     return;
 
   edge_prediction **preds = bb_predictions->get (e->src);
-  filter_predictions (preds, equal_edge_p, e);
+  filter_predictions (preds, not_equal_edge_p, e);
 }
 
 /* Clears the list of predictions stored for BB.  */
@@ -1915,7 +1953,6 @@ predict_loops (void)
     {
       basic_block bb, *bbs;
       unsigned j, n_exits = 0;
-      vec<edge> exits;
       class tree_niter_desc niter_desc;
       edge ex;
       class nb_iter_bound *nb_iter;
@@ -1926,15 +1963,12 @@ predict_loops (void)
       gcond *stmt = NULL;
       bool recursion = with_recursion.contains (loop);
 
-      exits = get_loop_exit_edges (loop);
+      auto_vec<edge> exits = get_loop_exit_edges (loop);
       FOR_EACH_VEC_ELT (exits, j, ex)
 	if (!unlikely_executed_edge_p (ex) && !(ex->flags & EDGE_ABNORMAL_CALL))
 	  n_exits ++;
       if (!n_exits)
-	{
-          exits.release ();
-	  continue;
-	}
+	continue;
 
       if (dump_file && (dump_flags & TDF_DETAILS))
 	fprintf (dump_file, "Predicting loop %i%s with %i exits.\n",
@@ -2048,7 +2082,6 @@ predict_loops (void)
 	  probability = RDIV (REG_BR_PROB_BASE, nitercst);
 	  predict_edge (ex, predictor, probability);
 	}
-      exits.release ();
 
       /* Find information about loop bound variables.  */
       for (nb_iter = loop->bounds; nb_iter;
@@ -2171,7 +2204,7 @@ predict_loops (void)
 	     {
 	       gimple *call_stmt = SSA_NAME_DEF_STMT (gimple_cond_lhs (stmt));
 	       if (gimple_code (call_stmt) == GIMPLE_ASSIGN
-		   && gimple_expr_code (call_stmt) == NOP_EXPR
+		   && CONVERT_EXPR_CODE_P (gimple_assign_rhs_code (call_stmt))
 		   && TREE_CODE (gimple_assign_rhs1 (call_stmt)) == SSA_NAME)
 		 call_stmt = SSA_NAME_DEF_STMT (gimple_assign_rhs1 (call_stmt));
 	       if (gimple_call_internal_p (call_stmt, IFN_BUILTIN_EXPECT)
@@ -3121,6 +3154,35 @@ tree_guess_outgoing_edge_probabilities (basic_block bb)
   bb_predictions = NULL;
 }
 
+/* Filter function predicate that returns true for a edge predicate P
+   if its edge is equal to DATA.  */
+
+static bool
+not_loop_guard_equal_edge_p (edge_prediction *p, void *data)
+{
+  return p->ep_edge != (edge)data || p->ep_predictor != PRED_LOOP_GUARD;
+}
+
+/* Predict edge E with PRED unless it is already predicted by some predictor
+   considered equivalent.  */
+
+static void
+maybe_predict_edge (edge e, enum br_predictor pred, enum prediction taken)
+{
+  if (edge_predicted_by_p (e, pred, taken))
+    return;
+  if (pred == PRED_LOOP_GUARD
+      && edge_predicted_by_p (e, PRED_LOOP_GUARD_WITH_RECURSION, taken))
+    return;
+  /* Consider PRED_LOOP_GUARD_WITH_RECURSION superrior to LOOP_GUARD.  */
+  if (pred == PRED_LOOP_GUARD_WITH_RECURSION)
+    {
+      edge_prediction **preds = bb_predictions->get (e->src);
+      if (preds)
+	filter_predictions (preds, not_loop_guard_equal_edge_p, e);
+    }
+  predict_edge_def (e, pred, taken);
+}
 /* Predict edges to successors of CUR whose sources are not postdominated by
    BB by PRED and recurse to all postdominators.  */
 
@@ -3176,10 +3238,7 @@ predict_paths_for_bb (basic_block cur, basic_block bb,
 	 regions that are only reachable by abnormal edges.  We simply
 	 prevent visiting given BB twice.  */
       if (found)
-	{
-	  if (!edge_predicted_by_p (e, pred, taken))
-            predict_edge_def (e, pred, taken);
-	}
+	maybe_predict_edge (e, pred, taken);
       else if (bitmap_set_bit (visited, e->src->index))
 	predict_paths_for_bb (e->src, e->src, pred, taken, visited, in_loop);
     }
@@ -3222,7 +3281,7 @@ predict_paths_leading_to_edge (edge e, enum br_predictor pred,
   if (!has_nonloop_edge)
     predict_paths_for_bb (bb, bb, pred, taken, auto_bitmap (), in_loop);
   else
-    predict_edge_def (e, pred, taken);
+    maybe_predict_edge (e, pred, taken);
 }
 
 /* This is used to carry information about basic blocks.  It is
@@ -3737,7 +3796,7 @@ determine_unlikely_bbs ()
   propagate_unlikely_bbs_forward ();
 
   auto_vec<int, 64> nsuccs;
-  nsuccs.safe_grow_cleared (last_basic_block_for_fn (cfun));
+  nsuccs.safe_grow_cleared (last_basic_block_for_fn (cfun), true);
   FOR_ALL_BB_FN (bb, cfun)
     if (!(bb->count == profile_count::zero ())
 	&& bb != EXIT_BLOCK_PTR_FOR_FN (cfun))
@@ -3892,7 +3951,30 @@ estimate_bb_frequencies (bool force)
       cfun->cfg->count_max = profile_count::uninitialized ();
       FOR_BB_BETWEEN (bb, ENTRY_BLOCK_PTR_FOR_FN (cfun), NULL, next_bb)
 	{
-	  sreal tmp = BLOCK_INFO (bb)->frequency * freq_max + sreal (1, -1);
+	  sreal tmp = BLOCK_INFO (bb)->frequency;
+	  if (tmp >= 1)
+	    {
+	      gimple_stmt_iterator gsi;
+	      tree decl;
+
+	      /* Self recursive calls can not have frequency greater than 1
+		 or program will never terminate.  This will result in an
+		 inconsistent bb profile but it is better than greatly confusing
+		 IPA cost metrics.  */
+	      for (gsi = gsi_start_bb (bb); !gsi_end_p (gsi); gsi_next (&gsi))
+		if (is_gimple_call (gsi_stmt (gsi))
+		    && (decl = gimple_call_fndecl (gsi_stmt (gsi))) != NULL
+		    && recursive_call_p (current_function_decl, decl))
+		  {
+		    if (dump_file)
+		      fprintf (dump_file, "Dropping frequency of recursive call"
+			       " in bb %i from %f\n", bb->index,
+			       tmp.to_double ());
+		    tmp = (sreal)9 / (sreal)10;
+		    break;
+		  }
+	    }
+	  tmp = tmp * freq_max + sreal (1, -1);
 	  profile_count count = profile_count::from_gcov_type (tmp.to_int ());	
 
 	  /* If we have profile feedback in which this function was never

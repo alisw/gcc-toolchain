@@ -18,8 +18,8 @@ Section Headers:
   \[13\] \.bss              NOBITS          100000cc 0020cc 000004 00  WA  0   0  4
   \[14\] \.c6xabi\.attributes C6000_ATTRIBUTES 00000000 0020cc 000019 00      0   0  1
   \[15\] \.symtab           SYMTAB          00000000 0020e8 0001b0 10     16  22  4
-  \[16\] \.strtab           STRTAB          00000000 002298 00005e 00      0   0  1
-  \[17\] \.shstrtab         STRTAB          00000000 0022f6 000080 00      0   0  1
+  \[16\] \.strtab           STRTAB .*
+  \[17\] \.shstrtab         STRTAB .*
 Key to Flags:
 #...
 
@@ -83,11 +83,11 @@ Relocation section '\.rela\.plt' at offset 0x2000 contains 1 entry:
 Symbol table '\.dynsym' contains 11 entries:
    Num:    Value  Size Type    Bind   Vis      Ndx Name
      0: 00000000     0 NOTYPE  LOCAL  DEFAULT  UND 
-     1: 10000020     0 SECTION LOCAL  DEFAULT    9 
-     2: 10000060     0 SECTION LOCAL  DEFAULT   10 
-     3: 100000a0     0 SECTION LOCAL  DEFAULT   11 
-     4: 100000c0     0 SECTION LOCAL  DEFAULT   12 
-     5: 100000cc     0 SECTION LOCAL  DEFAULT   13 
+     1: 10000020     0 SECTION LOCAL  DEFAULT    9.*
+     2: 10000060     0 SECTION LOCAL  DEFAULT   10.*
+     3: 100000a0     0 SECTION LOCAL  DEFAULT   11.*
+     4: 100000c0     0 SECTION LOCAL  DEFAULT   12.*
+     5: 100000cc     0 SECTION LOCAL  DEFAULT   13.*
      6: 100000c0     4 OBJECT  GLOBAL DEFAULT   12 b
      7: 00000000     0 NOTYPE  WEAK   DEFAULT  UND g1
      8: 00000000     0 OBJECT  WEAK   DEFAULT  UND g2
@@ -97,21 +97,21 @@ Symbol table '\.dynsym' contains 11 entries:
 Symbol table '\.symtab' contains 27 entries:
    Num:    Value  Size Type    Bind   Vis      Ndx Name
      0: 00000000     0 NOTYPE  LOCAL  DEFAULT  UND 
-     1: 00008000     0 SECTION LOCAL  DEFAULT    1 
-     2: 00008040     0 SECTION LOCAL  DEFAULT    2 
-     3: 000080f0     0 SECTION LOCAL  DEFAULT    3 
-     4: 00008114     0 SECTION LOCAL  DEFAULT    4 
-     5: 0000812c     0 SECTION LOCAL  DEFAULT    5 
-     6: 00008144     0 SECTION LOCAL  DEFAULT    6 
-     7: 00008150     0 SECTION LOCAL  DEFAULT    7 
-     8: 10000000     0 SECTION LOCAL  DEFAULT    8 
-     9: 10000020     0 SECTION LOCAL  DEFAULT    9 
-    10: 10000060     0 SECTION LOCAL  DEFAULT   10 
-    11: 100000a0     0 SECTION LOCAL  DEFAULT   11 
-    12: 100000c0     0 SECTION LOCAL  DEFAULT   12 
-    13: 100000cc     0 SECTION LOCAL  DEFAULT   13 
-    14: 00000000     0 SECTION LOCAL  DEFAULT   14 
-    15: 00000000     0 FILE    LOCAL  DEFAULT  ABS tmpdir/shlib-app-1\.o
+     1: 00008000     0 SECTION LOCAL  DEFAULT    1.*
+     2: 00008040     0 SECTION LOCAL  DEFAULT    2.*
+     3: 000080f0     0 SECTION LOCAL  DEFAULT    3.*
+     4: 00008114     0 SECTION LOCAL  DEFAULT    4.*
+     5: 0000812c     0 SECTION LOCAL  DEFAULT    5.*
+     6: 00008144     0 SECTION LOCAL  DEFAULT    6.*
+     7: 00008150     0 SECTION LOCAL  DEFAULT    7.*
+     8: 10000000     0 SECTION LOCAL  DEFAULT    8.*
+     9: 10000020     0 SECTION LOCAL  DEFAULT    9.*
+    10: 10000060     0 SECTION LOCAL  DEFAULT   10.*
+    11: 100000a0     0 SECTION LOCAL  DEFAULT   11.*
+    12: 100000c0     0 SECTION LOCAL  DEFAULT   12.*
+    13: 100000cc     0 SECTION LOCAL  DEFAULT   13.*
+    14: 00000000     0 SECTION LOCAL  DEFAULT   14.*
+    15: 00000000     0 FILE    LOCAL  DEFAULT  ABS .*shlib-app-1\.o
     16: 10000060     0 NOTYPE  LOCAL  DEFAULT   10 fish
     17: 100000c4     8 OBJECT  LOCAL  DEFAULT   12 w
     18: 00000000     0 FILE    LOCAL  DEFAULT  ABS 

@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
---          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- This specification is derived from the Ada Reference Manual for use with --
 -- GNAT. The copyright notice above, and the license provisions that follow --
@@ -36,8 +36,9 @@
 --  Preconditions in this unit are meant for analysis only, not for run-time
 --  checking, so that the expected exceptions are raised. This is enforced by
 --  setting the corresponding assertion policy to Ignore. These preconditions
---  are partial and protect against Status_Error, Mode_Error, and Layout_Error,
---  but not against other types of errors.
+--  are partial. They protect fully against Status_Error and Mode_Error,
+--  partially against Layout_Error (see SPARK User's Guide for details), and
+--  not against other types of errors.
 
 pragma Assertion_Policy (Pre => Ignore);
 
@@ -70,7 +71,7 @@ is
    --  used in this package and System.File_IO.
 
    for File_Mode use
-     (In_File     => 0,  -- System.FIle_IO.File_Mode'Pos (In_File)
+     (In_File     => 0,  -- System.File_IO.File_Mode'Pos (In_File)
       Out_File    => 2,  -- System.File_IO.File_Mode'Pos (Out_File)
       Append_File => 3); -- System.File_IO.File_Mode'Pos (Append_File)
 

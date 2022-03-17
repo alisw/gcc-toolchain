@@ -1,6 +1,6 @@
 /* Test file for mpfr_add and mpfr_sub.
 
-Copyright 1999-2019 Free Software Foundation, Inc.
+Copyright 1999-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -149,7 +149,7 @@ check64 (void)
   mpfr_set_str_binary (t, "-1.1e-2");
   mpfr_set_prec (u, 2);
   test_add (u, x, t, MPFR_RNDN);
-  if (MPFR_MANT(u)[0] << 2)
+  if ((mp_limb_t) (MPFR_MANT(u)[0] << 2))
     {
       printf ("result not normalized for prec=2\n");
       mpfr_dump (u);
@@ -375,18 +375,18 @@ check_case_1b (void)
           mpfr_set_prec (b, prec_b);
           /* b = 1 - 2^(-prec_a) + 2^(-prec_b) */
           mpfr_set_ui (b, 1, MPFR_RNDN);
-          mpfr_div_2exp (b, b, dif, MPFR_RNDN);
+          mpfr_div_2ui (b, b, dif, MPFR_RNDN);
           mpfr_sub_ui (b, b, 1, MPFR_RNDN);
-          mpfr_div_2exp (b, b, prec_a, MPFR_RNDN);
+          mpfr_div_2ui (b, b, prec_a, MPFR_RNDN);
           mpfr_add_ui (b, b, 1, MPFR_RNDN);
           for (prec_c = dif; prec_c <= 64; prec_c++)
             {
               /* c = 2^(-prec_a) - 2^(-prec_b) */
               mpfr_set_prec (c, prec_c);
               mpfr_set_si (c, -1, MPFR_RNDN);
-              mpfr_div_2exp (c, c, dif, MPFR_RNDN);
+              mpfr_div_2ui (c, c, dif, MPFR_RNDN);
               mpfr_add_ui (c, c, 1, MPFR_RNDN);
-              mpfr_div_2exp (c, c, prec_a, MPFR_RNDN);
+              mpfr_div_2ui (c, c, prec_a, MPFR_RNDN);
               test_add (a, b, c, MPFR_RNDN);
               if (mpfr_cmp_ui (a, 1) != 0)
                 {
@@ -776,6 +776,8 @@ check_1111 (void)
                   (int) tb, (int) tc, (int) diff,
                   mpfr_print_rnd_mode (rnd_mode));
           printf ("sb = %d, sc = %d\n", sb, sc);
+          printf ("b = "); mpfr_dump (b);
+          printf ("c = "); mpfr_dump (c);
           printf ("a = "); mpfr_dump (a);
           printf ("s = "); mpfr_dump (s);
           printf ("inex_a = %d, inex_s = %d\n", inex_a, inex_s);
@@ -1267,7 +1269,7 @@ test_rndf_exact (mp_size_t pmax)
           for (eb = 0; eb <= pmax + 3; eb ++)
             {
               mpfr_urandomb (b, RANDS);
-              mpfr_mul_2exp (b, b, eb, MPFR_RNDN);
+              mpfr_mul_2ui (b, b, eb, MPFR_RNDN);
               for (pc = MPFR_PREC_MIN; pc <= pmax; pc++)
                 {
                   if ((pc + 2) % GMP_NUMB_BITS > 4)

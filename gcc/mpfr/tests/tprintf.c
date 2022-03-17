@@ -1,6 +1,6 @@
 /* tprintf.c -- test file for mpfr_printf and mpfr_vprintf
 
-Copyright 2008-2019 Free Software Foundation, Inc.
+Copyright 2008-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -20,6 +20,12 @@ along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
 https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
+/* FIXME: The output is not tested (thus coverage data are meaningless);
+   only the return value is tested (output string length).
+   Knowing the implementation, we may need only some minimal checks:
+   all the formatted output functions are based on mpfr_vasnprintf_aux
+   and full checks are done via tsprintf. */
+
 /* Needed due to the tests on HAVE_STDARG and MPFR_USE_MINI_GMP */
 #ifdef HAVE_CONFIG_H
 # include "config.h"
@@ -35,7 +41,7 @@ https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 #include <locale.h>
 #endif
 
-#include "mpfr-intmax.h"
+#define MPFR_NEED_INTMAX_H
 #include "mpfr-test.h"
 #define STDOUT_FILENO 1
 
@@ -310,7 +316,7 @@ check_mixed (void)
   check_vprintf ("a. %c, b. %Rb, c. %u, d. %li%ln", i, mpfr, i, lo, &ulo);
   check_length (2, ulo, 36, lu);
   check_vprintf ("a. %hi, b. %*f, c. %Re%hn", ush, 3, f, mpfr, &ush);
-  check_length (3, ush, 29, hu);
+  check_length (3, ush, 46, hu);
   check_vprintf ("a. %hi, b. %f, c. %#.2Rf%n", sh, d, mpfr, &i);
   check_length (4, i, 29, d);
   check_vprintf ("a. %R*A, b. %Fe, c. %i%zn", rnd, mpfr, mpf, sz, &sz);
@@ -327,9 +333,11 @@ check_mixed (void)
   if (p != 20)
     {
       mpfr_fprintf (stderr, "Error in test 8, got '%% a. %RNg, b. %Qx, c. %td'\n", mpfr, mpq, saved_p);
-      /* under MinGW, -D__USE_MINGW_ANSI_STDIO is required to support %td
-         see https://gcc.gnu.org/ml/gcc/2013-03/msg00103.html */
-      fprintf (stderr, "Under MinGW, compiling GMP with -D__USE_MINGW_ANSI_STDIO might be required\n");
+#if defined(__MINGW32__) || defined(__MINGW64__)
+      fprintf (stderr,
+               "Your MinGW may be too old, in which case compiling GMP\n"
+               "with -D__USE_MINGW_ANSI_STDIO might be required.\n");
+#endif
     }
   check_length (8, (long) p, 20, ld); /* no format specifier '%td' in C89 */
 #endif
@@ -350,7 +358,7 @@ check_mixed (void)
     unsigned long long ullo = 1;
 
     check_vprintf ("a. %Re, b. %llx%Qn", mpfr, ullo, &mpq);
-    check_length_with_cmp (11, mpq, 16, mpq_cmp_ui (mpq, 16, 1), Qu);
+    check_length_with_cmp (11, mpq, 31, mpq_cmp_ui (mpq, 31, 1), Qu);
     check_vprintf ("a. %lli, b. %Rf%lln", llo, mpfr, &ullo);
     check_length (12, ullo, 19, llu);
   }

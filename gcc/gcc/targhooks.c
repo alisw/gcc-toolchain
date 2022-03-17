@@ -1,5 +1,5 @@
 /* Default target hook functions.
-   Copyright (C) 2003-2020 Free Software Foundation, Inc.
+   Copyright (C) 2003-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -56,6 +56,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-ssa-alias.h"
 #include "gimple-expr.h"
 #include "memmodel.h"
+#include "backend.h"
+#include "emit-rtl.h"
+#include "df.h"
 #include "tm_p.h"
 #include "stringpool.h"
 #include "tree-vrp.h"
@@ -70,6 +73,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "varasm.h"
 #include "flags.h"
 #include "explow.h"
+#include "expmed.h"
 #include "calls.h"
 #include "expr.h"
 #include "output.h"
@@ -83,6 +87,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "langhooks.h"
 #include "sbitmap.h"
 #include "function-abi.h"
+#include "attribs.h"
+#include "asan.h"
+#include "emit-rtl.h"
 
 bool
 default_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED,
@@ -987,6 +994,35 @@ default_function_value_regno_p (const unsigned int regno ATTRIBUTE_UNUSED)
 #endif
 }
 
+/* The default hook for TARGET_ZERO_CALL_USED_REGS.  */
+
+HARD_REG_SET
+default_zero_call_used_regs (HARD_REG_SET need_zeroed_hardregs)
+{
+  gcc_assert (!hard_reg_set_empty_p (need_zeroed_hardregs));
+
+  for (unsigned int regno = 0; regno < FIRST_PSEUDO_REGISTER; regno++)
+    if (TEST_HARD_REG_BIT (need_zeroed_hardregs, regno))
+      {
+	rtx_insn *last_insn = get_last_insn ();
+	machine_mode mode = GET_MODE (regno_reg_rtx[regno]);
+	rtx zero = CONST0_RTX (mode);
+	rtx_insn *insn = emit_move_insn (regno_reg_rtx[regno], zero);
+	if (!valid_insn_p (insn))
+	  {
+	    static bool issued_error;
+	    if (!issued_error)
+	      {
+		issued_error = true;
+		sorry ("%qs not supported on this target",
+			"-fzero-call-used-regs");
+	      }
+	    delete_insns_since (last_insn);
+	  }
+      }
+  return need_zeroed_hardregs;
+}
+
 rtx
 default_internal_arg_pointer (void)
 {
@@ -1233,8 +1269,9 @@ default_vector_alignment (const_tree type)
   tree size = TYPE_SIZE (type);
   if (tree_fits_uhwi_p (size))
     align = tree_to_uhwi (size);
-
-  return align < MAX_OFILE_ALIGNMENT ? align : MAX_OFILE_ALIGNMENT;
+  if (align >= MAX_OFILE_ALIGNMENT)
+    return MAX_OFILE_ALIGNMENT;
+  return MAX (align, GET_MODE_ALIGNMENT (TYPE_MODE (type)));
 }
 
 /* The default implementation of
@@ -1348,20 +1385,21 @@ default_init_cost (class loop *loop_info ATTRIBUTE_UNUSED)
    it into the cost specified by WHERE, and returns the cost added.  */
 
 unsigned
-default_add_stmt_cost (void *data, int count, enum vect_cost_for_stmt kind,
-		       class _stmt_vec_info *stmt_info, int misalign,
+default_add_stmt_cost (class vec_info *vinfo, void *data, int count,
+		       enum vect_cost_for_stmt kind,
+		       class _stmt_vec_info *stmt_info, tree vectype,
+		       int misalign,
 		       enum vect_cost_model_location where)
 {
   unsigned *cost = (unsigned *) data;
   unsigned retval = 0;
-
-  tree vectype = stmt_info ? stmt_vectype (stmt_info) : NULL_TREE;
   int stmt_cost = targetm.vectorize.builtin_vectorization_cost (kind, vectype,
 								misalign);
    /* Statements in an inner loop relative to the loop being
       vectorized are weighted more heavily.  The value here is
       arbitrary and could potentially be improved with analysis.  */
-  if (where == vect_body && stmt_info && stmt_in_inner_loop_p (stmt_info))
+  if (where == vect_body && stmt_info
+      && stmt_in_inner_loop_p (vinfo, stmt_info))
     count *= 50;  /* FIXME.  */
 
   retval = (unsigned) (count * stmt_cost);
@@ -1564,6 +1602,19 @@ default_mode_dependent_address_p (const_rtx addr ATTRIBUTE_UNUSED,
   return false;
 }
 
+extern bool default_new_address_profitable_p (rtx, rtx);
+
+
+/* The default implementation of TARGET_NEW_ADDRESS_PROFITABLE_P.  */
+
+bool
+default_new_address_profitable_p (rtx memref ATTRIBUTE_UNUSED,
+				  rtx_insn *insn ATTRIBUTE_UNUSED,
+				  rtx new_addr ATTRIBUTE_UNUSED)
+{
+  return true;
+}
+
 bool
 default_target_option_valid_attribute_p (tree ARG_UNUSED (fndecl),
 					 tree ARG_UNUSED (name),
@@ -1626,7 +1677,8 @@ default_have_conditional_execution (void)
 /* By default we assume that c99 functions are present at the runtime,
    but sincos is not.  */
 bool
-default_libc_has_function (enum function_class fn_class)
+default_libc_has_function (enum function_class fn_class,
+			   tree type ATTRIBUTE_UNUSED)
 {
   if (fn_class == function_c94
       || fn_class == function_c99_misc
@@ -1645,13 +1697,15 @@ default_libc_has_fast_function (int fcode ATTRIBUTE_UNUSED)
 }
 
 bool
-gnu_libc_has_function (enum function_class fn_class ATTRIBUTE_UNUSED)
+gnu_libc_has_function (enum function_class fn_class ATTRIBUTE_UNUSED,
+		       tree type ATTRIBUTE_UNUSED)
 {
   return true;
 }
 
 bool
-no_c99_libc_has_function (enum function_class fn_class ATTRIBUTE_UNUSED)
+no_c99_libc_has_function (enum function_class fn_class ATTRIBUTE_UNUSED,
+			  tree type ATTRIBUTE_UNUSED)
 {
   return false;
 }
@@ -1703,7 +1757,7 @@ default_slow_unaligned_access (machine_mode, unsigned int)
 /* The default implementation of TARGET_ESTIMATED_POLY_VALUE.  */
 
 HOST_WIDE_INT
-default_estimated_poly_value (poly_int64 x)
+default_estimated_poly_value (poly_int64 x, poly_value_estimate_kind)
 {
   return x.coeffs[0];
 }
@@ -1778,17 +1832,15 @@ default_compare_by_pieces_branch_ratio (machine_mode)
   return 1;
 }
 
-/* Write PATCH_AREA_SIZE NOPs into the asm outfile FILE around a function
-   entry.  If RECORD_P is true and the target supports named sections,
-   the location of the NOPs will be recorded in a special object section
-   called "__patchable_function_entries".  This routine may be called
-   twice per function to put NOPs before and after the function
-   entry.  */
+/* Helper for default_print_patchable_function_entry and other
+   print_patchable_function_entry hook implementations.  */
 
 void
-default_print_patchable_function_entry (FILE *file,
-					unsigned HOST_WIDE_INT patch_area_size,
-					bool record_p)
+default_print_patchable_function_entry_1 (FILE *file,
+					  unsigned HOST_WIDE_INT
+					  patch_area_size,
+					  bool record_p,
+					  unsigned int flags)
 {
   const char *nop_templ = 0;
   int code_num;
@@ -1811,7 +1863,7 @@ default_print_patchable_function_entry (FILE *file,
       ASM_GENERATE_INTERNAL_LABEL (buf, "LPFE", patch_area_number);
 
       switch_to_section (get_section ("__patchable_function_entries",
-				      SECTION_WRITE | SECTION_RELRO, NULL));
+				      flags, current_function_decl));
       assemble_align (POINTER_SIZE);
       fputs (asm_op, file);
       assemble_name_raw (file, buf);
@@ -1824,6 +1876,25 @@ default_print_patchable_function_entry (FILE *file,
   unsigned i;
   for (i = 0; i < patch_area_size; ++i)
     output_asm_insn (nop_templ, NULL);
+}
+
+/* Write PATCH_AREA_SIZE NOPs into the asm outfile FILE around a function
+   entry.  If RECORD_P is true and the target supports named sections,
+   the location of the NOPs will be recorded in a special object section
+   called "__patchable_function_entries".  This routine may be called
+   twice per function to put NOPs before and after the function
+   entry.  */
+
+void
+default_print_patchable_function_entry (FILE *file,
+					unsigned HOST_WIDE_INT patch_area_size,
+					bool record_p)
+{
+  unsigned int flags = SECTION_WRITE | SECTION_RELRO;
+  if (HAVE_GAS_SECTION_LINK_ORDER)
+    flags |= SECTION_LINK_ORDER;
+  default_print_patchable_function_entry_1 (file, patch_area_size, record_p,
+					    flags);
 }
 
 bool
@@ -2363,6 +2434,117 @@ default_speculation_safe_value (machine_mode mode ATTRIBUTE_UNUSED,
 #endif
 
   return result;
+}
+
+/* How many bits to shift in order to access the tag bits.
+   The default is to store the tag in the top 8 bits of a 64 bit pointer, hence
+   shifting 56 bits will leave just the tag.  */
+#define HWASAN_SHIFT (GET_MODE_PRECISION (Pmode) - 8)
+#define HWASAN_SHIFT_RTX GEN_INT (HWASAN_SHIFT)
+
+bool
+default_memtag_can_tag_addresses ()
+{
+  return false;
+}
+
+uint8_t
+default_memtag_tag_size ()
+{
+  return 8;
+}
+
+uint8_t
+default_memtag_granule_size ()
+{
+  return 16;
+}
+
+/* The default implementation of TARGET_MEMTAG_INSERT_RANDOM_TAG.  */
+rtx
+default_memtag_insert_random_tag (rtx untagged, rtx target)
+{
+  gcc_assert (param_hwasan_instrument_stack);
+  if (param_hwasan_random_frame_tag)
+    {
+      rtx fn = init_one_libfunc ("__hwasan_generate_tag");
+      rtx new_tag = emit_library_call_value (fn, NULL_RTX, LCT_NORMAL, QImode);
+      return targetm.memtag.set_tag (untagged, new_tag, target);
+    }
+  else
+    {
+      /* NOTE: The kernel API does not have __hwasan_generate_tag exposed.
+	 In the future we may add the option emit random tags with inline
+	 instrumentation instead of function calls.  This would be the same
+	 between the kernel and userland.  */
+      return untagged;
+    }
+}
+
+/* The default implementation of TARGET_MEMTAG_ADD_TAG.  */
+rtx
+default_memtag_add_tag (rtx base, poly_int64 offset, uint8_t tag_offset)
+{
+  /* Need to look into what the most efficient code sequence is.
+     This is a code sequence that would be emitted *many* times, so we
+     want it as small as possible.
+
+     There are two places where tag overflow is a question:
+       - Tagging the shadow stack.
+	  (both tagging and untagging).
+       - Tagging addressable pointers.
+
+     We need to ensure both behaviors are the same (i.e. that the tag that
+     ends up in a pointer after "overflowing" the tag bits with a tag addition
+     is the same that ends up in the shadow space).
+
+     The aim is that the behavior of tag addition should follow modulo
+     wrapping in both instances.
+
+     The libhwasan code doesn't have any path that increments a pointer's tag,
+     which means it has no opinion on what happens when a tag increment
+     overflows (and hence we can choose our own behavior).  */
+
+  offset += ((uint64_t)tag_offset << HWASAN_SHIFT);
+  return plus_constant (Pmode, base, offset);
+}
+
+/* The default implementation of TARGET_MEMTAG_SET_TAG.  */
+rtx
+default_memtag_set_tag (rtx untagged, rtx tag, rtx target)
+{
+  gcc_assert (GET_MODE (untagged) == Pmode && GET_MODE (tag) == QImode);
+  tag = expand_simple_binop (Pmode, ASHIFT, tag, HWASAN_SHIFT_RTX, NULL_RTX,
+			     /* unsignedp = */1, OPTAB_WIDEN);
+  rtx ret = expand_simple_binop (Pmode, IOR, untagged, tag, target,
+				 /* unsignedp = */1, OPTAB_DIRECT);
+  gcc_assert (ret);
+  return ret;
+}
+
+/* The default implementation of TARGET_MEMTAG_EXTRACT_TAG.  */
+rtx
+default_memtag_extract_tag (rtx tagged_pointer, rtx target)
+{
+  rtx tag = expand_simple_binop (Pmode, LSHIFTRT, tagged_pointer,
+				 HWASAN_SHIFT_RTX, target,
+				 /* unsignedp = */0,
+				 OPTAB_DIRECT);
+  rtx ret = gen_lowpart (QImode, tag);
+  gcc_assert (ret);
+  return ret;
+}
+
+/* The default implementation of TARGET_MEMTAG_UNTAGGED_POINTER.  */
+rtx
+default_memtag_untagged_pointer (rtx tagged_pointer, rtx target)
+{
+  rtx tag_mask = gen_int_mode ((HOST_WIDE_INT_1U << HWASAN_SHIFT) - 1, Pmode);
+  rtx untagged_base = expand_simple_binop (Pmode, AND, tagged_pointer,
+					   tag_mask, target, true,
+					   OPTAB_DIRECT);
+  gcc_assert (untagged_base);
+  return untagged_base;
 }
 
 #include "gt-targhooks.h"

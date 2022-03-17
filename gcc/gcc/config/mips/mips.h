@@ -1,5 +1,5 @@
 /* Definitions of target machine for GNU compiler.  MIPS version.
-   Copyright (C) 1989-2020 Free Software Foundation, Inc.
+   Copyright (C) 1989-2021 Free Software Foundation, Inc.
    Contributed by A. Lichnewsky (lich@inria.inria.fr).
    Changed by Michael Meissner	(meissner@osf.org).
    64-bit r4000 support by Ian Lance Taylor (ian@cygnus.com) and
@@ -658,8 +658,9 @@ struct mips_cpu_info {
     }									\
   while (0)
 
-/* Target CPU versions for D.  */
+/* Target hooks for D language.  */
 #define TARGET_D_CPU_VERSIONS mips_d_target_versions
+#define TARGET_D_REGISTER_CPU_TARGET_INFO mips_d_register_target_info
 
 /* Default target_flags if no switches are specified  */
 

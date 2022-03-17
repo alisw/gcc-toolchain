@@ -1,6 +1,6 @@
 // Algorithm implementation -*- C++ -*-
 
-// Copyright (C) 2001-2020 Free Software Foundation, Inc.
+// Copyright (C) 2001-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -471,7 +471,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     { return __last == _GLIBCXX_STD_A::find_if(__first, __last, __pred); }
 
   /**
-   *  @brief  Checks that a predicate is false for at least an element
+   *  @brief  Checks that a predicate is true for at least one element
    *          of a sequence.
    *  @ingroup non_mutating_algorithms
    *  @param  __first   An input iterator.
@@ -708,37 +708,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   template<typename _InputIterator, typename _Size, typename _OutputIterator>
     _GLIBCXX20_CONSTEXPR
     _OutputIterator
-    __copy_n_a(_InputIterator __first, _Size __n, _OutputIterator __result)
-    {
-      if (__n > 0)
-	{
-	  while (true)
-	    {
-	      *__result = *__first;
-	      ++__result;
-	      if (--__n > 0)
-		++__first;
-	      else
-		break;
-	    }
-	}
-      return __result;
-    }
- 
-  template<typename _CharT, typename _Size>
-    __enable_if_t<__is_char<_CharT>::__value, _CharT*>
-    __copy_n_a(istreambuf_iterator<_CharT, char_traits<_CharT>>,
-	       _Size, _CharT*);
-
-  template<typename _InputIterator, typename _Size, typename _OutputIterator>
-    _GLIBCXX20_CONSTEXPR
-    _OutputIterator
     __copy_n(_InputIterator __first, _Size __n,
 	     _OutputIterator __result, input_iterator_tag)
     {
       return std::__niter_wrap(__result,
 			       __copy_n_a(__first, __n,
-					  std::__niter_base(__result)));
+					  std::__niter_base(__result), true));
     }
 
   template<typename _RandomAccessIterator, typename _Size,
@@ -771,10 +746,15 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       __glibcxx_function_requires(_InputIteratorConcept<_InputIterator>)
       __glibcxx_function_requires(_OutputIteratorConcept<_OutputIterator,
 	    typename iterator_traits<_InputIterator>::value_type>)
-      __glibcxx_requires_can_increment(__first, __n);
-      __glibcxx_requires_can_increment(__result, __n);
 
-      return std::__copy_n(__first, __n, __result,
+      const auto __n2 = std::__size_to_integer(__n);
+      if (__n2 <= 0)
+	return __result;
+
+      __glibcxx_requires_can_increment(__first, __n2);
+      __glibcxx_requires_can_increment(__result, __n2);
+
+      return std::__copy_n(__first, __n2, __result,
 			   std::__iterator_category(__first));
     }
 
@@ -2543,6 +2523,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _ValueType;
       typedef typename iterator_traits<_BidirectionalIterator>::difference_type
 	  _DistanceType;
+      typedef _Temporary_buffer<_BidirectionalIterator, _ValueType> _TmpBuf;
 
       if (__first == __middle || __middle == __last)
 	return;
@@ -2550,8 +2531,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       const _DistanceType __len1 = std::distance(__first, __middle);
       const _DistanceType __len2 = std::distance(__middle, __last);
 
-      typedef _Temporary_buffer<_BidirectionalIterator, _ValueType> _TmpBuf;
-      _TmpBuf __buf(__first, __len1 + __len2);
+      // __merge_adaptive will use a buffer for the smaller of
+      // [first,middle) and [middle,last).
+      _TmpBuf __buf(__first, std::min(__len1, __len2));
 
       if (__buf.begin() == 0)
 	std::__merge_without_buffer
@@ -2760,6 +2742,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  std::__merge_sort_with_buffer(__first, __middle, __buffer, __comp);
 	  std::__merge_sort_with_buffer(__middle, __last, __buffer, __comp);
 	}
+
       std::__merge_adaptive(__first, __middle, __last,
 			    _Distance(__middle - __first),
 			    _Distance(__last - __middle),
@@ -2803,15 +2786,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	       _Compare __comp)
     {
       while (__first1 != __last1 && __first2 != __last2)
-	if (__comp(__first2, __first1))
-	  return false;
-	else if (__comp(__first1, __first2))
-	  ++__first1;
-	else
-	  {
-	    ++__first1;
+	{
+	  if (__comp(__first2, __first1))
+	    return false;
+	  if (!__comp(__first1, __first2))
 	    ++__first2;
-	  }
+	  ++__first1;
+	}
 
       return __first2 == __last2;
     }
@@ -3854,6 +3835,7 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
    *  If `__f` has a return value it is ignored.
   */
   template<typename _InputIterator, typename _Size, typename _Function>
+    _GLIBCXX20_CONSTEXPR
     _InputIterator
     for_each_n(_InputIterator __first, _Size __n, _Function __f)
     {
@@ -4264,7 +4246,7 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
 		__gnu_cxx::__ops::__iter_comp_val(__binary_pred, __val));
     }
 
-#if __cplusplus > 201402L
+#if __cplusplus >= 201703L
   /** @brief Search a sequence using a Searcher object.
    *
    *  @param  __first        A forward iterator.
@@ -4273,6 +4255,7 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
    *  @return @p __searcher(__first,__last).first
   */
   template<typename _ForwardIterator, typename _Searcher>
+    _GLIBCXX20_CONSTEXPR
     inline _ForwardIterator
     search(_ForwardIterator __first, _ForwardIterator __last,
 	   const _Searcher& __searcher)
@@ -5025,9 +5008,14 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
 	_ValueType;
       typedef typename iterator_traits<_RandomAccessIterator>::difference_type
 	_DistanceType;
-
       typedef _Temporary_buffer<_RandomAccessIterator, _ValueType> _TmpBuf;
-      _TmpBuf __buf(__first, std::distance(__first, __last));
+
+      if (__first == __last)
+	return;
+
+      // __stable_sort_adaptive sorts the range in two halves,
+      // so the buffer only needs to fit half the range at once.
+      _TmpBuf __buf(__first, (__last - __first + 1) / 2);
 
       if (__buf.begin() == 0)
 	std::__inplace_stable_sort(__first, __last, __comp);
@@ -5794,6 +5782,9 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
       using _USize = make_unsigned_t<_Size>;
       using _Gen = remove_reference_t<_UniformRandomBitGenerator>;
       using __uc_type = common_type_t<typename _Gen::result_type, _USize>;
+
+      if (__first == __last)
+	return __out;
 
       __distrib_type __d{};
       _Size __unsampled_sz = std::distance(__first, __last);

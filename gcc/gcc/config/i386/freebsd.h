@@ -1,5 +1,5 @@
 /* Definitions for Intel 386 running FreeBSD with ELF format
-   Copyright (C) 1996-2020 Free Software Foundation, Inc.
+   Copyright (C) 1996-2021 Free Software Foundation, Inc.
    Contributed by Eric Youngdale.
    Modified for stabs-in-ELF by H.J. Lu.
    Adapted from GNU/Linux version by John Polstra.
@@ -129,3 +129,7 @@ along with GCC; see the file COPYING3.  If not see
 
 #define TARGET_ASM_FILE_END file_end_indicate_exec_stack
 
+/* Define the shadow offsets for asan.  */
+#undef SUBTARGET_SHADOW_OFFSET
+#define SUBTARGET_SHADOW_OFFSET	\
+  (TARGET_LP64 ? HOST_WIDE_INT_1 << 46 : HOST_WIDE_INT_1 << 30)

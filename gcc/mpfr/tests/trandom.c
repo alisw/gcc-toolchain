@@ -1,6 +1,6 @@
 /* Test file for mpfr_urandomb
 
-Copyright 1999-2004, 2006-2019 Free Software Foundation, Inc.
+Copyright 1999-2004, 2006-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -185,7 +185,7 @@ main (int argc, char *argv[])
   {
     gmp_randstate_t s;
     mpfr_t x;
-    char *str = "0.1010111100000000000000000000000000000000E-32";
+    const char *str = "0.1010111100000000000000000000000000000000E-32";
     int k;
 
     gmp_randinit_default (s);

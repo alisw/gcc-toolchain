@@ -1,6 +1,6 @@
 /* Everything about catch/throw catchpoints, for GDB.
 
-   Copyright (C) 1986-2020 Free Software Foundation, Inc.
+   Copyright (C) 1986-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -36,6 +36,7 @@
 #include "gdb_regex.h"
 #include "cp-support.h"
 #include "location.h"
+#include "cli/cli-decode.h"
 
 /* Each spot where we may place an exception-related catchpoint has
    two names: the SDT probe point and the function name.  This
@@ -300,7 +301,7 @@ print_one_detail_exception_catchpoint (const struct breakpoint *b,
   if (!cp->exception_rx.empty ())
     {
       uiout->text (_("\tmatching: "));
-      uiout->field_string ("regexp", cp->exception_rx.c_str ());
+      uiout->field_string ("regexp", cp->exception_rx);
       uiout->text ("\n");
     }
 }
@@ -456,7 +457,7 @@ static void
 catch_catch_command (const char *arg, int from_tty,
 		     struct cmd_list_element *command)
 {
-  bool tempflag = get_cmd_context (command) == CATCH_TEMPORARY;
+  bool tempflag = command->context () == CATCH_TEMPORARY;
 
   catch_exception_event (EX_EVENT_CATCH, arg, tempflag, from_tty);
 }
@@ -467,7 +468,7 @@ static void
 catch_throw_command (const char *arg, int from_tty,
 		     struct cmd_list_element *command)
 {
-  bool tempflag = get_cmd_context (command) == CATCH_TEMPORARY;
+  bool tempflag = command->context () == CATCH_TEMPORARY;
 
   catch_exception_event (EX_EVENT_THROW, arg, tempflag, from_tty);
 }
@@ -478,7 +479,7 @@ static void
 catch_rethrow_command (const char *arg, int from_tty,
 		       struct cmd_list_element *command)
 {
-  bool tempflag = get_cmd_context (command) == CATCH_TEMPORARY;
+  bool tempflag = command->context () == CATCH_TEMPORARY;
 
   catch_exception_event (EX_EVENT_RETHROW, arg, tempflag, from_tty);
 }
@@ -544,19 +545,19 @@ _initialize_break_catch_throw ()
   add_catch_command ("catch", _("\
 Catch an exception, when caught."),
 		     catch_catch_command,
-                     NULL,
+		     NULL,
 		     CATCH_PERMANENT,
 		     CATCH_TEMPORARY);
   add_catch_command ("throw", _("\
 Catch an exception, when thrown."),
 		     catch_throw_command,
-                     NULL,
+		     NULL,
 		     CATCH_PERMANENT,
 		     CATCH_TEMPORARY);
   add_catch_command ("rethrow", _("\
 Catch an exception, when rethrown."),
 		     catch_rethrow_command,
-                     NULL,
+		     NULL,
 		     CATCH_PERMANENT,
 		     CATCH_TEMPORARY);
 

@@ -1,7 +1,7 @@
 /* Generic test file for functions with one or two arguments (the second being
    either mpfr_t or double or unsigned long).
 
-Copyright 2001-2019 Free Software Foundation, Inc.
+Copyright 2001-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -762,10 +762,11 @@ test_generic (mpfr_prec_t p0, mpfr_prec_t p1, unsigned int nmax)
                   && !mpfr_overflow_p () && TGENERIC_SO_TEST)
                 {
                   printf ("Possible bug! |y| is the maximum finite number "
-                          "and has been obtained when\nrounding toward zero"
-                          " (%s). Thus there is a very probable overflow,\n"
-                          "but the overflow flag is not set!\n",
-                          mpfr_print_rnd_mode (rnd));
+                          "(with yprec = %u) and has\nbeen obtained when "
+                          "rounding toward zero (%s). Thus there is a very\n"
+                          "probable overflow, but the overflow flag is not "
+                          "set!\n",
+                          (unsigned int) yprec, mpfr_print_rnd_mode (rnd));
                   printf ("x = ");
                   mpfr_dump (x);
 #ifdef NEED_U

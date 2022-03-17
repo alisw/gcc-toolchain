@@ -1,6 +1,6 @@
 /* Python interface to symbols.
 
-   Copyright (C) 2008-2020 Free Software Foundation, Inc.
+   Copyright (C) 2008-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -25,7 +25,7 @@
 #include "objfiles.h"
 #include "symfile.h"
 
-typedef struct sympy_symbol_object {
+struct symbol_object {
   PyObject_HEAD
   /* The GDB symbol structure this object is wrapping.  */
   struct symbol *symbol;
@@ -33,9 +33,9 @@ typedef struct sympy_symbol_object {
      doubly-linked list, rooted in the objfile.  This lets us
      invalidate the underlying struct symbol when the objfile is
      deleted.  */
-  struct sympy_symbol_object *prev;
-  struct sympy_symbol_object *next;
-} symbol_object;
+  symbol_object *prev;
+  symbol_object *next;
+};
 
 /* Require a valid symbol.  All access to symbol_object->symbol should be
    gated by this call.  */
@@ -131,7 +131,7 @@ sympy_get_addr_class (PyObject *self, void *closure)
 
   SYMPY_REQUIRE_VALID (self, symbol);
 
-  return PyInt_FromLong (SYMBOL_CLASS (symbol));
+  return gdb_py_object_from_longest (SYMBOL_CLASS (symbol)).release ();
 }
 
 static PyObject *
@@ -221,7 +221,7 @@ sympy_line (PyObject *self, void *closure)
 
   SYMPY_REQUIRE_VALID (self, symbol);
 
-  return PyInt_FromLong (SYMBOL_LINE (symbol));
+  return gdb_py_object_from_longest (SYMBOL_LINE (symbol)).release ();
 }
 
 /* Implementation of gdb.Symbol.is_valid (self) -> Boolean.
@@ -307,7 +307,7 @@ set_symbol (symbol_object *obj, struct symbol *symbol)
     {
       struct objfile *objfile = symbol_objfile (symbol);
 
-      obj->next = ((struct sympy_symbol_object *)
+      obj->next = ((symbol_object *)
 		   objfile_data (objfile, sympy_objfile_data_key));
       if (obj->next)
 	obj->next->prev = obj;
@@ -560,7 +560,9 @@ gdbpy_lookup_static_symbols (PyObject *self, PyObject *args, PyObject *kw)
     {
       /* Expand any symtabs that contain potentially matching symbols.  */
       lookup_name_info lookup_name (name, symbol_name_match_type::FULL);
-      expand_symtabs_matching (NULL, lookup_name, NULL, NULL, ALL_DOMAIN);
+      expand_symtabs_matching (NULL, lookup_name, NULL, NULL,
+			       SEARCH_GLOBAL_BLOCK | SEARCH_STATIC_BLOCK,
+			       ALL_DOMAIN);
 
       for (objfile *objfile : current_program_space->objfiles ())
 	{
@@ -617,17 +619,22 @@ del_objfile_symbols (struct objfile *objfile, void *datum)
     }
 }
 
-int
-gdbpy_initialize_symbols (void)
+void _initialize_py_symbol ();
+void
+_initialize_py_symbol ()
 {
-  if (PyType_Ready (&symbol_object_type) < 0)
-    return -1;
-
   /* Register an objfile "free" callback so we can properly
      invalidate symbol when an object file that is about to be
      deleted.  */
   sympy_objfile_data_key
     = register_objfile_data_with_cleanup (NULL, del_objfile_symbols);
+}
+
+int
+gdbpy_initialize_symbols (void)
+{
+  if (PyType_Ready (&symbol_object_type) < 0)
+    return -1;
 
   if (PyModule_AddIntConstant (gdb_module, "SYMBOL_LOC_UNDEF", LOC_UNDEF) < 0
       || PyModule_AddIntConstant (gdb_module, "SYMBOL_LOC_CONST",
@@ -666,6 +673,8 @@ gdbpy_initialize_symbols (void)
 				  VAR_DOMAIN) < 0
       || PyModule_AddIntConstant (gdb_module, "SYMBOL_STRUCT_DOMAIN",
 				  STRUCT_DOMAIN) < 0
+      || PyModule_AddIntConstant (gdb_module, "SYMBOL_LABEL_DOMAIN",
+				  LABEL_DOMAIN) < 0
       || PyModule_AddIntConstant (gdb_module, "SYMBOL_MODULE_DOMAIN",
 				  MODULE_DOMAIN) < 0
       || PyModule_AddIntConstant (gdb_module, "SYMBOL_COMMON_BLOCK_DOMAIN",

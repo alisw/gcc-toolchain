@@ -1,6 +1,6 @@
 /* Common target dependent code for GDB on AArch64 systems.
 
-   Copyright (C) 2009-2020 Free Software Foundation, Inc.
+   Copyright (C) 2009-2022 Free Software Foundation, Inc.
    Contributed by ARM Ltd.
 
    This file is part of GDB.
@@ -23,6 +23,7 @@
 #define AARCH64_TDEP_H
 
 #include "arch/aarch64.h"
+#include "displaced-stepping.h"
 #include "infrun.h"
 
 /* Forward declarations.  */
@@ -47,7 +48,6 @@ struct regset;
 #define H_REGISTER_SIZE  2
 #define S_REGISTER_SIZE  4
 #define D_REGISTER_SIZE  8
-#define V_REGISTER_SIZE 16
 #define Q_REGISTER_SIZE 16
 
 /* Total number of general (X) registers.  */
@@ -100,24 +100,33 @@ struct gdbarch_tdep
   {
     return pauth_reg_base != -1;
   }
+
+  /* First MTE register.  This is -1 if no MTE registers are available.  */
+  int mte_reg_base;
+
+  /* Returns true if the target supports MTE.  */
+  bool has_mte () const
+  {
+    return mte_reg_base != -1;
+  }
 };
 
-const target_desc *aarch64_read_description (uint64_t vq, bool pauth_p);
+const target_desc *aarch64_read_description (uint64_t vq, bool pauth_p,
+					     bool mte_p);
 
 extern int aarch64_process_record (struct gdbarch *gdbarch,
-                               struct regcache *regcache, CORE_ADDR addr);
+			       struct regcache *regcache, CORE_ADDR addr);
 
-displaced_step_closure_up
+displaced_step_copy_insn_closure_up
   aarch64_displaced_step_copy_insn (struct gdbarch *gdbarch,
 				    CORE_ADDR from, CORE_ADDR to,
 				    struct regcache *regs);
 
 void aarch64_displaced_step_fixup (struct gdbarch *gdbarch,
-				   struct displaced_step_closure *dsc,
+				   displaced_step_copy_insn_closure *dsc,
 				   CORE_ADDR from, CORE_ADDR to,
 				   struct regcache *regs);
 
-int aarch64_displaced_step_hw_singlestep (struct gdbarch *gdbarch,
-					  struct displaced_step_closure *closure);
+bool aarch64_displaced_step_hw_singlestep (struct gdbarch *gdbarch);
 
 #endif /* aarch64-tdep.h */

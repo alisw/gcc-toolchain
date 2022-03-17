@@ -1,7 +1,7 @@
 /* Functions to convert descriptors between CFI and gfortran
    and the CFI function declarations whose prototypes appear
    in ISO_Fortran_binding.h.
-   Copyright (C) 2018-2020 Free Software Foundation, Inc.
+   Copyright (C) 2018-2021 Free Software Foundation, Inc.
    Contributed by Daniel Celis Garza  <celisdanieljr@gmail.com>
 	       and Paul Thomas  <pault@gcc.gnu.org>
 
@@ -254,10 +254,7 @@ CFI_allocate (CFI_cdesc_t *dv, const CFI_index_t lower_bounds[],
 	{
 	  dv->dim[i].lower_bound = lower_bounds[i];
 	  dv->dim[i].extent = upper_bounds[i] - dv->dim[i].lower_bound + 1;
-	  if (i == 0)
-	    dv->dim[i].sm = dv->elem_len;
-	  else
-	    dv->dim[i].sm = dv->elem_len * dv->dim[i - 1].extent;
+	  dv->dim[i].sm = dv->elem_len * arr_len;
 	  arr_len *= dv->dim[i].extent;
         }
     }
@@ -345,8 +342,7 @@ int CFI_establish (CFI_cdesc_t *dv, void *base_addr, CFI_attribute_t attribute,
   dv->base_addr = base_addr;
 
   if (type == CFI_type_char || type == CFI_type_ucs4_char ||
-      type == CFI_type_signed_char || type == CFI_type_struct ||
-      type == CFI_type_other)
+      type == CFI_type_struct || type == CFI_type_other)
     dv->elem_len = elem_len;
   else
     {
@@ -392,7 +388,12 @@ int CFI_establish (CFI_cdesc_t *dv, void *base_addr, CFI_attribute_t attribute,
 	  if (i == 0)
 	    dv->dim[i].sm = dv->elem_len;
 	  else
-	    dv->dim[i].sm = (CFI_index_t)(dv->elem_len * extents[i - 1]);
+	    {
+	      CFI_index_t extents_product = 1;
+	      for (int j = 0; j < i; j++)
+		extents_product *= extents[j];
+	      dv->dim[i].sm = (CFI_index_t)(dv->elem_len * extents_product);
+	    }
 	}
     }
 

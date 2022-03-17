@@ -1,5 +1,5 @@
 # libgcc host-specific configuration file.
-# Copyright (C) 1997-2020 Free Software Foundation, Inc.
+# Copyright (C) 1997-2021 Free Software Foundation, Inc.
 
 #This file is part of GCC.
 
@@ -111,9 +111,6 @@ bpf-*-*)
         cpu_type=bpf
         ;;
 cr16-*-*)
-	;;
-crisv32-*-*)
-	cpu_type=cris
 	;;
 csky*-*-*)
 	cpu_type=csky
@@ -396,6 +393,7 @@ aarch64*-*-vxworks7*)
 	extra_parts="$extra_parts crtfastmath.o"
 	md_unwind_header=aarch64/aarch64-unwind.h
 	tmake_file="${tmake_file} ${cpu_type}/t-aarch64"
+	tmake_file="${tmake_file} ${cpu_type}/t-lse t-slibgcc-libgcc"
 	tmake_file="${tmake_file} ${cpu_type}/t-softfp t-softfp t-crtfm"
 	;;
 alpha*-*-linux*)
@@ -577,18 +575,12 @@ cr16-*-elf)
 	tmake_file="${tmake_file} cr16/t-cr16 cr16/t-crtlibid t-fdpbit"
 	extra_parts="$extra_parts crti.o crtn.o crtlibid.o"
         ;;
-crisv32-*-elf)
-	tmake_file="$tmake_file cris/t-cris t-softfp-sfdf t-softfp"
- 	;;
 cris-*-elf)
 	tmake_file="$tmake_file cris/t-cris t-softfp-sfdf t-softfp cris/t-elfmulti"
 	;;
-cris-*-linux* | crisv32-*-linux*)
-	tmake_file="$tmake_file cris/t-cris t-softfp-sfdf t-softfp cris/t-linux"
-	;;
 csky-*-elf*)
 	tmake_file="csky/t-csky t-fdpbit"
-	extra_parts="$extra_parts crti.o crtn.o"
+	extra_parts="crtbegin.o crtend.o crti.o crtn.o"
 	;;
 csky-*-linux*)
 	tmake_file="$tmake_file csky/t-csky t-slibgcc-libgcc t-fdpbit csky/t-linux-csky"
@@ -783,7 +775,7 @@ i[34567]86-*-solaris2* | x86_64-*-solaris2*)
 	tm_file="${tm_file} i386/elf-lib.h"
 	md_unwind_header=i386/sol2-unwind.h
 	;;
-i[4567]86-wrs-vxworks|i[4567]86-wrs-vxworksae|i[4567]86-wrs-vxworks7|x86_64-wrs-vxworks7)
+i[4567]86-wrs-vxworks*|x86_64-wrs-vxworks*)
 	;;
 i[34567]86-*-cygwin*)
 	extra_parts="crtbegin.o crtbeginS.o crtend.o crtfastmath.o"
@@ -1232,9 +1224,30 @@ powerpc*-*-linux*)
 		tmake_file="${tmake_file} rs6000/t-float128-hw"
 	fi
 
+	if test $libgcc_cv_powerpc_3_1_float128_hw = yes; then
+		tmake_file="${tmake_file} rs6000/t-float128-p10-hw"
+	fi
+
 	extra_parts="$extra_parts ecrti.o ecrtn.o ncrti.o ncrtn.o"
 	md_unwind_header=rs6000/linux-unwind.h
 	;;
+powerpc*-wrs-vxworks7*)
+        tmake_file="$tmake_file rs6000/t-ppccomm rs6000/t-savresfgpr rs6000/t-crtstuff rs6000/t-linux t-dfprules config/rs6000/t-ppc64-fp t-slibgcc-libgcc"
+        case $ppc_fp_type in
+        64)
+                ;;
+        hard)
+                tmake_file="${tmake_file} t-hardfp-sfdf"
+                ;;
+        soft)
+                tmake_file="${tmake_file} t-softfp-sfdf t-softfp"
+                ;;
+        *)
+                echo "Unknown ppc_fp_type $ppc_fp_type" 1>&2
+                exit 1
+                ;;
+        esac
+        ;;
 powerpc-wrs-vxworks*)
 	tmake_file="$tmake_file rs6000/t-ppccomm rs6000/t-savresfgpr t-fdpbit"
 	extra_parts="$extra_parts crtbegin.o crtend.o"
@@ -1282,7 +1295,7 @@ rs6000-ibm-aix5.1.* | powerpc-ibm-aix5.1.*)
 rs6000-ibm-aix[56789].* | powerpc-ibm-aix[56789].*)
 	md_unwind_header=rs6000/aix-unwind.h
 	tmake_file="t-fdpbit rs6000/t-ppc64-fp rs6000/t-slibgcc-aix rs6000/t-ibm-ldouble rs6000/t-aix-cxa"
-	extra_parts="crtcxa.o crtcxa_s.o crtdbase.o"
+	extra_parts="crtcxa.o crtcxa_s.o crtdbase.o crtcxa_64.o crtcxa_64_s.o crtdbase_64.o"
 	;;
 rl78-*-elf)
 	tmake_file="$tm_file t-fdpbit rl78/t-rl78"

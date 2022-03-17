@@ -1,4 +1,4 @@
-/* Copyright (C) 2005-2020 Free Software Foundation, Inc.
+/* Copyright (C) 2005-2021 Free Software Foundation, Inc.
    Contributed by Jakub Jelinek <jakub@redhat.com>.
 
    This file is part of the GNU Offloading and Multi Processing Library
@@ -47,10 +47,13 @@ ialias_redirect (omp_test_lock)
 ialias_redirect (omp_test_nest_lock)
 # endif
 ialias_redirect (omp_set_dynamic)
-ialias_redirect (omp_set_nested)
-ialias_redirect (omp_set_num_threads)
 ialias_redirect (omp_get_dynamic)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+ialias_redirect (omp_set_nested)
 ialias_redirect (omp_get_nested)
+#pragma GCC diagnostic pop
+ialias_redirect (omp_set_num_threads)
 ialias_redirect (omp_in_parallel)
 ialias_redirect (omp_get_max_threads)
 ialias_redirect (omp_get_num_procs)
@@ -63,6 +66,7 @@ ialias_redirect (omp_get_schedule)
 ialias_redirect (omp_get_thread_limit)
 ialias_redirect (omp_set_max_active_levels)
 ialias_redirect (omp_get_max_active_levels)
+ialias_redirect (omp_get_supported_active_levels)
 ialias_redirect (omp_get_level)
 ialias_redirect (omp_get_ancestor_thread_num)
 ialias_redirect (omp_get_team_size)
@@ -86,6 +90,10 @@ ialias_redirect (omp_get_initial_device)
 ialias_redirect (omp_get_max_task_priority)
 ialias_redirect (omp_pause_resource)
 ialias_redirect (omp_pause_resource_all)
+ialias_redirect (omp_init_allocator)
+ialias_redirect (omp_destroy_allocator)
+ialias_redirect (omp_set_default_allocator)
+ialias_redirect (omp_get_default_allocator)
 #endif
 
 #ifndef LIBGOMP_GNU_SYMBOL_VERSIONING
@@ -276,6 +284,8 @@ omp_set_dynamic_8_ (const int64_t *set)
   omp_set_dynamic (!!*set);
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 void
 omp_set_nested_ (const int32_t *set)
 {
@@ -287,6 +297,7 @@ omp_set_nested_8_ (const int64_t *set)
 {
   omp_set_nested (!!*set);
 }
+#pragma GCC diagnostic pop
 
 void
 omp_set_num_threads_ (const int32_t *set)
@@ -306,11 +317,14 @@ omp_get_dynamic_ (void)
   return omp_get_dynamic ();
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 int32_t
 omp_get_nested_ (void)
 {
   return omp_get_nested ();
 }
+#pragma GCC diagnostic pop
 
 int32_t
 omp_in_parallel_ (void)
@@ -411,6 +425,12 @@ int32_t
 omp_get_max_active_levels_ (void)
 {
   return omp_get_max_active_levels ();
+}
+
+int32_t
+omp_get_supported_active_levels_ (void)
+{
+  return omp_get_supported_active_levels ();
 }
 
 int32_t
@@ -585,6 +605,12 @@ omp_get_max_task_priority_ (void)
 }
 
 void
+omp_fulfill_event_ (intptr_t event)
+{
+  omp_fulfill_event ((omp_event_handle_t) event);
+}
+
+void
 omp_set_affinity_format_ (const char *format, size_t format_len)
 {
   gomp_set_affinity_format (format, format_len);
@@ -675,4 +701,38 @@ int32_t
 omp_pause_resource_all_ (const int32_t *kind)
 {
   return omp_pause_resource_all (*kind);
+}
+
+intptr_t
+omp_init_allocator_ (const intptr_t *memspace, const int32_t *ntraits,
+		    const omp_alloctrait_t *traits)
+{
+  return (intptr_t) omp_init_allocator ((omp_memspace_handle_t) *memspace,
+					(int) *ntraits, traits);
+}
+
+intptr_t
+omp_init_allocator_8_ (const intptr_t *memspace, const int64_t *ntraits,
+		    const omp_alloctrait_t *traits)
+{
+  return (intptr_t) omp_init_allocator ((omp_memspace_handle_t) *memspace,
+					(int) *ntraits, traits);
+}
+
+void
+omp_destroy_allocator_ (const intptr_t *allocator)
+{
+  omp_destroy_allocator ((omp_allocator_handle_t) *allocator);
+}
+
+void
+omp_set_default_allocator_ (const intptr_t *allocator)
+{
+  omp_set_default_allocator ((omp_allocator_handle_t) *allocator);
+}
+
+intptr_t
+omp_get_default_allocator_ ()
+{
+  return (intptr_t) omp_get_default_allocator ();
 }

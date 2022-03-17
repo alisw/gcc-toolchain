@@ -1,5 +1,5 @@
 // go-gcc.cc -- Go frontend to gcc IR.
-// Copyright (C) 2011-2020 Free Software Foundation, Inc.
+// Copyright (C) 2011-2021 Free Software Foundation, Inc.
 // Contributed by Ian Lance Taylor, Google.
 
 // This file is part of GCC.
@@ -2110,7 +2110,7 @@ Gcc_backend::call_expression(Bfunction*, // containing fcn for call
   if (optimize
       && TREE_CODE(fndecl) == FUNCTION_DECL
       && fndecl_built_in_p (fndecl, BUILT_IN_NORMAL)
-      && DECL_IS_BUILTIN (fndecl)
+      && DECL_IS_UNDECLARED_BUILTIN (fndecl)
       && nargs > 0
       && ((SCALAR_FLOAT_TYPE_P(rettype)
 	   && SCALAR_FLOAT_TYPE_P(TREE_TYPE(args[0])))
@@ -2756,7 +2756,7 @@ Gcc_backend::global_variable_set_init(Bvariable* var, Bexpression* expr)
   if (symtab_node::get(var_decl)
       && symtab_node::get(var_decl)->implicit_section)
     {
-      set_decl_section_name (var_decl, NULL);
+      set_decl_section_name (var_decl, (const char *) NULL);
       resolve_unique_section (var_decl,
 			      compute_reloc_for_constant (expr_tree),
 			      1);
@@ -3281,13 +3281,15 @@ Gcc_backend::function(Btype* fntype, const std::string& name,
       if (pos == name.length())
 	{
 	  struct cl_optimization cur_opts;
-	  cl_optimization_save(&cur_opts, &global_options);
+	  cl_optimization_save(&cur_opts, &global_options,
+			       &global_options_set);
 	  global_options.x_optimize_size = 1;
 	  global_options.x_optimize_fast = 0;
 	  global_options.x_optimize_debug = 0;
 	  DECL_FUNCTION_SPECIFIC_OPTIMIZATION(decl) =
-	    build_optimization_node(&global_options);
-	  cl_optimization_restore(&global_options, &cur_opts);
+	    build_optimization_node(&global_options, &global_options_set);
+	  cl_optimization_restore(&global_options, &global_options_set,
+				  &cur_opts);
 	}
     }
 

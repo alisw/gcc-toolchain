@@ -1,5 +1,5 @@
 # Expect script for various ELF tests.
-#   Copyright (C) 2006-2020 Free Software Foundation, Inc.
+#   Copyright (C) 2006-2022 Free Software Foundation, Inc.
 #
 # This file is part of the GNU Binutils.
 #
@@ -71,7 +71,7 @@ if { [istarget "mips*vr4100*-*-elf*"] \
 }
 
 if [is_underscore_target] {
-    set ASFLAGS "$ASFLAGS --defsym UNDERSCORE=1"
+    append ASFLAGS " --defsym UNDERSCORE=1"
 }
 
 run_ld_link_tests [list \
@@ -94,15 +94,6 @@ run_ld_link_tests [list \
 	"pr22471b.so" \
     ] \
     [list \
-	"Build pr22471" \
-	"$LFLAGS -rpath-link ." \
-	"tmpdir/pr22471b.so" \
-	"" \
-	{pr22471b.s} \
-	{} \
-	"pr22471" \
-    ] \
-    [list \
 	"Build pr22649-1.so" \
 	"$LFLAGS -shared" \
 	"" \
@@ -112,6 +103,18 @@ run_ld_link_tests [list \
 	"pr22649-1.so" \
     ] \
 ]
+
+run_ld_link_tests [list \
+    [list \
+	"Build pr22471" \
+	"$LFLAGS -rpath-link . -rpath-link tmpdir" \
+	"tmpdir/pr22471b.so" \
+	"" \
+	{pr22471b.s} \
+	{} \
+	"pr22471" \
+    ] \
+] bfin-*-* frv-*-* lm32-*-*
 
 if { [check_gc_sections_available] } {
     if [istarget mips*-*-*] {
@@ -177,7 +180,7 @@ run_ld_link_tests [list \
 	  {readelf {-d --wide} textrel.rd}} \
 	"textrel.so" \
     ] \
-] "xtensa-*-*"
+] bfin-*-* frv-*-* lm32-*-* xtensa-*-*
 
 # The MIPS backend sets SHF_WRITE, in `mips_elf_create_dynamic_relocation',
 # for any section that has a dynamic relocation attached and consequently
@@ -194,7 +197,7 @@ run_ld_link_tests [list \
 	 {{ld textrel.map}} \
 	"textrel.so" \
     ] \
-] "cris*-*-*" "mips*-*-*"
+] bfin-*-* cris*-*-* frv-*-* lm32-*-* mips*-*-*
 
 # PR ld/20828 check for correct dynamic symbol table entries where:
 # - symbols have been defined with a linker script,
@@ -449,7 +452,8 @@ setup_xfail mips*-*-* bfin-*-*
 clear_xfail bfin-*-linux*
 run_ld_link_tests [list \
     [list "-Bsymbolic-functions" \
-	"-shared -Bsymbolic-functions" "" "$AFLAGS_PIC" \
+	"-shared -Bsymbolic-functions $NO_DT_RELR_LDFLAGS" \
+	"" "$AFLAGS_PIC" \
 	{symbolic-func.s} {{readelf {-r --wide} symbolic-func.r}} \
 	"symbolic-func.so"] \
 ]
@@ -464,6 +468,8 @@ run_ld_link_tests [list \
 setup_xfail "alpha-*-*" "bfin-*-*" "ia64-*-*" "xtensa-*-*"
 # or don't have .data.rel.ro
 setup_xfail "hppa*64*-*-hpux*" "tic6x-*-*"
+# or complain about relocs in read-only sections
+setup_xfail frv-*-* lm32-*-*
 run_ld_link_tests [list \
     [list \
 	"pr20995" \
@@ -613,6 +619,10 @@ set build_tests {
   {"Build libdl2k.so with --export-dynamic-symbol-list=dl2.list and -Bsymbolic"
    "-shared -Wl,--export-dynamic-symbol-list=dl2.list,-Bsymbolic" "-fPIC"
    {dl2.c dl2xxx.c} {} "libdl2k.so"}
+  # Check that -Bno-symbolic cancels -Bsymbolic.
+  {"Build libdl2l.so with -Bsymbolic -Bno-symbolic and --export-dynamic-symbol=foo"
+   "-shared -Wl,-Bsymbolic,-Bno-symbolic,--export-dynamic-symbol=foo" "-fPIC"
+   {dl2.c dl2xxx.c} {} "libdl2l.so"}
   {"Build libdl4a.so with --dynamic-list=dl4.list"
    "-shared -Wl,--dynamic-list=dl4.list" "-fPIC"
    {dl4.c dl4xxx.c} {} "libdl4a.so"}
@@ -749,15 +759,6 @@ set build_tests {
   {"Build needed3"
    "tmpdir/needed3.o -Wl,--as-needed -Ltmpdir -lneeded3a -lneeded3b -lneeded1b" ""
    {dummy.c} {} "needed3"}
-  {"Build libpr2404a.so"
-   "-shared" "-fPIC"
-   {pr2404a.c} {} "libpr2404a.so"}
-  {"Build libpr2404n.so"
-   "-shared -Wl,-z,now" "-fPIC"
-   {pr2404a.c} {} "libpr2404n.so"}
-  {"Build libpr2404b.a"
-   "" ""
-   {pr2404b.c} {} "libpr2404b.a"}
   {"Build rdynamic-1"
    "-Wl,--no-dynamic-linker,-export-dynamic,--gc-sections" "-ffunction-sections"
    {rdynamic-1.c} {{readelf {-s} rdynamic-1.rd}} "rdynamic-1"}
@@ -792,6 +793,123 @@ set build_tests {
    "-shared -Wl,-z,now tmpdir/libpr18458a.so" "-fPIC"
    {pr18458b.c} {} "libpr18458b.so"}
 }
+
+run_cc_link_tests [list \
+    [list \
+	"Build libpr2404a.so" \
+	"-shared $NOSANITIZE_CFLAGS" \
+	"-fPIC $NOSANITIZE_CFLAGS" \
+	{pr2404a.c} \
+	{} \
+	"libpr2404a.so" \
+    ] \
+    [list \
+	"Build libpr2404n.so" \
+	"-shared -Wl,-z,now $NOSANITIZE_CFLAGS" \
+	"-fPIC $NOSANITIZE_CFLAGS" \
+	{pr2404a.c} \
+	{} \
+	"libpr2404n.so" \
+    ] \
+    [list \
+	"Build libpr2404b.a" \
+	"" \
+	"$NOSANITIZE_CFLAGS" \
+	{pr2404b.c} \
+	{} \
+	"libpr2404b.a" \
+    ] \
+    [list \
+	"Build libpr26590a.so" \
+	"-shared" \
+	"-fPIC" \
+	{pr26590a.c} \
+	{} \
+	"libpr26590a.so" \
+    ] \
+    [list \
+	"Build libpr26590b.so (1)" \
+	"-shared" \
+	"-fPIC" \
+	{pr26590b.c} \
+	{} \
+	"libpr26590b.so" \
+    ] \
+    [list \
+	"Build pr26590c.o and pr26590d.o" \
+	"" \
+	"" \
+	{pr26590c.c pr26590d.c} \
+	{} \
+    ] \
+    [list \
+	"Build pr26590 (1)" \
+	"tmpdir/pr26590c.o tmpdir/pr26590d.o \
+	 -Wl,--as-needed tmpdir/libpr26590a.so tmpdir/libpr26590b.so" \
+	"" \
+	{dummy.c} \
+	{{error_output pr26590.err}} \
+	"pr26590" \
+    ] \
+    [list \
+	"Build libpr26590b.so (2)" \
+	"-shared -Wl,--no-as-needed \
+	 tmpdir/libpr26590a.so" \
+	"-fPIC" \
+	{pr26590b.c} \
+	{} \
+	"libpr26590b.so" \
+    ] \
+    [list \
+	"Build pr26590 (2)" \
+	"tmpdir/pr26590c.o tmpdir/pr26590d.o \
+	 -Wl,--as-needed tmpdir/libpr26590a.so tmpdir/libpr26590b.so" \
+	"" \
+	{dummy.c} \
+	{} \
+	"pr26590" \
+    ] \
+    [list \
+	"Build libpr28348a.so" \
+	"-shared -Wl,--version-script=pr28348.t" \
+	"-fPIC" \
+	{pr28348a.c} \
+	{} \
+	"libpr28348a.so" \
+    ] \
+    [list \
+	"Build pr28348b.o" \
+	"" \
+	"-fPIC" \
+	{pr28348b.c} \
+    ] \
+    [list \
+	"Build pr28348c.o" \
+	"" \
+	"" \
+	{pr28348c.c} \
+    ] \
+    [list \
+	"Build libpr28348b.so" \
+	"-shared -Wl,--version-script=pr28348.t \
+	 -Wl,--no-as-needed tmpdir/pr28348b.o tmpdir/libpr28348a.so" \
+	"-fPIC" \
+	{dummy.c} \
+	{} \
+	"libpr28348b.so" \
+    ] \
+    [list \
+	"Build pr28348" \
+	"-Wl,--no-as-needed tmpdir/pr28348c.o \
+	 tmpdir/pr28348a.o tmpdir/libpr28348a.so tmpdir/libpr28348b.so \
+	 tmpdir/libpr28348a.so" \
+	"" \
+	{dummy.c} \
+	{{readelf {--dyn-syms --wide} pr28348.rd}} \
+	"pr28348" \
+    ] \
+]
+
 # pr19073.s uses .set, which has a different meaning on alpha.
 if { ![istarget alpha-*-*] } {
     append build_tests {
@@ -822,6 +940,9 @@ append build_tests {
   {"Dump pr21978.so"
    "-shared" "-fPIC -g -O2"
    {pr21978a.c pr21978b.c} {{objdump {-Sl} pr21978.od}} "pr21978.so"}
+  {"libpr26580-2.so"
+   "-shared" "-fPIC -fcommon"
+   {pr26580-b.c} {} "libpr26580-2.so"}
 }
 
 run_cc_link_tests $build_tests
@@ -843,6 +964,25 @@ run_cc_link_tests [list \
 	{{readelf {--dyn-syms --wide} pr26094-1b.rd}} \
 	"pr26094-1" \
     ] \
+    [list \
+	"Build pr26302a.so" \
+	"-shared -Wl,--version-script=pr26302.ver" \
+	"-fPIC" \
+	{pr26302a.c} \
+	{} \
+	"pr26302a.so"
+    ] \
+    [list \
+	"Build pr26302b.so" \
+	"-shared -Wl,--no-as-needed tmpdir/pr26302a.so" \
+	"-fPIC" \
+	{pr26302b.c} \
+	{{readelf {-sW} pr26302.rd} \
+	 {nm {-u} pr26302.nd} \
+	 {nm {-u -D} pr26302.nd} \
+	 {nm {-u -D --with-symbol-versions} pr26302.nd}} \
+	"pr26302b.so" \
+    ] \
 ]
 
 run_ld_link_tests [list \
@@ -854,7 +994,7 @@ run_ld_link_tests [list \
 	{ pr22269-1.c } \
 	{{readelf -rW pr22269-1.rd}} \
 	"pr22269-1" \
-	"-fPIE -O2" \
+	"-fPIE -O2 $NOSANITIZE_CFLAGS" \
     ] \
 ]
 
@@ -932,6 +1072,9 @@ set run_tests [list \
     [list "Run with libdl2k.so" \
      "-Wl,--no-as-needed tmpdir/libdl2k.so" "" \
      {dl2main.c} "dl2k" "dl2a.out" ] \
+    [list "Run with libdl2l.so" \
+     "-Wl,--no-as-needed tmpdir/libdl2l.so" "" \
+     {dl2main.c} "dl2l" "dl2b.out" ] \
     [list "Run with libdl4a.so" \
      "-Wl,--no-as-needed tmpdir/libdl4a.so" "" \
      {dl4main.c} "dl4a" "dl4a.out" "-fPIC"] \
@@ -987,11 +1130,16 @@ set run_tests [list \
      "-Wl,--no-as-needed,-rpath=tmpdir -Ltmpdir -lrel" "" \
      {relmain.c} "relmain" "relmain.out" ] \
     [list "Run pr2404" \
-     "-Wl,--no-as-needed tmpdir/pr2404b.o tmpdir/libpr2404a.so" "" \
-     {dummy.c} "pr2404" "pr2404.out" ] \
+     "$NOSANITIZE_CFLAGS -Wl,--no-as-needed \
+      tmpdir/pr2404b.o tmpdir/libpr2404a.so" \
+     "" \
+     {dummy.c} "pr2404" "pr2404.out" \
+     "$NOSANITIZE_CFLAGS" ] \
     [list "Run pr2404n" \
-     "-Wl,-z,now -Wl,--no-as-needed tmpdir/pr2404b.o tmpdir/libpr2404n.so" "" \
-     {dummy.c} "pr2404n" "pr2404.out" ] \
+     "$NOSANITIZE_CFLAGS -Wl,-z,now \
+      -Wl,--no-as-needed tmpdir/pr2404b.o tmpdir/libpr2404n.so" "" \
+     {dummy.c} "pr2404n" "pr2404.out" \
+     "$NOSANITIZE_CFLAGS" ] \
     [list "Run pr18458" \
      "-Wl,--no-as-needed,-z,now tmpdir/libpr18458a.so tmpdir/libpr18458b.so" "" \
      {pr18458c.c} "pr18458" "pass.out" ] \
@@ -1001,10 +1149,22 @@ set run_tests [list \
     [list "Run pr21964-3" \
      "-Wl,--no-as-needed,-rpath,tmpdir tmpdir/pr21964-1a.so tmpdir/pr21964-1b.so tmpdir/pr21964-3a.so" "" \
      {pr21964-3c.c} "pr21964-3" "pass.out" ] \
+    [list "pr26580-3" \
+     "" "" \
+     {pr26580-a.c} "pr26580-3" "pr26580-3.out" "-fcommon" "c" "" \
+     "-Wl,--as-needed tmpdir/libpr26580-2.so" ] \
+    [list "pr26580-4" \
+     "" "" \
+     {pr26580-a.c} "pr26580-4" "pr26580-4.out" "-fcommon" "c" "" \
+     "-Wl,--no-as-needed tmpdir/libpr26580-2.so" ] \
+    [list "Run pr26590 (2)" \
+     "" "" \
+     {pr26590c.c pr26590d.c} "pr26590" "pass.out" "" "c" "" \
+     "-Wl,--as-needed tmpdir/libpr26590a.so tmpdir/libpr26590b.so" ] \
 ]
 
 # NetBSD ELF systems do not currently support the .*_array sections.
-run_ld_link_exec_tests $run_tests "*-*-netbsdelf*"
+run_ld_link_exec_tests $run_tests "*-*-netbsd*"
 
 # These tests require dlopen support.
 set dlopen_run_tests [list \
@@ -1059,33 +1219,37 @@ set dlopen_run_tests [list \
 if [check_libdl_available] {
   # XFAIL on NetBSD ELF systems as they do not currently support the .*_array
   # sections.
-  run_ld_link_exec_tests $dlopen_run_tests "*-*-netbsdelf*"
+  # Disable all sanitizers.
+  set old_CFLAGS "$CFLAGS_FOR_TARGET"
+  append CFLAGS_FOR_TARGET " $NOSANITIZE_CFLAGS"
+  run_ld_link_exec_tests $dlopen_run_tests "*-*-netbsd*"
+  set CFLAGS_FOR_TARGET "$old_CFLAGS"
 }
 
 # Check --no-add-needed and --no-copy-dt-needed-entries
 set testname "--no-add-needed"
-set exec_output [run_host_cmd "$CC" "tmpdir/libneeded1c.o -Wl,--no-add-needed,-rpath-link=tmpdir -Ltmpdir -lneeded1a"]
+set exec_output [run_host_cmd "$CC_FOR_TARGET" "tmpdir/libneeded1c.o -Wl,--no-add-needed,-rpath-link=tmpdir -Ltmpdir -lneeded1a"]
 if { [ regexp "tmpdir/libneeded1b.so: .*: DSO missing" $exec_output ] } {
     pass $testname
 } {
     fail $testname
 }
 set testname "--no-copy-dt-needed-entries"
-set exec_output [run_host_cmd "$CC" "tmpdir/libneeded1c.o -Wl,--no-copy-dt-needed-entries,-rpath-link=tmpdir -Ltmpdir -lneeded1a"]
+set exec_output [run_host_cmd "$CC_FOR_TARGET" "tmpdir/libneeded1c.o -Wl,--no-copy-dt-needed-entries,-rpath-link=tmpdir -Ltmpdir -lneeded1a"]
 if { [ regexp "tmpdir/libneeded1b.so: .*: DSO missing" $exec_output ] } {
     pass $testname
 } {
     fail $testname
 }
 set testname "--no-add-needed -shared"
-set exec_output [run_host_cmd "$CC" "-shared tmpdir/libneeded1pic.o -Wl,--no-add-needed,-z,defs -Ltmpdir -lneeded1a"]
+set exec_output [run_host_cmd "$CC_FOR_TARGET" "-shared tmpdir/libneeded1pic.o -Wl,--no-add-needed,-z,defs -Ltmpdir -lneeded1a"]
 if { [ regexp "undefined reference to `\.?bar'" $exec_output ] } {
     pass $testname
 } {
     fail $testname
 }
 set testname "--no-copy-dt-needed-entries -shared"
-set exec_output [run_host_cmd "$CC" "-shared tmpdir/libneeded1pic.o -Wl,--no-copy-dt-needed-entries,-z,defs -Ltmpdir -lneeded1a"]
+set exec_output [run_host_cmd "$CC_FOR_TARGET" "-shared tmpdir/libneeded1pic.o -Wl,--no-copy-dt-needed-entries,-z,defs -Ltmpdir -lneeded1a"]
 if { [ regexp "undefined reference to `\.?bar'" $exec_output ] } {
     pass $testname
 } {
@@ -1093,7 +1257,7 @@ if { [ regexp "undefined reference to `\.?bar'" $exec_output ] } {
 }
 
 # Check to see if the C++ compiler works
-if { [which $CXX] == 0 } {
+if { [which $CXX_FOR_TARGET] == 0 } {
     return
 }
 
@@ -1107,13 +1271,28 @@ set build_cxx_tests {
   {"Build libdl3a.so with --dynamic-list-cpp-typeinfo"
    "-shared -Wl,--dynamic-list-cpp-typeinfo" "-fPIC"
    {dl3.cc} {} "libdl3c.so" "c++"}
-  {"Build libdnew1a.so with --Bsymbolic-functions --dynamic-list-cpp-new"
-   "-shared -Wl,-Bsymbolic-functions,--dynamic-list-cpp-new" "-fPIC -ansi"
-   {del.cc new.cc} {} "libnew1a.so" "c++"}
-  {"Build libdnew1b.so with --dynamic-list-data --dynamic-list-cpp-new"
-   "-shared -Wl,--dynamic-list-data,--dynamic-list-cpp-new" "-fPIC -ansi"
-   {del.cc new.cc} {} "libnew1b.so" "c++"}
 }
+
+run_cc_link_tests [list \
+    [list \
+	"Build libdnew1a.so with --Bsymbolic-functions --dynamic-list-cpp-new" \
+	"-shared $NOSANITIZE_CFLAGS -Wl,-Bsymbolic-functions,--dynamic-list-cpp-new" \
+	"-fPIC -ansi $NOSANITIZE_CFLAGS" \
+	{del.cc new.cc} \
+	{} \
+	"libnew1a.so" \
+	"c++" \
+    ] \
+    [list \
+	"Build libdnew1b.so with --dynamic-list-data --dynamic-list-cpp-new" \
+	"-shared $NOSANITIZE_CFLAGS -Wl,--dynamic-list-data,--dynamic-list-cpp-new" \
+	"-fPIC -ansi $NOSANITIZE_CFLAGS" \
+	{del.cc new.cc} \
+	{} \
+	"libnew1b.so" \
+	"c++" \
+    ] \
+]
 
 # "-shared -Bsymbolic" only works with gcc 4.5.0 and newer.
 #    {"Run with libdl3b.so"
@@ -1126,13 +1305,30 @@ set run_cxx_tests {
     {"Run with libdl3c.so"
      "-Wl,--no-as-needed tmpdir/libdl3c.so" ""
      {dl3main.cc} "dl3c" "dl3a.out" "" "c++"}
-    {"Run with libnew1a.so"
-     "-Wl,--no-as-needed tmpdir/libnew1a.so" ""
-     {dl5.cc} "dl5a" "dl5.out" "-ansi" "c++"}
-    {"Run with libnew1b.so"
-     "-Wl,--no-as-needed tmpdir/libnew1b.so" ""
-     {dl5.cc} "dl5b" "dl5.out" "-ansi" "c++"}
 }
+
+run_ld_link_exec_tests [list \
+    [list \
+	"Run with libnew1a.so" \
+	"-Wl,--no-as-needed tmpdir/libnew1a.so $NOSANITIZE_CFLAGS" \
+	"" \
+	{dl5.cc} \
+	"dl5a" \
+	"dl5.out" \
+	"-ansi $NOSANITIZE_CFLAGS" \
+	"c++" \
+    ] \
+    [list \
+	"Run with libnew1b.so" \
+	"-Wl,--no-as-needed tmpdir/libnew1b.so $NOSANITIZE_CFLAGS" \
+	"" \
+	{dl5.cc} \
+	"dl5b" \
+	"dl5.out" \
+	"-ansi $NOSANITIZE_CFLAGS" \
+	"c++" \
+    ] \
+]
 
 run_cc_link_tests $build_cxx_tests
 run_ld_link_exec_tests $run_cxx_tests
@@ -1144,7 +1340,7 @@ if { [istarget *-*-linux*]
 	[list \
 	    "Build libpr2404b.a with PIE" \
 	    "" \
-	    "-fPIE" \
+	    "-fPIE $NOSANITIZE_CFLAGS" \
 	    { pr2404b.c } \
 	    {} \
 	    "libpr2404b.a" \
@@ -1230,21 +1426,21 @@ if { [istarget *-*-linux*]
 	] \
 	[list \
 	    "Run pr2404 with PIE" \
-	    "-pie -Wl,--no-as-needed tmpdir/pr2404b.o tmpdir/libpr2404a.so" \
+	    "-pie $NOSANITIZE_CFLAGS -Wl,--no-as-needed tmpdir/pr2404b.o tmpdir/libpr2404a.so" \
 	    "" \
 	    { dummy.c } \
 	    "pr2404pie" \
 	    "pr2404.out" \
-	    "-fPIE" \
+	    "-fPIE $NOSANITIZE_CFLAGS" \
 	] \
 	[list \
 	    "Run pr2404 with PIE (-z now)" \
-	    "-pie -Wl,-z,now -Wl,--no-as-needed tmpdir/pr2404b.o tmpdir/libpr2404n.so" \
+	    "-pie $NOSANITIZE_CFLAGS -Wl,-z,now -Wl,--no-as-needed tmpdir/pr2404b.o tmpdir/libpr2404n.so" \
 	    "" \
 	    { dummy.c } \
 	    "pr2404pien" \
 	    "pr2404.out" \
-	    "-fPIE" \
+	    "-fPIE $NOSANITIZE_CFLAGS" \
 	] \
 	[list \
 	    "Run pr18718" \
@@ -1466,6 +1662,9 @@ if { [istarget "i?86-*-*"]
      || [istarget "x86_64-*-*"] } {
     set AFLAGS_PIE "-mrelax-relocations=yes"
 }
+if [istarget "sparc*-*-*"] {
+    set AFLAGS_PIE "-Av9"
+}
 
 if { ([istarget "*-*-linux*"]
       || [istarget "*-*-nacl*"]
@@ -1480,7 +1679,7 @@ if { ([istarget "*-*-linux*"]
 	    { pr23162a.c } \
 	    "" \
 	    "libpr23162a.so" \
-	    "-fPIC -O2" \
+	    "-fPIC -O2 $NOSANITIZE_CFLAGS" \
 	] \
 	[list \
 	    "Build pr23162a" \
@@ -1490,7 +1689,7 @@ if { ([istarget "*-*-linux*"]
 	    { pr23162b.c } \
 	    {{readelf {-rW} pr23162.rd}} \
 	    "pr23162a" \
-	    "-fPIC -O0" \
+	    "-fPIC -O0 $NOSANITIZE_CFLAGS" \
 	] \
 	[list \
 	    "Build libpr23162b.so" \
@@ -1500,7 +1699,7 @@ if { ([istarget "*-*-linux*"]
 	    { pr23162a.c } \
 	    "" \
 	    "libpr23162b.so" \
-	    "-fPIC -O2" \
+	    "-fPIC -O2 $NOSANITIZE_CFLAGS" \
 	] \
 	[list \
 	    "Build pr23162b" \
@@ -1510,7 +1709,7 @@ if { ([istarget "*-*-linux*"]
 	    { pr23162b.c } \
 	    {{readelf {-rW} pr23162.rd}} \
 	    "pr23162b" \
-	    "-fPIC -O0" \
+	    "-fPIC -O0 $NOSANITIZE_CFLAGS" \
 	] \
 	[list \
 	    "Build libpr23161a.so" \
@@ -1520,7 +1719,7 @@ if { ([istarget "*-*-linux*"]
 	    { pr23161a.c } \
 	    {{readelf {--dyn-syms -rW} pr23161a.rd}} \
 	    "libpr23161a.so" \
-	    "-fPIC -O2 $NOSANTIZE_CFLAGS" \
+	    "-fPIC -O2 $NOSANITIZE_CFLAGS" \
 	] \
 	[list \
 	    "Build pr23161a" \
@@ -1530,7 +1729,7 @@ if { ([istarget "*-*-linux*"]
 	    { pr23161b.c } \
 	    {{readelf {--dyn-syms -rW} pr23161b.rd}} \
 	    "pr23161a" \
-	    "-fPIC -O0 $NOSANTIZE_CFLAGS" \
+	    "-fPIC -O0 $NOSANITIZE_CFLAGS" \
 	] \
 	[list \
 	    "Build libpr23161b.so" \
@@ -1540,7 +1739,7 @@ if { ([istarget "*-*-linux*"]
 	    { pr23161a.c } \
 	    {{readelf {--dyn-syms -rW} pr23161a.rd}} \
 	    "libpr23161b.so" \
-	    "-fPIC -O2 $NOSANTIZE_CFLAGS" \
+	    "-fPIC -O2 $NOSANITIZE_CFLAGS" \
 	] \
 	[list \
 	    "Build pr23161b" \
@@ -1550,7 +1749,7 @@ if { ([istarget "*-*-linux*"]
 	    { pr23161b.c } \
 	    {{readelf {--dyn-syms -rW} pr23161b.rd}} \
 	    "pr23161b" \
-	    "-fPIC -O0 $NOSANTIZE_CFLAGS" \
+	    "-fPIC -O0 $NOSANITIZE_CFLAGS" \
 	] \
     ]
 }
@@ -1566,7 +1765,7 @@ if { [istarget "i?86-*-*"]
 	    { pr23161c.c } \
 	    {{readelf {--dyn-syms -rW} pr23161c.rd}} \
 	    "libpr23161c.so" \
-	    "-fPIC -O2 $NOSANTIZE_CFLAGS" \
+	    "-fPIC -O2 $NOSANITIZE_CFLAGS" \
 	] \
 	[list \
 	    "Build pr23161c" \
@@ -1576,7 +1775,7 @@ if { [istarget "i?86-*-*"]
 	    { pr23161b.c } \
 	    {{readelf {--dyn-syms -rW} pr23161d.rd}} \
 	    "pr23161c" \
-	    "-fPIC -O0 $NOSANTIZE_CFLAGS" \
+	    "-fPIC -O0 $NOSANITIZE_CFLAGS" \
 	] \
     ]
 }

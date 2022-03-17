@@ -1,5 +1,5 @@
 /* Target operations for the remote server for GDB.
-   Copyright (C) 2002-2020 Free Software Foundation, Inc.
+   Copyright (C) 2002-2022 Free Software Foundation, Inc.
 
    Contributed by MontaVista Software.
 
@@ -160,8 +160,8 @@ target_write_memory (CORE_ADDR memaddr, const unsigned char *myaddr,
 }
 
 ptid_t
-mywait (ptid_t ptid, struct target_waitstatus *ourstatus, int options,
-	int connected_wait)
+mywait (ptid_t ptid, struct target_waitstatus *ourstatus,
+	target_wait_flags options, int connected_wait)
 {
   ptid_t ret;
 
@@ -220,7 +220,8 @@ target_stop_and_wait (ptid_t ptid)
 /* See target/target.h.  */
 
 ptid_t
-target_wait (ptid_t ptid, struct target_waitstatus *status, int options)
+target_wait (ptid_t ptid, struct target_waitstatus *status,
+	     target_wait_flags options)
 {
   return the_target->wait (ptid, status, options);
 }
@@ -463,6 +464,26 @@ process_stratum_target::supports_read_offsets ()
   return false;
 }
 
+bool
+process_stratum_target::supports_memory_tagging ()
+{
+  return false;
+}
+
+bool
+process_stratum_target::fetch_memtags (CORE_ADDR address, size_t len,
+				       gdb::byte_vector &tags, int type)
+{
+  gdb_assert_not_reached ("target op fetch_memtags not supported");
+}
+
+bool
+process_stratum_target::store_memtags (CORE_ADDR address, size_t len,
+				       const gdb::byte_vector &tags, int type)
+{
+  gdb_assert_not_reached ("target op store_memtags not supported");
+}
+
 int
 process_stratum_target::read_offsets (CORE_ADDR *text, CORE_ADDR *data)
 {
@@ -482,12 +503,6 @@ process_stratum_target::get_tls_address (thread_info *thread,
 					 CORE_ADDR *address)
 {
   gdb_assert_not_reached ("target op get_tls_address not supported");
-}
-
-void
-process_stratum_target::hostio_last_error (char *buf)
-{
-  hostio_last_error_from_errno (buf);
 }
 
 bool
@@ -762,7 +777,7 @@ process_stratum_target::supports_pid_to_exec_file ()
   return false;
 }
 
-char *
+const char *
 process_stratum_target::pid_to_exec_file (int pid)
 {
   gdb_assert_not_reached ("target op pid_to_exec_file not supported");

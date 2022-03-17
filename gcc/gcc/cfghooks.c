@@ -1,5 +1,5 @@
 /* Hooks for cfg representation specific functions.
-   Copyright (C) 2003-2020 Free Software Foundation, Inc.
+   Copyright (C) 2003-2021 Free Software Foundation, Inc.
    Contributed by Sebastian Pop <s.pop@laposte.net>
 
 This file is part of GCC.
@@ -640,6 +640,7 @@ split_edge (edge e)
   profile_count count = e->count ();
   edge f;
   bool irr = (e->flags & EDGE_IRREDUCIBLE_LOOP) != 0;
+  bool back = (e->flags & EDGE_DFS_BACK) != 0;
   class loop *loop;
   basic_block src = e->src, dest = e->dest;
 
@@ -658,6 +659,11 @@ split_edge (edge e)
       ret->flags |= BB_IRREDUCIBLE_LOOP;
       single_pred_edge (ret)->flags |= EDGE_IRREDUCIBLE_LOOP;
       single_succ_edge (ret)->flags |= EDGE_IRREDUCIBLE_LOOP;
+    }
+  if (back)
+    {
+      single_pred_edge (ret)->flags &= ~EDGE_DFS_BACK;
+      single_succ_edge (ret)->flags |= EDGE_DFS_BACK;
     }
 
   if (dom_info_available_p (CDI_DOMINATORS))
@@ -1385,8 +1391,6 @@ copy_bbs (basic_block *bbs, unsigned n, basic_block *new_bbs,
     }
 
   /* Redirect edges.  */
-  for (j = 0; j < num_edges; j++)
-    new_edges[j] = NULL;
   for (i = 0; i < n; i++)
     {
       edge_iterator ei;
@@ -1395,13 +1399,24 @@ copy_bbs (basic_block *bbs, unsigned n, basic_block *new_bbs,
 
       FOR_EACH_EDGE (e, ei, new_bb->succs)
 	{
-	  for (j = 0; j < num_edges; j++)
-	    if (edges[j] && edges[j]->src == bb && edges[j]->dest == e->dest)
-	      new_edges[j] = e;
-
 	  if (!(e->dest->flags & BB_DUPLICATED))
 	    continue;
 	  redirect_edge_and_branch_force (e, get_bb_copy (e->dest));
+	}
+    }
+  for (j = 0; j < num_edges; j++)
+    {
+      if (!edges[j])
+	new_edges[j] = NULL;
+      else
+	{
+	  basic_block src = edges[j]->src;
+	  basic_block dest = edges[j]->dest;
+	  if (src->flags & BB_DUPLICATED)
+	    src = get_bb_copy (src);
+	  if (dest->flags & BB_DUPLICATED)
+	    dest = get_bb_copy (dest);
+	  new_edges[j] = find_edge (src, dest);
 	}
     }
 

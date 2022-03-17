@@ -1,6 +1,6 @@
 # Expect script for linker support of IFUNC symbols and relocations.
 #
-#   Copyright (C) 2009-2020 Free Software Foundation, Inc.
+#   Copyright (C) 2009-2022 Free Software Foundation, Inc.
 #   Contributed by Red Hat.
 #
 # This file is part of the GNU Binutils.
@@ -39,7 +39,6 @@ if { ![is_elf_format] || ![supports_gnu_osabi]
      || [istarget nds32*-*-*]
      || [istarget nios2-*-*]
      || [istarget or1k-*-*]
-     || [istarget riscv*-*-*]
      || [istarget score*-*-*]
      || [istarget sh*-*-*]
      || [istarget tic6x-*-*]
@@ -148,7 +147,7 @@ proc contains_irelative_reloc { binary_file } {
     #    080496f4  0000002a R_386_IRELATIVE
 
 
-    if { ![regexp "\[0-9a-f\]+\[ \]+\[0-9a-f\]+\[ \]+R_(\[_0-9A-Z\]+_IREL(|ATIVE)|PARISC_IPLT)\[ \]*\[0-9a-f\]*\n" [file_contents readelf.out]] } {
+    if { ![regexp "\[0-9a-f\]+\[ \]+\[0-9a-f\]+\[ \]+R_(\[_0-9A-Z\]+_IREL(|ATIVE)|PARISC_IPLT).*\n" [file_contents readelf.out]] } {
 	return 0
     }
 
@@ -182,24 +181,30 @@ proc contains_ifunc_reloc { binary_file } {
 
 set fails 0
 
+# Disable LTO for these tests.
+set cc_cmd "$CC_FOR_TARGET"
+if {[check_lto_available]} {
+   append cc_cmd " -fno-lto"
+}
+
 # Create the object files, libraries and executables.
-if ![ld_compile "$CC -c -fPIC" "$srcdir/$subdir/prog.c" "tmpdir/shared_prog.o"] {
+if ![ld_compile "$cc_cmd -c -fPIC" "$srcdir/$subdir/prog.c" "tmpdir/shared_prog.o"] {
     fail "Could not create a PIC object file"
     set fails [expr $fails + 1]
 }
-if ![ld_compile "$CC -c $NOPIE_CFLAGS" "$srcdir/$subdir/prog.c" "tmpdir/static_prog.o"] {
+if ![ld_compile "$cc_cmd -c $NOPIE_CFLAGS" "$srcdir/$subdir/prog.c" "tmpdir/static_prog.o"] {
     fail "Could not create a non-PIC object file"
     set fails [expr $fails + 1]
 }
-if ![ld_compile "$CC -c -fPIC -DWITH_IFUNC" "$srcdir/$subdir/lib.c" "tmpdir/shared_ifunc.o"] {
+if ![ld_compile "$cc_cmd -c -fPIC -DWITH_IFUNC" "$srcdir/$subdir/lib.c" "tmpdir/shared_ifunc.o"] {
     fail "Could not create a PIC object file containing an IFUNC symbol"
     set fails [expr $fails + 1]
 }
-if ![ld_compile "$CC -c $NOPIE_CFLAGS -DWITH_IFUNC" "$srcdir/$subdir/lib.c" "tmpdir/static_ifunc.o"] {
+if ![ld_compile "$cc_cmd -c $NOPIE_CFLAGS -DWITH_IFUNC" "$srcdir/$subdir/lib.c" "tmpdir/static_ifunc.o"] {
     fail "Could not create a non-PIC object file containing an IFUNC symbol"
     set fails [expr $fails + 1]
 }
-if ![ld_compile "$CC -c -DWITHOUT_IFUNC" "$srcdir/$subdir/lib.c" "tmpdir/static_noifunc.o"] {
+if ![ld_compile "$cc_cmd -c -DWITHOUT_IFUNC" "$srcdir/$subdir/lib.c" "tmpdir/static_noifunc.o"] {
     fail "Could not create an ordinary non-PIC object file"
     set fails [expr $fails + 1]
 }
@@ -207,11 +212,11 @@ if ![ld_assemble $as "$srcdir/ld-elf/empty.s" "tmpdir/empty.o"] {
     fail "Could not create an empty object file"
     set fails [expr $fails + 1]
 }
-if ![ld_compile "$CC -c" "$srcdir/$subdir/test-1.c" "tmpdir/test-1.o"] {
+if ![ld_compile "$cc_cmd -c" "$srcdir/$subdir/test-1.c" "tmpdir/test-1.o"] {
     fail "Could not create test-1.o"
     set fails [expr $fails + 1]
 }
-if ![ld_compile "$CC -fPIC -c" "$srcdir/$subdir/test-2.c" "tmpdir/test-2.o"] {
+if ![ld_compile "$cc_cmd -fPIC -c" "$srcdir/$subdir/test-2.c" "tmpdir/test-2.o"] {
     fail "Could not create test-2.o"
     set fails [expr $fails + 1]
 }
@@ -233,16 +238,16 @@ if { $fails != 0 } {
     return
 }
 
-if ![ld_link $CC "tmpdir/dynamic_prog" "-Wl,--no-as-needed,-rpath=./tmpdir,-Bdynamic -Ltmpdir tmpdir/shared_prog.o -lshared_ifunc"] {
+if ![ld_link $CC_FOR_TARGET "tmpdir/dynamic_prog" "-Wl,--no-as-needed,-rpath=./tmpdir,-Bdynamic -Ltmpdir tmpdir/shared_prog.o -lshared_ifunc"] {
     fail "Could not link a dynamic executable"
     set fails [expr $fails + 1]
 }
-if ![ld_link $CC "tmpdir/local_prog" "$NOPIE_LDFLAGS -Wl,--no-as-needed,-rpath=./tmpdir -Ltmpdir tmpdir/static_prog.o -lifunc"] {
+if ![ld_link $CC_FOR_TARGET "tmpdir/local_prog" "$NOPIE_LDFLAGS -Wl,--no-as-needed,-rpath=./tmpdir -Ltmpdir tmpdir/static_prog.o -lifunc"] {
     fail "Could not link a dynamic executable using local ifunc"
     set fails [expr $fails + 1]
 }
 if ![string match "" $STATIC_LDFLAGS] {
-    if ![ld_link $CC "tmpdir/static_prog" "-static -Ltmpdir tmpdir/static_prog.o -lifunc"] {
+    if ![ld_link $CC_FOR_TARGET "tmpdir/static_prog" "-static -Ltmpdir tmpdir/static_prog.o -lifunc"] {
 	fail "Could not link a static executable"
 	set fails [expr $fails + 1]
     }
@@ -251,7 +256,7 @@ if ![ld_link $ld "tmpdir/static_nonifunc_prog" "-static tmpdir/empty.o"] {
     fail "Could not link a non-ifunc using static executable"
     set fails [expr $fails + 1]
 }
-if ![ld_link $CC "tmpdir/test-1" "-Wl,--no-as-needed,-rpath=./tmpdir tmpdir/test-1.o tmpdir/libshared_ifunc.so"] {
+if ![ld_link $CC_FOR_TARGET "tmpdir/test-1" "-Wl,--no-as-needed,-rpath=./tmpdir tmpdir/test-1.o tmpdir/libshared_ifunc.so"] {
     fail "Could not link test-1"
     set fails [expr $fails + 1]
 }
@@ -356,6 +361,7 @@ if {[contains_irelative_reloc tmpdir/local_prog] != 1} {
     set fails [expr $fails + 1]
 }
 if { ![string match "" $STATIC_LDFLAGS] \
+    && ![istarget hppa*-*-*] \
     && [contains_irelative_reloc tmpdir/static_prog] != 1} {
     fail "Static ifunc-using executable does not contain R_*_IRELATIVE relocation"
     set fails [expr $fails + 1]
@@ -392,7 +398,7 @@ run_cc_link_tests [list \
     ] \
     [list \
 	"Build libpr16467b.so" \
-	"-shared tmpdir/pr16467b.o tmpdir/libpr16467a.so \
+	"-shared -Wl,--as-needed tmpdir/pr16467b.o tmpdir/libpr16467a.so \
 	 -Wl,--version-script=pr16467b.map" \
 	"-fPIC" \
 	{ dummy.c } \
@@ -417,7 +423,7 @@ run_cc_link_tests [list \
     ] \
     [list \
 	"Build libpr16467bn.so" \
-	"-shared tmpdir/pr16467b.o tmpdir/libpr16467an.so \
+	"-shared -Wl,--as-needed tmpdir/pr16467b.o tmpdir/libpr16467an.so \
 	 -Wl,--version-script=pr16467b.map" \
 	"-fPIC" \
 	{ dummy.c } \
@@ -635,7 +641,7 @@ run_cc_link_tests [list \
 	"$NOPIE_LDFLAGS -Wl,--no-as-needed tmpdir/libpr23169a.so" \
 	"-fPIE -O2 -g" \
 	{ pr23169b.c pr23169c.c } \
-	{{readelf {--dyn-syms} pr23169c.rd} \
+	{{readelf {--dyn-syms} pr23169a.rd} \
 	 {readelf {-r -W} pr23169b.rd}} \
 	"pr23169c" \
     ] \
@@ -649,20 +655,11 @@ run_cc_link_tests [list \
 	"pr23169d" \
     ] \
     [list \
-	"Build pr23169e" \
-	"-pie -Wl,--no-as-needed,-z,now tmpdir/libpr23169b.so" \
-	"-fPIE -O2 -g" \
-	{ pr23169b.c pr23169c.c } \
-	{{readelf {--dyn-syms} pr23169c.rd} \
-	 {readelf {-r -W} pr23169b.rd}} \
-	"pr23169e" \
-    ] \
-    [list \
 	"Build pr23169f" \
 	"$NOPIE_LDFLAGS -Wl,--no-as-needed,-z,now tmpdir/libpr23169b.so" \
 	"-fPIE -O2 -g" \
 	{ pr23169b.c pr23169c.c } \
-	{{readelf {--dyn-syms} pr23169c.rd} \
+	{{readelf {--dyn-syms} pr23169a.rd} \
 	 {readelf {-r -W} pr23169b.rd}} \
 	"pr23169f" \
     ] \
@@ -730,7 +727,8 @@ run_ld_link_exec_tests [list \
 if { [isnative]
      && !([istarget "powerpc-*-*"]
            || [istarget "aarch64*-*-*"]
-           || [istarget "sparc*-*-*"]) } {
+           || [istarget "sparc*-*-*"]
+           || [istarget "riscv*-*-*"]) } {
 run_ld_link_exec_tests [list \
     [list \
 	"Run pr23169a" \
@@ -767,15 +765,6 @@ run_ld_link_exec_tests [list \
 	"pr23169d" \
 	"pass.out" \
 	"$NOPIE_CFLAGS -O2 -g" \
-    ] \
-    [list \
-	"Run pr23169e" \
-	"-pie -Wl,--no-as-needed,-z,now tmpdir/libpr23169b.so" \
-	"" \
-	{ pr23169b.c pr23169c.c } \
-	"pr23169e" \
-	"pass.out" \
-	"-fPIE -O2 -g" \
     ] \
     [list \
 	"Run pr23169f" \

@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (C) 1999-2019 by The D Language Foundation, All Rights Reserved
+ * Copyright (C) 1999-2021 by The D Language Foundation, All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -24,6 +24,7 @@
 #include "aggregate.h"
 #include "module.h"
 #include "id.h"
+#include "target.h"
 #include "template.h"
 
 Scope *Scope::freelist = NULL;
@@ -64,7 +65,6 @@ Scope::Scope()
     //printf("Scope::Scope() %p\n", this);
     this->_module = NULL;
     this->scopesym = NULL;
-    this->sds = NULL;
     this->enclosing = NULL;
     this->parent = NULL;
     this->sw = NULL;
@@ -82,7 +82,7 @@ Scope::Scope()
     this->linkage = LINKd;
     this->cppmangle = CPPMANGLEdefault;
     this->inlining = PINLINEdefault;
-    this->protection = Prot(PROTpublic);
+    this->protection = Prot(Prot::public_);
     this->explicitProtection = 0;
     this->stc = 0;
     this->depdecl = NULL;
@@ -121,7 +121,7 @@ Scope *Scope::createGlobal(Module *_module)
     sc->aligndecl = NULL;
     sc->linkage = LINKd;
     sc->inlining = PINLINEdefault;
-    sc->protection = Prot(PROTpublic);
+    sc->protection = Prot(Prot::public_);
 
     sc->_module = _module;
 
@@ -151,13 +151,13 @@ Scope *Scope::push()
     //printf("Scope::push(this = %p) new = %p\n", this, s);
     assert(!(flags & SCOPEfree));
     s->scopesym = NULL;
-    s->sds = NULL;
     s->enclosing = this;
     s->slabel = NULL;
     s->nofree = 0;
     s->fieldinit = saveFieldInit();
     s->flags = (flags & (SCOPEcontract | SCOPEdebug | SCOPEctfe | SCOPEcompile | SCOPEconstraint |
-                         SCOPEnoaccesscheck | SCOPEignoresymbolvisibility));
+                         SCOPEnoaccesscheck | SCOPEignoresymbolvisibility |
+                         SCOPEprintf | SCOPEscanf));
     s->lastdc = NULL;
 
     assert(this != s);
@@ -293,54 +293,64 @@ unsigned *Scope::saveFieldInit()
     return fi;
 }
 
-static bool mergeFieldInit(unsigned &fieldInit, unsigned fi, bool mustInit)
+/****************************************
+ * Merge `b` flow analysis results into `a`.
+ * Params:
+ *      a = the path to merge fi into
+ *      b = the other path
+ * Returns:
+ *      false means either `a` or `b` skips initialization
+ */
+static bool mergeFieldInit(unsigned &a, const unsigned b)
 {
-    if (fi != fieldInit)
+    if (b == a)
+        return true;
+
+    // Have any branches returned?
+    bool aRet = (a & CSXreturn) != 0;
+    bool bRet = (b & CSXreturn) != 0;
+
+    // Have any branches halted?
+    bool aHalt = (a & CSXhalt) != 0;
+    bool bHalt = (b & CSXhalt) != 0;
+
+    if (aHalt && bHalt)
     {
-        // Have any branches returned?
-        bool aRet = (fi        & CSXreturn) != 0;
-        bool bRet = (fieldInit & CSXreturn) != 0;
-
-        // Have any branches halted?
-        bool aHalt = (fi        & CSXhalt) != 0;
-        bool bHalt = (fieldInit & CSXhalt) != 0;
-
-        bool ok;
-
-        if (aHalt && bHalt)
-        {
-            ok = true;
-            fieldInit = CSXhalt;
-        }
-        else if (!aHalt && aRet)
-        {
-            ok = !mustInit || (fi & CSXthis_ctor);
-            fieldInit = fieldInit;
-        }
-        else if (!bHalt && bRet)
-        {
-            ok = !mustInit || (fieldInit & CSXthis_ctor);
-            fieldInit = fi;
-        }
-        else if (aHalt)
-        {
-            ok = !mustInit || (fieldInit & CSXthis_ctor);
-            fieldInit = fieldInit;
-        }
-        else if (bHalt)
-        {
-            ok = !mustInit || (fi & CSXthis_ctor);
-            fieldInit = fi;
-        }
-        else
-        {
-            ok = !mustInit || !((fieldInit ^ fi) & CSXthis_ctor);
-            fieldInit |= fi;
-        }
-
-        return ok;
+        a = CSXhalt;
+        return true;
     }
-    return true;
+
+    // The logic here is to prefer the branch that neither halts nor returns.
+    bool ok;
+    if (!bHalt && bRet)
+    {
+        // Branch b returns, no merging required.
+        ok = (b & CSXthis_ctor);
+    }
+    else if (!aHalt && aRet)
+    {
+        // Branch a returns, but b doesn't, b takes precedence.
+        ok = (a & CSXthis_ctor);
+        a = b;
+    }
+    else if (bHalt)
+    {
+        // Branch b halts, no merging required.
+        ok = (a & CSXthis_ctor);
+    }
+    else if (aHalt)
+    {
+        // Branch a halts, but b doesn't, b takes precedence
+        ok = (b & CSXthis_ctor);
+        a = b;
+    }
+    else
+    {
+        // Neither branch returns nor halts, merge flags
+        ok = !((a ^ b) & CSXthis_ctor);
+        a |= b;
+    }
+    return ok;
 }
 
 void Scope::mergeFieldInit(Loc loc, unsigned *fies)
@@ -352,15 +362,15 @@ void Scope::mergeFieldInit(Loc loc, unsigned *fies)
         AggregateDeclaration *ad = f->isMember2();
         assert(ad);
 
-        for (size_t i = 0; i < ad->fields.dim; i++)
+        for (size_t i = 0; i < ad->fields.length; i++)
         {
             VarDeclaration *v = ad->fields[i];
             bool mustInit = (v->storage_class & STCnodefaultctor ||
                              v->type->needsNested());
 
-            if (!::mergeFieldInit(fieldinit[i], fies[i], mustInit))
+            if (!::mergeFieldInit(fieldinit[i], fies[i]) && mustInit)
             {
-                ::error(loc, "one path skips field %s", ad->fields[i]->toChars());
+                ::error(loc, "one path skips field %s", v->toChars());
             }
         }
     }
@@ -390,7 +400,7 @@ static Dsymbol *searchScopes(Scope *scope, Loc loc, Identifier *ident, Dsymbol *
                 ident == Id::length && sc->scopesym->isArrayScopeSymbol() &&
                 sc->enclosing && sc->enclosing->search(loc, ident, NULL, flags))
             {
-                warning(s->loc, "array 'length' hides other 'length' name in outer scope");
+                warning(s->loc, "array `length` hides other `length` name in outer scope");
             }
             if (pscopesym)
                 *pscopesym = sc->scopesym;
@@ -445,47 +455,12 @@ Dsymbol *Scope::search(Loc loc, Identifier *ident, Dsymbol **pscopesym, int flag
     if (this->flags & SCOPEignoresymbolvisibility)
         flags |= IgnoreSymbolVisibility;
 
-    Dsymbol *sold = NULL;
-    if (global.params.bug10378 || global.params.check10378)
-    {
-        sold = searchScopes(this, loc, ident, pscopesym, flags | IgnoreSymbolVisibility);
-        if (!global.params.check10378)
-            return sold;
-
-        if (ident == Id::dollar) // Bugzilla 15825
-            return sold;
-
-        // Search both ways
-    }
-
     // First look in local scopes
     Dsymbol *s = searchScopes(this, loc, ident, pscopesym, flags | SearchLocalsOnly);
     if (!s)
     {
         // Second look in imported modules
         s = searchScopes(this, loc, ident, pscopesym, flags | SearchImportsOnly);
-        /** Still find private symbols, so that symbols that weren't access
-         * checked by the compiler remain usable.  Once the deprecation is over,
-         * this should be moved to search_correct instead.
-         */
-        if (!s && !(flags & IgnoreSymbolVisibility))
-        {
-            s = searchScopes(this, loc, ident, pscopesym, flags | SearchLocalsOnly | IgnoreSymbolVisibility);
-            if (!s)
-                s = searchScopes(this, loc, ident, pscopesym, flags | SearchImportsOnly | IgnoreSymbolVisibility);
-
-            if (s && !(flags & IgnoreErrors))
-                ::deprecation(loc, "%s is not visible from module %s", s->toPrettyChars(), _module->toChars());
-        }
-    }
-
-    if (global.params.check10378)
-    {
-        Dsymbol *snew = s;
-        if (sold != snew)
-            deprecation10378(loc, sold, snew);
-        if (global.params.bug10378)
-            s = sold;
     }
     return s;
 }
@@ -500,11 +475,11 @@ Dsymbol *Scope::insert(Dsymbol *s)
     }
     else if (WithScopeSymbol *ss = s->isWithScopeSymbol())
     {
-        if (VarDeclaration *vd = ss->withstate->wthis)
+        if (VarDeclaration *wthis = ss->withstate->wthis)
         {
             if (lastVar)
-                vd->lastVar = lastVar;
-            lastVar = vd;
+                wthis->lastVar = lastVar;
+            lastVar = wthis;
         }
         return NULL;
     }
@@ -599,7 +574,7 @@ structalign_t Scope::alignment()
  * one with a close spelling.
  */
 
-void *scope_search_fp(void *arg, const char *seed, int* cost)
+static void *scope_search_fp(void *arg, const char *seed, int* cost)
 {
     //printf("scope_search_fp('%s')\n", seed);
 
@@ -625,45 +600,11 @@ void *scope_search_fp(void *arg, const char *seed, int* cost)
         if (scopesym != s->parent)
         {
             (*cost)++; // got to the symbol through an import
-            if (s->prot().kind == PROTprivate)
+            if (s->prot().kind == Prot::private_)
                 return NULL;
         }
     }
     return (void*)s;
-}
-
-void Scope::deprecation10378(Loc loc, Dsymbol *sold, Dsymbol *snew)
-{
-    // Bugzilla 15857
-    //
-    // The overloadset found via the new lookup rules is either
-    // equal or a subset of the overloadset found via the old
-    // lookup rules, so it suffices to compare the dimension to
-    // check for equality.
-    OverloadSet *osold = NULL;
-    OverloadSet *osnew = NULL;
-    if (sold && (osold = sold->isOverloadSet()) != NULL &&
-        snew && (osnew = snew->isOverloadSet()) != NULL &&
-        osold->a.dim == osnew->a.dim)
-        return;
-
-    OutBuffer buf;
-    buf.writestring("local import search method found ");
-    if (osold)
-        buf.printf("%s %s (%d overloads)", sold->kind(), sold->toPrettyChars(), (int)osold->a.dim);
-    else if (sold)
-        buf.printf("%s %s", sold->kind(), sold->toPrettyChars());
-    else
-        buf.writestring("nothing");
-    buf.writestring(" instead of ");
-    if (osnew)
-        buf.printf("%s %s (%d overloads)", snew->kind(), snew->toPrettyChars(), (int)osnew->a.dim);
-    else if (snew)
-        buf.printf("%s %s", snew->kind(), snew->toPrettyChars());
-    else
-        buf.writestring("nothing");
-
-    deprecation(loc, "%s", buf.peekString());
 }
 
 Dsymbol *Scope::search_correct(Identifier *ident)
@@ -671,6 +612,10 @@ Dsymbol *Scope::search_correct(Identifier *ident)
     if (global.gag)
         return NULL;            // don't do it for speculative compiles; too time consuming
 
+    Dsymbol *scopesym = NULL;
+    // search for exact name first
+    if (Dsymbol *s = search(Loc(), ident, &scopesym, IgnoreErrors))
+        return s;
     return (Dsymbol *)speller(ident->toChars(), &scope_search_fp, this, idchars);
 }
 
@@ -694,7 +639,7 @@ const char *Scope::search_correct_C(Identifier *ident)
     else if (ident == Id::C_unsigned)
         tok = TOKuns32;
     else if (ident == Id::C_wchar_t)
-        tok = global.params.isWindows ? TOKwchar : TOKdchar;
+        tok = target.c.twchar_t->ty == Twchar ? TOKwchar : TOKdchar;
     else
         return NULL;
     return Token::toChars(tok);

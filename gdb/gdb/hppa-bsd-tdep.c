@@ -1,6 +1,6 @@
 /* Target-dependent code for HP PA-RISC BSD's.
 
-   Copyright (C) 2004-2020 Free Software Foundation, Inc.
+   Copyright (C) 2004-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -64,8 +64,8 @@ hppabsd_find_global_pointer (struct gdbarch *gdbarch, struct value *function)
 
       if (sec < faddr_sec->objfile->sections_end)
 	{
-	  CORE_ADDR addr = obj_section_addr (sec);
-	  CORE_ADDR endaddr = obj_section_endaddr (sec);
+	  CORE_ADDR addr = sec->addr ();
+	  CORE_ADDR endaddr = sec->endaddr ();
 
 	  while (addr < endaddr)
 	    {

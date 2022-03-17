@@ -1,6 +1,6 @@
 /* Test file for mpfr_acosh.
 
-Copyright 2001-2004, 2006-2019 Free Software Foundation, Inc.
+Copyright 2001-2004, 2006-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -105,7 +105,7 @@ special (void)
     }
 
   mpfr_set_ui (x, 1, MPFR_RNDN);
-  mpfr_div_2exp (x, x, 1, MPFR_RNDN);
+  mpfr_div_2ui (x, x, 1, MPFR_RNDN);
   mpfr_acosh (y, x, MPFR_RNDN);
   if (!mpfr_nan_p (y))
     {

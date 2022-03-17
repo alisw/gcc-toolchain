@@ -1,6 +1,6 @@
 /* Call-backs for C++ error reporting.
    This code is non-reentrant.
-   Copyright (C) 1993-2020 Free Software Foundation, Inc.
+   Copyright (C) 1993-2021 Free Software Foundation, Inc.
    This file is part of GCC.
 
 GCC is free software; you can redistribute it and/or modify
@@ -179,6 +179,38 @@ cxx_initialize_diagnostics (diagnostic_context *context)
   pp->m_format_postprocessor = new cxx_format_postprocessor ();
 }
 
+/* Dump an '@module' name suffix for DECL, if any.  */
+
+static void
+dump_module_suffix (cxx_pretty_printer *pp, tree decl)
+{
+  if (!modules_p ())
+    return;
+
+  if (!DECL_CONTEXT (decl))
+    return;
+
+  if (TREE_CODE (decl) != CONST_DECL
+      || !UNSCOPED_ENUM_P (DECL_CONTEXT (decl)))
+    {
+      if (!DECL_NAMESPACE_SCOPE_P (decl))
+	return;
+
+      if (TREE_CODE (decl) == NAMESPACE_DECL
+	  && !DECL_NAMESPACE_ALIAS (decl)
+	  && (TREE_PUBLIC (decl) || !TREE_PUBLIC (CP_DECL_CONTEXT (decl))))
+	return;
+    }
+
+  if (unsigned m = get_originating_module (decl))
+    if (const char *n = module_name (m, false))
+      {
+	pp_character (pp, '@');
+	pp->padding = pp_none;
+	pp_string (pp, n);
+      }
+}
+
 /* Dump a scope, if deemed necessary.  */
 
 static void
@@ -211,9 +243,7 @@ dump_scope (cxx_pretty_printer *pp, tree scope, int flags)
     }
   else if ((flags & TFF_SCOPE) && TREE_CODE (scope) == FUNCTION_DECL)
     {
-      if (DECL_USE_TEMPLATE (scope))
-	f |= TFF_NO_FUNCTION_ARGUMENTS;
-      dump_function_decl (pp, scope, f);
+      dump_function_decl (pp, scope, f | TFF_NO_TEMPLATE_BINDINGS);
       pp_cxx_colon_colon (pp);
     }
 }
@@ -529,6 +559,7 @@ dump_type (cxx_pretty_printer *pp, tree t, int flags)
     case INTEGER_TYPE:
     case REAL_TYPE:
     case VOID_TYPE:
+    case OPAQUE_TYPE:
     case BOOLEAN_TYPE:
     case COMPLEX_TYPE:
     case VECTOR_TYPE:
@@ -701,7 +732,6 @@ class_key_or_enum_as_string (tree t)
 static void
 dump_aggr_type (cxx_pretty_printer *pp, tree t, int flags)
 {
-  tree name;
   const char *variety = class_key_or_enum_as_string (t);
   int typdef = 0;
   int tmplate = 0;
@@ -711,23 +741,23 @@ dump_aggr_type (cxx_pretty_printer *pp, tree t, int flags)
   if (flags & TFF_CLASS_KEY_OR_ENUM)
     pp_cxx_ws_string (pp, variety);
 
-  name = TYPE_NAME (t);
+  tree decl = TYPE_NAME (t);
 
-  if (name)
+  if (decl)
     {
-      typdef = (!DECL_ARTIFICIAL (name)
+      typdef = (!DECL_ARTIFICIAL (decl)
 		/* An alias specialization is not considered to be a
 		   typedef.  */
 		&& !alias_template_specialization_p (t, nt_opaque));
 
       if ((typdef
 	   && ((flags & TFF_CHASE_TYPEDEF)
-	       || (!flag_pretty_templates && DECL_LANG_SPECIFIC (name)
-		   && DECL_TEMPLATE_INFO (name))))
-	  || DECL_SELF_REFERENCE_P (name))
+	       || (!flag_pretty_templates && DECL_LANG_SPECIFIC (decl)
+		   && DECL_TEMPLATE_INFO (decl))))
+	  || DECL_SELF_REFERENCE_P (decl))
 	{
 	  t = TYPE_MAIN_VARIANT (t);
-	  name = TYPE_NAME (t);
+	  decl = TYPE_NAME (t);
 	  typdef = 0;
 	}
 
@@ -737,7 +767,7 @@ dump_aggr_type (cxx_pretty_printer *pp, tree t, int flags)
 		    || PRIMARY_TEMPLATE_P (CLASSTYPE_TI_TEMPLATE (t)));
       
       if (! (flags & TFF_UNQUALIFIED_NAME))
-	dump_scope (pp, CP_DECL_CONTEXT (name), flags | TFF_SCOPE);
+	dump_scope (pp, CP_DECL_CONTEXT (decl), flags | TFF_SCOPE);
       flags &= ~TFF_UNQUALIFIED_NAME;
       if (tmplate)
 	{
@@ -747,9 +777,8 @@ dump_aggr_type (cxx_pretty_printer *pp, tree t, int flags)
 
 	  while (DECL_TEMPLATE_INFO (tpl))
 	    tpl = DECL_TI_TEMPLATE (tpl);
-	  name = tpl;
+	  decl = tpl;
 	}
-      name = DECL_NAME (name);
     }
 
   if (LAMBDA_TYPE_P (t))
@@ -762,7 +791,7 @@ dump_aggr_type (cxx_pretty_printer *pp, tree t, int flags)
 			 flags);
       pp_greater (pp);
     }
-  else if (!name || IDENTIFIER_ANON_P (name))
+  else if (!decl || IDENTIFIER_ANON_P (DECL_NAME (decl)))
     {
       if (flags & TFF_CLASS_KEY_OR_ENUM)
 	pp_string (pp, M_("<unnamed>"));
@@ -770,7 +799,9 @@ dump_aggr_type (cxx_pretty_printer *pp, tree t, int flags)
 	pp_printf (pp, M_("<unnamed %s>"), variety);
     }
   else
-    pp_cxx_tree_identifier (pp, name);
+    pp_cxx_tree_identifier (pp, DECL_NAME (decl));
+
+  dump_module_suffix (pp, decl);
 
   if (tmplate)
     dump_template_parms (pp, TYPE_TEMPLATE_INFO (t),
@@ -876,6 +907,7 @@ dump_type_prefix (cxx_pretty_printer *pp, tree t, int flags)
     case UNION_TYPE:
     case LANG_TYPE:
     case VOID_TYPE:
+    case OPAQUE_TYPE:
     case TYPENAME_TYPE:
     case COMPLEX_TYPE:
     case VECTOR_TYPE:
@@ -953,8 +985,11 @@ dump_type_suffix (cxx_pretty_printer *pp, tree t, int flags)
       if (tree dtype = TYPE_DOMAIN (t))
 	{
 	  tree max = TYPE_MAX_VALUE (dtype);
-	  /* Zero-length arrays have an upper bound of SIZE_MAX.  */
-	  if (integer_all_onesp (max))
+	  /* Zero-length arrays have a null upper bound in C and SIZE_MAX
+	     in C++.  Handle both since the type might be constructed by
+	     the middle end and end up here as a result of a warning (see
+	     PR c++/97201).  */
+	  if (!max || integer_all_onesp (max))
 	    pp_character (pp, '0');
 	  else if (tree_fits_shwi_p (max))
 	    pp_wide_integer (pp, tree_to_shwi (max) + 1);
@@ -996,6 +1031,7 @@ dump_type_suffix (cxx_pretty_printer *pp, tree t, int flags)
     case UNION_TYPE:
     case LANG_TYPE:
     case VOID_TYPE:
+    case OPAQUE_TYPE:
     case TYPENAME_TYPE:
     case COMPLEX_TYPE:
     case VECTOR_TYPE:
@@ -1073,6 +1109,9 @@ dump_simple_decl (cxx_pretty_printer *pp, tree t, tree type, int flags)
     pp_string (pp, M_("<structured bindings>"));
   else
     pp_string (pp, M_("<anonymous>"));
+
+  dump_module_suffix (pp, t);
+
   if (flags & TFF_DECL_SPECIFIERS)
     dump_type_suffix (pp, type, flags);
 }
@@ -1890,6 +1929,8 @@ dump_function_name (cxx_pretty_printer *pp, tree t, int flags)
   else
     dump_decl (pp, name, flags);
 
+  dump_module_suffix (pp, t);
+
   if (DECL_TEMPLATE_INFO (t)
       && !DECL_FRIEND_PSEUDO_TEMPLATE_INSTANTIATION (t)
       && (TREE_CODE (DECL_TI_TEMPLATE (t)) != TEMPLATE_DECL
@@ -2309,7 +2350,8 @@ dump_expr (cxx_pretty_printer *pp, tree t, int flags)
 	if (INDIRECT_REF_P (ob))
 	  {
 	    ob = TREE_OPERAND (ob, 0);
-	    if (!is_this_parameter (ob))
+	    if (!is_this_parameter (ob)
+		&& !is_dummy_object (ob))
 	      {
 		dump_expr (pp, ob, flags | TFF_EXPR_IN_PARENS);
 		if (TYPE_REF_P (TREE_TYPE (ob)))
@@ -2374,32 +2416,66 @@ dump_expr (cxx_pretty_printer *pp, tree t, int flags)
       break;
 
     case MEM_REF:
-      if (TREE_CODE (TREE_OPERAND (t, 0)) == ADDR_EXPR
-	  && integer_zerop (TREE_OPERAND (t, 1)))
-	dump_expr (pp, TREE_OPERAND (TREE_OPERAND (t, 0), 0), flags);
-      else
+      /* Delegate to the base "C" pretty printer.  */
+      pp->c_pretty_printer::unary_expression (t);
+      break;
+
+    case TARGET_MEM_REF:
+      /* TARGET_MEM_REF can't appear directly from source, but can appear
+	 during late GIMPLE optimizations and through late diagnostic we might
+	 need to support it.  Print it as dereferencing of a pointer after
+	 cast to the TARGET_MEM_REF type, with pointer arithmetics on some
+	 pointer to single byte types, so
+	 *(type *)((char *) ptr + step * index + index2) if all the operands
+	 are present and the casts are needed.  */
+      pp_cxx_star (pp);
+      pp_cxx_left_paren (pp);
+      if (TYPE_SIZE_UNIT (TREE_TYPE (TREE_TYPE (TMR_BASE (t)))) == NULL_TREE
+	  || !integer_onep (TYPE_SIZE_UNIT
+				(TREE_TYPE (TREE_TYPE (TMR_BASE (t))))))
 	{
-	  pp_cxx_star (pp);
-	  if (!integer_zerop (TREE_OPERAND (t, 1)))
+	  if (TYPE_SIZE_UNIT (TREE_TYPE (t))
+	      && integer_onep (TYPE_SIZE_UNIT (TREE_TYPE (t))))
 	    {
 	      pp_cxx_left_paren (pp);
-	      if (!integer_onep (TYPE_SIZE_UNIT
-				 (TREE_TYPE (TREE_TYPE (TREE_OPERAND (t, 0))))))
-		{
-		  pp_cxx_left_paren (pp);
-		  dump_type (pp, ptr_type_node, flags);
-		  pp_cxx_right_paren (pp);
-		}
+	      dump_type (pp, build_pointer_type (TREE_TYPE (t)), flags);
 	    }
-	  dump_expr (pp, TREE_OPERAND (t, 0), flags);
-	  if (!integer_zerop (TREE_OPERAND (t, 1)))
+	  else
 	    {
-	      pp_cxx_ws_string (pp, "+");
-	      dump_expr (pp, fold_convert (ssizetype, TREE_OPERAND (t, 1)),
-                         flags);
+	      dump_type (pp, build_pointer_type (TREE_TYPE (t)), flags);
 	      pp_cxx_right_paren (pp);
+	      pp_cxx_left_paren (pp);
+	      pp_cxx_left_paren (pp);
+	      dump_type (pp, build_pointer_type (char_type_node), flags);
 	    }
+	  pp_cxx_right_paren (pp);
 	}
+      else if (!same_type_p (TREE_TYPE (t),
+			     TREE_TYPE (TREE_TYPE (TMR_BASE (t)))))
+	{
+	  dump_type (pp, build_pointer_type (TREE_TYPE (t)), flags);
+	  pp_cxx_right_paren (pp);
+	  pp_cxx_left_paren (pp);
+	}
+      dump_expr (pp, TMR_BASE (t), flags);
+      if (TMR_STEP (t) && TMR_INDEX (t))
+	{
+	  pp_cxx_ws_string (pp, "+");
+	  dump_expr (pp, TMR_INDEX (t), flags);
+	  pp_cxx_ws_string (pp, "*");
+	  dump_expr (pp, TMR_STEP (t), flags);
+	}
+      if (TMR_INDEX2 (t))
+	{
+	  pp_cxx_ws_string (pp, "+");
+	  dump_expr (pp, TMR_INDEX2 (t), flags);
+	}
+      if (!integer_zerop (TMR_OFFSET (t)))
+	{
+	  pp_cxx_ws_string (pp, "+");
+	  dump_expr (pp, fold_convert (ssizetype, TMR_OFFSET (t)), flags);
+	}
+      pp_cxx_right_paren (pp);
       break;
 
     case NEGATE_EXPR:
@@ -2751,6 +2827,7 @@ dump_expr (cxx_pretty_printer *pp, tree t, int flags)
     case ENUMERAL_TYPE:
     case REAL_TYPE:
     case VOID_TYPE:
+    case OPAQUE_TYPE:
     case BOOLEAN_TYPE:
     case INTEGER_TYPE:
     case COMPLEX_TYPE:
@@ -2909,7 +2986,14 @@ dump_binary_op (cxx_pretty_printer *pp, const char *opstring, tree t,
   else
     pp_string (pp, M_("<unknown operator>"));
   pp_cxx_whitespace (pp);
-  dump_expr (pp, TREE_OPERAND (t, 1), flags | TFF_EXPR_IN_PARENS);
+  tree op1 = TREE_OPERAND (t, 1);
+  if (TREE_CODE (t) == POINTER_PLUS_EXPR
+      && TREE_CODE (op1) == INTEGER_CST
+      && tree_int_cst_sign_bit (op1))
+    /* A pointer minus an integer is represented internally as plus a very
+       large number, don't expose that to users.  */
+    op1 = convert (ssizetype, op1);
+  dump_expr (pp, op1, flags | TFF_EXPR_IN_PARENS);
   pp_cxx_right_paren (pp);
 }
 
@@ -3482,6 +3566,14 @@ function_category (tree fn)
   else
     return _("In function %qs");
 }
+
+/* Disable warnings about missing quoting in GCC diagnostics for
+   the pp_verbatim calls.  Their format strings deliberately don't
+   follow GCC diagnostic conventions.  */
+#if __GNUC__ >= 10
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wformat-diag"
+#endif
 
 /* Report the full context of a current template instantiation,
    onto BUFFER.  */
@@ -4083,11 +4175,16 @@ add_quotes (const char *content, bool show_color)
   pp_show_color (&tmp_pp) = show_color;
 
   /* We have to use "%<%s%>" rather than "%qs" here in order to avoid
-     quoting colorization bytes within the results.  */
+     quoting colorization bytes within the results and using either
+     pp_quote or pp_begin_quote doesn't work the same.  */
   pp_printf (&tmp_pp, "%<%s%>", content);
 
   return pp_ggc_formatted_text (&tmp_pp);
 }
+
+#if __GNUC__ >= 10
+#  pragma GCC diagnostic pop
+#endif
 
 /* If we had %H and %I, and hence deferred printing them,
    print them now, storing the result into the chunk_info

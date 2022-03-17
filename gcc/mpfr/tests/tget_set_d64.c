@@ -1,6 +1,6 @@
 /* Test file for mpfr_get_decimal64 and mpfr_set_decimal64.
 
-Copyright 2006-2019 Free Software Foundation, Inc.
+Copyright 2006-2020 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -298,10 +298,10 @@ check_random (void)
       /* the normal decimal64 range contains [2^(-1272), 2^1278] */
       mpfr_mul_2si (x, x, (i % 2550) - 1272, MPFR_RNDN);
       if (mpfr_get_exp (x) <= -1272)
-        mpfr_mul_2exp (x, x, -1271 - mpfr_get_exp (x), MPFR_RNDN);
+        mpfr_mul_2ui (x, x, -1271 - mpfr_get_exp (x), MPFR_RNDN);
       d = mpfr_get_decimal64 (x, MPFR_RNDN);
       mpfr_set_decimal64 (y, d, MPFR_RNDN);
-      if (mpfr_cmp (x, y) != 0)
+      if (! mpfr_equal_p (x, y))
         {
           printf ("Error:\n");
           printf ("x="); mpfr_dump (x);
@@ -479,19 +479,112 @@ powers_of_10 (void)
   mpfr_clears (x1, x2, (mpfr_ptr) 0);
 }
 
-int
-main (void)
+static void
+noncanonical (void)
 {
+  /* The code below assumes BID. It also needs _MPFR_IEEE_FLOATS
+     due to the use of union mpfr_ieee_double_extract. */
+#if _MPFR_IEEE_FLOATS && defined(DECIMAL_BID_FORMAT)
+  /* The volatile below avoids _Decimal64 constant propagation, which is
+     buggy for non-canonical encoding in various GCC versions on the x86 and
+     x86_64 targets: failure with gcc (Debian 20190719-1) 10.0.0 20190718
+     (experimental) [trunk revision 273586]; the MPFR test was not failing
+     with previous GCC versions, but GCC versions 5 to 9 are also affected
+     on the simple testcase at:
+     https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91226
+  */
+  volatile _Decimal64 d = 9999999999999999.0dd;
+  union mpfr_ieee_double_extract x;
+  union ieee_double_decimal64 y;
+
+  MPFR_ASSERTN (sizeof (x) == 8);
+  MPFR_ASSERTN (sizeof (y) == 8);
+  /* test for non-canonical encoding */
+  y.d64 = d;
+  memcpy (&x, &y, 8);
+  /* if BID, we have sig=0, exp=1735, manh=231154, manl=1874919423 */
+  if (x.s.sig == 0 && x.s.exp == 1735 && x.s.manh == 231154 &&
+      x.s.manl == 1874919423)
+    {
+      mpfr_t z;
+      mpfr_init2 (z, 54); /* 54 bits ensure z is exact, since 10^16 < 2^54 */
+      x.s.manl += 1; /* then the significand equals 10^16 */
+      memcpy (&y, &x, 8);
+      mpfr_set_decimal64 (z, y.d64, MPFR_RNDN);
+      if (MPFR_NOTZERO (z) || MPFR_IS_NEG (z))
+        {
+          int i;
+          printf ("Error in noncanonical on");
+          for (i = 0; i < 8; i++)
+            printf (" %02X", ((unsigned char *)&y)[i]);
+          printf ("\nExpected +0, got:\n");
+          mpfr_dump (z);
+          exit (1);
+        }
+      mpfr_clear (z);
+    }
+  else
+    printf ("Warning! Unexpected value of x in noncanonical.\n");
+#endif
+}
+
+/* generate random sequences of 8 bytes and interpret them as _Decimal64 */
+static void
+check_random_bytes (void)
+{
+  union {
+    _Decimal64 d;
+    unsigned char c[8];
+  } x;
+  int i;
+  mpfr_t y;
+  _Decimal64 e;
+
+  mpfr_init2 (y, 55); /* 55 = 1 + ceil(16*log(10)/log(2)), thus ensures
+                         that if a decimal64 number is converted to a 55-bit
+                         value and back, we should get the same value */
+  for (i = 0; i < 100000; i++)
+    {
+      int j;
+      for (j = 0; j < 8; j++)
+        x.c[j] = randlimb () & 255;
+      mpfr_set_decimal64 (y, x.d, MPFR_RNDN);
+      e = mpfr_get_decimal64 (y, MPFR_RNDN);
+      if (!mpfr_nan_p (y))
+        if (x.d != e)
+          {
+            printf ("check_random_bytes failed\n");
+            printf ("x.d="); print_decimal64 (x.d);
+            printf ("y="); mpfr_dump (y);
+            printf ("e  ="); print_decimal64 (e);
+            exit (1);
+          }
+    }
+  mpfr_clear (y);
+}
+
+int
+main (int argc, char *argv[])
+{
+  int verbose = argc > 1;
+
   tests_start_mpfr ();
   mpfr_test_init ();
 
-#ifdef MPFR_DEBUG
-#ifdef DPD_FORMAT
-  printf ("Using DPD format\n");
-#else
-  printf ("Using BID format\n");
+  if (verbose)
+    {
+#ifdef DECIMAL_DPD_FORMAT
+      printf ("Using DPD encoding\n");
 #endif
+#ifdef DECIMAL_BID_FORMAT
+      printf ("Using BID encoding\n");
 #endif
+    }
+
+#if !defined(MPFR_ERRDIVZERO)
+  check_random_bytes ();
+#endif
+  noncanonical ();
   check_misc ();
   check_random ();
   check_native ();

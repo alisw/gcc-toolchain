@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -175,11 +175,6 @@ package body Sprint is
    procedure Print_Debug_Line (S : String);
    --  Used to print output lines in Debug_Generated_Code mode (this is used
    --  as the argument for a call to Set_Special_Output in package Output).
-
-   procedure Process_TFAI_RR_Flags (Nod : Node_Id);
-   --  Given a divide, multiplication or division node, check the flags
-   --  Treat_Fixed_As_Integer and Rounded_Flags, and if set, output the
-   --  appropriate special syntax characters (# and @).
 
    procedure Set_Debug_Sloc;
    --  If Dump_Node is non-empty, this routine sets the appropriate value
@@ -425,6 +420,8 @@ package body Sprint is
       Dump_Original_Only  := False;
       Dump_Freeze_Null    := True;
       Current_Source_File := No_Source_File;
+      Push_Output;
+      Set_Standard_Output;
 
       if Arg in List_Range then
          Sprint_Node_List (List_Id (Arg), New_Lines => True);
@@ -437,6 +434,7 @@ package body Sprint is
       end if;
 
       Write_Eol;
+      Pop_Output;
    end pg;
 
    --------
@@ -446,8 +444,11 @@ package body Sprint is
    procedure po (Arg : Union_Id) is
    begin
       Dump_Generated_Only := False;
-      Dump_Original_Only := True;
+      Dump_Original_Only  := True;
+      Dump_Freeze_Null    := False;
       Current_Source_File := No_Source_File;
+      Push_Output;
+      Set_Standard_Output;
 
       if Arg in List_Range then
          Sprint_Node_List (List_Id (Arg), New_Lines => True);
@@ -460,6 +461,7 @@ package body Sprint is
       end if;
 
       Write_Eol;
+      Pop_Output;
    end po;
 
    ----------------------
@@ -471,21 +473,6 @@ package body Sprint is
       Write_Debug_Line (S, Debug_Sloc);
    end Print_Debug_Line;
 
-   ---------------------------
-   -- Process_TFAI_RR_Flags --
-   ---------------------------
-
-   procedure Process_TFAI_RR_Flags (Nod : Node_Id) is
-   begin
-      if Treat_Fixed_As_Integer (Nod) then
-         Write_Char ('#');
-      end if;
-
-      if Rounded_Result (Nod) then
-         Write_Char ('@');
-      end if;
-   end Process_TFAI_RR_Flags;
-
    --------
    -- ps --
    --------
@@ -493,8 +480,11 @@ package body Sprint is
    procedure ps (Arg : Union_Id) is
    begin
       Dump_Generated_Only := False;
-      Dump_Original_Only := False;
+      Dump_Original_Only  := False;
+      Dump_Freeze_Null    := False;
       Current_Source_File := No_Source_File;
+      Push_Output;
+      Set_Standard_Output;
 
       if Arg in List_Range then
          Sprint_Node_List (List_Id (Arg), New_Lines => True);
@@ -507,6 +497,7 @@ package body Sprint is
       end if;
 
       Write_Eol;
+      Pop_Output;
    end ps;
 
    --------------------
@@ -552,7 +543,7 @@ package body Sprint is
          --  We do not know the actual end location in the generated code and
          --  it could be much closer than in the source code, so play safe.
 
-         if Nkind_In (Dump_Node, N_Case_Statement, N_If_Statement) then
+         if Nkind (Dump_Node) in N_Case_Statement | N_If_Statement then
             Set_End_Location (Dump_Node, Debug_Sloc + Source_Ptr (Column - 1));
          end if;
 
@@ -1342,6 +1333,22 @@ package body Sprint is
             Write_Id (Defining_Identifier (Node));
             Write_Str (" in ");
             Sprint_Bar_List (Discrete_Choices (Node));
+            Write_Str (" => ");
+            Sprint_Node (Expression (Node));
+
+         when N_Iterated_Element_Association =>
+            Set_Debug_Sloc;
+            if Present (Iterator_Specification (Node)) then
+               Sprint_Node (Iterator_Specification (Node));
+            else
+               Sprint_Node (Loop_Parameter_Specification (Node));
+            end if;
+
+            if Present (Key_Expression (Node)) then
+               Write_Str (" use ");
+               Sprint_Node (Key_Expression (Node));
+            end if;
+
             Write_Str (" => ");
             Sprint_Node (Expression (Node));
 
@@ -2411,6 +2418,7 @@ package body Sprint is
 
                   if Present (Expression (Node))
                     and then Expression (Node) /= Error
+                    and then not No_Initialization (Node)
                   then
                      Write_Str (" := ");
                      Sprint_Node (Expression (Node));
@@ -2461,14 +2469,15 @@ package body Sprint is
             Write_Indent;
             Set_Debug_Sloc;
             Sprint_Node (Defining_Identifier (Node));
-            Write_Str (" : ");
 
             --  Ada 2005 (AI-230): Access renamings
 
             if Present (Access_Definition (Node)) then
+               Write_Str (" : ");
                Sprint_Node (Access_Definition (Node));
 
             elsif Present (Subtype_Mark (Node)) then
+               Write_Str (" : ");
 
                --  Ada 2005 (AI-423): Object renaming with a null exclusion
 
@@ -2478,8 +2487,13 @@ package body Sprint is
 
                Sprint_Node (Subtype_Mark (Node));
 
+            --  AI12-0275: Object_Renaming_Declaration without explicit subtype
+
+            elsif Ada_Version >= Ada_2020 then
+               null;
+
             else
-               Write_Str (" ??? ");
+               Write_Str (" :  ??? ");
             end if;
 
             Write_Str_With_Col_Check (" renames ");
@@ -2508,7 +2522,9 @@ package body Sprint is
          when N_Op_Divide =>
             Sprint_Left_Opnd (Node);
             Write_Char (' ');
-            Process_TFAI_RR_Flags (Node);
+            if Rounded_Result (Node) then
+               Write_Char ('@');
+            end if;
             Write_Operator (Node, "/ ");
             Sprint_Right_Opnd (Node);
 
@@ -2548,18 +2564,15 @@ package body Sprint is
 
          when N_Op_Mod =>
             Sprint_Left_Opnd (Node);
-
-            if Treat_Fixed_As_Integer (Node) then
-               Write_Str (" #");
-            end if;
-
             Write_Operator (Node, " mod ");
             Sprint_Right_Opnd (Node);
 
          when N_Op_Multiply =>
             Sprint_Left_Opnd (Node);
             Write_Char (' ');
-            Process_TFAI_RR_Flags (Node);
+            if Rounded_Result (Node) then
+               Write_Char ('@');
+            end if;
             Write_Operator (Node, "* ");
             Sprint_Right_Opnd (Node);
 
@@ -2583,11 +2596,6 @@ package body Sprint is
 
          when N_Op_Rem =>
             Sprint_Left_Opnd (Node);
-
-            if Treat_Fixed_As_Integer (Node) then
-               Write_Str (" #");
-            end if;
-
             Write_Operator (Node, " rem ");
             Sprint_Right_Opnd (Node);
 
@@ -3540,8 +3548,8 @@ package body Sprint is
       --  where the aspects are printed inside the package specification.
 
       if Has_Aspects (Node)
-        and then not Nkind_In (Node, N_Generic_Package_Declaration,
-                                     N_Package_Declaration)
+        and then Nkind (Node) not in
+                   N_Generic_Package_Declaration | N_Package_Declaration
         and then not Is_Empty_List (Aspect_Specifications (Node))
       then
          Sprint_Aspect_Specifications (Node, Semicolon => True);
@@ -4509,6 +4517,43 @@ package body Sprint is
                               Write_Str (", ");
                            end loop;
 
+                           if Present (Extra_Formals (Typ)) then
+                              Param := Extra_Formals (Typ);
+
+                              while Present (Param) loop
+                                 Write_Str (", ");
+                                 Write_Id (Param);
+                                 Write_Str (" : ");
+                                 Write_Id (Etype (Param));
+
+                                 Param := Extra_Formal (Param);
+                              end loop;
+                           end if;
+
+                           Write_Char (')');
+                        end;
+
+                     elsif Present (Extra_Formals (Typ)) then
+                        declare
+                           Param : Entity_Id;
+
+                        begin
+                           Write_Str (" (");
+
+                           Param := Extra_Formals (Typ);
+
+                           while Present (Param) loop
+                              Write_Id (Param);
+                              Write_Str (" : ");
+                              Write_Id (Etype (Param));
+
+                              if Present (Extra_Formal (Param)) then
+                                 Write_Str (", ");
+                              end if;
+
+                              Param := Extra_Formal (Param);
+                           end loop;
+
                            Write_Char (')');
                         end;
                      end if;
@@ -4711,9 +4756,7 @@ package body Sprint is
 
       --  See if we have extra formals
 
-      if Nkind_In (N, N_Function_Specification,
-                      N_Procedure_Specification)
-      then
+      if Nkind (N) in N_Function_Specification | N_Procedure_Specification then
          Ent := Defining_Entity (N);
 
          --  Loop to write extra formals (if any)

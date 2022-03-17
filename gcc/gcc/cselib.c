@@ -1,5 +1,5 @@
 /* Common subexpression elimination library for GNU compiler.
-   Copyright (C) 1987-2020 Free Software Foundation, Inc.
+   Copyright (C) 1987-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -1047,6 +1047,11 @@ rtx_equal_for_cselib_1 (rtx x, rtx y, machine_mode memmode, int depth)
     CASE_CONST_UNIQUE:
     case DEBUG_EXPR:
       return 0;
+
+    case CONST_VECTOR:
+      if (!same_vector_encodings_p (x, y))
+	return false;
+      break;
 
     case DEBUG_IMPLICIT_PTR:
       return DEBUG_IMPLICIT_PTR_DECL (x)

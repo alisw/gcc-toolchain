@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (C) 1999-2019 by The D Language Foundation, All Rights Reserved
+ * Copyright (C) 1999-2021 by The D Language Foundation, All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
@@ -30,9 +30,8 @@ bool walkPostorder(Statement *s, StoppableVisitor *v);
 StorageClass mergeFuncAttrs(StorageClass s1, FuncDeclaration *f);
 bool checkEscapeRef(Scope *sc, Expression *e, bool gag);
 VarDeclaration *copyToTemp(StorageClass stc, const char *name, Expression *e);
-Expression *semantic(Expression *e, Scope *sc);
-StringExp *semanticString(Scope *sc, Expression *exp, const char *s);
 Statement *makeTupleForeachStatic(Scope *sc, ForeachStatement *fs, bool needExpansion);
+bool expressionsToString(OutBuffer &buf, Scope *sc, Expressions *exps);
 
 Identifier *fixupLabelName(Scope *sc, Identifier *ident)
 {
@@ -49,7 +48,7 @@ Identifier *fixupLabelName(Scope *sc, Identifier *ident)
         OutBuffer buf;
         buf.printf("%s%s", prefix, ident->toChars());
 
-        const char *name = buf.extractString();
+        const char *name = buf.extractChars();
         ident = Identifier::idPool(name);
     }
     return ident;
@@ -109,6 +108,24 @@ Statement *Statement::syntaxCopy()
     return NULL;
 }
 
+/*************************************
+ * Do syntax copy of an array of Statement's.
+ */
+Statements *Statement::arraySyntaxCopy(Statements *a)
+{
+    Statements *b = NULL;
+    if (a)
+    {
+        b = a->copy();
+        for (size_t i = 0; i < a->length; i++)
+        {
+            Statement *s = (*a)[i];
+            (*b)[i] = s ? s->syntaxCopy() : NULL;
+        }
+    }
+    return b;
+}
+
 void Statement::print()
 {
     fprintf(stderr, "%s\n", toChars());
@@ -121,7 +138,7 @@ const char *Statement::toChars()
 
     OutBuffer buf;
     ::toCBuffer(this, &buf, &hgs);
-    return buf.extractString();
+    return buf.extractChars();
 }
 
 
@@ -171,7 +188,7 @@ bool Statement::usesEH()
         void visit(Statement *)             {}
         void visit(TryCatchStatement *)     { stop = true; }
         void visit(TryFinallyStatement *)   { stop = true; }
-        void visit(OnScopeStatement *)      { stop = true; }
+        void visit(ScopeGuardStatement *)      { stop = true; }
         void visit(SynchronizedStatement *) { stop = true; }
     };
 
@@ -360,7 +377,7 @@ Statement *toStatement(Dsymbol *s)
                 return NULL;
 
             Statements *statements = new Statements();
-            for (size_t i = 0; i < a->dim; i++)
+            for (size_t i = 0; i < a->length; i++)
             {
                 statements->push(toStatement((*a)[i]));
             }
@@ -376,7 +393,7 @@ Statement *toStatement(Dsymbol *s)
         void visit(TemplateMixin *tm)
         {
             Statements *a = new Statements();
-            for (size_t i = 0; i < tm->members->dim; i++)
+            for (size_t i = 0; i < tm->members->length; i++)
             {
                 Statement *s = toStatement((*tm->members)[i]);
                 if (s)
@@ -419,18 +436,18 @@ Statement *toStatement(Dsymbol *s)
 
         void visit(ConditionalDeclaration *d)
         {
-            result = visitMembers(d->loc, d->include(NULL, NULL));
+            result = visitMembers(d->loc, d->include(NULL));
         }
 
         void visit(StaticForeachDeclaration *d)
         {
             assert(d->sfe && !!d->sfe->aggrfe ^ !!d->sfe->rangefe);
-            result = visitMembers(d->loc, d->include(NULL, NULL));
+            result = visitMembers(d->loc, d->include(NULL));
         }
 
         void visit(CompileDeclaration *d)
         {
-            result = visitMembers(d->loc, d->include(NULL, NULL));
+            result = visitMembers(d->loc, d->include(NULL));
         }
     };
 
@@ -452,7 +469,7 @@ Statements *ExpStatement::flatten(Scope *sc)
         Dsymbol *d = ((DeclarationExp *)exp)->declaration;
         if (TemplateMixin *tm = d->isTemplateMixin())
         {
-            Expression *e = semantic(exp, sc);
+            Expression *e = expressionSemantic(exp, sc);
             if (e->op == TOKerror || tm->errors)
             {
                 Statements *a = new Statements();
@@ -488,12 +505,19 @@ Statement *DtorExpStatement::syntaxCopy()
 CompileStatement::CompileStatement(Loc loc, Expression *exp)
     : Statement(loc)
 {
-    this->exp = exp;
+    this->exps = new Expressions();
+    this->exps->push(exp);
+}
+
+CompileStatement::CompileStatement(Loc loc, Expressions *exps)
+    : Statement(loc)
+{
+    this->exps = exps;
 }
 
 Statement *CompileStatement::syntaxCopy()
 {
-    return new CompileStatement(loc, exp->syntaxCopy());
+    return new CompileStatement(loc, Expression::arraySyntaxCopy(exps));
 }
 
 static Statements *errorStatements()
@@ -503,30 +527,34 @@ static Statements *errorStatements()
     return a;
 }
 
-Statements *CompileStatement::flatten(Scope *sc)
+static Statements *compileIt(CompileStatement *cs, Scope *sc)
 {
-    //printf("CompileStatement::flatten() %s\n", exp->toChars());
-    StringExp *se = semanticString(sc, exp, "argument to mixin");
-    if (!se)
+    //printf("CompileStatement::compileIt() %s\n", exp->toChars());
+    OutBuffer buf;
+    if (expressionsToString(buf, sc, cs->exps))
         return errorStatements();
-    se = se->toUTF8(sc);
 
     unsigned errors = global.errors;
-    Parser p(loc, sc->_module, (utf8_t *)se->string, se->len, 0);
+    const size_t len = buf.length();
+    const char *str = buf.extractChars();
+    Parser p(cs->loc, sc->_module, (const utf8_t *)str, len, false);
     p.nextToken();
 
     Statements *a = new Statements();
     while (p.token.value != TOKeof)
     {
         Statement *s = p.parseStatement(PSsemi | PScurlyscope);
-        if (!s || p.errors)
-        {
-            assert(!p.errors || global.errors != errors); // make sure we caught all the cases
+        if (!s || global.errors != errors)
             return errorStatements();
-        }
         a->push(s);
     }
     return a;
+}
+
+Statements *CompileStatement::flatten(Scope *sc)
+{
+    //printf("CompileStatement::flatten() %s\n", exp->toChars());
+    return compileIt(this, sc);
 }
 
 /******************************** CompoundStatement ***************************/
@@ -560,14 +588,7 @@ CompoundStatement *CompoundStatement::create(Loc loc, Statement *s1, Statement *
 
 Statement *CompoundStatement::syntaxCopy()
 {
-    Statements *a = new Statements();
-    a->setDim(statements->dim);
-    for (size_t i = 0; i < statements->dim; i++)
-    {
-        Statement *s = (*statements)[i];
-        (*a)[i] = s ? s->syntaxCopy() : NULL;
-    }
-    return new CompoundStatement(loc, a);
+    return new CompoundStatement(loc, Statement::arraySyntaxCopy(statements));
 }
 
 Statements *CompoundStatement::flatten(Scope *)
@@ -579,7 +600,7 @@ ReturnStatement *CompoundStatement::isReturnStatement()
 {
     ReturnStatement *rs = NULL;
 
-    for (size_t i = 0; i < statements->dim; i++)
+    for (size_t i = 0; i < statements->length; i++)
     {
         Statement *s = (*statements)[i];
         if (s)
@@ -596,7 +617,7 @@ Statement *CompoundStatement::last()
 {
     Statement *s = NULL;
 
-    for (size_t i = statements->dim; i; --i)
+    for (size_t i = statements->length; i; --i)
     {   s = (*statements)[i - 1];
         if (s)
         {
@@ -619,8 +640,8 @@ CompoundDeclarationStatement::CompoundDeclarationStatement(Loc loc, Statements *
 Statement *CompoundDeclarationStatement::syntaxCopy()
 {
     Statements *a = new Statements();
-    a->setDim(statements->dim);
-    for (size_t i = 0; i < statements->dim; i++)
+    a->setDim(statements->length);
+    for (size_t i = 0; i < statements->length; i++)
     {
         Statement *s = (*statements)[i];
         (*a)[i] = s ? s->syntaxCopy() : NULL;
@@ -639,8 +660,8 @@ UnrolledLoopStatement::UnrolledLoopStatement(Loc loc, Statements *s)
 Statement *UnrolledLoopStatement::syntaxCopy()
 {
     Statements *a = new Statements();
-    a->setDim(statements->dim);
-    for (size_t i = 0; i < statements->dim; i++)
+    a->setDim(statements->length);
+    for (size_t i = 0; i < statements->length; i++)
     {
         Statement *s = (*statements)[i];
         (*a)[i] = s ? s->syntaxCopy() : NULL;
@@ -747,8 +768,8 @@ Statements *ForwardingStatement::flatten(Scope *sc)
         return a;
     }
     Statements *b = new Statements();
-    b->setDim(a->dim);
-    for (size_t i = 0; i < a->dim; i++)
+    b->setDim(a->length);
+    for (size_t i = 0; i < a->length; i++)
     {
         Statement *s = (*a)[i];
         (*b)[i] = s ? new ForwardingStatement(s->loc, sym, s) : NULL;
@@ -887,7 +908,7 @@ bool ForeachStatement::checkForArgTypes()
 {
     bool result = false;
 
-    for (size_t i = 0; i < parameters->dim; i++)
+    for (size_t i = 0; i < parameters->length; i++)
     {
         Parameter *p = (*parameters)[i];
         if (!p->type)
@@ -993,7 +1014,7 @@ Statements *ConditionalStatement::flatten(Scope *sc)
     Statement *s;
 
     //printf("ConditionalStatement::flatten()\n");
-    if (condition->include(sc, NULL))
+    if (condition->include(sc))
     {
         DebugCondition *dc = condition->isDebugCondition();
         if (dc)
@@ -1132,12 +1153,12 @@ static bool checkVar(SwitchStatement *s, VarDeclaration *vd)
     }
     else if (vd->ident == Id::withSym)
     {
-        s->deprecation("'switch' skips declaration of 'with' temporary at %s", vd->loc.toChars());
+        s->deprecation("`switch` skips declaration of `with` temporary at %s", vd->loc.toChars());
         return true;
     }
     else
     {
-        s->deprecation("'switch' skips declaration of variable %s at %s", vd->toPrettyChars(), vd->loc.toChars());
+        s->deprecation("`switch` skips declaration of variable %s at %s", vd->toPrettyChars(), vd->loc.toChars());
         return true;
     }
 
@@ -1151,7 +1172,7 @@ bool SwitchStatement::checkLabel()
     if (sdefault && checkVar(this, sdefault->lastVar))
         return !error; // return error once fully deprecated
 
-    for (size_t i = 0; i < cases->dim; i++)
+    for (size_t i = 0; i < cases->length; i++)
     {
         CaseStatement *scase = (*cases)[i];
         if (scase && checkVar(this, scase->lastVar))
@@ -1350,8 +1371,8 @@ TryCatchStatement::TryCatchStatement(Loc loc, Statement *body, Catches *catches)
 Statement *TryCatchStatement::syntaxCopy()
 {
     Catches *a = new Catches();
-    a->setDim(catches->dim);
-    for (size_t i = 0; i < a->dim; i++)
+    a->setDim(catches->length);
+    for (size_t i = 0; i < a->length; i++)
     {
         Catch *c = (*catches)[i];
         (*a)[i] = c->syntaxCopy();
@@ -1418,23 +1439,23 @@ bool TryFinallyStatement::hasContinue()
     return false; //true;
 }
 
-/****************************** OnScopeStatement ***************************/
+/****************************** ScopeGuardStatement ***************************/
 
-OnScopeStatement::OnScopeStatement(Loc loc, TOK tok, Statement *statement)
+ScopeGuardStatement::ScopeGuardStatement(Loc loc, TOK tok, Statement *statement)
     : Statement(loc)
 {
     this->tok = tok;
     this->statement = statement;
 }
 
-Statement *OnScopeStatement::syntaxCopy()
+Statement *ScopeGuardStatement::syntaxCopy()
 {
-    return new OnScopeStatement(loc, tok, statement->syntaxCopy());
+    return new ScopeGuardStatement(loc, tok, statement->syntaxCopy());
 }
 
-Statement *OnScopeStatement::scopeCode(Scope *sc, Statement **sentry, Statement **sexception, Statement **sfinally)
+Statement *ScopeGuardStatement::scopeCode(Scope *sc, Statement **sentry, Statement **sexception, Statement **sfinally)
 {
-    //printf("OnScopeStatement::scopeCode()\n");
+    //printf("ScopeGuardStatement::scopeCode()\n");
     //print();
     *sentry = NULL;
     *sexception = NULL;
@@ -1460,7 +1481,7 @@ Statement *OnScopeStatement::scopeCode(Scope *sc, Statement **sentry, Statement 
              *  sfinally: if (!x) statement;
              */
             VarDeclaration *v = copyToTemp(0, "__os", new IntegerExp(Loc(), 0, Type::tbool));
-            v->semantic(sc);
+            dsymbolSemantic(v, sc);
             *sentry = new ExpStatement(loc, v);
 
             Expression *e = new IntegerExp(Loc(), 1, Type::tbool);
@@ -1515,7 +1536,7 @@ Statements *DebugStatement::flatten(Scope *sc)
     Statements *a = statement ? statement->flatten(sc) : NULL;
     if (a)
     {
-        for (size_t i = 0; i < a->dim; i++)
+        for (size_t i = 0; i < a->length; i++)
         {   Statement *s = (*a)[i];
 
             s = new DebugStatement(loc, s);
@@ -1547,7 +1568,7 @@ bool GotoStatement::checkLabel()
 {
     if (!label->statement)
     {
-        error("label '%s' is undefined", label->toChars());
+        error("label `%s` is undefined", label->toChars());
         return true;
     }
 
@@ -1640,7 +1661,7 @@ Statements *LabelStatement::flatten(Scope *sc)
         a = statement->flatten(sc);
         if (a)
         {
-            if (!a->dim)
+            if (!a->length)
             {
                 a->push(new ExpStatement(loc, (Expression *)NULL));
             }
@@ -1737,8 +1758,8 @@ CompoundAsmStatement::CompoundAsmStatement(Loc loc, Statements *s, StorageClass 
 CompoundAsmStatement *CompoundAsmStatement::syntaxCopy()
 {
     Statements *a = new Statements();
-    a->setDim(statements->dim);
-    for (size_t i = 0; i < statements->dim; i++)
+    a->setDim(statements->length);
+    for (size_t i = 0; i < statements->length; i++)
     {
         Statement *s = (*statements)[i];
         (*a)[i] = s ? s->syntaxCopy() : NULL;
@@ -1762,8 +1783,8 @@ ImportStatement::ImportStatement(Loc loc, Dsymbols *imports)
 Statement *ImportStatement::syntaxCopy()
 {
     Dsymbols *m = new Dsymbols();
-    m->setDim(imports->dim);
-    for (size_t i = 0; i < imports->dim; i++)
+    m->setDim(imports->length);
+    for (size_t i = 0; i < imports->length; i++)
     {
         Dsymbol *s = (*imports)[i];
         (*m)[i] = s->syntaxCopy(NULL);

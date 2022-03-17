@@ -1,7 +1,7 @@
 # Makefile for GNU Compiler Collection
 # Run 'configure' to generate Makefile from Makefile.in
 
-# Copyright (C) 1987-2020 Free Software Foundation, Inc.
+# Copyright (C) 1987-2021 Free Software Foundation, Inc.
 
 #This file is part of GCC.
 
@@ -207,6 +207,7 @@ VALGRIND_DRIVER_DEFINES = @valgrind_path_defines@
 # This is how we control whether or not the additional warnings are applied.
 .-warn = $(STRICT_WARN)
 build-warn = $(STRICT_WARN)
+rtl-ssa-warn = $(STRICT_WARN)
 GCC_WARN_CFLAGS = $(LOOSE_WARN) $(C_LOOSE_WARN) $($(@D)-warn) $(if $(filter-out $(STRICT_WARN),$($(@D)-warn)),,$(C_STRICT_WARN)) $(NOCOMMON_FLAG) $($@-warn)
 GCC_WARN_CXXFLAGS = $(LOOSE_WARN) $($(@D)-warn) $(NOCOMMON_FLAG) $($@-warn)
 
@@ -261,6 +262,10 @@ else
 LINKER = $(CC)
 LINKER_FLAGS = $(CFLAGS)
 endif
+
+# Enable Intel CET on Intel CET enabled host if needed.
+CET_HOST_FLAGS = @CET_HOST_FLAGS@
+COMPILER += $(CET_HOST_FLAGS)
 
 NO_PIE_CFLAGS = @NO_PIE_CFLAGS@
 NO_PIE_FLAG = @NO_PIE_FLAG@
@@ -408,6 +413,10 @@ enable_as_accelerator = @enable_as_accelerator@
 CPPLIB = ../libcpp/libcpp.a
 CPPINC = -I$(srcdir)/../libcpp/include
 
+CODYLIB = ../libcody/libcody.a
+CODYINC = -I$(srcdir)/../libcody
+NETLIBS = @NETLIBS@
+
 # Where to find decNumber
 enable_decimal_float = @enable_decimal_float@
 DECNUM = $(srcdir)/../libdecnumber
@@ -440,6 +449,9 @@ USER_H = $(srcdir)/ginclude/float.h \
 
 USER_H_INC_NEXT_PRE = @user_headers_inc_next_pre@
 USER_H_INC_NEXT_POST = @user_headers_inc_next_post@
+
+# Enable target overriding of this fragment, as in config/t-vxworks.
+T_GLIMITS_H = $(srcdir)/glimits.h
 
 # The GCC to use for compiling crt*.o.
 # Usually the one we just built.
@@ -671,6 +683,9 @@ build_tooldir = $(exec_prefix)/$(target_noncanonical)
 # Directory in which the compiler finds target-independent g++ includes.
 gcc_gxx_include_dir = @gcc_gxx_include_dir@
 gcc_gxx_include_dir_add_sysroot = @gcc_gxx_include_dir_add_sysroot@
+# Directory in which the compiler finds libc++ includes.
+gcc_gxx_libcxx_include_dir = @gcc_gxx_libcxx_include_dir@
+gcc_gxx_libcxx_include_dir_add_sysroot = @gcc_gxx_libcxx_include_dir_add_sysroot@
 # Directory to search for site-specific includes.
 local_includedir = $(local_prefix)/include
 includedir = $(prefix)/include
@@ -929,8 +944,7 @@ FIXED_VALUE_H = fixed-value.h
 RTL_H = $(RTL_BASE_H) $(FLAGS_H) genrtl.h
 READ_MD_H = $(OBSTACK_H) $(HASHTAB_H) read-md.h
 BUILTINS_DEF = builtins.def sync-builtins.def omp-builtins.def \
-	gtm-builtins.def sanitizer.def \
-	hsa-builtins.def
+	gtm-builtins.def sanitizer.def
 INTERNAL_FN_DEF = internal-fn.def
 INTERNAL_FN_H = internal-fn.h $(INTERNAL_FN_DEF)
 TREE_CORE_H = tree-core.h $(CORETYPES_H) all-tree.def tree.def \
@@ -979,6 +993,7 @@ SYSTEM_H = system.h hwint.h $(srcdir)/../include/libiberty.h \
 PREDICT_H = predict.h predict.def
 CPPLIB_H = $(srcdir)/../libcpp/include/line-map.h \
 	$(srcdir)/../libcpp/include/cpplib.h
+CODYLIB_H = $(srcdir)/../libcody/cody.hh
 INPUT_H = $(srcdir)/../libcpp/include/line-map.h input.h
 OPTS_H = $(INPUT_H) $(VEC_H) opts.h $(OBSTACK_H)
 SYMTAB_H = $(srcdir)/../libcpp/include/symtab.h $(OBSTACK_H)
@@ -1009,6 +1024,13 @@ PLUGIN_H = plugin.h $(GCC_PLUGIN_H)
 PLUGIN_VERSION_H = plugin-version.h configargs.h
 CONTEXT_H = context.h
 GENSUPPORT_H = gensupport.h read-md.h optabs.def
+RTL_SSA_H = $(PRETTY_PRINT_H) insn-config.h splay-tree-utils.h \
+	    $(RECOG_H) $(REGS_H) function-abi.h obstack-utils.h \
+	    mux-utils.h rtlanal.h memmodel.h $(EMIT_RTL_H) \
+	    rtl-ssa/accesses.h rtl-ssa/insns.h rtl-ssa/blocks.h \
+	    rtl-ssa/changes.h rtl-ssa/functions.h rtl-ssa/is-a.inl \
+	    rtl-ssa/access-utils.h rtl-ssa/insn-utils.h rtl-ssa/movement.h \
+	    rtl-ssa/change-utils.h rtl-ssa/member-fns.inl
 
 #
 # Now figure out from those variables how to compile and link.
@@ -1042,10 +1064,12 @@ ALL_LINKERFLAGS = $(ALL_CXXFLAGS)
 
 # Build and host support libraries.
 
-# Use the "pic" build of libiberty if --enable-host-shared.
+# Use the "pic" build of libiberty if --enable-host-shared, unless we are
+# building for mingw.
+LIBIBERTY_PICDIR=$(if $(findstring mingw,$(target)),,pic)
 ifeq ($(enable_host_shared),yes)
-LIBIBERTY = ../libiberty/pic/libiberty.a
-BUILD_LIBIBERTY = $(build_libobjdir)/libiberty/pic/libiberty.a
+LIBIBERTY = ../libiberty/$(LIBIBERTY_PICDIR)/libiberty.a
+BUILD_LIBIBERTY = $(build_libobjdir)/libiberty/$(LIBIBERTY_PICDIR)/libiberty.a
 else
 LIBIBERTY = ../libiberty/libiberty.a
 BUILD_LIBIBERTY = $(build_libobjdir)/libiberty/libiberty.a
@@ -1075,7 +1099,8 @@ GNATMAKE = @GNATMAKE@
 # Libs needed (at present) just for jcf-dump.
 LDEXP_LIB = @LDEXP_LIB@
 
-ZSTD_LIB = @ZSTD_LIB@
+ZSTD_INC = @ZSTD_CPPFLAGS@
+ZSTD_LIB = @ZSTD_LDFLAGS@ @ZSTD_LIB@
 
 # Likewise, for use in the tools that must run on this machine
 # even if we are cross-building GCC.
@@ -1096,7 +1121,7 @@ BUILD_ERRORS = build/errors.o
 # libintl.h will be found in ../intl if we are using the included libintl.
 INCLUDES = -I. -I$(@D) -I$(srcdir) -I$(srcdir)/$(@D) \
 	   -I$(srcdir)/../include @INCINTL@ \
-	   $(CPPINC) $(GMPINC) $(DECNUMINC) $(BACKTRACEINC) \
+	   $(CPPINC) $(CODYINC) $(GMPINC) $(DECNUMINC) $(BACKTRACEINC) \
 	   $(ISLINC)
 
 COMPILE.base = $(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) -o $@
@@ -1174,6 +1199,7 @@ FLAGS_TO_PASS = \
 	"prefix=$(prefix)" \
 	"local_prefix=$(local_prefix)" \
 	"gxx_include_dir=$(gcc_gxx_include_dir)" \
+	"gxx_libcxx_include_dir=$(gcc_gxx_libcxx_include_dir)" \
 	"build_tooldir=$(build_tooldir)" \
 	"gcc_tooldir=$(gcc_tooldir)" \
 	"bindir=$(bindir)" \
@@ -1224,14 +1250,20 @@ ANALYZER_OBJS = \
 	analyzer/bar-chart.o \
 	analyzer/call-string.o \
 	analyzer/checker-path.o \
+	analyzer/complexity.o \
 	analyzer/constraint-manager.o \
 	analyzer/diagnostic-manager.o \
 	analyzer/engine.o \
+	analyzer/feasible-graph.o \
 	analyzer/function-set.o \
 	analyzer/pending-diagnostic.o \
 	analyzer/program-point.o \
 	analyzer/program-state.o \
+	analyzer/region.o \
 	analyzer/region-model.o \
+	analyzer/region-model-impl-calls.o \
+	analyzer/region-model-manager.o \
+	analyzer/region-model-reachability.o \
 	analyzer/sm.o \
 	analyzer/sm-file.o \
 	analyzer/sm-malloc.o \
@@ -1240,7 +1272,10 @@ ANALYZER_OBJS = \
 	analyzer/sm-signal.o \
 	analyzer/sm-taint.o \
 	analyzer/state-purge.o \
-	analyzer/supergraph.o
+	analyzer/store.o \
+	analyzer/supergraph.o \
+	analyzer/svalue.o \
+	analyzer/trimmed-graph.o
 
 # Language-independent object files.
 # We put the *-match.o and insn-*.o files first so that a parallel make
@@ -1263,6 +1298,7 @@ OBJS = \
 	insn-recog.o \
 	insn-enums.o \
 	ggc-page.o \
+	adjust-alignment.o \
 	alias.o \
 	alloc-pool.o \
 	auto-inc-dec.o \
@@ -1284,6 +1320,8 @@ OBJS = \
 	cfgloopmanip.o \
 	cfgrtl.o \
 	symtab.o \
+	symtab-thunks.o \
+	symtab-clones.o \
 	cgraph.o \
 	cgraphbuild.o \
 	cgraphunit.o \
@@ -1345,8 +1383,10 @@ OBJS = \
 	ggc-common.o \
 	ggc-tests.o \
 	gimple.o \
+	gimple-array-bounds.o \
 	gimple-builder.o \
 	gimple-expr.o \
+	gimple-if-to-switch.o \
 	gimple-iterator.o \
 	gimple-fold.o \
 	gimple-laddress.o \
@@ -1355,6 +1395,10 @@ OBJS = \
 	gimple-loop-versioning.o \
 	gimple-low.o \
 	gimple-pretty-print.o \
+	gimple-range.o \
+	gimple-range-cache.o \
+	gimple-range-edge.o \
+	gimple-range-gori.o \
 	gimple-ssa-backprop.o \
 	gimple-ssa-evrp.o \
 	gimple-ssa-evrp-analyze.o \
@@ -1386,11 +1430,6 @@ OBJS = \
 	haifa-sched.o \
 	hash-map-tests.o \
 	hash-set-tests.o \
-	hsa-common.o \
-	hsa-gen.o \
-	hsa-regalloc.o \
-	hsa-brig.o \
-	hsa-dump.o \
 	hw-doloop.o \
 	hwint.o \
 	ifcvt.o \
@@ -1410,6 +1449,8 @@ OBJS = \
 	ipa-visibility.o \
 	ipa-inline-analysis.o \
 	ipa-inline-transform.o \
+	ipa-modref.o \
+	ipa-modref-tree.o \
 	ipa-predicate.o \
 	ipa-profile.o \
 	ipa-prop.o \
@@ -1418,7 +1459,6 @@ OBJS = \
 	ipa-icf.o \
 	ipa-icf-gimple.o \
 	ipa-reference.o \
-	ipa-hsa.o \
 	ipa-ref.o \
 	ipa-utils.o \
 	ipa.o \
@@ -1462,8 +1502,8 @@ OBJS = \
 	omp-offload.o \
 	omp-expand.o \
 	omp-general.o \
-	omp-grid.o \
 	omp-low.o \
+	omp-oacc-kernels-decompose.o \
 	omp-simd-clone.o \
 	opt-problem.o \
 	optabs.o \
@@ -1503,6 +1543,11 @@ OBJS = \
 	reorg.o \
 	resource.o \
 	rtl-error.o \
+	rtl-ssa/accesses.o \
+	rtl-ssa/blocks.o \
+	rtl-ssa/changes.o \
+	rtl-ssa/functions.o \
+	rtl-ssa/insns.o \
 	rtl-tests.o \
 	rtl.o \
 	rtlhash.o \
@@ -1524,6 +1569,7 @@ OBJS = \
 	sparseset.o \
 	spellcheck.o \
 	spellcheck-tree.o \
+	splay-tree-utils.o \
 	sreal.o \
 	stack-ptr-mod.o \
 	statistics.o \
@@ -1622,12 +1668,14 @@ OBJS = \
 	tree-streamer-out.o \
 	tree-tailcall.o \
 	tree-vect-generic.o \
+	gimple-isel.o \
 	tree-vect-patterns.o \
 	tree-vect-data-refs.o \
 	tree-vect-stmts.o \
 	tree-vect-loop.o \
 	tree-vect-loop-manip.o \
 	tree-vect-slp.o \
+	tree-vect-slp-patterns.o \
 	tree-vectorizer.o \
 	tree-vector-builder.o \
 	tree-vrp.o \
@@ -1636,7 +1684,9 @@ OBJS = \
 	typed-splay-tree.o \
 	unique-ptr-tests.o \
 	valtrack.o \
+	value-query.o \
 	value-range.o \
+	value-range-equiv.o \
 	value-prof.o \
 	var-tracking.o \
 	varasm.o \
@@ -1721,7 +1771,7 @@ MOSTLYCLEANFILES = insn-flags.h insn-config.h insn-codes.h \
 # This symlink makes the full installation name of the driver be available
 # from within the *build* directory, for use when running the JIT library
 # from there (e.g. when running its testsuite).
-$(FULL_DRIVER_NAME): ./xgcc
+$(FULL_DRIVER_NAME): ./xgcc$(exeext)
 	rm -f $@
 	$(LN_S) $< $@
 
@@ -1729,6 +1779,8 @@ $(FULL_DRIVER_NAME): ./xgcc
 # SELFTEST_DEPS need to be set before including language makefile fragments.
 # Otherwise $(SELFTEST_DEPS) is empty when used from <LANG>/Make-lang.in.
 SELFTEST_DEPS = $(GCC_PASSES) stmp-int-hdrs $(srcdir)/testsuite/selftests
+
+DO_LINK_SERIALIZATION = @DO_LINK_SERIALIZATION@
 
 # Language makefile fragments.
 
@@ -1747,27 +1799,38 @@ SELFTEST_DEPS = $(GCC_PASSES) stmp-int-hdrs $(srcdir)/testsuite/selftests
 # language hooks, generated by configure
 @language_hooks@
 
+ifeq ($(DO_LINK_SERIALIZATION),)
+LINK_PROGRESS = :
+else
+LINK_PROGRESS = msg="Linking $@ |"; cnt=0; if test "$(2)" = start; then \
+  idx=0; cnt2=$(DO_LINK_SERIALIZATION); \
+  while test $$cnt2 -le $(1); do msg="$${msg}=="; cnt2=`expr $$cnt2 + 1`; idx=`expr $$idx + 1`; done; \
+  cnt=$$idx; \
+  while test $$cnt -lt $(1); do msg="$${msg}>>"; cnt=`expr $$cnt + 1`; done; \
+  msg="$${msg}--"; cnt=`expr $$cnt + 1`; \
+  else \
+  idx=`expr $(1) + 1`; \
+  while test $$cnt -le $(1); do msg="$${msg}=="; cnt=`expr $$cnt + 1`; done; \
+  fi; \
+  while test $$cnt -lt $(SERIAL_COUNT); do msg="$${msg}  "; cnt=`expr $$cnt + 1`; done; \
+  msg="$${msg}| `expr 100 \* $$idx / $(SERIAL_COUNT)`%"; echo "$$msg"
+endif
+
 # Wire in install-gnatlib invocation with `make install' for a configuration
 # with top-level libada disabled.
 gnat_install_lib = @gnat_install_lib@
 
 # per-language makefile fragments
-ifneq ($(LANG_MAKEFRAGS),)
-include $(LANG_MAKEFRAGS)
-endif
+-include $(LANG_MAKEFRAGS)
 
 # target and host overrides must follow the per-language makefile fragments
 # so they can override or augment language-specific variables
 
 # target overrides
-ifneq ($(tmake_file),)
-include $(tmake_file)
-endif
+-include $(tmake_file)
 
 # host overrides
-ifneq ($(xmake_file),)
-include $(xmake_file)
-endif
+-include $(xmake_file)
 
 # all-tree.def includes all the tree.def files.
 all-tree.def: s-alltree; @true
@@ -2277,7 +2340,7 @@ CFLAGS-version.o += -DBASEVER=$(BASEVER_s) -DDATESTAMP=$(DATESTAMP_s) \
 version.o: $(REVISION) $(DATESTAMP) $(BASEVER) $(DEVPHASE)
 
 # lto-compress.o needs $(ZLIBINC) added to the include flags.
-CFLAGS-lto-compress.o += $(ZLIBINC)
+CFLAGS-lto-compress.o += $(ZLIBINC) $(ZSTD_INC)
 
 CFLAGS-lto-streamer-in.o += -DTARGET_MACHINE=\"$(target_noncanonical)\"
 
@@ -2291,6 +2354,7 @@ s-bversion: BASE-VER
 
 CFLAGS-toplev.o += -DTARGET_NAME=\"$(target_noncanonical)\"
 CFLAGS-optinfo-emit-json.o += -DTARGET_NAME=\"$(target_noncanonical)\" $(ZLIBINC)
+CFLAGS-analyzer/engine.o += $(ZLIBINC)
 
 pass-instances.def: $(srcdir)/passes.def $(PASSES_EXTRA) \
 		    $(srcdir)/gen-pass-instances.awk
@@ -2580,16 +2644,21 @@ GTFILES = $(CPPLIB_H) $(srcdir)/input.h $(srcdir)/coretypes.h \
   $(srcdir)/function-abi.h \
   $(srcdir)/output.h $(srcdir)/cfgloop.h $(srcdir)/cfg.h $(srcdir)/profile-count.h \
   $(srcdir)/cselib.h $(srcdir)/basic-block.h  $(srcdir)/ipa-ref.h $(srcdir)/cgraph.h \
+  $(srcdir)/symtab-thunks.h $(srcdir)/symtab-thunks.cc \
+  $(srcdir)/symtab-clones.h \
   $(srcdir)/reload.h $(srcdir)/caller-save.c $(srcdir)/symtab.c \
   $(srcdir)/alias.c $(srcdir)/bitmap.c $(srcdir)/cselib.c $(srcdir)/cgraph.c \
   $(srcdir)/ipa-prop.c $(srcdir)/ipa-cp.c $(srcdir)/ipa-utils.h \
   $(srcdir)/ipa-param-manipulation.h $(srcdir)/ipa-sra.c $(srcdir)/dbxout.c \
+  $(srcdir)/ipa-modref.h $(srcdir)/ipa-modref.c \
+  $(srcdir)/ipa-modref-tree.h \
   $(srcdir)/signop.h \
   $(srcdir)/dwarf2out.h \
   $(srcdir)/dwarf2asm.c \
   $(srcdir)/dwarf2cfi.c \
   $(srcdir)/dwarf2out.c \
   $(srcdir)/tree-vect-generic.c \
+  $(srcdir)/gimple-isel.cc \
   $(srcdir)/dojump.c $(srcdir)/emit-rtl.h \
   $(srcdir)/emit-rtl.c $(srcdir)/except.h $(srcdir)/explow.c $(srcdir)/expr.c \
   $(srcdir)/expr.h \
@@ -2613,21 +2682,21 @@ GTFILES = $(CPPLIB_H) $(srcdir)/input.h $(srcdir)/coretypes.h \
   $(srcdir)/tree-profile.c $(srcdir)/tree-nested.c \
   $(srcdir)/omp-offload.h \
   $(srcdir)/omp-offload.c \
-  $(srcdir)/omp-expand.c \
+  $(srcdir)/omp-general.c \
   $(srcdir)/omp-low.c \
-  $(srcdir)/targhooks.c $(out_file) $(srcdir)/passes.c $(srcdir)/cgraphunit.c \
+  $(srcdir)/targhooks.c $(out_file) $(srcdir)/passes.c \
   $(srcdir)/cgraphclones.c \
   $(srcdir)/tree-phinodes.c \
   $(srcdir)/tree-ssa-alias.h \
   $(srcdir)/tree-ssanames.h \
   $(srcdir)/tree-vrp.h \
+  $(srcdir)/value-range.h \
   $(srcdir)/ipa-prop.h \
   $(srcdir)/trans-mem.c \
   $(srcdir)/lto-streamer.h \
   $(srcdir)/target-globals.h \
   $(srcdir)/ipa-predicate.h \
   $(srcdir)/ipa-fnsummary.h \
-  $(srcdir)/value-range.h \
   $(srcdir)/vtable-verify.c \
   $(srcdir)/asan.c \
   $(srcdir)/ubsan.c \
@@ -2636,7 +2705,6 @@ GTFILES = $(CPPLIB_H) $(srcdir)/input.h $(srcdir)/coretypes.h \
   $(srcdir)/sancov.c \
   $(srcdir)/ipa-devirt.c \
   $(srcdir)/internal-fn.h \
-  $(srcdir)/hsa-common.c \
   $(srcdir)/calls.c \
   $(srcdir)/omp-general.h \
   @all_gtfiles@
@@ -2953,6 +3021,8 @@ PREPROCESSOR_DEFINES = \
   -DGPLUSPLUS_INCLUDE_DIR_ADD_SYSROOT=$(gcc_gxx_include_dir_add_sysroot) \
   -DGPLUSPLUS_TOOL_INCLUDE_DIR=\"$(gcc_gxx_include_dir)/$(target_noncanonical)\" \
   -DGPLUSPLUS_BACKWARD_INCLUDE_DIR=\"$(gcc_gxx_include_dir)/backward\" \
+  -DGPLUSPLUS_LIBCXX_INCLUDE_DIR=\"$(gcc_gxx_libcxx_include_dir)\" \
+  -DGPLUSPLUS_LIBCXX_INCLUDE_DIR_ADD_SYSROOT=$(gcc_gxx_libcxx_include_dir_add_sysroot) \
   -DLOCAL_INCLUDE_DIR=\"$(local_includedir)\" \
   -DCROSS_INCLUDE_DIR=\"$(CROSS_SYSTEM_HEADER_DIR)\" \
   -DTOOL_INCLUDE_DIR=\"$(gcc_tooldir)/include\" \
@@ -3018,7 +3088,7 @@ gcov-tool$(exeext): $(GCOV_TOOL_OBJS) $(LIBDEPS)
 # be rebuilt.
 
 # Build the include directories.
-stmp-int-hdrs: $(STMP_FIXINC) $(USER_H) fixinc_list
+stmp-int-hdrs: $(STMP_FIXINC) $(T_GLIMITS_H) $(USER_H) fixinc_list
 # Copy in the headers provided with gcc.
 #
 # The sed command gets just the last file name component;
@@ -3072,9 +3142,9 @@ stmp-int-hdrs: $(STMP_FIXINC) $(USER_H) fixinc_list
 	  multi_dir=`echo $${ml} | sed -e 's/^[^;]*;//'`; \
 	  fix_dir=include-fixed$${multi_dir}; \
 	  if $(LIMITS_H_TEST) ; then \
-	    cat $(srcdir)/limitx.h $(srcdir)/glimits.h $(srcdir)/limity.h > tmp-xlimits.h; \
+	    cat $(srcdir)/limitx.h $(T_GLIMITS_H) $(srcdir)/limity.h > tmp-xlimits.h; \
 	  else \
-	    cat $(srcdir)/glimits.h > tmp-xlimits.h; \
+	    cat $(T_GLIMITS_H) > tmp-xlimits.h; \
 	  fi; \
 	  $(mkinstalldirs) $${fix_dir}; \
 	  chmod a+rx $${fix_dir} || true; \
@@ -3268,7 +3338,7 @@ gcc-vers.texi: $(BASEVER) $(DEVPHASE)
 	 then echo "@set DEVELOPMENT"; \
 	 else echo "@clear DEVELOPMENT"; \
 	 fi) > $@T
-	$(build_file_translate) echo @set srcdir $(abs_srcdir) >> $@T
+	$(build_file_translate) echo @set srcdir `echo $(abs_srcdir) | sed -e 's|\\([@{}]\\)|@\\1|g'` >> $@T
 	if [ -n "$(PKGVERSION)" ]; then \
 	  echo "@set VERSION_PACKAGE $(PKGVERSION)" >> $@T; \
 	fi
@@ -3494,7 +3564,6 @@ distclean: clean lang.distclean
 	-cd testsuite && rm -f x *.x *.x? *.exe *.rpo *.o *.s *.S *.c
 	-cd testsuite && rm -f *.out *.gcov *$(coverageexts)
 	-rm -rf ${QMTEST_DIR} stamp-qmtest
-	-rm -f cxxmain.c
 	-rm -f .gdbinit configargs.h
 	-rm -f gcov.pod
 # Delete po/*.gmo only if we are not building in the source directory.
@@ -3582,7 +3651,8 @@ PLUGIN_HEADERS = $(TREE_H) $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) \
   tree-ssa-threadupdate.h inchash.h wide-int.h signop.h hash-map.h \
   hash-set.h dominance.h cfg.h cfgrtl.h cfganal.h cfgbuild.h cfgcleanup.h \
   lcm.h cfgloopmanip.h file-prefix-map.h builtins.def $(INSN_ATTR_H) \
-  pass-instances.def params.list
+  pass-instances.def params.list $(srcdir)/../include/gomp-constants.h \
+  $(EXPR_H)
 
 # generate the 'build fragment' b-header-vars
 s-header-vars: Makefile
@@ -3592,7 +3662,7 @@ s-header-vars: Makefile
 # more portable than a trailing "-e d" to filter out the uninteresting lines,
 # in particular on ia64-hpux where "s/.../p" only prints if -n was requested
 # as well.
-	$(foreach header_var,$(shell sed < Makefile -n -e 's/^\([A-Z0-9_]*_H\)[      ]*=.*/\1/p'),echo $(header_var)=$(shell echo $($(header_var):$(srcdir)/%=.../%) | sed -e 's~\.\.\./config/~config/~' -e 's~\.\.\..*/~~') >> tmp-header-vars;) \
+	$(foreach header_var,$(shell sed < Makefile -n -e 's/^\([A-Z0-9_]*_H\)[ 	]*=.*/\1/p'),echo $(header_var)=$(shell echo $($(header_var):$(srcdir)/%=.../%) | sed -e 's~\.\.\./config/~config/~' -e 's~\.\.\./common/config/~common/config/~' -e 's~\.\.\.[^ 	]*/~~g') >> tmp-header-vars;)
 	$(SHELL) $(srcdir)/../move-if-change tmp-header-vars b-header-vars
 	$(STAMP) s-header-vars
 
@@ -3605,8 +3675,8 @@ install-gengtype: installdirs gengtype$(exeext) gtype.state
 
 # Install the headers needed to build a plugin.
 install-plugin: installdirs lang.install-plugin s-header-vars install-gengtype
-# We keep the directory structure for files in config or c-family and .def
-# files. All other files are flattened to a single directory.
+# We keep the directory structure for files in config, common/config or
+# c-family and .def files. All other files are flattened to a single directory.
 	$(mkinstalldirs) $(DESTDIR)$(plugin_includedir)
 	headers=`echo $(PLUGIN_HEADERS) $$(cd $(srcdir); echo *.h *.def) | tr ' ' '\012' | sort -u`; \
 	srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*|]/\\\\&/g'`; \
@@ -3618,7 +3688,8 @@ install-plugin: installdirs lang.install-plugin s-header-vars install-gengtype
 	  else continue; \
 	  fi; \
 	  case $$path in \
-	  "$(srcdir)"/config/* | "$(srcdir)"/c-family/* | "$(srcdir)"/*.def ) \
+	  "$(srcdir)"/config/* | "$(srcdir)"/common/config/* \
+	  | "$(srcdir)"/c-family/* | "$(srcdir)"/*.def ) \
 	    base=`echo "$$path" | sed -e "s|$$srcdirstrip/||"`;; \
 	  *) base=`basename $$path` ;; \
 	  esac; \
@@ -4241,7 +4312,7 @@ TAGS: lang.tags
 	      ../include/*.h ../libiberty/*.c \
 	      ../libcpp/*.c ../libcpp/include/*.h \
 	      --language=none --regex="/\(char\|unsigned int\|int\|bool\|void\|HOST_WIDE_INT\|enum [A-Za-z_0-9]+\) [*]?\([A-Za-z_0-9]+\)/\2/" common.opt	\
-	      --language=none --regex="/\(DEF_RTL_EXPR\|DEFTREECODE\|DEFGSCODE\|DEFTIMEVAR\|DEFPARAM\|DEFPARAMENUM5\)[ ]?(\([A-Za-z_0-9]+\)/\2/" rtl.def tree.def gimple.def timevar.def params.def \
+	      --language=none --regex="/\(DEF_RTL_EXPR\|DEFTREECODE\|DEFGSCODE\|DEFTIMEVAR\|DEFPARAM\|DEFPARAMENUM5\)[ ]?(\([A-Za-z_0-9]+\)/\2/" rtl.def tree.def gimple.def timevar.def \
 		; \
 	etags --include TAGS.sub $$incs)
 

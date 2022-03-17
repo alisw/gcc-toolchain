@@ -6,7 +6,7 @@
  *                                                                          *
  *                          C Implementation File                           *
  *                                                                          *
- *             Copyright (C) 1992-2019, Free Software Foundation, Inc.      *
+ *             Copyright (C) 1992-2020, Free Software Foundation, Inc.      *
  *                                                                          *
  * GNAT is free software;  you can  redistribute it  and/or modify it under *
  * terms of the  GNU General Public License as published  by the Free Soft- *
@@ -78,6 +78,12 @@ typedef char bool;
    actually vary depending on the underlying GCC scheme for exception handling
    (SJLJ or DWARF). We need a consistently named interface to import from
    a-except, so wrappers are defined here.  */
+
+#ifdef __CYGWIN__
+/* Prevent compile error due to unwind-generic.h including <windows.h>,
+   see comment above #include <windows.h> in mingw32.h.  */
+#include "mingw32.h"
+#endif
 
 #ifndef IN_RTS
   /* For gnat1/gnatbind compilation: cannot use unwind.h, as it is for the
@@ -1611,7 +1617,7 @@ __gnat_personality_seh0 (PEXCEPTION_RECORD ms_exc, void *this_frame,
 
 /* Define __gnat_personality_v0 for convenience */
 
-PERSONALITY_STORAGE _Unwind_Reason_Code
+PERSONALITY_STORAGE ATTRIBUTE_UNUSED _Unwind_Reason_Code
 __gnat_personality_v0 (version_arg_t version_arg,
 		       phases_arg_t phases_arg,
 		       _Unwind_Exception_Class uw_exception_class,

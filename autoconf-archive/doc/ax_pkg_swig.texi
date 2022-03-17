@@ -42,7 +42,7 @@ macro's revision history}.
 
 @majorheading License
 
-@w{Copyright @copyright{} 2008 Sebastian Huber @email{sebastian-huber@@web.de}} @* @w{Copyright @copyright{} 2008 Alan W. Irwin} @* @w{Copyright @copyright{} 2008 Rafael Laboissiere @email{rafael@@laboissiere.net}} @* @w{Copyright @copyright{} 2008 Andrew Collier} @* @w{Copyright @copyright{} 2011 Murray Cumming @email{murrayc@@openismus.com}}
+@w{Copyright @copyright{} 2008 Sebastian Huber @email{sebastian-huber@@web.de}} @* @w{Copyright @copyright{} 2008 Alan W. Irwin} @* @w{Copyright @copyright{} 2008 Rafael Laboissiere @email{rafael@@laboissiere.net}} @* @w{Copyright @copyright{} 2008 Andrew Collier} @* @w{Copyright @copyright{} 2011 Murray Cumming @email{murrayc@@openismus.com}} @* @w{Copyright @copyright{} 2021 Vincent Danjean @email{Vincent.Danjean@@ens-lyon.org}}
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

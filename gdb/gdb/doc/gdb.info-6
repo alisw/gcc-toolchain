@@ -1,6 +1,6 @@
 This is gdb.info, produced by makeinfo version 6.7 from gdb.texinfo.
 
-Copyright (C) 1988-2020 Free Software Foundation, Inc.
+Copyright (C) 1988-2022 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -21,9 +21,9 @@ END-INFO-DIR-ENTRY
    This file documents the GNU debugger GDB.
 
    This is the Tenth Edition, of 'Debugging with GDB: the GNU
-Source-Level Debugger' for GDB (GDB) Version 10.1.
+Source-Level Debugger' for GDB (GDB) Version 11.2.
 
-   Copyright (C) 1988-2020 Free Software Foundation, Inc.
+   Copyright (C) 1988-2022 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -35,6 +35,745 @@ with the Back-Cover Texts as in (a) below.
    (a) The FSF's Back-Cover Text is: "You are free to copy and modify
 this GNU Manual.  Buying copies from GNU Press supports the FSF in
 developing GNU and promoting software freedom."
+
+
+File: gdb.info,  Node: GDB/MI Variable Objects,  Next: GDB/MI Data Manipulation,  Prev: GDB/MI Stack Manipulation,  Up: GDB/MI
+
+27.15 GDB/MI Variable Objects
+=============================
+
+Introduction to Variable Objects
+--------------------------------
+
+Variable objects are "object-oriented" MI interface for examining and
+changing values of expressions.  Unlike some other MI interfaces that
+work with expressions, variable objects are specifically designed for
+simple and efficient presentation in the frontend.  A variable object is
+identified by string name.  When a variable object is created, the
+frontend specifies the expression for that variable object.  The
+expression can be a simple variable, or it can be an arbitrary complex
+expression, and can even involve CPU registers.  After creating a
+variable object, the frontend can invoke other variable object
+operations--for example to obtain or change the value of a variable
+object, or to change display format.
+
+   Variable objects have hierarchical tree structure.  Any variable
+object that corresponds to a composite type, such as structure in C, has
+a number of child variable objects, for example corresponding to each
+element of a structure.  A child variable object can itself have
+children, recursively.  Recursion ends when we reach leaf variable
+objects, which always have built-in types.  Child variable objects are
+created only by explicit request, so if a frontend is not interested in
+the children of a particular variable object, no child will be created.
+
+   For a leaf variable object it is possible to obtain its value as a
+string, or set the value from a string.  String value can be also
+obtained for a non-leaf variable object, but it's generally a string
+that only indicates the type of the object, and does not list its
+contents.  Assignment to a non-leaf variable object is not allowed.
+
+   A frontend does not need to read the values of all variable objects
+each time the program stops.  Instead, MI provides an update command
+that lists all variable objects whose values has changed since the last
+update operation.  This considerably reduces the amount of data that
+must be transferred to the frontend.  As noted above, children variable
+objects are created on demand, and only leaf variable objects have a
+real value.  As result, gdb will read target memory only for leaf
+variables that frontend has created.
+
+   The automatic update is not always desirable.  For example, a
+frontend might want to keep a value of some expression for future
+reference, and never update it.  For another example, fetching memory is
+relatively slow for embedded targets, so a frontend might want to
+disable automatic update for the variables that are either not visible
+on the screen, or "closed".  This is possible using so called "frozen
+variable objects".  Such variable objects are never implicitly updated.
+
+   Variable objects can be either "fixed" or "floating".  For the fixed
+variable object, the expression is parsed when the variable object is
+created, including associating identifiers to specific variables.  The
+meaning of expression never changes.  For a floating variable object the
+values of variables whose names appear in the expressions are
+re-evaluated every time in the context of the current frame.  Consider
+this example:
+
+     void do_work(...)
+     {
+             struct work_state state;
+
+             if (...)
+                do_work(...);
+     }
+
+   If a fixed variable object for the 'state' variable is created in
+this function, and we enter the recursive call, the variable object will
+report the value of 'state' in the top-level 'do_work' invocation.  On
+the other hand, a floating variable object will report the value of
+'state' in the current frame.
+
+   If an expression specified when creating a fixed variable object
+refers to a local variable, the variable object becomes bound to the
+thread and frame in which the variable object is created.  When such
+variable object is updated, GDB makes sure that the thread/frame
+combination the variable object is bound to still exists, and
+re-evaluates the variable object in context of that thread/frame.
+
+   The following is the complete set of GDB/MI operations defined to
+access this functionality:
+
+*Operation*                   *Description*
+                              
+'-enable-pretty-printing'     enable Python-based pretty-printing
+'-var-create'                 create a variable object
+'-var-delete'                 delete the variable object and/or its
+                              children
+'-var-set-format'             set the display format of this variable
+'-var-show-format'            show the display format of this variable
+'-var-info-num-children'      tells how many children this object has
+'-var-list-children'          return a list of the object's children
+'-var-info-type'              show the type of this variable object
+'-var-info-expression'        print parent-relative expression that
+                              this variable object represents
+'-var-info-path-expression'   print full expression that this variable
+                              object represents
+'-var-show-attributes'        is this variable editable?  does it exist
+                              here?
+'-var-evaluate-expression'    get the value of this variable
+'-var-assign'                 set the value of this variable
+'-var-update'                 update the variable and its children
+'-var-set-frozen'             set frozenness attribute
+'-var-set-update-range'       set range of children to display on
+                              update
+
+   In the next subsection we describe each operation in detail and
+suggest how it can be used.
+
+Description And Use of Operations on Variable Objects
+-----------------------------------------------------
+
+The '-enable-pretty-printing' Command
+-------------------------------------
+
+     -enable-pretty-printing
+
+   GDB allows Python-based visualizers to affect the output of the MI
+variable object commands.  However, because there was no way to
+implement this in a fully backward-compatible way, a front end must
+request that this functionality be enabled.
+
+   Once enabled, this feature cannot be disabled.
+
+   Note that if Python support has not been compiled into GDB, this
+command will still succeed (and do nothing).
+
+   This feature is currently (as of GDB 7.0) experimental, and may work
+differently in future versions of GDB.
+
+The '-var-create' Command
+-------------------------
+
+Synopsis
+........
+
+      -var-create {NAME | "-"}
+         {FRAME-ADDR | "*" | "@"} EXPRESSION
+
+   This operation creates a variable object, which allows the monitoring
+of a variable, the result of an expression, a memory cell or a CPU
+register.
+
+   The NAME parameter is the string by which the object can be
+referenced.  It must be unique.  If '-' is specified, the varobj system
+will generate a string "varNNNNNN" automatically.  It will be unique
+provided that one does not specify NAME of that format.  The command
+fails if a duplicate name is found.
+
+   The frame under which the expression should be evaluated can be
+specified by FRAME-ADDR.  A '*' indicates that the current frame should
+be used.  A '@' indicates that a floating variable object must be
+created.
+
+   EXPRESSION is any expression valid on the current language set (must
+not begin with a '*'), or one of the following:
+
+   * '*ADDR', where ADDR is the address of a memory cell
+
+   * '*ADDR-ADDR' -- a memory address range (TBD)
+
+   * '$REGNAME' -- a CPU register name
+
+   A varobj's contents may be provided by a Python-based pretty-printer.
+In this case the varobj is known as a "dynamic varobj".  Dynamic varobjs
+have slightly different semantics in some cases.  If the
+'-enable-pretty-printing' command is not sent, then GDB will never
+create a dynamic varobj.  This ensures backward compatibility for
+existing clients.
+
+Result
+......
+
+This operation returns attributes of the newly-created varobj.  These
+are:
+
+'name'
+     The name of the varobj.
+
+'numchild'
+     The number of children of the varobj.  This number is not
+     necessarily reliable for a dynamic varobj.  Instead, you must
+     examine the 'has_more' attribute.
+
+'value'
+     The varobj's scalar value.  For a varobj whose type is some sort of
+     aggregate (e.g., a 'struct'), or for a dynamic varobj, this value
+     will not be interesting.
+
+'type'
+     The varobj's type.  This is a string representation of the type, as
+     would be printed by the GDB CLI. If 'print object' (*note set print
+     object: Print Settings.) is set to 'on', the _actual_ (derived)
+     type of the object is shown rather than the _declared_ one.
+
+'thread-id'
+     If a variable object is bound to a specific thread, then this is
+     the thread's global identifier.
+
+'has_more'
+     For a dynamic varobj, this indicates whether there appear to be any
+     children available.  For a non-dynamic varobj, this will be 0.
+
+'dynamic'
+     This attribute will be present and have the value '1' if the varobj
+     is a dynamic varobj.  If the varobj is not a dynamic varobj, then
+     this attribute will not be present.
+
+'displayhint'
+     A dynamic varobj can supply a display hint to the front end.  The
+     value comes directly from the Python pretty-printer object's
+     'display_hint' method.  *Note Pretty Printing API::.
+
+   Typical output will look like this:
+
+      name="NAME",numchild="N",type="TYPE",thread-id="M",
+       has_more="HAS_MORE"
+
+The '-var-delete' Command
+-------------------------
+
+Synopsis
+........
+
+      -var-delete [ -c ] NAME
+
+   Deletes a previously created variable object and all of its children.
+With the '-c' option, just deletes the children.
+
+   Returns an error if the object NAME is not found.
+
+The '-var-set-format' Command
+-----------------------------
+
+Synopsis
+........
+
+      -var-set-format NAME FORMAT-SPEC
+
+   Sets the output format for the value of the object NAME to be
+FORMAT-SPEC.
+
+   The syntax for the FORMAT-SPEC is as follows:
+
+      FORMAT-SPEC ==>
+      {binary | decimal | hexadecimal | octal | natural | zero-hexadecimal}
+
+   The natural format is the default format choosen automatically based
+on the variable type (like decimal for an 'int', hex for pointers,
+etc.).
+
+   The zero-hexadecimal format has a representation similar to
+hexadecimal but with padding zeroes to the left of the value.  For
+example, a 32-bit hexadecimal value of 0x1234 would be represented as
+0x00001234 in the zero-hexadecimal format.
+
+   For a variable with children, the format is set only on the variable
+itself, and the children are not affected.
+
+The '-var-show-format' Command
+------------------------------
+
+Synopsis
+........
+
+      -var-show-format NAME
+
+   Returns the format used to display the value of the object NAME.
+
+      FORMAT ==>
+      FORMAT-SPEC
+
+The '-var-info-num-children' Command
+------------------------------------
+
+Synopsis
+........
+
+      -var-info-num-children NAME
+
+   Returns the number of children of a variable object NAME:
+
+      numchild=N
+
+   Note that this number is not completely reliable for a dynamic
+varobj.  It will return the current number of children, but more
+children may be available.
+
+The '-var-list-children' Command
+--------------------------------
+
+Synopsis
+........
+
+      -var-list-children [PRINT-VALUES] NAME [FROM TO]
+
+   Return a list of the children of the specified variable object and
+create variable objects for them, if they do not already exist.  With a
+single argument or if PRINT-VALUES has a value of 0 or '--no-values',
+print only the names of the variables; if PRINT-VALUES is 1 or
+'--all-values', also print their values; and if it is 2 or
+'--simple-values' print the name and value for simple data types and
+just the name for arrays, structures and unions.
+
+   FROM and TO, if specified, indicate the range of children to report.
+If FROM or TO is less than zero, the range is reset and all children
+will be reported.  Otherwise, children starting at FROM (zero-based) and
+up to and excluding TO will be reported.
+
+   If a child range is requested, it will only affect the current call
+to '-var-list-children', but not future calls to '-var-update'.  For
+this, you must instead use '-var-set-update-range'.  The intent of this
+approach is to enable a front end to implement any update approach it
+likes; for example, scrolling a view may cause the front end to request
+more children with '-var-list-children', and then the front end could
+call '-var-set-update-range' with a different range to ensure that
+future updates are restricted to just the visible items.
+
+   For each child the following results are returned:
+
+NAME
+     Name of the variable object created for this child.
+
+EXP
+     The expression to be shown to the user by the front end to
+     designate this child.  For example this may be the name of a
+     structure member.
+
+     For a dynamic varobj, this value cannot be used to form an
+     expression.  There is no way to do this at all with a dynamic
+     varobj.
+
+     For C/C++ structures there are several pseudo children returned to
+     designate access qualifiers.  For these pseudo children EXP is
+     'public', 'private', or 'protected'.  In this case the type and
+     value are not present.
+
+     A dynamic varobj will not report the access qualifying
+     pseudo-children, regardless of the language.  This information is
+     not available at all with a dynamic varobj.
+
+NUMCHILD
+     Number of children this child has.  For a dynamic varobj, this will
+     be 0.
+
+TYPE
+     The type of the child.  If 'print object' (*note set print object:
+     Print Settings.) is set to 'on', the _actual_ (derived) type of the
+     object is shown rather than the _declared_ one.
+
+VALUE
+     If values were requested, this is the value.
+
+THREAD-ID
+     If this variable object is associated with a thread, this is the
+     thread's global thread id.  Otherwise this result is not present.
+
+FROZEN
+     If the variable object is frozen, this variable will be present
+     with a value of 1.
+
+DISPLAYHINT
+     A dynamic varobj can supply a display hint to the front end.  The
+     value comes directly from the Python pretty-printer object's
+     'display_hint' method.  *Note Pretty Printing API::.
+
+DYNAMIC
+     This attribute will be present and have the value '1' if the varobj
+     is a dynamic varobj.  If the varobj is not a dynamic varobj, then
+     this attribute will not be present.
+
+   The result may have its own attributes:
+
+'displayhint'
+     A dynamic varobj can supply a display hint to the front end.  The
+     value comes directly from the Python pretty-printer object's
+     'display_hint' method.  *Note Pretty Printing API::.
+
+'has_more'
+     This is an integer attribute which is nonzero if there are children
+     remaining after the end of the selected range.
+
+Example
+.......
+
+     (gdb)
+      -var-list-children n
+      ^done,numchild=N,children=[child={name=NAME,exp=EXP,
+      numchild=N,type=TYPE},(repeats N times)]
+     (gdb)
+      -var-list-children --all-values n
+      ^done,numchild=N,children=[child={name=NAME,exp=EXP,
+      numchild=N,value=VALUE,type=TYPE},(repeats N times)]
+
+The '-var-info-type' Command
+----------------------------
+
+Synopsis
+........
+
+      -var-info-type NAME
+
+   Returns the type of the specified variable NAME.  The type is
+returned as a string in the same format as it is output by the GDB CLI:
+
+      type=TYPENAME
+
+The '-var-info-expression' Command
+----------------------------------
+
+Synopsis
+........
+
+      -var-info-expression NAME
+
+   Returns a string that is suitable for presenting this variable object
+in user interface.  The string is generally not valid expression in the
+current language, and cannot be evaluated.
+
+   For example, if 'a' is an array, and variable object 'A' was created
+for 'a', then we'll get this output:
+
+     (gdb) -var-info-expression A.1
+     ^done,lang="C",exp="1"
+
+Here, the value of 'lang' is the language name, which can be found in
+*note Supported Languages::.
+
+   Note that the output of the '-var-list-children' command also
+includes those expressions, so the '-var-info-expression' command is of
+limited use.
+
+The '-var-info-path-expression' Command
+---------------------------------------
+
+Synopsis
+........
+
+      -var-info-path-expression NAME
+
+   Returns an expression that can be evaluated in the current context
+and will yield the same value that a variable object has.  Compare this
+with the '-var-info-expression' command, which result can be used only
+for UI presentation.  Typical use of the '-var-info-path-expression'
+command is creating a watchpoint from a variable object.
+
+   This command is currently not valid for children of a dynamic varobj,
+and will give an error when invoked on one.
+
+   For example, suppose 'C' is a C++ class, derived from class 'Base',
+and that the 'Base' class has a member called 'm_size'.  Assume a
+variable 'c' is has the type of 'C' and a variable object 'C' was
+created for variable 'c'.  Then, we'll get this output:
+     (gdb) -var-info-path-expression C.Base.public.m_size
+     ^done,path_expr=((Base)c).m_size)
+
+The '-var-show-attributes' Command
+----------------------------------
+
+Synopsis
+........
+
+      -var-show-attributes NAME
+
+   List attributes of the specified variable object NAME:
+
+      status=ATTR [ ( ,ATTR )* ]
+
+where ATTR is '{ { editable | noneditable } | TBD }'.
+
+The '-var-evaluate-expression' Command
+--------------------------------------
+
+Synopsis
+........
+
+      -var-evaluate-expression [-f FORMAT-SPEC] NAME
+
+   Evaluates the expression that is represented by the specified
+variable object and returns its value as a string.  The format of the
+string can be specified with the '-f' option.  The possible values of
+this option are the same as for '-var-set-format' (*note
+-var-set-format::).  If the '-f' option is not specified, the current
+display format will be used.  The current display format can be changed
+using the '-var-set-format' command.
+
+      value=VALUE
+
+   Note that one must invoke '-var-list-children' for a variable before
+the value of a child variable can be evaluated.
+
+The '-var-assign' Command
+-------------------------
+
+Synopsis
+........
+
+      -var-assign NAME EXPRESSION
+
+   Assigns the value of EXPRESSION to the variable object specified by
+NAME.  The object must be 'editable'.  If the variable's value is
+altered by the assign, the variable will show up in any subsequent
+'-var-update' list.
+
+Example
+.......
+
+     (gdb)
+     -var-assign var1 3
+     ^done,value="3"
+     (gdb)
+     -var-update *
+     ^done,changelist=[{name="var1",in_scope="true",type_changed="false"}]
+     (gdb)
+
+The '-var-update' Command
+-------------------------
+
+Synopsis
+........
+
+      -var-update [PRINT-VALUES] {NAME | "*"}
+
+   Reevaluate the expressions corresponding to the variable object NAME
+and all its direct and indirect children, and return the list of
+variable objects whose values have changed; NAME must be a root variable
+object.  Here, "changed" means that the result of
+'-var-evaluate-expression' before and after the '-var-update' is
+different.  If '*' is used as the variable object names, all existing
+variable objects are updated, except for frozen ones (*note
+-var-set-frozen::).  The option PRINT-VALUES determines whether both
+names and values, or just names are printed.  The possible values of
+this option are the same as for '-var-list-children' (*note
+-var-list-children::).  It is recommended to use the '--all-values'
+option, to reduce the number of MI commands needed on each program stop.
+
+   With the '*' parameter, if a variable object is bound to a currently
+running thread, it will not be updated, without any diagnostic.
+
+   If '-var-set-update-range' was previously used on a varobj, then only
+the selected range of children will be reported.
+
+   '-var-update' reports all the changed varobjs in a tuple named
+'changelist'.
+
+   Each item in the change list is itself a tuple holding:
+
+'name'
+     The name of the varobj.
+
+'value'
+     If values were requested for this update, then this field will be
+     present and will hold the value of the varobj.
+
+'in_scope'
+     This field is a string which may take one of three values:
+
+     '"true"'
+          The variable object's current value is valid.
+
+     '"false"'
+          The variable object does not currently hold a valid value but
+          it may hold one in the future if its associated expression
+          comes back into scope.
+
+     '"invalid"'
+          The variable object no longer holds a valid value.  This can
+          occur when the executable file being debugged has changed,
+          either through recompilation or by using the GDB 'file'
+          command.  The front end should normally choose to delete these
+          variable objects.
+
+     In the future new values may be added to this list so the front
+     should be prepared for this possibility.  *Note GDB/MI Development
+     and Front Ends: GDB/MI Development and Front Ends.
+
+'type_changed'
+     This is only present if the varobj is still valid.  If the type
+     changed, then this will be the string 'true'; otherwise it will be
+     'false'.
+
+     When a varobj's type changes, its children are also likely to have
+     become incorrect.  Therefore, the varobj's children are
+     automatically deleted when this attribute is 'true'.  Also, the
+     varobj's update range, when set using the '-var-set-update-range'
+     command, is unset.
+
+'new_type'
+     If the varobj's type changed, then this field will be present and
+     will hold the new type.
+
+'new_num_children'
+     For a dynamic varobj, if the number of children changed, or if the
+     type changed, this will be the new number of children.
+
+     The 'numchild' field in other varobj responses is generally not
+     valid for a dynamic varobj - it will show the number of children
+     that GDB knows about, but because dynamic varobjs lazily
+     instantiate their children, this will not reflect the number of
+     children which may be available.
+
+     The 'new_num_children' attribute only reports changes to the number
+     of children known by GDB.  This is the only way to detect whether
+     an update has removed children (which necessarily can only happen
+     at the end of the update range).
+
+'displayhint'
+     The display hint, if any.
+
+'has_more'
+     This is an integer value, which will be 1 if there are more
+     children available outside the varobj's update range.
+
+'dynamic'
+     This attribute will be present and have the value '1' if the varobj
+     is a dynamic varobj.  If the varobj is not a dynamic varobj, then
+     this attribute will not be present.
+
+'new_children'
+     If new children were added to a dynamic varobj within the selected
+     update range (as set by '-var-set-update-range'), then they will be
+     listed in this attribute.
+
+Example
+.......
+
+     (gdb)
+     -var-assign var1 3
+     ^done,value="3"
+     (gdb)
+     -var-update --all-values var1
+     ^done,changelist=[{name="var1",value="3",in_scope="true",
+     type_changed="false"}]
+     (gdb)
+
+The '-var-set-frozen' Command
+-----------------------------
+
+Synopsis
+........
+
+      -var-set-frozen NAME FLAG
+
+   Set the frozenness flag on the variable object NAME.  The FLAG
+parameter should be either '1' to make the variable frozen or '0' to
+make it unfrozen.  If a variable object is frozen, then neither itself,
+nor any of its children, are implicitly updated by '-var-update' of a
+parent variable or by '-var-update *'.  Only '-var-update' of the
+variable itself will update its value and values of its children.  After
+a variable object is unfrozen, it is implicitly updated by all
+subsequent '-var-update' operations.  Unfreezing a variable does not
+update it, only subsequent '-var-update' does.
+
+Example
+.......
+
+     (gdb)
+     -var-set-frozen V 1
+     ^done
+     (gdb)
+
+The '-var-set-update-range' command
+-----------------------------------
+
+Synopsis
+........
+
+      -var-set-update-range NAME FROM TO
+
+   Set the range of children to be returned by future invocations of
+'-var-update'.
+
+   FROM and TO indicate the range of children to report.  If FROM or TO
+is less than zero, the range is reset and all children will be reported.
+Otherwise, children starting at FROM (zero-based) and up to and
+excluding TO will be reported.
+
+Example
+.......
+
+     (gdb)
+     -var-set-update-range V 1 2
+     ^done
+
+The '-var-set-visualizer' command
+---------------------------------
+
+Synopsis
+........
+
+      -var-set-visualizer NAME VISUALIZER
+
+   Set a visualizer for the variable object NAME.
+
+   VISUALIZER is the visualizer to use.  The special value 'None' means
+to disable any visualizer in use.
+
+   If not 'None', VISUALIZER must be a Python expression.  This
+expression must evaluate to a callable object which accepts a single
+argument.  GDB will call this object with the value of the varobj NAME
+as an argument (this is done so that the same Python pretty-printing
+code can be used for both the CLI and MI). When called, this object must
+return an object which conforms to the pretty-printing interface (*note
+Pretty Printing API::).
+
+   The pre-defined function 'gdb.default_visualizer' may be used to
+select a visualizer by following the built-in process (*note Selecting
+Pretty-Printers::).  This is done automatically when a varobj is
+created, and so ordinarily is not needed.
+
+   This feature is only available if Python support is enabled.  The MI
+command '-list-features' (*note GDB/MI Support Commands::) can be used
+to check this.
+
+Example
+.......
+
+Resetting the visualizer:
+
+     (gdb)
+     -var-set-visualizer V None
+     ^done
+
+   Reselecting the default (type-based) visualizer:
+
+     (gdb)
+     -var-set-visualizer V gdb.default_visualizer
+     ^done
+
+   Suppose 'SomeClass' is a visualizer class.  A lambda expression can
+be used to instantiate this class for a varobj:
+
+     (gdb)
+     -var-set-visualizer V "lambda val: SomeClass()"
+     ^done
 
 
 File: gdb.info,  Node: GDB/MI Data Manipulation,  Next: GDB/MI Tracepoint Commands,  Prev: GDB/MI Variable Objects,  Up: GDB/MI
@@ -1594,12 +2333,61 @@ The '-file-list-exec-source-files' Command
 Synopsis
 ........
 
-      -file-list-exec-source-files
+      -file-list-exec-source-files [ --GROUP-BY-OBJFILE ]
+                                   [ --DIRNAME | --BASENAME ]
+                                   [ -- ]
+                                   [ REGEXP ]
 
-   List the source files for the current executable.
+   This command returns information about the source files GDB knows
+about, it will output both the filename and fullname (absolute file
+name) of a source file, though the fullname can be elided if this
+information is not known to GDB.
 
-   It will always output both the filename and fullname (absolute file
-name) of a source file.
+   With no arguments this command returns a list of source files.  Each
+source file is represented by a tuple with the fields; FILE, FULLNAME,
+and DEBUG-FULLY-READ.  The FILE is the display name for the file, while
+FULLNAME is the absolute name of the file.  The FULLNAME field can be
+elided if the absolute name of the source file can't be computed.  The
+field DEBUG-FULLY-READ will be a string, either 'true' or 'false'.  When
+'true', this indicates the full debug information for the compilation
+unit describing this file has been read in.  When 'false', the full
+debug information has not yet been read in.  While reading in the full
+debug information it is possible that GDB could become aware of
+additional source files.
+
+   The optional REGEXP can be used to filter the list of source files
+returned.  The REGEXP will be matched against the full source file name.
+The matching is case-sensitive, except on operating systems that have
+case-insensitive filesystem (e.g., MS-Windows).  '--' can be used before
+REGEXP to prevent GDB interpreting REGEXP as a command option (e.g. if
+REGEXP starts with '-').
+
+   If '--dirname' is provided, then REGEXP is matched only against the
+directory name of each source file.  If '--basename' is provided, then
+REGEXP is matched against the basename of each source file.  Only one of
+'--dirname' or '--basename' may be given, and if either is given then
+REGEXP is required.
+
+   If '--group-by-objfile' is used then the format of the results is
+changed.  The results will now be a list of tuples, with each tuple
+representing an object file (executable or shared library) loaded into
+GDB.  The fields of these tuples are; FILENAME, DEBUG-INFO, and SOURCES.
+The FILENAME is the absolute name of the object file, DEBUG-INFO is a
+string with one of the following values:
+
+'none'
+     This object file has no debug information.
+'partially-read'
+     This object file has debug information, but it is not fully read in
+     yet.  When it is read in later, GDB might become aware of
+     additional source files.
+'fully-read'
+     This object file has debug information, and this information is
+     fully read into GDB. The list of source files is complete.
+
+   The SOURCES is a list or tuples, with each tuple describing a single
+source file with the same fields as described previously.  The SOURCES
+list can be empty for object files that have no debug information.
 
 GDB Command
 ...........
@@ -1612,11 +2400,64 @@ Example
 
      (gdb)
      -file-list-exec-source-files
-     ^done,files=[
-     {file=foo.c,fullname=/home/foo.c},
-     {file=/home/bar.c,fullname=/home/bar.c},
-     {file=gdb_could_not_find_fullpath.c}]
+     ^done,files=[{file="foo.c",fullname="/home/foo.c",debug-fully-read="true"},
+                  {file="/home/bar.c",fullname="/home/bar.c",debug-fully-read="true"},
+                  {file="gdb_could_not_find_fullpath.c",debug-fully-read="true"}]
      (gdb)
+     -file-list-exec-source-files
+     ^done,files=[{file="test.c",
+                   fullname="/tmp/info-sources/test.c",
+                   debug-fully-read="true"},
+                  {file="/usr/include/stdc-predef.h",
+                   fullname="/usr/include/stdc-predef.h",
+                   debug-fully-read="true"},
+                  {file="header.h",
+                   fullname="/tmp/info-sources/header.h",
+                   debug-fully-read="true"},
+                  {file="helper.c",
+                   fullname="/tmp/info-sources/helper.c",
+                   debug-fully-read="true"}]
+     (gdb)
+     -file-list-exec-source-files -- \\.c
+     ^done,files=[{file="test.c",
+                   fullname="/tmp/info-sources/test.c",
+                   debug-fully-read="true"},
+                  {file="helper.c",
+                   fullname="/tmp/info-sources/helper.c",
+                   debug-fully-read="true"}]
+     (gdb)
+     -file-list-exec-source-files --group-by-objfile
+     ^done,files=[{filename="/tmp/info-sources/test.x",
+                   debug-info="fully-read",
+                   sources=[{file="test.c",
+                             fullname="/tmp/info-sources/test.c",
+                             debug-fully-read="true"},
+                            {file="/usr/include/stdc-predef.h",
+                             fullname="/usr/include/stdc-predef.h",
+                             debug-fully-read="true"},
+                            {file="header.h",
+                             fullname="/tmp/info-sources/header.h",
+                             debug-fully-read="true"}]},
+                  {filename="/lib64/ld-linux-x86-64.so.2",
+                   debug-info="none",
+                   sources=[]},
+                  {filename="system-supplied DSO at 0x7ffff7fcf000",
+                   debug-info="none",
+                   sources=[]},
+                  {filename="/tmp/info-sources/libhelper.so",
+                   debug-info="fully-read",
+                   sources=[{file="helper.c",
+                             fullname="/tmp/info-sources/helper.c",
+                             debug-fully-read="true"},
+                            {file="/usr/include/stdc-predef.h",
+                             fullname="/usr/include/stdc-predef.h",
+                             debug-fully-read="true"},
+                            {file="header.h",
+                             fullname="/tmp/info-sources/header.h",
+                             debug-fully-read="true"}]},
+                  {filename="/lib64/libc.so.6",
+                   debug-info="none",
+                   sources=[]}]
 
 The '-file-list-shared-libraries' Command
 -----------------------------------------
@@ -2385,7 +3226,7 @@ the following fields:
 Example
 -------
 
-     gdb
+     (gdb)
      -list-thread-groups
      ^done,groups=[{id="17",type="process",pid="yyy",num_children="2"}]
      -list-thread-groups 17
@@ -2432,7 +3273,7 @@ Example
 When run on a GNU/Linux system, the output will look something like
 this:
 
-     gdb
+     (gdb)
      -info-os
      ^done,OSDataTable={nr_rows="10",nr_cols="3",
      hdr=[{width="10",alignment="-1",col_name="col0",colhdr="Type"},
@@ -2458,7 +3299,7 @@ this:
                  col2="Sockets"},
            item={col0="threads",col1="Listing of all threads",
                  col2="Threads"}]
-     gdb
+     (gdb)
      -info-os processes
      ^done,OSDataTable={nr_rows="190",nr_cols="4",
      hdr=[{width="10",alignment="-1",col_name="col0",colhdr="pid"},
@@ -2497,7 +3338,7 @@ corresponding to the new inferior.
 Example
 -------
 
-     gdb
+     (gdb)
      -add-inferior
      ^done,inferior="i3"
 
@@ -3997,11 +4838,11 @@ Variable Settings
           The number of possible completions that determines when the
           user is asked whether the list of possibilities should be
           displayed.  If the number of possible completions is greater
-          than this value, Readline will ask the user whether or not he
-          wishes to view them; otherwise, they are simply listed.  This
-          variable must be set to an integer value greater than or equal
-          to 0.  A negative value means Readline should never ask.  The
-          default limit is '100'.
+          than or equal to this value, Readline will ask whether or not
+          the user wishes to view them; otherwise, they are simply
+          listed.  This variable must be set to an integer value greater
+          than or equal to 0.  A negative value means Readline should
+          never ask.  The default limit is '100'.
 
      'convert-meta'
           If set to 'on', Readline will convert characters with the
@@ -4043,7 +4884,7 @@ Variable Settings
           buffer as a single string of characters, instead of treating
           each character as if it had been read from the keyboard.  This
           can prevent pasted characters from being interpreted as
-          editing commands.  The default is 'off'.
+          editing commands.  The default is 'On'.
 
      'enable-keypad'
           When set to 'on', Readline will try to enable the application
@@ -4080,7 +4921,9 @@ Variable Settings
           to 'on' means that the text of the lines being edited will
           scroll horizontally on a single screen line when they are
           longer than the width of the screen, instead of wrapping onto
-          a new screen line.  By default, this variable is set to 'off'.
+          a new screen line.  This variable is automatically set to 'on'
+          for terminals of height 1.  By default, this variable is set
+          to 'off'.
 
      'input-meta'
           If set to 'on', Readline will enable eight-bit input (it will
@@ -4522,8 +5365,8 @@ variable assignment, and conditional syntax.
      # rather than as meta-prefixed characters
      set output-meta on
 
-     # if there are more than 150 possible completions for
-     # a word, ask the user if he wants to see all of them
+     # if there are 150 or more possible completions for a word,
+     # ask whether or not the user wants to see all of them
      set completion-query-items 150
 
      # For FTP
@@ -4599,8 +5442,13 @@ File: gdb.info,  Node: Commands For Moving,  Next: Commands For History,  Up: Bi
      physical line or if the length of the current Readline line is not
      greater than the length of the prompt plus the screen width.
 
+'clear-display (M-C-l)'
+     Clear the screen and, if possible, the terminal's scrollback
+     buffer, then redraw the current line, leaving the current line at
+     the top of the screen.
+
 'clear-screen (C-l)'
-     Clear the screen and redraw the current line, leaving the current
+     Clear the screen, then redraw the current line, leaving the current
      line at the top of the screen.
 
 'redraw-current-line ()'
@@ -4635,10 +5483,14 @@ File: gdb.info,  Node: Commands For History,  Next: Commands For Text,  Prev: Co
 'reverse-search-history (C-r)'
      Search backward starting at the current line and moving 'up'
      through the history as necessary.  This is an incremental search.
+     This command sets the region to the matched text and activates the
+     mark.
 
 'forward-search-history (C-s)'
      Search forward starting at the current line and moving 'down'
      through the history as necessary.  This is an incremental search.
+     This command sets the region to the matched text and activates the
+     mark.
 
 'non-incremental-reverse-search-history (M-p)'
      Search backward starting at the current line and moving 'up'
@@ -4697,6 +5549,13 @@ File: gdb.info,  Node: Commands For History,  Next: Commands For Text,  Prev: Co
      history expansion facilities are used to extract the last argument,
      as if the '!$' history expansion had been specified.
 
+'operate-and-get-next (C-o)'
+     Accept the current line for return to the calling application as if
+     a newline had been entered, and fetch the next line relative to the
+     current line from the history for editing.  A numeric argument, if
+     supplied, specifies the history entry to use instead of the current
+     line.
+
 
 File: gdb.info,  Node: Commands For Text,  Next: Commands For Killing,  Prev: Commands For History,  Up: Bindable Readline Commands
 
@@ -4742,6 +5601,11 @@ File: gdb.info,  Node: Commands For Text,  Next: Commands For Killing,  Prev: Co
      was bound to 'self-insert' instead of executing any editing
      commands.
 
+     Bracketed paste sets the region (the characters between point and
+     the mark) to the inserted text.  It uses the concept of an _active
+     mark_: when the mark is active, Readline redisplay uses the
+     terminal's standout mode to denote the region.
+
 'transpose-chars (C-t)'
      Drag the character before the cursor forward over the character at
      the cursor, moving the cursor forward as well.  If the insertion
@@ -4786,10 +5650,14 @@ File: gdb.info,  Node: Commands For Killing,  Next: Numeric Arguments,  Prev: Co
 --------------------------
 
 'kill-line (C-k)'
-     Kill the text from point to the end of the line.
+     Kill the text from point to the end of the line.  With a negative
+     numeric argument, kill backward from the cursor to the beginning of
+     the current line.
 
 'backward-kill-line (C-x Rubout)'
      Kill backward from the cursor to the beginning of the current line.
+     With a negative numeric argument, kill forward from the cursor to
+     the end of the current line.
 
 'unix-line-discard (C-u)'
      Kill backward from the cursor to the beginning of the current line.
@@ -4806,6 +5674,13 @@ File: gdb.info,  Node: Commands For Killing,  Next: Numeric Arguments,  Prev: Co
 'backward-kill-word (M-<DEL>)'
      Kill the word behind point.  Word boundaries are the same as
      'backward-word'.
+
+'shell-transpose-words (M-C-t)'
+     Drag the word before point past the word after point, moving point
+     past that word as well.  If the insertion point is at the end of
+     the line, this transposes the last two words on the line.  Word
+     boundaries are the same as 'shell-forward-word' and
+     'shell-backward-word'.
 
 'unix-word-rubout (C-w)'
      Kill the word behind point, using white space as a word boundary.
@@ -5136,11 +6011,13 @@ the current position in the history list.
 '!?STRING[?]'
      Refer to the most recent command preceding the current position in
      the history list containing STRING.  The trailing '?' may be
-     omitted if the STRING is followed immediately by a newline.
+     omitted if the STRING is followed immediately by a newline.  If
+     STRING is missing, the string from the most recent search is used;
+     it is an error if there is no previous search string.
 
 '^STRING1^STRING2^'
      Quick Substitution.  Repeat the last command, replacing STRING1
-     with STRING2.  Equivalent to '!!:s/STRING1/STRING2/'.
+     with STRING2.  Equivalent to '!!:s^STRING1^STRING2^'.
 
 '!#'
      The entire command line typed so far.
@@ -5187,7 +6064,8 @@ separated by single spaces.
      The last argument.
 
 '%'
-     The word matched by the most recent '?STRING?' search.
+     The first word matched by the most recent '?STRING?' search, if the
+     search string begins with a character that is part of a word.
 
 'X-Y'
      A range of words; '-Y' abbreviates '0-Y'.
@@ -5201,7 +6079,8 @@ separated by single spaces.
      Abbreviates 'X-$'
 
 'X-'
-     Abbreviates 'X-$' like 'X*', but omits the last word.
+     Abbreviates 'X-$' like 'X*', but omits the last word.  If 'x' is
+     missing, it defaults to 0.
 
    If a word designator is supplied without an event specification, the
 previous command is used as the event.
@@ -5213,7 +6092,8 @@ File: gdb.info,  Node: Modifiers,  Prev: Word Designators,  Up: History Interact
 ----------------
 
 After the optional word designator, you can add a sequence of one or
-more of the following modifiers, each preceded by a ':'.
+more of the following modifiers, each preceded by a ':'.  These modify,
+or edit, the word or words selected from the history event.
 
 'h'
      Remove a trailing pathname component, leaving only the head.
@@ -5233,11 +6113,14 @@ more of the following modifiers, each preceded by a ':'.
 
 's/OLD/NEW/'
      Substitute NEW for the first occurrence of OLD in the event line.
-     Any delimiter may be used in place of '/'.  The delimiter may be
-     quoted in OLD and NEW with a single backslash.  If '&' appears in
-     NEW, it is replaced by OLD.  A single backslash will quote the '&'.
-     The final delimiter is optional if it is the last character on the
-     input line.
+     Any character may be used as the delimiter in place of '/'.  The
+     delimiter may be quoted in OLD and NEW with a single backslash.  If
+     '&' appears in NEW, it is replaced by OLD.  A single backslash will
+     quote the '&'.  If OLD is null, it is set to the last OLD
+     substituted, or, if no previous history substitutions took place,
+     the last STRING in a !?STRING'[?]' search.  If NEW is is null, each
+     matching OLD is deleted.  The final delimiter is optional if it is
+     the last character on the input line.
 
 '&'
      Repeat the previous substitution.
@@ -5248,7 +6131,8 @@ more of the following modifiers, each preceded by a ':'.
      conjunction with 's', as in 'gs/OLD/NEW/', or with '&'.
 
 'G'
-     Apply the following 's' modifier once to each word in the event.
+     Apply the following 's' or '&' modifier once to each word in the
+     event.
 
 
 File: gdb.info,  Node: In Memoriam,  Next: Formatting Documentation,  Prev: Using History Interactively,  Up: Top
@@ -5304,7 +6188,7 @@ and TeX (or 'texi2roff') to typeset the printed version.
 
    GDB includes an already formatted copy of the on-line Info version of
 this manual in the 'gdb' subdirectory.  The main Info file is
-'gdb-10.1/gdb/gdb.info', and it refers to subordinate files matching
+'gdb-11.2/gdb/gdb.info', and it refers to subordinate files matching
 'gdb.info*' in the same directory.  If necessary, you can print out
 these files, or read them with any editor; but they are easier to read
 using the 'info' subsystem in GNU Emacs or the standalone 'info'
@@ -5314,7 +6198,7 @@ program, available as part of the GNU Texinfo distribution.
 Info formatting programs, such as 'texinfo-format-buffer' or 'makeinfo'.
 
    If you have 'makeinfo' installed, and are in the top level GDB source
-directory ('gdb-10.1', in the case of version 10.1), you can make the
+directory ('gdb-11.2', in the case of version 11.2), you can make the
 Info file by typing:
 
      cd gdb
@@ -5340,7 +6224,7 @@ On its own, TeX cannot either read or typeset a Texinfo file.
 
    If you have TeX and a DVI printer program installed, you can typeset
 and print this manual.  First switch to the 'gdb' subdirectory of the
-main source directory (for example, to 'gdb-10.1/gdb') and type:
+main source directory (for example, to 'gdb-11.2/gdb') and type:
 
      make gdb.dvi
 
@@ -5348,7 +6232,7 @@ main source directory (for example, to 'gdb-10.1/gdb') and type:
 
    ---------- Footnotes ----------
 
-   (1) In 'gdb-10.1/gdb/refcard.ps' of the version 10.1 release.
+   (1) In 'gdb-11.2/gdb/refcard.ps' of the version 11.2 release.
 
 
 File: gdb.info,  Node: Installing GDB,  Next: Maintenance Commands,  Prev: Formatting Documentation,  Up: Top
@@ -5384,6 +6268,13 @@ C++11 compiler
 GNU make
      GDB's build system relies on features only found in the GNU make
      program.  Other variants of 'make' will not work.
+
+GMP (The GNU Multiple Precision Arithmetic Library)
+     GDB now uses GMP to perform some of its arithmetics.  This library
+     may be included with your operating system distribution; if it is
+     not, you can get the latest version from <https://gmplib.org/>.  If
+     GMP is installed at an unusual path, you can use the
+     '--with-libgmp-prefix' option to specify its location.
 
 Tools/Packages Optional for Building GDB
 ========================================
@@ -5499,35 +6390,35 @@ preparing GDB for installation; you can then use 'make' to build the
 a single directory, whose name is usually composed by appending the
 version number to 'gdb'.
 
-   For example, the GDB version 10.1 distribution is in the 'gdb-10.1'
+   For example, the GDB version 11.2 distribution is in the 'gdb-11.2'
 directory.  That directory contains:
 
-'gdb-10.1/configure (and supporting files)'
+'gdb-11.2/configure (and supporting files)'
      script for configuring GDB and all its supporting libraries
 
-'gdb-10.1/gdb'
+'gdb-11.2/gdb'
      the source specific to GDB itself
 
-'gdb-10.1/bfd'
+'gdb-11.2/bfd'
      source for the Binary File Descriptor library
 
-'gdb-10.1/include'
+'gdb-11.2/include'
      GNU include files
 
-'gdb-10.1/libiberty'
+'gdb-11.2/libiberty'
      source for the '-liberty' free software library
 
-'gdb-10.1/opcodes'
+'gdb-11.2/opcodes'
      source for the library of opcode tables and disassemblers
 
-'gdb-10.1/readline'
+'gdb-11.2/readline'
      source for the GNU command-line interface
 
    There may be other subdirectories as well.
 
    The simplest way to configure and build GDB is to run 'configure'
 from the 'gdb-VERSION-NUMBER' source directory, which in this example is
-the 'gdb-10.1' directory.
+the 'gdb-11.2' directory.
 
    First switch to the 'gdb-VERSION-NUMBER' source directory if you are
 not already in it; then run 'configure'.  Pass the identifier for the
@@ -5535,7 +6426,7 @@ platform on which GDB will run as an argument.
 
    For example:
 
-     cd gdb-10.1
+     cd gdb-11.2
      ./configure
      make
 
@@ -5583,13 +6474,13 @@ to specify a path to find 'configure' itself from your working
 directory.  If the path to 'configure' would be the same as the argument
 to '--srcdir', you can leave out the '--srcdir' option; it is assumed.)
 
-   For example, with version 10.1, you can build GDB in a separate
+   For example, with version 11.2, you can build GDB in a separate
 directory for a Sun 4 like this:
 
-     cd gdb-10.1
+     cd gdb-11.2
      mkdir ../gdb-sun4
      cd ../gdb-sun4
-     ../gdb-10.1/configure
+     ../gdb-11.2/configure
      make
 
    When 'configure' builds a configuration using a remote source
@@ -5600,7 +6491,7 @@ the example, you'd find the Sun 4 library 'libiberty.a' in the directory
 
    Make sure that your path to the 'configure' script has just one
 instance of 'gdb' in it.  If your path to 'configure' looks like
-'../gdb-10.1/gdb/configure', you are configuring only one subdirectory
+'../gdb-11.2/gdb/configure', you are configuring only one subdirectory
 of GDB, not the whole package.  This leads to build errors about missing
 include files such as 'bfd/bfd.h'.
 
@@ -5616,8 +6507,8 @@ a configured directory--whatever directory you were in when you called
 
    The 'Makefile' that 'configure' generates in each source directory
 also runs recursively.  If you type 'make' in a source directory such as
-'gdb-10.1' (or in a separate configured directory configured with
-'--srcdir=DIRNAME/gdb-10.1'), you will build all the required libraries,
+'gdb-11.2' (or in a separate configured directory configured with
+'--srcdir=DIRNAME/gdb-11.2'), you will build all the required libraries,
 and then build GDB.
 
    When you have multiple hosts or targets configured in separate
@@ -5662,7 +6553,7 @@ you can use it to test your guesses on abbreviations--for example:
      Invalid configuration `i986v': machine `i986v' not recognized
 
 'config.sub' is also distributed in the GDB source directory
-('gdb-10.1', for version 10.1).
+('gdb-11.2', for version 11.2).
 
 
 File: gdb.info,  Node: Configure Options,  Next: System-wide configuration,  Prev: Config Names,  Up: Installing GDB
@@ -6194,7 +7085,7 @@ commands that turn on debugging messages, see *note Debugging Output::.)
      Print the entire architecture configuration.  The optional argument
      FILE names the file where the output goes.
 
-'maint print c-tdesc'
+'maint print c-tdesc [-single-feature] [FILE]'
      Print the target description (*note Target Descriptions::) as a C
      source file.  By default, the target description is for the current
      target, but if the optional argument FILE is provided, that file is
@@ -6203,6 +7094,11 @@ commands that turn on debugging messages, see *note Debugging Output::.)
      Format::.  The created source file is built into GDB when GDB is
      built again.  This command is used by developers after they add or
      modify XML target descriptions.
+
+     When the optional flag '-single-feature' is provided then the
+     target description being processed (either the default, or from
+     FILE) must only contain a single feature.  The source file produced
+     is different in this case.
 
 'maint print xml-tdesc [FILE]'
      Print the target description (*note Target Descriptions::) as an
@@ -6281,8 +7177,12 @@ commands that turn on debugging messages, see *note Debugging Output::.)
            save       internal
            restore    internal
 
+'maint flush register-cache'
 'flushregs'
-     This command forces GDB to flush its internal register cache.
+     Flush the contents of the register cache and as a consequence the
+     frame cache.  This command is useful when debugging issues related
+     to register fetching, or frame unwinding.  The command 'flushregs'
+     is deprecated in favor of 'maint flush register-cache'.
 
 'maint print objfiles [REGEXP]'
      Print a dump of all known object files.  If REGEXP is specified,
@@ -6733,918 +7633,4 @@ single-threaded targets can implement run control with the 'c'
 hardware-assisted single-stepping, the 's' (step) command.  Stubs that
 support multi-threading targets should support the 'vCont' command.  All
 other commands are optional.
-
-
-File: gdb.info,  Node: Packets,  Next: Stop Reply Packets,  Prev: Overview,  Up: Remote Protocol
-
-E.2 Packets
-===========
-
-The following table provides a complete list of all currently defined
-COMMANDs and their corresponding response DATA.  *Note File-I/O Remote
-Protocol Extension::, for details about the File I/O extension of the
-remote protocol.
-
-   Each packet's description has a template showing the packet's overall
-syntax, followed by an explanation of the packet's meaning.  We include
-spaces in some of the templates for clarity; these are not part of the
-packet's syntax.  No GDB packet uses spaces to separate its components.
-For example, a template like 'foo BAR BAZ' describes a packet beginning
-with the three ASCII bytes 'foo', followed by a BAR, followed directly
-by a BAZ.  GDB does not transmit a space character between the 'foo' and
-the BAR, or between the BAR and the BAZ.
-
-   Several packets and replies include a THREAD-ID field to identify a
-thread.  Normally these are positive numbers with a target-specific
-interpretation, formatted as big-endian hex strings.  A THREAD-ID can
-also be a literal '-1' to indicate all threads, or '0' to pick any
-thread.
-
-   In addition, the remote protocol supports a multiprocess feature in
-which the THREAD-ID syntax is extended to optionally include both
-process and thread ID fields, as 'pPID.TID'.  The PID (process) and TID
-(thread) components each have the format described above: a positive
-number with target-specific interpretation formatted as a big-endian hex
-string, literal '-1' to indicate all processes or threads
-(respectively), or '0' to indicate an arbitrary process or thread.
-Specifying just a process, as 'pPID', is equivalent to 'pPID.-1'.  It is
-an error to specify all processes but a specific thread, such as
-'p-1.TID'.  Note that the 'p' prefix is _not_ used for those packets and
-replies explicitly documented to include a process ID, rather than a
-THREAD-ID.
-
-   The multiprocess THREAD-ID syntax extensions are only used if both
-GDB and the stub report support for the 'multiprocess' feature using
-'qSupported'.  *Note multiprocess extensions::, for more information.
-
-   Note that all packet forms beginning with an upper- or lower-case
-letter, other than those described here, are reserved for future use.
-
-   Here are the packet descriptions.
-
-'!'
-     Enable extended mode.  In extended mode, the remote server is made
-     persistent.  The 'R' packet is used to restart the program being
-     debugged.
-
-     Reply:
-     'OK'
-          The remote target both supports and has enabled extended mode.
-
-'?'
-     Indicate the reason the target halted.  The reply is the same as
-     for step and continue.  This packet has a special interpretation
-     when the target is in non-stop mode; see *note Remote Non-Stop::.
-
-     Reply: *Note Stop Reply Packets::, for the reply specifications.
-
-'A ARGLEN,ARGNUM,ARG,...'
-     Initialized 'argv[]' array passed into program.  ARGLEN specifies
-     the number of bytes in the hex encoded byte stream ARG.  See
-     'gdbserver' for more details.
-
-     Reply:
-     'OK'
-          The arguments were set.
-     'E NN'
-          An error occurred.
-
-'b BAUD'
-     (Don't use this packet; its behavior is not well-defined.)  Change
-     the serial line speed to BAUD.
-
-     JTC: _When does the transport layer state change?  When it's
-     received, or after the ACK is transmitted.  In either case, there
-     are problems if the command or the acknowledgment packet is
-     dropped._
-
-     Stan: _If people really wanted to add something like this, and get
-     it working for the first time, they ought to modify ser-unix.c to
-     send some kind of out-of-band message to a specially-setup stub and
-     have the switch happen "in between" packets, so that from remote
-     protocol's point of view, nothing actually happened._
-
-'B ADDR,MODE'
-     Set (MODE is 'S') or clear (MODE is 'C') a breakpoint at ADDR.
-
-     Don't use this packet.  Use the 'Z' and 'z' packets instead (*note
-     insert breakpoint or watchpoint packet::).
-
-'bc'
-     Backward continue.  Execute the target system in reverse.  No
-     parameter.  *Note Reverse Execution::, for more information.
-
-     Reply: *Note Stop Reply Packets::, for the reply specifications.
-
-'bs'
-     Backward single step.  Execute one instruction in reverse.  No
-     parameter.  *Note Reverse Execution::, for more information.
-
-     Reply: *Note Stop Reply Packets::, for the reply specifications.
-
-'c [ADDR]'
-     Continue at ADDR, which is the address to resume.  If ADDR is
-     omitted, resume at current address.
-
-     This packet is deprecated for multi-threading support.  *Note vCont
-     packet::.
-
-     Reply: *Note Stop Reply Packets::, for the reply specifications.
-
-'C SIG[;ADDR]'
-     Continue with signal SIG (hex signal number).  If ';ADDR' is
-     omitted, resume at same address.
-
-     This packet is deprecated for multi-threading support.  *Note vCont
-     packet::.
-
-     Reply: *Note Stop Reply Packets::, for the reply specifications.
-
-'d'
-     Toggle debug flag.
-
-     Don't use this packet; instead, define a general set packet (*note
-     General Query Packets::).
-
-'D'
-'D;PID'
-     The first form of the packet is used to detach GDB from the remote
-     system.  It is sent to the remote target before GDB disconnects via
-     the 'detach' command.
-
-     The second form, including a process ID, is used when multiprocess
-     protocol extensions are enabled (*note multiprocess extensions::),
-     to detach only a specific process.  The PID is specified as a
-     big-endian hex string.
-
-     Reply:
-     'OK'
-          for success
-     'E NN'
-          for an error
-
-'F RC,EE,CF;XX'
-     A reply from GDB to an 'F' packet sent by the target.  This is part
-     of the File-I/O protocol extension.  *Note File-I/O Remote Protocol
-     Extension::, for the specification.
-
-'g'
-     Read general registers.
-
-     Reply:
-     'XX...'
-          Each byte of register data is described by two hex digits.
-          The bytes with the register are transmitted in target byte
-          order.  The size of each register and their position within
-          the 'g' packet are determined by the GDB internal gdbarch
-          functions 'DEPRECATED_REGISTER_RAW_SIZE' and
-          'gdbarch_register_name'.
-
-          When reading registers from a trace frame (*note Using the
-          Collected Data: Analyze Collected Data.), the stub may also
-          return a string of literal 'x''s in place of the register data
-          digits, to indicate that the corresponding register has not
-          been collected, thus its value is unavailable.  For example,
-          for an architecture with 4 registers of 4 bytes each, the
-          following reply indicates to GDB that registers 0 and 2 have
-          not been collected, while registers 1 and 3 have been
-          collected, and both have zero value:
-
-               -> g
-               <- xxxxxxxx00000000xxxxxxxx00000000
-
-     'E NN'
-          for an error.
-
-'G XX...'
-     Write general registers.  *Note read registers packet::, for a
-     description of the XX... data.
-
-     Reply:
-     'OK'
-          for success
-     'E NN'
-          for an error
-
-'H OP THREAD-ID'
-     Set thread for subsequent operations ('m', 'M', 'g', 'G', et.al.).
-     Depending on the operation to be performed, OP should be 'c' for
-     step and continue operations (note that this is deprecated,
-     supporting the 'vCont' command is a better option), and 'g' for
-     other operations.  The thread designator THREAD-ID has the format
-     and interpretation described in *note thread-id syntax::.
-
-     Reply:
-     'OK'
-          for success
-     'E NN'
-          for an error
-
-'i [ADDR[,NNN]]'
-     Step the remote target by a single clock cycle.  If ',NNN' is
-     present, cycle step NNN cycles.  If ADDR is present, cycle step
-     starting at that address.
-
-'I'
-     Signal, then cycle step.  *Note step with signal packet::.  *Note
-     cycle step packet::.
-
-'k'
-     Kill request.
-
-     The exact effect of this packet is not specified.
-
-     For a bare-metal target, it may power cycle or reset the target
-     system.  For that reason, the 'k' packet has no reply.
-
-     For a single-process target, it may kill that process if possible.
-
-     A multiple-process target may choose to kill just one process, or
-     all that are under GDB's control.  For more precise control, use
-     the vKill packet (*note vKill packet::).
-
-     If the target system immediately closes the connection in response
-     to 'k', GDB does not consider the lack of packet acknowledgment to
-     be an error, and assumes the kill was successful.
-
-     If connected using 'target extended-remote', and the target does
-     not close the connection in response to a kill request, GDB probes
-     the target state as if a new connection was opened (*note ?
-     packet::).
-
-'m ADDR,LENGTH'
-     Read LENGTH addressable memory units starting at address ADDR
-     (*note addressable memory unit::).  Note that ADDR may not be
-     aligned to any particular boundary.
-
-     The stub need not use any particular size or alignment when
-     gathering data from memory for the response; even if ADDR is
-     word-aligned and LENGTH is a multiple of the word size, the stub is
-     free to use byte accesses, or not.  For this reason, this packet
-     may not be suitable for accessing memory-mapped I/O devices.
-
-     Reply:
-     'XX...'
-          Memory contents; each byte is transmitted as a two-digit
-          hexadecimal number.  The reply may contain fewer addressable
-          memory units than requested if the server was able to read
-          only part of the region of memory.
-     'E NN'
-          NN is errno
-
-'M ADDR,LENGTH:XX...'
-     Write LENGTH addressable memory units starting at address ADDR
-     (*note addressable memory unit::).  The data is given by XX...;
-     each byte is transmitted as a two-digit hexadecimal number.
-
-     Reply:
-     'OK'
-          for success
-     'E NN'
-          for an error (this includes the case where only part of the
-          data was written).
-
-'p N'
-     Read the value of register N; N is in hex.  *Note read registers
-     packet::, for a description of how the returned register value is
-     encoded.
-
-     Reply:
-     'XX...'
-          the register's value
-     'E NN'
-          for an error
-     ''
-          Indicating an unrecognized QUERY.
-
-'P N...=R...'
-     Write register N... with value R....  The register number N is in
-     hexadecimal, and R... contains two hex digits for each byte in the
-     register (target byte order).
-
-     Reply:
-     'OK'
-          for success
-     'E NN'
-          for an error
-
-'q NAME PARAMS...'
-'Q NAME PARAMS...'
-     General query ('q') and set ('Q').  These packets are described
-     fully in *note General Query Packets::.
-
-'r'
-     Reset the entire system.
-
-     Don't use this packet; use the 'R' packet instead.
-
-'R XX'
-     Restart the program being debugged.  The XX, while needed, is
-     ignored.  This packet is only available in extended mode (*note
-     extended mode::).
-
-     The 'R' packet has no reply.
-
-'s [ADDR]'
-     Single step, resuming at ADDR.  If ADDR is omitted, resume at same
-     address.
-
-     This packet is deprecated for multi-threading support.  *Note vCont
-     packet::.
-
-     Reply: *Note Stop Reply Packets::, for the reply specifications.
-
-'S SIG[;ADDR]'
-     Step with signal.  This is analogous to the 'C' packet, but
-     requests a single-step, rather than a normal resumption of
-     execution.
-
-     This packet is deprecated for multi-threading support.  *Note vCont
-     packet::.
-
-     Reply: *Note Stop Reply Packets::, for the reply specifications.
-
-'t ADDR:PP,MM'
-     Search backwards starting at address ADDR for a match with pattern
-     PP and mask MM, both of which are are 4 byte long.  There must be
-     at least 3 digits in ADDR.
-
-'T THREAD-ID'
-     Find out if the thread THREAD-ID is alive.  *Note thread-id
-     syntax::.
-
-     Reply:
-     'OK'
-          thread is still alive
-     'E NN'
-          thread is dead
-
-'v'
-     Packets starting with 'v' are identified by a multi-letter name, up
-     to the first ';' or '?' (or the end of the packet).
-
-'vAttach;PID'
-     Attach to a new process with the specified process ID PID.  The
-     process ID is a hexadecimal integer identifying the process.  In
-     all-stop mode, all threads in the attached process are stopped; in
-     non-stop mode, it may be attached without being stopped if that is
-     supported by the target.
-
-     This packet is only available in extended mode (*note extended
-     mode::).
-
-     Reply:
-     'E NN'
-          for an error
-     'Any stop packet'
-          for success in all-stop mode (*note Stop Reply Packets::)
-     'OK'
-          for success in non-stop mode (*note Remote Non-Stop::)
-
-'vCont[;ACTION[:THREAD-ID]]...'
-     Resume the inferior, specifying different actions for each thread.
-
-     For each inferior thread, the leftmost action with a matching
-     THREAD-ID is applied.  Threads that don't match any action remain
-     in their current state.  Thread IDs are specified using the syntax
-     described in *note thread-id syntax::.  If multiprocess extensions
-     (*note multiprocess extensions::) are supported, actions can be
-     specified to match all threads in a process by using the 'pPID.-1'
-     form of the THREAD-ID.  An action with no THREAD-ID matches all
-     threads.  Specifying no actions is an error.
-
-     Currently supported actions are:
-
-     'c'
-          Continue.
-     'C SIG'
-          Continue with signal SIG.  The signal SIG should be two hex
-          digits.
-     's'
-          Step.
-     'S SIG'
-          Step with signal SIG.  The signal SIG should be two hex
-          digits.
-     't'
-          Stop.
-     'r START,END'
-          Step once, and then keep stepping as long as the thread stops
-          at addresses between START (inclusive) and END (exclusive).
-          The remote stub reports a stop reply when either the thread
-          goes out of the range or is stopped due to an unrelated
-          reason, such as hitting a breakpoint.  *Note range stepping::.
-
-          If the range is empty (START == END), then the action becomes
-          equivalent to the 's' action.  In other words, single-step
-          once, and report the stop (even if the stepped instruction
-          jumps to START).
-
-          (A stop reply may be sent at any point even if the PC is still
-          within the stepping range; for example, it is valid to
-          implement this packet in a degenerate way as a single
-          instruction step operation.)
-
-     The optional argument ADDR normally associated with the 'c', 'C',
-     's', and 'S' packets is not supported in 'vCont'.
-
-     The 't' action is only relevant in non-stop mode (*note Remote
-     Non-Stop::) and may be ignored by the stub otherwise.  A stop reply
-     should be generated for any affected thread not already stopped.
-     When a thread is stopped by means of a 't' action, the
-     corresponding stop reply should indicate that the thread has
-     stopped with signal '0', regardless of whether the target uses some
-     other signal as an implementation detail.
-
-     The server must ignore 'c', 'C', 's', 'S', and 'r' actions for
-     threads that are already running.  Conversely, the server must
-     ignore 't' actions for threads that are already stopped.
-
-     _Note:_ In non-stop mode, a thread is considered running until GDB
-     acknowledges an asynchronous stop notification for it with the
-     'vStopped' packet (*note Remote Non-Stop::).
-
-     The stub must support 'vCont' if it reports support for
-     multiprocess extensions (*note multiprocess extensions::).
-
-     Reply: *Note Stop Reply Packets::, for the reply specifications.
-
-'vCont?'
-     Request a list of actions supported by the 'vCont' packet.
-
-     Reply:
-     'vCont[;ACTION...]'
-          The 'vCont' packet is supported.  Each ACTION is a supported
-          command in the 'vCont' packet.
-     ''
-          The 'vCont' packet is not supported.
-
-'vCtrlC'
-     Interrupt remote target as if a control-C was pressed on the remote
-     terminal.  This is the equivalent to reacting to the '^C' ('\003',
-     the control-C character) character in all-stop mode while the
-     target is running, except this works in non-stop mode.  *Note
-     interrupting remote targets::, for more info on the all-stop
-     variant.
-
-     Reply:
-     'E NN'
-          for an error
-     'OK'
-          for success
-
-'vFile:OPERATION:PARAMETER...'
-     Perform a file operation on the target system.  For details, see
-     *note Host I/O Packets::.
-
-'vFlashErase:ADDR,LENGTH'
-     Direct the stub to erase LENGTH bytes of flash starting at ADDR.
-     The region may enclose any number of flash blocks, but its start
-     and end must fall on block boundaries, as indicated by the flash
-     block size appearing in the memory map (*note Memory Map Format::).
-     GDB groups flash memory programming operations together, and sends
-     a 'vFlashDone' request after each group; the stub is allowed to
-     delay erase operation until the 'vFlashDone' packet is received.
-
-     Reply:
-     'OK'
-          for success
-     'E NN'
-          for an error
-
-'vFlashWrite:ADDR:XX...'
-     Direct the stub to write data to flash address ADDR.  The data is
-     passed in binary form using the same encoding as for the 'X' packet
-     (*note Binary Data::).  The memory ranges specified by
-     'vFlashWrite' packets preceding a 'vFlashDone' packet must not
-     overlap, and must appear in order of increasing addresses (although
-     'vFlashErase' packets for higher addresses may already have been
-     received; the ordering is guaranteed only between 'vFlashWrite'
-     packets).  If a packet writes to an address that was neither erased
-     by a preceding 'vFlashErase' packet nor by some other
-     target-specific method, the results are unpredictable.
-
-     Reply:
-     'OK'
-          for success
-     'E.memtype'
-          for vFlashWrite addressing non-flash memory
-     'E NN'
-          for an error
-
-'vFlashDone'
-     Indicate to the stub that flash programming operation is finished.
-     The stub is permitted to delay or batch the effects of a group of
-     'vFlashErase' and 'vFlashWrite' packets until a 'vFlashDone' packet
-     is received.  The contents of the affected regions of flash memory
-     are unpredictable until the 'vFlashDone' request is completed.
-
-'vKill;PID'
-     Kill the process with the specified process ID PID, which is a
-     hexadecimal integer identifying the process.  This packet is used
-     in preference to 'k' when multiprocess protocol extensions are
-     supported; see *note multiprocess extensions::.
-
-     Reply:
-     'E NN'
-          for an error
-     'OK'
-          for success
-
-'vMustReplyEmpty'
-     The correct reply to an unknown 'v' packet is to return the empty
-     string, however, some older versions of 'gdbserver' would
-     incorrectly return 'OK' for unknown 'v' packets.
-
-     The 'vMustReplyEmpty' is used as a feature test to check how
-     'gdbserver' handles unknown packets, it is important that this
-     packet be handled in the same way as other unknown 'v' packets.  If
-     this packet is handled differently to other unknown 'v' packets
-     then it is possible that GDB may run into problems in other areas,
-     specifically around use of 'vFile:setfs:'.
-
-'vRun;FILENAME[;ARGUMENT]...'
-     Run the program FILENAME, passing it each ARGUMENT on its command
-     line.  The file and arguments are hex-encoded strings.  If FILENAME
-     is an empty string, the stub may use a default program (e.g. the
-     last program run).  The program is created in the stopped state.
-
-     This packet is only available in extended mode (*note extended
-     mode::).
-
-     Reply:
-     'E NN'
-          for an error
-     'Any stop packet'
-          for success (*note Stop Reply Packets::)
-
-'vStopped'
-     *Note Notification Packets::.
-
-'X ADDR,LENGTH:XX...'
-     Write data to memory, where the data is transmitted in binary.
-     Memory is specified by its address ADDR and number of addressable
-     memory units LENGTH (*note addressable memory unit::); 'XX...' is
-     binary data (*note Binary Data::).
-
-     Reply:
-     'OK'
-          for success
-     'E NN'
-          for an error
-
-'z TYPE,ADDR,KIND'
-'Z TYPE,ADDR,KIND'
-     Insert ('Z') or remove ('z') a TYPE breakpoint or watchpoint
-     starting at address ADDRESS of kind KIND.
-
-     Each breakpoint and watchpoint packet TYPE is documented
-     separately.
-
-     _Implementation notes: A remote target shall return an empty string
-     for an unrecognized breakpoint or watchpoint packet TYPE.  A remote
-     target shall support either both or neither of a given 'ZTYPE...'
-     and 'zTYPE...' packet pair.  To avoid potential problems with
-     duplicate packets, the operations should be implemented in an
-     idempotent way._
-
-'z0,ADDR,KIND'
-'Z0,ADDR,KIND[;COND_LIST...][;cmds:PERSIST,CMD_LIST...]'
-     Insert ('Z0') or remove ('z0') a software breakpoint at address
-     ADDR of type KIND.
-
-     A software breakpoint is implemented by replacing the instruction
-     at ADDR with a software breakpoint or trap instruction.  The KIND
-     is target-specific and typically indicates the size of the
-     breakpoint in bytes that should be inserted.  E.g., the ARM and
-     MIPS can insert either a 2 or 4 byte breakpoint.  Some
-     architectures have additional meanings for KIND (*note
-     Architecture-Specific Protocol Details::); if no
-     architecture-specific value is being used, it should be '0'.  KIND
-     is hex-encoded.  COND_LIST is an optional list of conditional
-     expressions in bytecode form that should be evaluated on the
-     target's side.  These are the conditions that should be taken into
-     consideration when deciding if the breakpoint trigger should be
-     reported back to GDB.
-
-     See also the 'swbreak' stop reason (*note swbreak stop reason::)
-     for how to best report a software breakpoint event to GDB.
-
-     The COND_LIST parameter is comprised of a series of expressions,
-     concatenated without separators.  Each expression has the following
-     form:
-
-     'X LEN,EXPR'
-          LEN is the length of the bytecode expression and EXPR is the
-          actual conditional expression in bytecode form.
-
-     The optional CMD_LIST parameter introduces commands that may be run
-     on the target, rather than being reported back to GDB.  The
-     parameter starts with a numeric flag PERSIST; if the flag is
-     nonzero, then the breakpoint may remain active and the commands
-     continue to be run even when GDB disconnects from the target.
-     Following this flag is a series of expressions concatenated with no
-     separators.  Each expression has the following form:
-
-     'X LEN,EXPR'
-          LEN is the length of the bytecode expression and EXPR is the
-          actual commands expression in bytecode form.
-
-     _Implementation note: It is possible for a target to copy or move
-     code that contains software breakpoints (e.g., when implementing
-     overlays).  The behavior of this packet, in the presence of such a
-     target, is not defined._
-
-     Reply:
-     'OK'
-          success
-     ''
-          not supported
-     'E NN'
-          for an error
-
-'z1,ADDR,KIND'
-'Z1,ADDR,KIND[;COND_LIST...][;cmds:PERSIST,CMD_LIST...]'
-     Insert ('Z1') or remove ('z1') a hardware breakpoint at address
-     ADDR.
-
-     A hardware breakpoint is implemented using a mechanism that is not
-     dependent on being able to modify the target's memory.  The KIND,
-     COND_LIST, and CMD_LIST arguments have the same meaning as in 'Z0'
-     packets.
-
-     _Implementation note: A hardware breakpoint is not affected by code
-     movement._
-
-     Reply:
-     'OK'
-          success
-     ''
-          not supported
-     'E NN'
-          for an error
-
-'z2,ADDR,KIND'
-'Z2,ADDR,KIND'
-     Insert ('Z2') or remove ('z2') a write watchpoint at ADDR.  The
-     number of bytes to watch is specified by KIND.
-
-     Reply:
-     'OK'
-          success
-     ''
-          not supported
-     'E NN'
-          for an error
-
-'z3,ADDR,KIND'
-'Z3,ADDR,KIND'
-     Insert ('Z3') or remove ('z3') a read watchpoint at ADDR.  The
-     number of bytes to watch is specified by KIND.
-
-     Reply:
-     'OK'
-          success
-     ''
-          not supported
-     'E NN'
-          for an error
-
-'z4,ADDR,KIND'
-'Z4,ADDR,KIND'
-     Insert ('Z4') or remove ('z4') an access watchpoint at ADDR.  The
-     number of bytes to watch is specified by KIND.
-
-     Reply:
-     'OK'
-          success
-     ''
-          not supported
-     'E NN'
-          for an error
-
-
-File: gdb.info,  Node: Stop Reply Packets,  Next: General Query Packets,  Prev: Packets,  Up: Remote Protocol
-
-E.3 Stop Reply Packets
-======================
-
-The 'C', 'c', 'S', 's', 'vCont', 'vAttach', 'vRun', 'vStopped', and '?'
-packets can receive any of the below as a reply.  Except for '?' and
-'vStopped', that reply is only returned when the target halts.  In the
-below the exact meaning of "signal number" is defined by the header
-'include/gdb/signals.h' in the GDB source code.
-
-   In non-stop mode, the server will simply reply 'OK' to commands such
-as 'vCont'; any stop will be the subject of a future notification.
-*Note Remote Non-Stop::.
-
-   As in the description of request packets, we include spaces in the
-reply templates for clarity; these are not part of the reply packet's
-syntax.  No GDB stop reply packet uses spaces to separate its
-components.
-
-'S AA'
-     The program received signal number AA (a two-digit hexadecimal
-     number).  This is equivalent to a 'T' response with no N:R pairs.
-
-'T AA N1:R1;N2:R2;...'
-     The program received signal number AA (a two-digit hexadecimal
-     number).  This is equivalent to an 'S' response, except that the
-     'N:R' pairs can carry values of important registers and other
-     information directly in the stop reply packet, reducing round-trip
-     latency.  Single-step and breakpoint traps are reported this way.
-     Each 'N:R' pair is interpreted as follows:
-
-        * If N is a hexadecimal number, it is a register number, and the
-          corresponding R gives that register's value.  The data R is a
-          series of bytes in target byte order, with each byte given by
-          a two-digit hex number.
-
-        * If N is 'thread', then R is the THREAD-ID of the stopped
-          thread, as specified in *note thread-id syntax::.
-
-        * If N is 'core', then R is the hexadecimal number of the core
-          on which the stop event was detected.
-
-        * If N is a recognized "stop reason", it describes a more
-          specific event that stopped the target.  The currently defined
-          stop reasons are listed below.  The AA should be '05', the
-          trap signal.  At most one stop reason should be present.
-
-        * Otherwise, GDB should ignore this 'N:R' pair and go on to the
-          next; this allows us to extend the protocol in the future.
-
-     The currently defined stop reasons are:
-
-     'watch'
-     'rwatch'
-     'awatch'
-          The packet indicates a watchpoint hit, and R is the data
-          address, in hex.
-
-     'syscall_entry'
-     'syscall_return'
-          The packet indicates a syscall entry or return, and R is the
-          syscall number, in hex.
-
-     'library'
-          The packet indicates that the loaded libraries have changed.
-          GDB should use 'qXfer:libraries:read' to fetch a new list of
-          loaded libraries.  The R part is ignored.
-
-     'replaylog'
-          The packet indicates that the target cannot continue replaying
-          logged execution events, because it has reached the end (or
-          the beginning when executing backward) of the log.  The value
-          of R will be either 'begin' or 'end'.  *Note Reverse
-          Execution::, for more information.
-
-     'swbreak'
-          The packet indicates a software breakpoint instruction was
-          executed, irrespective of whether it was GDB that planted the
-          breakpoint or the breakpoint is hardcoded in the program.  The
-          R part must be left empty.
-
-          On some architectures, such as x86, at the architecture level,
-          when a breakpoint instruction executes the program counter
-          points at the breakpoint address plus an offset.  On such
-          targets, the stub is responsible for adjusting the PC to point
-          back at the breakpoint address.
-
-          This packet should not be sent by default; older GDB versions
-          did not support it.  GDB requests it, by supplying an
-          appropriate 'qSupported' feature (*note qSupported::).  The
-          remote stub must also supply the appropriate 'qSupported'
-          feature indicating support.
-
-          This packet is required for correct non-stop mode operation.
-
-     'hwbreak'
-          The packet indicates the target stopped for a hardware
-          breakpoint.  The R part must be left empty.
-
-          The same remarks about 'qSupported' and non-stop mode above
-          apply.
-
-     'fork'
-          The packet indicates that 'fork' was called, and R is the
-          thread ID of the new child process.  Refer to *note thread-id
-          syntax:: for the format of the THREAD-ID field.  This packet
-          is only applicable to targets that support fork events.
-
-          This packet should not be sent by default; older GDB versions
-          did not support it.  GDB requests it, by supplying an
-          appropriate 'qSupported' feature (*note qSupported::).  The
-          remote stub must also supply the appropriate 'qSupported'
-          feature indicating support.
-
-     'vfork'
-          The packet indicates that 'vfork' was called, and R is the
-          thread ID of the new child process.  Refer to *note thread-id
-          syntax:: for the format of the THREAD-ID field.  This packet
-          is only applicable to targets that support vfork events.
-
-          This packet should not be sent by default; older GDB versions
-          did not support it.  GDB requests it, by supplying an
-          appropriate 'qSupported' feature (*note qSupported::).  The
-          remote stub must also supply the appropriate 'qSupported'
-          feature indicating support.
-
-     'vforkdone'
-          The packet indicates that a child process created by a vfork
-          has either called 'exec' or terminated, so that the address
-          spaces of the parent and child process are no longer shared.
-          The R part is ignored.  This packet is only applicable to
-          targets that support vforkdone events.
-
-          This packet should not be sent by default; older GDB versions
-          did not support it.  GDB requests it, by supplying an
-          appropriate 'qSupported' feature (*note qSupported::).  The
-          remote stub must also supply the appropriate 'qSupported'
-          feature indicating support.
-
-     'exec'
-          The packet indicates that 'execve' was called, and R is the
-          absolute pathname of the file that was executed, in hex.  This
-          packet is only applicable to targets that support exec events.
-
-          This packet should not be sent by default; older GDB versions
-          did not support it.  GDB requests it, by supplying an
-          appropriate 'qSupported' feature (*note qSupported::).  The
-          remote stub must also supply the appropriate 'qSupported'
-          feature indicating support.
-
-     'create'
-          The packet indicates that the thread was just created.  The
-          new thread is stopped until GDB sets it running with a
-          resumption packet (*note vCont packet::).  This packet should
-          not be sent by default; GDB requests it with the *note
-          QThreadEvents:: packet.  See also the 'w' (*note thread exit
-          event::) remote reply below.  The R part is ignored.
-
-'W AA'
-'W AA ; process:PID'
-     The process exited, and AA is the exit status.  This is only
-     applicable to certain targets.
-
-     The second form of the response, including the process ID of the
-     exited process, can be used only when GDB has reported support for
-     multiprocess protocol extensions; see *note multiprocess
-     extensions::.  Both AA and PID are formatted as big-endian hex
-     strings.
-
-'X AA'
-'X AA ; process:PID'
-     The process terminated with signal AA.
-
-     The second form of the response, including the process ID of the
-     terminated process, can be used only when GDB has reported support
-     for multiprocess protocol extensions; see *note multiprocess
-     extensions::.  Both AA and PID are formatted as big-endian hex
-     strings.
-
-'w AA ; TID'
-
-     The thread exited, and AA is the exit status.  This response should
-     not be sent by default; GDB requests it with the *note
-     QThreadEvents:: packet.  See also *note thread create event::
-     above.  AA is formatted as a big-endian hex string.
-
-'N'
-     There are no resumed threads left in the target.  In other words,
-     even though the process is alive, the last resumed thread has
-     exited.  For example, say the target process has two threads:
-     thread 1 and thread 2.  The client leaves thread 1 stopped, and
-     resumes thread 2, which subsequently exits.  At this point, even
-     though the process is still alive, and thus no 'W' stop reply is
-     sent, no thread is actually executing either.  The 'N' stop reply
-     thus informs the client that it can stop waiting for stop replies.
-     This packet should not be sent by default; older GDB versions did
-     not support it.  GDB requests it, by supplying an appropriate
-     'qSupported' feature (*note qSupported::).  The remote stub must
-     also supply the appropriate 'qSupported' feature indicating
-     support.
-
-'O XX...'
-     'XX...' is hex encoding of ASCII data, to be written as the
-     program's console output.  This can happen at any time while the
-     program is running and the debugger should continue to wait for
-     'W', 'T', etc.  This reply is not permitted in non-stop mode.
-
-'F CALL-ID,PARAMETER...'
-     CALL-ID is the identifier which says which host system call should
-     be called.  This is just the name of the function.  Translation
-     into the correct system call is only applicable as it's defined in
-     GDB.  *Note File-I/O Remote Protocol Extension::, for a list of
-     implemented system calls.
-
-     'PARAMETER...' is a list of parameters as defined for this very
-     system call.
-
-     The target replies with this packet when it expects GDB to call a
-     host system call on behalf of the target.  GDB replies with an
-     appropriate 'F' packet and keeps up waiting for the next reply
-     packet from the target.  The latest 'C', 'c', 'S' or 's' action is
-     expected to be continued.  *Note File-I/O Remote Protocol
-     Extension::, for more details.
 

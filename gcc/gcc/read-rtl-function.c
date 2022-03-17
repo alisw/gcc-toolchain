@@ -1,5 +1,5 @@
 /* read-rtl-function.c - Reader for RTL function dumps
-   Copyright (C) 2016-2020 Free Software Foundation, Inc.
+   Copyright (C) 2016-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -632,7 +632,7 @@ function_reader::parse_block ()
 
   size_t new_size = m_highest_bb_idx + 1;
   if (basic_block_info_for_fn (cfun)->length () < new_size)
-    vec_safe_grow_cleared (basic_block_info_for_fn (cfun), new_size);
+    vec_safe_grow_cleared (basic_block_info_for_fn (cfun), new_size, true);
 
   last_basic_block_for_fn (cfun) = new_size;
 

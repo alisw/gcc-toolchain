@@ -1,5 +1,5 @@
 /* Prototype declarations for the C-SKY back end.
-   Copyright (C) 2018-2020 Free Software Foundation, Inc.
+   Copyright (C) 2018-2021 Free Software Foundation, Inc.
    Contributed by C-SKY Microsystems and Mentor Graphics.
 
    This file is part of GCC.
@@ -68,4 +68,6 @@ extern int csky_compute_pushpop_length (rtx *);
 
 extern int csky_default_branch_cost (bool, bool);
 extern bool csky_default_logical_op_non_short_circuit (void);
+
+extern void csky_init_cumulative_args (CUMULATIVE_ARGS *, tree, rtx, tree);
 #endif /* GCC_CSKY_PROTOS_H */

@@ -6,7 +6,7 @@
  *                                                                          *
  *                              C Header File                               *
  *                                                                          *
- *          Copyright (C) 1992-2019, Free Software Foundation, Inc.         *
+ *          Copyright (C) 1992-2020, Free Software Foundation, Inc.         *
  *                                                                          *
  * GNAT is free software;  you can  redistribute it  and/or modify it under *
  * terms of the  GNU General Public License as published  by the Free Soft- *
@@ -138,14 +138,12 @@ extern tree make_type_from_size (tree type, tree size_tree, bool for_biased);
    if needed.  We have already verified that SIZE and ALIGN are large enough.
    GNAT_ENTITY is used to name the resulting record and to issue a warning.
    IS_COMPONENT_TYPE is true if this is being done for the component type of
-   an array.  IS_USER_TYPE is true if the original type needs to be completed.
-   DEFINITION is true if this type is being defined.  SET_RM_SIZE is true if
-   the RM size of the resulting type is to be set to SIZE too; in this case,
-   the padded type is canonicalized before being returned.  */
+   an array.  DEFINITION is true if this type is being defined.  SET_RM_SIZE
+   is true if the RM size of the resulting type is to be set to SIZE too; in
+   this case, the padded type is canonicalized before being returned.  */
 extern tree maybe_pad_type (tree type, tree size, unsigned int align,
 			    Entity_Id gnat_entity, bool is_component_type,
-			    bool is_user_type, bool definition,
-			    bool set_rm_size);
+			    bool definition, bool set_rm_size);
 
 /* Return true if padded TYPE was built with an RM size.  */
 extern bool pad_type_has_rm_size (tree type);
@@ -327,7 +325,7 @@ extern int double_scalar_alignment;
 
 /* True if floating-point arithmetics may use wider intermediate results.  */
 extern bool fp_arith_may_widen;
-
+
 /* Data structures used to represent attributes.  */
 
 enum attrib_type
@@ -391,6 +389,9 @@ enum standard_datatypes
 
   /* Function decl node for 64-bit multiplication with overflow checking.  */
   ADT_mulv64_decl,
+
+  /* Function decl node for 128-bit multiplication with overflow checking.  */
+  ADT_mulv128_decl,
 
   /* Identifier for the name of the _Parent field in tagged record types.  */
   ADT_parent_name_id,
@@ -464,6 +465,7 @@ extern GTY(()) tree gnat_raise_decls_ext[(int) LAST_REASON_CODE + 1];
 #define free_decl gnat_std_decls[(int) ADT_free_decl]
 #define realloc_decl gnat_std_decls[(int) ADT_realloc_decl]
 #define mulv64_decl gnat_std_decls[(int) ADT_mulv64_decl]
+#define mulv128_decl gnat_std_decls[(int) ADT_mulv128_decl]
 #define parent_name_id gnat_std_decls[(int) ADT_parent_name_id]
 #define exception_data_name_id gnat_std_decls[(int) ADT_exception_data_name_id]
 #define jmpbuf_type gnat_std_decls[(int) ADT_jmpbuf_type]
@@ -1037,6 +1039,7 @@ extern Pos get_target_short_size (void);
 extern Pos get_target_int_size (void);
 extern Pos get_target_long_size (void);
 extern Pos get_target_long_long_size (void);
+extern Pos get_target_long_long_long_size (void);
 extern Pos get_target_pointer_size (void);
 extern Pos get_target_maximum_default_alignment (void);
 extern Pos get_target_system_allocator_alignment (void);
@@ -1064,20 +1067,6 @@ extern void enumerate_modes (void (*f) (const char *, int, int, int, int, int,
    than the release mode and can be disabled by means of -fchecking.  */
 #define gigi_checking_assert(EXPR) \
   gcc_checking_assert ((EXPR) || type_annotate_only)
-
-/* If EXP's type is a VECTOR_TYPE, return EXP converted to the associated
-   TYPE_REPRESENTATIVE_ARRAY.  */
-
-static inline tree
-maybe_vector_array (tree exp)
-{
-  tree etype = TREE_TYPE (exp);
-
-  if (VECTOR_TYPE_P (etype))
-    exp = convert (TYPE_REPRESENTATIVE_ARRAY (etype), exp);
-
-  return exp;
-}
 
 /* Return the smallest power of 2 larger than X.  */
 
@@ -1144,6 +1133,33 @@ gnat_signed_type_for (tree type_node)
   return gnat_signed_or_unsigned_type_for (0, type_node);
 }
 
+/* Like build_qualified_type, but TYPE_QUALS is added to the existing
+   qualifiers on TYPE.  */
+
+static inline tree
+change_qualified_type (tree type, int type_quals)
+{
+  /* Qualifiers must be put on the associated array type.  */
+  if (TREE_CODE (type) == UNCONSTRAINED_ARRAY_TYPE)
+    return type;
+
+  return build_qualified_type (type, TYPE_QUALS (type) | type_quals);
+}
+
+/* If EXPR's type is a VECTOR_TYPE, return EXPR converted to the associated
+   TYPE_REPRESENTATIVE_ARRAY.  */
+
+static inline tree
+maybe_vector_array (tree expr)
+{
+  tree type = TREE_TYPE (expr);
+
+  if (VECTOR_TYPE_P (type))
+    expr = convert (TYPE_REPRESENTATIVE_ARRAY (type), expr);
+
+  return expr;
+}
+
 /* Adjust the character type TYPE if need be.  */
 
 static inline tree
@@ -1186,15 +1202,23 @@ maybe_debug_type (tree type)
   return type;
 }
 
-/* Like build_qualified_type, but TYPE_QUALS is added to the existing
-   qualifiers on TYPE.  */
+/* Remove the padding around EXPR if need be.  */
 
 static inline tree
-change_qualified_type (tree type, int type_quals)
+maybe_padded_object (tree expr)
 {
-  /* Qualifiers must be put on the associated array type.  */
-  if (TREE_CODE (type) == UNCONSTRAINED_ARRAY_TYPE)
-    return type;
+  tree type = TREE_TYPE (expr);
 
-  return build_qualified_type (type, TYPE_QUALS (type) | type_quals);
+  if (TYPE_IS_PADDING_P (type))
+    expr = convert (TREE_TYPE (TYPE_FIELDS (type)), expr);
+
+  return expr;
+}
+
+/* Return the type of operand #0 of EXPR.  */
+
+static inline tree
+operand_type (tree expr)
+{
+  return TREE_TYPE (TREE_OPERAND (expr, 0));
 }

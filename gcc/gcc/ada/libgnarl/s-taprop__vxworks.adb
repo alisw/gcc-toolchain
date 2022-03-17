@@ -6,7 +6,7 @@
 --                                                                          --
 --                                  B o d y                                 --
 --                                                                          --
---         Copyright (C) 1992-2019, Free Software Foundation, Inc.          --
+--         Copyright (C) 1992-2020, Free Software Foundation, Inc.          --
 --                                                                          --
 -- GNARL is free software; you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -33,10 +33,6 @@
 
 --  This package contains all the GNULL primitives that interface directly with
 --  the underlying OS.
-
-pragma Polling (Off);
---  Turn off polling, we do not want ATC polling to take place during tasking
---  operations. It causes infinite loops and other problems.
 
 with Ada.Unchecked_Conversion;
 
@@ -101,7 +97,7 @@ package body System.Task_Primitives.Operations is
    Single_RTS_Lock : aliased RTS_Lock;
    --  This is a lock to allow only one thread of control in the RTS at a
    --  time; it is used to execute in mutual exclusion from all other tasks.
-   --  Used mainly in Single_Lock mode, but also to protect All_Tasks_List
+   --  Used to protect All_Tasks_List
 
    Time_Slice_Val : Integer;
    pragma Import (C, Time_Slice_Val, "__gl_time_slice_val");
@@ -374,25 +370,18 @@ package body System.Task_Primitives.Operations is
       pragma Assert (Result = 0);
    end Write_Lock;
 
-   procedure Write_Lock
-     (L           : not null access RTS_Lock;
-      Global_Lock : Boolean := False)
-   is
+   procedure Write_Lock (L : not null access RTS_Lock) is
       Result : int;
    begin
-      if not Single_Lock or else Global_Lock then
-         Result := semTake (L.Mutex, WAIT_FOREVER);
-         pragma Assert (Result = 0);
-      end if;
+      Result := semTake (L.Mutex, WAIT_FOREVER);
+      pragma Assert (Result = 0);
    end Write_Lock;
 
    procedure Write_Lock (T : Task_Id) is
       Result : int;
    begin
-      if not Single_Lock then
-         Result := semTake (T.Common.LL.L.Mutex, WAIT_FOREVER);
-         pragma Assert (Result = 0);
-      end if;
+      Result := semTake (T.Common.LL.L.Mutex, WAIT_FOREVER);
+      pragma Assert (Result = 0);
    end Write_Lock;
 
    ---------------
@@ -401,8 +390,7 @@ package body System.Task_Primitives.Operations is
 
    procedure Read_Lock
      (L                 : not null access Lock;
-      Ceiling_Violation : out Boolean)
-   is
+      Ceiling_Violation : out Boolean) is
    begin
       Write_Lock (L, Ceiling_Violation);
    end Read_Lock;
@@ -418,25 +406,18 @@ package body System.Task_Primitives.Operations is
       pragma Assert (Result = 0);
    end Unlock;
 
-   procedure Unlock
-     (L           : not null access RTS_Lock;
-      Global_Lock : Boolean := False)
-   is
+   procedure Unlock (L : not null access RTS_Lock) is
       Result : int;
    begin
-      if not Single_Lock or else Global_Lock then
-         Result := semGive (L.Mutex);
-         pragma Assert (Result = 0);
-      end if;
+      Result := semGive (L.Mutex);
+      pragma Assert (Result = 0);
    end Unlock;
 
    procedure Unlock (T : Task_Id) is
       Result : int;
    begin
-      if not Single_Lock then
-         Result := semGive (T.Common.LL.L.Mutex);
-         pragma Assert (Result = 0);
-      end if;
+      Result := semGive (T.Common.LL.L.Mutex);
+      pragma Assert (Result = 0);
    end Unlock;
 
    -----------------
@@ -468,10 +449,7 @@ package body System.Task_Primitives.Operations is
 
       --  Release the mutex before sleeping
 
-      Result :=
-        semGive (if Single_Lock
-                 then Single_RTS_Lock.Mutex
-                 else Self_ID.Common.LL.L.Mutex);
+      Result := semGive (Self_ID.Common.LL.L.Mutex);
       pragma Assert (Result = 0);
 
       --  Perform a blocking operation to take the CV semaphore. Note that a
@@ -484,10 +462,7 @@ package body System.Task_Primitives.Operations is
 
       --  Take the mutex back
 
-      Result :=
-        semTake ((if Single_Lock
-                  then Single_RTS_Lock.Mutex
-                  else Self_ID.Common.LL.L.Mutex), WAIT_FOREVER);
+      Result := semTake (Self_ID.Common.LL.L.Mutex, WAIT_FOREVER);
       pragma Assert (Result = 0);
    end Sleep;
 
@@ -540,10 +515,7 @@ package body System.Task_Primitives.Operations is
          loop
             --  Release the mutex before sleeping
 
-            Result :=
-              semGive (if Single_Lock
-                       then Single_RTS_Lock.Mutex
-                       else Self_ID.Common.LL.L.Mutex);
+            Result := semGive (Self_ID.Common.LL.L.Mutex);
             pragma Assert (Result = 0);
 
             --  Perform a blocking operation to take the CV semaphore. Note
@@ -583,10 +555,7 @@ package body System.Task_Primitives.Operations is
 
             --  Take the mutex back
 
-            Result :=
-              semTake ((if Single_Lock
-                        then Single_RTS_Lock.Mutex
-                        else Self_ID.Common.LL.L.Mutex), WAIT_FOREVER);
+            Result := semTake (Self_ID.Common.LL.L.Mutex, WAIT_FOREVER);
             pragma Assert (Result = 0);
 
             exit when Timedout or Wakeup;
@@ -597,16 +566,9 @@ package body System.Task_Primitives.Operations is
 
          --  Should never hold a lock while yielding
 
-         if Single_Lock then
-            Result := semGive (Single_RTS_Lock.Mutex);
-            Result := taskDelay (0);
-            Result := semTake (Single_RTS_Lock.Mutex, WAIT_FOREVER);
-
-         else
-            Result := semGive (Self_ID.Common.LL.L.Mutex);
-            Result := taskDelay (0);
-            Result := semTake (Self_ID.Common.LL.L.Mutex, WAIT_FOREVER);
-         end if;
+         Result := semGive (Self_ID.Common.LL.L.Mutex);
+         Result := taskDelay (0);
+         Result := semTake (Self_ID.Common.LL.L.Mutex, WAIT_FOREVER);
       end if;
    end Timed_Sleep;
 
@@ -653,10 +615,7 @@ package body System.Task_Primitives.Operations is
 
          --  Modifying State, locking the TCB
 
-         Result :=
-           semTake ((if Single_Lock
-                     then Single_RTS_Lock.Mutex
-                     else Self_ID.Common.LL.L.Mutex), WAIT_FOREVER);
+         Result := semTake (Self_ID.Common.LL.L.Mutex, WAIT_FOREVER);
 
          pragma Assert (Result = 0);
 
@@ -668,10 +627,7 @@ package body System.Task_Primitives.Operations is
 
             --  Release the TCB before sleeping
 
-            Result :=
-              semGive (if Single_Lock
-                       then Single_RTS_Lock.Mutex
-                       else Self_ID.Common.LL.L.Mutex);
+            Result := semGive (Self_ID.Common.LL.L.Mutex);
             pragma Assert (Result = 0);
 
             exit when Aborted;
@@ -697,11 +653,7 @@ package body System.Task_Primitives.Operations is
             --  Take back the lock after having slept, to protect further
             --  access to Self_ID.
 
-            Result :=
-              semTake
-                ((if Single_Lock
-                  then Single_RTS_Lock.Mutex
-                  else Self_ID.Common.LL.L.Mutex), WAIT_FOREVER);
+            Result := semTake (Self_ID.Common.LL.L.Mutex, WAIT_FOREVER);
 
             pragma Assert (Result = 0);
 
@@ -710,11 +662,7 @@ package body System.Task_Primitives.Operations is
 
          Self_ID.Common.State := Runnable;
 
-         Result :=
-           semGive
-             (if Single_Lock
-              then Single_RTS_Lock.Mutex
-              else Self_ID.Common.LL.L.Mutex);
+         Result := semGive (Self_ID.Common.LL.L.Mutex);
 
       else
          Result := taskDelay (0);
@@ -875,10 +823,7 @@ package body System.Task_Primitives.Operations is
 
       else
          Succeeded := True;
-
-         if not Single_Lock then
-            Initialize_Lock (Self_ID.Common.LL.L'Access, ATCB_Level);
-         end if;
+         Initialize_Lock (Self_ID.Common.LL.L'Access, ATCB_Level);
       end if;
    end Initialize_TCB;
 
@@ -996,10 +941,8 @@ package body System.Task_Primitives.Operations is
       Result : int;
 
    begin
-      if not Single_Lock then
-         Result := semDelete (T.Common.LL.L.Mutex);
-         pragma Assert (Result = 0);
-      end if;
+      Result := semDelete (T.Common.LL.L.Mutex);
+      pragma Assert (Result = 0);
 
       T.Common.LL.Thread := Null_Thread_Id;
 
@@ -1251,7 +1194,7 @@ package body System.Task_Primitives.Operations is
 
    procedure Lock_RTS is
    begin
-      Write_Lock (Single_RTS_Lock'Access, Global_Lock => True);
+      Write_Lock (Single_RTS_Lock'Access);
    end Lock_RTS;
 
    ----------------
@@ -1260,7 +1203,7 @@ package body System.Task_Primitives.Operations is
 
    procedure Unlock_RTS is
    begin
-      Unlock (Single_RTS_Lock'Access, Global_Lock => True);
+      Unlock (Single_RTS_Lock'Access);
    end Unlock_RTS;
 
    ------------------

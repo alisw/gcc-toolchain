@@ -1,5 +1,5 @@
 /* Operations with very long integers.
-   Copyright (C) 2012-2020 Free Software Foundation, Inc.
+   Copyright (C) 2012-2021 Free Software Foundation, Inc.
    Contributed by Kenneth Zadeck <zadeck@naturalbridge.com>
 
 This file is part of GCC.
@@ -229,6 +229,20 @@ wi::to_mpz (const wide_int_ref &x, mpz_t result, signop sgn)
 	t[i] = v[i];
       t[len - 1] = (unsigned HOST_WIDE_INT) v[len - 1] << excess >> excess;
       mpz_import (result, len, -1, sizeof (HOST_WIDE_INT), 0, 0, t);
+    }
+  else if (excess < 0 && wi::neg_p (x))
+    {
+      int extra
+	= (-excess + HOST_BITS_PER_WIDE_INT - 1) / HOST_BITS_PER_WIDE_INT;
+      HOST_WIDE_INT *t = XALLOCAVEC (HOST_WIDE_INT, len + extra);
+      for (int i = 0; i < len; i++)
+	t[i] = v[i];
+      for (int i = 0; i < extra; i++)
+	t[len + i] = -1;
+      excess = (-excess) % HOST_BITS_PER_WIDE_INT;
+      if (excess)
+	t[len + extra - 1] = (HOST_WIDE_INT_1U << excess) - 1;
+      mpz_import (result, len + extra, -1, sizeof (HOST_WIDE_INT), 0, 0, t);
     }
   else
     mpz_import (result, len, -1, sizeof (HOST_WIDE_INT), 0, 0, v);
@@ -702,8 +716,11 @@ wi::set_bit_large (HOST_WIDE_INT *val, const HOST_WIDE_INT *xval,
       /* If the bit we just set is at the msb of the block, make sure
 	 that any higher bits are zeros.  */
       if (bit + 1 < precision && subbit == HOST_BITS_PER_WIDE_INT - 1)
-	val[len++] = 0;
-      return len;
+	{
+	  val[len++] = 0;
+	  return len;
+	}
+      return canonize (val, len, precision);
     }
   else
     {
@@ -2221,6 +2238,39 @@ wi::round_up_for_mask (const wide_int &val, const wide_int &mask)
   wide_int tmp = wi::bit_and_not (upper_mask, val);
 
   return (val | tmp) & -tmp;
+}
+
+/* Compute the modular multiplicative inverse of A modulo B
+   using extended Euclid's algorithm.  Assumes A and B are coprime,
+   and that A and B have the same precision.  */
+wide_int
+wi::mod_inv (const wide_int &a, const wide_int &b)
+{
+  /* Verify the assumption.  */
+  gcc_checking_assert (wi::eq_p (wi::gcd (a, b), 1));
+
+  unsigned int p = a.get_precision () + 1;
+  gcc_checking_assert (b.get_precision () + 1 == p);
+  wide_int c = wide_int::from (a, p, UNSIGNED);
+  wide_int d = wide_int::from (b, p, UNSIGNED);
+  wide_int x0 = wide_int::from (0, p, UNSIGNED);
+  wide_int x1 = wide_int::from (1, p, UNSIGNED);
+
+  if (wi::eq_p (b, 1))
+    return wide_int::from (1, p, UNSIGNED);
+
+  while (wi::gt_p (c, 1, UNSIGNED))
+    {
+      wide_int t = d;
+      wide_int q = wi::divmod_trunc (c, d, UNSIGNED, &d);
+      c = t;
+      wide_int s = x0;
+      x0 = wi::sub (x1, wi::mul (q, x0));
+      x1 = s;
+    }
+  if (wi::lt_p (x1, 0, SIGNED))
+    x1 += d;
+  return x1;
 }
 
 /*

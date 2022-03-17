@@ -1,7 +1,7 @@
 /* GNU/Linux/AArch64 specific low level interface, for the remote server for
    GDB.
 
-   Copyright (C) 2009-2020 Free Software Foundation, Inc.
+   Copyright (C) 2009-2022 Free Software Foundation, Inc.
    Contributed by ARM Ltd.
 
    This file is part of GDB.
@@ -40,13 +40,19 @@
 
 #include "gdb_proc_service.h"
 #include "arch/aarch64.h"
+#include "arch/aarch64-mte-linux.h"
 #include "linux-aarch32-tdesc.h"
 #include "linux-aarch64-tdesc.h"
+#include "nat/aarch64-mte-linux-ptrace.h"
 #include "nat/aarch64-sve-linux-ptrace.h"
 #include "tdesc.h"
 
 #ifdef HAVE_SYS_REG_H
 #include <sys/reg.h>
+#endif
+
+#ifdef HAVE_GETAUXVAL
+#include <sys/auxv.h>
 #endif
 
 /* Linux target op definitions for the AArch64 architecture.  */
@@ -80,6 +86,14 @@ public:
   int get_min_fast_tracepoint_insn_len () override;
 
   struct emit_ops *emit_ops () override;
+
+  bool supports_memory_tagging () override;
+
+  bool fetch_memtags (CORE_ADDR address, size_t len,
+		      gdb::byte_vector &tags, int type) override;
+
+  bool store_memtags (CORE_ADDR address, size_t len,
+		      const gdb::byte_vector &tags, int type) override;
 
 protected:
 
@@ -182,16 +196,6 @@ is_64bit_tdesc (void)
   return register_size (regcache->tdesc, 0) == 8;
 }
 
-/* Return true if the regcache contains the number of SVE registers.  */
-
-static bool
-is_sve_tdesc (void)
-{
-  struct regcache *regcache = get_thread_regcache (current_thread, 0);
-
-  return tdesc_contains_feature (regcache->tdesc, "org.gnu.gdb.aarch64.sve");
-}
-
 static void
 aarch64_fill_gregset (struct regcache *regcache, void *buf)
 {
@@ -258,6 +262,29 @@ aarch64_store_pauthregset (struct regcache *regcache, const void *buf)
 		   &pauth_regset[0]);
   supply_register (regcache, AARCH64_PAUTH_CMASK_REGNUM (pauth_base),
 		   &pauth_regset[1]);
+}
+
+/* Fill BUF with the MTE registers from the regcache.  */
+
+static void
+aarch64_fill_mteregset (struct regcache *regcache, void *buf)
+{
+  uint64_t *mte_regset = (uint64_t *) buf;
+  int mte_base = find_regno (regcache->tdesc, "tag_ctl");
+
+  collect_register (regcache, mte_base, mte_regset);
+}
+
+/* Store the MTE registers to regcache.  */
+
+static void
+aarch64_store_mteregset (struct regcache *regcache, const void *buf)
+{
+  uint64_t *mte_regset = (uint64_t *) buf;
+  int mte_base = find_regno (regcache->tdesc, "tag_ctl");
+
+  /* Tag Control register */
+  supply_register (regcache, mte_base, mte_regset);
 }
 
 bool
@@ -458,6 +485,23 @@ aarch64_target::low_remove_point (raw_bkpt_type type, CORE_ADDR addr,
   return ret;
 }
 
+/* Return the address only having significant bits.  This is used to ignore
+   the top byte (TBI).  */
+
+static CORE_ADDR
+address_significant (CORE_ADDR addr)
+{
+  /* Clear insignificant bits of a target address and sign extend resulting
+     address.  */
+  int addr_bit = 56;
+
+  CORE_ADDR sign = (CORE_ADDR) 1 << (addr_bit - 1);
+  addr &= ((CORE_ADDR) 1 << addr_bit) - 1;
+  addr = (addr ^ sign) - sign;
+
+  return addr;
+}
+
 /* Implementation of linux target ops method "low_stopped_data_address".  */
 
 CORE_ADDR
@@ -478,6 +522,12 @@ aarch64_target::low_stopped_data_address ()
       || (siginfo.si_code & 0xffff) != 0x0004 /* TRAP_HWBKPT */)
     return (CORE_ADDR) 0;
 
+  /* Make sure to ignore the top byte, otherwise we may not recognize a
+     hardware watchpoint hit.  The stopped data addresses coming from the
+     kernel can potentially be tagged addresses.  */
+  const CORE_ADDR addr_trap
+    = address_significant ((CORE_ADDR) siginfo.si_addr);
+
   /* Check if the address matches any watched address.  */
   state = aarch64_get_debug_reg_state (pid_of (current_thread));
   for (i = aarch64_num_wp_regs - 1; i >= 0; --i)
@@ -485,7 +535,6 @@ aarch64_target::low_stopped_data_address ()
       const unsigned int offset
 	= aarch64_watchpoint_offset (state->dr_ctrl_wp[i]);
       const unsigned int len = aarch64_watchpoint_length (state->dr_ctrl_wp[i]);
-      const CORE_ADDR addr_trap = (CORE_ADDR) siginfo.si_addr;
       const CORE_ADDR addr_watch = state->dr_addr_wp[i] + offset;
       const CORE_ADDR addr_watch_aligned = align_down (state->dr_addr_wp[i], 8);
       const CORE_ADDR addr_orig = state->dr_addr_orig_wp[i];
@@ -621,6 +670,109 @@ aarch64_target::low_new_fork (process_info *parent,
   *child->priv->arch_private = *parent->priv->arch_private;
 }
 
+/* Wrapper for aarch64_sve_regs_copy_to_reg_buf.  */
+
+static void
+aarch64_sve_regs_copy_to_regcache (struct regcache *regcache, const void *buf)
+{
+  return aarch64_sve_regs_copy_to_reg_buf (regcache, buf);
+}
+
+/* Wrapper for aarch64_sve_regs_copy_from_reg_buf.  */
+
+static void
+aarch64_sve_regs_copy_from_regcache (struct regcache *regcache, void *buf)
+{
+  return aarch64_sve_regs_copy_from_reg_buf (regcache, buf);
+}
+
+/* Array containing all the possible register sets for AArch64/Linux.  During
+   architecture setup, these will be checked against the HWCAP/HWCAP2 bits for
+   validity and enabled/disabled accordingly.
+
+   Their sizes are set to 0 here, but they will be adjusted later depending
+   on whether each register set is available or not.  */
+static struct regset_info aarch64_regsets[] =
+{
+  /* GPR registers.  */
+  { PTRACE_GETREGSET, PTRACE_SETREGSET, NT_PRSTATUS,
+    0, GENERAL_REGS,
+    aarch64_fill_gregset, aarch64_store_gregset },
+  /* Floating Point (FPU) registers.  */
+  { PTRACE_GETREGSET, PTRACE_SETREGSET, NT_FPREGSET,
+    0, FP_REGS,
+    aarch64_fill_fpregset, aarch64_store_fpregset
+  },
+  /* Scalable Vector Extension (SVE) registers.  */
+  { PTRACE_GETREGSET, PTRACE_SETREGSET, NT_ARM_SVE,
+    0, EXTENDED_REGS,
+    aarch64_sve_regs_copy_from_regcache, aarch64_sve_regs_copy_to_regcache
+  },
+  /* PAC registers.  */
+  { PTRACE_GETREGSET, PTRACE_SETREGSET, NT_ARM_PAC_MASK,
+    0, OPTIONAL_REGS,
+    nullptr, aarch64_store_pauthregset },
+  /* Tagged address control / MTE registers.  */
+  { PTRACE_GETREGSET, PTRACE_SETREGSET, NT_ARM_TAGGED_ADDR_CTRL,
+    0, OPTIONAL_REGS,
+    aarch64_fill_mteregset, aarch64_store_mteregset },
+  NULL_REGSET
+};
+
+static struct regsets_info aarch64_regsets_info =
+  {
+    aarch64_regsets, /* regsets */
+    0, /* num_regsets */
+    nullptr, /* disabled_regsets */
+  };
+
+static struct regs_info regs_info_aarch64 =
+  {
+    nullptr, /* regset_bitmap */
+    nullptr, /* usrregs */
+    &aarch64_regsets_info,
+  };
+
+/* Given FEATURES, adjust the available register sets by setting their
+   sizes.  A size of 0 means the register set is disabled and won't be
+   used.  */
+
+static void
+aarch64_adjust_register_sets (const struct aarch64_features &features)
+{
+  struct regset_info *regset;
+
+  for (regset = aarch64_regsets; regset->size >= 0; regset++)
+    {
+      switch (regset->nt_type)
+	{
+	case NT_PRSTATUS:
+	  /* General purpose registers are always present.  */
+	  regset->size = sizeof (struct user_pt_regs);
+	  break;
+	case NT_FPREGSET:
+	  /* This is unavailable when SVE is present.  */
+	  if (!features.sve)
+	    regset->size = sizeof (struct user_fpsimd_state);
+	  break;
+	case NT_ARM_SVE:
+	  if (features.sve)
+	    regset->size = SVE_PT_SIZE (AARCH64_MAX_SVE_VQ, SVE_PT_REGS_SVE);
+	  break;
+	case NT_ARM_PAC_MASK:
+	  if (features.pauth)
+	    regset->size = AARCH64_PAUTH_REGS_SIZE;
+	  break;
+	case NT_ARM_TAGGED_ADDR_CTRL:
+	  if (features.mte)
+	    regset->size = AARCH64_LINUX_SIZEOF_MTE;
+	  break;
+	default:
+	  gdb_assert_not_reached ("Unknown register set found.");
+	}
+    }
+}
+
 /* Matches HWCAP_PACA in kernel header arch/arm64/include/uapi/asm/hwcap.h.  */
 #define AARCH64_HWCAP_PACA (1 << 30)
 
@@ -639,91 +791,27 @@ aarch64_target::low_arch_setup ()
 
   if (is_elf64)
     {
-      uint64_t vq = aarch64_sve_get_vq (tid);
-      unsigned long hwcap = linux_get_hwcap (8);
-      bool pauth_p = hwcap & AARCH64_HWCAP_PACA;
+      struct aarch64_features features;
 
-      current_process ()->tdesc = aarch64_linux_read_description (vq, pauth_p);
+      uint64_t vq = aarch64_sve_get_vq (tid);
+      features.sve = (vq > 0);
+      /* A-profile PAC is 64-bit only.  */
+      features.pauth = linux_get_hwcap (8) & AARCH64_HWCAP_PACA;
+      /* A-profile MTE is 64-bit only.  */
+      features.mte = linux_get_hwcap2 (8) & HWCAP2_MTE;
+
+      current_process ()->tdesc
+	= aarch64_linux_read_description (vq, features.pauth, features.mte);
+
+      /* Adjust the register sets we should use for this particular set of
+	 features.  */
+      aarch64_adjust_register_sets (features);
     }
   else
     current_process ()->tdesc = aarch32_linux_read_description ();
 
   aarch64_linux_get_debug_reg_capacity (lwpid_of (current_thread));
 }
-
-/* Wrapper for aarch64_sve_regs_copy_to_reg_buf.  */
-
-static void
-aarch64_sve_regs_copy_to_regcache (struct regcache *regcache, const void *buf)
-{
-  return aarch64_sve_regs_copy_to_reg_buf (regcache, buf);
-}
-
-/* Wrapper for aarch64_sve_regs_copy_from_reg_buf.  */
-
-static void
-aarch64_sve_regs_copy_from_regcache (struct regcache *regcache, void *buf)
-{
-  return aarch64_sve_regs_copy_from_reg_buf (regcache, buf);
-}
-
-static struct regset_info aarch64_regsets[] =
-{
-  { PTRACE_GETREGSET, PTRACE_SETREGSET, NT_PRSTATUS,
-    sizeof (struct user_pt_regs), GENERAL_REGS,
-    aarch64_fill_gregset, aarch64_store_gregset },
-  { PTRACE_GETREGSET, PTRACE_SETREGSET, NT_FPREGSET,
-    sizeof (struct user_fpsimd_state), FP_REGS,
-    aarch64_fill_fpregset, aarch64_store_fpregset
-  },
-  { PTRACE_GETREGSET, PTRACE_SETREGSET, NT_ARM_PAC_MASK,
-    AARCH64_PAUTH_REGS_SIZE, OPTIONAL_REGS,
-    NULL, aarch64_store_pauthregset },
-  NULL_REGSET
-};
-
-static struct regsets_info aarch64_regsets_info =
-  {
-    aarch64_regsets, /* regsets */
-    0, /* num_regsets */
-    NULL, /* disabled_regsets */
-  };
-
-static struct regs_info regs_info_aarch64 =
-  {
-    NULL, /* regset_bitmap */
-    NULL, /* usrregs */
-    &aarch64_regsets_info,
-  };
-
-static struct regset_info aarch64_sve_regsets[] =
-{
-  { PTRACE_GETREGSET, PTRACE_SETREGSET, NT_PRSTATUS,
-    sizeof (struct user_pt_regs), GENERAL_REGS,
-    aarch64_fill_gregset, aarch64_store_gregset },
-  { PTRACE_GETREGSET, PTRACE_SETREGSET, NT_ARM_SVE,
-    SVE_PT_SIZE (AARCH64_MAX_SVE_VQ, SVE_PT_REGS_SVE), EXTENDED_REGS,
-    aarch64_sve_regs_copy_from_regcache, aarch64_sve_regs_copy_to_regcache
-  },
-  { PTRACE_GETREGSET, PTRACE_SETREGSET, NT_ARM_PAC_MASK,
-    AARCH64_PAUTH_REGS_SIZE, OPTIONAL_REGS,
-    NULL, aarch64_store_pauthregset },
-  NULL_REGSET
-};
-
-static struct regsets_info aarch64_sve_regsets_info =
-  {
-    aarch64_sve_regsets, /* regsets.  */
-    0, /* num_regsets.  */
-    NULL, /* disabled_regsets.  */
-  };
-
-static struct regs_info regs_info_aarch64_sve =
-  {
-    NULL, /* regset_bitmap.  */
-    NULL, /* usrregs.  */
-    &aarch64_sve_regsets_info,
-  };
 
 /* Implementation of linux target ops method "get_regs_info".  */
 
@@ -733,9 +821,7 @@ aarch64_target::get_regs_info ()
   if (!is_64bit_tdesc ())
     return &regs_info_aarch32;
 
-  if (is_sve_tdesc ())
-    return &regs_info_aarch64_sve;
-
+  /* AArch64 64-bit registers.  */
   return &regs_info_aarch64;
 }
 
@@ -3167,6 +3253,54 @@ aarch64_target::breakpoint_kind_from_current_state (CORE_ADDR *pcptr)
     return arm_breakpoint_kind_from_current_state (pcptr);
 }
 
+/* Returns true if memory tagging is supported.  */
+bool
+aarch64_target::supports_memory_tagging ()
+{
+  if (current_thread == NULL)
+    {
+      /* We don't have any processes running, so don't attempt to
+	 use linux_get_hwcap2 as it will try to fetch the current
+	 thread id.  Instead, just fetch the auxv from the self
+	 PID.  */
+#ifdef HAVE_GETAUXVAL
+      return (getauxval (AT_HWCAP2) & HWCAP2_MTE) != 0;
+#else
+      return true;
+#endif
+    }
+
+  return (linux_get_hwcap2 (8) & HWCAP2_MTE) != 0;
+}
+
+bool
+aarch64_target::fetch_memtags (CORE_ADDR address, size_t len,
+			       gdb::byte_vector &tags, int type)
+{
+  /* Allocation tags are per-process, so any tid is fine.  */
+  int tid = lwpid_of (current_thread);
+
+  /* Allocation tag?  */
+  if (type == static_cast <int> (aarch64_memtag_type::mte_allocation))
+    return aarch64_mte_fetch_memtags (tid, address, len, tags);
+
+  return false;
+}
+
+bool
+aarch64_target::store_memtags (CORE_ADDR address, size_t len,
+			       const gdb::byte_vector &tags, int type)
+{
+  /* Allocation tags are per-process, so any tid is fine.  */
+  int tid = lwpid_of (current_thread);
+
+  /* Allocation tag?  */
+  if (type == static_cast <int> (aarch64_memtag_type::mte_allocation))
+    return aarch64_mte_store_memtags (tid, address, len, tags);
+
+  return false;
+}
+
 /* The linux target ops object.  */
 
 linux_process_target *the_linux_target = &the_aarch64_target;
@@ -3177,5 +3311,4 @@ initialize_low_arch (void)
   initialize_low_arch_aarch32 ();
 
   initialize_regsets_info (&aarch64_regsets_info);
-  initialize_regsets_info (&aarch64_sve_regsets_info);
 }

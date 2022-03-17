@@ -1,5 +1,5 @@
 /* Utility functions for the analyzer.
-   Copyright (C) 2019-2020 Free Software Foundation, Inc.
+   Copyright (C) 2019-2021 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -31,6 +31,164 @@ along with GCC; see the file COPYING3.  If not see
 #include "analyzer/analyzer.h"
 
 #if ENABLE_ANALYZER
+
+namespace ana {
+
+/* Workaround for missing location information for some stmts,
+   which ultimately should be solved by fixing the frontends
+   to provide the locations (TODO).  */
+
+location_t
+get_stmt_location (const gimple *stmt, function *fun)
+{
+  if (get_pure_location (stmt->location) == UNKNOWN_LOCATION)
+    {
+      /* Workaround for missing location information for clobber
+	 stmts, which seem to lack location information in the C frontend
+	 at least.  Created by gimplify_bind_expr, which uses the
+	   BLOCK_SOURCE_END_LOCATION (BIND_EXPR_BLOCK (bind_expr))
+	 but this is never set up when the block is created in
+	 c_end_compound_stmt's pop_scope.
+	 TODO: fix this missing location information.
+
+	 For now, as a hackish workaround, use the location of the end of
+	 the function.  */
+      if (gimple_clobber_p (stmt) && fun)
+	return fun->function_end_locus;
+    }
+
+  return stmt->location;
+}
+
+static tree
+fixup_tree_for_diagnostic_1 (tree expr, hash_set<tree> *visited);
+
+/*  Subroutine of fixup_tree_for_diagnostic_1, called on SSA names.
+    Attempt to reconstruct a a tree expression for SSA_NAME
+    based on its def-stmt.
+    SSA_NAME must be non-NULL.
+    VISITED must be non-NULL; it is used to ensure termination.
+
+    Return NULL_TREE if there is a problem.  */
+
+static tree
+maybe_reconstruct_from_def_stmt (tree ssa_name,
+				 hash_set<tree> *visited)
+{
+  /* Ensure termination.  */
+  if (visited->contains (ssa_name))
+    return NULL_TREE;
+  visited->add (ssa_name);
+
+  gimple *def_stmt = SSA_NAME_DEF_STMT (ssa_name);
+
+  switch (gimple_code (def_stmt))
+    {
+    default:
+      gcc_unreachable ();
+    case GIMPLE_NOP:
+    case GIMPLE_PHI:
+      /* Can't handle these.  */
+      return NULL_TREE;
+    case GIMPLE_ASSIGN:
+      {
+	enum tree_code code = gimple_assign_rhs_code (def_stmt);
+
+	/* Reverse the effect of extract_ops_from_tree during
+	   gimplification.  */
+	switch (get_gimple_rhs_class (code))
+	  {
+	  default:
+	  case GIMPLE_INVALID_RHS:
+	    gcc_unreachable ();
+	  case GIMPLE_TERNARY_RHS:
+	  case GIMPLE_BINARY_RHS:
+	  case GIMPLE_UNARY_RHS:
+	    {
+	      tree t = make_node (code);
+	      TREE_TYPE (t) = TREE_TYPE (ssa_name);
+	      unsigned num_rhs_args = gimple_num_ops (def_stmt) - 1;
+	      for (unsigned i = 0; i < num_rhs_args; i++)
+		{
+		  tree op = gimple_op (def_stmt, i + 1);
+		  if (op)
+		    {
+		      op = fixup_tree_for_diagnostic_1 (op, visited);
+		      if (op == NULL_TREE)
+			return NULL_TREE;
+		    }
+		  TREE_OPERAND (t, i) = op;
+		}
+	      return t;
+	    }
+	  case GIMPLE_SINGLE_RHS:
+	    {
+	      tree op = gimple_op (def_stmt, 1);
+	      op = fixup_tree_for_diagnostic_1 (op, visited);
+	      return op;
+	    }
+	  }
+      }
+      break;
+    case GIMPLE_CALL:
+      {
+	gcall *call_stmt = as_a <gcall *> (def_stmt);
+	tree return_type = gimple_call_return_type (call_stmt);
+	tree fn = fixup_tree_for_diagnostic_1 (gimple_call_fn (call_stmt),
+					       visited);
+	unsigned num_args = gimple_call_num_args (call_stmt);
+	auto_vec<tree> args (num_args);
+	for (unsigned i = 0; i < num_args; i++)
+	  {
+	    tree arg = gimple_call_arg (call_stmt, i);
+	    arg = fixup_tree_for_diagnostic_1 (arg, visited);
+	    if (arg == NULL_TREE)
+	      return NULL_TREE;
+	    args.quick_push (arg);
+	  }
+	return build_call_array_loc (gimple_location (call_stmt),
+				     return_type, fn,
+				     num_args, args.address ());
+      }
+      break;
+    }
+}
+
+/* Subroutine of fixup_tree_for_diagnostic: attempt to fixup EXPR,
+   which can be NULL.
+   VISITED must be non-NULL; it is used to ensure termination.  */
+
+static tree
+fixup_tree_for_diagnostic_1 (tree expr, hash_set<tree> *visited)
+{
+  if (expr
+      && TREE_CODE (expr) == SSA_NAME
+      && (SSA_NAME_VAR (expr) == NULL_TREE
+	  || DECL_ARTIFICIAL (SSA_NAME_VAR (expr))))
+    if (tree expr2 = maybe_reconstruct_from_def_stmt (expr, visited))
+      return expr2;
+  return expr;
+}
+
+/* We don't want to print '<unknown>' in our diagnostics (PR analyzer/99771),
+   but sometimes we generate diagnostics involving an ssa name for a
+   temporary.
+
+   Work around this by attempting to reconstruct a tree expression for
+   such temporaries based on their def-stmts.
+
+   Otherwise return EXPR.
+
+   EXPR can be NULL.  */
+
+tree
+fixup_tree_for_diagnostic (tree expr)
+{
+  hash_set<tree> visited;
+  return fixup_tree_for_diagnostic_1 (expr, &visited);
+}
+
+} // namespace ana
 
 /* Helper function for checkers.  Is the CALL to the given function name,
    and with the given number of arguments?
@@ -174,7 +332,9 @@ is_setjmp_call_p (const gcall *call)
 {
   if (is_special_named_call_p (call, "setjmp", 1)
       || is_special_named_call_p (call, "sigsetjmp", 2))
-    return true;
+    /* region_model::on_setjmp requires a pointer.  */
+    if (POINTER_TYPE_P (TREE_TYPE (gimple_call_arg (call, 0))))
+      return true;
 
   return false;
 }
@@ -186,7 +346,10 @@ is_longjmp_call_p (const gcall *call)
 {
   if (is_special_named_call_p (call, "longjmp", 2)
       || is_special_named_call_p (call, "siglongjmp", 2))
-    return true;
+    /* exploded_node::on_longjmp requires a pointer for the initial
+       argument.  */
+    if (POINTER_TYPE_P (TREE_TYPE (gimple_call_arg (call, 0))))
+      return true;
 
   return false;
 }

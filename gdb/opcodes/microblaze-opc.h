@@ -1,6 +1,6 @@
 /* microblaze-opc.h -- MicroBlaze Opcodes
 
-   Copyright (C) 2009-2020 Free Software Foundation, Inc.
+   Copyright (C) 2009-2021 Free Software Foundation, Inc.
 
    This file is part of the GNU opcodes library.
 
@@ -103,7 +103,7 @@
 
 #define MAX_OPCODES 289
 
-struct op_code_struct
+const struct op_code_struct
 {
   const char * name;
   short inst_type;            /* Registers and immediate values involved.  */
@@ -117,7 +117,7 @@ struct op_code_struct
   enum microblaze_instr instr;
   enum microblaze_instr_type instr_type;
   /* More info about output format here.  */
-} opcodes[MAX_OPCODES] =
+} microblaze_opcodes[MAX_OPCODES] =
 {
   {"add",   INST_TYPE_RD_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x00000000, OPCODE_MASK_H4, add, arithmetic_inst },
   {"rsub",  INST_TYPE_RD_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x04000000, OPCODE_MASK_H4, rsub, arithmetic_inst },

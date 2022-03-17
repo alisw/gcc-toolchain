@@ -1,6 +1,6 @@
 /* Native debugging support for GNU/Linux (LWP layer).
 
-   Copyright (C) 2000-2020 Free Software Foundation, Inc.
+   Copyright (C) 2000-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -46,7 +46,7 @@ public:
 
   void resume (ptid_t, int, enum gdb_signal) override;
 
-  ptid_t wait (ptid_t, struct target_waitstatus *, int) override;
+  ptid_t wait (ptid_t, struct target_waitstatus *, target_wait_flags) override;
 
   void pass_signals (gdb::array_view<const unsigned char>) override;
 
@@ -133,7 +133,7 @@ public:
 
   void post_attach (int) override;
 
-  bool follow_fork (bool, bool) override;
+  void follow_fork (bool, bool) override;
 
   std::vector<static_tracepoint_marker>
     static_tracepoint_markers_by_strid (const char *id) override;
@@ -304,8 +304,11 @@ void check_for_thread_db (void);
    true on success, false if the process isn't using libpthread.  */
 extern int thread_db_notice_clone (ptid_t parent, ptid_t child);
 
-/* Return the set of signals used by the threads library.  */
-extern void lin_thread_get_thread_signals (sigset_t *mask);
+/* Return the number of signals used by the threads library.  */
+extern unsigned int lin_thread_get_thread_signal_num (void);
+
+/* Return the i-th signal used by the threads library.  */
+extern int lin_thread_get_thread_signal (unsigned int i);
 
 /* Find process PID's pending signal set from /proc/pid/status.  */
 void linux_proc_pending_signals (int pid, sigset_t *pending,

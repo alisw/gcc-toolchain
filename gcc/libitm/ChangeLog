@@ -1,25 +1,91 @@
-2020-07-23  Release Manager
+2021-07-28  Release Manager
 
-	* GCC 10.2.0 released.
+	* GCC 11.2.0 released.
 
-2020-07-13  Szabolcs Nagy  <szabolcs.nagy@arm.com>
+2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
 
 	Backported from master:
-	2020-07-09  Szabolcs Nagy  <szabolcs.nagy@arm.com>
+	2021-06-17  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/91488
+	* testsuite/libitm.c++/libstdc++-pr91488.C: New test.
+
+2021-04-27  Release Manager
+
+	* GCC 11.1.0 released.
+
+2021-01-15  Jakub Jelinek  <jakub@redhat.com>
+
+	PR target/70454
+	* configure.tgt: For i?86 and x86_64 determine if -march=i486 needs to
+	be added through preprocessor check on
+	__GCC_HAVE_SYNC_COMPARE_AND_SWAP_4.
+
+2021-01-05  Samuel Thibault  <samuel.thibault@ens-lyon.org>
+
+	* configure: Re-generate.
+
+2021-01-01  Jakub Jelinek  <jakub@redhat.com>
+
+	* libitm.texi: Bump @copying's copyright year.
+
+2020-12-05  Iain Sandoe  <iain@sandoe.co.uk>
+
+	PR target/97865
+	* configure.tgt: Add dynamic_lookup to XLDFLAGS for Darwin.
+	* configure: Regenerate.
+
+2020-11-29  John David Anglin  <danglin@gcc.gnu.org>
+
+	* configure: Regenerate.
+
+2020-10-01  Alan Modra  <amodra@gmail.com>
+
+	* config/powerpc/sjlj.S: Support __PCREL__ code.
+
+2020-07-24  Szabolcs Nagy  <szabolcs.nagy@arm.com>
+
+	* config/aarch64/sjlj.S: Add conditional pac-ret protection.
+
+2020-07-09  Szabolcs Nagy  <szabolcs.nagy@arm.com>
 
 	* config/aarch64/sjlj.S: Add BTI marking and related definitions,
 	and add BTI c to function entries.
 
-2020-07-13  Szabolcs Nagy  <szabolcs.nagy@arm.com>
-
-	Backported from master:
-	2020-07-09  Szabolcs Nagy  <szabolcs.nagy@arm.com>
+2020-07-09  Szabolcs Nagy  <szabolcs.nagy@arm.com>
 
 	* config/aarch64/sjlj.S: Add stack note if __FreeBSD__ is defined.
 
-2020-05-07  Release Manager
+2020-05-29  H.J. Lu  <hjl.tools@gmail.com>
 
-	* GCC 10.1.0 released.
+	PR bootstrap/95413
+	* configure: Regenerated.
+
+2020-05-15  H.J. Lu  <hongjiu.lu@intel.com>
+
+	PR bootstrap/95147
+	* configure: Regenerated.
+
+2020-05-14  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* configure: Regenerated.
+
+2020-05-12  Nathan Sidwell  <nathan@acm.org>
+
+	Fix throw specifiers on interface.
+	* libitm/libitm.h (_ITM_NOTHROW): Define.
+	(_ITM_cxa_allocate_exception, _ITM_cxa_free_exception)
+	(_ITM_cxa_begin_catch): Use it.
+	* eh_cpp.cc: Add throw() to __cxa_allocate_exception,
+	__cxa_free_exception, __cxa_begin_catch, __cxa_tm_cleanup,
+	__cxa_get_globals.
+	(_ITM_cxa_allocate_exception, _ITM_cxa_free_exception)
+	(_ITM_cxa_begin_catch): Likewise.
+
+2020-05-05  Nathan Sidwell  <nathan@acm.org>
+
+	* testsuite/lib/libitm.exp (libitm_init): Add
+	-fdiagnostics-color=never to options.
 
 2020-02-12  Sandra Loosemore  <sandra@codesourcery.com>
 
@@ -2243,7 +2309,7 @@
 
 	* Initial commit.
 
-Copyright (C) 2008-2020 Free Software Foundation, Inc.
+Copyright (C) 2008-2021 Free Software Foundation, Inc.
 
 Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright

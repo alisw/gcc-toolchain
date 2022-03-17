@@ -1,4 +1,4 @@
-// Copyright (C) 2015-2020 Free Software Foundation, Inc.
+// Copyright (C) 2015-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -15,11 +15,8 @@
 // with this library; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
-// { dg-do run }
-// { dg-options "-pthread"  }
-// { dg-require-effective-target c++14 }
-// { dg-require-effective-target pthread }
-// { dg-require-gthreads "" }
+// { dg-do run { target c++14 } }
+// { dg-additional-options "-pthread" { target pthread } }
 
 #include <experimental/executor>
 #include <testsuite_hooks.h>

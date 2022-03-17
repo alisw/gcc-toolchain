@@ -1,6 +1,6 @@
 /* Caching of GDB/DWARF index files.
 
-   Copyright (C) 1994-2020 Free Software Foundation, Inc.
+   Copyright (C) 1994-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -144,11 +144,11 @@ index_cache::store (dwarf2_per_objfile *per_objfile)
 	}
 
       if (debug_index_cache)
-        printf_unfiltered ("index cache: writing index cache for objfile %s\n",
+	printf_unfiltered ("index cache: writing index cache for objfile %s\n",
 			   objfile_name (obj));
 
       /* Write the index itself to the directory, using the build id as the
-         filename.  */
+	 filename.  */
       write_psymtabs_to_index (per_objfile, m_dir.c_str (),
 			       build_id_str.c_str (), dwz_build_id_ptr,
 			       dw_index_kind::GDB_INDEX);
@@ -198,7 +198,7 @@ index_cache::lookup_gdb_index (const bfd_build_id *build_id,
   try
     {
       if (debug_index_cache)
-        printf_unfiltered ("index cache: trying to read %s\n",
+	printf_unfiltered ("index cache: trying to read %s\n",
 			   filename.c_str ());
 
       /* Try to map that file.  */
@@ -335,12 +335,12 @@ _initialize_index_cache ()
   add_basic_prefix_cmd ("index-cache", class_files,
 			_("Set index-cache options."),
 			&set_index_cache_prefix_list,
-			"set index-cache ", false, &setlist);
+			false, &setlist);
 
   /* show index-cache */
   add_prefix_cmd ("index-cache", class_files, show_index_cache_command,
 		  _("Show index-cache options."), &show_index_cache_prefix_list,
-		  "show index-cache ", false, &showlist);
+		  false, &showlist);
 
   /* set index-cache on */
   add_cmd ("on", class_files, set_index_cache_on_command,

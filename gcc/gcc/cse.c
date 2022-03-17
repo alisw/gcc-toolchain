@@ -1,5 +1,5 @@
 /* Common subexpression elimination for GNU compiler.
-   Copyright (C) 1987-2020 Free Software Foundation, Inc.
+   Copyright (C) 1987-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -2636,6 +2636,11 @@ exp_equiv_p (const_rtx x, const_rtx y, int validate, bool for_gcse)
     case CC0:
     CASE_CONST_UNIQUE:
       return x == y;
+
+    case CONST_VECTOR:
+      if (!same_vector_encodings_p (x, y))
+	return false;
+      break;
 
     case LABEL_REF:
       return label_ref_label (x) == label_ref_label (y);

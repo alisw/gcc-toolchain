@@ -1,5 +1,5 @@
 /* Declarations for tree-object-size.c.
-   Copyright (C) 2013-2020 Free Software Foundation, Inc.
+   Copyright (C) 2013-2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -24,5 +24,6 @@ extern void init_object_sizes (void);
 extern void fini_object_sizes (void);
 extern bool compute_builtin_object_size (tree, int, unsigned HOST_WIDE_INT *,
 					 tree * = NULL, tree * = NULL);
+extern tree decl_init_size (tree, bool);
 
 #endif  // GCC_TREE_OBJECT_SIZE_H

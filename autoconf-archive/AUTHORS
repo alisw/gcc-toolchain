@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Autoconf Archive Maintainers <autoconf-archive-maintainers@gnu.org>
+# Copyright (c) 2022 Autoconf Archive Maintainers <autoconf-archive-maintainers@gnu.org>
 #
 # Copying and distribution of this file, with or without modification, are
 # permitted in any medium without royalty provided the copyright notice and this
@@ -73,6 +73,7 @@ Christophe Fergeau
 Christophe Tournayre
 Christopher Currie
 Christopher Gilbreth
+Chuck Atkins
 Chun-Chung Chen
 Collabora Ltd.
 Corey Farrell
@@ -110,6 +111,7 @@ Dodji Seketeli
 Don Anderson
 Duncan Simpson
 Dustin J. Mitchell
+Earl
 Egon Willighagen
 Elliott Sales de Andrade
 Emanuele Aina
@@ -160,6 +162,7 @@ Jaap Eldering
 James Cowgill
 James Morris
 Jan Langer
+Jan Palus
 Janne Blomqvist
 Jannick
 Jaroslav Hajek
@@ -194,6 +197,7 @@ Julian C. Cummings
 Julian Cummings
 Julian Ospald
 Julian Taylor
+Jörn Heusipp
 Kaelin Colclasure
 Karl Wette
 Karl-Johan Alm
@@ -202,6 +206,7 @@ Kaveh Ghazi
 Kevin Cernekee
 Kevin L. Mitchell
 Kevin Locke
+Kip
 Kip Warner
 Kirill A. Korinskiy
 Krzesimir Nowak
@@ -299,11 +304,13 @@ Peter Johansson
 Peter Kjellerstedt
 Peter Kokot
 Peter Simons
+Petr Menšík
 Philip Allison
 Philip Chimento
 Philip Withnall
 Philipp Thomas
 Pierre Hebert
+Pieter Lexis
 Quang Vu
 Rafael Laboissiere
 Rafael de Lucena Valle
@@ -317,7 +324,9 @@ Reuben Thomas
 Rhys Ulerich
 Ricardo Wurmus
 Riccardo Murri
+Richard B Winters
 Richard Henderson
+Richard Winters
 Robert White
 Robert van Engelen
 Roman Rybalko
@@ -367,6 +376,7 @@ Thomas Porschberg
 Thomas Treichl
 Thomas Zimmermann
 Tim Perkins
+Tim Ruffing
 Tim Toolan
 Timothy Brown
 Ting-Wei Lan
@@ -389,6 +399,7 @@ Vasil Dimov
 Vasil Velichkov
 Victor Bogado
 Ville Laurikari
+Vincent Danjean
 Vinson Lee
 Wang Xuerui
 Warren Young
@@ -412,5 +423,7 @@ fanquake
 gmbonnet
 karypid
 kedzie
+mathar
 raf
 ryanvm
+wferi

@@ -1,6 +1,6 @@
 /* cpustate.h -- Prototypes for AArch64 cpu state functions.
 
-   Copyright (C) 2015-2020 Free Software Foundation, Inc.
+   Copyright (C) 2015-2022 Free Software Foundation, Inc.
 
    Contributed by Red Hat.
 
@@ -22,12 +22,11 @@
 #ifndef _CPU_STATE_H
 #define _CPU_STATE_H
 
-#include "config.h"
 #include <sys/types.h>
 #include <stdint.h>
 #include <inttypes.h>
 
-#include "gdb/remote-sim.h"
+#include "sim/sim.h"
 
 /* Symbolic names used to identify general registers which also match
    the registers indices in machine code.

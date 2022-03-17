@@ -1,4 +1,4 @@
-/* Copyright (C) 1986-2020 Free Software Foundation, Inc.
+/* Copyright (C) 1986-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -29,21 +29,22 @@ struct process_stratum_target;
 struct thread_info;
 
 /* True if we are debugging run control.  */
-extern unsigned int debug_infrun;
+extern bool debug_infrun;
 
-/* Print an "infrun" debug statement.  Should be used through
-   infrun_debug_printf.  */
-void ATTRIBUTE_PRINTF (2, 3) infrun_debug_printf_1
-  (const char *func_name, const char *fmt, ...);
+/* Print an "infrun" debug statement.  */
 
 #define infrun_debug_printf(fmt, ...) \
-  do { \
-    if (debug_infrun) \
-      infrun_debug_printf_1 (__func__, fmt, ##__VA_ARGS__); \
-  } while (0)
+  debug_prefixed_printf_cond (debug_infrun, "infrun", fmt, ##__VA_ARGS__)
 
-/* True if we are debugging displaced stepping.  */
-extern bool debug_displaced;
+/* Print "infrun" start/end debug statements.  */
+
+#define INFRUN_SCOPED_DEBUG_START_END(msg) \
+  scoped_debug_start_end (debug_infrun, "infrun", msg)
+
+/* Print "infrun" enter/exit debug statements.  */
+
+#define INFRUN_SCOPED_DEBUG_ENTER_EXIT \
+  scoped_debug_enter_exit (debug_infrun, "infrun")
 
 /* Nonzero if we want to give control to the user when we're notified
    of shared library events by the dynamic linker.  */
@@ -227,12 +228,8 @@ extern void update_signals_program_target (void);
    $_exitsignal.  */
 extern void clear_exit_convenience_vars (void);
 
-/* Dump LEN bytes at BUF in hex to FILE, followed by a newline.  */
-extern void displaced_step_dump_bytes (struct ui_file *file,
-				       const gdb_byte *buf, size_t len);
-
-extern struct displaced_step_closure *get_displaced_step_closure_by_addr
-    (CORE_ADDR addr);
+/* Dump LEN bytes at BUF in hex to a string and return it.  */
+extern std::string displaced_step_dump_bytes (const gdb_byte *buf, size_t len);
 
 extern void update_observer_mode (void);
 
@@ -254,9 +251,9 @@ extern void infrun_async (int enable);
    loop.  */
 extern void mark_infrun_async_event_handler (void);
 
-/* The global queue of threads that need to do a step-over operation
+/* The global chain of threads that need to do a step-over operation
    to get past e.g., a breakpoint.  */
-extern struct thread_info *step_over_queue_head;
+extern struct thread_info *global_thread_step_over_chain_head;
 
 /* Remove breakpoints if possible (usually that means, if everything
    is stopped).  On failure, print a message.  */
@@ -272,68 +269,106 @@ extern void all_uis_check_sync_execution_done (void);
    started or re-started).  */
 extern void all_uis_on_sync_execution_starting (void);
 
-/* Base class for displaced stepping closures (the arch-specific data).  */
+/* In all-stop, restart the target if it had to be stopped to
+   detach.  */
+extern void restart_after_all_stop_detach (process_stratum_target *proc_target);
 
-struct displaced_step_closure
+/* RAII object to temporarily disable the requirement for target
+   stacks to commit their resumed threads.
+
+   On construction, set process_stratum_target::commit_resumed_state
+   to false for all process_stratum targets in all target
+   stacks.
+
+   On destruction (or if reset_and_commit() is called), set
+   process_stratum_target::commit_resumed_state to true for all
+   process_stratum targets in all target stacks, except those that:
+
+     - have no resumed threads
+     - have a resumed thread with a pending status
+
+   target_commit_resumed is not called in the destructor, because its
+   implementations could throw, and we don't to swallow that error in
+   a destructor.  Instead, the caller should call the
+   reset_and_commit_resumed() method so that an eventual exception can
+   propagate.  "reset" in the method name refers to the fact that this
+   method has the same effect as the destructor, in addition to
+   committing resumes.
+
+   The creation of nested scoped_disable_commit_resumed objects is
+   tracked, such that only the outermost instance actually does
+   something, for cases like this:
+
+     void
+     inner_func ()
+     {
+       scoped_disable_commit_resumed disable;
+
+       // do stuff
+
+       disable.reset_and_commit ();
+     }
+
+     void
+     outer_func ()
+     {
+       scoped_disable_commit_resumed disable;
+
+       for (... each thread ...)
+	 inner_func ();
+
+       disable.reset_and_commit ();
+     }
+
+   In this case, we don't want the `disable` destructor in
+   `inner_func` to require targets to commit resumed threads, so that
+   the `reset_and_commit()` call in `inner_func` doesn't actually
+   resume threads.  */
+
+struct scoped_disable_commit_resumed
 {
-  virtual ~displaced_step_closure () = 0;
+  explicit scoped_disable_commit_resumed (const char *reason);
+  ~scoped_disable_commit_resumed ();
+
+  DISABLE_COPY_AND_ASSIGN (scoped_disable_commit_resumed);
+
+  /* Undoes the disabling done by the ctor, and calls
+     maybe_call_commit_resumed_all_targets().  */
+  void reset_and_commit ();
+
+private:
+  /* Undoes the disabling done by the ctor.  */
+  void reset ();
+
+  /* Whether this object has been reset.  */
+  bool m_reset = false;
+
+  const char *m_reason;
+  bool m_prev_enable_commit_resumed;
 };
 
-using displaced_step_closure_up = std::unique_ptr<displaced_step_closure>;
+/* Call target_commit_resumed method on all target stacks whose
+   process_stratum target layer has COMMIT_RESUME_STATE set.  */
 
-/* A simple displaced step closure that contains only a byte buffer.  */
+extern void maybe_call_commit_resumed_all_targets ();
 
-struct buf_displaced_step_closure : displaced_step_closure
+/* RAII object to temporarily enable the requirement for target stacks
+   to commit their resumed threads.  This is the inverse of
+   scoped_disable_commit_resumed.  The constructor calls the
+   maybe_call_commit_resumed_all_targets function itself, since it's
+   OK to throw from a constructor.  */
+
+struct scoped_enable_commit_resumed
 {
-  buf_displaced_step_closure (int buf_size)
-  : buf (buf_size)
-  {}
+  explicit scoped_enable_commit_resumed (const char *reason);
+  ~scoped_enable_commit_resumed ();
 
-  gdb::byte_vector buf;
+  DISABLE_COPY_AND_ASSIGN (scoped_enable_commit_resumed);
+
+private:
+  const char *m_reason;
+  bool m_prev_enable_commit_resumed;
 };
 
-/* Per-inferior displaced stepping state.  */
-struct displaced_step_inferior_state
-{
-  displaced_step_inferior_state ()
-  {
-    reset ();
-  }
-
-  /* Put this object back in its original state.  */
-  void reset ()
-  {
-    failed_before = 0;
-    step_thread = nullptr;
-    step_gdbarch = nullptr;
-    step_closure.reset ();
-    step_original = 0;
-    step_copy = 0;
-    step_saved_copy.clear ();
-  }
-
-  /* True if preparing a displaced step ever failed.  If so, we won't
-     try displaced stepping for this inferior again.  */
-  int failed_before;
-
-  /* If this is not nullptr, this is the thread carrying out a
-     displaced single-step in process PID.  This thread's state will
-     require fixing up once it has completed its step.  */
-  thread_info *step_thread;
-
-  /* The architecture the thread had when we stepped it.  */
-  gdbarch *step_gdbarch;
-
-  /* The closure provided gdbarch_displaced_step_copy_insn, to be used
-     for post-step cleanup.  */
-  displaced_step_closure_up step_closure;
-
-  /* The address of the original instruction, and the copy we
-     made.  */
-  CORE_ADDR step_original, step_copy;
-
-  /* Saved contents of copy area.  */
-  gdb::byte_vector step_saved_copy;
-};
 
 #endif /* INFRUN_H */
