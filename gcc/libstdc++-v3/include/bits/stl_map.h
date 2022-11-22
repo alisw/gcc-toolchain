@@ -585,7 +585,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
 	std::pair<iterator, bool>
 	emplace(_Args&&... __args)
 	{
-#if __cplusplus >= 201703L
+#if __cplusplus >= 201703L && !defined(__NVCC__)
 	  if constexpr (sizeof...(_Args) == 2)
 	    if constexpr (is_same_v<allocator_type, allocator<value_type>>)
 	      {
