@@ -1,4 +1,4 @@
-@c Copyright (C) 2002-2021 Free Software Foundation, Inc.
+@c Copyright (C) 2002-2022 Free Software Foundation, Inc.
 @c This is part of the GCC manual.
 @c For copying conditions, see the file gcc.texi.
 
@@ -7,7 +7,7 @@
 
 This chapter describes the structure of the GCC source tree, and how
 GCC is built.  The user documentation for building and installing GCC
-is in a separate manual (@uref{http://gcc.gnu.org/install/}), with
+is in a separate manual (@uref{https://gcc.gnu.org/install/}), with
 which it is presumed that you are familiar.
 
 @menu
@@ -523,7 +523,7 @@ link to such information in the front end's own manual.
 Details of source file suffixes for that language and @option{-x
 @var{lang}} options supported, in @file{gcc/doc/invoke.texi}.
 @item
-Entries in @code{default_compilers} in @file{gcc.c} for source file
+Entries in @code{default_compilers} in @file{gcc.cc} for source file
 suffixes for that language.
 @item
 Preferably testsuites, which may be under @file{gcc/testsuite} or
@@ -607,7 +607,7 @@ This file registers the set of switches that the front end accepts on
 the command line, and their @option{--help} text.  @xref{Options}.
 @item lang-specs.h
 This file provides entries for @code{default_compilers} in
-@file{gcc.c} which override the default of giving an error that a
+@file{gcc.cc} which override the default of giving an error that a
 compiler for that language is not installed.
 @item @var{language}-tree.def
 This file, which need not exist, defines any language-specific tree
@@ -666,7 +666,7 @@ be used to create a file @file{@var{language}/Makefile} from
 everything from the single @file{gcc/Makefile} is preferred.
 @item gtfiles
 If defined, a space-separated list of files that should be scanned by
-@file{gengtype.c} to generate the garbage collection tables and routines for
+@file{gengtype.cc} to generate the garbage collection tables and routines for
 this language.  This excludes the files that are common to all front
 ends.  @xref{Type Information}.
 
@@ -1217,6 +1217,21 @@ If there is no message for that line or if the text of that message is
 not matched by @var{regexp} then the check fails and @var{comment} is
 included in the @code{FAIL} message.
 
+@item @{ dg-note @var{regexp} [@var{comment} [@{ target/xfail @var{selector} @} [@var{line}] ]] @}
+The line is expected to get a @samp{note} message.
+If there is no message for that line or if the text of that message is
+not matched by @var{regexp} then the check fails and @var{comment} is
+included in the @code{FAIL} message.
+
+By default, any @emph{excess} @samp{note} messages are pruned, meaning
+their appearance doesn't trigger @emph{excess errors}.
+However, if @samp{dg-note} is used at least once in a testcase,
+they're not pruned and instead must @emph{all} be handled explicitly.
+Thus, if looking for just single instances of messages with
+@samp{note: } prefixes without caring for all of them, use
+@samp{dg-message "note: [@dots{}]"} instead of @samp{dg-note}, or use
+@samp{dg-note} together with @samp{dg-prune-output "note: "}.
+
 @item @{ dg-bogus @var{regexp} [@var{comment} [@{ target/xfail @var{selector} @} [@var{line}] ]] @}
 This DejaGnu directive appears on a source line that should not get a
 message matching @var{regexp}, or else specifies the source line
@@ -1227,7 +1242,8 @@ targets.
 @item @{ dg-line @var{linenumvar} @}
 This DejaGnu directive sets the variable @var{linenumvar} to the line number of
 the source line.  The variable @var{linenumvar} can then be used in subsequent
-@code{dg-error}, @code{dg-warning}, @code{dg-message} and @code{dg-bogus}
+@code{dg-error}, @code{dg-warning}, @code{dg-message}, @code{dg-note}
+and @code{dg-bogus}
 directives.  For example:
 
 @smallexample
@@ -1239,7 +1255,9 @@ float a; /* @{ dg-error "conflicting types of" @} */
 @item @{ dg-excess-errors @var{comment} [@{ target/xfail @var{selector} @}] @}
 This DejaGnu directive indicates that the test is expected to fail due
 to compiler messages that are not handled by @samp{dg-error},
-@samp{dg-warning} or @samp{dg-bogus}.  For this directive @samp{xfail}
+@samp{dg-warning}, @code{dg-message}, @samp{dg-note} or
+@samp{dg-bogus}.
+For this directive @samp{xfail}
 has the same effect as @samp{target}.
 
 @item @{ dg-prune-output @var{regexp} @}
@@ -1301,6 +1319,8 @@ A selector is:
 @item one or more target triplets, possibly including wildcard characters;
 use @samp{*-*-*} to match any target
 @item a single effective-target keyword (@pxref{Effective-Target Keywords})
+@item a list of compiler options that should be included or excluded
+(as described in more detail below)
 @item a logical expression
 @end itemize
 
@@ -1313,14 +1333,96 @@ test to fail for targets that match @var{selector2}.
 
 A selector expression appears within curly braces and uses a single
 logical operator: one of @samp{!}, @samp{&&}, or @samp{||}.  An
-operand is another selector expression, an effective-target keyword,
-a single target triplet, or a list of target triplets within quotes or
-curly braces.  For example:
+operand is one of the following:
+
+@itemize @bullet
+@item
+another selector expression, in curly braces
+
+@item
+an effective-target keyword, such as @code{lp64}
+
+@item
+a single target triplet
+
+@item
+a list of target triplets within quotes or curly braces
+
+@item
+one of the following:
+
+@table @samp
+@item @{ any-opts @var{opt1} @dots{} @var{optn} @}
+Each of @var{opt1} to @var{optn} is a space-separated list of option globs.
+The selector expression evaluates to true if, for one of these strings,
+every glob in the string matches an option that was passed to the compiler.
+For example:
+
+@smallexample
+@{ any-opts "-O3 -flto" "-O[2g]" @}
+@end smallexample
+
+is true if any of the following are true:
+
+@itemize @bullet
+@item
+@option{-O2} was passed to the compiler
+
+@item
+@option{-Og} was passed to the compiler
+
+@item
+both @option{-O3} and @option{-flto} were passed to the compiler
+@end itemize
+
+This kind of selector can only be used within @code{dg-final} directives.
+Use @code{dg-skip-if}, @code{dg-xfail-if} or @code{dg-xfail-run-if} to
+skip whole tests based on options, or to mark them as expected to fail
+with certain options.
+
+@item @{ no-opts @var{opt1} @dots{} @var{optn} @}
+As for @code{any-opts} above, each of @var{opt1} to @var{optn} is a
+space-separated list of option globs.  The selector expression
+evaluates to true if, for all of these strings, there is at least
+one glob that does not match an option that was passed to the compiler.
+It is shorthand for:
+
+@smallexample
+@{ ! @{ any-opts @var{opt1} @dots{} @var{optn} @} @}
+@end smallexample
+
+For example:
+
+@smallexample
+@{ no-opts "-O3 -flto" "-O[2g]" @}
+@end smallexample
+
+is true if all of the following are true:
+
+@itemize @bullet
+@item
+@option{-O2} was not passed to the compiler
+
+@item
+@option{-Og} was not passed to the compiler
+
+@item
+at least one of @option{-O3} or @option{-flto} was not passed to the compiler
+@end itemize
+
+Like @code{any-opts}, this kind of selector can only be used within
+@code{dg-final} directives.
+
+@end table
+@end itemize
+
+Here are some examples of full target selectors:
 
 @smallexample
 @{ target @{ ! "hppa*-*-* ia64*-*-*" @} @}
 @{ target @{ powerpc*-*-* && lp64 @} @}
 @{ xfail @{ lp64 || vect_no_align @} @}
+@{ xfail @{ aarch64*-*-* && @{ any-opts "-O2" @} @} @}
 @end smallexample
 
 @node Effective-Target Keywords
@@ -1537,6 +1639,10 @@ Target supports vector masked loads.
 @item vect_masked_store
 Target supports vector masked stores.
 
+@item vect_gather_load_ifn
+Target supports vector gather loads using internal functions
+(rather than via built-in functions or emulation).
+
 @item vect_scatter_store
 Target supports vector scatter stores.
 
@@ -1638,6 +1744,12 @@ circumstances.
 @item vect_variable_length
 Target has variable-length vectors.
 
+@item vect64
+Target supports vectors of 64 bits.
+
+@item vect32
+Target supports vectors of 32 bits.
+
 @item vect_widen_sum_hi_to_si
 Target supports a vector widening summation of @code{short} operands
 into @code{int} results, or can promote (unpack) from @code{short}
@@ -1671,6 +1783,10 @@ Target supports a vector dot-product of @code{signed char}.
 
 @item vect_udot_qi
 Target supports a vector dot-product of @code{unsigned char}.
+
+@item vect_usdot_qi
+Target supports a vector dot-product where one operand of the multiply is
+@code{signed char} and the other of @code{unsigned char}.
 
 @item vect_sdot_hi
 Target supports a vector dot-product of @code{signed short}.
@@ -1733,6 +1849,60 @@ Target supports loop vectorization with partial vectors and
 @item vect_partial_vectors
 Target supports loop vectorization with partial vectors and
 @code{vect-partial-vector-usage} is nonzero.
+
+@item vect_slp_v2qi_store_align
+Target supports vectorization of 2-byte char stores with 2-byte aligned
+address at plain @option{-O2}.
+
+@item vect_slp_v4qi_store_align
+Target supports vectorization of 4-byte char stores with 4-byte aligned
+address at plain @option{-O2}.
+
+@item vect_slp_v4qi_store_unalign
+Target supports vectorization of 4-byte char stores with unaligned address
+at plain @option{-O2}.
+
+@item struct_4char_block_move
+Target supports block move for 8-byte aligned 4-byte size struct initialization.
+
+@item vect_slp_v4qi_store_unalign_1
+Target supports vectorization of 4-byte char stores with unaligned address
+or store them with constant pool at plain @option{-O2}.
+
+@item struct_8char_block_move
+Target supports block move for 8-byte aligned 8-byte size struct initialization.
+
+@item vect_slp_v8qi_store_unalign_1
+Target supports vectorization of 8-byte char stores with unaligned address
+or store them with constant pool at plain @option{-O2}.
+
+@item struct_16char_block_move
+Target supports block move for 8-byte aligned 16-byte size struct
+initialization.
+
+@item vect_slp_v16qi_store_unalign_1
+Target supports vectorization of 16-byte char stores with unaligned address
+or store them with constant pool at plain @option{-O2}.
+
+@item vect_slp_v2hi_store_align
+Target supports vectorization of 4-byte short stores with 4-byte aligned
+addressat plain @option{-O2}.
+
+@item vect_slp_v2hi_store_unalign
+Target supports vectorization of 4-byte short stores with unaligned address
+at plain @option{-O2}.
+
+@item vect_slp_v4hi_store_unalign
+Target supports vectorization of 8-byte short stores with unaligned address
+at plain @option{-O2}.
+
+@item vect_slp_v2si_store_align
+Target supports vectorization of 8-byte int stores with 8-byte aligned address
+at plain @option{-O2}.
+
+@item vect_slp_v4si_store_unalign
+Target supports vectorization of 16-byte int stores with unaligned address
+at plain @option{-O2}.
 @end table
 
 @subsubsection Thread Local Storage attributes
@@ -1947,6 +2117,11 @@ ARM target supports executing instructions from ARMv8.2-A with the Dot
 Product extension. Some multilibs may be incompatible with these options.
 Implies arm_v8_2a_dotprod_neon_ok.
 
+@item arm_v8_2a_i8mm_neon_hw
+ARM target supports executing instructions from ARMv8.2-A with the 8-bit
+Matrix Multiply extension.  Some multilibs may be incompatible with these
+options.  Implies arm_v8_2a_i8mm_ok.
+
 @item arm_fp16fml_neon_ok
 @anchor{arm_fp16fml_neon_ok}
 ARM target supports extensions to generate the @code{VFMAL} and @code{VFMLS}
@@ -2012,6 +2187,9 @@ div instruction.
 ARM target supports ARMv8-M Security Extensions, enabled by the @code{-mcmse}
 option.
 
+@item arm_cmse_hw
+Test system supports executing CMSE instructions.
+
 @item arm_coproc1_ok
 @anchor{arm_coproc1_ok}
 ARM target supports the following coprocessor instructions: @code{CDP},
@@ -2038,9 +2216,9 @@ ARM Target supports options suitable for accessing the SIMD32 intrinsics from
 @code{arm_acle.h}.
 Some multilibs may be incompatible with these options.
 
-@item arm_qbit_ok
-@anchor{arm_qbit_ok}
-ARM Target supports options suitable for accessing the Q-bit manipulation
+@item arm_sat_ok
+@anchor{arm_sat_ok}
+ARM Target supports options suitable for accessing the saturation
 intrinsics from @code{arm_acle.h}.
 Some multilibs may be incompatible with these options.
 
@@ -2057,6 +2235,10 @@ ARM target supports the @code{-mfloat-abi=softfp} option.
 @item arm_hard_ok
 @anchor{arm_hard_ok}
 ARM target supports the @code{-mfloat-abi=hard} option.
+
+@item arm_mve
+@anchor{arm_mve}
+ARM target supports generating MVE instructions.
 
 @item arm_v8_1_lob_ok
 @anchor{arm_v8_1_lob_ok}
@@ -2236,6 +2418,18 @@ setting is Power8 or later.
 @item has_arch_pwr9
 PowerPC target pre-defines macro _ARCH_PWR9 which means the @code{-mcpu}
 setting is Power9 or later.
+@end table
+
+@subsection RISC-V specific attributes
+
+@table @code
+
+@item rv32
+Test system has an integer register width of 32 bits.
+
+@item rv64
+Test system has an integer register width of 64 bits.
+
 @end table
 
 @subsubsection Other hardware attributes
@@ -2650,6 +2844,10 @@ constant.
 
 @item lgccjit
 Target supports -lgccjit, i.e. libgccjit.so can be linked into jit tests.
+
+@item __OPTIMIZE__
+Optimizations are enabled (@code{__OPTIMIZE__}) per the current
+compiler flags.
 @end table
 
 @subsubsection Local to tests in @code{gcc.target/i386}

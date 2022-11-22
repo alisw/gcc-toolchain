@@ -18,8 +18,10 @@
 #ifndef INFRUN_H
 #define INFRUN_H 1
 
+#include "gdbthread.h"
 #include "symtab.h"
 #include "gdbsupport/byte-vector.h"
+#include "gdbsupport/intrusive_list.h"
 
 struct target_waitstatus;
 struct frame_info;
@@ -122,16 +124,15 @@ extern process_stratum_target *user_visible_resume_target (ptid_t resume_ptid);
 extern int normal_stop (void);
 
 /* Return the cached copy of the last target/ptid/waitstatus returned
-   by target_wait()/deprecated_target_wait_hook().  The data is
-   actually cached by handle_inferior_event(), which gets called
-   immediately after target_wait()/deprecated_target_wait_hook().  */
+   by target_wait().  The data is actually cached by handle_inferior_event(),
+   which gets called immediately after target_wait().  */
 extern void get_last_target_status (process_stratum_target **target,
 				    ptid_t *ptid,
 				    struct target_waitstatus *status);
 
 /* Set the cached copy of the last target/ptid/waitstatus.  */
 extern void set_last_target_status (process_stratum_target *target, ptid_t ptid,
-				    struct target_waitstatus status);
+				    const target_waitstatus &status);
 
 /* Clear the cached copy of the last ptid/waitstatus returned by
    target_wait().  */
@@ -207,7 +208,7 @@ extern void print_stop_event (struct ui_out *uiout, bool displays = true);
 /* Pretty print the results of target_wait, for debugging purposes.  */
 
 extern void print_target_wait_results (ptid_t waiton_ptid, ptid_t result_ptid,
-				       const struct target_waitstatus *ws);
+				       const struct target_waitstatus &ws);
 
 extern int signal_stop_state (int);
 
@@ -253,7 +254,7 @@ extern void mark_infrun_async_event_handler (void);
 
 /* The global chain of threads that need to do a step-over operation
    to get past e.g., a breakpoint.  */
-extern struct thread_info *global_thread_step_over_chain_head;
+extern thread_step_over_list global_thread_step_over_list;
 
 /* Remove breakpoints if possible (usually that means, if everything
    is stopped).  On failure, print a message.  */

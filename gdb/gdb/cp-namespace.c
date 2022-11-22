@@ -20,7 +20,7 @@
 
 #include "defs.h"
 #include "cp-support.h"
-#include "gdb_obstack.h"
+#include "gdbsupport/gdb_obstack.h"
 #include "symtab.h"
 #include "symfile.h"
 #include "block.h"
@@ -220,7 +220,7 @@ cp_lookup_bare_symbol (const struct language_defn *langdef,
 	return {};
 
 
-      type = check_typedef (TYPE_TARGET_TYPE (SYMBOL_TYPE (lang_this.symbol)));
+      type = check_typedef (TYPE_TARGET_TYPE (lang_this.symbol->type ()));
       /* If TYPE_NAME is NULL, abandon trying to find this symbol.
 	 This can happen for lambda functions compiled with clang++,
 	 which outputs no name for the container class.  */
@@ -274,7 +274,7 @@ cp_search_static_and_baseclasses (const char *name,
   if (scope_sym.symbol == NULL)
     return {};
 
-  struct type *scope_type = SYMBOL_TYPE (scope_sym.symbol);
+  struct type *scope_type = scope_sym.symbol->type ();
 
   /* If the scope is a function/method, then look up NESTED as a local
      static variable.  E.g., "print 'function()::static_var'".  */
@@ -519,7 +519,7 @@ cp_lookup_symbol_imports_or_template (const char *scope,
   if (function != NULL && function->language () == language_cplus)
     {
       /* Search the function's template parameters.  */
-      if (SYMBOL_IS_CPLUS_TEMPLATE_FUNCTION (function))
+      if (function->is_cplus_template_function ())
 	{
 	  struct template_symbol *templ
 	    = (struct template_symbol *) function;
@@ -1058,7 +1058,7 @@ cp_lookup_transparent_type_loop (const char *name,
 static void
 maintenance_cplus_namespace (const char *args, int from_tty)
 {
-  printf_unfiltered (_("The `maint namespace' command was removed.\n"));
+  printf_filtered (_("The `maint namespace' command was removed.\n"));
 }
 
 void _initialize_cp_namespace ();

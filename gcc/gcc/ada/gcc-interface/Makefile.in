@@ -104,7 +104,7 @@ TEXI2DVI = texi2dvi
 TEXI2PDF = texi2pdf
 GNATBIND_FLAGS = -static -x
 ADA_CFLAGS =
-ADAFLAGS = -W -Wall -gnatpg -gnata
+ADAFLAGS = -W -Wall -gnatpg -gnata -gnatU
 FORCE_DEBUG_ADAFLAGS = -g
 NO_INLINE_ADAFLAGS = -fno-inline
 NO_OMIT_ADAFLAGS = -fno-omit-frame-pointer
@@ -138,6 +138,7 @@ objdir = .
 
 target_alias=@target_alias@
 target=@target@
+target_noncanonical=@target_noncanonical@
 target_cpu=@target_cpu@
 target_vendor=@target_vendor@
 target_os=@target_os@
@@ -250,9 +251,10 @@ LIBS = $(LIBINTL) $(LIBICONV) $(LIBBACKTRACE) $(LIBIBERTY) $(SYSLIBS)
 LIBDEPS = $(LIBINTL_DEP) $(LIBICONV_DEP) $(LIBBACKTRACE) $(LIBIBERTY)
 # Default is no TGT_LIB; one might be passed down or something
 TGT_LIB =
-TOOLS_LIBS = ../link.o ../targext.o ../../ggc-none.o ../../libcommon-target.a \
-  ../../libcommon.a ../../../libcpp/libcpp.a $(LIBGNAT) $(LIBINTL) $(LIBICONV) \
-  ../$(LIBBACKTRACE) ../$(LIBIBERTY) $(SYSLIBS) $(TGT_LIB)
+TOOLS_LIBS = ../version.o ../link.o ../targext.o ../../ggc-none.o \
+  ../../libcommon-target.a ../../libcommon.a ../../../libcpp/libcpp.a \
+  $(LIBGNAT) $(LIBINTL) $(LIBICONV) ../$(LIBBACKTRACE) ../$(LIBIBERTY) \
+  $(SYSLIBS) $(TGT_LIB)
 
 # Add -no-pie to TOOLS_LIBS since some of them are compiled with -fno-PIE.
 TOOLS_LIBS += @NO_PIE_FLAG@
@@ -302,7 +304,7 @@ ADA_INCLUDES_FOR_SUBDIR = -I. -I$(fsrcdir)/ada
 	$(CC) -c $(ALL_ADAFLAGS) $(ADA_INCLUDES) $< $(OUTPUT_OPTION)
 
 # how to regenerate this file
-Makefile: ../config.status $(srcdir)/ada/gcc-interface/Makefile.in $(srcdir)/ada/Makefile.in $(srcdir)/version.c
+Makefile: ../config.status $(srcdir)/ada/gcc-interface/Makefile.in $(srcdir)/ada/Makefile.in $(srcdir)/ada/version.c
 	cd ..; \
 	LANGUAGES="$(CONFIG_LANGUAGES)" \
 	CONFIG_HEADERS= \
@@ -332,6 +334,7 @@ GNATMAKE_OBJS = a-except.o ali.o ali-util.o aspects.o s-casuti.o alloc.o \
  snames.o stand.o stringt.o styleg.o stylesw.o system.o validsw.o \
  switch.o switch-m.o table.o targparm.o tempdir.o types.o uintp.o \
  uname.o urealp.o usage.o widechar.o \
+ seinfo.o einfo-entities.o einfo-utils.o sinfo-nodes.o sinfo-utils.o \
  $(EXTRA_GNATMAKE_OBJS)
 
 # Make arch match the current multilib so that the RTS selection code
@@ -345,6 +348,13 @@ ifeq ($(strip $(filter-out x86_64, $(target_cpu))),)
     ifeq ($(strip $(MULTISUBDIR)),/x32)
       target_cpu:=x32
     endif
+  endif
+endif
+
+# The x86_64-linux-gnux32 compiler is actually an x32 compiler
+ifeq ($(strip $(filter-out x86_64 linux-gnux32%, $(target_cpu) $(target_os))),)
+  ifneq ($(strip $(MULTISUBDIR)),/64)
+    target_cpu:=x32
   endif
 endif
 
@@ -383,15 +393,20 @@ TOOLS_FLAGS_TO_PASS=		\
 
 GCC_LINK=$(CXX) $(GCC_LINK_FLAGS) $(LDFLAGS)
 
-# Build directory for the tools. Let's copy the target-dependent
-# sources using the same mechanism as for gnatlib. The other sources are
-# accessed using the vpath directive below
+# Build directory for the tools. We first need to copy the generated files,
+# then the target-dependent sources using the same mechanism as for gnatlib.
+# The other sources are accessed using the vpath directive below
+
+GENERATED_FILES_FOR_TOOLS = \
+  einfo-entities.ads einfo-entities.adb sdefault.adb seinfo.ads \
+  sinfo-nodes.ads sinfo-nodes.adb snames.ads snames.adb
 
 ../stamp-tools:
 	-$(RM) tools/*
 	-$(RMDIR) tools
 	-$(MKDIR) tools
-	-(cd tools; $(LN_S) ../sdefault.adb ../snames.ads ../snames.adb .)
+	-(cd tools; $(foreach FILE,$(GENERATED_FILES_FOR_TOOLS), \
+			     $(LN_S) ../$(FILE) $(FILE);))
 	-$(foreach PAIR,$(TOOLS_TARGET_PAIRS), \
 	          $(RM) tools/$(word 1,$(subst <, ,$(PAIR)));\
 	          $(LN_S) $(fsrcpfx)ada/$(word 2,$(subst <, ,$(PAIR))) \
@@ -442,7 +457,7 @@ gnattools2: ../stamp-tools
 common-tools: ../stamp-tools
 	$(GNATMAKE) -j0 -c -b $(ADA_INCLUDES) \
 	  --GNATBIND="$(GNATBIND)" --GCC="$(CC) $(ALL_ADAFLAGS)" \
-	  gnatchop gnatcmd gnatkr gnatls gnatprep gnatxref gnatfind gnatname \
+	  gnatchop gnatcmd gnatkr gnatls gnatprep gnatname \
 	  gnatclean -bargs $(ADA_INCLUDES) $(GNATBIND_FLAGS)
 	$(GNATLINK) -v gnatcmd -o ../../gnat$(exeext) \
 	  --GCC="$(CC) $(ADA_INCLUDES)" --LINK="$(GCC_LINK)" $(TOOLS_LIBS)
@@ -453,10 +468,6 @@ common-tools: ../stamp-tools
 	$(GNATLINK) -v gnatls -o ../../gnatls$(exeext) \
 	  --GCC="$(CC) $(ADA_INCLUDES)" --LINK="$(GCC_LINK)" $(TOOLS_LIBS)
 	$(GNATLINK) -v gnatprep -o ../../gnatprep$(exeext) \
-	  --GCC="$(CC) $(ADA_INCLUDES)" --LINK="$(GCC_LINK)" $(TOOLS_LIBS)
-	$(GNATLINK) -v gnatxref -o ../../gnatxref$(exeext) \
-	  --GCC="$(CC) $(ADA_INCLUDES)" --LINK="$(GCC_LINK)" $(TOOLS_LIBS)
-	$(GNATLINK) -v gnatfind -o ../../gnatfind$(exeext) \
 	  --GCC="$(CC) $(ADA_INCLUDES)" --LINK="$(GCC_LINK)" $(TOOLS_LIBS)
 	$(GNATLINK) -v gnatname -o ../../gnatname$(exeext) \
 	  --GCC="$(CC) $(ADA_INCLUDES)" --LINK="$(GCC_LINK)" $(TOOLS_LIBS)
@@ -588,7 +599,7 @@ OSCONS_CC=$(subst ./xgcc,../../xgcc,$(subst -B./, -B../../,$(GCC_FOR_TARGET)))
 # has a <types.h> header).
 
 OSCONS_CPP=$(OSCONS_CC) $(GNATLIBCFLAGS_FOR_C) -E -C \
-  -DTARGET=\"$(target)\" -iquote $(fsrcpfx)ada $(fsrcpfx)ada/s-oscons-tmplt.c > s-oscons-tmplt.i
+  -DTARGET=\"$(target_noncanonical)\" -iquote $(fsrcpfx)ada $(fsrcpfx)ada/s-oscons-tmplt.c > s-oscons-tmplt.i
 OSCONS_EXTRACT=$(OSCONS_CC) $(GNATLIBCFLAGS_FOR_C) -S s-oscons-tmplt.i
 
 # Note: if you need to build with a non-GNU compiler, you could adapt the
@@ -797,8 +808,8 @@ gnatlib-shared-darwin:
 		libgnat$(soext)
 	cd $(RTSDIR); $(LN_S) libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
 		libgnarl$(soext)
-	cd $(RTSDIR); dsymutil libgnat$(hyphen)$(LIBRARY_VERSION)$(soext)
-	cd $(RTSDIR); dsymutil libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext)
+	cd $(RTSDIR); $(DSYMUTIL_FOR_TARGET) libgnat$(hyphen)$(LIBRARY_VERSION)$(soext)
+	cd $(RTSDIR); $(DSYMUTIL_FOR_TARGET) libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext)
 
 gnatlib-shared:
 	$(MAKE) $(FLAGS_TO_PASS) \

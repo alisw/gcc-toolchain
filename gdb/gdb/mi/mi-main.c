@@ -68,7 +68,8 @@ enum
     FROM_TTY = 0
   };
 
-int mi_debug_p;
+/* Debug flag */
+static int mi_debug_p;
 
 /* This is used to pass the current command timestamp down to
    continuation routines.  */
@@ -90,8 +91,6 @@ int mi_proceeded;
 
 static void mi_cmd_execute (struct mi_parse *parse);
 
-static void mi_execute_cli_command (const char *cmd, int args_p,
-				    const char *args);
 static void mi_execute_async_cli_command (const char *cli_command,
 					  char **argv, int argc);
 static bool register_changed_p (int regnum, readonly_detached_regcache *,
@@ -266,7 +265,6 @@ exec_continue (char **argv, int argc)
 {
   prepare_execution_command (current_inferior ()->top_target (), mi_async_p ());
 
-  scoped_disable_commit_resumed disable_commit_resumed ("mi continue");
 
   if (non_stop)
     {
@@ -279,6 +277,8 @@ exec_continue (char **argv, int argc)
       if (current_context->all || current_context->thread_group != -1)
 	{
 	  scoped_restore_current_thread restore_thread;
+	  scoped_disable_commit_resumed disable_commit_resumed
+	    ("MI continue all threads in non-stop");
 	  int pid = 0;
 
 	  if (!current_context->all)
@@ -288,7 +288,9 @@ exec_continue (char **argv, int argc)
 
 	      pid = inf->pid;
 	    }
+
 	  iterate_over_threads (proceed_thread_callback, &pid);
+	  disable_commit_resumed.reset_and_commit ();
 	}
       else
 	{
@@ -313,8 +315,6 @@ exec_continue (char **argv, int argc)
 	  continue_1 (1);
 	}
     }
-
-  disable_commit_resumed.reset_and_commit ();
 }
 
 static void
@@ -407,7 +407,7 @@ run_one_inferior (inferior *inf, bool start_p)
 {
   const char *run_cmd = start_p ? "start" : "run";
   struct target_ops *run_target = find_run_target ();
-  int async_p = mi_async && run_target->can_async_p ();
+  bool async_p = mi_async && target_can_async_p (run_target);
 
   if (inf->pid != 0)
     {
@@ -472,7 +472,7 @@ mi_cmd_exec_run (const char *command, char **argv, int argc)
     {
       const char *run_cmd = start_p ? "start" : "run";
       struct target_ops *run_target = find_run_target ();
-      int async_p = mi_async && run_target->can_async_p ();
+      bool async_p = mi_async && target_can_async_p (run_target);
 
       mi_execute_cli_command (run_cmd, async_p,
 			      async_p ? "&" : NULL);
@@ -556,19 +556,10 @@ mi_cmd_thread_select (const char *command, char **argv, int argc)
   if (thr == NULL)
     error (_("Thread ID %d not known."), num);
 
-  ptid_t previous_ptid = inferior_ptid;
-
   thread_select (argv[0], thr);
 
   print_selected_thread_frame (current_uiout,
 			       USER_SELECTED_THREAD | USER_SELECTED_FRAME);
-
-  /* Notify if the thread has effectively changed.  */
-  if (inferior_ptid != previous_ptid)
-    {
-      gdb::observers::user_selected_context_changed.notify
-	(USER_SELECTED_THREAD | USER_SELECTED_FRAME);
-    }
 }
 
 void
@@ -1703,14 +1694,53 @@ mi_cmd_list_target_features (const char *command, char **argv, int argc)
 void
 mi_cmd_add_inferior (const char *command, char **argv, int argc)
 {
-  struct inferior *inf;
+  bool no_connection = false;
 
-  if (argc != 0)
-    error (_("-add-inferior should be passed no arguments"));
+  /* Parse the command options.  */
+  enum opt
+    {
+      NO_CONNECTION_OPT,
+    };
+  static const struct mi_opt opts[] =
+    {
+	{"-no-connection", NO_CONNECTION_OPT, 0},
+	{NULL, 0, 0},
+    };
 
-  inf = add_inferior_with_spaces ();
+  int oind = 0;
+  char *oarg;
+
+  while (1)
+    {
+      int opt = mi_getopt ("-add-inferior", argc, argv, opts, &oind, &oarg);
+
+      if (opt < 0)
+	break;
+      switch ((enum opt) opt)
+	{
+	case NO_CONNECTION_OPT:
+	  no_connection = true;
+	  break;
+	}
+    }
+
+  scoped_restore_current_pspace_and_thread restore_pspace_thread;
+
+  inferior *inf = add_inferior_with_spaces ();
+
+  switch_to_inferior_and_push_target (inf, no_connection,
+				      current_inferior ());
 
   current_uiout->field_fmt ("inferior", "i%d", inf->num);
+
+  process_stratum_target *proc_target = inf->process_target ();
+
+  if (proc_target != nullptr)
+    {
+      ui_out_emit_tuple tuple_emitter (current_uiout, "connection");
+      current_uiout->field_unsigned ("number", proc_target->connection_number);
+      current_uiout->field_string ("name", proc_target->shortname ());
+    }
 }
 
 void
@@ -1786,8 +1816,7 @@ captured_mi_execute_command (struct ui_out *uiout, struct mi_parse *context)
     case MI_COMMAND:
       /* A MI command was read from the input stream.  */
       if (mi_debug_p)
-	/* FIXME: gdb_???? */
-	fprintf_unfiltered (mi->raw_stdout,
+	fprintf_unfiltered (gdb_stdlog,
 			    " token=`%s' command=`%s' args=`%s'\n",
 			    context->token, context->command, context->args);
 
@@ -1867,7 +1896,7 @@ mi_print_exception (const char *token, const struct gdb_exception &exception)
   if (exception.message == NULL)
     fputs_unfiltered ("unknown error", mi->raw_stdout);
   else
-    fputstr_unfiltered (exception.what (), '"', mi->raw_stdout);
+    mi->raw_stdout->putstr (exception.what (), '"');
   fputs_unfiltered ("\"", mi->raw_stdout);
 
   switch (exception.error)
@@ -1878,34 +1907,6 @@ mi_print_exception (const char *token, const struct gdb_exception &exception)
     }
 
   fputs_unfiltered ("\n", mi->raw_stdout);
-}
-
-/* Determine whether the parsed command already notifies the
-   user_selected_context_changed observer.  */
-
-static int
-command_notifies_uscc_observer (struct mi_parse *command)
-{
-  if (command->op == CLI_COMMAND)
-    {
-      /* CLI commands "thread" and "inferior" already send it.  */
-      return (startswith (command->command, "thread ")
-	      || startswith (command->command, "inferior "));
-    }
-  else /* MI_COMMAND */
-    {
-      if (strcmp (command->command, "interpreter-exec") == 0
-	  && command->argc > 1)
-	{
-	  /* "thread" and "inferior" again, but through -interpreter-exec.  */
-	  return (startswith (command->argv[1], "thread ")
-		  || startswith (command->argv[1], "inferior "));
-	}
-
-      else
-	/* -thread-select already sends it.  */
-	return strcmp (command->command, "thread-select") == 0;
-    }
 }
 
 void
@@ -1933,13 +1934,6 @@ mi_execute_command (const char *cmd, int from_tty)
 
   if (command != NULL)
     {
-      ptid_t previous_ptid = inferior_ptid;
-
-      gdb::optional<scoped_restore_tmpl<int>> restore_suppress;
-
-      if (command->cmd != NULL && command->cmd->suppress_notification != NULL)
-	restore_suppress.emplace (command->cmd->suppress_notification, 1);
-
       command->token = token;
 
       if (do_timings)
@@ -1969,39 +1963,63 @@ mi_execute_command (const char *cmd, int from_tty)
 
       bpstat_do_actions ();
 
-      if (/* The notifications are only output when the top-level
-	     interpreter (specified on the command line) is MI.  */
-	  top_level_interpreter ()->interp_ui_out ()->is_mi_like_p ()
-	  /* Don't try report anything if there are no threads --
-	     the program is dead.  */
-	  && any_thread_p ()
-	  /* If the command already reports the thread change, no need to do it
-	     again.  */
-	  && !command_notifies_uscc_observer (command.get ()))
-	{
-	  int report_change = 0;
-
-	  if (command->thread == -1)
-	    {
-	      report_change = (previous_ptid != null_ptid
-			       && inferior_ptid != previous_ptid
-			       && inferior_ptid != null_ptid);
-	    }
-	  else if (inferior_ptid != null_ptid)
-	    {
-	      struct thread_info *ti = inferior_thread ();
-
-	      report_change = (ti->global_num != command->thread);
-	    }
-
-	  if (report_change)
-	    {
-	      gdb::observers::user_selected_context_changed.notify
-		(USER_SELECTED_THREAD | USER_SELECTED_FRAME);
-	    }
-	}
     }
 }
+
+/* Captures the current user selected context state, that is the current
+   thread and frame.  Later we can then check if the user selected context
+   has changed at all.  */
+
+struct user_selected_context
+{
+  /* Constructor.  */
+  user_selected_context ()
+    : m_previous_ptid (inferior_ptid)
+  {
+    save_selected_frame (&m_previous_frame_id, &m_previous_frame_level);
+  }
+
+  /* Return true if the user selected context has changed since this object
+     was created.  */
+  bool has_changed () const
+  {
+    /* Did the selected thread change?  */
+    if (m_previous_ptid != null_ptid && inferior_ptid != null_ptid
+	&& m_previous_ptid != inferior_ptid)
+      return true;
+
+    /* Grab details of the currently selected frame, for comparison.  */
+    frame_id current_frame_id;
+    int current_frame_level;
+    save_selected_frame (&current_frame_id, &current_frame_level);
+
+    /* Did the selected frame level change?  */
+    if (current_frame_level != m_previous_frame_level)
+      return true;
+
+    /* Did the selected frame id change?  If the innermost frame is
+       selected then the level will be -1, and the frame-id will be
+       null_frame_id.  As comparing null_frame_id with itself always
+       reports not-equal, we only do the equality test if we have something
+       other than the innermost frame selected.  */
+    if (current_frame_level != -1
+	&& !frame_id_eq (current_frame_id, m_previous_frame_id))
+      return true;
+
+    /* Nothing changed!  */
+    return false;
+  }
+private:
+  /* The previously selected thread.  This might be null_ptid if there was
+     no previously selected thread.  */
+  ptid_t m_previous_ptid;
+
+  /* The previously selected frame.  If the innermost frame is selected, or
+     no frame is selected, then the frame_id will be null_frame_id, and the
+     level will be -1.  */
+  frame_id m_previous_frame_id;
+  int m_previous_frame_level;
+};
 
 static void
 mi_cmd_execute (struct mi_parse *parse)
@@ -2043,6 +2061,9 @@ mi_cmd_execute (struct mi_parse *parse)
       set_current_program_space (inf->pspace);
     }
 
+  user_selected_context current_user_selected_context;
+
+  gdb::optional<scoped_restore_current_thread> thread_saver;
   if (parse->thread != -1)
     {
       thread_info *tp = find_thread_global_id (parse->thread);
@@ -2053,9 +2074,13 @@ mi_cmd_execute (struct mi_parse *parse)
       if (tp->state == THREAD_EXITED)
 	error (_("Thread id: %d has terminated"), parse->thread);
 
+      if (parse->cmd->preserve_user_selected_context ())
+	thread_saver.emplace ();
+
       switch_to_thread (tp);
     }
 
+  gdb::optional<scoped_restore_selected_frame> frame_saver;
   if (parse->frame != -1)
     {
       struct frame_info *fid;
@@ -2063,8 +2088,12 @@ mi_cmd_execute (struct mi_parse *parse)
 
       fid = find_relative_frame (get_current_frame (), &frame);
       if (frame == 0)
-	/* find_relative_frame was successful */
-	select_frame (fid);
+	{
+	  if (parse->cmd->preserve_user_selected_context ())
+	    frame_saver.emplace ();
+
+	  select_frame (fid);
+	}
       else
 	error (_("Invalid frame id: %d"), frame);
     }
@@ -2078,48 +2107,37 @@ mi_cmd_execute (struct mi_parse *parse)
 
   current_context = parse;
 
-  if (parse->cmd->argv_func != NULL)
-    {
-      parse->cmd->argv_func (parse->command, parse->argv, parse->argc);
-    }
-  else if (parse->cmd->cli.cmd != 0)
-    {
-      /* FIXME: DELETE THIS. */
-      /* The operation is still implemented by a cli command.  */
-      /* Must be a synchronous one.  */
-      mi_execute_cli_command (parse->cmd->cli.cmd, parse->cmd->cli.args_p,
-			      parse->args);
-    }
-  else
-    {
-      /* FIXME: DELETE THIS.  */
-      string_file stb;
+  gdb_assert (parse->cmd != nullptr);
 
-      stb.puts ("Undefined mi command: ");
-      stb.putstr (parse->command, '"');
-      stb.puts (" (missing implementation)");
+  gdb::optional<scoped_restore_tmpl<int>> restore_suppress_notification
+    = parse->cmd->do_suppress_notification ();
 
-      error_stream (stb);
-    }
+  parse->cmd->invoke (parse);
+
+  if (!parse->cmd->preserve_user_selected_context ()
+      && current_user_selected_context.has_changed ())
+    gdb::observers::user_selected_context_changed.notify
+      (USER_SELECTED_THREAD | USER_SELECTED_FRAME);
 }
 
-/* FIXME: This is just a hack so we can get some extra commands going.
-   We don't want to channel things through the CLI, but call libgdb directly.
-   Use only for synchronous commands.  */
+/* See mi-main.h.  */
 
 void
-mi_execute_cli_command (const char *cmd, int args_p, const char *args)
+mi_execute_cli_command (const char *cmd, bool args_p, const char *args)
 {
-  if (cmd != 0)
+  if (cmd != nullptr)
     {
-      std::string run = cmd;
+      std::string run (cmd);
 
       if (args_p)
 	run = run + " " + args;
+      else
+	gdb_assert (args == nullptr);
+
       if (mi_debug_p)
-	/* FIXME: gdb_???? */
-	fprintf_unfiltered (gdb_stdout, "cli=%s run=%s\n",
+	fprintf_unfiltered (gdb_stdlog, "cli=%s run=%s\n",
 			    cmd, run.c_str ());
+
       execute_command (run.c_str (), 0 /* from_tty */ );
     }
 }

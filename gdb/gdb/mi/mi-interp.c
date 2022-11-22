@@ -64,7 +64,7 @@ static void mi_on_signal_received (enum gdb_signal siggnal);
 static void mi_on_end_stepping_range (void);
 static void mi_on_signal_exited (enum gdb_signal siggnal);
 static void mi_on_exited (int exitstatus);
-static void mi_on_normal_stop (struct bpstats *bs, int print_frame);
+static void mi_on_normal_stop (struct bpstat *bs, int print_frame);
 static void mi_on_no_history (void);
 
 static void mi_new_thread (struct thread_info *t);
@@ -110,6 +110,16 @@ static struct mi_interp *
 as_mi_interp (struct interp *interp)
 {
   return dynamic_cast<mi_interp *> (interp);
+}
+
+/* Observer for the command_error notification.  */
+
+static void
+mi_on_command_error ()
+{
+  mi_interp *mi = as_mi_interp (top_level_interpreter ());
+  if (mi != nullptr)
+    display_mi_prompt (mi);
 }
 
 void
@@ -614,7 +624,7 @@ mi_on_no_history (void)
 }
 
 static void
-mi_on_normal_stop_1 (struct bpstats *bs, int print_frame)
+mi_on_normal_stop_1 (struct bpstat *bs, int print_frame)
 {
   /* Since this can be called when CLI command is executing,
      using cli interpreter, be sure to use MI uiout for output,
@@ -630,12 +640,12 @@ mi_on_normal_stop_1 (struct bpstats *bs, int print_frame)
 
       tp = inferior_thread ();
 
-      if (tp->thread_fsm != NULL
-	  && tp->thread_fsm->finished_p ())
+      if (tp->thread_fsm () != nullptr
+	  && tp->thread_fsm ()->finished_p ())
 	{
 	  enum async_reply_reason reason;
 
-	  reason = tp->thread_fsm->async_reply_reason ();
+	  reason = tp->thread_fsm ()->async_reply_reason ();
 	  mi_uiout->field_string ("reason", async_reason_lookup (reason));
 	}
 
@@ -673,7 +683,7 @@ mi_on_normal_stop_1 (struct bpstats *bs, int print_frame)
 }
 
 static void
-mi_on_normal_stop (struct bpstats *bs, int print_frame)
+mi_on_normal_stop (struct bpstat *bs, int print_frame)
 {
   SWITCH_THRU_ALL_UIS ()
     {
@@ -1369,6 +1379,7 @@ _initialize_mi_interp ()
 					      "mi-interp");
   gdb::observers::command_param_changed.attach (mi_command_param_changed,
 						"mi-interp");
+  gdb::observers::command_error.attach (mi_on_command_error, "mi-interp");
   gdb::observers::memory_changed.attach (mi_memory_changed, "mi-interp");
   gdb::observers::sync_execution_done.attach (mi_on_sync_execution_done,
 					      "mi-interp");

@@ -97,10 +97,7 @@ proc run_test { target_async target_non_stop to_disable } {
     kill_wait_spawned_process $test_spawn_id
 }
 
-# Don't run with target_async set to "off".  There are bugs with the
-# extended-remote target when async mode is off and we try to attach.
-# These bugs have been fixed in the master branch.
-foreach_with_prefix target_async {"on"} {
+foreach_with_prefix target_async {"on" "off" } {
     foreach_with_prefix target_non_stop {"off" "on"} {
 	foreach_with_prefix to_disable { "" Tthread T } {
 	    run_test ${target_async} ${target_non_stop} $to_disable

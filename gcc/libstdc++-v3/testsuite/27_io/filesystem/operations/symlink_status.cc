@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2021 Free Software Foundation, Inc.
+// Copyright (C) 2017-2022 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -68,6 +68,9 @@ test02()
 void
 test03()
 {
+  if (!__gnu_test::permissions_are_testable())
+    return;
+
   fs::path dir = __gnu_test::nonexistent_path();
   fs::create_directory(dir);
   __gnu_test::scoped_file d(dir, __gnu_test::scoped_file::adopt_file);
@@ -91,7 +94,7 @@ test03()
   std::error_code ec2;
   fs::path p, p2;
   try {
-    fs::symlink_status(f.path);
+    (void) fs::symlink_status(f.path);
   } catch (const fs::filesystem_error& e) {
     caught = true;
     p = e.path1();

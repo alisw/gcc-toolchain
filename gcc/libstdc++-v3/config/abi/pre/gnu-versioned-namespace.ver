@@ -1,6 +1,6 @@
 ## Linker script for GNU namespace versioning.
 ##
-## Copyright (C) 2002-2021 Free Software Foundation, Inc.
+## Copyright (C) 2002-2022 Free Software Foundation, Inc.
 ##
 ## This file is part of the libstdc++ version 3 distribution.
 ##
@@ -28,7 +28,6 @@ GLIBCXX_8.0 {
     {
       std::*;
       std::__8::*;
-      std::random_device::*
     };
 
     # operator new(size_t)

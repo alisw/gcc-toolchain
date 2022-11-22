@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.7.4.  */
+/* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison implementation for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2020 Free Software Foundation,
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2021 Free Software Foundation,
    Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -46,10 +46,10 @@
    USER NAME SPACE" below.  */
 
 /* Identify Bison output, and Bison version.  */
-#define YYBISON 30704
+#define YYBISON 30802
 
 /* Bison version string.  */
-#define YYBISON_VERSION "3.7.4"
+#define YYBISON_VERSION "3.8.2"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -385,7 +385,9 @@ typedef union YYSTYPE YYSTYPE;
 
 
 
+
 int yyparse (void* closure);
+
 
 #endif /* !YY_YY_YYSCRIPT_H_INCLUDED  */
 /* Symbol kind.  */
@@ -635,6 +637,18 @@ typedef int_least16_t yytype_int16;
 typedef short yytype_int16;
 #endif
 
+/* Work around bug in HP-UX 11.23, which defines these macros
+   incorrectly for preprocessor constants.  This workaround can likely
+   be removed in 2023, as HPE has promised support for HP-UX 11.23
+   (aka HP-UX 11i v2) only through the end of 2022; see Table 2 of
+   <https://h20195.www2.hpe.com/V2/getpdf.aspx/4AA4-7673ENW.pdf>.  */
+#ifdef __hpux
+# undef UINT_LEAST8_MAX
+# undef UINT_LEAST16_MAX
+# define UINT_LEAST8_MAX 255
+# define UINT_LEAST16_MAX 65535
+#endif
+
 #if defined __UINT_LEAST8_MAX__ && __UINT_LEAST8_MAX__ <= __INT_MAX__
 typedef __UINT_LEAST8_TYPE__ yytype_uint8;
 #elif (!defined __UINT_LEAST8_MAX__ && defined YY_STDINT_H \
@@ -732,17 +746,23 @@ typedef int yy_state_fast_t;
 
 /* Suppress unused-variable warnings by "using" E.  */
 #if ! defined lint || defined __GNUC__
-# define YYUSE(E) ((void) (E))
+# define YY_USE(E) ((void) (E))
 #else
-# define YYUSE(E) /* empty */
+# define YY_USE(E) /* empty */
 #endif
 
-#if defined __GNUC__ && ! defined __ICC && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
 /* Suppress an incorrect diagnostic about yylval being uninitialized.  */
-# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                            \
+#if defined __GNUC__ && ! defined __ICC && 406 <= __GNUC__ * 100 + __GNUC_MINOR__
+# if __GNUC__ * 100 + __GNUC_MINOR__ < 407
+#  define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                           \
+    _Pragma ("GCC diagnostic push")                                     \
+    _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")
+# else
+#  define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                           \
     _Pragma ("GCC diagnostic push")                                     \
     _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")              \
     _Pragma ("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
+# endif
 # define YY_IGNORE_MAYBE_UNINITIALIZED_END      \
     _Pragma ("GCC diagnostic pop")
 #else
@@ -967,7 +987,7 @@ static const yytype_uint8 yytranslate[] =
 };
 
 #if YYDEBUG
-  /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
+/* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
        0,   236,   236,   237,   238,   239,   240,   241,   242,   247,
@@ -1057,27 +1077,6 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#ifdef YYPRINT
-/* YYTOKNUM[NUM] -- (External) token number corresponding to the
-   (internal) symbol number NUM (which must be that of a token).  */
-static const yytype_int16 yytoknum[] =
-{
-       0,   256,   257,   258,   259,   260,   261,    61,   262,   263,
-     264,   265,    63,    58,   266,   267,   124,    94,    38,   268,
-     269,    60,    62,   270,   271,   272,   273,    43,    45,    42,
-      47,    37,   274,   275,   276,   277,   278,   279,   280,   281,
-     282,   283,   284,   285,   286,   287,   288,   289,   290,   291,
-     292,   293,   294,   295,   296,   297,   298,   299,   300,   301,
-     302,   303,   304,   305,   306,   307,   308,   309,   310,   311,
-     312,   313,   314,   315,   316,   317,   318,   319,   320,   321,
-     322,   323,   324,   325,   326,   327,   328,   329,   330,   331,
-     332,   333,   334,   335,   336,   337,   338,   339,   340,   341,
-     342,   343,   344,   345,   346,   347,   348,   349,   350,   351,
-     352,   353,   354,   355,   356,   357,   358,   359,   360,   361,
-      40,    41,   123,   125,    44,    59,    33,   111,   108,   126
-};
-#endif
-
 #define YYPACT_NINF (-423)
 
 #define yypact_value_is_default(Yyn) \
@@ -1088,8 +1087,8 @@ static const yytype_int16 yytoknum[] =
 #define yytable_value_is_error(Yyn) \
   0
 
-  /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
-     STATE-NUM.  */
+/* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
+   STATE-NUM.  */
 static const yytype_int16 yypact[] =
 {
      365,  -423,    81,   214,  -112,  -423,  -423,  -423,    14,  1300,
@@ -1150,9 +1149,9 @@ static const yytype_int16 yypact[] =
     -423,  -423,  -423,  -423,  -423
 };
 
-  /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
-     Performed when YYTABLE does not specify something else to do.  Zero
-     means the default is an error.  */
+/* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
+   Performed when YYTABLE does not specify something else to do.  Zero
+   means the default is an error.  */
 static const yytype_uint8 yydefact[] =
 {
        0,    10,     0,     0,     0,    47,    87,   123,     0,     2,
@@ -1213,7 +1212,7 @@ static const yytype_uint8 yydefact[] =
      158,    85,    83,    78,   124
 };
 
-  /* YYPGOTO[NTERM-NUM].  */
+/* YYPGOTO[NTERM-NUM].  */
 static const yytype_int16 yypgoto[] =
 {
     -423,  -423,  -423,  -423,  -423,  -423,  -423,  -423,  -423,  -423,
@@ -1225,10 +1224,10 @@ static const yytype_int16 yypgoto[] =
      641,  -423,   604,   -15,  -423,  -423,    -2,   -60,   165,   -23
 };
 
-  /* YYDEFGOTO[NTERM-NUM].  */
+/* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int16 yydefgoto[] =
 {
-      -1,     8,     9,    48,    97,   168,   170,    49,   152,   153,
+       0,     8,     9,    48,    97,   168,   170,    49,   152,   153,
      246,   158,   159,   251,    23,    67,   219,   137,   138,   506,
      222,   327,   329,   412,   470,   531,   501,   502,   525,   538,
      549,    24,    84,    85,    86,    87,    88,   237,   238,   416,
@@ -1237,9 +1236,9 @@ static const yytype_int16 yydefgoto[] =
       15,   273,    57,    58,   268,   443,   215,   114,   441,   253
 };
 
-  /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
-     positive, shift that token.  If negative, reduce the rule whose
-     number is the opposite.  If YYTABLE_NINF, syntax error.  */
+/* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
+   positive, shift that token.  If negative, reduce the rule whose
+   number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int16 yytable[] =
 {
       16,    18,    93,    89,    62,    50,   248,    51,   136,    -8,
@@ -1542,8 +1541,8 @@ static const yytype_int16 yycheck[] =
       26,    27,    28,    29,    30,    31
 };
 
-  /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
-     symbol of state STATE-NUM.  */
+/* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
+   state STATE-NUM.  */
 static const yytype_uint8 yystos[] =
 {
        0,   113,   114,   115,   116,   117,   118,   119,   131,   132,
@@ -1604,7 +1603,7 @@ static const yytype_uint8 yystos[] =
        7,   181,   196,   199,   181
 };
 
-  /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
+/* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
 static const yytype_uint8 yyr1[] =
 {
        0,   130,   131,   131,   131,   131,   131,   131,   131,   132,
@@ -1634,7 +1633,7 @@ static const yytype_uint8 yyr1[] =
      199,   199
 };
 
-  /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
+/* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr2[] =
 {
        0,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -1673,6 +1672,7 @@ enum { YYENOMEM = -2 };
 #define YYACCEPT        goto yyacceptlab
 #define YYABORT         goto yyabortlab
 #define YYERROR         goto yyerrorlab
+#define YYNOMEM         goto yyexhaustedlab
 
 
 #define YYRECOVERING()  (!!yyerrstatus)
@@ -1713,10 +1713,7 @@ do {                                            \
     YYFPRINTF Args;                             \
 } while (0)
 
-/* This macro is provided for backward compatibility. */
-# ifndef YY_LOCATION_PRINT
-#  define YY_LOCATION_PRINT(File, Loc) ((void) 0)
-# endif
+
 
 
 # define YY_SYMBOL_PRINT(Title, Kind, Value, Location)                    \
@@ -1740,16 +1737,12 @@ yy_symbol_value_print (FILE *yyo,
                        yysymbol_kind_t yykind, YYSTYPE const * const yyvaluep, void* closure)
 {
   FILE *yyoutput = yyo;
-  YYUSE (yyoutput);
-  YYUSE (closure);
+  YY_USE (yyoutput);
+  YY_USE (closure);
   if (!yyvaluep)
     return;
-# ifdef YYPRINT
-  if (yykind < YYNTOKENS)
-    YYPRINT (yyo, yytoknum[yykind], *yyvaluep);
-# endif
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-  YYUSE (yykind);
+  YY_USE (yykind);
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
 
@@ -2130,14 +2123,14 @@ static void
 yydestruct (const char *yymsg,
             yysymbol_kind_t yykind, YYSTYPE *yyvaluep, void* closure)
 {
-  YYUSE (yyvaluep);
-  YYUSE (closure);
+  YY_USE (yyvaluep);
+  YY_USE (closure);
   if (!yymsg)
     yymsg = "Deleting";
   YY_SYMBOL_PRINT (yymsg, yykind, yyvaluep, yylocationp);
 
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-  YYUSE (yykind);
+  YY_USE (yykind);
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
 
@@ -2209,6 +2202,7 @@ YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
   YYDPRINTF ((stderr, "Starting parse\n"));
 
   yychar = YYEMPTY; /* Cause a token to be read.  */
+
   goto yysetstate;
 
 
@@ -2234,7 +2228,7 @@ yysetstate:
 
   if (yyss + yystacksize - 1 <= yyssp)
 #if !defined yyoverflow && !defined YYSTACK_RELOCATE
-    goto yyexhaustedlab;
+    YYNOMEM;
 #else
     {
       /* Get the current used size of the three stacks, in elements.  */
@@ -2262,7 +2256,7 @@ yysetstate:
 # else /* defined YYSTACK_RELOCATE */
       /* Extend the stack our own way.  */
       if (YYMAXDEPTH <= yystacksize)
-        goto yyexhaustedlab;
+        YYNOMEM;
       yystacksize *= 2;
       if (YYMAXDEPTH < yystacksize)
         yystacksize = YYMAXDEPTH;
@@ -2273,7 +2267,7 @@ yysetstate:
           YY_CAST (union yyalloc *,
                    YYSTACK_ALLOC (YY_CAST (YYSIZE_T, YYSTACK_BYTES (yystacksize))));
         if (! yyptr)
-          goto yyexhaustedlab;
+          YYNOMEM;
         YYSTACK_RELOCATE (yyss_alloc, yyss);
         YYSTACK_RELOCATE (yyvs_alloc, yyvs);
 #  undef YYSTACK_RELOCATE
@@ -2294,6 +2288,7 @@ yysetstate:
         YYABORT;
     }
 #endif /* !defined yyoverflow && !defined YYSTACK_RELOCATE */
+
 
   if (yystate == YYFINAL)
     YYACCEPT;
@@ -2409,31 +2404,31 @@ yyreduce:
   case 12: /* file_cmd: FORCE_COMMON_ALLOCATION  */
 #line 255 "yyscript.y"
             { script_set_common_allocation(closure, 1); }
-#line 2413 "yyscript.c"
+#line 2408 "yyscript.c"
     break;
 
   case 13: /* $@1: %empty  */
 #line 257 "yyscript.y"
             { script_start_group(closure); }
-#line 2419 "yyscript.c"
+#line 2414 "yyscript.c"
     break;
 
   case 14: /* file_cmd: GROUP $@1 '(' input_list ')'  */
 #line 259 "yyscript.y"
             { script_end_group(closure); }
-#line 2425 "yyscript.c"
+#line 2420 "yyscript.c"
     break;
 
   case 15: /* file_cmd: INHIBIT_COMMON_ALLOCATION  */
 #line 261 "yyscript.y"
             { script_set_common_allocation(closure, 0); }
-#line 2431 "yyscript.c"
+#line 2426 "yyscript.c"
     break;
 
   case 18: /* file_cmd: OPTION '(' string ')'  */
 #line 265 "yyscript.y"
             { script_parse_option(closure, (yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 2437 "yyscript.c"
+#line 2432 "yyscript.c"
     break;
 
   case 19: /* file_cmd: OUTPUT_FORMAT '(' string ')'  */
@@ -2443,7 +2438,7 @@ yyreduce:
 					      NULL, 0, NULL, 0))
 		YYABORT;
 	    }
-#line 2447 "yyscript.c"
+#line 2442 "yyscript.c"
     break;
 
   case 20: /* file_cmd: OUTPUT_FORMAT '(' string ',' string ',' string ')'  */
@@ -2454,159 +2449,159 @@ yyreduce:
 					      (yyvsp[-1].string).value, (yyvsp[-1].string).length))
 		YYABORT;
 	    }
-#line 2458 "yyscript.c"
+#line 2453 "yyscript.c"
     break;
 
   case 22: /* file_cmd: SEARCH_DIR '(' string ')'  */
 #line 281 "yyscript.y"
             { script_add_search_dir(closure, (yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 2464 "yyscript.c"
+#line 2459 "yyscript.c"
     break;
 
   case 23: /* $@2: %empty  */
 #line 283 "yyscript.y"
             { script_start_sections(closure); }
-#line 2470 "yyscript.c"
+#line 2465 "yyscript.c"
     break;
 
   case 24: /* file_cmd: SECTIONS '{' $@2 sections_block '}'  */
 #line 285 "yyscript.y"
             { script_finish_sections(closure); }
-#line 2476 "yyscript.c"
+#line 2471 "yyscript.c"
     break;
 
   case 25: /* file_cmd: TARGET_K '(' string ')'  */
 #line 287 "yyscript.y"
             { script_set_target(closure, (yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 2482 "yyscript.c"
+#line 2477 "yyscript.c"
     break;
 
   case 26: /* $@3: %empty  */
 #line 289 "yyscript.y"
             { script_push_lex_into_version_mode(closure); }
-#line 2488 "yyscript.c"
+#line 2483 "yyscript.c"
     break;
 
   case 27: /* file_cmd: VERSIONK '{' $@3 version_script '}'  */
 #line 291 "yyscript.y"
             { script_pop_lex_mode(closure); }
-#line 2494 "yyscript.c"
+#line 2489 "yyscript.c"
     break;
 
   case 28: /* file_cmd: ENTRY '(' string ')'  */
 #line 293 "yyscript.y"
             { script_set_entry(closure, (yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 2500 "yyscript.c"
+#line 2495 "yyscript.c"
     break;
 
   case 30: /* file_cmd: ASSERT_K '(' parse_exp ',' string ')'  */
 #line 296 "yyscript.y"
             { script_add_assertion(closure, (yyvsp[-3].expr), (yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 2506 "yyscript.c"
+#line 2501 "yyscript.c"
     break;
 
   case 31: /* file_cmd: INCLUDE string  */
 #line 298 "yyscript.y"
             { script_include_directive(PARSING_LINKER_SCRIPT, closure,
 				       (yyvsp[0].string).value, (yyvsp[0].string).length); }
-#line 2513 "yyscript.c"
+#line 2508 "yyscript.c"
     break;
 
   case 35: /* $@4: %empty  */
 #line 317 "yyscript.y"
             { script_push_lex_into_expression_mode(closure); }
-#line 2519 "yyscript.c"
+#line 2514 "yyscript.c"
     break;
 
   case 36: /* extern_name_list: $@4 extern_name_list_body  */
 #line 319 "yyscript.y"
             { script_pop_lex_mode(closure); }
-#line 2525 "yyscript.c"
+#line 2520 "yyscript.c"
     break;
 
   case 37: /* extern_name_list_body: string  */
 #line 324 "yyscript.y"
             { script_add_extern(closure, (yyvsp[0].string).value, (yyvsp[0].string).length); }
-#line 2531 "yyscript.c"
+#line 2526 "yyscript.c"
     break;
 
   case 38: /* extern_name_list_body: extern_name_list_body string  */
 #line 326 "yyscript.y"
             { script_add_extern(closure, (yyvsp[0].string).value, (yyvsp[0].string).length); }
-#line 2537 "yyscript.c"
+#line 2532 "yyscript.c"
     break;
 
   case 39: /* extern_name_list_body: extern_name_list_body ',' string  */
 #line 328 "yyscript.y"
             { script_add_extern(closure, (yyvsp[0].string).value, (yyvsp[0].string).length); }
-#line 2543 "yyscript.c"
+#line 2538 "yyscript.c"
     break;
 
   case 42: /* input_list_element: string  */
 #line 340 "yyscript.y"
             { script_add_file(closure, (yyvsp[0].string).value, (yyvsp[0].string).length); }
-#line 2549 "yyscript.c"
+#line 2544 "yyscript.c"
     break;
 
   case 43: /* input_list_element: '-' STRING  */
 #line 342 "yyscript.y"
             { script_add_library(closure, (yyvsp[0].string).value, (yyvsp[0].string).length); }
-#line 2555 "yyscript.c"
+#line 2550 "yyscript.c"
     break;
 
   case 44: /* $@5: %empty  */
 #line 344 "yyscript.y"
             { script_start_as_needed(closure); }
-#line 2561 "yyscript.c"
+#line 2556 "yyscript.c"
     break;
 
   case 45: /* input_list_element: AS_NEEDED $@5 '(' input_list ')'  */
 #line 346 "yyscript.y"
             { script_end_as_needed(closure); }
-#line 2567 "yyscript.c"
+#line 2562 "yyscript.c"
     break;
 
   case 48: /* section_block_cmd: ENTRY '(' string ')'  */
 #line 358 "yyscript.y"
             { script_set_entry(closure, (yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 2573 "yyscript.c"
+#line 2568 "yyscript.c"
     break;
 
   case 50: /* section_block_cmd: ASSERT_K '(' parse_exp ',' string ')'  */
 #line 361 "yyscript.y"
             { script_add_assertion(closure, (yyvsp[-3].expr), (yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 2579 "yyscript.c"
+#line 2574 "yyscript.c"
     break;
 
   case 51: /* section_block_cmd: INCLUDE string  */
 #line 363 "yyscript.y"
             { script_include_directive(PARSING_SECTIONS_BLOCK, closure,
 				       (yyvsp[0].string).value, (yyvsp[0].string).length); }
-#line 2586 "yyscript.c"
+#line 2581 "yyscript.c"
     break;
 
   case 52: /* $@6: %empty  */
 #line 366 "yyscript.y"
             { script_start_output_section(closure, (yyvsp[-1].string).value, (yyvsp[-1].string).length, &(yyvsp[0].output_section_header)); }
-#line 2592 "yyscript.c"
+#line 2587 "yyscript.c"
     break;
 
   case 53: /* section_block_cmd: string section_header $@6 '{' section_cmds '}' section_trailer  */
 #line 368 "yyscript.y"
             { script_finish_output_section(closure, &(yyvsp[0].output_section_trailer)); }
-#line 2598 "yyscript.c"
+#line 2593 "yyscript.c"
     break;
 
   case 54: /* $@7: %empty  */
 #line 374 "yyscript.y"
             { script_push_lex_into_expression_mode(closure); }
-#line 2604 "yyscript.c"
+#line 2599 "yyscript.c"
     break;
 
   case 55: /* $@8: %empty  */
 #line 376 "yyscript.y"
             { script_pop_lex_mode(closure); }
-#line 2610 "yyscript.c"
+#line 2605 "yyscript.c"
     break;
 
   case 56: /* section_header: $@7 opt_address_and_section_type opt_at opt_align opt_subalign $@8 opt_constraint  */
@@ -2619,7 +2614,7 @@ yyreduce:
 	      (yyval.output_section_header).subalign = (yyvsp[-2].expr);
 	      (yyval.output_section_header).constraint = (yyvsp[0].constraint);
 	    }
-#line 2623 "yyscript.c"
+#line 2618 "yyscript.c"
     break;
 
   case 57: /* opt_address_and_section_type: ':'  */
@@ -2628,7 +2623,7 @@ yyreduce:
 	      (yyval.output_section_header).address = NULL;
 	      (yyval.output_section_header).section_type = SCRIPT_SECTION_TYPE_NONE;
 	    }
-#line 2632 "yyscript.c"
+#line 2627 "yyscript.c"
     break;
 
   case 58: /* opt_address_and_section_type: '(' ')' ':'  */
@@ -2637,7 +2632,7 @@ yyreduce:
 	      (yyval.output_section_header).address = NULL;
 	      (yyval.output_section_header).section_type = SCRIPT_SECTION_TYPE_NONE;
 	    }
-#line 2641 "yyscript.c"
+#line 2636 "yyscript.c"
     break;
 
   case 59: /* opt_address_and_section_type: exp ':'  */
@@ -2646,7 +2641,7 @@ yyreduce:
 	      (yyval.output_section_header).address = (yyvsp[-1].expr);
 	      (yyval.output_section_header).section_type = SCRIPT_SECTION_TYPE_NONE;
 	    }
-#line 2650 "yyscript.c"
+#line 2645 "yyscript.c"
     break;
 
   case 60: /* opt_address_and_section_type: exp '(' ')' ':'  */
@@ -2655,7 +2650,7 @@ yyreduce:
 	      (yyval.output_section_header).address = (yyvsp[-3].expr);
 	      (yyval.output_section_header).section_type = SCRIPT_SECTION_TYPE_NONE;
 	    }
-#line 2659 "yyscript.c"
+#line 2654 "yyscript.c"
     break;
 
   case 61: /* opt_address_and_section_type: '(' section_type ')' ':'  */
@@ -2664,7 +2659,7 @@ yyreduce:
 	      (yyval.output_section_header).address = NULL;
 	      (yyval.output_section_header).section_type = (yyvsp[-2].section_type);
 	    }
-#line 2668 "yyscript.c"
+#line 2663 "yyscript.c"
     break;
 
   case 62: /* opt_address_and_section_type: exp '(' section_type ')' ':'  */
@@ -2673,13 +2668,13 @@ yyreduce:
 	      (yyval.output_section_header).address = (yyvsp[-4].expr);
 	      (yyval.output_section_header).section_type = (yyvsp[-2].section_type);
 	    }
-#line 2677 "yyscript.c"
+#line 2672 "yyscript.c"
     break;
 
   case 63: /* section_type: NOLOAD  */
 #line 428 "yyscript.y"
             { (yyval.section_type) = SCRIPT_SECTION_TYPE_NOLOAD; }
-#line 2683 "yyscript.c"
+#line 2678 "yyscript.c"
     break;
 
   case 64: /* section_type: DSECT  */
@@ -2688,7 +2683,7 @@ yyreduce:
 	      yyerror(closure, "DSECT section type is unsupported");
 	      (yyval.section_type) = SCRIPT_SECTION_TYPE_DSECT;
 	    }
-#line 2692 "yyscript.c"
+#line 2687 "yyscript.c"
     break;
 
   case 65: /* section_type: COPY  */
@@ -2697,7 +2692,7 @@ yyreduce:
 	      yyerror(closure, "COPY section type is unsupported");
 	      (yyval.section_type) = SCRIPT_SECTION_TYPE_COPY;
 	    }
-#line 2701 "yyscript.c"
+#line 2696 "yyscript.c"
     break;
 
   case 66: /* section_type: INFO  */
@@ -2706,7 +2701,7 @@ yyreduce:
 	      yyerror(closure, "INFO section type is unsupported");
 	      (yyval.section_type) = SCRIPT_SECTION_TYPE_INFO;
 	    }
-#line 2710 "yyscript.c"
+#line 2705 "yyscript.c"
     break;
 
   case 67: /* section_type: OVERLAY  */
@@ -2715,67 +2710,67 @@ yyreduce:
 	      yyerror(closure, "OVERLAY section type is unsupported");
 	      (yyval.section_type) = SCRIPT_SECTION_TYPE_OVERLAY;
 	    }
-#line 2719 "yyscript.c"
+#line 2714 "yyscript.c"
     break;
 
   case 68: /* opt_at: %empty  */
 #line 454 "yyscript.y"
             { (yyval.expr) = NULL; }
-#line 2725 "yyscript.c"
+#line 2720 "yyscript.c"
     break;
 
   case 69: /* opt_at: AT '(' exp ')'  */
 #line 456 "yyscript.y"
             { (yyval.expr) = (yyvsp[-1].expr); }
-#line 2731 "yyscript.c"
+#line 2726 "yyscript.c"
     break;
 
   case 70: /* opt_align: %empty  */
 #line 462 "yyscript.y"
             { (yyval.expr) = NULL; }
-#line 2737 "yyscript.c"
+#line 2732 "yyscript.c"
     break;
 
   case 71: /* opt_align: ALIGN_K '(' exp ')'  */
 #line 464 "yyscript.y"
             { (yyval.expr) = (yyvsp[-1].expr); }
-#line 2743 "yyscript.c"
+#line 2738 "yyscript.c"
     break;
 
   case 72: /* opt_subalign: %empty  */
 #line 470 "yyscript.y"
             { (yyval.expr) = NULL; }
-#line 2749 "yyscript.c"
+#line 2744 "yyscript.c"
     break;
 
   case 73: /* opt_subalign: SUBALIGN '(' exp ')'  */
 #line 472 "yyscript.y"
             { (yyval.expr) = (yyvsp[-1].expr); }
-#line 2755 "yyscript.c"
+#line 2750 "yyscript.c"
     break;
 
   case 74: /* opt_constraint: %empty  */
 #line 478 "yyscript.y"
             { (yyval.constraint) = CONSTRAINT_NONE; }
-#line 2761 "yyscript.c"
+#line 2756 "yyscript.c"
     break;
 
   case 75: /* opt_constraint: ONLY_IF_RO  */
 #line 480 "yyscript.y"
             { (yyval.constraint) = CONSTRAINT_ONLY_IF_RO; }
-#line 2767 "yyscript.c"
+#line 2762 "yyscript.c"
     break;
 
   case 76: /* opt_constraint: ONLY_IF_RW  */
 #line 482 "yyscript.y"
             { (yyval.constraint) = CONSTRAINT_ONLY_IF_RW; }
-#line 2773 "yyscript.c"
+#line 2768 "yyscript.c"
     break;
 
   case 77: /* opt_constraint: SPECIAL  */
 #line 484 "yyscript.y"
             { (yyval.constraint) = CONSTRAINT_SPECIAL; }
-#line 2779 "yyscript.c"
+#line 2774 "yyscript.c"
     break;
 
   case 78: /* section_trailer: opt_memspec opt_at_memspec opt_phdr opt_fill opt_comma  */
@@ -2784,61 +2779,61 @@ yyreduce:
 	      (yyval.output_section_trailer).fill = (yyvsp[-1].expr);
 	      (yyval.output_section_trailer).phdrs = (yyvsp[-2].string_list);
 	    }
-#line 2788 "yyscript.c"
+#line 2783 "yyscript.c"
     break;
 
   case 79: /* opt_memspec: '>' string  */
 #line 499 "yyscript.y"
             { script_set_section_region(closure, (yyvsp[0].string).value, (yyvsp[0].string).length, 1); }
-#line 2794 "yyscript.c"
+#line 2789 "yyscript.c"
     break;
 
   case 81: /* opt_at_memspec: AT '>' string  */
 #line 506 "yyscript.y"
             { script_set_section_region(closure, (yyvsp[0].string).value, (yyvsp[0].string).length, 0); }
-#line 2800 "yyscript.c"
+#line 2795 "yyscript.c"
     break;
 
   case 83: /* opt_phdr: opt_phdr ':' string  */
 #line 513 "yyscript.y"
             { (yyval.string_list) = script_string_list_push_back((yyvsp[-2].string_list), (yyvsp[0].string).value, (yyvsp[0].string).length); }
-#line 2806 "yyscript.c"
+#line 2801 "yyscript.c"
     break;
 
   case 84: /* opt_phdr: %empty  */
 #line 515 "yyscript.y"
             { (yyval.string_list) = NULL; }
-#line 2812 "yyscript.c"
+#line 2807 "yyscript.c"
     break;
 
   case 85: /* opt_fill: '=' parse_exp  */
 #line 522 "yyscript.y"
             { (yyval.expr) = (yyvsp[0].expr); }
-#line 2818 "yyscript.c"
+#line 2813 "yyscript.c"
     break;
 
   case 86: /* opt_fill: %empty  */
 #line 524 "yyscript.y"
             { (yyval.expr) = NULL; }
-#line 2824 "yyscript.c"
+#line 2819 "yyscript.c"
     break;
 
   case 91: /* section_cmd: data_length '(' parse_exp ')'  */
 #line 540 "yyscript.y"
             { script_add_data(closure, (yyvsp[-3].integer), (yyvsp[-1].expr)); }
-#line 2830 "yyscript.c"
+#line 2825 "yyscript.c"
     break;
 
   case 92: /* section_cmd: ASSERT_K '(' parse_exp ',' string ')'  */
 #line 542 "yyscript.y"
             { script_add_assertion(closure, (yyvsp[-3].expr), (yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 2836 "yyscript.c"
+#line 2831 "yyscript.c"
     break;
 
   case 93: /* section_cmd: FILL '(' parse_exp ')'  */
 #line 544 "yyscript.y"
             { script_add_fill(closure, (yyvsp[-1].expr)); }
-#line 2842 "yyscript.c"
+#line 2837 "yyscript.c"
     break;
 
   case 94: /* section_cmd: CONSTRUCTORS  */
@@ -2849,56 +2844,56 @@ yyreduce:
 		 some ELF linker scripts use it although it does
 		 nothing, we accept it and ignore it.  */
 	    }
-#line 2853 "yyscript.c"
+#line 2848 "yyscript.c"
     break;
 
   case 96: /* section_cmd: INCLUDE string  */
 #line 554 "yyscript.y"
             { script_include_directive(PARSING_SECTION_COMMANDS, closure,
 				       (yyvsp[0].string).value, (yyvsp[0].string).length); }
-#line 2860 "yyscript.c"
+#line 2855 "yyscript.c"
     break;
 
   case 98: /* data_length: QUAD  */
 #line 563 "yyscript.y"
             { (yyval.integer) = QUAD; }
-#line 2866 "yyscript.c"
+#line 2861 "yyscript.c"
     break;
 
   case 99: /* data_length: SQUAD  */
 #line 565 "yyscript.y"
             { (yyval.integer) = SQUAD; }
-#line 2872 "yyscript.c"
+#line 2867 "yyscript.c"
     break;
 
   case 100: /* data_length: LONG  */
 #line 567 "yyscript.y"
             { (yyval.integer) = LONG; }
-#line 2878 "yyscript.c"
+#line 2873 "yyscript.c"
     break;
 
   case 101: /* data_length: SHORT  */
 #line 569 "yyscript.y"
             { (yyval.integer) = SHORT; }
-#line 2884 "yyscript.c"
+#line 2879 "yyscript.c"
     break;
 
   case 102: /* data_length: BYTE  */
 #line 571 "yyscript.y"
             { (yyval.integer) = BYTE; }
-#line 2890 "yyscript.c"
+#line 2885 "yyscript.c"
     break;
 
   case 103: /* input_section_spec: input_section_no_keep  */
 #line 578 "yyscript.y"
             { script_add_input_section(closure, &(yyvsp[0].input_section_spec), 0); }
-#line 2896 "yyscript.c"
+#line 2891 "yyscript.c"
     break;
 
   case 104: /* input_section_spec: KEEP '(' input_section_no_keep ')'  */
 #line 580 "yyscript.y"
             { script_add_input_section(closure, &(yyvsp[-1].input_section_spec), 1); }
-#line 2902 "yyscript.c"
+#line 2897 "yyscript.c"
     break;
 
   case 105: /* input_section_no_keep: string  */
@@ -2909,7 +2904,7 @@ yyreduce:
 	      (yyval.input_section_spec).input_sections.sections = NULL;
 	      (yyval.input_section_spec).input_sections.exclude = NULL;
 	    }
-#line 2913 "yyscript.c"
+#line 2908 "yyscript.c"
     break;
 
   case 106: /* input_section_no_keep: wildcard_file '(' wildcard_sections ')'  */
@@ -2918,7 +2913,7 @@ yyreduce:
 	      (yyval.input_section_spec).file = (yyvsp[-3].wildcard_section);
 	      (yyval.input_section_spec).input_sections = (yyvsp[-1].wildcard_sections);
 	    }
-#line 2922 "yyscript.c"
+#line 2917 "yyscript.c"
     break;
 
   case 107: /* wildcard_file: wildcard_name  */
@@ -2927,7 +2922,7 @@ yyreduce:
 	      (yyval.wildcard_section).name = (yyvsp[0].string);
 	      (yyval.wildcard_section).sort = SORT_WILDCARD_NONE;
 	    }
-#line 2931 "yyscript.c"
+#line 2926 "yyscript.c"
     break;
 
   case 108: /* wildcard_file: SORT_BY_NAME '(' wildcard_name ')'  */
@@ -2936,7 +2931,7 @@ yyreduce:
 	      (yyval.wildcard_section).name = (yyvsp[-1].string);
 	      (yyval.wildcard_section).sort = SORT_WILDCARD_BY_NAME;
 	    }
-#line 2940 "yyscript.c"
+#line 2935 "yyscript.c"
     break;
 
   case 109: /* wildcard_sections: wildcard_sections opt_comma wildcard_section  */
@@ -2945,7 +2940,7 @@ yyreduce:
 	      (yyval.wildcard_sections).sections = script_string_sort_list_add((yyvsp[-2].wildcard_sections).sections, &(yyvsp[0].wildcard_section));
 	      (yyval.wildcard_sections).exclude = (yyvsp[-2].wildcard_sections).exclude;
 	    }
-#line 2949 "yyscript.c"
+#line 2944 "yyscript.c"
     break;
 
   case 110: /* wildcard_sections: wildcard_section  */
@@ -2954,7 +2949,7 @@ yyreduce:
 	      (yyval.wildcard_sections).sections = script_new_string_sort_list(&(yyvsp[0].wildcard_section));
 	      (yyval.wildcard_sections).exclude = NULL;
 	    }
-#line 2958 "yyscript.c"
+#line 2953 "yyscript.c"
     break;
 
   case 111: /* wildcard_sections: wildcard_sections opt_comma EXCLUDE_FILE '(' exclude_names ')'  */
@@ -2963,7 +2958,7 @@ yyreduce:
 	      (yyval.wildcard_sections).sections = (yyvsp[-5].wildcard_sections).sections;
 	      (yyval.wildcard_sections).exclude = script_string_list_append((yyvsp[-5].wildcard_sections).exclude, (yyvsp[-1].string_list));
 	    }
-#line 2967 "yyscript.c"
+#line 2962 "yyscript.c"
     break;
 
   case 112: /* wildcard_sections: EXCLUDE_FILE '(' exclude_names ')'  */
@@ -2972,7 +2967,7 @@ yyreduce:
 	      (yyval.wildcard_sections).sections = NULL;
 	      (yyval.wildcard_sections).exclude = (yyvsp[-1].string_list);
 	    }
-#line 2976 "yyscript.c"
+#line 2971 "yyscript.c"
     break;
 
   case 113: /* wildcard_section: wildcard_name  */
@@ -2981,7 +2976,7 @@ yyreduce:
 	      (yyval.wildcard_section).name = (yyvsp[0].string);
 	      (yyval.wildcard_section).sort = SORT_WILDCARD_NONE;
 	    }
-#line 2985 "yyscript.c"
+#line 2980 "yyscript.c"
     break;
 
   case 114: /* wildcard_section: SORT_BY_NAME '(' wildcard_section ')'  */
@@ -3004,7 +2999,7 @@ yyreduce:
 		  abort();
 		}
 	    }
-#line 3008 "yyscript.c"
+#line 3003 "yyscript.c"
     break;
 
   case 115: /* wildcard_section: SORT_BY_ALIGNMENT '(' wildcard_section ')'  */
@@ -3027,7 +3022,7 @@ yyreduce:
 		  abort();
 		}
 	    }
-#line 3031 "yyscript.c"
+#line 3026 "yyscript.c"
     break;
 
   case 116: /* wildcard_section: SORT_BY_INIT_PRIORITY '(' wildcard_name ')'  */
@@ -3036,25 +3031,25 @@ yyreduce:
 	      (yyval.wildcard_section).name = (yyvsp[-1].string);
 	      (yyval.wildcard_section).sort = SORT_WILDCARD_BY_INIT_PRIORITY;
 	    }
-#line 3040 "yyscript.c"
+#line 3035 "yyscript.c"
     break;
 
   case 117: /* exclude_names: exclude_names opt_comma wildcard_name  */
 #line 692 "yyscript.y"
             { (yyval.string_list) = script_string_list_push_back((yyvsp[-2].string_list), (yyvsp[0].string).value, (yyvsp[0].string).length); }
-#line 3046 "yyscript.c"
+#line 3041 "yyscript.c"
     break;
 
   case 118: /* exclude_names: wildcard_name  */
 #line 694 "yyscript.y"
             { (yyval.string_list) = script_new_string_list((yyvsp[0].string).value, (yyvsp[0].string).length); }
-#line 3052 "yyscript.c"
+#line 3047 "yyscript.c"
     break;
 
   case 119: /* wildcard_name: string  */
 #line 701 "yyscript.y"
             { (yyval.string) = (yyvsp[0].string); }
-#line 3058 "yyscript.c"
+#line 3053 "yyscript.c"
     break;
 
   case 120: /* wildcard_name: '*'  */
@@ -3063,7 +3058,7 @@ yyreduce:
 	      (yyval.string).value = "*";
 	      (yyval.string).length = 1;
 	    }
-#line 3067 "yyscript.c"
+#line 3062 "yyscript.c"
     break;
 
   case 121: /* wildcard_name: '?'  */
@@ -3072,62 +3067,62 @@ yyreduce:
 	      (yyval.string).value = "?";
 	      (yyval.string).length = 1;
 	    }
-#line 3076 "yyscript.c"
+#line 3071 "yyscript.c"
     break;
 
   case 124: /* memory_def: string memory_attr ':' memory_origin '=' parse_exp opt_comma memory_length '=' parse_exp  */
 #line 723 "yyscript.y"
           { script_add_memory(closure, (yyvsp[-9].string).value, (yyvsp[-9].string).length, (yyvsp[-8].integer), (yyvsp[-4].expr), (yyvsp[0].expr)); }
-#line 3082 "yyscript.c"
+#line 3077 "yyscript.c"
     break;
 
   case 125: /* memory_def: INCLUDE string  */
 #line 726 "yyscript.y"
           { script_include_directive(PARSING_MEMORY_DEF, closure,
 				     (yyvsp[0].string).value, (yyvsp[0].string).length); }
-#line 3089 "yyscript.c"
+#line 3084 "yyscript.c"
     break;
 
   case 127: /* memory_attr: '(' string ')'  */
 #line 734 "yyscript.y"
           { (yyval.integer) = script_parse_memory_attr(closure, (yyvsp[-1].string).value, (yyvsp[-1].string).length, 0); }
-#line 3095 "yyscript.c"
+#line 3090 "yyscript.c"
     break;
 
   case 128: /* memory_attr: '(' '!' string ')'  */
 #line 737 "yyscript.y"
           { (yyval.integer) = script_parse_memory_attr(closure, (yyvsp[-1].string).value, (yyvsp[-1].string).length, 1); }
-#line 3101 "yyscript.c"
+#line 3096 "yyscript.c"
     break;
 
   case 129: /* memory_attr: %empty  */
 #line 739 "yyscript.y"
             { (yyval.integer) = 0; }
-#line 3107 "yyscript.c"
+#line 3102 "yyscript.c"
     break;
 
   case 138: /* phdr_def: string phdr_type phdr_info ';'  */
 #line 767 "yyscript.y"
             { script_add_phdr(closure, (yyvsp[-3].string).value, (yyvsp[-3].string).length, (yyvsp[-2].integer), &(yyvsp[-1].phdr_info)); }
-#line 3113 "yyscript.c"
+#line 3108 "yyscript.c"
     break;
 
   case 139: /* phdr_type: string  */
 #line 776 "yyscript.y"
             { (yyval.integer) = script_phdr_string_to_type(closure, (yyvsp[0].string).value, (yyvsp[0].string).length); }
-#line 3119 "yyscript.c"
+#line 3114 "yyscript.c"
     break;
 
   case 140: /* phdr_type: INTEGER  */
 #line 778 "yyscript.y"
             { (yyval.integer) = (yyvsp[0].integer); }
-#line 3125 "yyscript.c"
+#line 3120 "yyscript.c"
     break;
 
   case 141: /* phdr_info: %empty  */
 #line 784 "yyscript.y"
             { memset(&(yyval.phdr_info), 0, sizeof(struct Phdr_info)); }
-#line 3131 "yyscript.c"
+#line 3126 "yyscript.c"
     break;
 
   case 142: /* phdr_info: string phdr_info  */
@@ -3139,7 +3134,7 @@ yyreduce:
 	      else
 		yyerror(closure, "PHDRS syntax error");
 	    }
-#line 3143 "yyscript.c"
+#line 3138 "yyscript.c"
     break;
 
   case 143: /* phdr_info: PHDRS phdr_info  */
@@ -3148,7 +3143,7 @@ yyreduce:
 	      (yyval.phdr_info) = (yyvsp[0].phdr_info);
 	      (yyval.phdr_info).includes_phdrs = 1;
 	    }
-#line 3152 "yyscript.c"
+#line 3147 "yyscript.c"
     break;
 
   case 144: /* phdr_info: string '(' INTEGER ')' phdr_info  */
@@ -3163,7 +3158,7 @@ yyreduce:
 	      else
 		yyerror(closure, "PHDRS syntax error");
 	    }
-#line 3167 "yyscript.c"
+#line 3162 "yyscript.c"
     break;
 
   case 145: /* phdr_info: AT '(' parse_exp ')' phdr_info  */
@@ -3172,13 +3167,13 @@ yyreduce:
 	      (yyval.phdr_info) = (yyvsp[0].phdr_info);
 	      (yyval.phdr_info).load_address = (yyvsp[-2].expr);
 	    }
-#line 3176 "yyscript.c"
+#line 3171 "yyscript.c"
     break;
 
   case 146: /* assignment: string '=' parse_exp  */
 #line 819 "yyscript.y"
             { script_set_symbol(closure, (yyvsp[-2].string).value, (yyvsp[-2].string).length, (yyvsp[0].expr), 0, 0); }
-#line 3182 "yyscript.c"
+#line 3177 "yyscript.c"
     break;
 
   case 147: /* assignment: string PLUSEQ parse_exp  */
@@ -3188,7 +3183,7 @@ yyreduce:
 	      Expression_ptr e = script_exp_binary_add(s, (yyvsp[0].expr));
 	      script_set_symbol(closure, (yyvsp[-2].string).value, (yyvsp[-2].string).length, e, 0, 0);
 	    }
-#line 3192 "yyscript.c"
+#line 3187 "yyscript.c"
     break;
 
   case 148: /* assignment: string MINUSEQ parse_exp  */
@@ -3198,7 +3193,7 @@ yyreduce:
 	      Expression_ptr e = script_exp_binary_sub(s, (yyvsp[0].expr));
 	      script_set_symbol(closure, (yyvsp[-2].string).value, (yyvsp[-2].string).length, e, 0, 0);
 	    }
-#line 3202 "yyscript.c"
+#line 3197 "yyscript.c"
     break;
 
   case 149: /* assignment: string MULTEQ parse_exp  */
@@ -3208,7 +3203,7 @@ yyreduce:
 	      Expression_ptr e = script_exp_binary_mult(s, (yyvsp[0].expr));
 	      script_set_symbol(closure, (yyvsp[-2].string).value, (yyvsp[-2].string).length, e, 0, 0);
 	    }
-#line 3212 "yyscript.c"
+#line 3207 "yyscript.c"
     break;
 
   case 150: /* assignment: string DIVEQ parse_exp  */
@@ -3218,7 +3213,7 @@ yyreduce:
 	      Expression_ptr e = script_exp_binary_div(s, (yyvsp[0].expr));
 	      script_set_symbol(closure, (yyvsp[-2].string).value, (yyvsp[-2].string).length, e, 0, 0);
 	    }
-#line 3222 "yyscript.c"
+#line 3217 "yyscript.c"
     break;
 
   case 151: /* assignment: string LSHIFTEQ parse_exp  */
@@ -3228,7 +3223,7 @@ yyreduce:
 	      Expression_ptr e = script_exp_binary_lshift(s, (yyvsp[0].expr));
 	      script_set_symbol(closure, (yyvsp[-2].string).value, (yyvsp[-2].string).length, e, 0, 0);
 	    }
-#line 3232 "yyscript.c"
+#line 3227 "yyscript.c"
     break;
 
   case 152: /* assignment: string RSHIFTEQ parse_exp  */
@@ -3238,7 +3233,7 @@ yyreduce:
 	      Expression_ptr e = script_exp_binary_rshift(s, (yyvsp[0].expr));
 	      script_set_symbol(closure, (yyvsp[-2].string).value, (yyvsp[-2].string).length, e, 0, 0);
 	    }
-#line 3242 "yyscript.c"
+#line 3237 "yyscript.c"
     break;
 
   case 153: /* assignment: string ANDEQ parse_exp  */
@@ -3248,7 +3243,7 @@ yyreduce:
 	      Expression_ptr e = script_exp_binary_bitwise_and(s, (yyvsp[0].expr));
 	      script_set_symbol(closure, (yyvsp[-2].string).value, (yyvsp[-2].string).length, e, 0, 0);
 	    }
-#line 3252 "yyscript.c"
+#line 3247 "yyscript.c"
     break;
 
   case 154: /* assignment: string OREQ parse_exp  */
@@ -3258,31 +3253,31 @@ yyreduce:
 	      Expression_ptr e = script_exp_binary_bitwise_or(s, (yyvsp[0].expr));
 	      script_set_symbol(closure, (yyvsp[-2].string).value, (yyvsp[-2].string).length, e, 0, 0);
 	    }
-#line 3262 "yyscript.c"
+#line 3257 "yyscript.c"
     break;
 
   case 155: /* assignment: HIDDEN '(' string '=' parse_exp ')'  */
 #line 869 "yyscript.y"
             { script_set_symbol(closure, (yyvsp[-3].string).value, (yyvsp[-3].string).length, (yyvsp[-1].expr), 0, 1); }
-#line 3268 "yyscript.c"
+#line 3263 "yyscript.c"
     break;
 
   case 156: /* assignment: PROVIDE '(' string '=' parse_exp ')'  */
 #line 871 "yyscript.y"
             { script_set_symbol(closure, (yyvsp[-3].string).value, (yyvsp[-3].string).length, (yyvsp[-1].expr), 1, 0); }
-#line 3274 "yyscript.c"
+#line 3269 "yyscript.c"
     break;
 
   case 157: /* assignment: PROVIDE_HIDDEN '(' string '=' parse_exp ')'  */
 #line 873 "yyscript.y"
             { script_set_symbol(closure, (yyvsp[-3].string).value, (yyvsp[-3].string).length, (yyvsp[-1].expr), 1, 1); }
-#line 3280 "yyscript.c"
+#line 3275 "yyscript.c"
     break;
 
   case 158: /* $@9: %empty  */
 #line 878 "yyscript.y"
             { script_push_lex_into_expression_mode(closure); }
-#line 3286 "yyscript.c"
+#line 3281 "yyscript.c"
     break;
 
   case 159: /* parse_exp: $@9 exp  */
@@ -3291,253 +3286,253 @@ yyreduce:
 	      script_pop_lex_mode(closure);
 	      (yyval.expr) = (yyvsp[0].expr);
 	    }
-#line 3295 "yyscript.c"
+#line 3290 "yyscript.c"
     break;
 
   case 160: /* exp: '(' exp ')'  */
 #line 889 "yyscript.y"
             { (yyval.expr) = (yyvsp[-1].expr); }
-#line 3301 "yyscript.c"
+#line 3296 "yyscript.c"
     break;
 
   case 161: /* exp: '-' exp  */
 #line 891 "yyscript.y"
             { (yyval.expr) = script_exp_unary_minus((yyvsp[0].expr)); }
-#line 3307 "yyscript.c"
+#line 3302 "yyscript.c"
     break;
 
   case 162: /* exp: '!' exp  */
 #line 893 "yyscript.y"
             { (yyval.expr) = script_exp_unary_logical_not((yyvsp[0].expr)); }
-#line 3313 "yyscript.c"
+#line 3308 "yyscript.c"
     break;
 
   case 163: /* exp: '~' exp  */
 #line 895 "yyscript.y"
             { (yyval.expr) = script_exp_unary_bitwise_not((yyvsp[0].expr)); }
-#line 3319 "yyscript.c"
+#line 3314 "yyscript.c"
     break;
 
   case 164: /* exp: '+' exp  */
 #line 897 "yyscript.y"
             { (yyval.expr) = (yyvsp[0].expr); }
-#line 3325 "yyscript.c"
+#line 3320 "yyscript.c"
     break;
 
   case 165: /* exp: exp '*' exp  */
 #line 899 "yyscript.y"
             { (yyval.expr) = script_exp_binary_mult((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3331 "yyscript.c"
+#line 3326 "yyscript.c"
     break;
 
   case 166: /* exp: exp '/' exp  */
 #line 901 "yyscript.y"
             { (yyval.expr) = script_exp_binary_div((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3337 "yyscript.c"
+#line 3332 "yyscript.c"
     break;
 
   case 167: /* exp: exp '%' exp  */
 #line 903 "yyscript.y"
             { (yyval.expr) = script_exp_binary_mod((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3343 "yyscript.c"
+#line 3338 "yyscript.c"
     break;
 
   case 168: /* exp: exp '+' exp  */
 #line 905 "yyscript.y"
             { (yyval.expr) = script_exp_binary_add((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3349 "yyscript.c"
+#line 3344 "yyscript.c"
     break;
 
   case 169: /* exp: exp '-' exp  */
 #line 907 "yyscript.y"
             { (yyval.expr) = script_exp_binary_sub((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3355 "yyscript.c"
+#line 3350 "yyscript.c"
     break;
 
   case 170: /* exp: exp LSHIFT exp  */
 #line 909 "yyscript.y"
             { (yyval.expr) = script_exp_binary_lshift((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3361 "yyscript.c"
+#line 3356 "yyscript.c"
     break;
 
   case 171: /* exp: exp RSHIFT exp  */
 #line 911 "yyscript.y"
             { (yyval.expr) = script_exp_binary_rshift((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3367 "yyscript.c"
+#line 3362 "yyscript.c"
     break;
 
   case 172: /* exp: exp EQ exp  */
 #line 913 "yyscript.y"
             { (yyval.expr) = script_exp_binary_eq((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3373 "yyscript.c"
+#line 3368 "yyscript.c"
     break;
 
   case 173: /* exp: exp NE exp  */
 #line 915 "yyscript.y"
             { (yyval.expr) = script_exp_binary_ne((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3379 "yyscript.c"
+#line 3374 "yyscript.c"
     break;
 
   case 174: /* exp: exp LE exp  */
 #line 917 "yyscript.y"
             { (yyval.expr) = script_exp_binary_le((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3385 "yyscript.c"
+#line 3380 "yyscript.c"
     break;
 
   case 175: /* exp: exp GE exp  */
 #line 919 "yyscript.y"
             { (yyval.expr) = script_exp_binary_ge((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3391 "yyscript.c"
+#line 3386 "yyscript.c"
     break;
 
   case 176: /* exp: exp '<' exp  */
 #line 921 "yyscript.y"
             { (yyval.expr) = script_exp_binary_lt((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3397 "yyscript.c"
+#line 3392 "yyscript.c"
     break;
 
   case 177: /* exp: exp '>' exp  */
 #line 923 "yyscript.y"
             { (yyval.expr) = script_exp_binary_gt((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3403 "yyscript.c"
+#line 3398 "yyscript.c"
     break;
 
   case 178: /* exp: exp '&' exp  */
 #line 925 "yyscript.y"
             { (yyval.expr) = script_exp_binary_bitwise_and((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3409 "yyscript.c"
+#line 3404 "yyscript.c"
     break;
 
   case 179: /* exp: exp '^' exp  */
 #line 927 "yyscript.y"
             { (yyval.expr) = script_exp_binary_bitwise_xor((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3415 "yyscript.c"
+#line 3410 "yyscript.c"
     break;
 
   case 180: /* exp: exp '|' exp  */
 #line 929 "yyscript.y"
             { (yyval.expr) = script_exp_binary_bitwise_or((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3421 "yyscript.c"
+#line 3416 "yyscript.c"
     break;
 
   case 181: /* exp: exp ANDAND exp  */
 #line 931 "yyscript.y"
             { (yyval.expr) = script_exp_binary_logical_and((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3427 "yyscript.c"
+#line 3422 "yyscript.c"
     break;
 
   case 182: /* exp: exp OROR exp  */
 #line 933 "yyscript.y"
             { (yyval.expr) = script_exp_binary_logical_or((yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3433 "yyscript.c"
+#line 3428 "yyscript.c"
     break;
 
   case 183: /* exp: exp '?' exp ':' exp  */
 #line 935 "yyscript.y"
             { (yyval.expr) = script_exp_trinary_cond((yyvsp[-4].expr), (yyvsp[-2].expr), (yyvsp[0].expr)); }
-#line 3439 "yyscript.c"
+#line 3434 "yyscript.c"
     break;
 
   case 184: /* exp: INTEGER  */
 #line 937 "yyscript.y"
             { (yyval.expr) = script_exp_integer((yyvsp[0].integer)); }
-#line 3445 "yyscript.c"
+#line 3440 "yyscript.c"
     break;
 
   case 185: /* exp: string  */
 #line 939 "yyscript.y"
             { (yyval.expr) = script_symbol(closure, (yyvsp[0].string).value, (yyvsp[0].string).length); }
-#line 3451 "yyscript.c"
+#line 3446 "yyscript.c"
     break;
 
   case 186: /* exp: MAX_K '(' exp ',' exp ')'  */
 #line 941 "yyscript.y"
             { (yyval.expr) = script_exp_function_max((yyvsp[-3].expr), (yyvsp[-1].expr)); }
-#line 3457 "yyscript.c"
+#line 3452 "yyscript.c"
     break;
 
   case 187: /* exp: MIN_K '(' exp ',' exp ')'  */
 #line 943 "yyscript.y"
             { (yyval.expr) = script_exp_function_min((yyvsp[-3].expr), (yyvsp[-1].expr)); }
-#line 3463 "yyscript.c"
+#line 3458 "yyscript.c"
     break;
 
   case 188: /* exp: DEFINED '(' string ')'  */
 #line 945 "yyscript.y"
             { (yyval.expr) = script_exp_function_defined((yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 3469 "yyscript.c"
+#line 3464 "yyscript.c"
     break;
 
   case 189: /* exp: SIZEOF_HEADERS  */
 #line 947 "yyscript.y"
             { (yyval.expr) = script_exp_function_sizeof_headers(); }
-#line 3475 "yyscript.c"
+#line 3470 "yyscript.c"
     break;
 
   case 190: /* exp: ALIGNOF '(' string ')'  */
 #line 949 "yyscript.y"
             { (yyval.expr) = script_exp_function_alignof((yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 3481 "yyscript.c"
+#line 3476 "yyscript.c"
     break;
 
   case 191: /* exp: SIZEOF '(' string ')'  */
 #line 951 "yyscript.y"
             { (yyval.expr) = script_exp_function_sizeof((yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 3487 "yyscript.c"
+#line 3482 "yyscript.c"
     break;
 
   case 192: /* exp: ADDR '(' string ')'  */
 #line 953 "yyscript.y"
             { (yyval.expr) = script_exp_function_addr((yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 3493 "yyscript.c"
+#line 3488 "yyscript.c"
     break;
 
   case 193: /* exp: LOADADDR '(' string ')'  */
 #line 955 "yyscript.y"
             { (yyval.expr) = script_exp_function_loadaddr((yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 3499 "yyscript.c"
+#line 3494 "yyscript.c"
     break;
 
   case 194: /* exp: ORIGIN '(' string ')'  */
 #line 957 "yyscript.y"
             { (yyval.expr) = script_exp_function_origin(closure, (yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 3505 "yyscript.c"
+#line 3500 "yyscript.c"
     break;
 
   case 195: /* exp: LENGTH '(' string ')'  */
 #line 959 "yyscript.y"
             { (yyval.expr) = script_exp_function_length(closure, (yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 3511 "yyscript.c"
+#line 3506 "yyscript.c"
     break;
 
   case 196: /* exp: CONSTANT '(' string ')'  */
 #line 961 "yyscript.y"
             { (yyval.expr) = script_exp_function_constant((yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 3517 "yyscript.c"
+#line 3512 "yyscript.c"
     break;
 
   case 197: /* exp: ABSOLUTE '(' exp ')'  */
 #line 963 "yyscript.y"
             { (yyval.expr) = script_exp_function_absolute((yyvsp[-1].expr)); }
-#line 3523 "yyscript.c"
+#line 3518 "yyscript.c"
     break;
 
   case 198: /* exp: ALIGN_K '(' exp ')'  */
 #line 965 "yyscript.y"
             { (yyval.expr) = script_exp_function_align(script_exp_string(".", 1), (yyvsp[-1].expr)); }
-#line 3529 "yyscript.c"
+#line 3524 "yyscript.c"
     break;
 
   case 199: /* exp: ALIGN_K '(' exp ',' exp ')'  */
 #line 967 "yyscript.y"
             { (yyval.expr) = script_exp_function_align((yyvsp[-3].expr), (yyvsp[-1].expr)); }
-#line 3535 "yyscript.c"
+#line 3530 "yyscript.c"
     break;
 
   case 200: /* exp: BLOCK '(' exp ')'  */
 #line 969 "yyscript.y"
             { (yyval.expr) = script_exp_function_align(script_exp_string(".", 1), (yyvsp[-1].expr)); }
-#line 3541 "yyscript.c"
+#line 3536 "yyscript.c"
     break;
 
   case 201: /* exp: DATA_SEGMENT_ALIGN '(' exp ',' exp ')'  */
@@ -3546,7 +3541,7 @@ yyreduce:
 	      script_data_segment_align(closure);
 	      (yyval.expr) = script_exp_function_data_segment_align((yyvsp[-3].expr), (yyvsp[-1].expr));
 	    }
-#line 3550 "yyscript.c"
+#line 3545 "yyscript.c"
     break;
 
   case 202: /* exp: DATA_SEGMENT_RELRO_END '(' exp ',' exp ')'  */
@@ -3555,13 +3550,13 @@ yyreduce:
 	      script_data_segment_relro_end(closure);
 	      (yyval.expr) = script_exp_function_data_segment_relro_end((yyvsp[-3].expr), (yyvsp[-1].expr));
 	    }
-#line 3559 "yyscript.c"
+#line 3554 "yyscript.c"
     break;
 
   case 203: /* exp: DATA_SEGMENT_END '(' exp ')'  */
 #line 981 "yyscript.y"
             { (yyval.expr) = script_exp_function_data_segment_end((yyvsp[-1].expr)); }
-#line 3565 "yyscript.c"
+#line 3560 "yyscript.c"
     break;
 
   case 204: /* exp: SEGMENT_START '(' string ',' exp ')'  */
@@ -3573,25 +3568,25 @@ yyreduce:
 		 -Tbss options.  */
 	      script_saw_segment_start_expression(closure);
 	    }
-#line 3577 "yyscript.c"
+#line 3572 "yyscript.c"
     break;
 
   case 205: /* exp: ASSERT_K '(' exp ',' string ')'  */
 #line 991 "yyscript.y"
             { (yyval.expr) = script_exp_function_assert((yyvsp[-3].expr), (yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 3583 "yyscript.c"
+#line 3578 "yyscript.c"
     break;
 
   case 206: /* defsym_expr: string '=' parse_exp  */
 #line 997 "yyscript.y"
             { script_set_symbol(closure, (yyvsp[-2].string).value, (yyvsp[-2].string).length, (yyvsp[0].expr), 0, 0); }
-#line 3589 "yyscript.c"
+#line 3584 "yyscript.c"
     break;
 
   case 210: /* dynamic_list_node: '{' vers_defns ';' '}' ';'  */
 #line 1015 "yyscript.y"
             { script_new_vers_node (closure, NULL, (yyvsp[-3].versyms)); }
-#line 3595 "yyscript.c"
+#line 3590 "yyscript.c"
     break;
 
   case 214: /* vers_node: '{' vers_tag '}' ';'  */
@@ -3599,7 +3594,7 @@ yyreduce:
             {
 	      script_register_vers_node (closure, NULL, 0, (yyvsp[-2].versnode), NULL);
 	    }
-#line 3603 "yyscript.c"
+#line 3598 "yyscript.c"
     break;
 
   case 215: /* vers_node: string '{' vers_tag '}' ';'  */
@@ -3608,7 +3603,7 @@ yyreduce:
 	      script_register_vers_node (closure, (yyvsp[-4].string).value, (yyvsp[-4].string).length, (yyvsp[-2].versnode),
 					 NULL);
 	    }
-#line 3612 "yyscript.c"
+#line 3607 "yyscript.c"
     break;
 
   case 216: /* vers_node: string '{' vers_tag '}' verdep ';'  */
@@ -3616,7 +3611,7 @@ yyreduce:
             {
 	      script_register_vers_node (closure, (yyvsp[-5].string).value, (yyvsp[-5].string).length, (yyvsp[-3].versnode), (yyvsp[-1].deplist));
 	    }
-#line 3620 "yyscript.c"
+#line 3615 "yyscript.c"
     break;
 
   case 217: /* verdep: string  */
@@ -3624,7 +3619,7 @@ yyreduce:
             {
 	      (yyval.deplist) = script_add_vers_depend (closure, NULL, (yyvsp[0].string).value, (yyvsp[0].string).length);
 	    }
-#line 3628 "yyscript.c"
+#line 3623 "yyscript.c"
     break;
 
   case 218: /* verdep: verdep string  */
@@ -3632,37 +3627,37 @@ yyreduce:
             {
 	      (yyval.deplist) = script_add_vers_depend (closure, (yyvsp[-1].deplist), (yyvsp[0].string).value, (yyvsp[0].string).length);
 	    }
-#line 3636 "yyscript.c"
+#line 3631 "yyscript.c"
     break;
 
   case 219: /* vers_tag: %empty  */
 #line 1057 "yyscript.y"
             { (yyval.versnode) = script_new_vers_node (closure, NULL, NULL); }
-#line 3642 "yyscript.c"
+#line 3637 "yyscript.c"
     break;
 
   case 220: /* vers_tag: vers_defns ';'  */
 #line 1059 "yyscript.y"
             { (yyval.versnode) = script_new_vers_node (closure, (yyvsp[-1].versyms), NULL); }
-#line 3648 "yyscript.c"
+#line 3643 "yyscript.c"
     break;
 
   case 221: /* vers_tag: GLOBAL ':' vers_defns ';'  */
 #line 1061 "yyscript.y"
             { (yyval.versnode) = script_new_vers_node (closure, (yyvsp[-1].versyms), NULL); }
-#line 3654 "yyscript.c"
+#line 3649 "yyscript.c"
     break;
 
   case 222: /* vers_tag: LOCAL ':' vers_defns ';'  */
 #line 1063 "yyscript.y"
             { (yyval.versnode) = script_new_vers_node (closure, NULL, (yyvsp[-1].versyms)); }
-#line 3660 "yyscript.c"
+#line 3655 "yyscript.c"
     break;
 
   case 223: /* vers_tag: GLOBAL ':' vers_defns ';' LOCAL ':' vers_defns ';'  */
 #line 1065 "yyscript.y"
             { (yyval.versnode) = script_new_vers_node (closure, (yyvsp[-5].versyms), (yyvsp[-1].versyms)); }
-#line 3666 "yyscript.c"
+#line 3661 "yyscript.c"
     break;
 
   case 224: /* vers_defns: STRING  */
@@ -3671,7 +3666,7 @@ yyreduce:
 	      (yyval.versyms) = script_new_vers_pattern (closure, NULL, (yyvsp[0].string).value,
 					    (yyvsp[0].string).length, 0);
 	    }
-#line 3675 "yyscript.c"
+#line 3670 "yyscript.c"
     break;
 
   case 225: /* vers_defns: QUOTED_STRING  */
@@ -3680,7 +3675,7 @@ yyreduce:
 	      (yyval.versyms) = script_new_vers_pattern (closure, NULL, (yyvsp[0].string).value,
 					    (yyvsp[0].string).length, 1);
 	    }
-#line 3684 "yyscript.c"
+#line 3679 "yyscript.c"
     break;
 
   case 226: /* vers_defns: vers_defns ';' STRING  */
@@ -3689,7 +3684,7 @@ yyreduce:
 	      (yyval.versyms) = script_new_vers_pattern (closure, (yyvsp[-2].versyms), (yyvsp[0].string).value,
                                             (yyvsp[0].string).length, 0);
 	    }
-#line 3693 "yyscript.c"
+#line 3688 "yyscript.c"
     break;
 
   case 227: /* vers_defns: vers_defns ';' QUOTED_STRING  */
@@ -3698,13 +3693,13 @@ yyreduce:
 	      (yyval.versyms) = script_new_vers_pattern (closure, (yyvsp[-2].versyms), (yyvsp[0].string).value,
                                             (yyvsp[0].string).length, 1);
 	    }
-#line 3702 "yyscript.c"
+#line 3697 "yyscript.c"
     break;
 
   case 228: /* $@10: %empty  */
 #line 1095 "yyscript.y"
             { version_script_push_lang (closure, (yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 3708 "yyscript.c"
+#line 3703 "yyscript.c"
     break;
 
   case 229: /* vers_defns: EXTERN string '{' $@10 vers_defns opt_semicolon '}'  */
@@ -3713,13 +3708,13 @@ yyreduce:
 	      (yyval.versyms) = (yyvsp[-2].versyms);
 	      version_script_pop_lang(closure);
 	    }
-#line 3717 "yyscript.c"
+#line 3712 "yyscript.c"
     break;
 
   case 230: /* $@11: %empty  */
 #line 1105 "yyscript.y"
             { version_script_push_lang (closure, (yyvsp[-1].string).value, (yyvsp[-1].string).length); }
-#line 3723 "yyscript.c"
+#line 3718 "yyscript.c"
     break;
 
   case 231: /* vers_defns: vers_defns ';' EXTERN string '{' $@11 vers_defns opt_semicolon '}'  */
@@ -3728,7 +3723,7 @@ yyreduce:
 	      (yyval.versyms) = script_merge_expressions ((yyvsp[-8].versyms), (yyvsp[-2].versyms));
 	      version_script_pop_lang(closure);
 	    }
-#line 3732 "yyscript.c"
+#line 3727 "yyscript.c"
     break;
 
   case 232: /* vers_defns: EXTERN  */
@@ -3737,7 +3732,7 @@ yyreduce:
 	      (yyval.versyms) = script_new_vers_pattern (closure, NULL, "extern",
 					    sizeof("extern") - 1, 1);
 	    }
-#line 3741 "yyscript.c"
+#line 3736 "yyscript.c"
     break;
 
   case 233: /* vers_defns: vers_defns ';' EXTERN  */
@@ -3746,23 +3741,23 @@ yyreduce:
 	      (yyval.versyms) = script_new_vers_pattern (closure, (yyvsp[-2].versyms), "extern",
 					    sizeof("extern") - 1, 1);
 	    }
-#line 3750 "yyscript.c"
+#line 3745 "yyscript.c"
     break;
 
   case 234: /* string: STRING  */
 #line 1127 "yyscript.y"
             { (yyval.string) = (yyvsp[0].string); }
-#line 3756 "yyscript.c"
+#line 3751 "yyscript.c"
     break;
 
   case 235: /* string: QUOTED_STRING  */
 #line 1129 "yyscript.y"
             { (yyval.string) = (yyvsp[0].string); }
-#line 3762 "yyscript.c"
+#line 3757 "yyscript.c"
     break;
 
 
-#line 3766 "yyscript.c"
+#line 3761 "yyscript.c"
 
       default: break;
     }
@@ -3838,7 +3833,7 @@ yyerrlab:
           }
         yyerror (closure, yymsgp);
         if (yysyntax_error_status == YYENOMEM)
-          goto yyexhaustedlab;
+          YYNOMEM;
       }
     }
 
@@ -3874,6 +3869,7 @@ yyerrorlab:
      label yyerrorlab therefore never appears in user code.  */
   if (0)
     YYERROR;
+  ++yynerrs;
 
   /* Do not reclaim the symbols of the rule whose action triggered
      this YYERROR.  */
@@ -3934,7 +3930,7 @@ yyerrlab1:
 `-------------------------------------*/
 yyacceptlab:
   yyresult = 0;
-  goto yyreturn;
+  goto yyreturnlab;
 
 
 /*-----------------------------------.
@@ -3942,24 +3938,22 @@ yyacceptlab:
 `-----------------------------------*/
 yyabortlab:
   yyresult = 1;
-  goto yyreturn;
+  goto yyreturnlab;
 
 
-#if 1
-/*-------------------------------------------------.
-| yyexhaustedlab -- memory exhaustion comes here.  |
-`-------------------------------------------------*/
+/*-----------------------------------------------------------.
+| yyexhaustedlab -- YYNOMEM (memory exhaustion) comes here.  |
+`-----------------------------------------------------------*/
 yyexhaustedlab:
   yyerror (closure, YY_("memory exhausted"));
   yyresult = 2;
-  goto yyreturn;
-#endif
+  goto yyreturnlab;
 
 
-/*-------------------------------------------------------.
-| yyreturn -- parsing is finished, clean up and return.  |
-`-------------------------------------------------------*/
-yyreturn:
+/*----------------------------------------------------------.
+| yyreturnlab -- parsing is finished, clean up and return.  |
+`----------------------------------------------------------*/
+yyreturnlab:
   if (yychar != YYEMPTY)
     {
       /* Make sure we have latest lookahead translation.  See comments at

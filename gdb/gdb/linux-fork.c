@@ -41,7 +41,7 @@
 struct fork_info
 {
   explicit fork_info (pid_t pid)
-    : ptid (pid, pid, 0)
+    : ptid (pid, pid)
   {
   }
 
@@ -224,8 +224,7 @@ fork_load_infrun_state (struct fork_info *fp)
   registers_changed ();
   reinit_frame_cache ();
 
-  inferior_thread ()->suspend.stop_pc
-    = regcache_read_pc (get_current_regcache ());
+  inferior_thread ()->set_stop_pc (regcache_read_pc (get_current_regcache ()));
   nullify_last_target_wait_ptid ();
 
   /* Now restore the file positions of open file descriptors.  */
@@ -581,7 +580,7 @@ info_checkpoints_command (const char *arg, int from_tty)
       if (fi.num == 0)
 	printf_filtered (_(" (main process)"));
       printf_filtered (_(" at "));
-      fputs_filtered (paddress (gdbarch, pc), gdb_stdout);
+      puts_filtered (paddress (gdbarch, pc));
 
       symtab_and_line sal = find_pc_line (pc, 0);
       if (sal.symtab)

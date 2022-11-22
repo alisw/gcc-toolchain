@@ -1,4 +1,4 @@
-#  Copyright (C) 2003-2021 Free Software Foundation, Inc.
+#  Copyright (C) 2003-2022 Free Software Foundation, Inc.
 #  Contributed by Kelley Cook, June 2004.
 #  Original code from Neil Booth, May 2003.
 #
@@ -25,7 +25,7 @@
 # opt-read.awk.
 #
 # Usage: awk -f opt-functions.awk -f opt-read.awk -f optc-save-gen.awk \
-#            [-v header_name=header.h] < inputfile > options-save.c
+#            [-v header_name=header.h] < inputfile > options-save.cc
 
 # Dump that array of options into a C file.
 END {
@@ -93,7 +93,7 @@ var_opt_char[1] = "optimize_size";
 var_opt_char[2] = "optimize_debug";
 var_opt_char[3] = "optimize_fast";
 var_opt_range["optimize"] = "0, 255";
-var_opt_range["optimize_size"] = "0, 1";
+var_opt_range["optimize_size"] = "0, 2";
 var_opt_range["optimize_debug"] = "0, 1";
 var_opt_range["optimize_fast"] = "0, 1";
 
@@ -1438,19 +1438,12 @@ print "{"
 checked_options["flag_merge_constants"]++
 checked_options["param_max_fields_for_field_sensitive"]++
 checked_options["flag_omit_frame_pointer"]++
-checked_options["unroll_only_small_loops"]++
 # arc exceptions
 checked_options["TARGET_ALIGN_CALL"]++
 checked_options["TARGET_CASE_VECTOR_PC_RELATIVE"]++
 checked_options["arc_size_opt_level"]++
 # arm exceptions
 checked_options["arm_fp16_format"]++
-checked_options["flag_ipa_ra"]++
-# s390 exceptions
-checked_options["param_max_completely_peel_times"]++
-checked_options["param_max_completely_peeled_insns"]++
-checked_options["param_max_unroll_times"]++
-checked_options["param_max_unrolled_insns"]++
 
 
 for (i = 0; i < n_opts; i++) {

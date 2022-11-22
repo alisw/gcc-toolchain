@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (C) 2013-2020 Free Software Foundation, Inc.
+# Copyright (C) 2013-2022 Free Software Foundation, Inc.
 #
 # This script is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -233,7 +233,7 @@ class Copyright:
     def add_external_author (self, holder):
         self.holders[holder] = None
 
-    class BadYear():
+    class BadYear (Exception):
         def __init__ (self, year):
             self.year = year
 
@@ -726,6 +726,7 @@ class GCCCopyright (Copyright):
         self.add_external_author ('The Regents of the University of California.')
         self.add_external_author ('Ulf Adams')
         self.add_external_author ('Unicode, Inc.')
+        self.add_external_author ('University of Illinois at Urbana-Champaign.')
         self.add_external_author ('University of Toronto.')
         self.add_external_author ('Yoshinori Sato')
 
@@ -735,6 +736,7 @@ class GCCCmdLine (CmdLine):
 
         self.add_dir ('.', TopLevelFilter())
         # boehm-gc is imported from upstream.
+        self.add_dir ('c++tools')
         self.add_dir ('config', ConfigFilter())
         # contrib isn't really part of GCC.
         self.add_dir ('fixincludes')
@@ -755,7 +757,6 @@ class GCCCmdLine (CmdLine):
         self.add_dir ('libgfortran')
         # libgo is imported from upstream.
         self.add_dir ('libgomp')
-        self.add_dir ('libhsail-rt')
         self.add_dir ('libiberty')
         self.add_dir ('libitm')
         self.add_dir ('libobjc')
@@ -771,6 +772,7 @@ class GCCCmdLine (CmdLine):
         # zlib is imported from upstream.
 
         self.default_dirs = [
+            'c++tools',
             'gcc',
             'include',
             'libada',
@@ -782,7 +784,6 @@ class GCCCmdLine (CmdLine):
             'libgcc',
             'libgfortran',
             'libgomp',
-            'libhsail-rt',
             'libiberty',
             'libitm',
             'libobjc',

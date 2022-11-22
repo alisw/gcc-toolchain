@@ -1,5 +1,5 @@
 /* Modeling API uses and misuses via state machines.
-   Copyright (C) 2019-2021 Free Software Foundation, Inc.
+   Copyright (C) 2019-2022 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -35,6 +35,12 @@ along with GCC; see the file COPYING3.  If not see
 #include "analyzer/analyzer.h"
 #include "analyzer/analyzer-logging.h"
 #include "analyzer/sm.h"
+#include "tristate.h"
+#include "analyzer/call-string.h"
+#include "analyzer/program-point.h"
+#include "analyzer/store.h"
+#include "analyzer/svalue.h"
+#include "analyzer/program-state.h"
 
 #if ENABLE_ANALYZER
 
@@ -48,6 +54,15 @@ any_pointer_p (tree var)
   return POINTER_TYPE_P (TREE_TYPE (var));
 }
 
+/* Return true if SVAL has pointer or reference type.  */
+
+bool
+any_pointer_p (const svalue *sval)
+{
+  if (!sval->get_type ())
+    return false;
+  return POINTER_TYPE_P (sval->get_type ());
+}
 
 /* class state_machine::state.  */
 
@@ -143,6 +158,17 @@ state_machine::to_json () const
   }
 
   return sm_obj;
+}
+
+/* class sm_context.  */
+
+const region_model *
+sm_context::get_old_region_model () const
+{
+  if (const program_state *old_state = get_old_program_state ())
+    return old_state->m_region_model;
+  else
+    return NULL;
 }
 
 /* Create instances of the various state machines, each using LOGGER,

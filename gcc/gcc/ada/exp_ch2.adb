@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2022, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -23,27 +23,31 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
-with Atree;    use Atree;
-with Checks;   use Checks;
-with Debug;    use Debug;
-with Einfo;    use Einfo;
-with Elists;   use Elists;
-with Exp_Smem; use Exp_Smem;
-with Exp_Tss;  use Exp_Tss;
-with Exp_Util; use Exp_Util;
-with Namet;    use Namet;
-with Nmake;    use Nmake;
-with Opt;      use Opt;
-with Output;   use Output;
-with Sem;      use Sem;
-with Sem_Eval; use Sem_Eval;
-with Sem_Res;  use Sem_Res;
-with Sem_Util; use Sem_Util;
-with Sem_Warn; use Sem_Warn;
-with Sinfo;    use Sinfo;
-with Sinput;   use Sinput;
-with Snames;   use Snames;
-with Tbuild;   use Tbuild;
+with Atree;          use Atree;
+with Checks;         use Checks;
+with Debug;          use Debug;
+with Einfo;          use Einfo;
+with Einfo.Entities; use Einfo.Entities;
+with Einfo.Utils;    use Einfo.Utils;
+with Elists;         use Elists;
+with Exp_Smem;       use Exp_Smem;
+with Exp_Tss;        use Exp_Tss;
+with Exp_Util;       use Exp_Util;
+with Namet;          use Namet;
+with Nmake;          use Nmake;
+with Opt;            use Opt;
+with Output;         use Output;
+with Sem;            use Sem;
+with Sem_Eval;       use Sem_Eval;
+with Sem_Res;        use Sem_Res;
+with Sem_Util;       use Sem_Util;
+with Sem_Warn;       use Sem_Warn;
+with Sinfo;          use Sinfo;
+with Sinfo.Nodes;    use Sinfo.Nodes;
+with Sinfo.Utils;    use Sinfo.Utils;
+with Sinput;         use Sinput;
+with Snames;         use Snames;
+with Tbuild;         use Tbuild;
 
 package body Exp_Ch2 is
 
@@ -140,7 +144,7 @@ package body Exp_Ch2 is
 
          --  Do not replace lvalues
 
-         and then not May_Be_Lvalue (N)
+         and then not Known_To_Be_Assigned (N)
 
          --  Check that entity is suitable for replacement
 
@@ -419,7 +423,7 @@ package body Exp_Ch2 is
         and then Is_Scalar_Type (Etype (N))
         and then (Is_Assignable (E) or else Is_Constant_Object (E))
         and then Comes_From_Source (N)
-        and then Is_LHS (N) = No
+        and then not Known_To_Be_Assigned (N)
         and then not Is_Actual_Out_Parameter (N)
         and then (Nkind (Parent (N)) /= N_Attribute_Reference
                    or else Attribute_Name (Parent (N)) /= Name_Valid)
@@ -537,51 +541,6 @@ package body Exp_Ch2 is
       Addr_Ent   : constant Entity_Id  := Node (Last_Elmt (Acc_Stack));
       P_Comp_Ref : Entity_Id;
 
-      function In_Assignment_Context (N : Node_Id) return Boolean;
-      --  Check whether this is a context in which the entry formal may be
-      --  assigned to.
-
-      ---------------------------
-      -- In_Assignment_Context --
-      ---------------------------
-
-      function In_Assignment_Context (N : Node_Id) return Boolean is
-      begin
-         --  Case of use in a call
-
-         --  ??? passing a formal as actual for a mode IN formal is
-         --  considered as an assignment?
-
-         if Nkind (Parent (N)) in
-              N_Procedure_Call_Statement | N_Entry_Call_Statement
-           or else (Nkind (Parent (N)) = N_Assignment_Statement
-                      and then N = Name (Parent (N)))
-         then
-            return True;
-
-         --  Case of a parameter association: climb up to enclosing call
-
-         elsif Nkind (Parent (N)) = N_Parameter_Association then
-            return In_Assignment_Context (Parent (N));
-
-         --  Case of a selected component, indexed component or slice prefix:
-         --  climb up the tree, unless the prefix is of an access type (in
-         --  which case there is an implicit dereference, and the formal itself
-         --  is not being assigned to).
-
-         elsif Nkind (Parent (N)) in
-                 N_Selected_Component | N_Indexed_Component | N_Slice
-           and then N = Prefix (Parent (N))
-           and then not Is_Access_Type (Etype (N))
-           and then In_Assignment_Context (Parent (N))
-         then
-            return True;
-
-         else
-            return False;
-         end if;
-      end In_Assignment_Context;
-
    --  Start of processing for Expand_Entry_Parameter
 
    begin
@@ -600,7 +559,7 @@ package body Exp_Ch2 is
          --  done during semantic processing so it is called in -gnatc mode???
 
          if Ekind (Entity (N)) /= E_In_Parameter
-           and then In_Assignment_Context (N)
+           and then Known_To_Be_Assigned (N)
          then
             Note_Possible_Modification (N, Sure => True);
          end if;

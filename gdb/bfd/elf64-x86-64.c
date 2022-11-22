@@ -1,5 +1,5 @@
 /* X86-64 specific support for ELF
-   Copyright (C) 2000-2021 Free Software Foundation, Inc.
+   Copyright (C) 2000-2022 Free Software Foundation, Inc.
    Contributed by Jan Hubicka <jh@suse.cz>.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -24,7 +24,6 @@
 #include "libiberty.h"
 
 #include "opcode/i386.h"
-#include "elf/x86-64.h"
 
 #ifdef CORE_HEADER
 #include <stdarg.h>
@@ -192,16 +191,6 @@ static reloc_howto_type x86_64_elf_howto_table[] =
 	bfd_elf_generic_reloc, "R_X86_64_32", false, 0, 0xffffffff,
 	false)
 };
-
-#define X86_PCREL_TYPE_P(TYPE)		\
-  (   ((TYPE) == R_X86_64_PC8)		\
-   || ((TYPE) == R_X86_64_PC16)		\
-   || ((TYPE) == R_X86_64_PC32)		\
-   || ((TYPE) == R_X86_64_PC32_BND)	\
-   || ((TYPE) == R_X86_64_PC64))
-
-#define X86_SIZE_TYPE_P(TYPE)		\
-  ((TYPE) == R_X86_64_SIZE32 || (TYPE) == R_X86_64_SIZE64)
 
 /* Map BFD relocs to the x86_64 elf relocs.  */
 struct elf_reloc_map
@@ -1320,7 +1309,7 @@ elf_x86_64_tls_transition (struct bfd_link_info *info, bfd *abfd,
 	    }
 
 	  /* We checked the transition before when we were called from
-	     elf_x86_64_check_relocs.  We only want to check the new
+	     elf_x86_64_scan_relocs.  We only want to check the new
 	     transition which hasn't been checked before.  */
 	  check = new_to_type != to_type && from_type == to_type;
 	  to_type = new_to_type;
@@ -1387,10 +1376,6 @@ elf_x86_64_tls_transition (struct bfd_link_info *info, bfd *abfd,
   *r_type = to_type;
   return true;
 }
-
-/* Rename some of the generic section flags to better document how they
-   are used here.  */
-#define check_relocs_failed	sec_flg0
 
 static bool
 elf_x86_64_need_pic (struct bfd_link_info *info,
@@ -1833,20 +1818,19 @@ elf_x86_64_convert_load_reloc (bfd *abfd,
 }
 
 /* Look through the relocs for a section during the first phase, and
-   calculate needed space in the global offset table, procedure
-   linkage table, and dynamic reloc sections.  */
+   calculate needed space in the global offset table, and procedure
+   linkage table.  */
 
 static bool
-elf_x86_64_check_relocs (bfd *abfd, struct bfd_link_info *info,
-			 asection *sec,
-			 const Elf_Internal_Rela *relocs)
+elf_x86_64_scan_relocs (bfd *abfd, struct bfd_link_info *info,
+			asection *sec,
+			const Elf_Internal_Rela *relocs)
 {
   struct elf_x86_link_hash_table *htab;
   Elf_Internal_Shdr *symtab_hdr;
   struct elf_link_hash_entry **sym_hashes;
   const Elf_Internal_Rela *rel;
   const Elf_Internal_Rela *rel_end;
-  asection *sreloc;
   bfd_byte *contents;
   bool converted;
 
@@ -1875,8 +1859,6 @@ elf_x86_64_check_relocs (bfd *abfd, struct bfd_link_info *info,
   sym_hashes = elf_sym_hashes (abfd);
 
   converted = false;
-
-  sreloc = NULL;
 
   rel_end = relocs + sec->reloc_count;
   for (rel = relocs; rel < rel_end; rel++)
@@ -1972,6 +1954,8 @@ elf_x86_64_check_relocs (bfd *abfd, struct bfd_link_info *info,
 	    break;
 	  }
 
+      eh = (struct elf_x86_link_hash_entry *) h;
+
       if (h != NULL)
 	{
 	  /* It is referenced by a non-shared object. */
@@ -2008,7 +1992,6 @@ elf_x86_64_check_relocs (bfd *abfd, struct bfd_link_info *info,
       if (h == htab->elf.hgot)
 	htab->got_referenced = true;
 
-      eh = (struct elf_x86_link_hash_entry *) h;
       switch (r_type)
 	{
 	case R_X86_64_TLSLD:
@@ -2075,25 +2058,12 @@ elf_x86_64_check_relocs (bfd *abfd, struct bfd_link_info *info,
 	      {
 		bfd_signed_vma *local_got_refcounts;
 
+		if (!elf_x86_allocate_local_got_info (abfd,
+						      symtab_hdr->sh_info))
+		      goto error_return;
+
 		/* This is a global offset table entry for a local symbol.  */
 		local_got_refcounts = elf_local_got_refcounts (abfd);
-		if (local_got_refcounts == NULL)
-		  {
-		    bfd_size_type size;
-
-		    size = symtab_hdr->sh_info;
-		    size *= sizeof (bfd_signed_vma)
-		      + sizeof (bfd_vma) + sizeof (char);
-		    local_got_refcounts = ((bfd_signed_vma *)
-					   bfd_zalloc (abfd, size));
-		    if (local_got_refcounts == NULL)
-		      goto error_return;
-		    elf_local_got_refcounts (abfd) = local_got_refcounts;
-		    elf_x86_local_tlsdesc_gotent (abfd)
-		      = (bfd_vma *) (local_got_refcounts + symtab_hdr->sh_info);
-		    elf_x86_local_got_tls_type (abfd)
-		      = (char *) (local_got_refcounts + 2 * symtab_hdr->sh_info);
-		  }
 		local_got_refcounts[r_symndx] = 1;
 		old_tls_type
 		  = elf_x86_local_got_tls_type (abfd) [r_symndx];
@@ -2253,6 +2223,23 @@ elf_x86_64_check_relocs (bfd *abfd, struct bfd_link_info *info,
 		    func_pointer_ref = true;
 		}
 
+	      if (h->pointer_equality_needed
+		  && h->type == STT_FUNC
+		  && eh->def_protected
+		  && elf_has_indirect_extern_access (h->root.u.def.section->owner))
+		{
+		  /* Disallow non-canonical reference to canonical
+		     protected function.  */
+		  _bfd_error_handler
+		    /* xgettext:c-format */
+		    (_("%pB: non-canonical reference to canonical "
+		       "protected function `%s' in %pB"),
+		     abfd, h->root.root.string,
+		     h->root.u.def.section->owner);
+		  bfd_set_error (bfd_error_bad_value);
+		  goto error_return;
+		}
+
 	      if (!func_pointer_ref)
 		{
 		  /* If this reloc is in a read-only section, we might
@@ -2262,6 +2249,9 @@ elf_x86_64_check_relocs (bfd *abfd, struct bfd_link_info *info,
 		     Tentatively set the flag for now, and correct in
 		     adjust_dynamic_symbol.  */
 		  h->non_got_ref = 1;
+
+		  if (!elf_has_indirect_extern_access (sec->owner))
+		    eh->non_got_ref_without_indirect_extern_access = 1;
 
 		  /* We may need a .plt entry if the symbol is a function
 		     defined in a shared lib or is a function referenced
@@ -2275,24 +2265,12 @@ elf_x86_64_check_relocs (bfd *abfd, struct bfd_link_info *info,
 	  size_reloc = false;
 	do_size:
 	  if (!no_dynreloc
-	      && NEED_DYNAMIC_RELOCATION_P (info, true, h, sec, r_type,
+	      && NEED_DYNAMIC_RELOCATION_P (true, info, true, h, sec,
+					    r_type,
 					    htab->pointer_r_type))
 	    {
 	      struct elf_dyn_relocs *p;
 	      struct elf_dyn_relocs **head;
-
-	      /* We must copy these reloc types into the output file.
-		 Create a reloc section in dynobj and make room for
-		 this reloc.  */
-	      if (sreloc == NULL)
-		{
-		  sreloc = _bfd_elf_make_dynamic_reloc_section
-		    (sec, htab->elf.dynobj, ABI_64_P (abfd) ? 3 : 2,
-		     abfd, /*rela?*/ true);
-
-		  if (sreloc == NULL)
-		    goto error_return;
-		}
 
 	      /* If this is a global symbol, we count the number of
 		 relocations we need for this symbol.  */
@@ -2339,7 +2317,7 @@ elf_x86_64_check_relocs (bfd *abfd, struct bfd_link_info *info,
 
 	      p->count += 1;
 	      /* Count size relocation as PC-relative relocation.  */
-	      if (X86_PCREL_TYPE_P (r_type) || size_reloc)
+	      if (X86_PCREL_TYPE_P (true, r_type) || size_reloc)
 		p->pc_count += 1;
 	    }
 	  break;
@@ -2365,13 +2343,14 @@ elf_x86_64_check_relocs (bfd *abfd, struct bfd_link_info *info,
 
   if (elf_section_data (sec)->this_hdr.contents != contents)
     {
-      if (!converted && !info->keep_memory)
+      if (!converted && !_bfd_link_keep_memory (info))
 	free (contents);
       else
 	{
 	  /* Cache the section contents for elf_link_input_bfd if any
 	     load is converted or --no-keep-memory isn't used.  */
 	  elf_section_data (sec)->this_hdr.contents = contents;
+	  info->cache_size += sec->size;
 	}
     }
 
@@ -2386,6 +2365,24 @@ elf_x86_64_check_relocs (bfd *abfd, struct bfd_link_info *info,
     free (contents);
   sec->check_relocs_failed = 1;
   return false;
+}
+
+static bool
+elf_x86_64_always_size_sections (bfd *output_bfd,
+				 struct bfd_link_info *info)
+{
+  bfd *abfd;
+
+  /* Scan relocations after rel_from_abs has been set on __ehdr_start.  */
+  for (abfd = info->input_bfds;
+       abfd != (bfd *) NULL;
+       abfd = abfd->link.next)
+    if (bfd_get_flavour (abfd) == bfd_target_elf_flavour
+	&& !_bfd_elf_link_iterate_on_relocs (abfd, info,
+					     elf_x86_64_scan_relocs))
+      return false;
+
+  return _bfd_x86_elf_always_size_sections (output_bfd, info);
 }
 
 /* Return the relocation value for @tpoff relocation
@@ -2430,7 +2427,7 @@ elf_x86_64_relocate_section (bfd *output_bfd,
   unsigned int plt_entry_size;
   bool status;
 
-  /* Skip if check_relocs failed.  */
+  /* Skip if check_relocs or scan_relocs failed.  */
   if (input_section->check_relocs_failed)
     return false;
 
@@ -2887,7 +2884,10 @@ elf_x86_64_relocate_section (bfd *output_bfd,
 			 as -1 | 1 still is -1.  */
 		      h->got.offset |= 1;
 
-		      if (GENERATE_RELATIVE_RELOC_P (info, h))
+		      /* NB: Don't generate relative relocation here if
+			 it has been generated by DT_RELR.  */
+		      if (!info->enable_dt_relr
+			  && GENERATE_RELATIVE_RELOC_P (info, h))
 			{
 			  /* If this symbol isn't dynamic in PIC,
 			     generate R_X86_64_RELATIVE here.  */
@@ -2919,8 +2919,11 @@ elf_x86_64_relocate_section (bfd *output_bfd,
 
 		  /* NB: GOTPCREL relocations against local absolute
 		     symbol store relocation value in the GOT slot
-		     without relative relocation.  */
-		  if (bfd_link_pic (info)
+		     without relative relocation.  Don't generate
+		     relative relocation here if it has been generated
+		     by DT_RELR.  */
+		  if (!info->enable_dt_relr
+		      && bfd_link_pic (info)
 		      && !(sym->st_shndx == SHN_ABS
 			   && (r_type == R_X86_64_GOTPCREL
 			       || r_type == R_X86_64_GOTPCRELX
@@ -3160,6 +3163,8 @@ elf_x86_64_relocate_section (bfd *output_bfd,
 		       || (no_copyreloc_p
 			   && h->def_dynamic
 			   && !(h->root.u.def.section->flags & SEC_CODE))))
+		  || (bfd_link_pie (info)
+		      && h->root.type == bfd_link_hash_undefweak)
 		  || bfd_link_dll (info)))
 	    {
 	      bool fail = false;
@@ -3173,8 +3178,9 @@ elf_x86_64_relocate_section (bfd *output_bfd,
 		{
 		  /* We can only use PC-relative relocations in PIE
 		     from non-code sections.  */
-		  if (h->type == STT_FUNC
-		      && (sec->flags & SEC_CODE) != 0)
+		  if (h->root.type == bfd_link_hash_undefweak
+		      || (h->type == STT_FUNC
+			  && (sec->flags & SEC_CODE) != 0))
 		    fail = true;
 		}
 	      else if (no_copyreloc_p || bfd_link_dll (info))
@@ -3222,15 +3228,17 @@ elf_x86_64_relocate_section (bfd *output_bfd,
 					|| eh->needs_copy
 					|| (h->root.type
 					    == bfd_link_hash_undefined))
-				    && (X86_PCREL_TYPE_P (r_type)
-					|| X86_SIZE_TYPE_P (r_type)));
+				    && (X86_PCREL_TYPE_P (true, r_type)
+					|| X86_SIZE_TYPE_P (true,
+							    r_type)));
 
-	  if (GENERATE_DYNAMIC_RELOCATION_P (info, eh, r_type, sec,
+	  if (GENERATE_DYNAMIC_RELOCATION_P (true, info, eh, r_type, sec,
 					     need_copy_reloc_in_pie,
 					     resolved_to_zero, false))
 	    {
 	      Elf_Internal_Rela outrel;
 	      bool skip, relocate;
+	      bool generate_dynamic_reloc = true;
 	      asection *sreloc;
 	      const char *relative_reloc_name = NULL;
 
@@ -3254,7 +3262,7 @@ elf_x86_64_relocate_section (bfd *output_bfd,
 	      if (skip)
 		memset (&outrel, 0, sizeof outrel);
 
-	      else if (COPY_INPUT_RELOC_P (info, h, r_type))
+	      else if (COPY_INPUT_RELOC_P (true, info, h, r_type))
 		{
 		  outrel.r_info = htab->r_info (h->dynindx, r_type);
 		  outrel.r_addend = rel->r_addend;
@@ -3269,9 +3277,17 @@ elf_x86_64_relocate_section (bfd *output_bfd,
 			  && htab->params->no_reloc_overflow_check))
 		    {
 		      relocate = true;
-		      outrel.r_info = htab->r_info (0, R_X86_64_RELATIVE);
-		      outrel.r_addend = relocation + rel->r_addend;
-		      relative_reloc_name = "R_X86_64_RELATIVE";
+		      /* NB: Don't generate relative relocation here if
+			 it has been generated by DT_RELR.  */
+		      if (info->enable_dt_relr)
+			generate_dynamic_reloc = false;
+		      else
+			{
+			  outrel.r_info =
+			    htab->r_info (0, R_X86_64_RELATIVE);
+			  outrel.r_addend = relocation + rel->r_addend;
+			  relative_reloc_name = "R_X86_64_RELATIVE";
+			}
 		    }
 		  else if (r_type == R_X86_64_64
 			   && !ABI_64_P (output_bfd))
@@ -3339,21 +3355,24 @@ elf_x86_64_relocate_section (bfd *output_bfd,
 		    }
 		}
 
-	      sreloc = elf_section_data (input_section)->sreloc;
-
-	      if (sreloc == NULL || sreloc->contents == NULL)
+	      if (generate_dynamic_reloc)
 		{
-		  r = bfd_reloc_notsupported;
-		  goto check_relocation_error;
+		  sreloc = elf_section_data (input_section)->sreloc;
+
+		  if (sreloc == NULL || sreloc->contents == NULL)
+		    {
+		      r = bfd_reloc_notsupported;
+		      goto check_relocation_error;
+		    }
+
+		  if (relative_reloc_name
+		      && htab->params->report_relative_reloc)
+		    _bfd_x86_elf_link_report_relative_reloc
+		      (info, input_section, h, sym,
+		       relative_reloc_name, &outrel);
+
+		  elf_append_rela (output_bfd, sreloc, &outrel);
 		}
-
-	      if (relative_reloc_name
-		  && htab->params->report_relative_reloc)
-		_bfd_x86_elf_link_report_relative_reloc
-		  (info, input_section, h, sym, relative_reloc_name,
-		   &outrel);
-
-	      elf_append_rela (output_bfd, sreloc, &outrel);
 
 	      /* If this reloc is against an external symbol, we do
 		 not want to fiddle with the addend.  Otherwise, we
@@ -4440,6 +4459,7 @@ elf_x86_64_finish_dynamic_symbol (bfd *output_bfd,
       Elf_Internal_Rela rela;
       asection *relgot = htab->elf.srelgot;
       const char *relative_reloc_name = NULL;
+      bool generate_dynamic_reloc = true;
 
       /* This symbol has an entry in the global offset table.  Set it
 	 up.  */
@@ -4522,11 +4542,16 @@ elf_x86_64_finish_dynamic_symbol (bfd *output_bfd,
 	  if (!SYMBOL_DEFINED_NON_SHARED_P (h))
 	    return false;
 	  BFD_ASSERT((h->got.offset & 1) != 0);
-	  rela.r_info = htab->r_info (0, R_X86_64_RELATIVE);
-	  rela.r_addend = (h->root.u.def.value
-			   + h->root.u.def.section->output_section->vma
-			   + h->root.u.def.section->output_offset);
-	  relative_reloc_name = "R_X86_64_RELATIVE";
+	  if (info->enable_dt_relr)
+	    generate_dynamic_reloc = false;
+	  else
+	    {
+	      rela.r_info = htab->r_info (0, R_X86_64_RELATIVE);
+	      rela.r_addend = (h->root.u.def.value
+			       + h->root.u.def.section->output_section->vma
+			       + h->root.u.def.section->output_offset);
+	      relative_reloc_name = "R_X86_64_RELATIVE";
+	    }
 	}
       else
 	{
@@ -4538,12 +4563,15 @@ elf_x86_64_finish_dynamic_symbol (bfd *output_bfd,
 	  rela.r_addend = 0;
 	}
 
-      if (relative_reloc_name != NULL
-	  && htab->params->report_relative_reloc)
-	_bfd_x86_elf_link_report_relative_reloc
-	  (info, relgot, h, sym, relative_reloc_name, &rela);
+      if (generate_dynamic_reloc)
+	{
+	  if (relative_reloc_name != NULL
+	      && htab->params->report_relative_reloc)
+	    _bfd_x86_elf_link_report_relative_reloc
+	      (info, relgot, h, sym, relative_reloc_name, &rela);
 
-      elf_append_rela (output_bfd, relgot, &rela);
+	  elf_append_rela (output_bfd, relgot, &rela);
+	}
     }
 
   if (h->needs_copy)
@@ -4669,6 +4697,14 @@ elf_x86_64_finish_dynamic_sections (bfd *output_bfd,
 
   if (htab->elf.splt && htab->elf.splt->size > 0)
     {
+      if (bfd_is_abs_section (htab->elf.splt->output_section))
+	{
+	  info->callbacks->einfo
+	    (_("%F%P: discarded output section: `%pA'\n"),
+	     htab->elf.splt);
+	  return false;
+	}
+
       elf_section_data (htab->elf.splt->output_section)
 	->this_hdr.sh_entsize = htab->plt.plt_entry_size;
 
@@ -5221,7 +5257,6 @@ elf_x86_64_special_sections[]=
 #else
 # define ELF_MAXPAGESIZE		    0x200000
 #endif
-#define ELF_MINPAGESIZE			    0x1000
 #define ELF_COMMONPAGESIZE		    0x1000
 
 #define elf_backend_can_gc_sections	    1
@@ -5244,7 +5279,7 @@ elf_x86_64_special_sections[]=
   elf_x86_64_reloc_name_lookup
 
 #define elf_backend_relocs_compatible	    elf_x86_64_relocs_compatible
-#define elf_backend_check_relocs	    elf_x86_64_check_relocs
+#define elf_backend_always_size_sections    elf_x86_64_always_size_sections
 #define elf_backend_create_dynamic_sections _bfd_elf_create_dynamic_sections
 #define elf_backend_finish_dynamic_sections elf_x86_64_finish_dynamic_sections
 #define elf_backend_finish_dynamic_symbol   elf_x86_64_finish_dynamic_symbol
@@ -5406,18 +5441,6 @@ elf64_l1om_elf_object_p (bfd *abfd)
 #define elf_backend_object_p		    elf64_l1om_elf_object_p
 
 /* Restore defaults.  */
-#undef	ELF_MAXPAGESIZE
-#undef	ELF_MINPAGESIZE
-#undef	ELF_COMMONPAGESIZE
-#if DEFAULT_LD_Z_SEPARATE_CODE
-# define ELF_MAXPAGESIZE		0x1000
-#else
-# define ELF_MAXPAGESIZE		0x200000
-#endif
-#define ELF_MINPAGESIZE			0x1000
-#define ELF_COMMONPAGESIZE		0x1000
-#undef	elf_backend_plt_alignment
-#define elf_backend_plt_alignment	4
 #undef ELF_TARGET_OS
 
 #include "elf64-target.h"

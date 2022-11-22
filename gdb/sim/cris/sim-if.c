@@ -23,14 +23,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 /* This must come before any other includes.  */
 #include "defs.h"
 
+#include <stdlib.h>
+#include <errno.h>
+#include <unistd.h>
+
 #include "libiberty.h"
 #include "bfd.h"
 #include "elf-bfd.h"
 
+#include "sim/callback.h"
 #include "sim-main.h"
-#include <stdlib.h>
-#include <errno.h>
-#include <unistd.h>
 #include "sim-options.h"
 #include "sim-hw.h"
 #include "dis-asm.h"
@@ -98,9 +100,11 @@ static const OPTION cris_options[] =
   { {"cris-naked", no_argument, NULL, OPTION_CRIS_NAKED},
      '\0', NULL, "Don't set up stack and environment",
      cris_option_handler, NULL },
+#if WITH_HW
   { {"cris-900000xx", no_argument, NULL, OPTION_CRIS_900000XXIF},
      '\0', NULL, "Define addresses at 0x900000xx with simulator semantics",
      cris_option_handler, NULL },
+#endif
   { {"cris-unknown-syscall", required_argument, NULL,
      OPTION_CRIS_UNKNOWN_SYSCALL},
      '\0', "stop|enosys|enosys-quiet", "Action at an unknown system call",
@@ -690,11 +694,7 @@ sim_open (SIM_OPEN_KIND kind, host_callback *callback, struct bfd *abfd,
     }
 
   /* check for/establish the reference program image */
-  if (sim_analyze_program (sd,
-			   (STATE_PROG_ARGV (sd) != NULL
-			    ? *STATE_PROG_ARGV (sd)
-			    : NULL),
-			   abfd) != SIM_RC_OK)
+  if (sim_analyze_program (sd, STATE_PROG_FILE (sd), abfd) != SIM_RC_OK)
     {
       /* When there's an error, sim_analyze_program has already output
 	 a message.  Let's just clarify it, as "not an object file"
@@ -717,9 +717,9 @@ sim_open (SIM_OPEN_KIND kind, host_callback *callback, struct bfd *abfd,
 
   if (abfd != NULL && bfd_get_arch (abfd) == bfd_arch_unknown)
     {
-      if (STATE_PROG_ARGV (sd) != NULL)
+      if (STATE_PROG_FILE (sd) != NULL)
 	sim_io_eprintf (sd, "%s: `%s' is not a CRIS program\n",
-			STATE_MY_NAME (sd), *STATE_PROG_ARGV (sd));
+			STATE_MY_NAME (sd), STATE_PROG_FILE (sd));
       else
 	sim_io_eprintf (sd, "%s: program to be run is not a CRIS program\n",
 			STATE_MY_NAME (sd));
@@ -745,7 +745,9 @@ sim_open (SIM_OPEN_KIND kind, host_callback *callback, struct bfd *abfd,
 
   /* Find out how much room is needed for the environment and argv, create
      that memory and fill it.  Only do this when there's a program
-     specified.  */
+     specified.
+
+     TODO: Move this to sim_create_inferior and use STATE_PROG_ENVP.  */
   if (abfd != NULL && !cris_bare_iron)
     {
       const char *name = bfd_get_filename (abfd);
@@ -887,12 +889,18 @@ sim_open (SIM_OPEN_KIND kind, host_callback *callback, struct bfd *abfd,
 
   /* Allocate core managed memory if none specified by user.  */
   if (sim_core_read_buffer (sd, NULL, read_map, &c, startmem, 1) == 0)
-    sim_do_commandf (sd, "memory region 0x%" PRIx32 ",0x%" PRIu32,
+    sim_do_commandf (sd, "memory region 0x%" PRIx32 ",0x%" PRIx32,
 		     startmem, endmem - startmem);
 
   /* Allocate simulator I/O managed memory if none specified by user.  */
+#if WITH_HW
   if (cris_have_900000xxif)
     sim_hw_parse (sd, "/core/%s/reg %#x %i", "cris_900000xx", 0x90000000, 0x100);
+#else
+  /* With the option disabled, nothing should be able to set this variable.
+     We should "use" it, though, and why not assert that it isn't set.  */
+  ASSERT (! cris_have_900000xxif);
+#endif
 
   /* Establish any remaining configuration options.  */
   if (sim_config (sd) != SIM_RC_OK)
@@ -955,10 +963,11 @@ sim_open (SIM_OPEN_KIND kind, host_callback *callback, struct bfd *abfd,
 
 SIM_RC
 sim_create_inferior (SIM_DESC sd, struct bfd *abfd,
-		     char * const *argv ATTRIBUTE_UNUSED,
-		     char * const *envp ATTRIBUTE_UNUSED)
+		     char * const *argv,
+		     char * const *env)
 {
   SIM_CPU *current_cpu = STATE_CPU (sd, 0);
+  host_callback *cb = STATE_CALLBACK (sd);
   SIM_ADDR addr;
 
   if (sd != NULL)
@@ -980,6 +989,15 @@ sim_create_inferior (SIM_DESC sd, struct bfd *abfd,
       freeargv (STATE_PROG_ARGV (sd));
       STATE_PROG_ARGV (sd) = dupargv (argv);
     }
+
+  if (STATE_PROG_ENVP (sd) != env)
+    {
+      freeargv (STATE_PROG_ENVP (sd));
+      STATE_PROG_ENVP (sd) = dupargv (env);
+    }
+
+  cb->argv = STATE_PROG_ARGV (sd);
+  cb->envp = STATE_PROG_ENVP (sd);
 
   return SIM_RC_OK;
 }

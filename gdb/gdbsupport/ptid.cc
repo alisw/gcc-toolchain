@@ -19,8 +19,17 @@
 
 #include "common-defs.h"
 #include "ptid.h"
+#include "print-utils.h"
 
 /* See ptid.h for these.  */
 
 ptid_t const null_ptid = ptid_t::make_null ();
 ptid_t const minus_one_ptid = ptid_t::make_minus_one ();
+
+/* See ptid.h.  */
+
+std::string
+ptid_t::to_string () const
+{
+  return string_printf ("%d.%ld.%s", m_pid, m_lwp, pulongest (m_tid));
+}

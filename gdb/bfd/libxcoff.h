@@ -1,5 +1,5 @@
 /* BFD XCOFF object file private structure.
-   Copyright (C) 2001-2021 Free Software Foundation, Inc.
+   Copyright (C) 2001-2022 Free Software Foundation, Inc.
    Written by Tom Rix, Redhat.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -244,7 +244,10 @@ struct xcoff_dwsect_name {
   unsigned int flag;
 
   /* Corresponding XCOFF section name.  */
-  const char *name;
+  const char *xcoff_name;
+
+  /* Corresponding DWARF section name.  */
+  const char *dwarf_name;
 
   /* True if size must be prepended.  */
   bool def_size;

@@ -1,5 +1,5 @@
 /* typeinfo.cc -- D runtime type identification.
-   Copyright (C) 2013-2021 Free Software Foundation, Inc.
+   Copyright (C) 2013-2022 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "stor-layout.h"
 
 #include "d-tree.h"
+#include "d-frontend.h"
 #include "d-target.h"
 
 
@@ -110,37 +111,37 @@ get_typeinfo_kind (Type *type)
 
   switch (type->ty)
     {
-    case Tpointer:
+    case TY::Tpointer:
       return TK_POINTER_TYPE;
 
-    case  Tarray:
+    case TY::Tarray:
       return TK_ARRAY_TYPE;
 
-    case Tsarray:
+    case TY::Tsarray:
       return TK_STATICARRAY_TYPE;
 
-    case Taarray:
+    case TY::Taarray:
       return TK_ASSOCIATIVEARRAY_TYPE;
 
-    case Tstruct:
+    case TY::Tstruct:
       return TK_STRUCT_TYPE;
 
-    case Tvector:
+    case TY::Tvector:
       return TK_VECTOR_TYPE;
 
-    case Tenum:
+    case TY::Tenum:
       return TK_ENUMERAL_TYPE;
 
-    case Tfunction:
+    case TY::Tfunction:
       return TK_FUNCTION_TYPE;
 
-    case Tdelegate:
+    case TY::Tdelegate:
       return TK_DELEGATE_TYPE;
 
-    case Ttuple:
+    case TY::Ttuple:
       return TK_TYPELIST_TYPE;
 
-    case Tclass:
+    case TY::Tclass:
       if (type->isTypeClass ()->sym->isInterfaceDeclaration ())
 	return TK_INTERFACE_TYPE;
       else
@@ -179,6 +180,7 @@ make_internal_typeinfo (tinfo_kind tk, Identifier *ident, ...)
 
   /* Create the TypeInfo type.  */
   tree type = make_node (RECORD_TYPE);
+  TYPE_ARTIFICIAL (type) = 1;
   finish_builtin_struct (type, ident->toChars (), fields, NULL_TREE);
 
   tinfo_types[tk] = type;
@@ -205,12 +207,30 @@ make_frontend_typeinfo (Identifier *ident, ClassDeclaration *base = NULL)
   if (!object_module->_scope)
     object_module->importAll (NULL);
 
+  /* Object class doesn't exist, create a stub one that will cause an error if
+     used.  */
+  Loc loc = (object_module->md) ? object_module->md->loc : object_module->loc;
+  if (!base)
+    {
+      if (!ClassDeclaration::object)
+	{
+	  ClassDeclaration *object
+	    = ClassDeclaration::create (loc, Identifier::idPool ("Object"),
+					NULL, NULL, true);
+	  object->parent = object_module;
+	  object->members = d_gc_malloc<Dsymbols> ();
+	  object->storage_class |= STCtemp;
+	}
+
+      base = ClassDeclaration::object;
+    }
+
   /* Assignment of global typeinfo variables is managed by the ClassDeclaration
      constructor, so only need to new the declaration here.  */
-  Loc loc = (object_module->md) ? object_module->md->loc : object_module->loc;
   ClassDeclaration *tinfo = ClassDeclaration::create (loc, ident, NULL, NULL,
 						      true);
   tinfo->parent = object_module;
+  tinfo->members = d_gc_malloc<Dsymbols> ();
   dsymbolSemantic (tinfo, object_module->_scope);
   tinfo->baseClass = base;
   /* This is a compiler generated class, and shouldn't be mistaken for being
@@ -393,8 +413,7 @@ class TypeInfoVisitor : public Visitor
     this->layout_field (value);
   }
 
-
-  /* Write out the __vptr and __monitor fields of class CD.  */
+  /* Write out the __vptr and optionally __monitor fields of class CD.  */
 
   void layout_base (ClassDeclaration *cd)
   {
@@ -405,7 +424,8 @@ class TypeInfoVisitor : public Visitor
     else
       this->layout_field (null_pointer_node);
 
-    this->layout_field (null_pointer_node);
+    if (cd->hasMonitor ())
+      this->layout_field (null_pointer_node);
   }
 
   /* Write out the interfaces field of class CD.
@@ -818,7 +838,7 @@ public:
 	/* Name of the class declaration.  */
 	const char *name = cd->ident->toChars ();
 	if (!(strlen (name) > 9 && memcmp (name, "TypeInfo_", 9) == 0))
-	  name = cd->toPrettyChars ();
+	  name = cd->toPrettyChars (true);
 	this->layout_string (name);
 
 	/* The vtable of the class declaration.  */
@@ -839,7 +859,7 @@ public:
 	this->layout_field (base);
 
 	/* void *destructor;  */
-	tree dtor = (cd->dtor) ? build_address (get_symbol_decl (cd->dtor))
+	tree dtor = (cd->tidtor) ? build_address (get_symbol_decl (cd->tidtor))
 	  : null_pointer_node;
 	this->layout_field (dtor);
 
@@ -849,7 +869,7 @@ public:
 	this->layout_field (inv);
 
 	/* ClassFlags m_flags;  */
-	ClassFlags::Type flags = ClassFlags::hasOffTi;
+	int flags = ClassFlags::hasOffTi;
 	if (cd->isCOMclass ())
 	  flags |= ClassFlags::isCOMclass;
 
@@ -893,10 +913,7 @@ public:
 	this->layout_field (build_integer_cst (flags, d_uint_type));
 
 	/* void *deallocator;  */
-	tree ddtor = (cd->aggDelete)
-	  ? build_address (get_symbol_decl (cd->aggDelete))
-	  : null_pointer_node;
-	this->layout_field (ddtor);
+	this->layout_field (null_pointer_node);
 
 	/* OffsetTypeInfo[] m_offTi;  (not implemented)  */
 	this->layout_field (null_array_node);
@@ -915,6 +932,8 @@ public:
 	  this->layout_field (build_expr (cd->getRTInfo, true));
 	else if (!(flags & ClassFlags::noPointers))
 	  this->layout_field (size_one_node);
+	else
+	  this->layout_field (null_pointer_node);
       }
     else
       {
@@ -922,7 +941,7 @@ public:
 	this->layout_field (null_array_node);
 
 	/* Name of the interface declaration.  */
-	this->layout_string (cd->toPrettyChars ());
+	this->layout_string (cd->toPrettyChars (true));
 
 	/* No vtable for interface declaration.  */
 	this->layout_field (null_array_node);
@@ -941,7 +960,7 @@ public:
 	this->layout_field (null_pointer_node);
 
 	/* ClassFlags m_flags;  */
-	ClassFlags::Type flags = ClassFlags::hasOffTi;
+	int flags = ClassFlags::hasOffTi;
 	flags |= ClassFlags::hasTypeInfo;
 	if (cd->isCOMinterface ())
 	  flags |= ClassFlags::isCOMclass;
@@ -1004,7 +1023,7 @@ public:
   /* Layout of TypeInfo_Struct is:
 	void **__vptr;
 	void *__monitor;
-	string name;
+	string mangledName;
 	void[] m_init;
 	hash_t function(in void*) xtoHash;
 	bool function(in void*, in void*) xopEquals;
@@ -1027,8 +1046,8 @@ public:
     if (!sd->members)
       return;
 
-    /* Name of the struct declaration.  */
-    this->layout_string (sd->toPrettyChars ());
+    /* Mangled name of the struct declaration.  */
+    this->layout_string (ti->deco);
 
     /* Default initializer for struct.  */
     tree ptr = (sd->zeroInit) ? null_pointer_node
@@ -1044,7 +1063,7 @@ public:
     if (sd->xhash)
       {
 	TypeFunction *tf = sd->xhash->type->toTypeFunction ();
-	if (!tf->isnothrow || tf->trust == TRUSTsystem)
+	if (!tf->isnothrow () || tf->trust == TRUST::system)
 	  {
 	    warning (sd->xhash->loc, "toHash() must be declared as "
 		     "extern (D) size_t toHash() const nothrow @safe, "
@@ -1070,13 +1089,13 @@ public:
       this->layout_field (null_pointer_node);
 
     /* StructFlags m_flags;  */
-    StructFlags::Type m_flags = 0;
+    int m_flags = StructFlags::none;
     if (ti->hasPointers ())
       m_flags |= StructFlags::hasPointers;
     this->layout_field (build_integer_cst (m_flags, d_uint_type));
 
     /* void function(void*) xdtor;  */
-    tree dtor = (sd->dtor) ? build_address (get_symbol_decl (sd->dtor))
+    tree dtor = (sd->tidtor) ? build_address (get_symbol_decl (sd->tidtor))
       : null_pointer_node;
     this->layout_field (dtor);
 
@@ -1278,17 +1297,17 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
 static bool
 builtin_typeinfo_p (Type *type)
 {
-  if (type->isTypeBasic () || type->ty == Tclass || type->ty == Tnull)
+  if (type->isTypeBasic () || type->ty == TY::Tclass || type->ty == TY::Tnull)
     return !type->mod;
 
-  if (type->ty == Tarray)
+  if (type->ty == TY::Tarray)
     {
       /* Strings are so common, make them builtin.  */
       Type *next = type->nextOf ();
       return !type->mod
 	&& ((next->isTypeBasic () != NULL && !next->mod)
-	    || (next->ty == Tchar && next->mod == MODimmutable)
-	    || (next->ty == Tchar && next->mod == MODconst));
+	    || (next->ty == TY::Tchar && next->mod == MODimmutable)
+	    || (next->ty == TY::Tchar && next->mod == MODconst));
     }
 
   return false;
@@ -1316,6 +1335,7 @@ public:
     tree type = tinfo_types[get_typeinfo_kind (tid->tinfo)];
     gcc_assert (type != NULL_TREE);
 
+    /* Built-in typeinfo will be referenced as one-only.  */
     tid->csym = declare_extern_var (ident, type);
     DECL_LANG_SPECIFIC (tid->csym) = build_lang_decl (tid);
 
@@ -1340,7 +1360,7 @@ get_typeinfo_decl (TypeInfoDeclaration *decl)
   if (decl->csym)
     return decl->csym;
 
-  gcc_assert (decl->tinfo->ty != Terror);
+  gcc_assert (decl->tinfo->ty != TY::Terror);
 
   TypeInfoDeclVisitor v = TypeInfoDeclVisitor ();
   decl->accept (&v);
@@ -1375,21 +1395,29 @@ get_classinfo_decl (ClassDeclaration *decl)
 }
 
 /* Performs sanity checks on the `object.TypeInfo' type, raising an error if
-   RTTI is disabled, or the type is missing.  */
+   RTTI is disabled, or the type is missing.  LOC is the location used for error
+   messages.  SC is the context, and EXPR is expression where TypeInfo is
+   required from, if either are set.  */
 
 void
-check_typeinfo_type (const Loc &loc, Scope *sc)
+check_typeinfo_type (const Loc &loc, Scope *sc, Expression *expr)
 {
   if (!global.params.useTypeInfo)
     {
-      static int warned = 0;
-
       /* Even when compiling without RTTI we should still be able to evaluate
 	 TypeInfo at compile-time, just not at run-time.  */
-      if (!warned && (!sc || !(sc->flags & SCOPEctfe)))
+      if (!sc || !(sc->flags & SCOPEctfe))
 	{
-	  error_at (make_location_t (loc),
-		    "%<object.TypeInfo%> cannot be used with %<-fno-rtti%>");
+	  static int warned = 0;
+
+	  if (expr != NULL)
+	    error_at (make_location_t (loc),
+		     "expression %qs requires %<object.TypeInfo%> and cannot "
+		     "be used with %<-fno-rtti%>", expr->toChars ());
+	  else if (!warned)
+	    error_at (make_location_t (loc),
+		      "%<object.TypeInfo%> cannot be used with %<-fno-rtti%>");
+
 	  warned = 1;
 	}
     }
@@ -1400,7 +1428,7 @@ check_typeinfo_type (const Loc &loc, Scope *sc)
       /* If TypeInfo has not been declared, warn about each location once.  */
       static Loc warnloc;
 
-      if (!warnloc.equals (loc))
+      if (loc.filename && !warnloc.equals (loc))
 	{
 	  error_at (make_location_t (loc),
 		    "%<object.TypeInfo%> could not be found, "
@@ -1410,15 +1438,21 @@ check_typeinfo_type (const Loc &loc, Scope *sc)
     }
 }
 
-/* Returns typeinfo reference for TYPE.  */
+/* Returns typeinfo reference for TYPE.  LOC is the location used for error
+   messages.  EXPR is the expression where TypeInfo is required, if set.  */
 
 tree
-build_typeinfo (const Loc &loc, Type *type)
+build_typeinfo (const Loc &loc, Type *type, Expression *expr)
 {
-  gcc_assert (type->ty != Terror);
-  check_typeinfo_type (loc, NULL);
+  gcc_assert (type->ty != TY::Terror);
+  check_typeinfo_type (loc, NULL, expr);
   create_typeinfo (type, NULL);
   return build_address (get_typeinfo_decl (type->vtinfo));
+}
+
+tree build_typeinfo (Expression *expr, Type *type)
+{
+  return build_typeinfo (expr->loc, type, expr);
 }
 
 /* Like layout_classinfo, but generates an Object that wraps around a
@@ -1438,9 +1472,17 @@ layout_cpp_typeinfo (ClassDeclaration *cd)
   /* Use the vtable of __cpp_type_info_ptr, the EH personality routine
      expects this, as it uses .classinfo identity comparison to test for
      C++ catch handlers.  */
-  tree vptr = get_vtable_decl (ClassDeclaration::cpp_type_info_ptr);
-  CONSTRUCTOR_APPEND_ELT (init, NULL_TREE, build_address (vptr));
-  CONSTRUCTOR_APPEND_ELT (init, NULL_TREE, null_pointer_node);
+  ClassDeclaration *cppti = ClassDeclaration::cpp_type_info_ptr;
+  if (have_typeinfo_p (cppti))
+    {
+      tree vptr = get_vtable_decl (cppti);
+      CONSTRUCTOR_APPEND_ELT (init, NULL_TREE, build_address (vptr));
+    }
+  else
+    CONSTRUCTOR_APPEND_ELT (init, NULL_TREE, null_pointer_node);
+
+  if (cppti->hasMonitor ())
+    CONSTRUCTOR_APPEND_ELT (init, NULL_TREE, null_pointer_node);
 
   /* Let C++ do the RTTI generation, and just reference the symbol as
      extern, knowing the underlying type is not required.  */
@@ -1452,9 +1494,7 @@ layout_cpp_typeinfo (ClassDeclaration *cd)
 
   /* Build the initializer and emit.  */
   DECL_INITIAL (decl) = build_struct_literal (TREE_TYPE (decl), init);
-  DECL_EXTERNAL (decl) = 0;
-  d_pushdecl (decl);
-  rest_of_decl_compilation (decl, 1, 0);
+  d_finish_decl (decl);
 }
 
 /* Get the VAR_DECL of the __cpp_type_info_ptr for DECL.  If this does not yet

@@ -46,13 +46,14 @@
 
 #include "hashtab.h"
 #include "gdbsupport/array-view.h"
+#include "gdbsupport/gdb-hashtab.h"
 #include "gdbsupport/gdb_optional.h"
 #include "gdbsupport/offset-type.h"
 #include "gdbsupport/enum-flags.h"
 #include "gdbsupport/underlying.h"
 #include "gdbsupport/print-utils.h"
 #include "dwarf2.h"
-#include "gdb_obstack.h"
+#include "gdbsupport/gdb_obstack.h"
 #include "gmp-utils.h"
 
 /* Forward declarations for prototypes.  */
@@ -195,6 +196,19 @@ enum type_code
 
     /* * Fixed Point type.  */
     TYPE_CODE_FIXED_POINT,
+
+    /* * Fortran namelist is a group of variables or arrays that can be
+       read or written.
+
+       Namelist syntax: NAMELIST / groupname / namelist_items ...
+       NAMELIST statement assign a group name to a collection of variables
+       called as namelist items. The namelist items can be of any data type
+       and can be variables or arrays.
+
+       Compiler emit DW_TAG_namelist for group name and DW_TAG_namelist_item
+       for each of the namelist items. GDB process these namelist dies
+       and print namelist variables during print and ptype commands.  */
+    TYPE_CODE_NAMELIST,
   };
 
 /* * Some bits for the type's instance_flags word.  See the macros
@@ -654,7 +668,84 @@ struct field
     this->m_type = type;
   }
 
-  union field_location loc;
+  const char *name () const
+  {
+    return m_name;
+  }
+
+  void set_name (const char *name)
+  {
+    m_name = name;
+  }
+
+  /* Location getters / setters.  */
+
+  field_loc_kind loc_kind () const
+  {
+    return m_loc_kind;
+  }
+
+  LONGEST loc_bitpos () const
+  {
+    gdb_assert (m_loc_kind == FIELD_LOC_KIND_BITPOS);
+    return m_loc.bitpos;
+  }
+
+  void set_loc_bitpos (LONGEST bitpos)
+  {
+    m_loc_kind = FIELD_LOC_KIND_BITPOS;
+    m_loc.bitpos = bitpos;
+  }
+
+  LONGEST loc_enumval () const
+  {
+    gdb_assert (m_loc_kind == FIELD_LOC_KIND_ENUMVAL);
+    return m_loc.enumval;
+  }
+
+  void set_loc_enumval (LONGEST enumval)
+  {
+    m_loc_kind = FIELD_LOC_KIND_ENUMVAL;
+    m_loc.enumval = enumval;
+  }
+
+  CORE_ADDR loc_physaddr () const
+  {
+    gdb_assert (m_loc_kind == FIELD_LOC_KIND_PHYSADDR);
+    return m_loc.physaddr;
+  }
+
+  void set_loc_physaddr (CORE_ADDR physaddr)
+  {
+    m_loc_kind = FIELD_LOC_KIND_PHYSADDR;
+    m_loc.physaddr = physaddr;
+  }
+
+  const char *loc_physname () const
+  {
+    gdb_assert (m_loc_kind == FIELD_LOC_KIND_PHYSNAME);
+    return m_loc.physname;
+  }
+
+  void set_loc_physname (const char *physname)
+  {
+    m_loc_kind = FIELD_LOC_KIND_PHYSNAME;
+    m_loc.physname = physname;
+  }
+
+  dwarf2_locexpr_baton *loc_dwarf_block () const
+  {
+    gdb_assert (m_loc_kind == FIELD_LOC_KIND_DWARF_BLOCK);
+    return m_loc.dwarf_block;
+  }
+
+  void set_loc_dwarf_block (dwarf2_locexpr_baton *dwarf_block)
+  {
+    m_loc_kind = FIELD_LOC_KIND_DWARF_BLOCK;
+    m_loc.dwarf_block = dwarf_block;
+  }
+
+  union field_location m_loc;
 
   /* * For a function or member type, this is 1 if the argument is
      marked artificial.  Artificial arguments should not be shown
@@ -665,7 +756,7 @@ struct field
 
   /* * Discriminant for union field_location.  */
 
-  ENUM_BITFIELD(field_loc_kind) loc_kind : 3;
+  ENUM_BITFIELD(field_loc_kind) m_loc_kind : 3;
 
   /* * Size of this field, in bits, or zero if not packed.
      If non-zero in an array type, indicates the element size in
@@ -685,7 +776,7 @@ struct field
      NULL for range bounds, array domains, and member function
      arguments.  */
 
-  const char *name;
+  const char *m_name;
 };
 
 struct range_bounds
@@ -970,6 +1061,7 @@ struct type
   /* Get the field at index IDX.  */
   struct field &field (int idx) const
   {
+    gdb_assert (idx >= 0 && idx < num_fields ());
     return this->fields ()[idx];
   }
 
@@ -1029,6 +1121,8 @@ struct type
 
   ULONGEST bit_stride () const
   {
+    if (this->code () == TYPE_CODE_ARRAY && this->field (0).bitsize != 0)
+      return this->field (0).bitsize;
     return this->bounds ()->bit_stride ();
   }
 
@@ -1351,6 +1445,12 @@ struct type
   {
     gdb_assert (main_type->type_specific_field == TYPE_SPECIFIC_INT);
     return main_type->type_specific.int_stuff.bit_offset;
+  }
+
+  /* Return true if this is a pointer or reference type.  */
+  bool is_pointer_or_reference () const
+  {
+    return this->code () == TYPE_CODE_PTR || TYPE_IS_REFERENCE (this);
   }
 
   /* * Type that is a pointer to this type.
@@ -1724,11 +1824,52 @@ enum call_site_parameter_kind
 
 struct call_site_target
 {
-  union field_location loc;
+  field_loc_kind loc_kind () const
+  {
+    return m_loc_kind;
+  }
+
+  CORE_ADDR loc_physaddr () const
+  {
+    gdb_assert (m_loc_kind == FIELD_LOC_KIND_PHYSADDR);
+    return m_loc.physaddr;
+  }
+
+  void set_loc_physaddr (CORE_ADDR physaddr)
+  {
+    m_loc_kind = FIELD_LOC_KIND_PHYSADDR;
+    m_loc.physaddr = physaddr;
+  }
+
+  const char *loc_physname () const
+  {
+    gdb_assert (m_loc_kind == FIELD_LOC_KIND_PHYSNAME);
+    return m_loc.physname;
+  }
+
+  void set_loc_physname (const char *physname)
+    {
+      m_loc_kind = FIELD_LOC_KIND_PHYSNAME;
+      m_loc.physname = physname;
+    }
+
+  dwarf2_locexpr_baton *loc_dwarf_block () const
+  {
+    gdb_assert (m_loc_kind == FIELD_LOC_KIND_DWARF_BLOCK);
+    return m_loc.dwarf_block;
+  }
+
+  void set_loc_dwarf_block (dwarf2_locexpr_baton *dwarf_block)
+    {
+      m_loc_kind = FIELD_LOC_KIND_DWARF_BLOCK;
+      m_loc.dwarf_block = dwarf_block;
+    }
+
+  union field_location m_loc;
 
   /* * Discriminant for union field_location.  */
 
-  ENUM_BITFIELD(field_loc_kind) loc_kind : 3;
+  ENUM_BITFIELD(field_loc_kind) m_loc_kind : 3;
 };
 
 union call_site_parameter_u
@@ -1775,37 +1916,69 @@ struct call_site_parameter
 
 struct call_site
   {
-    /* * Address of the first instruction after this call.  It must be
-       the first field as we overload core_addr_hash and core_addr_eq
-       for it.  */
+    call_site (CORE_ADDR pc, dwarf2_per_cu_data *per_cu,
+	       dwarf2_per_objfile *per_objfile)
+      : per_cu (per_cu), per_objfile (per_objfile), m_unrelocated_pc (pc)
+    {}
 
-    CORE_ADDR pc;
+    static int
+    eq (const call_site *a, const call_site *b)
+    {
+      return a->m_unrelocated_pc == b->m_unrelocated_pc;
+    }
+
+    static hashval_t
+    hash (const call_site *a)
+    {
+      return a->m_unrelocated_pc;
+    }
+
+    static int
+    eq (const void *a, const void *b)
+    {
+      return eq ((const call_site *)a, (const call_site *)b);
+    }
+
+    static hashval_t
+    hash (const void *a)
+    {
+      return hash ((const call_site *)a);
+    }
+
+    /* Return the address of the first instruction after this call.  */
+
+    CORE_ADDR pc () const;
 
     /* * List successor with head in FUNC_TYPE.TAIL_CALL_LIST.  */
 
-    struct call_site *tail_call_next;
+    struct call_site *tail_call_next = nullptr;
 
     /* * Describe DW_AT_call_target.  Missing attribute uses
        FIELD_LOC_KIND_DWARF_BLOCK with FIELD_DWARF_BLOCK == NULL.  */
 
-    struct call_site_target target;
+    struct call_site_target target {};
 
     /* * Size of the PARAMETER array.  */
 
-    unsigned parameter_count;
+    unsigned parameter_count = 0;
 
     /* * CU of the function where the call is located.  It gets used
        for DWARF blocks execution in the parameter array below.  */
 
-    dwarf2_per_cu_data *per_cu;
+    dwarf2_per_cu_data *const per_cu = nullptr;
 
     /* objfile of the function where the call is located.  */
 
-    dwarf2_per_objfile *per_objfile;
+    dwarf2_per_objfile *const per_objfile = nullptr;
 
+  private:
+    /* Unrelocated address of the first instruction after this call.  */
+    const CORE_ADDR m_unrelocated_pc;
+
+  public:
     /* * Describe DW_TAG_call_site's DW_TAG_formal_parameter.  */
 
-    struct call_site_parameter parameter[1];
+    struct call_site_parameter parameter[];
   };
 
 /* The type-specific info for TYPE_CODE_FIXED_POINT types.  */
@@ -1956,8 +2129,8 @@ extern void set_type_vptr_basetype (struct type *, struct type *);
 #define TYPE_TAIL_CALL_LIST(thistype) TYPE_MAIN_TYPE(thistype)->type_specific.func_stuff->tail_call_list
 #define TYPE_BASECLASS(thistype,index) ((thistype)->field (index).type ())
 #define TYPE_N_BASECLASSES(thistype) TYPE_CPLUS_SPECIFIC(thistype)->n_baseclasses
-#define TYPE_BASECLASS_NAME(thistype,index) TYPE_FIELD_NAME(thistype, index)
-#define TYPE_BASECLASS_BITPOS(thistype,index) TYPE_FIELD_BITPOS(thistype,index)
+#define TYPE_BASECLASS_NAME(thistype,index) (thistype->field (index).name ())
+#define TYPE_BASECLASS_BITPOS(thistype,index) (thistype->field (index).loc_bitpos ())
 #define BASETYPE_VIA_PUBLIC(thistype, index) \
   ((!TYPE_FIELD_PRIVATE(thistype, index)) && (!TYPE_FIELD_PROTECTED(thistype, index)))
 #define TYPE_CPLUS_DYNAMIC(thistype) TYPE_CPLUS_SPECIFIC (thistype)->is_dynamic
@@ -1966,40 +2139,9 @@ extern void set_type_vptr_basetype (struct type *, struct type *);
   (TYPE_CPLUS_SPECIFIC(thistype)->virtual_field_bits == NULL ? 0 \
     : B_TST(TYPE_CPLUS_SPECIFIC(thistype)->virtual_field_bits, (index)))
 
-#define FIELD_NAME(thisfld) ((thisfld).name)
-#define FIELD_LOC_KIND(thisfld) ((thisfld).loc_kind)
-#define FIELD_BITPOS_LVAL(thisfld) ((thisfld).loc.bitpos)
-#define FIELD_BITPOS(thisfld) (FIELD_BITPOS_LVAL (thisfld) + 0)
-#define FIELD_ENUMVAL_LVAL(thisfld) ((thisfld).loc.enumval)
-#define FIELD_ENUMVAL(thisfld) (FIELD_ENUMVAL_LVAL (thisfld) + 0)
-#define FIELD_STATIC_PHYSNAME(thisfld) ((thisfld).loc.physname)
-#define FIELD_STATIC_PHYSADDR(thisfld) ((thisfld).loc.physaddr)
-#define FIELD_DWARF_BLOCK(thisfld) ((thisfld).loc.dwarf_block)
-#define SET_FIELD_BITPOS(thisfld, bitpos)			\
-  (FIELD_LOC_KIND (thisfld) = FIELD_LOC_KIND_BITPOS,		\
-   FIELD_BITPOS_LVAL (thisfld) = (bitpos))
-#define SET_FIELD_ENUMVAL(thisfld, enumval)			\
-  (FIELD_LOC_KIND (thisfld) = FIELD_LOC_KIND_ENUMVAL,		\
-   FIELD_ENUMVAL_LVAL (thisfld) = (enumval))
-#define SET_FIELD_PHYSNAME(thisfld, name)			\
-  (FIELD_LOC_KIND (thisfld) = FIELD_LOC_KIND_PHYSNAME,		\
-   FIELD_STATIC_PHYSNAME (thisfld) = (name))
-#define SET_FIELD_PHYSADDR(thisfld, addr)			\
-  (FIELD_LOC_KIND (thisfld) = FIELD_LOC_KIND_PHYSADDR,		\
-   FIELD_STATIC_PHYSADDR (thisfld) = (addr))
-#define SET_FIELD_DWARF_BLOCK(thisfld, addr)			\
-  (FIELD_LOC_KIND (thisfld) = FIELD_LOC_KIND_DWARF_BLOCK,	\
-   FIELD_DWARF_BLOCK (thisfld) = (addr))
 #define FIELD_ARTIFICIAL(thisfld) ((thisfld).artificial)
 #define FIELD_BITSIZE(thisfld) ((thisfld).bitsize)
 
-#define TYPE_FIELD_NAME(thistype, n) FIELD_NAME((thistype)->field (n))
-#define TYPE_FIELD_LOC_KIND(thistype, n) FIELD_LOC_KIND ((thistype)->field (n))
-#define TYPE_FIELD_BITPOS(thistype, n) FIELD_BITPOS ((thistype)->field (n))
-#define TYPE_FIELD_ENUMVAL(thistype, n) FIELD_ENUMVAL ((thistype)->field (n))
-#define TYPE_FIELD_STATIC_PHYSNAME(thistype, n) FIELD_STATIC_PHYSNAME ((thistype)->field (n))
-#define TYPE_FIELD_STATIC_PHYSADDR(thistype, n) FIELD_STATIC_PHYSADDR ((thistype)->field (n))
-#define TYPE_FIELD_DWARF_BLOCK(thistype, n) FIELD_DWARF_BLOCK ((thistype)->field (n))
 #define TYPE_FIELD_ARTIFICIAL(thistype, n) FIELD_ARTIFICIAL((thistype)->field (n))
 #define TYPE_FIELD_BITSIZE(thistype, n) FIELD_BITSIZE((thistype)->field (n))
 #define TYPE_FIELD_PACKED(thistype, n) (FIELD_BITSIZE((thistype)->field (n))!=0)
@@ -2517,19 +2659,30 @@ extern struct type *lookup_unsigned_typename (const struct language_defn *,
 extern struct type *lookup_signed_typename (const struct language_defn *,
 					    const char *);
 
-extern void get_unsigned_type_max (struct type *, ULONGEST *);
+extern ULONGEST get_unsigned_type_max (struct type *);
 
 extern void get_signed_type_minmax (struct type *, LONGEST *, LONGEST *);
+
+extern CORE_ADDR get_pointer_type_max (struct type *);
 
 /* * Resolve all dynamic values of a type e.g. array bounds to static values.
    ADDR specifies the location of the variable the type is bound to.
    If TYPE has no dynamic properties return TYPE; otherwise a new type with
-   static properties is returned.  */
+   static properties is returned.
+
+   For an array type, if the element type is dynamic, then that will
+   not be resolved.  This is done because each individual element may
+   have a different type when resolved (depending on the contents of
+   memory).  In this situation, 'is_dynamic_type' will still return
+   true for the return value of this function.  */
 extern struct type *resolve_dynamic_type
   (struct type *type, gdb::array_view<const gdb_byte> valaddr,
    CORE_ADDR addr);
 
-/* * Predicate if the type has dynamic values, which are not resolved yet.  */
+/* * Predicate if the type has dynamic values, which are not resolved yet.
+   See the caveat in 'resolve_dynamic_type' to understand a scenario
+   where an apparently-resolved type may still be considered
+   "dynamic".  */
 extern int is_dynamic_type (struct type *type);
 
 extern struct type *check_typedef (struct type *);
@@ -2711,5 +2864,15 @@ extern enum bfd_endian type_byte_order (const struct type *type);
    overloading.  */
 
 extern unsigned int overload_debug;
+
+/* Return whether the function type represented by TYPE is marked as unsafe
+   to call by the debugger.
+
+   This usually indicates that the function does not follow the target's
+   standard calling convention.
+
+   The TYPE argument must be of code TYPE_CODE_FUNC or TYPE_CODE_METHOD.  */
+
+extern bool is_nocall_function (const struct type *type);
 
 #endif /* GDBTYPES_H */

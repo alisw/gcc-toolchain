@@ -1,5 +1,5 @@
 /* Instruction printing code for the ARM
-   Copyright (C) 1994-2021 Free Software Foundation, Inc.
+   Copyright (C) 1994-2022 Free Software Foundation, Inc.
    Contributed by Richard Earnshaw (rwe@pegasus.esprit.ec.org)
    Modification by James G. Smith (jsmith@cygnus.co.uk)
 
@@ -4652,6 +4652,23 @@ static const struct opcode16 thumb_opcodes[] =
    makes heavy use of special-case bit patterns.  */
 static const struct opcode32 thumb32_opcodes[] =
 {
+  /* Arm v8.1-M Mainline Pointer Authentication and Branch Target
+     Identification Extension.  */
+  {ARM_FEATURE_CORE_HIGH (ARM_EXT2_V8_1M_MAIN),
+   0xf3af802d, 0xffffffff, "aut\tr12, lr, sp"},
+  {ARM_FEATURE_CORE_HIGH_HIGH (ARM_EXT3_PACBTI),
+   0xfb500f00, 0xfff00ff0, "autg%c\t%12-15r, %16-19r, %0-3r"},
+  {ARM_FEATURE_CORE_HIGH (ARM_EXT2_V8_1M_MAIN),
+   0xf3af800f, 0xffffffff, "bti"},
+  {ARM_FEATURE_CORE_HIGH_HIGH (ARM_EXT3_PACBTI),
+   0xfb500f10, 0xfff00ff0, "bxaut%c\t%12-15r, %16-19r, %0-3r"},
+  {ARM_FEATURE_CORE_HIGH (ARM_EXT2_V8_1M_MAIN),
+   0xf3af801d, 0xffffffff, "pac\tr12, lr, sp"},
+  {ARM_FEATURE_CORE_HIGH (ARM_EXT2_V8_1M_MAIN),
+   0xf3af800d, 0xffffffff, "pacbti\tr12, lr, sp"},
+  {ARM_FEATURE_CORE_HIGH_HIGH (ARM_EXT3_PACBTI),
+   0xfb60f000, 0xfff0f0f0, "pacg%c\t%8-11r, %16-19r, %0-3r"},
+
   /* Armv8.1-M Mainline and Armv8.1-M Mainline Security Extensions
      instructions.  */
   {ARM_FEATURE_CORE_HIGH (ARM_EXT2_V8_1M_MAIN),
@@ -10697,7 +10714,7 @@ print_insn_thumb16 (bfd_vma pc, struct disassemble_info *info, long given)
 			if (!bitend)
 			  abort ();
 			reg = given >> bitstart;
-			reg &= (2 << (bitend - bitstart)) - 1;
+			reg &= ((bfd_vma) 2 << (bitend - bitstart)) - 1;
 
 			switch (*c)
 			  {
@@ -11596,6 +11613,7 @@ parse_arm_disassembler_options (const char *options)
 {
   const char *opt;
 
+  force_thumb = false;
   FOR_EACH_DISASSEMBLER_OPTION (opt, options)
     {
       if (startswith (opt, "reg-names-"))
@@ -12010,12 +12028,11 @@ select_arm_features (unsigned long mach,
       ARM_MERGE_FEATURE_SETS (arch_fset, arch_fset, mve_all);
       force_thumb = 1;
       break;
+    case bfd_mach_arm_9:         ARM_SET_FEATURES (ARM_ARCH_V9A); break;
       /* If the machine type is unknown allow all architecture types and all
 	 extensions, with the exception of MVE as that clashes with NEON.  */
     case bfd_mach_arm_unknown:
-      ARM_SET_FEATURES (ARM_FEATURE (-1,
-				     -1 & ~(ARM_EXT2_MVE | ARM_EXT2_MVE_FP),
-				     -1));
+      ARM_SET_FEATURES (ARM_ARCH_UNKNOWN);
       break;
     default:
       abort ();

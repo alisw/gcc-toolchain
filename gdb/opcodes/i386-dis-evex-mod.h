@@ -1,33 +1,3 @@
-  {
-    /* MOD_EVEX_0F12_PREFIX_0 */
-    { "vmovlpX",	{ XMM, Vex, EXxmm_mq }, PREFIX_OPCODE },
-    { VEX_W_TABLE (EVEX_W_0F12_P_0_M_1) },
-  },
-  {
-    /* MOD_EVEX_0F12_PREFIX_2 */
-    { "vmovlpX",	{ XMM, Vex, EXxmm_mq }, PREFIX_OPCODE },
-  },
-  {
-    /* MOD_EVEX_0F13 */
-    { "vmovlpX",	{ EXxmm_mq, XMM }, PREFIX_OPCODE },
-  },
-  {
-    /* MOD_EVEX_0F16_PREFIX_0 */
-    { "vmovhpX",	{ XMM, Vex, EXxmm_mq }, PREFIX_OPCODE },
-    { VEX_W_TABLE (EVEX_W_0F16_P_0_M_1) },
-  },
-  {
-    /* MOD_EVEX_0F16_PREFIX_2 */
-    { "vmovhpX",	{ XMM, Vex, EXxmm_mq }, PREFIX_OPCODE },
-  },
-  {
-    /* MOD_EVEX_0F17 */
-    { "vmovhpX",	{ EXxmm_mq, XMM }, PREFIX_OPCODE },
-  },
-  {
-    /* MOD_EVEX_0F2B */
-    { "vmovntpX",	{ EXx, XM }, PREFIX_OPCODE },
-  },
   /* MOD_EVEX_0F381A */
   {
     { EVEX_LEN_TABLE (EVEX_LEN_0F381A_M_0) },

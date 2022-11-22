@@ -1,5 +1,5 @@
 /* Subclasses of diagnostic_path and diagnostic_event for analyzer diagnostics.
-   Copyright (C) 2019-2021 Free Software Foundation, Inc.
+   Copyright (C) 2019-2022 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -81,6 +81,8 @@ event_kind_to_string (enum event_kind ek)
       return "EK_CUSTOM";
     case EK_STMT:
       return "EK_STMT";
+    case EK_REGION_CREATION:
+      return "EK_REGION_CREATION";
     case EK_FUNCTION_ENTRY:
       return "EK_FUNCTION_ENTRY";
     case EK_STATE_CHANGE:
@@ -162,14 +164,14 @@ debug_event::get_desc (bool) const
   return label_text::borrow (m_desc);
 }
 
-/* class custom_event : public checker_event.  */
+/* class precanned_custom_event : public custom_event.  */
 
 /* Implementation of diagnostic_event::get_desc vfunc for
-   custom_event.
+   precanned_custom_event.
    Use the saved string as the event's description.  */
 
 label_text
-custom_event::get_desc (bool) const
+precanned_custom_event::get_desc (bool) const
 {
   return label_text::borrow (m_desc);
 }
@@ -197,6 +199,34 @@ statement_event::get_desc (bool) const
   pp_string (&pp, "stmt: ");
   pp_gimple_stmt_1 (&pp, m_stmt, 0, (dump_flags_t)0);
   return label_text::take (xstrdup (pp_formatted_text (&pp)));
+}
+
+/* class region_creation_event : public checker_event.  */
+
+region_creation_event::region_creation_event (const region *reg,
+					      location_t loc,
+					      tree fndecl,
+					      int depth)
+: checker_event (EK_REGION_CREATION, loc, fndecl, depth),
+  m_reg (reg)
+{
+}
+
+/* Implementation of diagnostic_event::get_desc vfunc for
+   region_creation_event.  */
+
+label_text
+region_creation_event::get_desc (bool) const
+{
+  switch (m_reg->get_memory_space ())
+    {
+    default:
+      return label_text::borrow ("region created here");
+    case MEMSPACE_STACK:
+      return label_text::borrow ("region created on stack here");
+    case MEMSPACE_HEAP:
+      return label_text::borrow ("region created on heap here");
+    }
 }
 
 /* class function_entry_event : public checker_event.  */
@@ -293,24 +323,28 @@ state_change_event::get_desc (bool can_colorize) const
   if (m_sval)
     {
       label_text sval_desc = m_sval->get_desc ();
+      label_text result;
       if (m_origin)
 	{
 	  label_text origin_desc = m_origin->get_desc ();
-	  return make_label_text
+	  result = make_label_text
 	    (can_colorize,
 	     "state of %qs: %qs -> %qs (origin: %qs)",
 	     sval_desc.m_buffer,
 	     m_from->get_name (),
 	     m_to->get_name (),
 	     origin_desc.m_buffer);
+	  origin_desc.maybe_free ();
 	}
       else
-	return make_label_text
+	result = make_label_text
 	  (can_colorize,
 	   "state of %qs: %qs -> %qs (NULL origin)",
 	   sval_desc.m_buffer,
 	   m_from->get_name (),
 	   m_to->get_name ());
+      sval_desc.maybe_free ();
+      return result;
     }
   else
     {
@@ -614,7 +648,11 @@ call_event::call_event (const exploded_edge &eedge,
 			location_t loc, tree fndecl, int depth)
 : superedge_event (EK_CALL_EDGE, eedge, loc, fndecl, depth)
 {
-  gcc_assert (eedge.m_sedge->m_kind == SUPEREDGE_CALL);
+  if (eedge.m_sedge)
+    gcc_assert (eedge.m_sedge->m_kind == SUPEREDGE_CALL);
+
+   m_src_snode = eedge.m_src->get_supernode ();
+   m_dest_snode = eedge.m_dest->get_supernode ();
 }
 
 /* Implementation of diagnostic_event::get_desc vfunc for
@@ -638,8 +676,8 @@ call_event::get_desc (bool can_colorize) const
       label_text custom_desc
 	= m_pending_diagnostic->describe_call_with_state
 	    (evdesc::call_with_state (can_colorize,
-				      m_sedge->m_src->m_fun->decl,
-				      m_sedge->m_dest->m_fun->decl,
+				      m_src_snode->m_fun->decl,
+				      m_dest_snode->m_fun->decl,
 				      var,
 				      m_critical_state));
       if (custom_desc.m_buffer)
@@ -648,8 +686,8 @@ call_event::get_desc (bool can_colorize) const
 
   return make_label_text (can_colorize,
 			  "calling %qE from %qE",
-			  m_sedge->m_dest->m_fun->decl,
-			  m_sedge->m_src->m_fun->decl);
+			  m_dest_snode->m_fun->decl,
+			  m_src_snode->m_fun->decl);
 }
 
 /* Override of checker_event::is_call_p for calls.  */
@@ -668,7 +706,11 @@ return_event::return_event (const exploded_edge &eedge,
 			    location_t loc, tree fndecl, int depth)
 : superedge_event (EK_RETURN_EDGE, eedge, loc, fndecl, depth)
 {
-  gcc_assert (eedge.m_sedge->m_kind == SUPEREDGE_RETURN);
+  if (eedge.m_sedge)
+    gcc_assert (eedge.m_sedge->m_kind == SUPEREDGE_RETURN);
+
+  m_src_snode = eedge.m_src->get_supernode ();
+  m_dest_snode = eedge.m_dest->get_supernode ();
 }
 
 /* Implementation of diagnostic_event::get_desc vfunc for
@@ -694,16 +736,16 @@ return_event::get_desc (bool can_colorize) const
       label_text custom_desc
 	= m_pending_diagnostic->describe_return_of_state
 	    (evdesc::return_of_state (can_colorize,
-				      m_sedge->m_dest->m_fun->decl,
-				      m_sedge->m_src->m_fun->decl,
+				      m_dest_snode->m_fun->decl,
+				      m_src_snode->m_fun->decl,
 				      m_critical_state));
       if (custom_desc.m_buffer)
 	return custom_desc;
     }
   return make_label_text (can_colorize,
 			  "returning to %qE from %qE",
-			  m_sedge->m_dest->m_fun->decl,
-			  m_sedge->m_src->m_fun->decl);
+			  m_dest_snode->m_fun->decl,
+			  m_src_snode->m_fun->decl);
 }
 
 /* Override of checker_event::is_return_p for returns.  */
@@ -983,6 +1025,17 @@ checker_path::debug () const
     }
 }
 
+/* Add region_creation_event instance to this path for REG,
+   describing whether REG is on the stack or heap.  */
+
+void
+checker_path::add_region_creation_event (const region *reg,
+					 location_t loc,
+					 tree fndecl, int depth)
+{
+  add_event (new region_creation_event (reg, loc, fndecl, depth));
+}
+
 /* Add a warning_event to the end of this path.  */
 
 void
@@ -1001,9 +1054,7 @@ checker_path::add_final_event (const state_machine *sm,
 void
 checker_path::fixup_locations (pending_diagnostic *pd)
 {
-  checker_event *e;
-  int i;
-  FOR_EACH_VEC_ELT (m_events, i, e)
+  for (checker_event *e : m_events)
     e->set_location (pd->fixup_location (e->get_location ()));
 }
 

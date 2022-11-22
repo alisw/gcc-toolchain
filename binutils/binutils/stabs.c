@@ -1129,13 +1129,13 @@ parse_stab_string (void *dhandle, struct stab_handle *info, int stabtype,
     case 'Y':
       /* SUNPro C++ Namespace =Yn0.  */
       /* Skip the namespace mapping, as it is not used now.  */
-      if (*(++p) == 'n' && *(++p) == '0')
+      if (*p++ != 0 && *p++ == 'n' && *p++ == '0')
 	{
 	  /* =Yn0name; */
-	  while (*p != ';')
+	  while (*p && *p != ';')
 	    ++p;
-	  ++p;
-	  return true;
+	  if (*p)
+	    return true;
 	}
       /* TODO SUNPro C++ support:
          Support default arguments after F,P parameters
@@ -2367,7 +2367,10 @@ parse_stab_struct_fields (void *dhandle,
 
       if (! parse_stab_one_struct_field (dhandle, info, pp, p, fields + c,
 					 staticsp, p_end))
-	return false;
+	{
+	  free (fields);
+	  return false;
+	}
 
       ++c;
     }
@@ -5467,7 +5470,10 @@ stab_demangle_v3_arg (void *dhandle, struct stab_handle *info,
 					  dc->u.s_binary.right,
 					  &varargs);
 	if (pargs == NULL)
-	  return NULL;
+	  {
+	    free (dt);
+	    return NULL;
+	  }
 
 	return debug_make_function_type (dhandle, dt, pargs, varargs);
       }

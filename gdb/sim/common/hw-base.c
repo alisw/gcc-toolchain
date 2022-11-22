@@ -22,13 +22,12 @@
 /* This must come before any other includes.  */
 #include "defs.h"
 
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "hw-main.h"
 #include "hw-base.h"
-
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
-
 #include "hw-config.h"
 
 struct hw_base_data
@@ -385,7 +384,7 @@ hw_create (struct sim_state *sd,
 
   /* locate a descriptor */
   {
-    const struct hw_descriptor **table;
+    const struct hw_descriptor * const *table;
     for (table = hw_descriptors;
 	 *table != NULL;
 	 table++)

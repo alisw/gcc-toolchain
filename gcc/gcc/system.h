@@ -1,6 +1,6 @@
 /* Get common system includes and various definitions and declarations based
    on autoconf macros.
-   Copyright (C) 1998-2021 Free Software Foundation, Inc.
+   Copyright (C) 1998-2022 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -239,6 +239,7 @@ extern int errno;
 # include <functional>
 #endif
 # include <cstring>
+# include <initializer_list>
 # include <new>
 # include <utility>
 # include <type_traits>
@@ -358,6 +359,10 @@ extern int errno;
 # ifdef HAVE_SYS_FILE_H
 #  include <sys/file.h>
 # endif
+#endif
+
+#ifdef HAVE_SYS_LOCKING_H
+# include <sys/locking.h>
 #endif
 
 #ifndef SEEK_SET
@@ -733,18 +738,20 @@ extern int vsnprintf (char *, size_t, const char *, va_list);
 
 /* Some of the headers included by <memory> can use "abort" within a
    namespace, e.g. "_VSTD::abort();", which fails after we use the
-   preprocessor to redefine "abort" as "fancy_abort" below.
-   Given that unique-ptr.h can use "free", we need to do this after "free"
-   is declared but before "abort" is overridden.  */
+   preprocessor to redefine "abort" as "fancy_abort" below.  */
 
-#ifdef INCLUDE_UNIQUE_PTR
-# include "unique-ptr.h"
+#ifdef INCLUDE_MEMORY
+# include <memory>
 #endif
 
 #ifdef INCLUDE_MALLOC_H
 #if defined(HAVE_MALLINFO) || defined(HAVE_MALLINFO2)
 #include <malloc.h>
 #endif
+#endif
+
+#ifdef INCLUDE_PTHREAD_H
+#include <pthread.h>
 #endif
 
 #ifdef INCLUDE_ISL
@@ -1065,7 +1072,8 @@ extern void fancy_abort (const char *, int, const char *)
 	LIBGCC2_LONG_DOUBLE_TYPE_SIZE STRUCT_VALUE			   \
 	EH_FRAME_IN_DATA_SECTION TARGET_FLT_EVAL_METHOD_NON_DEFAULT	   \
 	JCR_SECTION_NAME TARGET_USE_JCR_SECTION SDB_DEBUGGING_INFO	   \
-	SDB_DEBUG NO_IMPLICIT_EXTERN_C
+	SDB_DEBUG NO_IMPLICIT_EXTERN_C NOTICE_UPDATE_CC			   \
+	CC_STATUS_MDEP_INIT CC_STATUS_MDEP CC_STATUS
 
 /* Hooks that are no longer used.  */
  #pragma GCC poison LANG_HOOKS_FUNCTION_MARK LANG_HOOKS_FUNCTION_FREE	\
@@ -1245,6 +1253,7 @@ void gcc_sort_r (void *, size_t, size_t, sort_r_cmp_fn *, void *);
 void gcc_qsort (void *, size_t, size_t, int (*)(const void *, const void *));
 void gcc_stablesort (void *, size_t, size_t,
 		     int (*)(const void *, const void *));
+void gcc_stablesort_r (void *, size_t, size_t, sort_r_cmp_fn *, void *data);
 /* Redirect four-argument qsort calls to gcc_qsort; one-argument invocations
    correspond to vec::qsort, and use C qsort internally.  */
 #define PP_5th(a1, a2, a3, a4, a5, ...) a5
@@ -1290,5 +1299,26 @@ void gcc_stablesort (void *, size_t, size_t,
 #undef NULL
 #define NULL nullptr
 #endif
+
+/* Return true if STR string starts with PREFIX.  */
+
+static inline bool
+startswith (const char *str, const char *prefix)
+{
+  return strncmp (str, prefix, strlen (prefix)) == 0;
+}
+
+/* Return true if STR string ends with SUFFIX.  */
+
+static inline bool
+endswith (const char *str, const char *suffix)
+{
+  size_t str_len = strlen (str);
+  size_t suffix_len = strlen (suffix);
+  if (str_len < suffix_len)
+    return false;
+
+  return memcmp (str + str_len - suffix_len, suffix, suffix_len) == 0;
+}
 
 #endif /* ! GCC_SYSTEM_H */

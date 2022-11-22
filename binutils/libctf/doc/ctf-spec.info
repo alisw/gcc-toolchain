@@ -1,4 +1,4 @@
-This is ctf-spec.info, produced by makeinfo version 6.7 from
+This is ctf-spec.info, produced by makeinfo version 6.8 from
 ctf-spec.texi.
 
 Copyright (C) 2021-2022 Free Software Foundation, Inc.
@@ -15,7 +15,7 @@ START-INFO-DIR-ENTRY
 END-INFO-DIR-ENTRY
 
 
-File: ctf-spec.info,  Node: Top,  Up: (dir)
+File: ctf-spec.info,  Node: Top,  Next: Overview,  Up: (dir)
 
 The CTF file format
 *******************
@@ -32,7 +32,7 @@ consume at runtime.
 * Index::
 
 
-File: ctf-spec.info,  Node: Overview,  Next: CTF archive,  Up: Top
+File: ctf-spec.info,  Node: Overview,  Next: CTF archive,  Prev: Top,  Up: Top
 
 Overview
 ********
@@ -1429,7 +1429,7 @@ Index
 * CTF_INT_DATA:                          Integer types.        (line 34)
 * CTF_INT_DATA <1>:                      Floating-point types. (line 36)
 * CTF_INT_ENCODING:                      Integer types.        (line 20)
-* CTF_INT_OFFSET:                        Integer types.        (line 26)
+* CTF_INT_OFFSET:                        Integer types.        (line 25)
 * CTF_INT_SIGNED:                        Integer types.        (line 49)
 * CTF_K_CONST:                           Pointers typedefs and cvr-quals.
                                                                (line  6)
@@ -1720,32 +1720,32 @@ Index
 
 Tag Table:
 Node: Top548
-Node: Overview861
-Node: CTF archive4136
-Node: CTF dictionaries8762
-Node: CTF Preamble9179
-Node: CTF file-wide flags11789
-Node: CTF header13247
-Node: The type section19171
-Node: The info word23836
-Node: Type indexes and type IDs26366
-Node: Type kinds29734
-Node: Integer types33027
-Node: Floating-point types36575
-Node: Slices40600
-Node: Pointers typedefs and cvr-quals44104
-Node: Arrays45275
-Node: Function pointers47006
-Node: Enums47671
-Node: Structs and unions48953
-Node: Forward declarations52810
-Node: The symtypetab sections54389
-Node: The variable section57467
-Node: The label section58605
-Node: The string section59580
-Node: Data models60842
-Node: Limits of CTF61511
-Node: Index62556
+Node: Overview878
+Node: CTF archive4165
+Node: CTF dictionaries8791
+Node: CTF Preamble9208
+Node: CTF file-wide flags11818
+Node: CTF header13276
+Node: The type section19200
+Node: The info word23865
+Node: Type indexes and type IDs26395
+Node: Type kinds29763
+Node: Integer types33056
+Node: Floating-point types36604
+Node: Slices40629
+Node: Pointers typedefs and cvr-quals44133
+Node: Arrays45304
+Node: Function pointers47035
+Node: Enums47700
+Node: Structs and unions48982
+Node: Forward declarations52839
+Node: The symtypetab sections54418
+Node: The variable section57496
+Node: The label section58634
+Node: The string section59609
+Node: Data models60871
+Node: Limits of CTF61540
+Node: Index62585
 
 End Tag Table
 

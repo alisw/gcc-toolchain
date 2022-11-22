@@ -90,7 +90,7 @@ cmdpy_dont_repeat (PyObject *self, PyObject *args)
 static void
 cmdpy_destroyer (struct cmd_list_element *self, void *context)
 {
-  gdbpy_enter enter_py (get_current_arch (), current_language);
+  gdbpy_enter enter_py;
 
   /* Release our hold on the command object.  */
   gdbpy_ref<cmdpy_object> cmd ((cmdpy_object *) context);
@@ -100,12 +100,11 @@ cmdpy_destroyer (struct cmd_list_element *self, void *context)
 /* Called by gdb to invoke the command.  */
 
 static void
-cmdpy_function (struct cmd_list_element *command,
-		const char *args, int from_tty)
+cmdpy_function (const char *args, int from_tty, cmd_list_element *command)
 {
   cmdpy_object *obj = (cmdpy_object *) command->context ();
 
-  gdbpy_enter enter_py (get_current_arch (), current_language);
+  gdbpy_enter enter_py;
 
   if (! obj)
     error (_("Invalid invocation of Python command object."));
@@ -224,7 +223,7 @@ cmdpy_completer_handle_brkchars (struct cmd_list_element *command,
 				 completion_tracker &tracker,
 				 const char *text, const char *word)
 {
-  gdbpy_enter enter_py (get_current_arch (), current_language);
+  gdbpy_enter enter_py;
 
   /* Calling our helper to obtain a reference to the PyObject of the Python
      function.  */
@@ -267,7 +266,7 @@ cmdpy_completer (struct cmd_list_element *command,
 		 completion_tracker &tracker,
 		 const char *text, const char *word)
 {
-  gdbpy_enter enter_py (get_current_arch (), current_language);
+  gdbpy_enter enter_py;
 
   /* Calling our helper to obtain a reference to the PyObject of the Python
      function.  */

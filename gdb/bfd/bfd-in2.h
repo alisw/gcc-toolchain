@@ -7,7 +7,7 @@
 
 /* Main header file for the bfd library -- portable access to object files.
 
-   Copyright (C) 1990-2021 Free Software Foundation, Inc.
+   Copyright (C) 1990-2022 Free Software Foundation, Inc.
 
    Contributed by Cygnus Support.
 
@@ -91,14 +91,6 @@ typedef BFD_HOST_U_64_BIT bfd_uint64_t;
 #define BFD64
 #endif
 
-#ifndef INLINE
-#if __GNUC__ >= 2
-#define INLINE __inline__
-#else
-#define INLINE
-#endif
-#endif
-
 /* Declaring a type wide enough to hold a host long and a host pointer.  */
 #define BFD_HOSTPTR_T @BFD_HOSTPTR_T@
 typedef BFD_HOSTPTR_T bfd_hostptr_t;
@@ -119,6 +111,11 @@ typedef struct bfd bfd;
 # define FALSE 0
 # define TRUE 1
 #endif
+
+/* Silence "applying zero offset to null pointer" UBSAN warnings.  */
+#define PTR_ADD(P,A) ((A) != 0 ? (P) + (A) : (P))
+/* Also prevent non-zero offsets from being applied to a null pointer.  */
+#define NPTR_ADD(P,A) ((P) != NULL ? (P) + (A) : (P))
 
 #ifdef BFD64
 
@@ -1169,9 +1166,14 @@ typedef struct bfd_section
     struct bfd_section *s;
     const char *linked_to_symbol_name;
   } map_head, map_tail;
- /* Points to the output section this section is already assigned to, if any.
-    This is used when support for non-contiguous memory regions is enabled.  */
- struct bfd_section *already_assigned;
+
+  /* Points to the output section this section is already assigned to,
+     if any.  This is used when support for non-contiguous memory
+     regions is enabled.  */
+  struct bfd_section *already_assigned;
+
+  /* Explicitly specified section type, if non-zero.  */
+  unsigned int type;
 
 } asection;
 
@@ -1355,8 +1357,8 @@ discarded_section (const asection *sec)
   /* symbol,                    symbol_ptr_ptr,                     */ \
      (struct bfd_symbol *) SYM, &SEC.symbol,                           \
                                                                        \
-  /* map_head, map_tail, already_assigned                           */ \
-     { NULL }, { NULL }, NULL                                          \
+  /* map_head, map_tail, already_assigned, type                     */ \
+     { NULL }, { NULL }, NULL,             0                           \
                                                                        \
     }
 
@@ -1714,6 +1716,7 @@ enum bfd_architecture
 #define bfd_mach_arm_8M_BASE   25
 #define bfd_mach_arm_8M_MAIN   26
 #define bfd_mach_arm_8_1M_MAIN 27
+#define bfd_mach_arm_9         28
   bfd_arch_nds32,     /* Andes NDS32.  */
 #define bfd_mach_n1            1
 #define bfd_mach_n1h           2
@@ -1932,6 +1935,22 @@ enum bfd_architecture
 #define bfd_mach_ck807         6
 #define bfd_mach_ck810         7
 #define bfd_mach_ck860         8
+  bfd_arch_loongarch,       /* LoongArch */
+#define bfd_mach_loongarch32   1
+#define bfd_mach_loongarch64   2
+  bfd_arch_amdgcn,     /* AMDGCN */
+#define bfd_mach_amdgcn_unknown 0x000
+#define bfd_mach_amdgcn_gfx900  0x02c
+#define bfd_mach_amdgcn_gfx904  0x02e
+#define bfd_mach_amdgcn_gfx906  0x02f
+#define bfd_mach_amdgcn_gfx908  0x030
+#define bfd_mach_amdgcn_gfx90a  0x03f
+#define bfd_mach_amdgcn_gfx1010 0x033
+#define bfd_mach_amdgcn_gfx1011 0x034
+#define bfd_mach_amdgcn_gfx1012 0x035
+#define bfd_mach_amdgcn_gfx1030 0x036
+#define bfd_mach_amdgcn_gfx1031 0x037
+#define bfd_mach_amdgcn_gfx1032 0x038
   bfd_arch_last
   };
 
@@ -2956,6 +2975,7 @@ instruction.  */
   BFD_RELOC_PPC64_ADDR64_LOCAL,
   BFD_RELOC_PPC64_ENTRY,
   BFD_RELOC_PPC64_REL24_NOTOC,
+  BFD_RELOC_PPC64_REL24_P9NOTOC,
   BFD_RELOC_PPC64_D34,
   BFD_RELOC_PPC64_D34_LO,
   BFD_RELOC_PPC64_D34_HI30,
@@ -6263,6 +6283,51 @@ assembler and not (currently) written to any object files.  */
 
 /* S12Z relocations.  */
   BFD_RELOC_S12Z_OPR,
+
+/* LARCH relocations.  */
+  BFD_RELOC_LARCH_TLS_DTPMOD32,
+  BFD_RELOC_LARCH_TLS_DTPREL32,
+  BFD_RELOC_LARCH_TLS_DTPMOD64,
+  BFD_RELOC_LARCH_TLS_DTPREL64,
+  BFD_RELOC_LARCH_TLS_TPREL32,
+  BFD_RELOC_LARCH_TLS_TPREL64,
+  BFD_RELOC_LARCH_MARK_LA,
+  BFD_RELOC_LARCH_MARK_PCREL,
+  BFD_RELOC_LARCH_SOP_PUSH_PCREL,
+  BFD_RELOC_LARCH_SOP_PUSH_ABSOLUTE,
+  BFD_RELOC_LARCH_SOP_PUSH_DUP,
+  BFD_RELOC_LARCH_SOP_PUSH_GPREL,
+  BFD_RELOC_LARCH_SOP_PUSH_TLS_TPREL,
+  BFD_RELOC_LARCH_SOP_PUSH_TLS_GOT,
+  BFD_RELOC_LARCH_SOP_PUSH_TLS_GD,
+  BFD_RELOC_LARCH_SOP_PUSH_PLT_PCREL,
+  BFD_RELOC_LARCH_SOP_ASSERT,
+  BFD_RELOC_LARCH_SOP_NOT,
+  BFD_RELOC_LARCH_SOP_SUB,
+  BFD_RELOC_LARCH_SOP_SL,
+  BFD_RELOC_LARCH_SOP_SR,
+  BFD_RELOC_LARCH_SOP_ADD,
+  BFD_RELOC_LARCH_SOP_AND,
+  BFD_RELOC_LARCH_SOP_IF_ELSE,
+  BFD_RELOC_LARCH_SOP_POP_32_S_10_5,
+  BFD_RELOC_LARCH_SOP_POP_32_U_10_12,
+  BFD_RELOC_LARCH_SOP_POP_32_S_10_12,
+  BFD_RELOC_LARCH_SOP_POP_32_S_10_16,
+  BFD_RELOC_LARCH_SOP_POP_32_S_10_16_S2,
+  BFD_RELOC_LARCH_SOP_POP_32_S_5_20,
+  BFD_RELOC_LARCH_SOP_POP_32_S_0_5_10_16_S2,
+  BFD_RELOC_LARCH_SOP_POP_32_S_0_10_10_16_S2,
+  BFD_RELOC_LARCH_SOP_POP_32_U,
+  BFD_RELOC_LARCH_ADD8,
+  BFD_RELOC_LARCH_ADD16,
+  BFD_RELOC_LARCH_ADD24,
+  BFD_RELOC_LARCH_ADD32,
+  BFD_RELOC_LARCH_ADD64,
+  BFD_RELOC_LARCH_SUB8,
+  BFD_RELOC_LARCH_SUB16,
+  BFD_RELOC_LARCH_SUB24,
+  BFD_RELOC_LARCH_SUB32,
+  BFD_RELOC_LARCH_SUB64,
   BFD_RELOC_UNUSED };
 
 typedef enum bfd_reloc_code_real bfd_reloc_code_real_type;
@@ -6707,9 +6772,18 @@ struct bfd
   /* The number of sections.  */
   unsigned int section_count;
 
+  /* The archive plugin file descriptor.  */
+  int archive_plugin_fd;
+
+  /* The number of opens on the archive plugin file descriptor.  */
+  unsigned int archive_plugin_fd_open_count;
+
   /* A field used by _bfd_generic_link_add_archive_symbols.  This will
      be used only for archive elements.  */
   int archive_pass;
+
+  /* The total size of memory from bfd_alloc.  */
+  bfd_size_type alloc_size;
 
   /* Stuff only useful for object files:
      The start address.  */
@@ -7097,6 +7171,8 @@ unsigned int bfd_get_gp_size (bfd *abfd);
 
 void bfd_set_gp_size (bfd *abfd, unsigned int i);
 
+void bfd_set_gp_value (bfd *abfd, bfd_vma v);
+
 bfd_vma bfd_scan_vma (const char *string, const char **end, int base);
 
 bool bfd_copy_private_header_data (bfd *ibfd, bfd *obfd);
@@ -7215,7 +7291,7 @@ bool bfd_alt_mach_code (bfd *abfd, int alternative);
 
 bfd_vma bfd_emul_get_maxpagesize (const char *);
 
-bfd_vma bfd_emul_get_commonpagesize (const char *, bool);
+bfd_vma bfd_emul_get_commonpagesize (const char *);
 
 char *bfd_demangle (bfd *, const char *, int);
 

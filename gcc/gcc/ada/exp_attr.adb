@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2022, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -23,52 +23,57 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
-with Aspects;  use Aspects;
-with Atree;    use Atree;
-with Checks;   use Checks;
-with Einfo;    use Einfo;
-with Elists;   use Elists;
-with Exp_Atag; use Exp_Atag;
-with Exp_Ch3;  use Exp_Ch3;
-with Exp_Ch6;  use Exp_Ch6;
-with Exp_Ch9;  use Exp_Ch9;
-with Exp_Dist; use Exp_Dist;
-with Exp_Imgv; use Exp_Imgv;
-with Exp_Pakd; use Exp_Pakd;
-with Exp_Strm; use Exp_Strm;
+with Aspects;        use Aspects;
+with Atree;          use Atree;
+with Checks;         use Checks;
+with Einfo;          use Einfo;
+with Einfo.Entities; use Einfo.Entities;
+with Einfo.Utils;    use Einfo.Utils;
+with Elists;         use Elists;
+with Exp_Atag;       use Exp_Atag;
+with Exp_Ch3;        use Exp_Ch3;
+with Exp_Ch6;        use Exp_Ch6;
+with Exp_Ch9;        use Exp_Ch9;
+with Exp_Dist;       use Exp_Dist;
+with Exp_Imgv;       use Exp_Imgv;
+with Exp_Pakd;       use Exp_Pakd;
+with Exp_Strm;       use Exp_Strm;
 with Exp_Put_Image;
-with Exp_Tss;  use Exp_Tss;
-with Exp_Util; use Exp_Util;
-with Expander; use Expander;
-with Freeze;   use Freeze;
-with Gnatvsn;  use Gnatvsn;
-with Itypes;   use Itypes;
-with Lib;      use Lib;
-with Namet;    use Namet;
-with Nmake;    use Nmake;
-with Nlists;   use Nlists;
-with Opt;      use Opt;
-with Restrict; use Restrict;
-with Rident;   use Rident;
-with Rtsfind;  use Rtsfind;
-with Sem;      use Sem;
-with Sem_Aux;  use Sem_Aux;
-with Sem_Ch6;  use Sem_Ch6;
-with Sem_Ch7;  use Sem_Ch7;
-with Sem_Ch8;  use Sem_Ch8;
-with Sem_Eval; use Sem_Eval;
-with Sem_Res;  use Sem_Res;
-with Sem_Util; use Sem_Util;
-with Sinfo;    use Sinfo;
-with Snames;   use Snames;
-with Stand;    use Stand;
-with Stringt;  use Stringt;
-with Tbuild;   use Tbuild;
-with Ttypes;   use Ttypes;
-with Uintp;    use Uintp;
-with Uname;    use Uname;
-with Urealp;   use Urealp;
-with Validsw;  use Validsw;
+with Exp_Tss;        use Exp_Tss;
+with Exp_Util;       use Exp_Util;
+with Expander;       use Expander;
+with Freeze;         use Freeze;
+with Gnatvsn;        use Gnatvsn;
+with Itypes;         use Itypes;
+with Lib;            use Lib;
+with Namet;          use Namet;
+with Nmake;          use Nmake;
+with Nlists;         use Nlists;
+with Opt;            use Opt;
+with Restrict;       use Restrict;
+with Rident;         use Rident;
+with Rtsfind;        use Rtsfind;
+with Sem;            use Sem;
+with Sem_Aux;        use Sem_Aux;
+with Sem_Ch6;        use Sem_Ch6;
+with Sem_Ch7;        use Sem_Ch7;
+with Sem_Ch8;        use Sem_Ch8;
+with Sem_Eval;       use Sem_Eval;
+with Sem_Res;        use Sem_Res;
+with Sem_Util;       use Sem_Util;
+with Sinfo;          use Sinfo;
+with Sinfo.Nodes;    use Sinfo.Nodes;
+with Sinfo.Utils;    use Sinfo.Utils;
+with Snames;         use Snames;
+with Stand;          use Stand;
+with Stringt;        use Stringt;
+with Strub;          use Strub;
+with Tbuild;         use Tbuild;
+with Ttypes;         use Ttypes;
+with Uintp;          use Uintp;
+with Uname;          use Uname;
+with Urealp;         use Urealp;
+with Validsw;        use Validsw;
 
 package body Exp_Attr is
 
@@ -113,8 +118,7 @@ package body Exp_Attr is
    procedure Compile_Stream_Body_In_Scope
      (N     : Node_Id;
       Decl  : Node_Id;
-      Arr   : Entity_Id;
-      Check : Boolean);
+      Arr   : Entity_Id);
    --  The body for a stream subprogram may be generated outside of the scope
    --  of the type. If the type is fully private, it may depend on the full
    --  view of other types (e.g. indexes) that are currently private as well.
@@ -162,8 +166,7 @@ package body Exp_Attr is
    --  the appropriate instantiation of System.Fat_Gen. Float arguments in Args
    --  have already been converted to the floating-point type for which Pkg was
    --  instantiated. The Nam argument is the relevant attribute processing
-   --  routine to be called. This is the same as the attribute name, except in
-   --  the Unaligned_Valid case.
+   --  routine to be called. This is the same as the attribute name.
 
    procedure Expand_Fpt_Attribute_R (N : Node_Id);
    --  This procedure expands a call to a floating-point attribute function
@@ -385,7 +388,7 @@ package body Exp_Attr is
       --       Stmts
       --    end Func_Id;
 
-      Set_Ekind       (Func_Id, E_Function);
+      Mutate_Ekind    (Func_Id, E_Function);
       Set_Is_Internal (Func_Id);
       Set_Is_Pure     (Func_Id);
 
@@ -401,8 +404,6 @@ package body Exp_Attr is
               Parameter_Specifications => New_List (
                 Make_Parameter_Specification (Loc,
                   Defining_Identifier => Obj_Id,
-                  In_Present          => True,
-                  Out_Present         => False,
                   Parameter_Type      => New_Occurrence_Of (Formal_Typ, Loc))),
               Result_Definition        =>
                 New_Occurrence_Of (Standard_Boolean, Loc)),
@@ -733,7 +734,7 @@ package body Exp_Attr is
    --  Start of processing for Build_Record_VS_Func
 
    begin
-      Typ := Rec_Typ;
+      Typ := Validated_View (Rec_Typ);
 
       --  Use the root type when dealing with a class-wide type
 
@@ -828,7 +829,7 @@ package body Exp_Attr is
       --       Stmts
       --    end Func_Id;
 
-      Set_Ekind       (Func_Id, E_Function);
+      Mutate_Ekind    (Func_Id, E_Function);
       Set_Is_Internal (Func_Id);
       Set_Is_Pure     (Func_Id);
 
@@ -863,8 +864,7 @@ package body Exp_Attr is
    procedure Compile_Stream_Body_In_Scope
      (N     : Node_Id;
       Decl  : Node_Id;
-      Arr   : Entity_Id;
-      Check : Boolean)
+      Arr   : Entity_Id)
    is
       C_Type  : constant Entity_Id := Base_Type (Component_Type (Arr));
       Curr    : constant Entity_Id := Current_Scope;
@@ -918,11 +918,7 @@ package body Exp_Attr is
          Install := False;
       end if;
 
-      if Check then
-         Insert_Action (N, Decl);
-      else
-         Insert_Action (N, Decl, Suppress => All_Checks);
-      end if;
+      Insert_Action (N, Decl);
 
       if Install then
 
@@ -2149,7 +2145,7 @@ package body Exp_Attr is
                --  the node with the type imposed by the context.
 
                if Nkind (Parent (N)) = N_Unchecked_Type_Conversion
-                 and then Etype (Parent (N)) = RTE (RE_Prim_Ptr)
+                 and then Is_RTE (Etype (Parent (N)), RE_Prim_Ptr)
                then
                   Set_Etype (N, RTE (RE_Prim_Ptr));
 
@@ -2165,6 +2161,7 @@ package body Exp_Attr is
 
                   begin
                      Subp_Typ := Create_Itype (E_Subprogram_Type, N);
+                     Copy_Strub_Mode (Subp_Typ, Subp);
                      Set_Etype (Subp_Typ, Etype (Subp));
                      Set_Returns_By_Ref (Subp_Typ, Returns_By_Ref (Subp));
 
@@ -2217,6 +2214,20 @@ package body Exp_Attr is
 
             if Is_Access_Protected_Subprogram_Type (Btyp) then
                Expand_Access_To_Protected_Op (N, Pref, Typ);
+
+            --  If prefix is a subprogram that has class-wide preconditions and
+            --  an indirect-call wrapper (ICW) of such subprogram is available
+            --  then replace the prefix by the ICW.
+
+            elsif Is_Access_Subprogram_Type (Btyp)
+              and then Is_Entity_Name (Pref)
+              and then Present (Class_Preconditions (Entity (Pref)))
+              and then Present (Indirect_Call_Wrapper (Entity (Pref)))
+            then
+               Rewrite (Pref,
+                 New_Occurrence_Of
+                   (Indirect_Call_Wrapper (Entity (Pref)), Loc));
+               Analyze_And_Resolve (N, Typ);
 
             --  If prefix is a type name, this is a reference to the current
             --  instance of the type, within its initialization procedure.
@@ -2362,6 +2373,7 @@ package body Exp_Attr is
                          = E_Anonymous_Access_Type
               and then Present (Extra_Accessibility
                                 (Entity (Prefix (Enc_Object))))
+              and then not No_Dynamic_Accessibility_Checks_Enabled (Enc_Object)
             then
                Apply_Accessibility_Check (Prefix (Enc_Object), Typ, N);
 
@@ -2800,10 +2812,9 @@ package body Exp_Attr is
                 Name                   =>
                   New_Occurrence_Of (RTE (RE_Callable), Loc),
                 Parameter_Associations => New_List (
-                  Make_Unchecked_Type_Conversion (Loc,
-                    Subtype_Mark =>
-                      New_Occurrence_Of (RTE (RO_ST_Task_Id), Loc),
-                    Expression   => Build_Disp_Get_Task_Id_Call (Pref)))));
+                  Unchecked_Convert_To
+                    (RTE (RO_ST_Task_Id),
+                     Build_Disp_Get_Task_Id_Call (Pref)))));
 
          else
             Rewrite (N, Build_Call_With_Task (Pref, RTE (RE_Callable)));
@@ -3254,14 +3265,15 @@ package body Exp_Attr is
          --  If not constant-folded, Enum_Type'Enum_Rep (X) or X'Enum_Rep
          --  expands to
 
-         --    target-type (X)
+         --    target-type!(X)
 
-         --  This is simply a direct conversion from the enumeration type to
-         --  the target integer type, which is treated by the back end as a
-         --  normal integer conversion, treating the enumeration type as an
-         --  integer, which is exactly what we want. We set Conversion_OK to
-         --  make sure that the analyzer does not complain about what otherwise
-         --  might be an illegal conversion.
+         --  This is an unchecked conversion from the enumeration type to the
+         --  target integer type, which is treated by the back end as a normal
+         --  integer conversion, treating the enumeration type as an integer,
+         --  which is exactly what we want. Unlike for the Pos attribute, we
+         --  cannot use a regular conversion since the associated check would
+         --  involve comparing the converted bounds, i.e. would involve the use
+         --  of 'Pos instead 'Enum_Rep for these bounds.
 
          --  However the target type is universal integer in most cases, which
          --  is a very large type, so in the case of an enumeration type, we
@@ -3269,11 +3281,13 @@ package body Exp_Attr is
          --  the size information.
 
          if Is_Enumeration_Type (Ptyp) then
-            Rewrite (N, OK_Convert_To (Get_Integer_Type (Ptyp), Expr));
+            Rewrite (N, Unchecked_Convert_To (Get_Integer_Type (Ptyp), Expr));
             Convert_To_And_Rewrite (Typ, N);
 
+         --  Deal with integer types (replace by conversion)
+
          else
-            Rewrite (N, OK_Convert_To (Typ, Expr));
+            Rewrite (N, Convert_To (Typ, Expr));
          end if;
 
          Analyze_And_Resolve (N, Typ);
@@ -3630,8 +3644,8 @@ package body Exp_Attr is
       --             min (scale of Typ'Small, 0)
 
       --    For other ordinary fixed-point types
-      --      xx   = Real
-      --      ftyp = Universal_Real
+      --      xx   = Fixed
+      --      ftyp = Long_Float
       --      pm   = none
 
       --  Note that we know that the type is a nonstatic subtype, or Fore would
@@ -3690,8 +3704,8 @@ package body Exp_Attr is
                      Fid  := RE_Fore_Fixed128;
                      Ftyp := RTE (RE_Integer_128);
                   else
-                     Fid  := RE_Fore_Real;
-                     Ftyp := Universal_Real;
+                     Fid  := RE_Fore_Fixed;
+                     Ftyp := Standard_Long_Float;
                   end if;
                end;
             end if;
@@ -3720,7 +3734,7 @@ package body Exp_Attr is
             --  For ordinary fixed-point types, append Num, Den and Scale
             --  parameters and also set to do literal conversion
 
-            elsif Fid /= RE_Fore_Real then
+            elsif Fid /= RE_Fore_Fixed then
                Set_Conversion_OK (First (Arg_List));
                Set_Conversion_OK (Next (First (Arg_List)));
 
@@ -3770,7 +3784,7 @@ package body Exp_Attr is
       --------------
 
       when Attribute_From_Any => From_Any : declare
-         Decls  : constant List_Id   := New_List;
+         Decls : constant List_Id := New_List;
 
       begin
          Rewrite (N,
@@ -3884,8 +3898,8 @@ package body Exp_Attr is
          if Ptyp = Standard_Exception_Type then
             Id_Kind := RTE (RE_Exception_Id);
 
-            if Present (Renamed_Object (Entity (Pref))) then
-               Set_Entity (Pref, Renamed_Object (Entity (Pref)));
+            if Present (Renamed_Entity (Entity (Pref))) then
+               Set_Entity (Pref, Renamed_Entity (Entity (Pref)));
             end if;
 
             Rewrite (N,
@@ -4123,7 +4137,7 @@ package body Exp_Attr is
 
             elsif Is_Array_Type (U_Type) then
                Build_Array_Input_Function (Loc, U_Type, Decl, Fname);
-               Compile_Stream_Body_In_Scope (N, Decl, U_Type, Check => False);
+               Compile_Stream_Body_In_Scope (N, Decl, U_Type);
 
             --  Dispatching case with class-wide type
 
@@ -4236,12 +4250,13 @@ package body Exp_Attr is
                --  type if the type lacks default discriminant values.
 
                if Is_Unchecked_Union (Base_Type (U_Type))
-                 and then No (Discriminant_Constraint (U_Type))
+                 and then
+                 No (Discriminant_Default_Value (First_Discriminant (U_Type)))
                then
-                  Insert_Action (N,
+                  Rewrite (N,
                     Make_Raise_Program_Error (Loc,
                       Reason => PE_Unchecked_Union_Restriction));
-
+                  Set_Etype (N, B_Type);
                   return;
                end if;
 
@@ -4597,13 +4612,7 @@ package body Exp_Attr is
       ----------------------------------
 
       when Attribute_Max_Size_In_Storage_Elements => declare
-         Typ  : constant Entity_Id := Etype (N);
-         Attr : Node_Id;
-         Atyp : Entity_Id;
-
-         Conversion_Added : Boolean := False;
-         --  A flag which tracks whether the original attribute has been
-         --  wrapped inside a type conversion.
+         Typ : constant Entity_Id := Etype (N);
 
       begin
          --  If the prefix is X'Class, we transform it into a direct reference
@@ -4617,40 +4626,22 @@ package body Exp_Attr is
             return;
          end if;
 
-         Apply_Universal_Integer_Attribute_Checks (N);
-
-         --  The universal integer check may sometimes add a type conversion,
-         --  retrieve the original attribute reference from the expression.
-
-         Attr := N;
-
-         if Nkind (Attr) = N_Type_Conversion then
-            Attr := Expression (Attr);
-            Conversion_Added := True;
-         end if;
-
-         pragma Assert (Nkind (Attr) = N_Attribute_Reference);
-
          --  Heap-allocated controlled objects contain two extra pointers which
          --  are not part of the actual type. Transform the attribute reference
          --  into a runtime expression to add the size of the hidden header.
 
-         if Needs_Finalization (Ptyp)
-           and then not Header_Size_Added (Attr)
-         then
-            Set_Header_Size_Added (Attr);
-
-            Atyp := Etype (Attr);
+         if Needs_Finalization (Ptyp) and then not Header_Size_Added (N) then
+            Set_Header_Size_Added (N);
 
             --  Generate:
             --    P'Max_Size_In_Storage_Elements +
-            --      Atyp (Header_Size_With_Padding (Ptyp'Alignment))
+            --      Typ (Header_Size_With_Padding (Ptyp'Alignment))
 
-            Rewrite (Attr,
+            Rewrite (N,
               Make_Op_Add (Loc,
-                Left_Opnd  => Relocate_Node (Attr),
+                Left_Opnd  => Relocate_Node (N),
                 Right_Opnd =>
-                  Convert_To (Atyp,
+                  Convert_To (Typ,
                     Make_Function_Call (Loc,
                       Name                   =>
                         New_Occurrence_Of
@@ -4662,16 +4653,13 @@ package body Exp_Attr is
                             New_Occurrence_Of (Ptyp, Loc),
                           Attribute_Name => Name_Alignment))))));
 
-            Analyze_And_Resolve (Attr, Atyp);
-
-            --  Add a conversion to the target type
-
-            if not Conversion_Added then
-               Convert_To_And_Rewrite (Typ, Attr);
-            end if;
-
+            Analyze_And_Resolve (N, Typ);
             return;
          end if;
+
+         --  In the other cases apply the required checks
+
+         Apply_Universal_Integer_Attribute_Checks (N);
       end;
 
       --------------------
@@ -4859,7 +4847,7 @@ package body Exp_Attr is
          --  Set the entity kind now in order to mark the temporary as a
          --  handler of attribute 'Old's prefix.
 
-         Set_Ekind (Temp, E_Constant);
+         Mutate_Ekind (Temp, E_Constant);
          Set_Stores_Attribute_Old_Prefix (Temp);
 
          --  Push the scope of the related subprogram where _Postcondition
@@ -5259,7 +5247,7 @@ package body Exp_Attr is
 
             elsif Is_Array_Type (U_Type) then
                Build_Array_Output_Procedure (Loc, U_Type, Decl, Pname);
-               Compile_Stream_Body_In_Scope (N, Decl, U_Type, Check => False);
+               Compile_Stream_Body_In_Scope (N, Decl, U_Type);
 
             --  Class-wide case, first output external tag, then dispatch
             --  to the appropriate primitive Output function (RM 13.13.2(31)).
@@ -5358,12 +5346,13 @@ package body Exp_Attr is
                --  values.
 
                if Is_Unchecked_Union (Base_Type (U_Type))
-                 and then No (Discriminant_Constraint (U_Type))
+                 and then
+                 No (Discriminant_Default_Value (First_Discriminant (U_Type)))
                then
-                  Insert_Action (N,
+                  Rewrite (N,
                     Make_Raise_Program_Error (Loc,
                       Reason => PE_Unchecked_Union_Restriction));
-
+                  Set_Etype (N, Standard_Void_Type);
                   return;
                end if;
 
@@ -5447,7 +5436,7 @@ package body Exp_Attr is
 
          --  Deal with integer types (replace by conversion)
 
-         elsif Is_Integer_Type (Etyp) then
+         else
             Rewrite (N, Convert_To (Typ, Expr));
          end if;
 
@@ -5553,6 +5542,21 @@ package body Exp_Attr is
             Expand_Pred_Succ_Attribute (N);
          end if;
       end Pred;
+
+      ----------------------------------
+      -- Preelaborable_Initialization --
+      ----------------------------------
+
+      when Attribute_Preelaborable_Initialization =>
+
+         --  This attribute should already be folded during analysis, but if
+         --  for some reason it hasn't been, we fold it now.
+
+         Fold_Uint
+           (N,
+            UI_From_Int
+              (Boolean'Pos (Has_Preelaborable_Initialization (Ptyp))),
+            Static => False);
 
       --------------
       -- Priority --
@@ -6110,7 +6114,7 @@ package body Exp_Attr is
 
             elsif Is_Array_Type (U_Type) then
                Build_Array_Read_Procedure (N, U_Type, Decl, Pname);
-               Compile_Stream_Body_In_Scope (N, Decl, U_Type, Check => False);
+               Compile_Stream_Body_In_Scope (N, Decl, U_Type);
 
             --  Tagged type case, use the primitive Read function. Note that
             --  this will dispatch in the class-wide case which is what we want
@@ -6141,10 +6145,7 @@ package body Exp_Attr is
                   return;
                end if;
 
-               if Has_Discriminants (U_Type)
-                 and then Present
-                   (Discriminant_Default_Value (First_Discriminant (U_Type)))
-               then
+               if Has_Defaulted_Discriminants (U_Type) then
                   Build_Mutable_Record_Read_Procedure
                     (Loc, Full_Base (U_Type), Decl, Pname);
                else
@@ -6152,11 +6153,7 @@ package body Exp_Attr is
                     (Loc, Full_Base (U_Type), Decl, Pname);
                end if;
 
-               --  Suppress checks, uninitialized or otherwise invalid
-               --  data does not cause constraint errors to be raised for
-               --  a complete record read.
-
-               Insert_Action (N, Decl, All_Checks);
+               Insert_Action (N, Decl);
             end if;
          end if;
 
@@ -6297,7 +6294,7 @@ package body Exp_Attr is
                --  size. This applies to both types and objects. The size of an
                --  object can be specified in the following ways:
 
-               --    An explicit size object is given for an object
+               --    An explicit size clause is given for an object
                --    A component size is specified for an indexed component
                --    A component clause is specified for a selected component
                --    The object is a component of a packed composite object
@@ -6313,7 +6310,7 @@ package body Exp_Attr is
                                 or else Is_Packed (Etype (Prefix (Pref)))))
                  or else
                    (Nkind (Pref) = N_Indexed_Component
-                     and then (Component_Size (Etype (Prefix (Pref))) /= 0
+                     and then (Known_Component_Size (Etype (Prefix (Pref)))
                                 or else Is_Packed (Etype (Prefix (Pref)))))
                then
                   Set_Attribute_Name (N, Name_Size);
@@ -6779,10 +6776,9 @@ package body Exp_Attr is
                 Name                   =>
                   New_Occurrence_Of (RTE (RE_Terminated), Loc),
                 Parameter_Associations => New_List (
-                  Make_Unchecked_Type_Conversion (Loc,
-                    Subtype_Mark =>
-                      New_Occurrence_Of (RTE (RO_ST_Task_Id), Loc),
-                    Expression   => Build_Disp_Get_Task_Id_Call (Pref)))));
+                  Unchecked_Convert_To
+                    (RTE (RO_ST_Task_Id),
+                     Build_Disp_Get_Task_Id_Call (Pref)))));
 
          elsif Restricted_Profile then
             Rewrite (N,
@@ -7115,9 +7111,9 @@ package body Exp_Attr is
             --  Start of processing for Float_Valid
 
             begin
-               --  The C and AAMP back-ends handle Valid for fpt types
+               --  The C back end handles Valid for floating-point types
 
-               if Modify_Tree_For_C or else Float_Rep (PBtyp) = AAMP then
+               if Modify_Tree_For_C then
                   Analyze_And_Resolve (Pref, Ptyp);
                   Set_Etype (N, Standard_Boolean);
                   Set_Analyzed (N);
@@ -7328,7 +7324,7 @@ package body Exp_Attr is
          --  of the size of the type, not the range of the values). We write
          --  this as two tests, rather than a range check, so that static
          --  evaluation will easily remove either or both of the checks if
-         --  they can be -statically determined to be true (this happens
+         --  they can be statically determined to be true (this happens
          --  when the type of X is static and the range extends to the full
          --  range of stored values).
 
@@ -7349,12 +7345,40 @@ package body Exp_Attr is
 
          else
             declare
-               Uns : constant Boolean
-                       := Is_Unsigned_Type (Ptyp)
-                            or else (Is_Private_Type (Ptyp)
-                                      and then Is_Unsigned_Type (Btyp));
+               Uns  : constant Boolean :=
+                        Is_Unsigned_Type (Ptyp)
+                          or else (Is_Private_Type (Ptyp)
+                                    and then Is_Unsigned_Type (Btyp));
+               Size : Uint;
+               P    : Node_Id := Pref;
+
             begin
-               PBtyp := Integer_Type_For (Esize (Ptyp), Uns);
+               --  If the prefix is an object, use the Esize from this object
+               --  to handle in a more user friendly way the case of objects
+               --  or components with a large Size aspect: if a Size aspect is
+               --  specified, we want to read a scalar value as large as the
+               --  Size, unless the Size is larger than
+               --  System_Max_Integer_Size.
+
+               if Nkind (P) = N_Selected_Component then
+                  P := Selector_Name (P);
+               end if;
+
+               if Nkind (P) in N_Has_Entity
+                 and then Present (Entity (P))
+                 and then Is_Object (Entity (P))
+                 and then Known_Esize (Entity (P))
+               then
+                  if Esize (Entity (P)) <= System_Max_Integer_Size then
+                     Size := Esize (Entity (P));
+                  else
+                     Size := UI_From_Int (System_Max_Integer_Size);
+                  end if;
+               else
+                  Size := Esize (Ptyp);
+               end if;
+
+               PBtyp := Small_Integer_Type_For (Size, Uns);
                Rewrite (N, Make_Range_Test);
             end;
          end if;
@@ -7378,6 +7402,13 @@ package body Exp_Attr is
          Analyze_And_Resolve (N, Standard_Boolean);
          Validity_Checks_On := Save_Validity_Checks_On;
       end Valid;
+
+      -----------------
+      -- Valid_Value --
+      -----------------
+
+      when Attribute_Valid_Value =>
+         Exp_Imgv.Expand_Valid_Value_Attribute (N);
 
       -------------------
       -- Valid_Scalars --
@@ -7562,14 +7593,9 @@ package body Exp_Attr is
       --    typ'Value
       --      (Wide_Wide_String_To_String (X, Wide_Character_Encoding_Method))
 
-      --  Wide_Wide_String_To_String is a runtime function that converts its
-      --  wide string argument to String, converting any non-translatable
-      --  characters into appropriate escape sequences. This preserves the
-      --  required semantics of Wide_Wide_Value in all cases, and results in a
-      --  very simple implementation approach.
-
-      --  It's not quite right where typ = Wide_Wide_Character, because the
-      --  encoding method may not cover the whole character type ???
+      --  See Wide_Value for more information. This is not quite right where
+      --  typ = Wide_Wide_Character, because the encoding method may not cover
+      --  the whole character type.
 
       when Attribute_Wide_Wide_Value =>
          Rewrite (N,
@@ -7711,7 +7737,7 @@ package body Exp_Attr is
 
             elsif Is_Array_Type (U_Type) then
                Build_Array_Write_Procedure (N, U_Type, Decl, Pname);
-               Compile_Stream_Body_In_Scope (N, Decl, U_Type, Check => False);
+               Compile_Stream_Body_In_Scope (N, Decl, U_Type);
 
             --  Tagged type case, use the primitive Write function. Note that
             --  this will dispatch in the class-wide case which is what we want
@@ -7749,10 +7775,7 @@ package body Exp_Attr is
                   end if;
                end if;
 
-               if Has_Discriminants (U_Type)
-                 and then Present
-                   (Discriminant_Default_Value (First_Discriminant (U_Type)))
-               then
+               if Has_Defaulted_Discriminants (U_Type) then
                   Build_Mutable_Record_Write_Procedure
                     (Loc, Full_Base (U_Type), Decl, Pname);
                else
@@ -7947,7 +7970,6 @@ package body Exp_Attr is
       elsif Id = Attribute_Size
         and then Is_Entity_Name (Pref)
         and then Is_Object (Entity (Pref))
-        and then Known_Esize (Entity (Pref))
         and then Known_Static_Esize (Entity (Pref))
       then
          Siz := Esize (Entity (Pref));
@@ -8033,7 +8055,7 @@ package body Exp_Attr is
 
       --  Common processing for record and array component case
 
-      if Siz /= No_Uint and then Siz /= 0 then
+      if Present (Siz) and then Siz /= 0 then
          declare
             CS : constant Boolean := Comes_From_Source (N);
 

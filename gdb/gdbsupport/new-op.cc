@@ -27,6 +27,11 @@
 #include "host-defs.h"
 #include <new>
 
+/* These are declared in <new> starting C++14.  Add these here to enable
+   compilation using C++11. */
+extern void operator delete (void *p, std::size_t) noexcept;
+extern void operator delete[] (void *p, std::size_t) noexcept;
+
 /* Override operator new / operator new[], in order to internal_error
    on allocation failure and thus query the user for abort/core
    dump/continue, just like xmalloc does.  We don't do this from a
@@ -92,4 +97,46 @@ operator new[] (std::size_t sz, const std::nothrow_t&) noexcept
 {
   return ::operator new (sz, std::nothrow);
 }
+
+/* Define also operators delete as one can LD_PRELOAD=libasan.so.*
+   without recompiling the program with -fsanitize=address and then one would
+   get false positive alloc-dealloc-mismatch (malloc vs operator delete [])
+   errors from AddressSanitizers.  */
+
+void
+operator delete (void *p) noexcept
+{
+  free (p);
+}
+
+void
+operator delete (void *p, const std::nothrow_t&) noexcept
+{
+  return ::operator delete (p);
+}
+
+void
+operator delete (void *p, std::size_t) noexcept
+{
+  return ::operator delete (p, std::nothrow);
+}
+
+void
+operator delete[] (void *p) noexcept
+{
+  return ::operator delete (p);
+}
+
+void
+operator delete[] (void *p, const std::nothrow_t&) noexcept
+{
+  return ::operator delete (p, std::nothrow);
+}
+
+void
+operator delete[] (void *p, std::size_t) noexcept
+{
+  return ::operator delete[] (p, std::nothrow);
+}
+
 #endif

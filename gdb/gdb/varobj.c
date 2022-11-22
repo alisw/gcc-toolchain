@@ -23,7 +23,7 @@
 #include "gdbcmd.h"
 #include "block.h"
 #include "valprint.h"
-#include "gdb_regex.h"
+#include "gdbsupport/gdb_regex.h"
 
 #include "varobj.h"
 #include "gdbthread.h"
@@ -661,8 +661,7 @@ varobj_get_iterator (struct varobj *var)
     return py_varobj_get_iterator (var, var->dynamic->pretty_printer);
 #endif
 
-  gdb_assert_not_reached (_("\
-requested an iterator from a non-dynamic varobj"));
+  gdb_assert_not_reached ("requested an iterator from a non-dynamic varobj");
 }
 
 static bool
@@ -2233,8 +2232,8 @@ varobj_value_get_print_value (struct value *value,
 
   /* If the THEVALUE has contents, it is a regular string.  */
   if (!thevalue.empty ())
-    LA_PRINT_STRING (&stb, type, (gdb_byte *) thevalue.c_str (),
-		     len, encoding.get (), 0, &opts);
+    current_language->printstr (&stb, type, (gdb_byte *) thevalue.c_str (),
+				len, encoding.get (), 0, &opts);
   else if (string_print)
     /* Otherwise, if string_print is set, and it is not a regular
        string, it is a lazy string.  */
@@ -2243,7 +2242,7 @@ varobj_value_get_print_value (struct value *value,
     /* All other cases.  */
     common_val_print (value, &stb, 0, &opts, current_language);
 
-  return std::move (stb.string ());
+  return stb.release ();
 }
 
 bool

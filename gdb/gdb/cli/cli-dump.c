@@ -224,7 +224,7 @@ dump_value_to_file (const char *cmd, const char *mode, const char *file_format)
 
   /* Have everything.  Open/write the data.  */
   if (file_format == NULL || strcmp (file_format, "binary") == 0)
-    dump_binary_file (filename.get (), mode, value_contents (val),
+    dump_binary_file (filename.get (), mode, value_contents (val).data (),
 		      TYPE_LENGTH (value_type (val)));
   else
     {
@@ -241,7 +241,7 @@ dump_value_to_file (const char *cmd, const char *mode, const char *file_format)
 	}
 
       dump_bfd_file (filename.get (), mode, file_format, vaddr,
-		     value_contents (val), 
+		     value_contents (val).data (), 
 		     TYPE_LENGTH (value_type (val)));
     }
 }
@@ -331,7 +331,7 @@ struct dump_context
 };
 
 static void
-call_dump_func (struct cmd_list_element *c, const char *args, int from_tty)
+call_dump_func (const char *args, int from_tty, cmd_list_element *c)
 {
   struct dump_context *d = (struct dump_context *) c->context ();
 

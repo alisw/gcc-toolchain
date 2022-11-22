@@ -29,6 +29,11 @@
 #include "gdbsupport/byte-vector.h"
 #include "gdbarch.h"
 
+/* Forward declarations.  */
+static struct value *value_subscripted_rvalue (struct value *array,
+					       LONGEST index,
+					       LONGEST lowerbound);
+
 /* Define whether or not the C operator '/' truncates towards zero for
    differently signed operands (truncation direction is undefined in C).  */
 
@@ -157,17 +162,17 @@ value_subscript (struct value *array, LONGEST index)
       if (VALUE_LVAL (array) != lval_memory)
 	return value_subscripted_rvalue (array, index, *lowerbound);
 
+      gdb::optional<LONGEST> upperbound
+	= get_discrete_high_bound (range_type);
+
+      if (!upperbound.has_value ())
+	upperbound = -1;
+
+      if (index >= *lowerbound && index <= *upperbound)
+	return value_subscripted_rvalue (array, index, *lowerbound);
+
       if (!c_style)
 	{
-	  gdb::optional<LONGEST> upperbound
-	    = get_discrete_high_bound (range_type);
-
-	  if (!upperbound.has_value ())
-	    upperbound = 0;
-
-	  if (index >= *lowerbound && index <= *upperbound)
-	    return value_subscripted_rvalue (array, index, *lowerbound);
-
 	  /* Emit warning unless we have an array of unknown size.
 	     An array of unknown size has lowerbound 0 and upperbound -1.  */
 	  if (*upperbound > -1)
@@ -190,11 +195,12 @@ value_subscript (struct value *array, LONGEST index)
    (eg, a vector register).  This routine used to promote floats
    to doubles, but no longer does.  */
 
-struct value *
-value_subscripted_rvalue (struct value *array, LONGEST index, LONGEST lowerbound)
+static struct value *
+value_subscripted_rvalue (struct value *array, LONGEST index,
+			  LONGEST lowerbound)
 {
   struct type *array_type = check_typedef (value_type (array));
-  struct type *elt_type = check_typedef (TYPE_TARGET_TYPE (array_type));
+  struct type *elt_type = TYPE_TARGET_TYPE (array_type);
   LONGEST elt_size = type_length_units (elt_type);
 
   /* Fetch the bit stride and convert it to a byte stride, assuming 8 bits
@@ -246,7 +252,7 @@ int
 binop_types_user_defined_p (enum exp_opcode op,
 			    struct type *type1, struct type *type2)
 {
-  if (op == BINOP_ASSIGN || op == BINOP_CONCAT)
+  if (op == BINOP_ASSIGN)
     return 0;
 
   type1 = check_typedef (type1);
@@ -645,155 +651,66 @@ value_x_unop (struct value *arg1, enum exp_opcode op, enum noside noside)
 }
 
 
-/* Concatenate two values with the following conditions:
-
-   (1)  Both values must be either bitstring values or character string
-   values and the resulting value consists of the concatenation of
-   ARG1 followed by ARG2.
-
-   or
-
-   One value must be an integer value and the other value must be
-   either a bitstring value or character string value, which is
-   to be repeated by the number of times specified by the integer
-   value.
-
-
-   (2)  Boolean values are also allowed and are treated as bit string
-   values of length 1.
-
-   (3)  Character values are also allowed and are treated as character
-   string values of length 1.  */
+/* Concatenate two values.  One value must be an array; and the other
+   value must either be an array with the same element type, or be of
+   the array's element type.  */
 
 struct value *
 value_concat (struct value *arg1, struct value *arg2)
 {
-  struct value *inval1;
-  struct value *inval2;
-  struct value *outval = NULL;
-  int inval1len, inval2len;
-  int count, idx;
-  char inchar;
   struct type *type1 = check_typedef (value_type (arg1));
   struct type *type2 = check_typedef (value_type (arg2));
-  struct type *char_type;
 
-  /* First figure out if we are dealing with two values to be concatenated
-     or a repeat count and a value to be repeated.  INVAL1 is set to the
-     first of two concatenated values, or the repeat count.  INVAL2 is set
-     to the second of the two concatenated values or the value to be 
-     repeated.  */
+  if (type1->code () != TYPE_CODE_ARRAY && type2->code () != TYPE_CODE_ARRAY)
+    error ("no array provided to concatenation");
 
-  if (type2->code () == TYPE_CODE_INT)
+  LONGEST low1, high1;
+  struct type *elttype1 = type1;
+  if (elttype1->code () == TYPE_CODE_ARRAY)
     {
-      struct type *tmp = type1;
-
-      type1 = tmp;
-      tmp = type2;
-      inval1 = arg2;
-      inval2 = arg1;
+      elttype1 = TYPE_TARGET_TYPE (elttype1);
+      if (!get_array_bounds (type1, &low1, &high1))
+	error (_("could not determine array bounds on left-hand-side of "
+		 "array concatenation"));
     }
   else
     {
-      inval1 = arg1;
-      inval2 = arg2;
+      low1 = 0;
+      high1 = 0;
     }
 
-  /* Now process the input values.  */
-
-  if (type1->code () == TYPE_CODE_INT)
+  LONGEST low2, high2;
+  struct type *elttype2 = type2;
+  if (elttype2->code () == TYPE_CODE_ARRAY)
     {
-      /* We have a repeat count.  Validate the second value and then
-	 construct a value repeated that many times.  */
-      if (type2->code () == TYPE_CODE_STRING
-	  || type2->code () == TYPE_CODE_CHAR)
-	{
-	  count = longest_to_int (value_as_long (inval1));
-	  inval2len = TYPE_LENGTH (type2);
-	  std::vector<char> ptr (count * inval2len);
-	  if (type2->code () == TYPE_CODE_CHAR)
-	    {
-	      char_type = type2;
-
-	      inchar = (char) unpack_long (type2,
-					   value_contents (inval2));
-	      for (idx = 0; idx < count; idx++)
-		{
-		  ptr[idx] = inchar;
-		}
-	    }
-	  else
-	    {
-	      char_type = TYPE_TARGET_TYPE (type2);
-
-	      for (idx = 0; idx < count; idx++)
-		{
-		  memcpy (&ptr[idx * inval2len], value_contents (inval2),
-			  inval2len);
-		}
-	    }
-	  outval = value_string (ptr.data (), count * inval2len, char_type);
-	}
-      else if (type2->code () == TYPE_CODE_BOOL)
-	{
-	  error (_("unimplemented support for boolean repeats"));
-	}
-      else
-	{
-	  error (_("can't repeat values of that type"));
-	}
-    }
-  else if (type1->code () == TYPE_CODE_STRING
-	   || type1->code () == TYPE_CODE_CHAR)
-    {
-      /* We have two character strings to concatenate.  */
-      if (type2->code () != TYPE_CODE_STRING
-	  && type2->code () != TYPE_CODE_CHAR)
-	{
-	  error (_("Strings can only be concatenated with other strings."));
-	}
-      inval1len = TYPE_LENGTH (type1);
-      inval2len = TYPE_LENGTH (type2);
-      std::vector<char> ptr (inval1len + inval2len);
-      if (type1->code () == TYPE_CODE_CHAR)
-	{
-	  char_type = type1;
-
-	  ptr[0] = (char) unpack_long (type1, value_contents (inval1));
-	}
-      else
-	{
-	  char_type = TYPE_TARGET_TYPE (type1);
-
-	  memcpy (ptr.data (), value_contents (inval1), inval1len);
-	}
-      if (type2->code () == TYPE_CODE_CHAR)
-	{
-	  ptr[inval1len] =
-	    (char) unpack_long (type2, value_contents (inval2));
-	}
-      else
-	{
-	  memcpy (&ptr[inval1len], value_contents (inval2), inval2len);
-	}
-      outval = value_string (ptr.data (), inval1len + inval2len, char_type);
-    }
-  else if (type1->code () == TYPE_CODE_BOOL)
-    {
-      /* We have two bitstrings to concatenate.  */
-      if (type2->code () != TYPE_CODE_BOOL)
-	{
-	  error (_("Booleans can only be concatenated "
-		   "with other bitstrings or booleans."));
-	}
-      error (_("unimplemented support for boolean concatenation."));
+      elttype2 = TYPE_TARGET_TYPE (elttype2);
+      if (!get_array_bounds (type2, &low2, &high2))
+	error (_("could not determine array bounds on right-hand-side of "
+		 "array concatenation"));
     }
   else
     {
-      /* We don't know how to concatenate these operands.  */
-      error (_("illegal operands for concatenation."));
+      low2 = 0;
+      high2 = 0;
     }
-  return (outval);
+
+  if (!types_equal (elttype1, elttype2))
+    error (_("concatenation with different element types"));
+
+  LONGEST lowbound = current_language->c_style_arrays_p () ? 0 : 1;
+  LONGEST n_elts = (high1 - low1 + 1) + (high2 - low2 + 1);
+  struct type *atype = lookup_array_range_type (elttype1,
+						lowbound,
+						lowbound + n_elts - 1);
+
+  struct value *result = allocate_value (atype);
+  gdb::array_view<gdb_byte> contents = value_contents_raw (result);
+  gdb::array_view<const gdb_byte> lhs_contents = value_contents (arg1);
+  gdb::array_view<const gdb_byte> rhs_contents = value_contents (arg2);
+  gdb::copy (lhs_contents, contents.slice (0, lhs_contents.size ()));
+  gdb::copy (rhs_contents, contents.slice (lhs_contents.size ()));
+
+  return result;
 }
 
 /* Integer exponentiation: V1**V2, where both arguments are
@@ -855,7 +772,7 @@ value_args_as_target_float (struct value *arg1, struct value *arg2,
   if (is_floating_type (type1))
     {
       *eff_type_x = type1;
-      memcpy (x, value_contents (arg1), TYPE_LENGTH (type1));
+      memcpy (x, value_contents (arg1).data (), TYPE_LENGTH (type1));
     }
   else if (is_integral_type (type1))
     {
@@ -874,7 +791,7 @@ value_args_as_target_float (struct value *arg1, struct value *arg2,
   if (is_floating_type (type2))
     {
       *eff_type_y = type2;
-      memcpy (y, value_contents (arg2), TYPE_LENGTH (type2));
+      memcpy (y, value_contents (arg2).data (), TYPE_LENGTH (type2));
     }
   else if (is_integral_type (type2))
     {
@@ -929,12 +846,10 @@ fixed_point_binop (struct value *arg1, struct value *arg2, enum exp_opcode op)
 	  type2 = type1;
 	}
 
-      v1.read_fixed_point (gdb::make_array_view (value_contents (arg1),
-						 TYPE_LENGTH (type1)),
+      v1.read_fixed_point (value_contents (arg1),
 			   type_byte_order (type1), type1->is_unsigned (),
 			   type1->fixed_point_scaling_factor ());
-      v2.read_fixed_point (gdb::make_array_view (value_contents (arg2),
-						 TYPE_LENGTH (type2)),
+      v2.read_fixed_point (value_contents (arg2),
 			   type_byte_order (type2), type2->is_unsigned (),
 			   type2->fixed_point_scaling_factor ());
     }
@@ -944,8 +859,7 @@ fixed_point_binop (struct value *arg1, struct value *arg2, enum exp_opcode op)
       value *fp_val = allocate_value (type1);
 
       fp.write_fixed_point
-	(gdb::make_array_view (value_contents_raw (fp_val),
-			       TYPE_LENGTH (type1)),
+	(value_contents_raw (fp_val),
 	 type_byte_order (type1),
 	 type1->is_unsigned (),
 	 type1->fixed_point_scaling_factor ());
@@ -1204,7 +1118,7 @@ scalar_binop (struct value *arg1, struct value *arg2, enum exp_opcode op)
 				  v2.data (), &eff_type_v2);
       target_float_binop (op, v1.data (), eff_type_v1,
 			      v2.data (), eff_type_v2,
-			      value_contents_raw (val), result_type);
+			      value_contents_raw (val).data (), result_type);
     }
   else if (type1->code () == TYPE_CODE_BOOL
 	   || type2->code () == TYPE_CODE_BOOL)
@@ -1243,7 +1157,7 @@ scalar_binop (struct value *arg1, struct value *arg2, enum exp_opcode op)
       result_type = type1;
 
       val = allocate_value (result_type);
-      store_signed_integer (value_contents_raw (val),
+      store_signed_integer (value_contents_raw (val).data (),
 			    TYPE_LENGTH (result_type),
 			    type_byte_order (result_type),
 			    v);
@@ -1383,7 +1297,7 @@ scalar_binop (struct value *arg1, struct value *arg2, enum exp_opcode op)
 	    }
 
 	  val = allocate_value (result_type);
-	  store_unsigned_integer (value_contents_raw (val),
+	  store_unsigned_integer (value_contents_raw (val).data (),
 				  TYPE_LENGTH (value_type (val)),
 				  type_byte_order (result_type),
 				  v);
@@ -1512,7 +1426,7 @@ scalar_binop (struct value *arg1, struct value *arg2, enum exp_opcode op)
 	    }
 
 	  val = allocate_value (result_type);
-	  store_signed_integer (value_contents_raw (val),
+	  store_signed_integer (value_contents_raw (val).data (),
 				TYPE_LENGTH (value_type (val)),
 				type_byte_order (result_type),
 				v);
@@ -1533,7 +1447,7 @@ value_vector_widen (struct value *scalar_value, struct type *vector_type)
 {
   /* Widen the scalar to a vector.  */
   struct type *eltype, *scalar_type;
-  struct value *val, *elval;
+  struct value *elval;
   LONGEST low_bound, high_bound;
   int i;
 
@@ -1556,11 +1470,14 @@ value_vector_widen (struct value *scalar_value, struct type *vector_type)
       && !value_equal (elval, scalar_value))
     error (_("conversion of scalar to vector involves truncation"));
 
-  val = allocate_value (vector_type);
+  value *val = allocate_value (vector_type);
+  gdb::array_view<gdb_byte> val_contents = value_contents_writeable (val);
+  int elt_len = TYPE_LENGTH (eltype);
+
   for (i = 0; i < high_bound - low_bound + 1; i++)
     /* Duplicate the contents of elval into the destination vector.  */
-    memcpy (value_contents_writeable (val) + (i * TYPE_LENGTH (eltype)),
-	    value_contents_all (elval), TYPE_LENGTH (eltype));
+    copy (value_contents_all (elval),
+	  val_contents.slice (i * elt_len, elt_len));
 
   return val;
 }
@@ -1571,7 +1488,6 @@ value_vector_widen (struct value *scalar_value, struct type *vector_type)
 static struct value *
 vector_binop (struct value *val1, struct value *val2, enum exp_opcode op)
 {
-  struct value *val, *tmp, *mark;
   struct type *type1, *type2, *eltype1, *eltype2;
   int t1_is_vec, t2_is_vec, elsize, i;
   LONGEST low_bound1, high_bound1, low_bound2, high_bound2;
@@ -1601,15 +1517,15 @@ vector_binop (struct value *val1, struct value *val2, enum exp_opcode op)
       || low_bound1 != low_bound2 || high_bound1 != high_bound2)
     error (_("Cannot perform operation on vectors with different types"));
 
-  val = allocate_value (type1);
-  mark = value_mark ();
+  value *val = allocate_value (type1);
+  gdb::array_view<gdb_byte> val_contents = value_contents_writeable (val);
+  value *mark = value_mark ();
   for (i = 0; i < high_bound1 - low_bound1 + 1; i++)
     {
-      tmp = value_binop (value_subscript (val1, i),
-			 value_subscript (val2, i), op);
-      memcpy (value_contents_writeable (val) + i * elsize,
-	      value_contents_all (tmp),
-	      elsize);
+      value *tmp = value_binop (value_subscript (val1, i),
+				value_subscript (val2, i), op);
+      copy (value_contents_all (tmp),
+	    val_contents.slice (i * elsize, elsize));
      }
   value_free_to_mark (mark);
 
@@ -1653,9 +1569,9 @@ value_binop (struct value *arg1, struct value *arg2, enum exp_opcode op)
   return val;
 }
 
-/* Simulate the C operator ! -- return 1 if ARG1 contains zero.  */
+/* See value.h.  */
 
-int
+bool
 value_logical_not (struct value *arg1)
 {
   int len;
@@ -1666,10 +1582,10 @@ value_logical_not (struct value *arg1)
   type1 = check_typedef (value_type (arg1));
 
   if (is_floating_value (arg1))
-    return target_float_is_zero (value_contents (arg1), type1);
+    return target_float_is_zero (value_contents (arg1).data (), type1);
 
   len = TYPE_LENGTH (type1);
-  p = value_contents (arg1);
+  p = value_contents (arg1).data ();
 
   while (--len >= 0)
     {
@@ -1688,8 +1604,8 @@ value_strcmp (struct value *arg1, struct value *arg2)
 {
   int len1 = TYPE_LENGTH (value_type (arg1));
   int len2 = TYPE_LENGTH (value_type (arg2));
-  const gdb_byte *s1 = value_contents (arg1);
-  const gdb_byte *s2 = value_contents (arg2);
+  const gdb_byte *s1 = value_contents (arg1).data ();
+  const gdb_byte *s2 = value_contents (arg2).data ();
   int i, len = len1 < len2 ? len1 : len2;
 
   for (i = 0; i < len; i++)
@@ -1764,8 +1680,8 @@ value_equal (struct value *arg1, struct value *arg2)
 	   && ((len = (int) TYPE_LENGTH (type1))
 	       == (int) TYPE_LENGTH (type2)))
     {
-      p1 = value_contents (arg1);
-      p2 = value_contents (arg2);
+      p1 = value_contents (arg1).data ();
+      p2 = value_contents (arg2).data ();
       while (--len >= 0)
 	{
 	  if (*p1++ != *p2++)
@@ -1795,7 +1711,8 @@ value_equal_contents (struct value *arg1, struct value *arg2)
 
   return (type1->code () == type2->code ()
 	  && TYPE_LENGTH (type1) == TYPE_LENGTH (type2)
-	  && memcmp (value_contents (arg1), value_contents (arg2),
+	  && memcmp (value_contents (arg1).data (),
+		     value_contents (arg2).data (),
 		     TYPE_LENGTH (type1)) == 0);
 }
 
@@ -1870,7 +1787,7 @@ value_pos (struct value *arg1)
   if (is_integral_type (type) || is_floating_value (arg1)
       || (type->code () == TYPE_CODE_ARRAY && type->is_vector ())
       || type->code () == TYPE_CODE_COMPLEX)
-    return value_from_contents (type, value_contents (arg1));
+    return value_from_contents (type, value_contents (arg1).data ());
   else
     error (_("Argument to positive operation not a number."));
 }
@@ -1889,7 +1806,7 @@ value_neg (struct value *arg1)
     return value_binop (value_zero (type, not_lval), arg1, BINOP_SUB);
   else if (type->code () == TYPE_CODE_ARRAY && type->is_vector ())
     {
-      struct value *tmp, *val = allocate_value (type);
+      struct value *val = allocate_value (type);
       struct type *eltype = check_typedef (TYPE_TARGET_TYPE (type));
       int i;
       LONGEST low_bound, high_bound;
@@ -1897,11 +1814,14 @@ value_neg (struct value *arg1)
       if (!get_array_bounds (type, &low_bound, &high_bound))
 	error (_("Could not determine the vector bounds"));
 
+      gdb::array_view<gdb_byte> val_contents = value_contents_writeable (val);
+      int elt_len = TYPE_LENGTH (eltype);
+
       for (i = 0; i < high_bound - low_bound + 1; i++)
 	{
-	  tmp = value_neg (value_subscript (arg1, i));
-	  memcpy (value_contents_writeable (val) + i * TYPE_LENGTH (eltype),
-		  value_contents_all (tmp), TYPE_LENGTH (eltype));
+	  value *tmp = value_neg (value_subscript (arg1, i));
+	  copy (value_contents_all (tmp),
+		val_contents.slice (i * elt_len, elt_len));
 	}
       return val;
     }
@@ -1931,7 +1851,6 @@ value_complement (struct value *arg1)
     val = value_from_longest (type, ~value_as_long (arg1));
   else if (type->code () == TYPE_CODE_ARRAY && type->is_vector ())
     {
-      struct value *tmp;
       struct type *eltype = check_typedef (TYPE_TARGET_TYPE (type));
       int i;
       LONGEST low_bound, high_bound;
@@ -1940,11 +1859,14 @@ value_complement (struct value *arg1)
 	error (_("Could not determine the vector bounds"));
 
       val = allocate_value (type);
+      gdb::array_view<gdb_byte> val_contents = value_contents_writeable (val);
+      int elt_len = TYPE_LENGTH (eltype);
+
       for (i = 0; i < high_bound - low_bound + 1; i++)
 	{
-	  tmp = value_complement (value_subscript (arg1, i));
-	  memcpy (value_contents_writeable (val) + i * TYPE_LENGTH (eltype),
-		  value_contents_all (tmp), TYPE_LENGTH (eltype));
+	  value *tmp = value_complement (value_subscript (arg1, i));
+	  copy (value_contents_all (tmp),
+		val_contents.slice (i * elt_len, elt_len));
 	}
     }
   else if (type->code () == TYPE_CODE_COMPLEX)
@@ -2005,7 +1927,7 @@ value_in (struct value *element, struct value *set)
       && eltype->code () != TYPE_CODE_ENUM
       && eltype->code () != TYPE_CODE_BOOL)
     error (_("First argument of 'IN' has wrong type"));
-  member = value_bit_index (settype, value_contents (set),
+  member = value_bit_index (settype, value_contents (set).data (),
 			    value_as_long (element));
   if (member < 0)
     error (_("First argument of 'IN' not in range"));

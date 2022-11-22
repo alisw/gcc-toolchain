@@ -55,6 +55,7 @@
 #include "gdbsupport/def-vector.h"
 #include "cli/cli-option.h"
 #include "cli/cli-style.h"
+#include "gdbsupport/buildargv.h"
 
 /* The possible choices of "set print frame-arguments", and the value
    of this setting.  */
@@ -427,17 +428,14 @@ print_frame_arg (const frame_print_options &fp_opts,
 
   annotate_arg_emitter arg_emitter;
   ui_out_emit_tuple tuple_emitter (uiout, NULL);
-  fprintf_symbol_filtered (&stb, arg->sym->print_name (),
-			   arg->sym->language (), DMGL_PARAMS | DMGL_ANSI);
+  fputs_filtered (arg->sym->print_name (), &stb);
   if (arg->entry_kind == print_entry_values_compact)
     {
       /* It is OK to provide invalid MI-like stream as with
 	 PRINT_ENTRY_VALUE_COMPACT we never use MI.  */
       stb.puts ("=");
 
-      fprintf_symbol_filtered (&stb, arg->sym->print_name (),
-			       arg->sym->language (),
-			       DMGL_PARAMS | DMGL_ANSI);
+      fputs_filtered (arg->sym->print_name (), &stb);
     }
   if (arg->entry_kind == print_entry_values_only
       || arg->entry_kind == print_entry_values_compact)
@@ -676,7 +674,7 @@ read_frame_arg (const frame_print_options &fp_opts,
 	  || (fp_opts.print_entry_values == print_entry_values_preferred
 	      && (!val || value_optimized_out (val))))
 	{
-	  entryval = allocate_optimized_out_value (SYMBOL_TYPE (sym));
+	  entryval = allocate_optimized_out_value (sym->type ());
 	  entryval_error = NULL;
 	}
     }
@@ -765,7 +763,7 @@ print_frame_args (const frame_print_options &fp_opts,
 	  /* Keep track of the highest stack argument offset seen, and
 	     skip over any kinds of symbols we don't care about.  */
 
-	  if (!SYMBOL_IS_ARGUMENT (sym))
+	  if (!sym->is_argument ())
 	    continue;
 
 	  if (!print_names)
@@ -775,13 +773,13 @@ print_frame_args (const frame_print_options &fp_opts,
 	      break;
 	    }
 
-	  switch (SYMBOL_CLASS (sym))
+	  switch (sym->aclass ())
 	    {
 	    case LOC_ARG:
 	    case LOC_REF_ARG:
 	      {
 		long current_offset = SYMBOL_VALUE (sym);
-		int arg_size = TYPE_LENGTH (SYMBOL_TYPE (sym));
+		int arg_size = TYPE_LENGTH (sym->type ());
 
 		/* Compute address of next argument by adding the size of
 		   this argument and rounding to an int boundary.  */
@@ -830,8 +828,8 @@ print_frame_args (const frame_print_options &fp_opts,
 	      nsym = lookup_symbol_search_name (sym->search_name (),
 						b, VAR_DOMAIN).symbol;
 	      gdb_assert (nsym != NULL);
-	      if (SYMBOL_CLASS (nsym) == LOC_REGISTER
-		  && !SYMBOL_IS_ARGUMENT (nsym))
+	      if (nsym->aclass () == LOC_REGISTER
+		  && !nsym->is_argument ())
 		{
 		  /* There is a LOC_ARG/LOC_REGISTER pair.  This means
 		     that it was passed on the stack and loaded into a
@@ -877,7 +875,7 @@ print_frame_args (const frame_print_options &fp_opts,
 	  /* Print the current arg.  */
 	  if (!first)
 	    uiout->text (", ");
-	  uiout->wrap_hint ("    ");
+	  uiout->wrap_hint (4);
 
 	  if (!print_args)
 	    {
@@ -897,7 +895,7 @@ print_frame_args (const frame_print_options &fp_opts,
 	      if (arg.entry_kind != print_entry_values_only)
 		{
 		  uiout->text (", ");
-		  uiout->wrap_hint ("    ");
+		  uiout->wrap_hint (4);
 		}
 
 	      print_frame_arg (fp_opts, &entryarg);
@@ -1368,10 +1366,9 @@ print_frame (const frame_print_options &fp_opts,
     annotate_frame_function_name ();
 
     string_file stb;
-    fprintf_symbol_filtered (&stb, funname ? funname.get () : "??",
-			     funlang, DMGL_ANSI);
+    fputs_filtered (funname ? funname.get () : "??", &stb);
     uiout->field_stream ("func", stb, function_name_style.style ());
-    uiout->wrap_hint ("   ");
+    uiout->wrap_hint (3);
     annotate_frame_args ();
 
     uiout->text (" (");
@@ -1409,7 +1406,7 @@ print_frame (const frame_print_options &fp_opts,
       
 	filename_display = symtab_to_filename_for_display (sal.symtab);
 	annotate_frame_source_begin ();
-	uiout->wrap_hint ("   ");
+	uiout->wrap_hint (3);
 	uiout->text (" at ");
 	annotate_frame_source_file ();
 	uiout->field_string ("file", filename_display,
@@ -1436,7 +1433,7 @@ print_frame (const frame_print_options &fp_opts,
 	if (lib)
 	  {
 	    annotate_frame_where ();
-	    uiout->wrap_hint ("  ");
+	    uiout->wrap_hint (2);
 	    uiout->text (" from ");
 	    uiout->field_string ("from", lib, file_name_style.style ());
 	  }
@@ -1552,22 +1549,21 @@ info_frame_command_core (struct frame_info *fi, bool selected_frame_p)
     {
       printf_filtered (_("Stack frame at "));
     }
-  fputs_filtered (paddress (gdbarch, get_frame_base (fi)), gdb_stdout);
+  puts_filtered (paddress (gdbarch, get_frame_base (fi)));
   printf_filtered (":\n");
   printf_filtered (" %s = ", pc_regname);
   if (frame_pc_p)
-    fputs_filtered (paddress (gdbarch, get_frame_pc (fi)), gdb_stdout);
+    puts_filtered (paddress (gdbarch, get_frame_pc (fi)));
   else
     fputs_styled ("<unavailable>", metadata_style.style (), gdb_stdout);
 
-  wrap_here ("   ");
+  gdb_stdout->wrap_here (3);
   if (funname)
     {
       printf_filtered (" in ");
-      fprintf_symbol_filtered (gdb_stdout, funname, funlang,
-			       DMGL_ANSI | DMGL_PARAMS);
+      puts_filtered (funname);
     }
-  wrap_here ("   ");
+  gdb_stdout->wrap_here (3);
   if (sal.symtab)
     printf_filtered
       (" (%ps:%d)",
@@ -1575,7 +1571,7 @@ info_frame_command_core (struct frame_info *fi, bool selected_frame_p)
 		      symtab_to_filename_for_display (sal.symtab)),
        sal.line);
   puts_filtered ("; ");
-  wrap_here ("    ");
+  gdb_stdout->wrap_here (4);
   printf_filtered ("saved %s = ", pc_regname);
 
   if (!frame_id_p (frame_unwind_caller_id (fi)))
@@ -1607,7 +1603,7 @@ info_frame_command_core (struct frame_info *fi, bool selected_frame_p)
     }
 
   if (caller_pc_p)
-    fputs_filtered (paddress (gdbarch, caller_pc), gdb_stdout);
+    puts_filtered (paddress (gdbarch, caller_pc));
   printf_filtered ("\n");
 
   if (calling_frame_info == NULL)
@@ -1627,24 +1623,22 @@ info_frame_command_core (struct frame_info *fi, bool selected_frame_p)
   else
     {
       printf_filtered (" called by frame at ");
-      fputs_filtered (paddress (gdbarch, get_frame_base (calling_frame_info)),
-		      gdb_stdout);
+      puts_filtered (paddress (gdbarch, get_frame_base (calling_frame_info)));
     }
   if (get_next_frame (fi) && calling_frame_info)
     puts_filtered (",");
-  wrap_here ("   ");
+  gdb_stdout->wrap_here (3);
   if (get_next_frame (fi))
     {
       printf_filtered (" caller of frame at ");
-      fputs_filtered (paddress (gdbarch, get_frame_base (get_next_frame (fi))),
-		      gdb_stdout);
+      puts_filtered (paddress (gdbarch, get_frame_base (get_next_frame (fi))));
     }
   if (get_next_frame (fi) || calling_frame_info)
     puts_filtered ("\n");
 
   if (s)
     printf_filtered (" source language %s.\n",
-		     language_str (s->language));
+		     language_str (s->language ()));
 
   {
     /* Address of the argument list for this frame, or 0.  */
@@ -1657,7 +1651,7 @@ info_frame_command_core (struct frame_info *fi, bool selected_frame_p)
     else
       {
 	printf_filtered (" Arglist at ");
-	fputs_filtered (paddress (gdbarch, arg_list), gdb_stdout);
+	puts_filtered (paddress (gdbarch, arg_list));
 	printf_filtered (",");
 
 	if (!gdbarch_frame_num_args_p (gdbarch))
@@ -1690,7 +1684,7 @@ info_frame_command_core (struct frame_info *fi, bool selected_frame_p)
     else
       {
 	printf_filtered (" Locals at ");
-	fputs_filtered (paddress (gdbarch, arg_list), gdb_stdout);
+	puts_filtered (paddress (gdbarch, arg_list));
 	printf_filtered (",");
       }
   }
@@ -1721,18 +1715,17 @@ info_frame_command_core (struct frame_info *fi, bool selected_frame_p)
 		enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
 		int sp_size = register_size (gdbarch, sp_regnum);
 
-		sp = extract_unsigned_integer (value_contents_all (value),
-					       sp_size, byte_order);
+		sp = extract_unsigned_integer
+		  (value_contents_all (value).data (), sp_size, byte_order);
 
 		printf_filtered (" Previous frame's sp is ");
-		fputs_filtered (paddress (gdbarch, sp), gdb_stdout);
+		puts_filtered (paddress (gdbarch, sp));
 		printf_filtered ("\n");
 	      }
 	    else if (VALUE_LVAL (value) == lval_memory)
 	      {
 		printf_filtered (" Previous frame's sp at ");
-		fputs_filtered (paddress (gdbarch, value_address (value)),
-				gdb_stdout);
+		puts_filtered (paddress (gdbarch, value_address (value)));
 		printf_filtered ("\n");
 	      }
 	    else if (VALUE_LVAL (value) == lval_register)
@@ -1772,10 +1765,10 @@ info_frame_command_core (struct frame_info *fi, bool selected_frame_p)
 		puts_filtered (" Saved registers:\n ");
 	      else
 		puts_filtered (",");
-	      wrap_here (" ");
+	      gdb_stdout->wrap_here (1);
 	      printf_filtered (" %s at ",
 			       gdbarch_register_name (gdbarch, i));
-	      fputs_filtered (paddress (gdbarch, addr), gdb_stdout);
+	      puts_filtered (paddress (gdbarch, addr));
 	      count++;
 	    }
 	}
@@ -1846,14 +1839,6 @@ select_frame_command_core (struct frame_info *fi, bool ignored)
   select_frame (fi);
   if (get_selected_frame () != prev_frame)
     gdb::observers::user_selected_context_changed.notify (USER_SELECTED_FRAME);
-}
-
-/* See stack.h.  */
-
-void
-select_frame_for_mi (struct frame_info *fi)
-{
-  select_frame_command_core (fi, false /* Ignored.  */);
 }
 
 /* The core of all the "frame" sub-commands.  Select frame FI, and if this
@@ -2242,20 +2227,18 @@ backtrace_command_completer (struct cmd_list_element *ignore,
   expression_completer (ignore, tracker, text, word);
 }
 
-/* Iterate over the local variables of a block B, calling CB with
-   CB_DATA.  */
+/* Iterate over the local variables of a block B, calling CB.  */
 
 static void
 iterate_over_block_locals (const struct block *b,
-			   iterate_over_block_arg_local_vars_cb cb,
-			   void *cb_data)
+			   iterate_over_block_arg_local_vars_cb cb)
 {
   struct block_iterator iter;
   struct symbol *sym;
 
   ALL_BLOCK_SYMBOLS (b, iter, sym)
     {
-      switch (SYMBOL_CLASS (sym))
+      switch (sym->aclass ())
 	{
 	case LOC_CONST:
 	case LOC_LOCAL:
@@ -2263,11 +2246,11 @@ iterate_over_block_locals (const struct block *b,
 	case LOC_STATIC:
 	case LOC_COMPUTED:
 	case LOC_OPTIMIZED_OUT:
-	  if (SYMBOL_IS_ARGUMENT (sym))
+	  if (sym->is_argument ())
 	    break;
-	  if (SYMBOL_DOMAIN (sym) == COMMON_BLOCK_DOMAIN)
+	  if (sym->domain () == COMMON_BLOCK_DOMAIN)
 	    break;
-	  (*cb) (sym->print_name (), sym, cb_data);
+	  cb (sym->print_name (), sym);
 	  break;
 
 	default:
@@ -2282,12 +2265,11 @@ iterate_over_block_locals (const struct block *b,
 
 void
 iterate_over_block_local_vars (const struct block *block,
-			       iterate_over_block_arg_local_vars_cb cb,
-			       void *cb_data)
+			       iterate_over_block_arg_local_vars_cb cb)
 {
   while (block)
     {
-      iterate_over_block_locals (block, cb, cb_data);
+      iterate_over_block_locals (block, cb);
       /* After handling the function's top-level block, stop.  Don't
 	 continue to its superblock, the block of per-file
 	 symbols.  */
@@ -2308,39 +2290,40 @@ struct print_variable_and_value_data
   int num_tabs;
   struct ui_file *stream;
   int values_printed;
+
+  void operator() (const char *print_name, struct symbol *sym);
 };
 
 /* The callback for the locals and args iterators.  */
 
-static void
-do_print_variable_and_value (const char *print_name,
-			     struct symbol *sym,
-			     void *cb_data)
+void
+print_variable_and_value_data::operator() (const char *print_name,
+					   struct symbol *sym)
 {
-  struct print_variable_and_value_data *p
-    = (struct print_variable_and_value_data *) cb_data;
   struct frame_info *frame;
 
-  if (p->preg.has_value ()
-      && p->preg->exec (sym->natural_name (), 0, NULL, 0) != 0)
+  if (preg.has_value ()
+      && preg->exec (sym->natural_name (), 0, NULL, 0) != 0)
     return;
-  if (p->treg.has_value ()
-      && !treg_matches_sym_type_name (*p->treg, sym))
+  if (treg.has_value ()
+      && !treg_matches_sym_type_name (*treg, sym))
+    return;
+  if (language_def (sym->language ())->symbol_printing_suppressed (sym))
     return;
 
-  frame = frame_find_by_id (p->frame_id);
+  frame = frame_find_by_id (frame_id);
   if (frame == NULL)
     {
       warning (_("Unable to restore previously selected frame."));
       return;
     }
 
-  print_variable_and_value (print_name, sym, frame, p->stream, p->num_tabs);
+  print_variable_and_value (print_name, sym, frame, stream, num_tabs);
 
   /* print_variable_and_value invalidates FRAME.  */
   frame = NULL;
 
-  p->values_printed = 1;
+  values_printed = 1;
 }
 
 /* Prepares the regular expression REG from REGEXP.
@@ -2409,9 +2392,7 @@ print_frame_local_vars (struct frame_info *frame,
   scoped_restore_selected_frame restore_selected_frame;
   select_frame (frame);
 
-  iterate_over_block_local_vars (block,
-				 do_print_variable_and_value,
-				 &cb_data);
+  iterate_over_block_local_vars (block, cb_data);
 
   if (!cb_data.values_printed && !quiet)
     {
@@ -2429,12 +2410,7 @@ print_frame_local_vars (struct frame_info *frame,
 struct info_print_options
 {
   bool quiet = false;
-  char *type_regexp = nullptr;
-
-  ~info_print_options ()
-  {
-    xfree (type_regexp);
-  }
+  std::string type_regexp;
 };
 
 /* The options used by the 'info locals' and 'info args' commands.  */
@@ -2493,17 +2469,18 @@ info_locals_command (const char *args, int from_tty)
   if (args != nullptr && *args == '\0')
     args = nullptr;
 
-  print_frame_local_vars (get_selected_frame (_("No frame selected.")),
-			  opts.quiet, args, opts.type_regexp,
-			  0, gdb_stdout);
+  print_frame_local_vars
+    (get_selected_frame (_("No frame selected.")),
+     opts.quiet, args,
+     opts.type_regexp.empty () ? nullptr : opts.type_regexp.c_str (),
+     0, gdb_stdout);
 }
 
 /* Iterate over all the argument variables in block B.  */
 
 void
 iterate_over_block_arg_vars (const struct block *b,
-			     iterate_over_block_arg_local_vars_cb cb,
-			     void *cb_data)
+			     iterate_over_block_arg_local_vars_cb cb)
 {
   struct block_iterator iter;
   struct symbol *sym, *sym2;
@@ -2511,7 +2488,7 @@ iterate_over_block_arg_vars (const struct block *b,
   ALL_BLOCK_SYMBOLS (b, iter, sym)
     {
       /* Don't worry about things which aren't arguments.  */
-      if (SYMBOL_IS_ARGUMENT (sym))
+      if (sym->is_argument ())
 	{
 	  /* We have to look up the symbol because arguments can have
 	     two entries (one a parameter, one a local) and the one we
@@ -2526,7 +2503,7 @@ iterate_over_block_arg_vars (const struct block *b,
 
 	  sym2 = lookup_symbol_search_name (sym->search_name (),
 					    b, VAR_DOMAIN).symbol;
-	  (*cb) (sym->print_name (), sym2, cb_data);
+	  cb (sym->print_name (), sym2);
 	}
     }
 }
@@ -2577,8 +2554,7 @@ print_frame_arg_vars (struct frame_info *frame,
   cb_data.stream = stream;
   cb_data.values_printed = 0;
 
-  iterate_over_block_arg_vars (SYMBOL_BLOCK_VALUE (func),
-			       do_print_variable_and_value, &cb_data);
+  iterate_over_block_arg_vars (SYMBOL_BLOCK_VALUE (func), cb_data);
 
   /* do_print_variable_and_value invalidates FRAME.  */
   frame = NULL;
@@ -2604,8 +2580,11 @@ info_args_command (const char *args, int from_tty)
   if (args != nullptr && *args == '\0')
     args = nullptr;
 
-  print_frame_arg_vars (get_selected_frame (_("No frame selected.")),
-			opts.quiet, args, opts.type_regexp, gdb_stdout);
+  print_frame_arg_vars
+    (get_selected_frame (_("No frame selected.")),
+     opts.quiet, args,
+     opts.type_regexp.empty () ? nullptr : opts.type_regexp.c_str (),
+     gdb_stdout);
 }
 
 /* Return the symbol-block in which the selected frame is executing.
@@ -2742,7 +2721,7 @@ return_command (const char *retval_exp, int from_tty)
   struct symbol *thisfun;
   struct value *return_value = NULL;
   struct value *function = NULL;
-  const char *query_prefix = "";
+  std::string query_prefix;
 
   thisframe = get_selected_frame ("No selected frame.");
   thisfun = get_frame_function (thisframe);
@@ -2767,7 +2746,7 @@ return_command (const char *retval_exp, int from_tty)
       /* Cast return value to the return type of the function.  Should
 	 the cast fail, this call throws an error.  */
       if (thisfun != NULL)
-	return_type = TYPE_TARGET_TYPE (SYMBOL_TYPE (thisfun));
+	return_type = TYPE_TARGET_TYPE (thisfun->type ());
       if (return_type == NULL)
 	{
 	  if (retval_expr->first_opcode () != UNOP_CAST
@@ -2798,6 +2777,17 @@ return_command (const char *retval_exp, int from_tty)
 	return_value = NULL;
       else if (thisfun != NULL)
 	{
+	  if (is_nocall_function (check_typedef (value_type (function))))
+	    {
+	      query_prefix =
+		string_printf ("Function '%s' does not follow the target "
+			       "calling convention.\n"
+			       "If you continue, setting the return value "
+			       "will probably lead to unpredictable "
+			       "behaviors.\n",
+			       thisfun->print_name ());
+	    }
+
 	  rv_conv = struct_return_convention (gdbarch, function, return_type);
 	  if (rv_conv == RETURN_VALUE_STRUCT_CONVENTION
 	      || rv_conv == RETURN_VALUE_ABI_RETURNS_ADDRESS)
@@ -2820,12 +2810,13 @@ return_command (const char *retval_exp, int from_tty)
 
       if (thisfun == NULL)
 	confirmed = query (_("%sMake selected stack frame return now? "),
-			   query_prefix);
+			   query_prefix.c_str ());
       else
 	{
-	  if (TYPE_NO_RETURN (thisfun->type))
+	  if (TYPE_NO_RETURN (thisfun->type ()))
 	    warning (_("Function does not return normally to caller."));
-	  confirmed = query (_("%sMake %s return now? "), query_prefix,
+	  confirmed = query (_("%sMake %s return now? "),
+			     query_prefix.c_str (),
 			     thisfun->print_name ());
 	}
       if (!confirmed)
@@ -2845,7 +2836,7 @@ return_command (const char *retval_exp, int from_tty)
 		  && rv_conv != RETURN_VALUE_ABI_RETURNS_ADDRESS);
       gdbarch_return_value (cache_arch, function, return_type,
 			    get_current_regcache (), NULL /*read*/,
-			    value_contents (return_value) /*write*/);
+			    value_contents (return_value).data () /*write*/);
     }
 
   /* If we are at the end of a call dummy now, pop the dummy frame
@@ -3031,8 +3022,8 @@ frame_apply_command_count (const char *which_command,
 	       set to the selected frame.  */
 	    scoped_restore_current_thread restore_fi_current_frame;
 
-	    cmd_result = execute_command_to_string
-	      (cmd, from_tty, gdb_stdout->term_out ());
+	    execute_command_to_string
+	      (cmd_result, cmd, from_tty, gdb_stdout->term_out ());
 	  }
 	  fi = get_selected_frame (_("frame apply "
 				     "unable to get selected frame."));

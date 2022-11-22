@@ -1,10 +1,10 @@
-2021-07-28  Release Manager
+2022-08-19  Release Manager
 
-	* GCC 11.2.0 released.
+	* GCC 12.2.0 released.
 
-2021-04-27  Release Manager
+2022-05-06  Release Manager
 
-	* GCC 11.1.0 released.
+	* GCC 12.1.0 released.
 
 2020-10-23  Jakub Jelinek  <jakub@redhat.com>
 
@@ -422,7 +422,7 @@
 	* inline_bid_add.h: Likewise.
 	* sqrt_macros.h: Likewise.
 
-Copyright (C) 2007-2021 Free Software Foundation, Inc.
+Copyright (C) 2007-2022 Free Software Foundation, Inc.
 
 Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright

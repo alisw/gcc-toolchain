@@ -1,5 +1,5 @@
 ;; Machine description of the Synopsys DesignWare ARC cpu for GNU C compiler
-;; Copyright (C) 1994-2021 Free Software Foundation, Inc.
+;; Copyright (C) 1994-2022 Free Software Foundation, Inc.
 
 ;; Sources derived from work done by Sankhya Technologies (www.sankhya.com) on
 ;; behalf of Synopsys Inc.
@@ -128,6 +128,7 @@
   UNSPEC_ARC_DMACHU
   UNSPEC_ARC_DMACWH
   UNSPEC_ARC_DMACWHU
+  UNSPEC_ARC_DMPYWH
   UNSPEC_ARC_QMACH
   UNSPEC_ARC_QMACHU
   UNSPEC_ARC_QMPYH
@@ -1617,8 +1618,11 @@ core_3, archs4x, archs4xd, archs4xd_slow"
 		         (match_operand:SI 2 "nonmemory_operand" "")
  		         (match_operand:SI 3 "register_operand" "")))]
   ""
-  "operands[1] = gen_compare_reg (operands[1], VOIDmode);")
-
+  "
+  operands[1] = gen_compare_reg (operands[1], VOIDmode);
+  if (operands[1] == NULL_RTX)
+    FAIL;
+  ")
 
 (define_expand "movdicc"
   [(set (match_operand:DI 0 "dest_reg_operand" "")
@@ -1626,7 +1630,11 @@ core_3, archs4x, archs4xd, archs4xd_slow"
 		        (match_operand:DI 2 "nonmemory_operand" "")
 		        (match_operand:DI 3 "register_operand" "")))]
   ""
-  "operands[1] = gen_compare_reg (operands[1], VOIDmode);")
+  "
+  operands[1] = gen_compare_reg (operands[1], VOIDmode);
+  if (operands[1] == NULL_RTX)
+    FAIL;
+  ")
 
 
 (define_expand "movsfcc"
@@ -1635,7 +1643,11 @@ core_3, archs4x, archs4xd, archs4xd_slow"
 		      (match_operand:SF 2 "nonmemory_operand" "")
 		      (match_operand:SF 3 "register_operand" "")))]
   ""
-  "operands[1] = gen_compare_reg (operands[1], VOIDmode);")
+  "
+  operands[1] = gen_compare_reg (operands[1], VOIDmode);
+  if (operands[1] == NULL_RTX)
+    FAIL;
+  ")
 
 (define_expand "movdfcc"
   [(set (match_operand:DF 0 "dest_reg_operand" "")
@@ -1643,7 +1655,11 @@ core_3, archs4x, archs4xd, archs4xd_slow"
 		      (match_operand:DF 2 "nonmemory_operand" "")
 		      (match_operand:DF 3 "register_operand" "")))]
   ""
-  "operands[1] = gen_compare_reg (operands[1], VOIDmode);")
+  "
+  operands[1] = gen_compare_reg (operands[1], VOIDmode);
+  if (operands[1] == NULL_RTX)
+    FAIL;
+  ")
 
 (define_insn "*movsicc_insn"
   [(set (match_operand:SI 0 "dest_reg_operand" "=w,w")
@@ -1954,14 +1970,6 @@ core_3, archs4x, archs4xd, archs4xd_slow"
 ;; operations to movsi.
 
 ;; Absolute instructions
-
-(define_insn "*abssi2_mixed"
-  [(set (match_operand:SI 0 "compact_register_operand" "=q")
-	(abs:SI (match_operand:SI 1 "compact_register_operand" "q")))]
-  "TARGET_MIXED_CODE"
-  "abs%? %0,%1%&"
-  [(set_attr "type" "two_cycle_core")
-   (set_attr "iscompact" "true")])
 
 (define_insn "abssi2"
   [(set (match_operand:SI 0 "dest_reg_operand" "=Rcq#q,w,w")
@@ -4049,7 +4057,7 @@ core_3, archs4x, archs4xd, archs4xd_slow"
    (set_attr_alternative "length"
      [(cond
 	[(eq_attr "iscompact" "false") (const_int 4)
-	; We have to mention (match_dup 3) to convince genattrtab.c that this
+	; We have to mention (match_dup 3) to convince genattrtab.cc that this
 	; is a varying length insn.
 	 (eq (symbol_ref "1+1") (const_int 2)) (const_int 2)
 	 (gt (minus (match_dup 3) (pc)) (const_int 42)) (const_int 4)]
@@ -4341,24 +4349,20 @@ core_3, archs4x, archs4xd, archs4xd_slow"
 ;; Instructions generated through builtins
 
 (define_insn "clrsbsi2"
-  [(set (match_operand:SI  0 "dest_reg_operand" "=w,w")
-	(clrsb:SI (match_operand:SI 1 "general_operand" "cL,Cal")))]
+  [(set (match_operand:SI  0 "dest_reg_operand" "=r,r")
+	(clrsb:SI (match_operand:SI 1 "general_operand" "rL,Cal")))]
   "TARGET_NORM"
-  "@
-   norm \t%0, %1
-   norm \t%0, %1"
+  "norm\\t%0,%1"
   [(set_attr "length" "4,8")
    (set_attr "type" "two_cycle_core,two_cycle_core")])
 
 (define_insn "norm_f"
-  [(set (match_operand:SI  0 "dest_reg_operand" "=w,w")
-	(clrsb:SI (match_operand:SI 1 "general_operand" "cL,Cal")))
+  [(set (match_operand:SI  0 "dest_reg_operand" "=r,r")
+	(clrsb:SI (match_operand:SI 1 "general_operand" "rL,Cal")))
    (set (reg:CC_ZN CC_REG)
 	(compare:CC_ZN (match_dup 1) (const_int 0)))]
   "TARGET_NORM"
-  "@
-   norm.f\t%0, %1
-   norm.f\t%0, %1"
+  "norm.f\\t%0,%1"
   [(set_attr "length" "4,8")
    (set_attr "type" "two_cycle_core,two_cycle_core")])
 
@@ -4388,7 +4392,17 @@ core_3, archs4x, archs4xd, archs4xd_slow"
 	  (clz:SI (match_operand:SI 1 "register_operand" "")))
      (clobber (match_dup 2))])]
   "TARGET_NORM"
-  "operands[2] = gen_rtx_REG (CC_ZNmode, CC_REG);")
+  "
+   if (TARGET_V2)
+    {
+      /* ARCv2's FLS is a bit more optimal than using norm.  */
+      rtx tmp = gen_reg_rtx (SImode);
+      emit_insn (gen_fls (tmp, operands[1]));
+      emit_insn (gen_subsi3 (operands[0], GEN_INT (31), tmp));
+      DONE;
+    }
+   operands[2] = gen_rtx_REG (CC_ZNmode, CC_REG);
+  ")
 
 (define_insn_and_split "*arc_clzsi2"
   [(set (match_operand:SI 0 "register_operand" "=r")
@@ -4420,8 +4434,13 @@ core_3, archs4x, archs4xd, archs4xd_slow"
    (match_operand:SI 1 "register_operand" "")]
   "TARGET_NORM"
   "
-  emit_insn (gen_arc_ctzsi2 (operands[0], operands[1]));
-  DONE;
+   if (TARGET_V2)
+    {
+      emit_insn (gen_ffs (operands[0], operands[1]));
+      DONE;
+    }
+   emit_insn (gen_arc_ctzsi2 (operands[0], operands[1]));
+   DONE;
 ")
 
 (define_insn_and_split "arc_ctzsi2"
@@ -4659,10 +4678,10 @@ core_3, archs4x, archs4xd, archs4xd_slow"
       return \"trap_s %0\";
     }
 
-  /* Keep this message in sync with the one in arc.c:arc_expand_builtin,
+  /* Keep this message in sync with the one in arc.cc:arc_expand_builtin,
      because *.md files do not get scanned by exgettext.  */
   fatal_error (input_location,
-	       \"operand to trap_s should be an unsigned 6-bit value\");
+	       \"operand to %<trap_s%> should be an unsigned 6-bit value\");
 }
   [(set_attr "length" "2")
   (set_attr "type" "misc")])
@@ -4840,7 +4859,7 @@ core_3, archs4x, archs4xd, archs4xd_slow"
   "arc_can_use_return_insn ()"
   "")
 
- ;; Comment in final.c (insn_current_reference_address) says
+ ;; Comment in final.cc (insn_current_reference_address) says
  ;; forward branch addresses are calculated from the next insn after branch
  ;; and for backward branches, it is calculated from the branch insn start.
  ;; The shortening logic here is tuned to accomodate this behavior
@@ -4949,34 +4968,6 @@ core_3, archs4x, archs4xd, archs4xd_slow"
 	(if_then_else (match_test "get_attr_length (insn) == 6")
 		      (const_string "true") (const_string "false")))])
 
-; ??? When testing a bit from a DImode register, combine creates a
-; zero_extract in DImode.  This goes via an AND with a DImode constant,
-; so can only be observed on 64 bit hosts.
-(define_insn_and_split "*bbit_di"
-  [(set (pc)
-	(if_then_else
-	  (match_operator 3 "equality_comparison_operator"
-	    [(zero_extract:DI (match_operand:SI 1 "register_operand" "Rcqq,c")
-			      (const_int 1)
-			      (match_operand 2 "immediate_operand" "L,L"))
-	     (const_int 0)])
-	  (label_ref (match_operand 0 "" ""))
-	  (pc)))
-   (clobber (reg:CC_ZN CC_REG))]
-  "!CROSSING_JUMP_P (insn)"
-  "#"
-  ""
-  [(parallel
-     [(set (pc) (if_then_else (match_dup 3) (label_ref (match_dup 0)) (pc)))
-      (clobber (reg:CC_ZN CC_REG))])]
-{
-  rtx xtr;
-
-  xtr = gen_rtx_ZERO_EXTRACT (SImode, operands[1], const1_rtx, operands[2]);
-  operands[3] = gen_rtx_fmt_ee (GET_CODE (operands[3]), GET_MODE (operands[3]),
-				xtr, const0_rtx);
-})
-
 ;; -------------------------------------------------------------------
 ;; Hardware loop
 ;; -------------------------------------------------------------------
@@ -4990,8 +4981,8 @@ core_3, archs4x, archs4xd, archs4xd_slow"
 			(const_int 1))
 		    (label_ref (match_operand 1 "" ""))
 		    (pc)))
-	      (set (match_dup 0) (plus (match_dup 0) (const_int -1)))
-	      (unspec [(const_int 0)] UNSPEC_ARC_LP)
+	      (set (match_dup 0) (plus:SI (match_dup 0) (const_int -1)))
+	      (unspec:SI [(const_int 0)] UNSPEC_ARC_LP)
 	      (clobber (match_dup 2))])]
   ""
 {
@@ -5020,8 +5011,8 @@ core_3, archs4x, archs4xd, archs4xd_slow"
 			  (const_int 1))
 		      (label_ref (match_operand 1 "" ""))
 		      (pc)))
-   (set (match_dup 0) (plus (match_dup 0) (const_int -1)))
-   (unspec [(const_int 0)] UNSPEC_ARC_LP)
+   (set (match_dup 0) (plus:SI (match_dup 0) (const_int -1)))
+   (unspec:SI [(const_int 0)] UNSPEC_ARC_LP)
    (clobber (match_scratch:SI 2 "=X,&r"))]
   ""
   "@
@@ -5247,7 +5238,7 @@ core_3, archs4x, archs4xd, archs4xd_slow"
 ;; subdf alternative that matches a zero operand 1, which then can allow
 ;; to use bxor to flip the high bit of an integer register.
 ;; ??? we actually can't use the floating point hardware for neg, because
-;; this would not work right for -0.  OTOH optabs.c has already code
+;; this would not work right for -0.  OTOH optabs.cc has already code
 ;; to synthesyze negate by flipping the sign bit.
 
 ;;V2 instructions
@@ -5514,26 +5505,22 @@ core_3, archs4x, archs4xd, archs4xd_slow"
    (set_attr "type" "misc")])
 
 (define_insn "ffs"
-  [(set (match_operand:SI  0 "dest_reg_operand" "=w,w")
-	(unspec:SI [(match_operand:SI 1 "general_operand" "cL,Cal")]
+  [(set (match_operand:SI  0 "dest_reg_operand" "=r,r")
+	(unspec:SI [(match_operand:SI 1 "general_operand" "rL,Cal")]
 			    UNSPEC_ARC_FFS))]
   "TARGET_NORM && TARGET_V2"
-  "@
-   ffs \t%0, %1
-   ffs \t%0, %1"
+  "ffs\\t%0,%1"
   [(set_attr "length" "4,8")
    (set_attr "type" "two_cycle_core,two_cycle_core")])
 
 (define_insn "ffs_f"
-  [(set (match_operand:SI  0 "dest_reg_operand" "=w,w")
-	(unspec:SI [(match_operand:SI 1 "general_operand" "cL,Cal")]
+  [(set (match_operand:SI  0 "dest_reg_operand" "=r,r")
+	(unspec:SI [(match_operand:SI 1 "general_operand" "rL,Cal")]
 			    UNSPEC_ARC_FFS))
    (set (reg:CC_ZN CC_REG)
 	(compare:CC_ZN (match_dup 1) (const_int 0)))]
   "TARGET_NORM && TARGET_V2"
-  "@
-   ffs.f\t%0, %1
-   ffs.f\t%0, %1"
+  "ffs.f\\t%0,%1"
   [(set_attr "length" "4,8")
    (set_attr "type" "two_cycle_core,two_cycle_core")])
 
@@ -6051,26 +6038,26 @@ core_3, archs4x, archs4xd, archs4xd_slow"
 (define_expand "maddhisi4"
   [(match_operand:SI 0 "register_operand" "")
    (match_operand:HI 1 "register_operand" "")
-   (match_operand:HI 2 "extend_operand"   "")
+   (match_operand:HI 2 "register_operand" "")
    (match_operand:SI 3 "register_operand" "")]
   "TARGET_PLUS_MACD"
   "{
-   rtx acc_reg = gen_rtx_REG (SImode, ACC_REG_FIRST);
+   rtx acc_reg = gen_rtx_REG (SImode, ACCL_REGNO);
 
    emit_move_insn (acc_reg, operands[3]);
-   emit_insn (gen_machi (operands[1], operands[2]));
-   emit_move_insn (operands[0], acc_reg);
+   emit_insn (gen_machi (operands[0], operands[1], operands[2], acc_reg));
    DONE;
   }")
 
 (define_insn "machi"
-  [(set (reg:SI ARCV2_ACC)
+  [(set (match_operand:SI 0 "register_operand" "=Ral,r")
 	(plus:SI
-	 (mult:SI (sign_extend:SI (match_operand:HI 0 "register_operand" "%r"))
-		  (sign_extend:SI (match_operand:HI 1 "register_operand" "r")))
-	 (reg:SI ARCV2_ACC)))]
+	 (mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand" "%r,r"))
+		  (sign_extend:SI (match_operand:HI 2 "register_operand" "r,r")))
+	 (match_operand:SI 3 "accl_operand" "")))
+   (clobber (reg:DI ARCV2_ACC))]
   "TARGET_PLUS_MACD"
-  "vmac2h\\t0,%0,%1"
+  "dmach\\t%0,%1,%2"
   [(set_attr "length" "4")
    (set_attr "type" "multi")
    (set_attr "predicable" "no")
@@ -6084,22 +6071,22 @@ core_3, archs4x, archs4xd, archs4xd_slow"
    (match_operand:SI 3 "register_operand" "")]
   "TARGET_PLUS_MACD"
   "{
-   rtx acc_reg = gen_rtx_REG (SImode, ACC_REG_FIRST);
+   rtx acc_reg = gen_rtx_REG (SImode, ACCL_REGNO);
 
    emit_move_insn (acc_reg, operands[3]);
-   emit_insn (gen_umachi (operands[1], operands[2]));
-   emit_move_insn (operands[0], acc_reg);
+   emit_insn (gen_umachi (operands[0], operands[1], operands[2], acc_reg));
    DONE;
   }")
 
 (define_insn "umachi"
-  [(set (reg:SI ARCV2_ACC)
+  [(set (match_operand:SI 0 "register_operand" "=Ral,r")
 	(plus:SI
-	 (mult:SI (zero_extend:SI (match_operand:HI 0 "register_operand" "%r"))
-		  (zero_extend:SI (match_operand:HI 1 "register_operand" "r")))
-	 (reg:SI ARCV2_ACC)))]
+	 (mult:SI (zero_extend:SI (match_operand:HI 1 "register_operand" "%r,r"))
+		  (zero_extend:SI (match_operand:HI 2 "register_operand" "r,r")))
+	 (match_operand:SI 3 "accl_operand" "")))
+   (clobber (reg:DI ARCV2_ACC))]
   "TARGET_PLUS_MACD"
-  "vmac2hu\\t0,%0,%1"
+  "dmachu\\t%0,%1,%2"
   [(set_attr "length" "4")
    (set_attr "type" "multi")
    (set_attr "predicable" "no")

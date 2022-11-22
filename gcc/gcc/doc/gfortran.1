@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "GFORTRAN 1"
-.TH GFORTRAN 1 "2021-07-28" "gcc-11.2.0" "GNU"
+.TH GFORTRAN 1 "2022-08-19" "gcc-12.2.0" "GNU"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -259,7 +259,7 @@ form is determined by the file extension.
 .IP "\fB\-fall\-intrinsics\fR" 4
 .IX Item "-fall-intrinsics"
 This option causes all intrinsic procedures (including the GNU-specific
-extensions) to be accepted.  This can be useful with \fB\-std=f95\fR to
+extensions) to be accepted.  This can be useful with \fB\-std=\fR to
 force standard-compliance but get access to the full range of intrinsics
 available with \fBgfortran\fR.  As a consequence, \fB\-Wintrinsics\-std\fR
 will be ignored and no user-defined procedure with the same name as any
@@ -403,7 +403,7 @@ lines in the source file. The default value is 132.
 .IP "\fB\-fmax\-identifier\-length=\fR\fIn\fR" 4
 .IX Item "-fmax-identifier-length=n"
 Specify the maximum allowed identifier length. Typical values are
-31 (Fortran 95) and 63 (Fortran 2003 and Fortran 2008).
+31 (Fortran 95) and 63 (Fortran 2003 and later).
 .IP "\fB\-fimplicit\-none\fR" 4
 .IX Item "-fimplicit-none"
 Specify that no implicit typing is allowed, unless overridden by explicit
@@ -555,9 +555,41 @@ earlier gfortran versions and should not be used any more.
 Enhance test coverage by forcing most forall assignments to use temporary.
 .SS "Enable and customize preprocessing"
 .IX Subsection "Enable and customize preprocessing"
-Preprocessor related options. See section 
-\&\fBPreprocessing and conditional compilation\fR for more detailed
-information on preprocessing in \fBgfortran\fR.
+Many Fortran compilers including \s-1GNU\s0 Fortran allow passing the source code
+through a C preprocessor (\s-1CPP\s0; sometimes also called the Fortran preprocessor,
+\&\s-1FPP\s0) to allow for conditional compilation.  In the case of \s-1GNU\s0 Fortran,
+this is the \s-1GNU C\s0 Preprocessor in the traditional mode.  On systems with
+case-preserving file names, the preprocessor is automatically invoked if the
+filename extension is \fI.F\fR, \fI.FOR\fR, \fI.FTN\fR, \fI.fpp\fR,
+\&\fI.FPP\fR, \fI.F90\fR, \fI.F95\fR, \fI.F03\fR or \fI.F08\fR.  To manually
+invoke the preprocessor on any file, use \fB\-cpp\fR, to disable
+preprocessing on files where the preprocessor is run automatically, use
+\&\fB\-nocpp\fR.
+.PP
+If a preprocessed file includes another file with the Fortran \f(CW\*(C`INCLUDE\*(C'\fR
+statement, the included file is not preprocessed.  To preprocess included
+files, use the equivalent preprocessor statement \f(CW\*(C`#include\*(C'\fR.
+.PP
+If \s-1GNU\s0 Fortran invokes the preprocessor, \f(CW\*(C`_\|_GFORTRAN_\|_\*(C'\fR
+is defined.  The macros \f(CW\*(C`_\|_GNUC_\|_\*(C'\fR, \f(CW\*(C`_\|_GNUC_MINOR_\|_\*(C'\fR and
+\&\f(CW\*(C`_\|_GNUC_PATCHLEVEL_\|_\*(C'\fR can be used to determine the version of the
+compiler.  See \fBTop,,Overview,cpp,The C Preprocessor\fR for details.
+.PP
+\&\s-1GNU\s0 Fortran supports a number of \f(CW\*(C`INTEGER\*(C'\fR and \f(CW\*(C`REAL\*(C'\fR kind types
+in additional to the kind types required by the Fortran standard.
+The availability of any given kind type is architecture dependent.  The
+following pre-defined preprocessor macros can be used to conditionally
+include code for these additional kind types: \f(CW\*(C`_\|_GFC_INT_1_\|_\*(C'\fR,
+\&\f(CW\*(C`_\|_GFC_INT_2_\|_\*(C'\fR, \f(CW\*(C`_\|_GFC_INT_8_\|_\*(C'\fR, \f(CW\*(C`_\|_GFC_INT_16_\|_\*(C'\fR,
+\&\f(CW\*(C`_\|_GFC_REAL_10_\|_\*(C'\fR, and \f(CW\*(C`_\|_GFC_REAL_16_\|_\*(C'\fR.
+.PP
+While \s-1CPP\s0 is the de-facto standard for preprocessing Fortran code,
+Part 3 of the Fortran 95 standard (\s-1ISO/IEC 1539\-3:1998\s0) defines
+Conditional Compilation, which is not widely used and not directly
+supported by the \s-1GNU\s0 Fortran compiler.  You can use the program coco
+to preprocess such files (<\fBhttp://www.daniellnagle.com/coco.html\fR>).
+.PP
+The following options control preprocessing of Fortran code:
 .IP "\fB\-cpp\fR" 4
 .IX Item "-cpp"
 .PD 0
@@ -1174,14 +1206,30 @@ These options affect the runtime behavior of programs compiled with \s-1GNU\s0 F
 .IP "\fB\-fconvert=\fR\fIconversion\fR" 4
 .IX Item "-fconvert=conversion"
 Specify the representation of data for unformatted files.  Valid
-values for conversion are: \fBnative\fR, the default; \fBswap\fR,
-swap between big\- and little-endian; \fBbig-endian\fR, use big-endian
-representation for unformatted files; \fBlittle-endian\fR, use little-endian
-representation for unformatted files.
+values for conversion on most systems are: \fBnative\fR, the default;
+\&\fBswap\fR, swap between big\- and little-endian; \fBbig-endian\fR, use
+big-endian representation for unformatted files; \fBlittle-endian\fR, use
+little-endian representation for unformatted files.
+.Sp
+On \s-1POWER\s0 systems which suppport \fB\-mabi=ieeelongdouble\fR,
+there are additional options, which can be combined with others with
+commas.  Those are
+.RS 4
+.ie n .IP "@w<\fB\-fconvert=r16_ieee\fR Use \s-1IEEE\s0 128\-bit format for>" 4
+.el .IP "\f(CW@w\fR<\fB\-fconvert=r16_ieee\fR Use \s-1IEEE\s0 128\-bit format for>" 4
+.IX Item "@w<-fconvert=r16_ieee Use IEEE 128-bit format for>"
+\&\f(CW\*(C`REAL(KIND=16)\*(C'\fR.
+.ie n .IP "@w<\fB\-fconvert=r16_ibm\fR Use \s-1IBM\s0 long double format for>" 4
+.el .IP "\f(CW@w\fR<\fB\-fconvert=r16_ibm\fR Use \s-1IBM\s0 long double format for>" 4
+.IX Item "@w<-fconvert=r16_ibm Use IBM long double format for>"
+\&\f(CW\*(C`REAL(KIND=16)\*(C'\fR.
+.RE
+.RS 4
 .Sp
 \&\fIThis option has an effect only when used in the main program.
 The \f(CI\*(C`CONVERT\*(C'\fI specifier and the \s-1GFORTRAN_CONVERT_UNIT\s0 environment
 variable override the default specified by \f(BI\-fconvert\fI.\fR
+.RE
 .IP "\fB\-frecord\-marker=\fR\fIlength\fR" 4
 .IX Item "-frecord-marker=length"
 Specify the length of record markers for unformatted files.
@@ -1550,7 +1598,7 @@ except when optimizing for size via \fB\-Os\fR.  If the code
 contains a very large number of argument that have to be packed, code
 size and also compilation time may become excessive.  If that is the
 case, it may be better to disable this option.  Instances of packing
-can be found by using by using \fB\-Warray\-temporaries\fR.
+can be found by using \fB\-Warray\-temporaries\fR.
 .IP "\fB\-fexternal\-blas\fR" 4
 .IX Item "-fexternal-blas"
 This option will make \fBgfortran\fR generate calls to \s-1BLAS\s0 functions
@@ -1739,7 +1787,7 @@ See the Info entry for \fBgfortran\fR for contributors to \s-1GCC\s0 and
 \&\s-1GNU\s0 Fortran.
 .SH "COPYRIGHT"
 .IX Header "COPYRIGHT"
-Copyright (c) 2004\-2021 Free Software Foundation, Inc.
+Copyright (c) 2004\-2022 Free Software Foundation, Inc.
 .PP
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the \s-1GNU\s0 Free Documentation License, Version 1.3 or

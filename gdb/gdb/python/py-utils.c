@@ -93,8 +93,9 @@ unicode_to_encoded_python_string (PyObject *unicode_str, const char *charset)
 gdb::unique_xmalloc_ptr<char>
 unicode_to_target_string (PyObject *unicode_str)
 {
-  return unicode_to_encoded_string (unicode_str,
-				    target_charset (python_gdbarch));
+  return (unicode_to_encoded_string
+	  (unicode_str,
+	   target_charset (gdbpy_enter::get_gdbarch ())));
 }
 
 /* Returns a PyObject with the contents of the given unicode string
@@ -104,8 +105,9 @@ unicode_to_target_string (PyObject *unicode_str)
 static gdbpy_ref<>
 unicode_to_target_python_string (PyObject *unicode_str)
 {
-  return unicode_to_encoded_python_string (unicode_str,
-					   target_charset (python_gdbarch));
+  return (unicode_to_encoded_python_string
+	  (unicode_str,
+	   target_charset (gdbpy_enter::get_gdbarch ())));
 }
 
 /* Converts a python string (8-bit or unicode) to a target string in
@@ -378,6 +380,23 @@ gdb_pymodule_addobject (PyObject *module, const char *name, PyObject *object)
   if (result < 0)
     Py_DECREF (object);
   return result;
+}
+
+/* See python-internal.h.  */
+
+void
+gdbpy_error (const char *fmt, ...)
+{
+  va_list ap;
+  va_start (ap, fmt);
+  std::string str = string_vprintf (fmt, ap);
+  va_end (ap);
+
+  const char *msg = str.c_str ();
+  if (msg != nullptr && *msg != '\0')
+    error (_("Error occurred in Python: %s"), msg);
+  else
+    error (_("Error occurred in Python."));
 }
 
 /* Handle a Python exception when the special gdb.GdbError treatment

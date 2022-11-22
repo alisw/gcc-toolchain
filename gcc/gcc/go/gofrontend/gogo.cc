@@ -141,6 +141,15 @@ Gogo::Gogo(Backend* backend, Linemap* linemap, int, int pointer_size)
     this->add_named_type(error_type);
   }
 
+  // "any" is an alias for the empty interface type.
+  {
+    Type* empty = Type::make_empty_interface_type(loc);
+    Named_object* no = Named_object::make_type("any", NULL, empty, loc);
+    Named_type* nt = no->type_value();
+    nt->set_is_alias();
+    this->add_named_type(nt);
+  }
+
   this->globals_->add_constant(Typed_identifier("true",
 						Type::make_boolean_type(),
 						loc),
@@ -918,9 +927,8 @@ Gogo::build_type_descriptor_list()
 
   // Create the variable
   std::string name = this->type_descriptor_list_symbol(this->pkgpath_symbol());
-  Bvariable* bv = this->backend()->implicit_variable(name, name, bt,
-                                                     false, true, false,
-                                                     0);
+  unsigned int flags = Backend::variable_is_constant;
+  Bvariable* bv = this->backend()->implicit_variable(name, name, bt, flags, 0);
 
   // Build the initializer
   std::vector<unsigned long> indexes;
@@ -946,8 +954,7 @@ Gogo::build_type_descriptor_list()
   Bexpression* binit =
     this->backend()->constructor_expression(bt, fields, builtin_loc);
 
-  this->backend()->implicit_variable_set_init(bv, name, bt, false,
-                                              true, false, binit);
+  this->backend()->implicit_variable_set_init(bv, name, bt, flags, binit);
 }
 
 // Register the type descriptors with the runtime.  This is to help
@@ -1002,11 +1009,11 @@ Gogo::register_type_descriptors(std::vector<Bstatement*>& init_stmts,
 
   // Create a variable holding the list.
   std::string name = this->typelists_symbol();
-  Bvariable* bv = this->backend()->implicit_variable(name, name, bat,
-                                                     true, true, false,
+  unsigned int flags = (Backend::variable_is_hidden
+			| Backend::variable_is_constant);
+  Bvariable* bv = this->backend()->implicit_variable(name, name, bat, flags,
                                                      0);
-  this->backend()->implicit_variable_set_init(bv, name, bat, true, true,
-                                              false, barray);
+  this->backend()->implicit_variable_set_init(bv, name, bat, flags, barray);
 
   // Build the call in main package's init function.
   Translate_context context(this, NULL, NULL, NULL);
@@ -1605,31 +1612,16 @@ Gogo::write_globals()
               // The initializer is constant if it is the zero-value of the
               // variable's type or if the initial value is an immutable value
               // that is not copied to the heap.
-	      Expression* init = var->init();
-
-	      // If we see "a = b; b = x", and x is a static
-	      // initializer, just set a to x.
-	      while (init != NULL && init->var_expression() != NULL)
-		{
-		  Named_object* ino = init->var_expression()->named_object();
-		  if (!ino->is_variable() || ino->package() != NULL)
-		    break;
-		  Expression* ino_init = ino->var_value()->init();
-		  if (ino->var_value()->has_pre_init()
-		      || ino_init == NULL
-		      || !ino_init->is_static_initializer())
-		    break;
-		  init = ino_init;
-		}
-
-              bool is_static_initializer;
-              if (init == NULL)
+              bool is_static_initializer = false;
+              if (var->init() == NULL)
                 is_static_initializer = true;
               else
                 {
                   Type* var_type = var->type();
-                  init = Expression::make_cast(var_type, init, var->location());
-                  is_static_initializer = init->is_static_initializer();
+                  Expression* init = var->init();
+                  Expression* init_cast =
+                      Expression::make_cast(var_type, init, var->location());
+                  is_static_initializer = init_cast->is_static_initializer();
                 }
 
 	      // Non-constant variable initializations might need to create
@@ -1648,15 +1640,7 @@ Gogo::write_globals()
                     }
 		  var_init_fn = init_fndecl;
 		}
-
-	      Bexpression* var_binit;
-	      if (init == NULL)
-		var_binit = NULL;
-	      else
-		{
-		  Translate_context context(this, var_init_fn, NULL, NULL);
-		  var_binit = init->get_backend(&context);
-		}
+              Bexpression* var_binit = var->get_init(this, var_init_fn);
 
               if (var_binit == NULL)
 		;
@@ -3432,6 +3416,11 @@ Create_function_descriptors::expression(Expression** pexpr)
 	      if (args->traverse(this) == TRAVERSE_EXIT)
 		return TRAVERSE_EXIT;
 	    }
+
+	  // Traverse the subexpressions of the function, if any.
+	  if (fn->traverse_subexpressions(this) == TRAVERSE_EXIT)
+	    return TRAVERSE_EXIT;
+
 	  return TRAVERSE_SKIP_COMPONENTS;
 	}
     }
@@ -6887,80 +6876,12 @@ Block::traverse(Traverse* traverse)
 	  | Traverse::traverse_expressions
 	  | Traverse::traverse_types)) != 0)
     {
-      const unsigned int e_or_t = (Traverse::traverse_expressions
-				   | Traverse::traverse_types);
-      const unsigned int e_or_t_or_s = (e_or_t
-					| Traverse::traverse_statements);
       for (Bindings::const_definitions_iterator pb =
 	     this->bindings_->begin_definitions();
 	   pb != this->bindings_->end_definitions();
 	   ++pb)
 	{
-	  int t = TRAVERSE_CONTINUE;
-	  switch ((*pb)->classification())
-	    {
-	    case Named_object::NAMED_OBJECT_CONST:
-	      if ((traverse_mask & Traverse::traverse_constants) != 0)
-		t = traverse->constant(*pb, false);
-	      if (t == TRAVERSE_CONTINUE
-		  && (traverse_mask & e_or_t) != 0)
-		{
-		  Type* tc = (*pb)->const_value()->type();
-		  if (tc != NULL
-		      && Type::traverse(tc, traverse) == TRAVERSE_EXIT)
-		    return TRAVERSE_EXIT;
-		  t = (*pb)->const_value()->traverse_expression(traverse);
-		}
-	      break;
-
-	    case Named_object::NAMED_OBJECT_VAR:
-	    case Named_object::NAMED_OBJECT_RESULT_VAR:
-	      if ((traverse_mask & Traverse::traverse_variables) != 0)
-		t = traverse->variable(*pb);
-	      if (t == TRAVERSE_CONTINUE
-		  && (traverse_mask & e_or_t) != 0)
-		{
-		  if ((*pb)->is_result_variable()
-		      || (*pb)->var_value()->has_type())
-		    {
-		      Type* tv = ((*pb)->is_variable()
-				  ? (*pb)->var_value()->type()
-				  : (*pb)->result_var_value()->type());
-		      if (tv != NULL
-			  && Type::traverse(tv, traverse) == TRAVERSE_EXIT)
-			return TRAVERSE_EXIT;
-		    }
-		}
-	      if (t == TRAVERSE_CONTINUE
-		  && (traverse_mask & e_or_t_or_s) != 0
-		  && (*pb)->is_variable())
-		t = (*pb)->var_value()->traverse_expression(traverse,
-							    traverse_mask);
-	      break;
-
-	    case Named_object::NAMED_OBJECT_FUNC:
-	    case Named_object::NAMED_OBJECT_FUNC_DECLARATION:
-	      go_unreachable();
-
-	    case Named_object::NAMED_OBJECT_TYPE:
-	      if ((traverse_mask & e_or_t) != 0)
-		t = Type::traverse((*pb)->type_value(), traverse);
-	      break;
-
-	    case Named_object::NAMED_OBJECT_TYPE_DECLARATION:
-	    case Named_object::NAMED_OBJECT_UNKNOWN:
-	    case Named_object::NAMED_OBJECT_ERRONEOUS:
-	      break;
-
-	    case Named_object::NAMED_OBJECT_PACKAGE:
-	    case Named_object::NAMED_OBJECT_SINK:
-	      go_unreachable();
-
-	    default:
-	      go_unreachable();
-	    }
-
-	  if (t == TRAVERSE_EXIT)
+	  if ((*pb)->traverse(traverse, false) == TRAVERSE_EXIT)
 	    return TRAVERSE_EXIT;
 	}
     }
@@ -8102,16 +8023,24 @@ Variable::get_backend_variable(Gogo* gogo, Named_object* function,
 	      if (package != NULL)
 		is_hidden = false;
 
+	      unsigned int flags = 0;
+	      if (this->is_address_taken_
+		  || this->is_non_escaping_address_taken_)
+		flags |= Backend::variable_address_is_taken;
+	      if (package != NULL)
+		flags |= Backend::variable_is_external;
+	      if (is_hidden)
+		flags |= Backend::variable_is_hidden;
+	      if (this->in_unique_section_)
+		flags |= Backend::variable_in_unique_section;
+
 	      // For some reason asm_name can't be the empty string
 	      // for global_variable, so we call asm_name rather than
 	      // optional_asm_name here.  FIXME.
 
 	      bvar = backend->global_variable(bname.name(),
 					      bname.asm_name(),
-					      btype,
-					      package != NULL,
-					      is_hidden,
-					      this->in_unique_section_,
+					      btype, flags,
 					      this->location_);
 	    }
 	  else if (function == NULL)
@@ -8123,15 +8052,16 @@ Variable::get_backend_variable(Gogo* gogo, Named_object* function,
 	    {
 	      const std::string n = Gogo::unpack_hidden_name(name);
 	      Bfunction* bfunction = function->func_value()->get_decl();
-	      bool is_address_taken = (this->is_non_escaping_address_taken_
-				       && !this->is_in_heap());
+	      unsigned int flags = 0;
+	      if (this->is_non_escaping_address_taken_
+		  && !this->is_in_heap())
+		flags |= Backend::variable_address_is_taken;
 	      if (this->is_closure())
 		bvar = backend->static_chain_variable(bfunction, n, btype,
-						      this->location_);
+						      flags, this->location_);
 	      else if (is_parameter)
 		bvar = backend->parameter_variable(bfunction, n, btype,
-						   is_address_taken,
-						   this->location_);
+						   flags, this->location_);
 	      else
                 {
                   Bvariable* bvar_decl = NULL;
@@ -8142,8 +8072,7 @@ Variable::get_backend_variable(Gogo* gogo, Named_object* function,
                         ->get_backend_variable(&context);
                     }
                   bvar = backend->local_variable(bfunction, n, btype,
-                                                 bvar_decl,
-                                                 is_address_taken,
+                                                 bvar_decl, flags,
                                                  this->location_);
                 }
 	    }
@@ -8174,10 +8103,12 @@ Result_variable::get_backend_variable(Gogo* gogo, Named_object* function,
 	  Btype* btype = type->get_backend(gogo);
 	  Bfunction* bfunction = function->func_value()->get_decl();
 	  std::string n = Gogo::unpack_hidden_name(name);
-	  bool is_address_taken = (this->is_non_escaping_address_taken_
-				   && !this->is_in_heap());
+	  unsigned int flags = 0;
+	  if (this->is_non_escaping_address_taken_
+	      && !this->is_in_heap())
+	    flags |= Backend::variable_address_is_taken;
 	  this->backend_ = backend->local_variable(bfunction, n, btype,
-						   NULL, is_address_taken,
+						   NULL, flags,
 						   this->location_);
 	}
     }
@@ -8660,6 +8591,99 @@ Named_object::location() const
     }
 }
 
+// Traverse a Named_object.
+
+int
+Named_object::traverse(Traverse* traverse, bool is_global)
+{
+  const unsigned int traverse_mask = traverse->traverse_mask();
+  const unsigned int e_or_t = (Traverse::traverse_expressions
+			       | Traverse::traverse_types);
+  const unsigned int e_or_t_or_s = (e_or_t
+				    | Traverse::traverse_statements);
+
+  int t = TRAVERSE_CONTINUE;
+  switch (this->classification_)
+    {
+    case Named_object::NAMED_OBJECT_CONST:
+      if ((traverse_mask & Traverse::traverse_constants) != 0)
+	t = traverse->constant(this, is_global);
+      if (t == TRAVERSE_CONTINUE
+	  && (traverse_mask & e_or_t) != 0)
+	{
+	  Type* tc = this->const_value()->type();
+	  if (tc != NULL)
+	    {
+	      if (Type::traverse(tc, traverse) == TRAVERSE_EXIT)
+		return TRAVERSE_EXIT;
+	    }
+	  t = this->const_value()->traverse_expression(traverse);
+	}
+      break;
+
+    case Named_object::NAMED_OBJECT_VAR:
+    case Named_object::NAMED_OBJECT_RESULT_VAR:
+      if ((traverse_mask & Traverse::traverse_variables) != 0)
+	t = traverse->variable(this);
+      if (t == TRAVERSE_CONTINUE
+	  && (traverse_mask & e_or_t) != 0)
+	{
+	  if (this->is_result_variable() || this->var_value()->has_type())
+	    {
+	      Type* tv = (this->is_variable()
+			  ? this->var_value()->type()
+			  : this->result_var_value()->type());
+	      if (tv != NULL)
+		{
+		  if (Type::traverse(tv, traverse) == TRAVERSE_EXIT)
+		    return TRAVERSE_EXIT;
+		}
+	    }
+	}
+      if (t == TRAVERSE_CONTINUE
+	  && (traverse_mask & e_or_t_or_s) != 0
+	  && this->is_variable())
+	t = this->var_value()->traverse_expression(traverse,
+						   traverse_mask);
+      break;
+
+    case Named_object::NAMED_OBJECT_FUNC:
+      if ((traverse_mask & Traverse::traverse_functions) != 0)
+	t = traverse->function(this);
+      if (t == TRAVERSE_CONTINUE
+	  && (traverse_mask
+	      & (Traverse::traverse_variables
+		 | Traverse::traverse_constants
+		 | Traverse::traverse_functions
+		 | Traverse::traverse_blocks
+		 | Traverse::traverse_statements
+		 | Traverse::traverse_expressions
+		 | Traverse::traverse_types)) != 0)
+	t = this->func_value()->traverse(traverse);
+      break;
+
+    case Named_object::NAMED_OBJECT_TYPE:
+      if ((traverse_mask & e_or_t) != 0)
+	t = Type::traverse(this->type_value(), traverse);
+      break;
+
+    case Named_object::NAMED_OBJECT_PACKAGE:
+    case Named_object::NAMED_OBJECT_FUNC_DECLARATION:
+    case Named_object::NAMED_OBJECT_TYPE_DECLARATION:
+    case Named_object::NAMED_OBJECT_UNKNOWN:
+    case Named_object::NAMED_OBJECT_ERRONEOUS:
+      break;
+
+    case Named_object::NAMED_OBJECT_SINK:
+      go_unreachable();
+
+    default:
+      go_unreachable();
+    }
+
+  return t;
+}
+
 // Export a named object.
 
 void
@@ -8822,10 +8846,13 @@ Named_object::get_backend(Gogo* gogo, std::vector<Bexpression*>& const_decls,
           {
             named_type->
                 type_descriptor_pointer(gogo, Linemap::predeclared_location());
-	    named_type->gc_symbol_pointer(gogo);
             Type* pn = Type::make_pointer_type(named_type);
             pn->type_descriptor_pointer(gogo, Linemap::predeclared_location());
-	    pn->gc_symbol_pointer(gogo);
+	    if (named_type->in_heap())
+	      {
+		named_type->gc_symbol_pointer(gogo);
+		pn->gc_symbol_pointer(gogo);
+	      }
           }
       }
       break;
@@ -9185,90 +9212,10 @@ Bindings::traverse(Traverse* traverse, bool is_global)
   // new global objects.
   const unsigned int e_or_t = (Traverse::traverse_expressions
 			       | Traverse::traverse_types);
-  const unsigned int e_or_t_or_s = (e_or_t
-				    | Traverse::traverse_statements);
   for (size_t i = 0; i < this->named_objects_.size(); ++i)
     {
       Named_object* p = this->named_objects_[i];
-      int t = TRAVERSE_CONTINUE;
-      switch (p->classification())
-	{
-	case Named_object::NAMED_OBJECT_CONST:
-	  if ((traverse_mask & Traverse::traverse_constants) != 0)
-	    t = traverse->constant(p, is_global);
-	  if (t == TRAVERSE_CONTINUE
-	      && (traverse_mask & e_or_t) != 0)
-	    {
-	      Type* tc = p->const_value()->type();
-	      if (tc != NULL
-		  && Type::traverse(tc, traverse) == TRAVERSE_EXIT)
-		return TRAVERSE_EXIT;
-	      t = p->const_value()->traverse_expression(traverse);
-	    }
-	  break;
-
-	case Named_object::NAMED_OBJECT_VAR:
-	case Named_object::NAMED_OBJECT_RESULT_VAR:
-	  if ((traverse_mask & Traverse::traverse_variables) != 0)
-	    t = traverse->variable(p);
-	  if (t == TRAVERSE_CONTINUE
-	      && (traverse_mask & e_or_t) != 0)
-	    {
-	      if (p->is_result_variable()
-		  || p->var_value()->has_type())
-		{
-		  Type* tv = (p->is_variable()
-			      ? p->var_value()->type()
-			      : p->result_var_value()->type());
-		  if (tv != NULL
-		      && Type::traverse(tv, traverse) == TRAVERSE_EXIT)
-		    return TRAVERSE_EXIT;
-		}
-	    }
-	  if (t == TRAVERSE_CONTINUE
-	      && (traverse_mask & e_or_t_or_s) != 0
-	      && p->is_variable())
-	    t = p->var_value()->traverse_expression(traverse, traverse_mask);
-	  break;
-
-	case Named_object::NAMED_OBJECT_FUNC:
-	  if ((traverse_mask & Traverse::traverse_functions) != 0)
-	    t = traverse->function(p);
-
-	  if (t == TRAVERSE_CONTINUE
-	      && (traverse_mask
-		  & (Traverse::traverse_variables
-		     | Traverse::traverse_constants
-		     | Traverse::traverse_functions
-		     | Traverse::traverse_blocks
-		     | Traverse::traverse_statements
-		     | Traverse::traverse_expressions
-		     | Traverse::traverse_types)) != 0)
-	    t = p->func_value()->traverse(traverse);
-	  break;
-
-	case Named_object::NAMED_OBJECT_PACKAGE:
-	  // These are traversed in Gogo::traverse.
-	  go_assert(is_global);
-	  break;
-
-	case Named_object::NAMED_OBJECT_TYPE:
-	  if ((traverse_mask & e_or_t) != 0)
-	    t = Type::traverse(p->type_value(), traverse);
-	  break;
-
-	case Named_object::NAMED_OBJECT_TYPE_DECLARATION:
-	case Named_object::NAMED_OBJECT_FUNC_DECLARATION:
-	case Named_object::NAMED_OBJECT_UNKNOWN:
-	case Named_object::NAMED_OBJECT_ERRONEOUS:
-	  break;
-
-	case Named_object::NAMED_OBJECT_SINK:
-	default:
-	  go_unreachable();
-	}
-
-      if (t == TRAVERSE_EXIT)
+      if (p->traverse(traverse, is_global) == TRAVERSE_EXIT)
 	return TRAVERSE_EXIT;
     }
 

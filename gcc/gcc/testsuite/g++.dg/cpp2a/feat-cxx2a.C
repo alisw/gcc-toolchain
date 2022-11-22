@@ -134,8 +134,8 @@
 
 #ifndef __cpp_constexpr
 #  error "__cpp_constexpr"
-#elif __cpp_constexpr != 201907
-#  error "__cpp_constexpr != 201907"
+#elif __cpp_constexpr != 202002
+#  error "__cpp_constexpr != 202002"
 #endif
 
 #ifndef __cpp_decltype_auto
@@ -520,18 +520,16 @@
 #  error "__cpp_constexpr_in_decltype != 201711"
 #endif
 
-/* Not supported fully yet:
 #ifndef __cpp_consteval
 #  error "__cpp_consteval"
 #elif __cpp_consteval != 201811
 #  error "__cpp_consteval != 201811"
 #endif
-*/
 
 #ifndef __cpp_concepts
 #  error "__cpp_concepts"
-#elif __cpp_concepts != 201907
-#  error "__cpp_concepts != 201907"
+#elif __cpp_concepts != 202002
+#  error "__cpp_concepts != 202002"
 #endif
 
 #ifndef __cpp_using_enum

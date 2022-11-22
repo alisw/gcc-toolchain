@@ -20,15 +20,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 /* This must come before any other includes.  */
 #include "defs.h"
 
-#include "sim-main.h"
-#include "sim-assert.h"
-#include "sim-options.h"
-
-#include <string.h>
-#include <stdlib.h>
 #include <errno.h>
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
+#endif
+#include <stdlib.h>
+#include <string.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
 #endif
 #ifdef HAVE_SYS_MMAN_H
 #include <sys/mman.h>
@@ -36,12 +35,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
 #endif
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
+
+#include "sim-main.h"
+#include "sim-assert.h"
+#include "sim-options.h"
 
 /* Memory fill byte. */
-static unsigned8 fill_byte_value;
+static uint8_t fill_byte_value;
 static int fill_byte_flag = 0;
 
 /* Memory mapping; see OPTION_MEMORY_MAPFILE. */
@@ -143,7 +143,7 @@ do_memopt_add (SIM_DESC sd,
     {
       /* Allocate new well-aligned buffer, just as sim_core_attach(). */
       void *aligned_buffer;
-      int padding = (addr % sizeof (unsigned64));
+      int padding = (addr % sizeof (uint64_t));
       unsigned long bytes;
 
 #ifdef HAVE_MMAP
@@ -457,7 +457,7 @@ memory_option_handler (SIM_DESC sd, sim_cpu *cpu, int opt,
 
     case OPTION_MEMORY_CLEAR:
       {
-	fill_byte_value = (unsigned8) 0;
+	fill_byte_value = (uint8_t) 0;
 	fill_byte_flag = 1;
 	return SIM_RC_OK;
 	break;
@@ -472,7 +472,7 @@ memory_option_handler (SIM_DESC sd, sim_cpu *cpu, int opt,
 	    sim_io_eprintf (sd, "Missing fill value between 0 and 255\n");
 	    return SIM_RC_FAIL;
 	  }
-	fill_byte_value = (unsigned8) fill_value;
+	fill_byte_value = (uint8_t) fill_value;
 	fill_byte_flag = 1;
 	return SIM_RC_OK;
 	break;
@@ -639,6 +639,17 @@ sim_memory_uninstall (SIM_DESC sd)
     }
 }
 
+void sim_dump_memory (SIM_DESC sd);
+
+/* Convenience function for use when debugging the simulator, to be
+   called from within e.g. gdb.  */
+
+void
+sim_dump_memory (SIM_DESC sd)
+{
+  memory_option_handler (sd, NULL, OPTION_MEMORY_INFO, NULL, 0);
+  memory_option_handler (sd, NULL, OPTION_MAP_INFO, NULL, 0);
+}
 
 static SIM_RC
 sim_memory_init (SIM_DESC sd)

@@ -510,6 +510,13 @@ struct fbsd_pspace_data
   LONGEST off_linkmap = 0;
   LONGEST off_tlsindex = 0;
   bool rtld_offsets_valid = false;
+
+  /* vDSO mapping range.  */
+  struct mem_range vdso_range {};
+
+  /* Zero if the range hasn't been searched for, > 0 if a range was
+     found, or < 0 if a range was not found.  */
+  int vdso_range_p = 0;
 };
 
 /* Per-program-space data for FreeBSD architectures.  */
@@ -611,7 +618,7 @@ fbsd_core_xfer_siginfo (struct gdbarch *gdbarch, gdb_byte *readbuf,
 				 LWPINFO_OFFSET + LWPINFO_PL_FLAGS, 4))
     return -1;
 
-  int pl_flags = extract_signed_integer (buf, 4, gdbarch_byte_order (gdbarch));
+  int pl_flags = extract_signed_integer (buf, gdbarch_byte_order (gdbarch));
   if (!(pl_flags & PL_FLAG_SI))
     return -1;
 
@@ -634,7 +641,7 @@ fbsd_core_xfer_siginfo (struct gdbarch *gdbarch, gdb_byte *readbuf,
 static int
 find_signalled_thread (struct thread_info *info, void *data)
 {
-  if (info->suspend.stop_signal != GDB_SIGNAL_0
+  if (info->stop_signal () != GDB_SIGNAL_0
       && info->ptid.pid () == inferior_ptid.pid ())
     return 1;
 
@@ -684,9 +691,9 @@ fbsd_make_corefile_notes (struct gdbarch *gdbarch, bfd *obfd, int *note_size)
       const char *fname = lbasename (get_exec_file (0));
       std::string psargs = fname;
 
-      const char *infargs = get_inferior_args ();
-      if (infargs != NULL)
-	psargs = psargs + " " + infargs;
+      const std::string &infargs = current_inferior ()->args ();
+      if (!infargs.empty ())
+	psargs += ' ' + infargs;
 
       note_data.reset (elfcore_write_prpsinfo (obfd, note_data.release (),
 					       note_size, fname,
@@ -708,7 +715,7 @@ fbsd_make_corefile_notes (struct gdbarch *gdbarch, bfd *obfd, int *note_size)
      In case there's more than one signalled thread, prefer the
      current thread, if it is signalled.  */
   curr_thr = inferior_thread ();
-  if (curr_thr->suspend.stop_signal != GDB_SIGNAL_0)
+  if (curr_thr->stop_signal () != GDB_SIGNAL_0)
     signalled_thr = curr_thr;
   else
     {
@@ -717,7 +724,7 @@ fbsd_make_corefile_notes (struct gdbarch *gdbarch, bfd *obfd, int *note_size)
 	signalled_thr = curr_thr;
     }
 
-  enum gdb_signal stop_signal = signalled_thr->suspend.stop_signal;
+  enum gdb_signal stop_signal = signalled_thr->stop_signal ();
   gcore_elf_build_thread_register_notes (gdbarch, signalled_thr, stop_signal,
 					 obfd, &note_data, note_size);
   for (thread_info *thr : current_inferior ()->non_exited_threads ())
@@ -1565,6 +1572,8 @@ fbsd_print_auxv_entry (struct gdbarch *gdbarch, struct ui_file *file,
       TAG (ENVC, _("Environment count"), AUXV_FORMAT_DEC);
       TAG (ENVV, _("Environment vector"), AUXV_FORMAT_HEX);
       TAG (PS_STRINGS, _("Pointer to ps_strings"), AUXV_FORMAT_HEX);
+      TAG (FXRNG, _("Pointer to root RNG seed version"), AUXV_FORMAT_HEX);
+      TAG (KPRELOAD, _("Base address of vDSO"), AUXV_FORMAT_HEX);
     }
 
   fprint_auxv_entry (file, name, description, format, type, val);
@@ -1933,7 +1942,7 @@ fbsd_read_integer_by_name (struct gdbarch *gdbarch, const char *name)
   if (target_read_memory (BMSYMBOL_VALUE_ADDRESS (ms), buf, sizeof buf) != 0)
     error (_("Unable to read value of '%s'"), name);
 
-  return extract_signed_integer (buf, sizeof buf, gdbarch_byte_order (gdbarch));
+  return extract_signed_integer (buf, gdbarch_byte_order (gdbarch));
 }
 
 /* Lookup offsets of fields in the runtime linker's 'Obj_Entry'
@@ -1950,9 +1959,9 @@ fbsd_fetch_rtld_offsets (struct gdbarch *gdbarch, struct fbsd_pspace_data *data)
 				     language_c, NULL).symbol;
       if (obj_entry_sym == NULL)
 	error (_("Unable to find Struct_Obj_Entry symbol"));
-      data->off_linkmap = lookup_struct_elt (SYMBOL_TYPE (obj_entry_sym),
+      data->off_linkmap = lookup_struct_elt (obj_entry_sym->type (),
 					     "linkmap", 0).offset / 8;
-      data->off_tlsindex = lookup_struct_elt (SYMBOL_TYPE (obj_entry_sym),
+      data->off_tlsindex = lookup_struct_elt (obj_entry_sym->type (),
 					      "tlsindex", 0).offset / 8;
       data->rtld_offsets_valid = true;
       return;
@@ -2004,7 +2013,7 @@ fbsd_get_tls_index (struct gdbarch *gdbarch, CORE_ADDR lm_addr)
     throw_error (TLS_GENERIC_ERROR,
 		 _("Cannot find thread-local variables on this target"));
 
-  return extract_signed_integer (buf, sizeof buf, gdbarch_byte_order (gdbarch));
+  return extract_signed_integer (buf, gdbarch_byte_order (gdbarch));
 }
 
 /* See fbsd-tdep.h.  */
@@ -2259,6 +2268,108 @@ fbsd_report_signal_info (struct gdbarch *gdbarch, struct ui_out *uiout,
     }
 }
 
+/* Search a list of struct kinfo_vmmap entries in the ENTRIES buffer
+   of LEN bytes to find the length of the entry starting at ADDR.
+   Returns the length of the entry or zero if no entry was found.  */
+
+static ULONGEST
+fbsd_vmmap_length (struct gdbarch *gdbarch, unsigned char *entries, size_t len,
+		   CORE_ADDR addr)
+{
+      enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+      unsigned char *descdata = entries;
+      unsigned char *descend = descdata + len;
+
+      /* Skip over the structure size.  */
+      descdata += 4;
+
+      while (descdata + KVE_PATH < descend)
+	{
+	  ULONGEST structsize = extract_unsigned_integer (descdata
+							  + KVE_STRUCTSIZE, 4,
+							  byte_order);
+	  if (structsize < KVE_PATH)
+	    return false;
+
+	  ULONGEST start = extract_unsigned_integer (descdata + KVE_START, 8,
+						     byte_order);
+	  ULONGEST end = extract_unsigned_integer (descdata + KVE_END, 8,
+						   byte_order);
+	  if (start == addr)
+	    return end - start;
+
+	  descdata += structsize;
+	}
+      return 0;
+}
+
+/* Helper for fbsd_vsyscall_range that does the real work of finding
+   the vDSO's address range.  */
+
+static bool
+fbsd_vdso_range (struct gdbarch *gdbarch, struct mem_range *range)
+{
+  struct target_ops *ops = current_inferior ()->top_target ();
+
+  if (target_auxv_search (ops, AT_FREEBSD_KPRELOAD, &range->start) <= 0)
+    return false;
+
+  if (!target_has_execution ())
+    {
+      /* Search for the ending address in the NT_PROCSTAT_VMMAP note. */
+      asection *section = bfd_get_section_by_name (core_bfd,
+						   ".note.freebsdcore.vmmap");
+      if (section == nullptr)
+	return false;
+
+      size_t note_size = bfd_section_size (section);
+      if (note_size < 4)
+	return false;
+
+      gdb::def_vector<unsigned char> contents (note_size);
+      if (!bfd_get_section_contents (core_bfd, section, contents.data (),
+				     0, note_size))
+	return false;
+
+      range->length = fbsd_vmmap_length (gdbarch, contents.data (), note_size,
+					 range->start);
+    }
+  else
+    {
+      /* Fetch the list of address space entries from the running target. */
+      gdb::optional<gdb::byte_vector> buf =
+	target_read_alloc (ops, TARGET_OBJECT_FREEBSD_VMMAP, nullptr);
+      if (!buf || buf->empty ())
+	return false;
+
+      range->length = fbsd_vmmap_length (gdbarch, buf->data (), buf->size (),
+					 range->start);
+    }
+  return range->length != 0;
+}
+
+/* Return the address range of the vDSO for the current inferior.  */
+
+static int
+fbsd_vsyscall_range (struct gdbarch *gdbarch, struct mem_range *range)
+{
+  struct fbsd_pspace_data *data = get_fbsd_pspace_data (current_program_space);
+
+  if (data->vdso_range_p == 0)
+    {
+      if (fbsd_vdso_range (gdbarch, &data->vdso_range))
+	data->vdso_range_p = 1;
+      else
+	data->vdso_range_p = -1;
+    }
+
+  if (data->vdso_range_p < 0)
+    return 0;
+
+  *range = data->vdso_range;
+  return 1;
+}
+
 /* To be called from GDB_OSABI_FREEBSD handlers. */
 
 void
@@ -2275,6 +2386,7 @@ fbsd_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
   set_gdbarch_gdb_signal_to_target (gdbarch, fbsd_gdb_signal_to_target);
   set_gdbarch_report_signal_info (gdbarch, fbsd_report_signal_info);
   set_gdbarch_skip_solib_resolver (gdbarch, fbsd_skip_solib_resolver);
+  set_gdbarch_vsyscall_range (gdbarch, fbsd_vsyscall_range);
 
   /* `catch syscall' */
   set_xml_syscall_file_name (gdbarch, "syscalls/freebsd.xml");

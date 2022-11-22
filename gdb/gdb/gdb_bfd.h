@@ -23,6 +23,7 @@
 #include "registry.h"
 #include "gdbsupport/byte-vector.h"
 #include "gdbsupport/gdb_ref_ptr.h"
+#include "gdbsupport/iterator-range.h"
 #include "gdbsupport/next-iterator.h"
 
 DECLARE_REGISTRY (bfd);
@@ -208,8 +209,7 @@ gdb_bfd_ref_ptr gdb_bfd_open_from_target_memory (CORE_ADDR addr, ULONGEST size,
        ... use SECT ...
  */
 
-using gdb_bfd_section_iterator = next_iterator<asection>;
-using gdb_bfd_section_range = next_adapter<asection, gdb_bfd_section_iterator>;
+using gdb_bfd_section_range = next_range<asection>;
 
 static inline gdb_bfd_section_range
 gdb_bfd_sections (bfd *abfd)
@@ -222,5 +222,12 @@ gdb_bfd_sections (const gdb_bfd_ref_ptr &abfd)
 {
   return gdb_bfd_section_range (abfd->sections);
 };
+
+/* A wrapper for bfd_errmsg to produce a more helpful error message
+   in the case of bfd_error_file_ambiguously recognized.
+   MATCHING, if non-NULL, is the corresponding argument to
+   bfd_check_format_matches, and will be freed.  */
+
+extern std::string gdb_bfd_errmsg (bfd_error_type error_tag, char **matching);
 
 #endif /* GDB_BFD_H */

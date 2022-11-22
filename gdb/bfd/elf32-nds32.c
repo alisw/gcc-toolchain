@@ -1,5 +1,5 @@
 /* NDS32-specific support for 32-bit ELF.
-   Copyright (C) 2012-2021 Free Software Foundation, Inc.
+   Copyright (C) 2012-2022 Free Software Foundation, Inc.
    Contributed by Andes Technology Corporation.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -1954,6 +1954,8 @@ static reloc_howto_type nds32_elf_howto_table[] =
 	 0xffffffff,		/* dst_mask  */
 	 false),		/* pcrel_offset  */
 
+  EMPTY_HOWTO (114),
+
   HOWTO2 (R_NDS32_TLS_IE_LO12,	/* type  */
 	 0,			/* rightshift  */
 	 2,			/* size (0 = byte, 1 = short, 2 = long)  */
@@ -2520,7 +2522,7 @@ nds32_put_trampoline (void *contents, const unsigned long *template,
 /* nds32_insertion_sort sorts an array with nmemb elements of size size.
    This prototype is the same as qsort ().  */
 
-void
+static void
 nds32_insertion_sort (void *base, size_t nmemb, size_t size,
 		      int (*compar) (const void *lhs, const void *rhs))
 {
@@ -3184,26 +3186,19 @@ bfd_elf32_bfd_reloc_name_lookup (bfd *abfd ATTRIBUTE_UNUSED,
 }
 
 static reloc_howto_type *
-bfd_elf32_bfd_reloc_type_table_lookup (enum elf_nds32_reloc_type code)
+bfd_elf32_bfd_reloc_type_table_lookup (unsigned int code)
 {
   if (code < R_NDS32_RELAX_ENTRY)
     {
-      BFD_ASSERT (code < ARRAY_SIZE (nds32_elf_howto_table));
-      return &nds32_elf_howto_table[code];
+      if (code < ARRAY_SIZE (nds32_elf_howto_table))
+	return &nds32_elf_howto_table[code];
     }
   else
     {
-      if ((size_t) (code - R_NDS32_RELAX_ENTRY)
-	  >= ARRAY_SIZE (nds32_elf_relax_howto_table))
-	{
-	  int i = code;
-	  i += 1;
-	}
-
-      BFD_ASSERT ((size_t) (code - R_NDS32_RELAX_ENTRY)
-		  < ARRAY_SIZE (nds32_elf_relax_howto_table));
-      return &nds32_elf_relax_howto_table[code - R_NDS32_RELAX_ENTRY];
+      if (code - R_NDS32_RELAX_ENTRY < ARRAY_SIZE (nds32_elf_relax_howto_table))
+	return &nds32_elf_relax_howto_table[code - R_NDS32_RELAX_ENTRY];
     }
+  return NULL;
 }
 
 static reloc_howto_type *
@@ -3228,10 +3223,12 @@ static bool
 nds32_info_to_howto_rel (bfd *abfd, arelent *cache_ptr,
 			 Elf_Internal_Rela *dst)
 {
-  enum elf_nds32_reloc_type r_type;
+  unsigned int r_type = ELF32_R_TYPE (dst->r_info);
 
-  r_type = ELF32_R_TYPE (dst->r_info);
-  if (r_type > R_NDS32_GNU_VTENTRY)
+  cache_ptr->howto = NULL;
+  if (r_type <= R_NDS32_GNU_VTENTRY)
+    cache_ptr->howto = bfd_elf32_bfd_reloc_type_table_lookup (r_type);
+  if (cache_ptr->howto == NULL || cache_ptr->howto->name == NULL)
     {
       /* xgettext:c-format */
       _bfd_error_handler (_("%pB: unsupported relocation type %#x"),
@@ -3239,30 +3236,28 @@ nds32_info_to_howto_rel (bfd *abfd, arelent *cache_ptr,
       bfd_set_error (bfd_error_bad_value);
       return false;
     }
-
-  BFD_ASSERT (ELF32_R_TYPE (dst->r_info) <= R_NDS32_GNU_VTENTRY);
-  cache_ptr->howto = bfd_elf32_bfd_reloc_type_table_lookup (r_type);
   return true;
 }
 
 static bool
-nds32_info_to_howto (bfd *abfd ATTRIBUTE_UNUSED, arelent *cache_ptr,
+nds32_info_to_howto (bfd *abfd, arelent *cache_ptr,
 		     Elf_Internal_Rela *dst)
 {
   unsigned int r_type = ELF32_R_TYPE (dst->r_info);
 
-  if ((r_type == R_NDS32_NONE)
-      || ((r_type > R_NDS32_GNU_VTENTRY)
-	  && (r_type < R_NDS32_max)))
+  cache_ptr->howto = NULL;
+  if (r_type == R_NDS32_NONE
+      || r_type > R_NDS32_GNU_VTENTRY)
+    cache_ptr->howto = bfd_elf32_bfd_reloc_type_table_lookup (r_type);
+  if (cache_ptr->howto == NULL || cache_ptr->howto->name == NULL)
     {
-      cache_ptr->howto = bfd_elf32_bfd_reloc_type_table_lookup (r_type);
-      return true;
+      /* xgettext:c-format */
+      _bfd_error_handler (_("%pB: unsupported relocation type %#x"),
+			  abfd, r_type);
+      bfd_set_error (bfd_error_bad_value);
+      return false;
     }
-
-  /* xgettext:c-format */
-  _bfd_error_handler (_("%pB: unsupported relocation type %#x"), abfd, r_type);
-  bfd_set_error (bfd_error_bad_value);
-  return false;
+  return true;
 }
 
 /* Support for core dump NOTE sections.
@@ -6978,7 +6973,7 @@ nds32_elf_check_relocs (bfd *abfd, struct bfd_link_info *info,
 			asection *sec, const Elf_Internal_Rela *relocs)
 {
   Elf_Internal_Shdr *symtab_hdr;
-  struct elf_link_hash_entry **sym_hashes, **sym_hashes_end;
+  struct elf_link_hash_entry **sym_hashes;
   const Elf_Internal_Rela *rel;
   const Elf_Internal_Rela *rel_end;
   struct elf_link_hash_table *ehtab;
@@ -6995,10 +6990,6 @@ nds32_elf_check_relocs (bfd *abfd, struct bfd_link_info *info,
 
   symtab_hdr = &elf_tdata (abfd)->symtab_hdr;
   sym_hashes = elf_sym_hashes (abfd);
-  sym_hashes_end =
-    sym_hashes + symtab_hdr->sh_size / sizeof (Elf32_External_Sym);
-  if (!elf_bad_symtab (abfd))
-    sym_hashes_end -= symtab_hdr->sh_info;
 
   ehtab = elf_hash_table (info);
   htab = nds32_elf_hash_table (info);
@@ -13483,12 +13474,8 @@ nds32_elf_unify_tls_model (bfd *inbfd, asection *insec, bfd_byte *incontents,
   relax_group_list_t chain = { .id = -1, .next = NULL, .next_sibling = NULL };
 
   Elf_Internal_Shdr *symtab_hdr = &elf_tdata (inbfd)->symtab_hdr;
-  struct elf_link_hash_entry **sym_hashes, **sym_hashes_end;
+  struct elf_link_hash_entry **sym_hashes;
   sym_hashes = elf_sym_hashes (inbfd);
-  sym_hashes_end =
-    sym_hashes + symtab_hdr->sh_size / sizeof (Elf32_External_Sym);
-  if (!elf_bad_symtab (inbfd))
-    sym_hashes_end -= symtab_hdr->sh_info;
 
   /* Reorder RELAX_GROUP when command line option '-r' is applied.  */
   if (bfd_link_relocatable (lnkinfo))

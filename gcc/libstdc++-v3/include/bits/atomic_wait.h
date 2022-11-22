@@ -1,6 +1,6 @@
 // -*- C++ -*- header.
 
-// Copyright (C) 2020-2021 Free Software Foundation, Inc.
+// Copyright (C) 2020-2022 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -56,9 +56,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   namespace __detail
   {
 #ifdef _GLIBCXX_HAVE_LINUX_FUTEX
+#define _GLIBCXX_HAVE_PLATFORM_WAIT 1
     using __platform_wait_t = int;
     static constexpr size_t __platform_wait_alignment = 4;
 #else
+// define _GLIBCX_HAVE_PLATFORM_WAIT and implement __platform_wait()
+// and __platform_notify() if there is a more efficient primitive supported
+// by the platform (e.g. __ulock_wait()/__ulock_wake()) which is better than
+// a mutex/condvar based wait.
     using __platform_wait_t = uint64_t;
     static constexpr size_t __platform_wait_alignment
       = __alignof__(__platform_wait_t);
@@ -70,7 +75,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #ifdef _GLIBCXX_HAVE_PLATFORM_WAIT
       = is_scalar_v<_Tp>
 	&& ((sizeof(_Tp) == sizeof(__detail::__platform_wait_t))
-	&& (alignof(_Tp*) >= __platform_wait_alignment));
+	&& (alignof(_Tp*) >= __detail::__platform_wait_alignment));
 #else
       = false;
 #endif
@@ -78,7 +83,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   namespace __detail
   {
 #ifdef _GLIBCXX_HAVE_LINUX_FUTEX
-#define _GLIBCXX_HAVE_PLATFORM_WAIT 1
     enum class __futex_wait_flags : int
     {
 #ifdef _GLIBCXX_HAVE_LINUX_FUTEX_PRIVATE
@@ -118,11 +122,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		 static_cast<int>(__futex_wait_flags::__wake_private),
 		 __all ? INT_MAX : 1);
       }
-#else
-// define _GLIBCX_HAVE_PLATFORM_WAIT and implement __platform_wait()
-// and __platform_notify() if there is a more efficient primitive supported
-// by the platform (e.g. __ulock_wait()/__ulock_wake()) which is better than
-// a mutex/condvar based wait
 #endif
 
     inline void
@@ -143,8 +142,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #endif
     }
 
-    constexpr auto __atomic_spin_count_1 = 12;
-    constexpr auto __atomic_spin_count_2 = 4;
+    constexpr auto __atomic_spin_count_relax = 12;
+    constexpr auto __atomic_spin_count = 16;
 
     struct __default_spin_policy
     {
@@ -158,18 +157,15 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       bool
       __atomic_spin(_Pred& __pred, _Spin __spin = _Spin{ }) noexcept
       {
-	for (auto __i = 0; __i < __atomic_spin_count_1; ++__i)
+	for (auto __i = 0; __i < __atomic_spin_count; ++__i)
 	  {
 	    if (__pred())
 	      return true;
-	    __detail::__thread_relax();
-	  }
 
-	for (auto __i = 0; __i < __atomic_spin_count_2; ++__i)
-	  {
-	    if (__pred())
-	      return true;
-	    __detail::__thread_yield();
+	    if (__i < __atomic_spin_count_relax)
+	      __detail::__thread_relax();
+	    else
+	      __detail::__thread_yield();
 	  }
 
 	while (__spin())
@@ -191,11 +187,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
     struct __waiter_pool_base
     {
-#ifdef __cpp_lib_hardware_interference_size
-    static constexpr auto _S_align = hardware_destructive_interference_size;
-#else
-    static constexpr auto _S_align = 64;
-#endif
+      // Don't use std::hardware_destructive_interference_size here because we
+      // don't want the layout of library types to depend on compiler options.
+      static constexpr auto _S_align = 64;
 
       alignas(_S_align) __platform_wait_t _M_wait = 0;
 
@@ -212,18 +206,18 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       void
       _M_enter_wait() noexcept
-      { __atomic_fetch_add(&_M_wait, 1, __ATOMIC_ACQ_REL); }
+      { __atomic_fetch_add(&_M_wait, 1, __ATOMIC_SEQ_CST); }
 
       void
       _M_leave_wait() noexcept
-      { __atomic_fetch_sub(&_M_wait, 1, __ATOMIC_ACQ_REL); }
+      { __atomic_fetch_sub(&_M_wait, 1, __ATOMIC_RELEASE); }
 
       bool
       _M_waiting() const noexcept
       {
 	__platform_wait_t __res;
-	__atomic_load(&_M_wait, &__res, __ATOMIC_ACQUIRE);
-	return __res > 0;
+	__atomic_load(&_M_wait, &__res, __ATOMIC_SEQ_CST);
+	return __res != 0;
       }
 
       void
@@ -261,7 +255,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	__platform_wait(__addr, __old);
 #else
 	__platform_wait_t __val;
-	__atomic_load(__addr, &__val, __ATOMIC_RELAXED);
+	__atomic_load(__addr, &__val, __ATOMIC_SEQ_CST);
 	if (__val == __old)
 	  {
 	    lock_guard<mutex> __l(_M_mtx);
@@ -312,7 +306,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 	  if (_M_laundered())
 	    {
-	      __atomic_fetch_add(_M_addr, 1, __ATOMIC_ACQ_REL);
+	      __atomic_fetch_add(_M_addr, 1, __ATOMIC_SEQ_CST);
 	      __all = true;
 	    }
 	  _M_w._M_notify(_M_addr, __all, __bare);
@@ -331,11 +325,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	    if constexpr (__platform_wait_uses_type<_Up>)
 	      {
-		__val == __old;
+		__builtin_memcpy(&__val, &__old, sizeof(__val));
 	      }
 	    else
 	      {
-		__atomic_load(__addr, &__val, __ATOMIC_RELAXED);
+		__atomic_load(__addr, &__val, __ATOMIC_ACQUIRE);
 	      }
 	    return __atomic_spin(__pred, __spin);
 	  }
@@ -356,7 +350,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		     __platform_wait_t& __val,
 		     _Spin __spin = _Spin{ })
 	  {
-	    __atomic_load(__addr, &__val, __ATOMIC_RELAXED);
+	    __atomic_load(__addr, &__val, __ATOMIC_ACQUIRE);
 	    return __atomic_spin(__pred, __spin);
 	  }
 
@@ -391,12 +385,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  void
 	  _M_do_wait_v(_Tp __old, _ValFn __vfn)
 	  {
-	    __platform_wait_t __val;
-	    if (__base_type::_M_do_spin_v(__old, __vfn, __val))
-	      return;
-
 	    do
 	      {
+		__platform_wait_t __val;
+		if (__base_type::_M_do_spin_v(__old, __vfn, __val))
+		  return;
 		__base_type::_M_w._M_do_wait(__base_type::_M_addr, __val);
 	      }
 	    while (__detail::__atomic_compare(__old, __vfn()));

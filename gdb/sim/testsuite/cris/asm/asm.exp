@@ -15,31 +15,31 @@
 
 # Miscellaneous CRIS simulator testcases in assembly code.
 
-if [istarget cris*-*-*] {
-    global ASFLAGS_FOR_TARGET
-    # All machines we test and the corresponding assembler option.  Needs
-    # update if we build the simulator for crisv0 crisv3 and crisv8 too.
+sim_init
 
-    set combos {{"crisv10" "--march=v10 --no-mul-bug-abort"}
-                {"crisv32" "--march=v32"}}
+global ASFLAGS_FOR_TARGET
+# All machines we test and the corresponding assembler option.  Needs
+# update if we build the simulator for crisv0 crisv3 and crisv8 too.
 
-    # We need to pass different assembler flags for each machine.
-    # Specifying it here rather than adding a specifier to each and every
-    # test-file is preferrable.
+set combos {{"crisv10" "--march=v10 --no-mul-bug-abort"}
+	    {"crisv32" "--march=v32"}}
 
-    foreach combo $combos {
-	set mach [lindex $combo 0]
-	set ASFLAGS_FOR_TARGET "[lindex $combo 1]"
+# We need to pass different assembler flags for each machine.
+# Specifying it here rather than adding a specifier to each and every
+# test-file is preferrable.
 
-	# The .ms suffix is for "miscellaneous .s".
-	foreach src [lsort [glob -nocomplain $srcdir/$subdir/*.ms]] {
-	    # If we're only testing specific files and this isn't one of them,
-	    # skip it.
-	    if ![runtest_file_p $runtests $src] {
-		continue
-	    }
+foreach combo $combos {
+    set mach [lindex $combo 0]
+    set ASFLAGS_FOR_TARGET "[lindex $combo 1]"
 
-	    run_sim_test $src $mach
+    # The .ms suffix is for "miscellaneous .s".
+    foreach src [lsort [glob -nocomplain $srcdir/$subdir/*.ms]] {
+	# If we're only testing specific files and this isn't one of them,
+	# skip it.
+	if ![runtest_file_p $runtests $src] {
+	    continue
 	}
+
+	run_sim_test $src $mach
     }
 }

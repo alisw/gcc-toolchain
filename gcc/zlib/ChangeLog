@@ -1,10 +1,21 @@
-2021-07-28  Release Manager
+2022-08-19  Release Manager
 
-	* GCC 11.2.0 released.
+	* GCC 12.2.0 released.
 
-2021-04-27  Release Manager
+2022-05-06  Release Manager
 
-	* GCC 11.1.0 released.
+	* GCC 12.1.0 released.
+
+2021-12-16  H.J. Lu  <hjl.tools@gmail.com>
+
+	Revert:
+	2021-12-16  H.J. Lu  <hjl.tools@gmail.com>
+
+	* configure: Regenerated.
+
+2021-12-15  H.J. Lu  <hjl.tools@gmail.com>
+
+	* configure: Regenerated.
 
 2021-01-05  Samuel Thibault  <samuel.thibault@ens-lyon.org>
 

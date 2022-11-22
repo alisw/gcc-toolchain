@@ -48,7 +48,7 @@
 #include "annotate.h"
 #include "filenames.h"
 #include "symfile.h"
-#include "gdb_obstack.h"
+#include "gdbsupport/gdb_obstack.h"
 #include "gdbcore.h"
 #include "top.h"
 #include "main.h"
@@ -63,7 +63,7 @@
 #include <chrono>
 
 #include "interps.h"
-#include "gdb_regex.h"
+#include "gdbsupport/gdb_regex.h"
 #include "gdbsupport/job-control.h"
 #include "gdbsupport/selftest.h"
 #include "gdbsupport/gdb_optional.h"
@@ -75,13 +75,15 @@
 #include "gdbarch.h"
 #include "cli-out.h"
 #include "gdbsupport/gdb-safe-ctype.h"
+#include "bt-utils.h"
+#include "gdbsupport/buildargv.h"
 
 void (*deprecated_error_begin_hook) (void);
 
 /* Prototypes for local functions */
 
 static void vfprintf_maybe_filtered (struct ui_file *, const char *,
-				     va_list, bool, bool)
+				     va_list, bool)
   ATTRIBUTE_PRINTF (2, 0);
 
 static void fputs_maybe_filtered (const char *, struct ui_file *, int);
@@ -152,7 +154,7 @@ vwarning (const char *string, va_list args)
 	  target_terminal::ours_for_output ();
 	}
       if (filtered_printing_initialized ())
-	wrap_here ("");		/* Force out any buffered output.  */
+	gdb_stdout->wrap_here (0);	/* Force out any buffered output.  */
       gdb_flush (gdb_stdout);
       if (warning_pre_print)
 	fputs_unfiltered (warning_pre_print, gdb_stderr);
@@ -200,6 +202,11 @@ dump_core (void)
 
   setrlimit (RLIMIT_CORE, &rlim);
 #endif /* HAVE_SETRLIMIT */
+
+  /* Ensure that the SIGABRT we're about to raise will immediately cause
+     GDB to exit and dump core, we don't want to trigger GDB's printing of
+     a backtrace to the console here.  */
+  signal (SIGABRT, SIG_DFL);
 
   abort ();		/* ARI: abort */
 }
@@ -275,17 +282,37 @@ static const char *const internal_problem_modes[] =
   NULL
 };
 
-/* Print a message reporting an internal error/warning.  Ask the user
-   if they want to continue, dump core, or just exit.  Return
-   something to indicate a quit.  */
+/* Data structure used to control how the internal_vproblem function
+   should behave.  An instance of this structure is created for each
+   problem type that GDB supports.  */
 
 struct internal_problem
 {
+  /* The name of this problem type.  This must not contain white space as
+     this string is used to build command names.  */
   const char *name;
-  int user_settable_should_quit;
+
+  /* When this is true then a user command is created (based on NAME) that
+     allows the SHOULD_QUIT field to be modified, otherwise, SHOULD_QUIT
+     can't be changed from its default value by the user.  */
+  bool user_settable_should_quit;
+
+  /* Reference a value from internal_problem_modes to indicate if GDB
+     should quit when it hits a problem of this type.  */
   const char *should_quit;
-  int user_settable_should_dump_core;
+
+  /* Like USER_SETTABLE_SHOULD_QUIT but for SHOULD_DUMP_CORE.  */
+  bool user_settable_should_dump_core;
+
+  /* Like SHOULD_QUIT, but whether GDB should dump core.  */
   const char *should_dump_core;
+
+  /* Like USER_SETTABLE_SHOULD_QUIT but for SHOULD_PRINT_BACKTRACE.  */
+  bool user_settable_should_print_backtrace;
+
+  /* When this is true GDB will print a backtrace when a problem of this
+     type is encountered.  */
+  bool should_print_backtrace;
 };
 
 /* Report a problem, internal to GDB, to the user.  Once the problem
@@ -359,8 +386,12 @@ internal_vproblem (struct internal_problem *problem,
   /* Emit the message unless query will emit it below.  */
   if (problem->should_quit != internal_problem_ask
       || !confirm
-      || !filtered_printing_initialized ())
+      || !filtered_printing_initialized ()
+      || problem->should_print_backtrace)
     fprintf_unfiltered (gdb_stderr, "%s\n", reason.c_str ());
+
+  if (problem->should_print_backtrace)
+    gdb_internal_backtrace ();
 
   if (problem->should_quit == internal_problem_ask)
     {
@@ -430,7 +461,8 @@ internal_vproblem (struct internal_problem *problem,
 }
 
 static struct internal_problem internal_error_problem = {
-  "internal-error", 1, internal_problem_ask, 1, internal_problem_ask
+  "internal-error", true, internal_problem_ask, true, internal_problem_ask,
+  true, GDB_PRINT_INTERNAL_BACKTRACE_INIT_ON
 };
 
 void
@@ -441,7 +473,8 @@ internal_verror (const char *file, int line, const char *fmt, va_list ap)
 }
 
 static struct internal_problem internal_warning_problem = {
-  "internal-warning", 1, internal_problem_ask, 1, internal_problem_ask
+  "internal-warning", true, internal_problem_ask, true, internal_problem_ask,
+  true, false
 };
 
 void
@@ -451,7 +484,8 @@ internal_vwarning (const char *file, int line, const char *fmt, va_list ap)
 }
 
 static struct internal_problem demangler_warning_problem = {
-  "demangler-warning", 1, internal_problem_ask, 0, internal_problem_no
+  "demangler-warning", true, internal_problem_ask, false, internal_problem_no,
+  false, false
 };
 
 void
@@ -490,72 +524,83 @@ add_internal_problem_command (struct internal_problem *problem)
 {
   struct cmd_list_element **set_cmd_list;
   struct cmd_list_element **show_cmd_list;
-  char *set_doc;
-  char *show_doc;
 
   set_cmd_list = XNEW (struct cmd_list_element *);
   show_cmd_list = XNEW (struct cmd_list_element *);
   *set_cmd_list = NULL;
   *show_cmd_list = NULL;
 
-  set_doc = xstrprintf (_("Configure what GDB does when %s is detected."),
-			problem->name);
+  /* The add_basic_prefix_cmd and add_show_prefix_cmd functions take
+     ownership of the string passed in, which is why we don't need to free
+     set_doc and show_doc in this function.  */
+  const char *set_doc
+    = xstrprintf (_("Configure what GDB does when %s is detected."),
+		  problem->name).release ();
+  const char *show_doc
+    = xstrprintf (_("Show what GDB does when %s is detected."),
+		  problem->name).release ();
 
-  show_doc = xstrprintf (_("Show what GDB does when %s is detected."),
-			 problem->name);
-
-  add_basic_prefix_cmd (problem->name, class_maintenance, set_doc,
-			set_cmd_list,
-			0/*allow-unknown*/, &maintenance_set_cmdlist);
-
-  add_show_prefix_cmd (problem->name, class_maintenance, show_doc,
-		       show_cmd_list,
-		       0/*allow-unknown*/, &maintenance_show_cmdlist);
+  add_setshow_prefix_cmd (problem->name, class_maintenance,
+			  set_doc, show_doc, set_cmd_list, show_cmd_list,
+			  &maintenance_set_cmdlist, &maintenance_show_cmdlist);
 
   if (problem->user_settable_should_quit)
     {
-      set_doc = xstrprintf (_("Set whether GDB should quit "
-			      "when an %s is detected."),
-			    problem->name);
-      show_doc = xstrprintf (_("Show whether GDB will quit "
-			       "when an %s is detected."),
-			     problem->name);
+      std::string set_quit_doc
+	= string_printf (_("Set whether GDB should quit when an %s is "
+			   "detected."), problem->name);
+      std::string show_quit_doc
+	= string_printf (_("Show whether GDB will quit when an %s is "
+			   "detected."), problem->name);
       add_setshow_enum_cmd ("quit", class_maintenance,
 			    internal_problem_modes,
 			    &problem->should_quit,
-			    set_doc,
-			    show_doc,
+			    set_quit_doc.c_str (),
+			    show_quit_doc.c_str (),
 			    NULL, /* help_doc */
 			    NULL, /* setfunc */
 			    NULL, /* showfunc */
 			    set_cmd_list,
 			    show_cmd_list);
-
-      xfree (set_doc);
-      xfree (show_doc);
     }
 
   if (problem->user_settable_should_dump_core)
     {
-      set_doc = xstrprintf (_("Set whether GDB should create a core "
-			      "file of GDB when %s is detected."),
-			    problem->name);
-      show_doc = xstrprintf (_("Show whether GDB will create a core "
-			       "file of GDB when %s is detected."),
-			     problem->name);
+      std::string set_core_doc
+	= string_printf (_("Set whether GDB should create a core file of "
+			   "GDB when %s is detected."), problem->name);
+      std::string show_core_doc
+	= string_printf (_("Show whether GDB will create a core file of "
+			   "GDB when %s is detected."), problem->name);
       add_setshow_enum_cmd ("corefile", class_maintenance,
 			    internal_problem_modes,
 			    &problem->should_dump_core,
-			    set_doc,
-			    show_doc,
+			    set_core_doc.c_str (),
+			    show_core_doc.c_str (),
 			    NULL, /* help_doc */
 			    NULL, /* setfunc */
 			    NULL, /* showfunc */
 			    set_cmd_list,
 			    show_cmd_list);
+    }
 
-      xfree (set_doc);
-      xfree (show_doc);
+  if (problem->user_settable_should_print_backtrace)
+    {
+      std::string set_bt_doc
+	= string_printf (_("Set whether GDB should print a backtrace of "
+			   "GDB when %s is detected."), problem->name);
+      std::string show_bt_doc
+	= string_printf (_("Show whether GDB will print a backtrace of "
+			   "GDB when %s is detected."), problem->name);
+      add_setshow_boolean_cmd ("backtrace", class_maintenance,
+			       &problem->should_print_backtrace,
+			       set_bt_doc.c_str (),
+			       show_bt_doc.c_str (),
+			       NULL, /* help_doc */
+			       gdb_internal_backtrace_set_cmd,
+			       NULL, /* showfunc */
+			       set_cmd_list,
+			       show_cmd_list);
     }
 }
 
@@ -735,20 +780,6 @@ uinteger_pow (ULONGEST v1, LONGEST v2)
     }
 }
 
-void
-print_spaces (int n, struct ui_file *file)
-{
-  fputs_unfiltered (n_spaces (n), file);
-}
-
-/* Print a host address.  */
-
-void
-gdb_print_host_address_1 (const void *addr, struct ui_file *stream)
-{
-  fprintf_filtered (stream, "%s", host_address_to_string (addr));
-}
-
 
 
 /* An RAII class that sets up to handle input and then tears down
@@ -850,7 +881,7 @@ defaulted_query (const char *ctlstr, const char defchar, va_list args)
     {
       target_terminal::scoped_restore_terminal_state term_state;
       target_terminal::ours_for_output ();
-      wrap_here ("");
+      gdb_stdout->wrap_here (0);
       vfprintf_filtered (gdb_stdout, ctlstr, args);
 
       printf_filtered (_("(%s or %s) [answered %c; "
@@ -1047,7 +1078,7 @@ parse_escape (struct gdbarch *gdbarch, const char **string_ptr)
       case '6':
       case '7':
 	{
-	  int i = host_hex_value (c);
+	  int i = fromhex (c);
 	  int count = 0;
 	  while (++count < 3)
 	    {
@@ -1056,7 +1087,7 @@ parse_escape (struct gdbarch *gdbarch, const char **string_ptr)
 		{
 		  (*string_ptr)++;
 		  i *= 8;
-		  i += host_hex_value (c);
+		  i += fromhex (c);
 		}
 	      else
 		{
@@ -1097,103 +1128,6 @@ parse_escape (struct gdbarch *gdbarch, const char **string_ptr)
 	     " which has no equivalent\nin the `%s' character set."),
 	   c, c, target_charset (gdbarch));
   return target_char;
-}
-
-/* Print the character C on STREAM as part of the contents of a literal
-   string whose delimiter is QUOTER.  Note that this routine should only
-   be called for printing things which are independent of the language
-   of the program being debugged.
-
-   printchar will normally escape backslashes and instances of QUOTER. If
-   QUOTER is 0, printchar won't escape backslashes or any quoting character.
-   As a side effect, if you pass the backslash character as the QUOTER,
-   printchar will escape backslashes as usual, but not any other quoting
-   character. */
-
-static void
-printchar (int c, do_fputc_ftype do_fputc, ui_file *stream, int quoter)
-{
-  c &= 0xFF;			/* Avoid sign bit follies */
-
-  if (c < 0x20 ||		/* Low control chars */
-      (c >= 0x7F && c < 0xA0) ||	/* DEL, High controls */
-      (sevenbit_strings && c >= 0x80))
-    {				/* high order bit set */
-      do_fputc ('\\', stream);
-
-      switch (c)
-	{
-	case '\n':
-	  do_fputc ('n', stream);
-	  break;
-	case '\b':
-	  do_fputc ('b', stream);
-	  break;
-	case '\t':
-	  do_fputc ('t', stream);
-	  break;
-	case '\f':
-	  do_fputc ('f', stream);
-	  break;
-	case '\r':
-	  do_fputc ('r', stream);
-	  break;
-	case '\033':
-	  do_fputc ('e', stream);
-	  break;
-	case '\007':
-	  do_fputc ('a', stream);
-	  break;
-	default:
-	  {
-	    do_fputc ('0' + ((c >> 6) & 0x7), stream);
-	    do_fputc ('0' + ((c >> 3) & 0x7), stream);
-	    do_fputc ('0' + ((c >> 0) & 0x7), stream);
-	    break;
-	  }
-	}
-    }
-  else
-    {
-      if (quoter != 0 && (c == '\\' || c == quoter))
-	do_fputc ('\\', stream);
-      do_fputc (c, stream);
-    }
-}
-
-/* Print the character C on STREAM as part of the contents of a
-   literal string whose delimiter is QUOTER.  Note that these routines
-   should only be call for printing things which are independent of
-   the language of the program being debugged.  */
-
-void
-fputstr_filtered (const char *str, int quoter, struct ui_file *stream)
-{
-  while (*str)
-    printchar (*str++, fputc_filtered, stream, quoter);
-}
-
-void
-fputstr_unfiltered (const char *str, int quoter, struct ui_file *stream)
-{
-  while (*str)
-    printchar (*str++, fputc_unfiltered, stream, quoter);
-}
-
-void
-fputstrn_filtered (const char *str, int n, int quoter,
-		   struct ui_file *stream)
-{
-  for (int i = 0; i < n; i++)
-    printchar (str[i], fputc_filtered, stream, quoter);
-}
-
-void
-fputstrn_unfiltered (const char *str, int n, int quoter,
-		     do_fputc_ftype do_fputc, struct ui_file *stream)
-{
-  for (int i = 0; i < n; i++)
-    printchar (str[i], do_fputc, stream, quoter);
 }
 
 
@@ -1241,9 +1175,8 @@ static bool filter_initialized = false;
    already been counted in chars_printed).  */
 static std::string wrap_buffer;
 
-/* String to indent by if the wrap occurs.  Must not be NULL if wrap_column
-   is non-zero.  */
-static const char *wrap_indent;
+/* String to indent by if the wrap occurs.  */
+static int wrap_indent;
 
 /* Column number on the screen where wrap_buffer begins, or 0 if wrapping
    is not in effect.  */
@@ -1586,34 +1519,15 @@ get_chars_per_line ()
   return chars_per_line;
 }
 
-/* Indicate that if the next sequence of characters overflows the line,
-   a newline should be inserted here rather than when it hits the end.
-   If INDENT is non-null, it is a string to be printed to indent the
-   wrapped part on the next line.  INDENT must remain accessible until
-   the next call to wrap_here() or until a newline is printed through
-   fputs_filtered().
-
-   If the line is already overfull, we immediately print a newline and
-   the indentation, and disable further wrapping.
-
-   If we don't know the width of lines, but we know the page height,
-   we must not wrap words, but should still keep track of newlines
-   that were explicitly printed.
-
-   INDENT should not contain tabs, as that will mess up the char count
-   on the next line.  FIXME.
-
-   This routine is guaranteed to force out any output which has been
-   squirreled away in the wrap_buffer, so wrap_here ((char *)0) can be
-   used to force out output from the wrap_buffer.  */
+/* See ui-file.h.  */
 
 void
-wrap_here (const char *indent)
+ui_file::wrap_here (int indent)
 {
   /* This should have been allocated, but be paranoid anyway.  */
   gdb_assert (filter_initialized);
 
-  flush_wrap_buffer (gdb_stdout);
+  flush_wrap_buffer (this);
   if (chars_per_line == UINT_MAX)	/* No line overflow checking.  */
     {
       wrap_column = 0;
@@ -1621,17 +1535,14 @@ wrap_here (const char *indent)
   else if (chars_printed >= chars_per_line)
     {
       puts_filtered ("\n");
-      if (indent != NULL)
-	puts_filtered (indent);
+      if (indent != 0)
+	puts_filtered (n_spaces (indent));
       wrap_column = 0;
     }
   else
     {
       wrap_column = chars_printed;
-      if (indent == NULL)
-	wrap_indent = "";
-      else
-	wrap_indent = indent;
+      wrap_indent = indent;
       wrap_style = applied_style;
     }
 }
@@ -1653,13 +1564,13 @@ puts_filtered_tabular (char *string, int width, int right)
   gdb_assert (chars_per_line > 0);
   if (chars_per_line == UINT_MAX)
     {
-      fputs_filtered (string, gdb_stdout);
-      fputs_filtered ("\n", gdb_stdout);
+      puts_filtered (string);
+      puts_filtered ("\n");
       return;
     }
 
   if (((chars_printed - 1) / width + 2) * width >= chars_per_line)
-    fputs_filtered ("\n", gdb_stdout);
+    puts_filtered ("\n");
 
   if (width >= chars_per_line)
     width = chars_per_line - 1;
@@ -1676,8 +1587,8 @@ puts_filtered_tabular (char *string, int width, int right)
   while (spaces--)
     spacebuf[spaces] = ' ';
 
-  fputs_filtered (spacebuf, gdb_stdout);
-  fputs_filtered (string, gdb_stdout);
+  puts_filtered (spacebuf);
+  puts_filtered (string);
 }
 
 
@@ -1719,7 +1630,8 @@ fputs_maybe_filtered (const char *linebuffer, struct ui_file *stream,
     return;
 
   /* Don't do any filtering if it is disabled.  */
-  if (stream != gdb_stdout
+  if (!stream->can_page ()
+      || stream != gdb_stdout
       || !pagination_enabled
       || pagination_disabled_for_command
       || batch_flag
@@ -1737,7 +1649,7 @@ fputs_maybe_filtered (const char *linebuffer, struct ui_file *stream,
 		       {
 			 wrap_buffer.clear ();
 			 wrap_column = 0;
-			 wrap_indent = "";
+			 wrap_indent = 0;
 		       });
 
   /* Go through and output each character.  Show line extension
@@ -1832,7 +1744,8 @@ fputs_maybe_filtered (const char *linebuffer, struct ui_file *stream,
 	      /* Possible new page.  Note that
 		 PAGINATION_DISABLED_FOR_COMMAND might be set during
 		 this loop, so we must continue to check it here.  */
-	      if (lines_printed >= lines_per_page - 1
+	      if (filter
+		  && lines_printed >= lines_per_page - 1
 		  && !pagination_disabled_for_command)
 		{
 		  prompt_for_continue ();
@@ -1842,7 +1755,7 @@ fputs_maybe_filtered (const char *linebuffer, struct ui_file *stream,
 	      /* Now output indentation and wrapped string.  */
 	      if (wrap_column)
 		{
-		  stream->puts (wrap_indent);
+		  stream->puts (n_spaces (wrap_indent));
 
 		  /* Having finished inserting the wrapping we should
 		     restore the style as it was at the WRAP_COLUMN.  */
@@ -1856,14 +1769,9 @@ fputs_maybe_filtered (const char *linebuffer, struct ui_file *stream,
 		     in WRAP_BUFFER.  */
 		  applied_style = save_style;
 
-		  /* FIXME, this strlen is what prevents wrap_indent from
-		     containing tabs.  However, if we recurse to print it
-		     and count its chars, we risk trouble if wrap_indent is
-		     longer than (the user settable) chars_per_line.
-		     Note also that this can set chars_printed > chars_per_line
+		  /* Note that this can set chars_printed > chars_per_line
 		     if we are printing a long string.  */
-		  chars_printed = strlen (wrap_indent)
-		    + (save_chars - wrap_column);
+		  chars_printed = wrap_indent + (save_chars - wrap_column);
 		  wrap_column = 0;	/* And disable fancy wrap */
 		}
 	      else if (did_paginate && stream->can_emit_style_escape ())
@@ -1874,8 +1782,8 @@ fputs_maybe_filtered (const char *linebuffer, struct ui_file *stream,
       if (*lineptr == '\n')
 	{
 	  chars_printed = 0;
-	  wrap_here ((char *) 0);	/* Spit out chars, cancel
-					   further wraps.  */
+	  stream->wrap_here (0); /* Spit out chars, cancel
+				    further wraps.  */
 	  lines_printed++;
 	  /* XXX: The ideal thing would be to call
 	     'stream->putc' here, but we can't because it
@@ -1997,91 +1905,6 @@ fputc_filtered (int c, struct ui_file *stream)
   return c;
 }
 
-/* puts_debug is like fputs_unfiltered, except it prints special
-   characters in printable fashion.  */
-
-void
-puts_debug (char *prefix, char *string, char *suffix)
-{
-  int ch;
-
-  /* Print prefix and suffix after each line.  */
-  static int new_line = 1;
-  static int return_p = 0;
-  static const char *prev_prefix = "";
-  static const char *prev_suffix = "";
-
-  if (*string == '\n')
-    return_p = 0;
-
-  /* If the prefix is changing, print the previous suffix, a new line,
-     and the new prefix.  */
-  if ((return_p || (strcmp (prev_prefix, prefix) != 0)) && !new_line)
-    {
-      fputs_unfiltered (prev_suffix, gdb_stdlog);
-      fputs_unfiltered ("\n", gdb_stdlog);
-      fputs_unfiltered (prefix, gdb_stdlog);
-    }
-
-  /* Print prefix if we printed a newline during the previous call.  */
-  if (new_line)
-    {
-      new_line = 0;
-      fputs_unfiltered (prefix, gdb_stdlog);
-    }
-
-  prev_prefix = prefix;
-  prev_suffix = suffix;
-
-  /* Output characters in a printable format.  */
-  while ((ch = *string++) != '\0')
-    {
-      switch (ch)
-	{
-	default:
-	  if (gdb_isprint (ch))
-	    fputc_unfiltered (ch, gdb_stdlog);
-
-	  else
-	    fprintf_unfiltered (gdb_stdlog, "\\x%02x", ch & 0xff);
-	  break;
-
-	case '\\':
-	  fputs_unfiltered ("\\\\", gdb_stdlog);
-	  break;
-	case '\b':
-	  fputs_unfiltered ("\\b", gdb_stdlog);
-	  break;
-	case '\f':
-	  fputs_unfiltered ("\\f", gdb_stdlog);
-	  break;
-	case '\n':
-	  new_line = 1;
-	  fputs_unfiltered ("\\n", gdb_stdlog);
-	  break;
-	case '\r':
-	  fputs_unfiltered ("\\r", gdb_stdlog);
-	  break;
-	case '\t':
-	  fputs_unfiltered ("\\t", gdb_stdlog);
-	  break;
-	case '\v':
-	  fputs_unfiltered ("\\v", gdb_stdlog);
-	  break;
-	}
-
-      return_p = ch == '\r';
-    }
-
-  /* Print suffix if we printed a newline.  */
-  if (new_line)
-    {
-      fputs_unfiltered (suffix, gdb_stdlog);
-      fputs_unfiltered ("\n", gdb_stdlog);
-    }
-}
-
-
 /* Print a variable number of ARGS using format FORMAT.  If this
    information is going to put the amount written (since the last call
    to REINITIALIZE_MORE_FILTER or the last page break) over the page size,
@@ -2097,27 +1920,19 @@ puts_debug (char *prefix, char *string, char *suffix)
 
 static void
 vfprintf_maybe_filtered (struct ui_file *stream, const char *format,
-			 va_list args, bool filter, bool gdbfmt)
+			 va_list args, bool filter)
 {
-  if (gdbfmt)
-    {
-      ui_out_flags flags = disallow_ui_out_field;
-      if (!filter)
-	flags |= unfiltered_output;
-      cli_ui_out (stream, flags).vmessage (applied_style, format, args);
-    }
-  else
-    {
-      std::string str = string_vprintf (format, args);
-      fputs_maybe_filtered (str.c_str (), stream, filter);
-    }
+  ui_out_flags flags = disallow_ui_out_field;
+  if (!filter)
+    flags |= unfiltered_output;
+  cli_ui_out (stream, flags).vmessage (applied_style, format, args);
 }
 
 
 void
 vfprintf_filtered (struct ui_file *stream, const char *format, va_list args)
 {
-  vfprintf_maybe_filtered (stream, format, args, true, true);
+  vfprintf_maybe_filtered (stream, format, args, true);
 }
 
 void
@@ -2144,20 +1959,20 @@ vfprintf_unfiltered (struct ui_file *stream, const char *format, va_list args)
       /* Print the message.  */
       string_file sfile;
       cli_ui_out (&sfile, 0).vmessage (ui_file_style (), format, args);
-      std::string linebuffer = std::move (sfile.string ());
+      const std::string &linebuffer = sfile.string ();
       fputs_unfiltered (linebuffer.c_str (), stream);
 
       size_t len = linebuffer.length ();
       needs_timestamp = (len > 0 && linebuffer[len - 1] == '\n');
     }
   else
-    vfprintf_maybe_filtered (stream, format, args, false, true);
+    vfprintf_maybe_filtered (stream, format, args, false);
 }
 
 void
 vprintf_filtered (const char *format, va_list args)
 {
-  vfprintf_maybe_filtered (gdb_stdout, format, args, true, false);
+  vfprintf_filtered (gdb_stdout, format, args);
 }
 
 void
@@ -2267,7 +2082,7 @@ puts_unfiltered (const char *string)
 
 /* Return a pointer to N spaces and a null.  The pointer is good
    until the next call to here.  */
-char *
+const char *
 n_spaces (int n)
 {
   char *t;
@@ -2305,8 +2120,6 @@ void
 fprintf_symbol_filtered (struct ui_file *stream, const char *name,
 			 enum language lang, int arg_mode)
 {
-  char *demangled;
-
   if (name != NULL)
     {
       /* If user wants to see raw output, no problem.  */
@@ -2316,12 +2129,9 @@ fprintf_symbol_filtered (struct ui_file *stream, const char *name,
 	}
       else
 	{
-	  demangled = language_demangle (language_def (lang), name, arg_mode);
-	  fputs_filtered (demangled ? demangled : name, stream);
-	  if (demangled != NULL)
-	    {
-	      xfree (demangled);
-	    }
+	  gdb::unique_xmalloc_ptr<char> demangled
+	    = language_demangle (language_def (lang), name, arg_mode);
+	  fputs_filtered (demangled ? demangled.get () : name, stream);
 	}
     }
 }
@@ -2442,13 +2252,45 @@ skip_abi_tag (const char **name)
   return false;
 }
 
+/* If *NAME points at a template parameter list, skip it and return true.
+   Otherwise do nothing and return false.  */
+
+static bool
+skip_template_parameter_list (const char **name)
+{
+  const char *p = *name;
+
+  if (*p == '<')
+    {
+      const char *template_param_list_end = find_toplevel_char (p + 1, '>');
+
+      if (template_param_list_end == NULL)
+	return false;
+
+      p = template_param_list_end + 1;
+
+      /* Skip any whitespace that might occur after the closing of the
+	 parameter list, but only if it is the end of parameter list.  */
+      const char *q = p;
+      while (ISSPACE (*q))
+	++q;
+      if (*q == '>')
+	p = q;
+      *name = p;
+      return true;
+    }
+
+  return false;
+}
+
 /* See utils.h.  */
 
 int
 strncmp_iw_with_mode (const char *string1, const char *string2,
 		      size_t string2_len, strncmp_iw_mode mode,
 		      enum language language,
-		      completion_match_for_lcd *match_for_lcd)
+		      completion_match_for_lcd *match_for_lcd,
+		      bool ignore_template_params)
 {
   const char *string1_start = string1;
   const char *end_str2 = string2 + string2_len;
@@ -2496,6 +2338,48 @@ strncmp_iw_with_mode (const char *string1, const char *string2,
 
 	  while (ISSPACE (*string1))
 	    string1++;
+	}
+
+      /* Skip template parameters in STRING1 if STRING2 does not contain
+	 any.  E.g.:
+
+	 Case 1: User is looking for all functions named "foo".
+	 string1: foo <...> (...)
+	 string2: foo
+
+	 Case 2: User is looking for all methods named "foo" in all template
+	 class instantiations.
+	 string1: Foo<...>::foo <...> (...)
+	 string2: Foo::foo (...)
+
+	 Case 3: User is looking for a specific overload of a template
+	 function or method.
+	 string1: foo<...>
+	 string2: foo(...)
+
+	 Case 4: User is looking for a specific overload of a specific
+	 template instantiation.
+	 string1: foo<A> (...)
+	 string2: foo<B> (...)
+
+	 Case 5: User is looking wild parameter match.
+	 string1: foo<A<a<b<...> > > > (...)
+	 string2: foo<A
+      */
+      if (language == language_cplus && ignore_template_params
+	  && *string1 == '<' && *string2 != '<')
+	{
+	  /* Skip any parameter list in STRING1.  */
+	  const char *template_start = string1;
+
+	  if (skip_template_parameter_list (&string1))
+	    {
+	      /* Don't mark the parameter list ignored if the user didn't
+		 try to ignore it.  [Case #5 above]  */
+	      if (*string2 != '\0'
+		  && match_for_lcd != NULL && template_start != string1)
+		match_for_lcd->mark_ignored_range (template_start, string1);
+	    }
 	}
 
       if (*string1 == '\0' || string2 == end_str2)
@@ -2606,6 +2490,12 @@ strncmp_iw_with_mode (const char *string1, const char *string2,
 		    break;
 		  if (*string1 == '(' || *string2 == '(')
 		    break;
+
+		  /* If STRING1 or STRING2 starts with a template
+		     parameter list, break out of operator processing.  */
+		  skip_ws (string1, string2, end_str2);
+		  if (*string1 == '<' || *string2 == '<')
+		    break;
 		}
 
 	      continue;
@@ -2672,6 +2562,569 @@ strncmp_iw_with_mode (const char *string1, const char *string2,
   else
     return 1;
 }
+
+#if GDB_SELF_TEST
+
+/* Unit tests for strncmp_iw_with_mode.  */
+
+#define CHECK_MATCH_LM(S1, S2, MODE, LANG, LCD)			\
+  SELF_CHECK (strncmp_iw_with_mode ((S1), (S2), strlen ((S2)),	\
+				    strncmp_iw_mode::MODE,				\
+				    (LANG), (LCD)) == 0)
+
+#define CHECK_MATCH_LANG(S1, S2, MODE, LANG)			\
+  CHECK_MATCH_LM ((S1), (S2), MODE, (LANG), nullptr)
+
+#define CHECK_MATCH(S1, S2, MODE)						\
+  CHECK_MATCH_LANG ((S1), (S2), MODE, language_minimal)
+
+#define CHECK_NO_MATCH_LM(S1, S2, MODE, LANG, LCD)		\
+  SELF_CHECK (strncmp_iw_with_mode ((S1), (S2), strlen ((S2)),	\
+				    strncmp_iw_mode::MODE,				\
+				    (LANG)) != 0)
+
+#define CHECK_NO_MATCH_LANG(S1, S2, MODE, LANG)		\
+  CHECK_NO_MATCH_LM ((S1), (S2), MODE, (LANG), nullptr)
+
+#define CHECK_NO_MATCH(S1, S2, MODE)				       \
+  CHECK_NO_MATCH_LANG ((S1), (S2), MODE, language_minimal)
+
+static void
+check_scope_operator (enum language lang)
+{
+  CHECK_MATCH_LANG ("::", "::", NORMAL, lang);
+  CHECK_MATCH_LANG ("::foo", "::", NORMAL, lang);
+  CHECK_MATCH_LANG ("::foo", "::foo", NORMAL, lang);
+  CHECK_MATCH_LANG (" :: foo ", "::foo", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b", "a ::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b", "a\t::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b", "a \t::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b", "a\t ::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b", "a:: b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b", "a::\tb", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b", "a:: \tb", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b", "a::\t b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b", "a :: b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b", "a ::\tb", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b", "a\t:: b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b", "a \t::\t b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a ::b", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a\t::b", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a \t::b", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a\t ::b", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a:: b", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::\tb", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a:: \tb", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::\t b", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a :: b", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a ::\tb", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a\t:: b", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a \t::\t b", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b::c", "a::b::c", NORMAL, lang);
+  CHECK_MATCH_LANG (" a:: b:: c", "a::b::c", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b::c", " a:: b:: c", NORMAL, lang);
+  CHECK_MATCH_LANG ("a ::b ::c", "a::b::c", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b::c", "a :: b:: c", NORMAL, lang);
+  CHECK_MATCH_LANG ("\ta::\tb::\tc", "\ta::\tb::\tc", NORMAL, lang);
+  CHECK_MATCH_LANG ("a\t::b\t::c\t", "a\t::b\t::c\t", NORMAL, lang);
+  CHECK_MATCH_LANG (" \ta:: \tb:: \tc", " \ta:: \tb:: \tc", NORMAL, lang);
+  CHECK_MATCH_LANG ("\t a::\t b::\t c", "\t a::\t b::\t c", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b::c", "\ta::\tb::\tc", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b::c", "a\t::b\t::c\t", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b::c", " \ta:: \tb:: \tc", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b::c", "\t a::\t b::\t c", NORMAL, lang);
+  CHECK_MATCH_LANG ("\ta::\tb::\tc", "a::b::c", NORMAL, lang);
+  CHECK_MATCH_LANG ("a\t::b\t::c\t", "a::b::c", NORMAL, lang);
+  CHECK_MATCH_LANG (" \ta:: \tb:: \tc", "a::b::c", NORMAL, lang);
+  CHECK_MATCH_LANG ("\t a::\t b::\t c", "a::b::c", NORMAL, lang);
+  CHECK_MATCH_LANG ("a :: b:: c\t", "\ta :: b\t::  c\t\t", NORMAL, lang);
+  CHECK_MATCH_LANG ("  a::\t  \t    b::     c\t", "\ta ::b::  c\t\t",
+	      NORMAL, lang);
+  CHECK_MATCH_LANG ("a      :: b               :: \t\t\tc\t",
+	      "\t\t\t\ta        ::   \t\t\t        b             \t\t::c",
+	      NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b()", "a", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b()", "a::", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b()", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b(a)", "a", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b(a)", "a::", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b(a)", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b(a,b)", "a", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b(a,b)", "a::", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b(a,b)", "a::b", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b(a,b,c)", "a", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b(a,b,c)", "a::", NORMAL, lang);
+  CHECK_MATCH_LANG ("a::b(a,b,c)", "a::b", NORMAL, lang);
+
+  CHECK_NO_MATCH_LANG ("a::", "::a", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("::a", "::a()", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("::", "::a", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a:::b", "a::b", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b()", "a::b(a)", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b(a)", "a::b()", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b(a,b)", "a::b(a,a)", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b", "a()", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b", "a::()", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b", "a::b()", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b", "a(a)", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b", "a::(a)", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b", "a::b()", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b", "a(a,b)", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b", "a::(a,b)", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b", "a::b(a,b)", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b", "a(a,b,c)", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b", "a::(a,b,c)", NORMAL, lang);
+  CHECK_NO_MATCH_LANG ("a::b", "a::b(a,b,c)", NORMAL, lang);
+}
+
+/* Callback for strncmp_iw_with_mode unit tests.  */
+
+static void
+strncmp_iw_with_mode_tests ()
+{
+  /* Some of the following tests are nonsensical, but could be input by a
+     deranged script (or user).  */
+
+  /* strncmp_iw_mode::NORMAL: strcmp()-like but ignore any whitespace...  */
+
+  CHECK_MATCH ("", "", NORMAL);
+  CHECK_MATCH ("foo", "foo", NORMAL);
+  CHECK_MATCH (" foo", "foo", NORMAL);
+  CHECK_MATCH ("foo ", "foo", NORMAL);
+  CHECK_MATCH (" foo ", "foo", NORMAL);
+  CHECK_MATCH ("  foo", "foo", NORMAL);
+  CHECK_MATCH ("foo  ", "foo", NORMAL);
+  CHECK_MATCH ("  foo  ", "foo", NORMAL);
+  CHECK_MATCH ("\tfoo", "foo", NORMAL);
+  CHECK_MATCH ("foo\t", "foo", NORMAL);
+  CHECK_MATCH ("\tfoo\t", "foo", NORMAL);
+  CHECK_MATCH (" \tfoo \t", "foo", NORMAL);
+  CHECK_MATCH ("\t foo\t ", "foo", NORMAL);
+  CHECK_MATCH ("\t \t     \t\t\t\t   foo\t\t\t  \t\t   \t   \t    \t  \t ",
+	       "foo", NORMAL);
+  CHECK_MATCH ("foo",
+	       "\t \t     \t\t\t\t   foo\t\t\t  \t\t   \t   \t    \t  \t ",
+	       NORMAL);
+  CHECK_MATCH ("foo bar", "foo", NORMAL);
+  CHECK_NO_MATCH ("foo", "bar", NORMAL);
+  CHECK_NO_MATCH ("foo bar", "foobar", NORMAL);
+  CHECK_NO_MATCH (" foo ", "bar", NORMAL);
+  CHECK_NO_MATCH ("foo", " bar ", NORMAL);
+  CHECK_NO_MATCH (" \t\t    foo\t\t ", "\t    \t    \tbar\t", NORMAL);
+  CHECK_NO_MATCH ("@!%&", "@!%&foo", NORMAL);
+
+  /* ... and function parameters in STRING1.  */
+  CHECK_MATCH ("foo()", "foo()", NORMAL);
+  CHECK_MATCH ("foo ()", "foo()", NORMAL);
+  CHECK_MATCH ("foo  ()", "foo()", NORMAL);
+  CHECK_MATCH ("foo\t()", "foo()", NORMAL);
+  CHECK_MATCH ("foo\t  ()", "foo()", NORMAL);
+  CHECK_MATCH ("foo  \t()", "foo()", NORMAL);
+  CHECK_MATCH ("foo()", "foo ()", NORMAL);
+  CHECK_MATCH ("foo()", "foo  ()", NORMAL);
+  CHECK_MATCH ("foo()", "foo\t()", NORMAL);
+  CHECK_MATCH ("foo()", "foo\t ()", NORMAL);
+  CHECK_MATCH ("foo()", "foo \t()", NORMAL);
+  CHECK_MATCH ("foo()", "foo()", NORMAL);
+  CHECK_MATCH ("foo ()", "foo ()", NORMAL);
+  CHECK_MATCH ("foo  ()", "foo  ()", NORMAL);
+  CHECK_MATCH ("foo\t()", "foo\t()", NORMAL);
+  CHECK_MATCH ("foo\t  ()", "foo\t ()", NORMAL);
+  CHECK_MATCH ("foo  \t()", "foo \t()", NORMAL);
+  CHECK_MATCH ("foo(a)", "foo(a)", NORMAL);
+  CHECK_MATCH ("foo( a)", "foo(a)", NORMAL);
+  CHECK_MATCH ("foo(a )", "foo(a)", NORMAL);
+  CHECK_MATCH ("foo(\ta)", "foo(a)", NORMAL);
+  CHECK_MATCH ("foo(a\t)", "foo(a)", NORMAL);
+  CHECK_MATCH ("foo(\t a)", "foo(a)", NORMAL);
+  CHECK_MATCH ("foo( \ta)", "foo(a)", NORMAL);
+  CHECK_MATCH ("foo(a\t )", "foo(a)", NORMAL);
+  CHECK_MATCH ("foo(a \t)", "foo(a)", NORMAL);
+  CHECK_MATCH ("foo( a )", "foo(a)", NORMAL);
+  CHECK_MATCH ("foo(\ta\t)", "foo(a)", NORMAL);
+  CHECK_MATCH ("foo(\t a\t )", "foo(a)", NORMAL);
+  CHECK_MATCH ("foo( \ta \t)", "foo(a)", NORMAL);
+  CHECK_MATCH ("foo(a)", "foo( a)", NORMAL);
+  CHECK_MATCH ("foo(a)", "foo(a )", NORMAL);
+  CHECK_MATCH ("foo(a)", "foo(\ta)", NORMAL);
+  CHECK_MATCH ("foo(a)", "foo(a\t)", NORMAL);
+  CHECK_MATCH ("foo(a)", "foo(\t a)", NORMAL);
+  CHECK_MATCH ("foo(a)", "foo( \ta)", NORMAL);
+  CHECK_MATCH ("foo(a)", "foo(a\t )", NORMAL);
+  CHECK_MATCH ("foo(a)", "foo(a \t)", NORMAL);
+  CHECK_MATCH ("foo(a)", "foo( a )", NORMAL);
+  CHECK_MATCH ("foo(a)", "foo(\ta\t)", NORMAL);
+  CHECK_MATCH ("foo(a)", "foo(\t a\t )", NORMAL);
+  CHECK_MATCH ("foo(a)", "foo( \ta \t)", NORMAL);
+  CHECK_MATCH ("foo(a,b)", "foo(a,b)", NORMAL);
+  CHECK_MATCH ("foo(a ,b)", "foo(a,b)", NORMAL);
+  CHECK_MATCH ("foo(a\t,b)", "foo(a,b)", NORMAL);
+  CHECK_MATCH ("foo(a,\tb)", "foo(a,b)", NORMAL);
+  CHECK_MATCH ("foo(a\t,\tb)", "foo(a,b)", NORMAL);
+  CHECK_MATCH ("foo(a \t,b)", "foo(a,b)", NORMAL);
+  CHECK_MATCH ("foo(a\t ,b)", "foo(a,b)", NORMAL);
+  CHECK_MATCH ("foo(a,\tb)", "foo(a,b)", NORMAL);
+  CHECK_MATCH ("foo(a, \tb)", "foo(a,b)", NORMAL);
+  CHECK_MATCH ("foo(a,\t b)", "foo(a,b)", NORMAL);
+  CHECK_MATCH ("foo(a,b)", "foo(a ,b)", NORMAL);
+  CHECK_MATCH ("foo(a,b)", "foo(a\t,b)", NORMAL);
+  CHECK_MATCH ("foo(a,b)", "foo(a,\tb)", NORMAL);
+  CHECK_MATCH ("foo(a,b)", "foo(a\t,\tb)", NORMAL);
+  CHECK_MATCH ("foo(a,b)", "foo(a \t,b)", NORMAL);
+  CHECK_MATCH ("foo(a,b)", "foo(a\t ,b)", NORMAL);
+  CHECK_MATCH ("foo(a,b)", "foo(a,\tb)", NORMAL);
+  CHECK_MATCH ("foo(a,b)", "foo(a, \tb)", NORMAL);
+  CHECK_MATCH ("foo(a,b)", "foo(a,\t b)", NORMAL);
+  CHECK_MATCH ("foo(a,b,c,d)", "foo(a,b,c,d)", NORMAL);
+  CHECK_MATCH (" foo ( a , b , c , d ) ", "foo(a,b,c,d)", NORMAL);
+  CHECK_MATCH (" foo ( a , b , c , d ) ", "foo( a , b , c , d )", NORMAL);
+  CHECK_MATCH ("foo &\t*(\ta b    *\t\t&)", "foo", NORMAL);
+  CHECK_MATCH ("foo &\t*(\ta b    *\t\t&)", "foo&*(a b * &)", NORMAL);
+  CHECK_MATCH ("foo(a) b", "foo(a)", NORMAL);
+  CHECK_MATCH ("*foo(*a&)", "*foo", NORMAL);
+  CHECK_MATCH ("*foo(*a&)", "*foo(*a&)", NORMAL);
+  CHECK_MATCH ("*a&b#c/^d$foo(*a&)", "*a&b#c/^d$foo", NORMAL);
+  CHECK_MATCH ("* foo", "*foo", NORMAL);
+  CHECK_MATCH ("foo&", "foo", NORMAL);
+  CHECK_MATCH ("foo*", "foo", NORMAL);
+  CHECK_MATCH ("foo.", "foo", NORMAL);
+  CHECK_MATCH ("foo->", "foo", NORMAL);
+
+  CHECK_NO_MATCH ("foo", "foo(", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo()", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo(a)", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo(a)", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo*", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo (*", NORMAL);
+  CHECK_NO_MATCH ("foo*", "foo (*", NORMAL);
+  CHECK_NO_MATCH ("foo *", "foo (*", NORMAL);
+  CHECK_NO_MATCH ("foo&", "foo (*", NORMAL);
+  CHECK_NO_MATCH ("foo &", "foo (*", NORMAL);
+  CHECK_NO_MATCH ("foo &*", "foo (&)", NORMAL);
+  CHECK_NO_MATCH ("foo & \t    *\t", "foo (*", NORMAL);
+  CHECK_NO_MATCH ("foo & \t    *\t", "foo (*", NORMAL);
+  CHECK_NO_MATCH ("foo(a*) b", "foo(a) b", NORMAL);
+  CHECK_NO_MATCH ("foo[aqi:A](a)", "foo(b)", NORMAL);
+  CHECK_NO_MATCH ("*foo", "foo", NORMAL);
+  CHECK_NO_MATCH ("*foo", "foo*", NORMAL);
+  CHECK_NO_MATCH ("*foo*", "*foo&", NORMAL);
+  CHECK_NO_MATCH ("*foo*", "foo *", NORMAL);
+  CHECK_NO_MATCH ("&foo", "foo", NORMAL);
+  CHECK_NO_MATCH ("&foo", "foo&", NORMAL);
+  CHECK_NO_MATCH ("foo&", "&foo", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo&", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo*", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo.", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo->", NORMAL);
+  CHECK_NO_MATCH ("foo bar", "foo()", NORMAL);
+  CHECK_NO_MATCH ("foo bar", "foo bar()", NORMAL);
+  CHECK_NO_MATCH ("foo()", "foo(a)", NORMAL);
+  CHECK_NO_MATCH ("*(*)&", "*(*)*", NORMAL);
+  CHECK_NO_MATCH ("foo(a)", "foo()", NORMAL);
+  CHECK_NO_MATCH ("foo(a)", "foo(b)", NORMAL);
+  CHECK_NO_MATCH ("foo(a,b)", "foo(a,b,c)", NORMAL);
+  CHECK_NO_MATCH ("foo(a\\b)", "foo()", NORMAL);
+  CHECK_NO_MATCH ("foo bar(a b c d)", "foobar", NORMAL);
+  CHECK_NO_MATCH ("foo bar(a b c d)", "foobar ( a b   c \td\t)\t", NORMAL);
+
+  /* Test scope operator.  */
+  check_scope_operator (language_minimal);
+  check_scope_operator (language_cplus);
+  check_scope_operator (language_fortran);
+  check_scope_operator (language_rust);
+
+  /* Test C++ user-defined operators.  */
+  CHECK_MATCH_LANG ("operator foo(int&)", "operator foo(int &)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("operator foo(int &)", "operator foo(int &)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("operator foo(int\t&)", "operator foo(int\t&)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("operator foo (int)", "operator foo(int)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("operator foo\t(int)", "operator foo(int)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("operator foo \t(int)", "operator foo(int)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("operator foo (int)", "operator foo \t(int)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("operator foo\t(int)", "operator foo \t(int)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("operator foo \t(int)", "operator foo \t(int)", NORMAL,
+		    language_cplus);
+
+  CHECK_MATCH_LANG ("a::operator foo(int&)", "a::operator foo(int &)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("a :: operator foo(int &)", "a::operator foo(int &)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("a \t:: \toperator foo(int\t&)", "a::operator foo(int\t&)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("a::operator foo (int)", "a::operator foo(int)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("a::operator foo\t(int)", "a::operator foo(int)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("a::operator foo \t(int)", "a::operator foo(int)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("a::operator foo (int)", "a::operator foo \t(int)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("a::operator foo\t(int)", "a::operator foo \t(int)", NORMAL,
+		    language_cplus);
+  CHECK_MATCH_LANG ("a::operator foo \t(int)", "a::operator foo \t(int)", NORMAL,
+		    language_cplus);
+
+  CHECK_NO_MATCH_LANG ("operator foo(int)", "operator foo(char)", NORMAL,
+		       language_cplus);
+  CHECK_NO_MATCH_LANG ("operator foo(int)", "operator foo(int *)", NORMAL,
+		       language_cplus);
+  CHECK_NO_MATCH_LANG ("operator foo(int)", "operator foo(int &)", NORMAL,
+		       language_cplus);
+  CHECK_NO_MATCH_LANG ("operator foo(int)", "operator foo(int, char *)", NORMAL,
+		       language_cplus);
+  CHECK_NO_MATCH_LANG ("operator foo(int)", "operator bar(int)", NORMAL,
+		       language_cplus);
+
+  CHECK_NO_MATCH_LANG ("a::operator b::foo(int)", "a::operator a::foo(char)", NORMAL,
+		       language_cplus);
+  CHECK_NO_MATCH_LANG ("a::operator foo(int)", "a::operator foo(int *)", NORMAL,
+		       language_cplus);
+  CHECK_NO_MATCH_LANG ("a::operator foo(int)", "a::operator foo(int &)", NORMAL,
+		       language_cplus);
+  CHECK_NO_MATCH_LANG ("a::operator foo(int)", "a::operator foo(int, char *)", NORMAL,
+		       language_cplus);
+  CHECK_NO_MATCH_LANG ("a::operator foo(int)", "a::operator bar(int)", NORMAL,
+		       language_cplus);
+
+  /* Skip "[abi:cxx11]" tags in the symbol name if the lookup name
+     doesn't include them.  These are not language-specific in
+     strncmp_iw_with_mode.  */
+
+  CHECK_MATCH ("foo[abi:a]", "foo", NORMAL);
+  CHECK_MATCH ("foo[abi:a]()", "foo", NORMAL);
+  CHECK_MATCH ("foo[abi:a](a)", "foo", NORMAL);
+  CHECK_MATCH ("foo[abi:a](a&,b*)", "foo", NORMAL);
+  CHECK_MATCH ("foo[abi:a](a,b)", "foo(a,b)", NORMAL);
+  CHECK_MATCH ("foo[abi:a](a,b) c", "foo(a,b) c", NORMAL);
+  CHECK_MATCH ("foo[abi:a](a)", "foo(a)", NORMAL);
+  CHECK_MATCH ("foo[abi:a](a,b)", "foo(a,b)", NORMAL);
+  CHECK_MATCH ("foo[abi:a]", "foo[abi:a]", NORMAL);
+  CHECK_MATCH ("foo[ abi:a]", "foo[abi:a]", NORMAL);
+  CHECK_MATCH ("foo[\tabi:a]", "foo[abi:a]", NORMAL);
+  CHECK_MATCH ("foo[ \tabi:a]", "foo[abi:a]", NORMAL);
+  CHECK_MATCH ("foo[\t abi:a]", "foo[abi:a]", NORMAL);
+  CHECK_MATCH ("foo[abi :a]", "foo[abi:a]", NORMAL);
+  CHECK_MATCH ("foo[abi\t:a]", "foo[abi:a]", NORMAL);
+  CHECK_MATCH ("foo[abi \t:a]", "foo[abi:a]", NORMAL);
+  CHECK_MATCH ("foo[abi\t :a]", "foo[abi:a]", NORMAL);
+  CHECK_MATCH ("foo[abi:a]", "foo[ abi:a]", NORMAL);
+  CHECK_MATCH ("foo[abi:a]", "foo[\tabi:a]", NORMAL);
+  CHECK_MATCH ("foo[abi:a]", "foo[ \tabi:a]", NORMAL);
+  CHECK_MATCH ("foo[abi:a]", "foo[\t abi:a]", NORMAL);
+  CHECK_MATCH ("foo[abi:a]", "foo[abi :a]", NORMAL);
+  CHECK_MATCH ("foo[abi:a]", "foo[abi\t:a]", NORMAL);
+  CHECK_MATCH ("foo[abi:a]", "foo[abi \t:a]", NORMAL);
+  CHECK_MATCH ("foo[abi:a]", "foo[abi\t :a]", NORMAL);
+  CHECK_MATCH ("foo[abi:a]", "foo[abi:a ]", NORMAL);
+  CHECK_MATCH ("foo[abi:a]", "foo[abi:a\t]", NORMAL);
+  CHECK_MATCH ("foo[abi:a]", "foo[abi:a \t]", NORMAL);
+  CHECK_MATCH ("foo[abi:a]", "foo[abi:a\t ]", NORMAL);
+  CHECK_MATCH ("foo[abi:a,b]", "foo[abi:a,b]", NORMAL);
+  CHECK_MATCH ("foo[abi:::]", "foo[abi:::]", NORMAL);
+  CHECK_MATCH ("foo[abi : : : ]", "foo[abi:::]", NORMAL);
+  CHECK_MATCH ("foo[abi:::]", "foo[abi : : : ]", NORMAL);
+  CHECK_MATCH ("foo[ \t abi  \t:\t:   :   \t]",
+	       "foo[   abi :                \t    ::]",
+	       NORMAL);
+  CHECK_MATCH ("foo< bar< baz< quxi > > >(int)", "foo<bar<baz<quxi>>>(int)",
+	       NORMAL);
+  CHECK_MATCH ("\tfoo<\tbar<\tbaz\t<\tquxi\t>\t>\t>(int)",
+	       "foo<bar<baz<quxi>>>(int)", NORMAL);
+  CHECK_MATCH (" \tfoo \t< \tbar \t< \tbaz \t< \tquxi \t> \t> \t> \t( \tint \t)",
+	       "foo<bar<baz<quxi>>>(int)", NORMAL);
+  CHECK_MATCH ("foo<bar<baz<quxi>>>(int)",
+	       "foo < bar < baz < quxi > > > (int)", NORMAL);
+  CHECK_MATCH ("foo<bar<baz<quxi>>>(int)",
+	       "\tfoo\t<\tbar\t<\tbaz\t<\tquxi\t>\t>\t>\t(int)", NORMAL);
+  CHECK_MATCH ("foo<bar<baz<quxi>>>(int)",
+	       " \tfoo \t< \tbar \t< \tbaz \t< \tquxi \t> \t> \t> \t( \tint \t)", NORMAL);
+  CHECK_MATCH ("foo<bar<baz>>::foo(quxi &)", "fo", NORMAL);
+  CHECK_MATCH ("foo<bar<baz>>::foo(quxi &)", "foo", NORMAL);
+  CHECK_MATCH ("foo<bar<baz>>::foo(quxi &)", "foo<bar<baz>>::", NORMAL);
+  CHECK_MATCH ("foo<bar<baz>>::foo(quxi &)", "foo<bar<baz> >::foo", NORMAL);
+  CHECK_MATCH ("foo[abi:a][abi:b](bar[abi:c][abi:d])", "foo[abi:a][abi:b](bar[abi:c][abi:d])",
+	       NORMAL);
+  CHECK_MATCH ("foo[abi:a][abi:b](bar[abi:c][abi:d])", "foo", NORMAL);
+  CHECK_MATCH ("foo[abi:a][abi:b](bar[abi:c][abi:d])", "foo(bar)", NORMAL);
+  CHECK_MATCH ("foo[abi:a][abi:b](bar[abi:c][abi:d])", "foo[abi:a](bar)", NORMAL);
+  CHECK_MATCH ("foo[abi:a][abi:b](bar[abi:c][abi:d])", "foo(bar[abi:c])", NORMAL);
+  CHECK_MATCH ("foo[abi:a][abi:b](bar[abi:c][abi:d])", "foo[abi:a](bar[abi:c])", NORMAL);
+  CHECK_MATCH ("foo[abi:a][abi:b](bar[abi:c][abi:d])", "foo[abi:a][abi:b](bar)", NORMAL);
+  CHECK_MATCH ("foo[abi:a][abi:b](bar[abi:c][abi:d])", "foo[abi:a][abi:b](bar[abi:c])",
+	       NORMAL);
+  CHECK_MATCH("foo<bar[abi:a]>(char *, baz[abi:b])", "foo", NORMAL);
+  CHECK_NO_MATCH("foo<bar[abi:a]>(char *, baz[abi:b])", "foo()", NORMAL);
+  CHECK_MATCH("foo<bar[abi:a]>(char *, baz[abi:b])", "foo<bar>", NORMAL);
+  CHECK_MATCH("foo<bar[abi:a]>(char *, baz[abi:b])", "foo<bar>(char*, baz)", NORMAL);
+  CHECK_MATCH("foo<bar[abi:a]>(char *, baz[abi:b])", "foo<bar>(char*, baz[abi:b])",
+	      NORMAL);
+  CHECK_NO_MATCH("foo<bar[abi:a]>(char *, baz[abi:b])", "foo<bar>(char*, baz[abi:A])",
+	      NORMAL);
+  CHECK_MATCH("foo<bar[abi:a]>(char *, baz[abi:b])", "foo<bar[abi:a]>(char*, baz)",
+	      NORMAL);
+  CHECK_NO_MATCH("foo<bar[abi:a]>(char *, baz[abi:b])", "foo<bar[abi:A]>(char*, baz)",
+	      NORMAL);
+  CHECK_MATCH("foo<bar[abi:a]>(char *, baz[abi:b])", "foo<bar[abi:a]>(char*, baz[abi:b])",
+	      NORMAL);
+  CHECK_NO_MATCH("foo<bar[abi:a]>(char *, baz[abi:b])",
+		 "foo<bar[abi:a]>(char*, baz[abi:B])", NORMAL);
+
+  CHECK_NO_MATCH ("foo", "foo[", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[ a]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[a ]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[ a ]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[\ta]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[a \t]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[a\t ]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[ \ta]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[\t a]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[ \ta \t]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[\t a\t ]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[ abi]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi ]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[\tabi]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi\t]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[ \tabi]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[\t abi]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi \t]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi\t ]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi :]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi\t:]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi \t:]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi\t :]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi: ]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi:\t]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi: \t]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi:\t ]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi: a]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi:\ta]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi: \ta]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi:\t a]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi:a ]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi:a\t]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi:a \t]", NORMAL);
+  CHECK_NO_MATCH ("foo", "foo[abi:a\t ]", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a]()", "foo(a)", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a]()", "foo(a)", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a]()", "foo(a)", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a]()", "foo(a)", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a]()", "foo(a) c", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a]()", "foo(a) .", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a]()", "foo(a) *", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a]()", "foo(a) &", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a](a,b)", "foo(a,b) c", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a](a,b)", "foo(a,b) .", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a](a,b)", "foo(a,b) *", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a](a,b)", "foo(a,b) &", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a](a,b)", "foo(a,b)c", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a](a,b)", "foo(a,b).", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a](a,b)", "foo(a,b)*", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a](a,b)", "foo(a,b)&", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a](a,b) d", "foo(a,b) c", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a](a)", "foo()", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a](a)", "foo(b)", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a](a)", "foo[abi:b](a)", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a](a)", "foo[abi:a](b)", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:]", "foo[abi:a]", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:", "foo[abi:a]", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:]", "foo[abi:a", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:,]", "foo[abi:a]", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:a,b]", "foo[abi:a]", NORMAL);
+  CHECK_NO_MATCH ("foo[abi::a]", "foo[abi:a]", NORMAL);
+  CHECK_NO_MATCH ("foo[abi:,([a]", "foo[abi:a]", NORMAL);
+
+  CHECK_MATCH ("foo <a, b [, c (",  "foo", NORMAL);
+  CHECK_MATCH ("foo >a, b ], c )",  "foo", NORMAL);
+  CHECK_MATCH ("@!%&\\*", "@!%&\\*", NORMAL);
+  CHECK_MATCH ("()", "()", NORMAL);
+  CHECK_MATCH ("*(*)*", "*(*)*", NORMAL);
+  CHECK_MATCH ("[]", "[]", NORMAL);
+  CHECK_MATCH ("<>", "<>", NORMAL);
+
+  /* strncmp_iw_with_mode::MATCH_PARAMS: the "strcmp_iw hack."  */
+  CHECK_MATCH ("foo2", "foo", NORMAL);
+  CHECK_NO_MATCH ("foo2", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2", "foo ", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2", "foo\t", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2", "foo \t", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2", "foo\t ", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2", "foo \t", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2", " foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2", "\tfoo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2", " \tfoo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2", "\t foo", MATCH_PARAMS);
+  CHECK_NO_MATCH (" foo2", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("\tfoo2", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH (" \tfoo2", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("\t foo2", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH (" foo2 ", " foo ", MATCH_PARAMS);
+  CHECK_NO_MATCH ("\tfoo2\t", "\tfoo\t", MATCH_PARAMS);
+  CHECK_NO_MATCH (" \tfoo2 \t", " \tfoo \t", MATCH_PARAMS);
+  CHECK_NO_MATCH ("\t foo2\t ", "\t foo\t ", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2 ", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2\t", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2 ", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2 \t", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2\t ", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2 (args)", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2 (args)", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2\t(args)", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2 \t(args)", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2\t (args)", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2 ( args)", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2(args )", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2(args\t)", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2 (args \t)", "foo", MATCH_PARAMS);
+  CHECK_NO_MATCH ("foo2 (args\t )", "foo", MATCH_PARAMS);
+  CHECK_MATCH ("foo[abi:a][abi:b](bar[abi:c][abi:d])", "foo[abi:a][abi:b](bar[abi:c][abi:d])",
+	       MATCH_PARAMS);
+  CHECK_MATCH ("foo[abi:a][abi:b](bar[abi:c][abi:d])", "foo", MATCH_PARAMS);
+
+  /* strncmp_iw_with_mode also supports case insensitivity.  */
+  {
+    CHECK_NO_MATCH ("FoO", "foo", NORMAL);
+    CHECK_NO_MATCH ("FoO", "foo", MATCH_PARAMS);
+
+    scoped_restore restore_case = make_scoped_restore (&case_sensitivity);
+    case_sensitivity = case_sensitive_off;
+
+    CHECK_MATCH ("FoO", "foo", NORMAL);
+    CHECK_MATCH ("FoO", "foo", MATCH_PARAMS);
+    CHECK_MATCH ("foo", "FoO", NORMAL);
+    CHECK_MATCH ("foo", "FoO", MATCH_PARAMS);
+
+    CHECK_MATCH ("FoO[AbI:abC]()", "foo", NORMAL);
+    CHECK_NO_MATCH ("FoO[AbI:abC]()", "foo", MATCH_PARAMS);
+    CHECK_MATCH ("FoO2[AbI:abC]()", "foo", NORMAL);
+    CHECK_NO_MATCH ("FoO2[AbI:abC]()", "foo", MATCH_PARAMS);
+
+    CHECK_MATCH ("foo[abi:abc]()", "FoO[AbI:abC]()", NORMAL);
+    CHECK_MATCH ("foo[abi:abc]()", "FoO[AbI:AbC]()", MATCH_PARAMS);
+    CHECK_MATCH ("foo[abi:abc](xyz)", "FoO[AbI:abC](XyZ)", NORMAL);
+    CHECK_MATCH ("foo[abi:abc](xyz)", "FoO[AbI:abC](XyZ)", MATCH_PARAMS);
+    CHECK_MATCH ("foo[abi:abc][abi:def](xyz)", "FoO[AbI:abC](XyZ)", NORMAL);
+    CHECK_MATCH ("foo[abi:abc][abi:def](xyz)", "FoO[AbI:abC](XyZ)",
+		 MATCH_PARAMS);
+    CHECK_MATCH ("foo<bar<baz>>(bar<baz>)", "FoO<bAr<BaZ>>(bAr<BaZ>)",
+		 NORMAL);
+    CHECK_MATCH ("foo<bar<baz>>(bar<baz>)", "FoO<bAr<BaZ>>(bAr<BaZ>)",
+		 MATCH_PARAMS);
+  }
+}
+
+#undef MATCH
+#undef NO_MATCH
+#endif
 
 /* See utils.h.  */
 
@@ -2905,27 +3358,6 @@ print_core_address (struct gdbarch *gdbarch, CORE_ADDR address)
     return hex_string_custom (address, 16);
 }
 
-/* Callback hash_f for htab_create_alloc or htab_create_alloc_ex.  */
-
-hashval_t
-core_addr_hash (const void *ap)
-{
-  const CORE_ADDR *addrp = (const CORE_ADDR *) ap;
-
-  return *addrp;
-}
-
-/* Callback eq_f for htab_create_alloc or htab_create_alloc_ex.  */
-
-int
-core_addr_eq (const void *ap, const void *bp)
-{
-  const CORE_ADDR *addr_ap = (const CORE_ADDR *) ap;
-  const CORE_ADDR *addr_bp = (const CORE_ADDR *) bp;
-
-  return *addr_ap == *addr_bp;
-}
-
 /* Convert a string back into a CORE_ADDR.  */
 CORE_ADDR
 string_to_core_addr (const char *my_string)
@@ -3025,30 +3457,6 @@ gdb_argv_as_array_view_test ()
 
 #endif /* GDB_SELF_TEST */
 
-/* Allocation function for the libiberty hash table which uses an
-   obstack.  The obstack is passed as DATA.  */
-
-void *
-hashtab_obstack_allocate (void *data, size_t size, size_t count)
-{
-  size_t total = size * count;
-  void *ptr = obstack_alloc ((struct obstack *) data, total);
-
-  memset (ptr, 0, total);
-  return ptr;
-}
-
-/* Trivial deallocation function for the libiberty splay tree and hash
-   table - don't deallocate anything.  Rely on later deletion of the
-   obstack.  DATA will be the obstack, although it is not needed
-   here.  */
-
-void
-dummy_obstack_deallocate (void *object, void *data)
-{
-  return;
-}
-
 /* Simple, portable version of dirname that does not modify its
    argument.  */
 
@@ -3073,45 +3481,6 @@ ldirname (const char *filename)
     dirname[base++ - filename] = '.';
 
   return dirname;
-}
-
-/* See utils.h.  */
-
-void
-gdb_argv::reset (const char *s)
-{
-  char **argv = buildargv (s);
-
-  freeargv (m_argv);
-  m_argv = argv;
-}
-
-#define AMBIGUOUS_MESS1	".\nMatching formats:"
-#define AMBIGUOUS_MESS2	\
-  ".\nUse \"set gnutarget format-name\" to specify the format."
-
-std::string
-gdb_bfd_errmsg (bfd_error_type error_tag, char **matching)
-{
-  char **p;
-
-  /* Check if errmsg just need simple return.  */
-  if (error_tag != bfd_error_file_ambiguously_recognized || matching == NULL)
-    return bfd_errmsg (error_tag);
-
-  std::string ret (bfd_errmsg (error_tag));
-  ret += AMBIGUOUS_MESS1;
-
-  for (p = matching; *p; p++)
-    {
-      ret += " ";
-      ret += *p;
-    }
-  ret += AMBIGUOUS_MESS2;
-
-  xfree (matching);
-
-  return ret;
 }
 
 /* Return ARGS parsed as a valid pid, or throw an error.  */
@@ -3522,5 +3891,7 @@ When set, debugging messages will be marked with seconds and microseconds."),
 #if GDB_SELF_TEST
   selftests::register_test ("gdb_realpath", gdb_realpath_tests);
   selftests::register_test ("gdb_argv_array_view", gdb_argv_as_array_view_test);
+  selftests::register_test ("strncmp_iw_with_mode",
+			    strncmp_iw_with_mode_tests);
 #endif
 }

@@ -65,7 +65,7 @@ char *interpreter_p;
 int dbx_commands = 0;
 
 /* System root path, used to find libraries etc.  */
-char *gdb_sysroot = 0;
+std::string gdb_sysroot;
 
 /* GDB datadir, used to store data files.  */
 std::string gdb_datadir;
@@ -702,7 +702,7 @@ captured_main_1 (struct captured_main_args *context)
 
   /* Prefix warning messages with the command name.  */
   gdb::unique_xmalloc_ptr<char> tmp_warn_preprint
-    (xstrprintf ("%s: warning: ", gdb_program_name));
+    = xstrprintf ("%s: warning: ", gdb_program_name);
   warning_pre_print = tmp_warn_preprint.get ();
 
   current_directory = getcwd (NULL, 0);
@@ -710,19 +710,14 @@ captured_main_1 (struct captured_main_args *context)
     perror_warning_with_name (_("error finding working directory"));
 
   /* Set the sysroot path.  */
-  gdb_sysroot
-    = xstrdup (relocate_gdb_directory (TARGET_SYSTEM_ROOT,
-				     TARGET_SYSTEM_ROOT_RELOCATABLE).c_str ());
+  gdb_sysroot = relocate_gdb_directory (TARGET_SYSTEM_ROOT,
+					TARGET_SYSTEM_ROOT_RELOCATABLE);
 
-  if (*gdb_sysroot == '\0')
-    {
-      xfree (gdb_sysroot);
-      gdb_sysroot = xstrdup (TARGET_SYSROOT_PREFIX);
-    }
+  if (gdb_sysroot.empty ())
+    gdb_sysroot = TARGET_SYSROOT_PREFIX;
 
   debug_file_directory
-    = xstrdup (relocate_gdb_directory (DEBUGDIR,
-				     DEBUGDIR_RELOCATABLE).c_str ());
+    = relocate_gdb_directory (DEBUGDIR, DEBUGDIR_RELOCATABLE);
 
   gdb_datadir = relocate_gdb_directory (GDB_DATADIR,
 					GDB_DATADIR_RELOCATABLE);
@@ -1033,6 +1028,9 @@ captured_main_1 (struct captured_main_args *context)
       }
   }
 
+  if (dbx_commands)
+    warning (_("--dbx mode is deprecated and will be removed"));
+
   save_original_signals_state (quiet);
 
   /* Try to set up an alternate signal stack for SIGSEGV handlers.  */
@@ -1126,7 +1124,7 @@ captured_main_1 (struct captured_main_args *context)
   if (print_version)
     {
       print_gdb_version (gdb_stdout, false);
-      wrap_here ("");
+      gdb_stdout->wrap_here (0);
       printf_filtered ("\n");
       exit (0);
     }
@@ -1140,7 +1138,7 @@ captured_main_1 (struct captured_main_args *context)
   if (print_configuration)
     {
       print_gdb_configuration (gdb_stdout);
-      wrap_here ("");
+      gdb_stdout->wrap_here (0);
       printf_filtered ("\n");
       exit (0);
     }
@@ -1156,7 +1154,7 @@ captured_main_1 (struct captured_main_args *context)
       print_gdb_version (gdb_stdout, true);
       if (symarg)
 	printf_filtered ("..");
-      wrap_here ("");
+      gdb_stdout->wrap_here (0);
       printf_filtered ("\n");
       gdb_flush (gdb_stdout);	/* Force to screen during slow
 				   operations.  */
@@ -1177,7 +1175,7 @@ captured_main_1 (struct captured_main_args *context)
       print_gdb_version (gdb_stdout, true);
       if (symarg)
 	printf_filtered ("..");
-      wrap_here ("");
+      gdb_stdout->wrap_here (0);
       printf_filtered ("\n");
       gdb_flush (gdb_stdout);	/* Force to screen during slow
 				   operations.  */

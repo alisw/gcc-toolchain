@@ -22,6 +22,8 @@
 #ifndef BFIN_TDEP_H
 #define BFIN_TDEP_H
 
+#include "gdbarch.h"
+
 enum gdb_regnum {
   /* Core Registers */
   BFIN_R0_REGNUM = 0,
@@ -94,10 +96,10 @@ enum bfin_abi
 };
 
 /* Target-dependent structure in gdbarch.  */
-struct gdbarch_tdep
+struct bfin_gdbarch_tdep : gdbarch_tdep
 {
   /* Which ABI is in use?  */
-  enum bfin_abi bfin_abi;
+  enum bfin_abi bfin_abi {};
 };
 
 /* Return the Blackfin ABI associated with GDBARCH.  */

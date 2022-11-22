@@ -45,9 +45,9 @@
 
 # List of .dat files to create in ../regformats/
 WHICH = mips-linux mips-dsp-linux \
-	microblaze-with-stack-protect \
 	mips64-linux mips64-dsp-linux \
 	nios2-linux \
+	or1k-linux \
 	rs6000/powerpc-32 \
 	rs6000/powerpc-32l rs6000/powerpc-altivec32l rs6000/powerpc-e500l \
 	rs6000/powerpc-64l rs6000/powerpc-altivec64l rs6000/powerpc-vsx32l \
@@ -69,18 +69,11 @@ WHICH = mips-linux mips-dsp-linux \
 	tic6x-c64xp-linux tic6x-c64x-linux tic6x-c62x-linux
 
 # Record which registers should be sent to GDB by default after stop.
-aarch64-expedite = x29,sp,pc
-arm-expedite = r11,sp,pc
-i386-expedite = ebp,esp,eip
-amd64-expedite = rbp,rsp,rip
-x32-expedite = rbp,rsp,rip
 mips-expedite = r29,pc
 mips-dsp-expedite = r29,pc
 mips64-expedite = r29,pc
 mips64-dsp-expedite = r29,pc
-microblaze-expedite = r1,rpc
 nios2-linux-expedite = sp,pc
-or1k-expedite = r1,npc
 powerpc-expedite = r1,pc
 s390-linux32-expedite = r14,r15,pswa
 s390-linux32v1-expedite = r14,r15,pswa
@@ -180,6 +173,7 @@ GDB = false
 aarch64-feature = 1
 arm-feature = 1
 i386-feature = 1
+loongarch-feature = 1
 riscv-feature = 1
 tic6x-feature = 1
 
@@ -211,6 +205,7 @@ FEATURE_XMLFILES = aarch64-core.xml \
 	arm/arm-core.xml \
 	arm/arm-fpa.xml \
 	arm/arm-m-profile.xml \
+	arm/arm-m-profile-mve.xml \
 	arm/arm-m-profile-with-fpa.xml \
 	arm/arm-vfpv2.xml \
 	arm/arm-vfpv3.xml \
@@ -222,6 +217,7 @@ FEATURE_XMLFILES = aarch64-core.xml \
 	i386/32bit-mpx.xml \
 	i386/32bit-avx512.xml \
 	i386/32bit-pkeys.xml \
+	i386/32bit-segments.xml \
 	i386/64bit-avx512.xml \
 	i386/64bit-core.xml \
 	i386/64bit-mpx.xml \
@@ -231,6 +227,8 @@ FEATURE_XMLFILES = aarch64-core.xml \
 	i386/64bit-pkeys.xml \
 	i386/64bit-sse.xml \
 	i386/x32-core.xml \
+	loongarch/base32.xml \
+	loongarch/base64.xml \
 	riscv/rv32e-xregs.xml \
 	riscv/32bit-cpu.xml \
 	riscv/32bit-fpu.xml \

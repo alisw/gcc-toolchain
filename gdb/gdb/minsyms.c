@@ -230,13 +230,13 @@ add_minsym_to_demangled_hash_table (struct minimal_symbol *sym,
 struct found_minimal_symbols
 {
   /* External symbols are best.  */
-  bound_minimal_symbol external_symbol {};
+  bound_minimal_symbol external_symbol;
 
   /* File-local symbols are next best.  */
-  bound_minimal_symbol file_symbol {};
+  bound_minimal_symbol file_symbol;
 
   /* Symbols for shared library trampolines are next best.  */
-  bound_minimal_symbol trampoline_symbol {};
+  bound_minimal_symbol trampoline_symbol;
 
   /* Called when a symbol name matches.  Check if the minsym is a
      better type than what we had already found, and record it in one
@@ -601,8 +601,8 @@ struct bound_minimal_symbol
 lookup_minimal_symbol_text (const char *name, struct objfile *objf)
 {
   struct minimal_symbol *msymbol;
-  struct bound_minimal_symbol found_symbol = { NULL, NULL };
-  struct bound_minimal_symbol found_file_symbol = { NULL, NULL };
+  struct bound_minimal_symbol found_symbol;
+  struct bound_minimal_symbol found_file_symbol;
 
   unsigned int hash = msymbol_hash (name) % MINIMAL_SYMBOL_HASH_SIZE;
 
@@ -1187,9 +1187,10 @@ minimal_symbol_reader::record_full (gdb::string_view name,
     return (NULL);
 
   if (symtab_create_debug >= 2)
-    printf_unfiltered ("Recording minsym:  %-21s  %18s  %4d  %.*s\n",
-	       mst_str (ms_type), hex_string (address), section,
-	       (int) name.size (), name.data ());
+    fprintf_unfiltered (gdb_stdlog,
+			"Recording minsym:  %-21s  %18s  %4d  %.*s\n",
+			mst_str (ms_type), hex_string (address), section,
+			(int) name.size (), name.data ());
 
   if (m_msym_bunch_index == BUNCH_SIZE)
     {
@@ -1473,10 +1474,11 @@ minimal_symbol_reader::install ()
 	       if (!msym->name_set)
 		 {
 		   /* This will be freed later, by compute_and_set_names.  */
-		   char *demangled_name
+		   gdb::unique_xmalloc_ptr<char> demangled_name
 		     = symbol_find_demangled_name (msym, msym->linkage_name ());
 		   msym->set_demangled_name
-		     (demangled_name, &m_objfile->per_bfd->storage_obstack);
+		     (demangled_name.release (),
+		      &m_objfile->per_bfd->storage_obstack);
 		   msym->name_set = 1;
 		 }
 	       /* This mangled_name_hash computation has to be outside of

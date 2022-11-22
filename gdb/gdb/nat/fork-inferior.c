@@ -281,8 +281,6 @@ fork_inferior (const char *exec_file_arg, const std::string &allargs,
   char **save_our_env;
   int i;
   int save_errno;
-  const char *inferior_cwd;
-  std::string expanded_inferior_cwd;
 
   /* If no exec file handed to us, get it from the exec-file command
      -- with a good, common error message if none is specified.  */
@@ -326,14 +324,13 @@ fork_inferior (const char *exec_file_arg, const std::string &allargs,
 
   /* Check if the user wants to set a different working directory for
      the inferior.  */
-  inferior_cwd = get_inferior_cwd ();
+  std::string inferior_cwd = get_inferior_cwd ();
 
-  if (inferior_cwd != NULL)
+  if (!inferior_cwd.empty ())
     {
       /* Expand before forking because between fork and exec, the child
 	 process may only execute async-signal-safe operations.  */
-      expanded_inferior_cwd = gdb_tilde_expand (inferior_cwd);
-      inferior_cwd = expanded_inferior_cwd.c_str ();
+      inferior_cwd = gdb_tilde_expand (inferior_cwd.c_str ());
     }
 
   /* If there's any initialization of the target layers that must
@@ -373,10 +370,10 @@ fork_inferior (const char *exec_file_arg, const std::string &allargs,
 
       /* Change to the requested working directory if the user
 	 requested it.  */
-      if (inferior_cwd != NULL)
+      if (!inferior_cwd.empty ())
 	{
-	  if (chdir (inferior_cwd) < 0)
-	    trace_start_error_with_name (inferior_cwd);
+	  if (chdir (inferior_cwd.c_str ()) < 0)
+	    trace_start_error_with_name (inferior_cwd.c_str ());
 	}
 
       if (debug_fork)
@@ -482,7 +479,6 @@ startup_inferior (process_stratum_target *proc_target, pid_t pid, int ntraps,
       ptid_t event_ptid;
 
       struct target_waitstatus ws;
-      memset (&ws, 0, sizeof (ws));
       event_ptid = target_wait (resume_ptid, &ws, 0);
 
       if (last_waitstatus != NULL)
@@ -490,11 +486,11 @@ startup_inferior (process_stratum_target *proc_target, pid_t pid, int ntraps,
       if (last_ptid != NULL)
 	*last_ptid = event_ptid;
 
-      if (ws.kind == TARGET_WAITKIND_IGNORE)
+      if (ws.kind () == TARGET_WAITKIND_IGNORE)
 	/* The inferior didn't really stop, keep waiting.  */
 	continue;
 
-      switch (ws.kind)
+      switch (ws.kind ())
 	{
 	  case TARGET_WAITKIND_SPURIOUS:
 	  case TARGET_WAITKIND_LOADED:
@@ -510,32 +506,28 @@ startup_inferior (process_stratum_target *proc_target, pid_t pid, int ntraps,
 	    target_terminal::ours ();
 	    target_mourn_inferior (event_ptid);
 	    error (_("During startup program terminated with signal %s, %s."),
-		   gdb_signal_to_name (ws.value.sig),
-		   gdb_signal_to_string (ws.value.sig));
+		   gdb_signal_to_name (ws.sig ()),
+		   gdb_signal_to_string (ws.sig ()));
 	    return resume_ptid;
 
 	  case TARGET_WAITKIND_EXITED:
 	    target_terminal::ours ();
 	    target_mourn_inferior (event_ptid);
-	    if (ws.value.integer)
+	    if (ws.exit_status ())
 	      error (_("During startup program exited with code %d."),
-		     ws.value.integer);
+		     ws.exit_status ());
 	    else
 	      error (_("During startup program exited normally."));
 	    return resume_ptid;
 
 	  case TARGET_WAITKIND_EXECD:
 	    /* Handle EXEC signals as if they were SIGTRAP signals.  */
-	    /* Free the exec'ed pathname, but only if this isn't the
-	       waitstatus we are returning to the caller.  */
-	    if (pending_execs != 1)
-	      xfree (ws.value.execd_pathname);
 	    resume_signal = GDB_SIGNAL_TRAP;
 	    switch_to_thread (proc_target, event_ptid);
 	    break;
 
 	  case TARGET_WAITKIND_STOPPED:
-	    resume_signal = ws.value.sig;
+	    resume_signal = ws.sig ();
 	    switch_to_thread (proc_target, event_ptid);
 	    break;
 	}

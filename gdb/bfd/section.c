@@ -1,5 +1,5 @@
 /* Object file "section" support for the BFD library.
-   Copyright (C) 1990-2021 Free Software Foundation, Inc.
+   Copyright (C) 1990-2022 Free Software Foundation, Inc.
    Written by Cygnus Support.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -551,9 +551,14 @@ CODE_FRAGMENT
 .    struct bfd_section *s;
 .    const char *linked_to_symbol_name;
 .  } map_head, map_tail;
-. {* Points to the output section this section is already assigned to, if any.
-.    This is used when support for non-contiguous memory regions is enabled.  *}
-. struct bfd_section *already_assigned;
+.
+.  {* Points to the output section this section is already assigned to,
+.     if any.  This is used when support for non-contiguous memory
+.     regions is enabled.  *}
+.  struct bfd_section *already_assigned;
+.
+.  {* Explicitly specified section type, if non-zero.  *}
+.  unsigned int type;
 .
 .} asection;
 .
@@ -737,8 +742,8 @@ CODE_FRAGMENT
 .  {* symbol,                    symbol_ptr_ptr,                     *}	\
 .     (struct bfd_symbol *) SYM, &SEC.symbol,				\
 .									\
-.  {* map_head, map_tail, already_assigned                           *}	\
-.     { NULL }, { NULL }, NULL						\
+.  {* map_head, map_tail, already_assigned, type                     *}	\
+.     { NULL }, { NULL }, NULL,             0				\
 .									\
 .    }
 .

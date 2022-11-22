@@ -1,5 +1,5 @@
 /* Gimple range edge header file.
-   Copyright (C) 2020-2021 Free Software Foundation, Inc.
+   Copyright (C) 2020-2022 Free Software Foundation, Inc.
    Contributed by Andrew MacLeod <amacleod@redhat.com>
    and Aldy Hernandez <aldyh@redhat.com>.
 
@@ -35,21 +35,24 @@ along with GCC; see the file COPYING3.  If not see
 // The return value is NULL for no range, or the branch statement which the
 // edge gets the range from, along with the range.
 
-class outgoing_range
+class gimple_outgoing_range
 {
 public:
-  outgoing_range ();
-  ~outgoing_range ();
+  gimple_outgoing_range (int max_sw_edges = INT_MAX);
+  ~gimple_outgoing_range ();
   gimple *edge_range_p (irange &r, edge e);
 private:
   void calc_switch_ranges (gswitch *sw);
   bool get_edge_range (irange &r, gimple *s, edge e);
 
+  int m_max_edges;
   hash_map<edge, irange *> *m_edge_table;
   irange_allocator m_range_allocator;
-}; 
+};
 
-// If there is a range control statment at the end of block BB, return it.
+// If there is a range control statement at the end of block BB, return it.
 gimple *gimple_outgoing_range_stmt_p (basic_block bb);
+// Return the range on edge E if it is from a GCOND.  Either TRUE or FALSE.
+void gcond_edge_range (irange &r, edge e);
 
 #endif  // GIMPLE_RANGE_EDGE_H

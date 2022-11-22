@@ -1,5 +1,5 @@
 /* SPARC-specific support for 64-bit ELF
-   Copyright (C) 1993-2021 Free Software Foundation, Inc.
+   Copyright (C) 1993-2022 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -44,7 +44,7 @@ elf64_sparc_get_reloc_upper_bound (bfd *abfd ATTRIBUTE_UNUSED, asection *sec)
       return -1;
     }
 #endif
-  return (sec->reloc_count * 2 + 1) * sizeof (arelent *);
+  return (sec->reloc_count * 2L + 1) * sizeof (arelent *);
 }
 
 static long

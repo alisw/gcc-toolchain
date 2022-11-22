@@ -1,3 +1,70 @@
+2022-03-16  Simon Marchi  <simon.marchi@efficios.com>
+
+	* elf/amdgpu.h: Add relocation values.
+
+2022-03-16  Simon Marchi  <simon.marchi@efficios.com>
+
+	* elf/amdgcn.h (NT_AMDGPU_METADATA): New.
+
+2022-03-16  Simon Marchi  <simon.marchi@efficios.com>
+
+	* elf/amdgcn.h: Add EF_AMDGPU_MACH_AMDGCN_* and
+	EF_AMDGPU_FEATURE_* defines.
+
+2022-03-16  Simon Marchi  <simon.marchi@efficios.com>
+
+	* elf/common.h (ELFOSABI_AMDGPU_PAL, ELFOSABI_AMDGPU_MESA3D):
+	New.
+
+2022-03-16  Simon Marchi  <simon.marchi@efficios.com>
+
+	* elf/amdgpu.h: New.
+	* elf/common.h (ELFOSABI_AMDGPU_HSA): Add.
+
+2022-03-11  Vladimir Mezentsev  <vladimir.mezentsev@oracle.com>
+
+	* collectorAPI.h: New file.
+	* libcollector.h: New file.
+	* libfcollector.h: New file.
+
+2022-01-25  Klaus Ziegler  <klausz@haus-gisela.de>
+
+	PR 28816
+	* elf/common.h (AT_SUN_HWCAP): Make definition conditional.
+
+2022-01-22  Nick Clifton  <nickc@redhat.com>
+
+	* 2.38 release branch created.
+
+2022-01-13  Nick Clifton  <nickc@redhat.com>
+
+	Import from gcc mainline:
+
+	2021-01-03  Mike Frysinger  <vapier@gentoo.org>
+
+	* libiberty.h (strverscmp): Delete duplicate prototype.
+
+2021-12-07  John Baldwin  <jhb@FreeBSD.org>
+
+	* elf/common.h (AT_FREEBSD_FXRNG, AT_FREEBSD_KPRELOAD): Define.
+
+2021-12-01  Nick Clifton  <nickc@redhat.com>
+
+	PR 28630
+	* coff/internal.h (x_n): Use bfd_hostptr_t for the fields in this
+	structure.
+
+2021-11-25  Andrew Burgess  <aburgess@redhat.com>
+	    Simon Cook  <simon.cook@embecosm.com>
+
+	* dis-asm.h (disassembler_options_riscv): Declare.
+
+2021-11-16  Fangrui Song  <maskray@google.com>
+
+	* elf/common.h (DT_ENCODING): Bump to 38.
+	* elf/external.h (Elf32_External_Relr): New.
+	(Elf64_External_Relr): New.
+
 2021-09-07  Luis Machado  <luis.machado@linaro.org>
 
 	Revert: [AArch64] MTE corefile support
@@ -376,7 +443,7 @@
 
 For older changes see ChangeLog-2020
 
-Copyright (C) 2021 Free Software Foundation, Inc.
+Copyright (C) 2021-2022 Free Software Foundation, Inc.
 
 Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright

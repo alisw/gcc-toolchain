@@ -1,5 +1,5 @@
 /* Default macros to initialize the lang_hooks data structure.
-   Copyright (C) 2001-2021 Free Software Foundation, Inc.
+   Copyright (C) 2001-2022 Free Software Foundation, Inc.
    Contributed by Alexandre Oliva  <aoliva@redhat.com>
 
 This file is part of GCC.
@@ -55,7 +55,9 @@ extern void lhd_set_decl_assembler_name (tree decl);
 extern void lhd_overwrite_decl_assembler_name (tree decl, tree name);
 extern bool lhd_warn_unused_global_decl (const_tree);
 extern tree lhd_simulate_enum_decl (location_t, const char *,
-				    vec<string_int_pair>);
+				    vec<string_int_pair> *);
+extern tree lhd_simulate_record_decl (location_t, const char *,
+				      array_slice<const tree>);
 extern tree lhd_type_for_size (unsigned precision, int unsignedp);
 extern void lhd_incomplete_type_error (location_t, const_tree, const_tree);
 extern tree lhd_type_promotes_to (tree);
@@ -86,7 +88,7 @@ struct gimplify_omp_ctx;
 extern void lhd_omp_firstprivatize_type_sizes (struct gimplify_omp_ctx *,
 					       tree);
 extern bool lhd_omp_mappable_type (tree);
-extern bool lhd_omp_scalar_p (tree);
+extern bool lhd_omp_scalar_p (tree, bool);
 extern tree *lhd_omp_get_decl_init (tree);
 extern void lhd_omp_finish_decl_inits ();
 
@@ -183,6 +185,7 @@ extern tree lhd_unit_size_without_reusable_padding (tree);
 
 #define LANG_HOOKS_MAKE_TYPE lhd_make_node
 #define LANG_HOOKS_SIMULATE_ENUM_DECL	lhd_simulate_enum_decl
+#define LANG_HOOKS_SIMULATE_RECORD_DECL	lhd_simulate_record_decl
 #define LANG_HOOKS_CLASSIFY_RECORD	NULL
 #define LANG_HOOKS_TYPE_FOR_SIZE	lhd_type_for_size
 #define LANG_HOOKS_INCOMPLETE_TYPE_ERROR lhd_incomplete_type_error
@@ -213,10 +216,12 @@ extern tree lhd_unit_size_without_reusable_padding (tree);
 #define LANG_HOOKS_GET_FIXED_POINT_TYPE_INFO NULL
 #define LANG_HOOKS_TYPE_DWARF_ATTRIBUTE	lhd_type_dwarf_attribute
 #define LANG_HOOKS_UNIT_SIZE_WITHOUT_REUSABLE_PADDING lhd_unit_size_without_reusable_padding
+#define LANG_HOOKS_CLASSTYPE_AS_BASE	hook_tree_const_tree_null
 
 #define LANG_HOOKS_FOR_TYPES_INITIALIZER { \
   LANG_HOOKS_MAKE_TYPE, \
   LANG_HOOKS_SIMULATE_ENUM_DECL, \
+  LANG_HOOKS_SIMULATE_RECORD_DECL, \
   LANG_HOOKS_CLASSIFY_RECORD, \
   LANG_HOOKS_TYPE_FOR_MODE, \
   LANG_HOOKS_TYPE_FOR_SIZE, \
@@ -239,7 +244,8 @@ extern tree lhd_unit_size_without_reusable_padding (tree);
   LANG_HOOKS_GET_DEBUG_TYPE, \
   LANG_HOOKS_GET_FIXED_POINT_TYPE_INFO, \
   LANG_HOOKS_TYPE_DWARF_ATTRIBUTE, \
-  LANG_HOOKS_UNIT_SIZE_WITHOUT_REUSABLE_PADDING \
+  LANG_HOOKS_UNIT_SIZE_WITHOUT_REUSABLE_PADDING, \
+  LANG_HOOKS_CLASSTYPE_AS_BASE \
 }
 
 /* Declaration hooks.  */
@@ -266,7 +272,9 @@ extern tree lhd_unit_size_without_reusable_padding (tree);
 #define LANG_HOOKS_OMP_CLAUSE_LINEAR_CTOR NULL
 #define LANG_HOOKS_OMP_CLAUSE_DTOR hook_tree_tree_tree_null
 #define LANG_HOOKS_OMP_FINISH_CLAUSE lhd_omp_finish_clause
+#define LANG_HOOKS_OMP_ALLOCATABLE_P hook_bool_tree_false
 #define LANG_HOOKS_OMP_SCALAR_P lhd_omp_scalar_p
+#define LANG_HOOKS_OMP_SCALAR_TARGET_P hook_bool_tree_false
 #define LANG_HOOKS_OMP_GET_DECL_INIT lhd_omp_get_decl_init
 #define LANG_HOOKS_OMP_FINISH_DECL_INITS lhd_omp_finish_decl_inits
 
@@ -297,7 +305,9 @@ extern tree lhd_unit_size_without_reusable_padding (tree);
   LANG_HOOKS_OMP_CLAUSE_LINEAR_CTOR, \
   LANG_HOOKS_OMP_CLAUSE_DTOR, \
   LANG_HOOKS_OMP_FINISH_CLAUSE, \
+  LANG_HOOKS_OMP_ALLOCATABLE_P, \
   LANG_HOOKS_OMP_SCALAR_P, \
+  LANG_HOOKS_OMP_SCALAR_TARGET_P, \
   LANG_HOOKS_OMP_GET_DECL_INIT, \
   LANG_HOOKS_OMP_FINISH_DECL_INITS \
 }

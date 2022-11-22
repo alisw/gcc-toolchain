@@ -1,5 +1,5 @@
 /* AArch64-specific support for NN-bit ELF.
-   Copyright (C) 2009-2021 Free Software Foundation, Inc.
+   Copyright (C) 2009-2022 Free Software Foundation, Inc.
    Contributed by ARM Ltd.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -5345,12 +5345,15 @@ _bfd_aarch64_erratum_843419_branch_to_stub (struct bfd_hash_entry *gen_entry,
     }
   else
     {
+      char imm_buf[128];
+
+      sprintf (imm_buf, "%" BFD_VMA_FMT "x", imm);
       abfd = stub_entry->target_section->owner;
       _bfd_error_handler
-	(_("%pB: error: erratum 843419 immediate 0x%" BFD_VMA_FMT "x "
+	(_("%pB: error: erratum 843419 immediate 0x%s "
 	   "out of range for ADR (input file too large) and "
 	   "--fix-cortex-a53-843419=adr used.  Run the linker with "
-	   "--fix-cortex-a53-843419=full instead"), abfd, imm);
+	   "--fix-cortex-a53-843419=full instead"), abfd, imm_buf);
       bfd_set_error (bfd_error_bad_value);
       /* This function is called inside a hashtable traversal and the error
 	 handlers called above turn into non-fatal errors.  Which means this
@@ -9759,11 +9762,13 @@ get_plt_type (bfd *abfd)
   aarch64_plt_type ret = PLT_NORMAL;
   bfd_byte *contents, *extdyn, *extdynend;
   asection *sec = bfd_get_section_by_name (abfd, ".dynamic");
-  if (!sec || !bfd_malloc_and_get_section (abfd, sec, &contents))
+  if (!sec
+      || sec->size < sizeof (ElfNN_External_Dyn)
+      || !bfd_malloc_and_get_section (abfd, sec, &contents))
     return ret;
   extdyn = contents;
-  extdynend = contents + sec->size;
-  for (; extdyn < extdynend; extdyn += sizeof (ElfNN_External_Dyn))
+  extdynend = contents + sec->size - sizeof (ElfNN_External_Dyn);
+  for (; extdyn <= extdynend; extdyn += sizeof (ElfNN_External_Dyn))
     {
       Elf_Internal_Dyn dyn;
       bfd_elfNN_swap_dyn_in (abfd, extdyn, &dyn);
@@ -9960,7 +9965,6 @@ const struct elf_size_info elfNN_aarch64_size_info =
 #define ELF_ARCH			bfd_arch_aarch64
 #define ELF_MACHINE_CODE		EM_AARCH64
 #define ELF_MAXPAGESIZE			0x10000
-#define ELF_MINPAGESIZE			0x1000
 #define ELF_COMMONPAGESIZE		0x1000
 
 #define bfd_elfNN_close_and_cleanup		\

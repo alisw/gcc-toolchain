@@ -451,7 +451,7 @@ get_call_return_value (struct call_return_meta_info *ri)
 	{
 	  retval = allocate_value (ri->value_type);
 	  read_value_memory (retval, 0, 1, ri->struct_addr,
-			     value_contents_raw (retval),
+			     value_contents_raw (retval).data (),
 			     TYPE_LENGTH (ri->value_type));
 	}
     }
@@ -460,7 +460,7 @@ get_call_return_value (struct call_return_meta_info *ri)
       retval = allocate_value (ri->value_type);
       gdbarch_return_value (ri->gdbarch, ri->function, ri->value_type,
 			    get_current_regcache (),
-			    value_contents_raw (retval), NULL);
+			    value_contents_raw (retval).data (), NULL);
       if (stack_temporaries && class_or_union_p (ri->value_type))
 	{
 	  /* Values of class type returned in registers are copied onto
@@ -574,7 +574,7 @@ call_thread_fsm::should_notify_stop ()
    thrown errors.  The caller should rethrow if there's an error.  */
 
 static struct gdb_exception
-run_inferior_call (struct call_thread_fsm *sm,
+run_inferior_call (std::unique_ptr<call_thread_fsm> sm,
 		   struct thread_info *call_thread, CORE_ADDR real_pc)
 {
   struct gdb_exception caught_error;
@@ -597,9 +597,8 @@ run_inferior_call (struct call_thread_fsm *sm,
   clear_proceed_status (0);
 
   /* Associate the FSM with the thread after clear_proceed_status
-     (otherwise it'd clear this FSM), and before anything throws, so
-     we don't leak it (and any resources it manages).  */
-  call_thread->thread_fsm = sm;
+     (otherwise it'd clear this FSM).  */
+  call_thread->set_thread_fsm (std::move (sm));
 
   disable_watchpoints_before_interactive_call_start ();
 
@@ -812,6 +811,11 @@ call_function_by_hand_dummy (struct value *function,
   type *ftype;
   type *values_type;
   CORE_ADDR funaddr = find_function_addr (function, &values_type, &ftype);
+
+  if (is_nocall_function (ftype))
+    error (_("Cannot call the function '%s' which does not follow the "
+	     "target calling convention."),
+	   get_function_name (funaddr, name_buf, sizeof (name_buf)));
 
   if (values_type == NULL)
     values_type = default_return_type;
@@ -1083,7 +1087,7 @@ call_function_by_hand_dummy (struct value *function,
       if (info.trivially_copy_constructible)
 	{
 	  int length = TYPE_LENGTH (param_type);
-	  write_memory (addr, value_contents (args[i]), length);
+	  write_memory (addr, value_contents (args[i]).data (), length);
 	}
       else
 	{
@@ -1251,12 +1255,9 @@ call_function_by_hand_dummy (struct value *function,
      just below is the place to chop this function in two..  */
 
   {
-    struct thread_fsm *saved_sm;
-    struct call_thread_fsm *sm;
-
     /* Save the current FSM.  We'll override it.  */
-    saved_sm = call_thread->thread_fsm;
-    call_thread->thread_fsm = NULL;
+    std::unique_ptr<thread_fsm> saved_sm = call_thread->release_thread_fsm ();
+    struct call_thread_fsm *sm;
 
     /* Save this thread's ptid, we need it later but the thread
        may have exited.  */
@@ -1273,17 +1274,19 @@ call_function_by_hand_dummy (struct value *function,
 			      values_type,
 			      return_method != return_method_normal,
 			      struct_addr);
-
-    e = run_inferior_call (sm, call_thread.get (), real_pc);
+    {
+      std::unique_ptr<call_thread_fsm> sm_up (sm);
+      e = run_inferior_call (std::move (sm_up), call_thread.get (), real_pc);
+    }
 
     gdb::observers::inferior_call_post.notify (call_thread_ptid, funaddr);
 
     if (call_thread->state != THREAD_EXITED)
       {
 	/* The FSM should still be the same.  */
-	gdb_assert (call_thread->thread_fsm == sm);
+	gdb_assert (call_thread->thread_fsm () == sm);
 
-	if (call_thread->thread_fsm->finished_p ())
+	if (call_thread->thread_fsm ()->finished_p ())
 	  {
 	    struct value *retval;
 
@@ -1297,11 +1300,16 @@ call_function_by_hand_dummy (struct value *function,
 	    /* Get the return value.  */
 	    retval = sm->return_value;
 
-	    /* Clean up / destroy the call FSM, and restore the
-	       original one.  */
-	    call_thread->thread_fsm->clean_up (call_thread.get ());
-	    delete call_thread->thread_fsm;
-	    call_thread->thread_fsm = saved_sm;
+	    /* Restore the original FSM and clean up / destroh the call FSM.
+	       Doing it in this order ensures that if the call to clean_up
+	       throws, the original FSM is properly restored.  */
+	    {
+	      std::unique_ptr<thread_fsm> finalizing
+		= call_thread->release_thread_fsm ();
+	      call_thread->set_thread_fsm (std::move (saved_sm));
+
+	      finalizing->clean_up (call_thread.get ());
+	    }
 
 	    maybe_remove_breakpoints ();
 
@@ -1315,9 +1323,13 @@ call_function_by_hand_dummy (struct value *function,
 
 	/* Didn't complete.  Clean up / destroy the call FSM, and restore the
 	   previous state machine, and handle the error.  */
-	call_thread->thread_fsm->clean_up (call_thread.get ());
-	delete call_thread->thread_fsm;
-	call_thread->thread_fsm = saved_sm;
+	{
+	  std::unique_ptr<thread_fsm> finalizing
+	    = call_thread->release_thread_fsm ();
+	  call_thread->set_thread_fsm (std::move (saved_sm));
+
+	  finalizing->clean_up (call_thread.get ());
+	}
       }
   }
 

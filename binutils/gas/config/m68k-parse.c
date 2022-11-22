@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.7.4.  */
+/* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison implementation for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2020 Free Software Foundation,
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2021 Free Software Foundation,
    Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -46,10 +46,10 @@
    USER NAME SPACE" below.  */
 
 /* Identify Bison output, and Bison version.  */
-#define YYBISON 30704
+#define YYBISON 30802
 
 /* Bison version string.  */
-#define YYBISON_VERSION "3.7.4"
+#define YYBISON_VERSION "3.8.2"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -230,7 +230,9 @@ typedef union YYSTYPE YYSTYPE;
 
 extern YYSTYPE yylval;
 
+
 int yyparse (void);
+
 
 
 /* Symbol kind.  */
@@ -326,6 +328,18 @@ typedef __INT_LEAST16_TYPE__ yytype_int16;
 typedef int_least16_t yytype_int16;
 #else
 typedef short yytype_int16;
+#endif
+
+/* Work around bug in HP-UX 11.23, which defines these macros
+   incorrectly for preprocessor constants.  This workaround can likely
+   be removed in 2023, as HPE has promised support for HP-UX 11.23
+   (aka HP-UX 11i v2) only through the end of 2022; see Table 2 of
+   <https://h20195.www2.hpe.com/V2/getpdf.aspx/4AA4-7673ENW.pdf>.  */
+#ifdef __hpux
+# undef UINT_LEAST8_MAX
+# undef UINT_LEAST16_MAX
+# define UINT_LEAST8_MAX 255
+# define UINT_LEAST16_MAX 65535
 #endif
 
 #if defined __UINT_LEAST8_MAX__ && __UINT_LEAST8_MAX__ <= __INT_MAX__
@@ -425,17 +439,23 @@ typedef int yy_state_fast_t;
 
 /* Suppress unused-variable warnings by "using" E.  */
 #if ! defined lint || defined __GNUC__
-# define YYUSE(E) ((void) (E))
+# define YY_USE(E) ((void) (E))
 #else
-# define YYUSE(E) /* empty */
+# define YY_USE(E) /* empty */
 #endif
 
-#if defined __GNUC__ && ! defined __ICC && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
 /* Suppress an incorrect diagnostic about yylval being uninitialized.  */
-# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                            \
+#if defined __GNUC__ && ! defined __ICC && 406 <= __GNUC__ * 100 + __GNUC_MINOR__
+# if __GNUC__ * 100 + __GNUC_MINOR__ < 407
+#  define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                           \
+    _Pragma ("GCC diagnostic push")                                     \
+    _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")
+# else
+#  define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                           \
     _Pragma ("GCC diagnostic push")                                     \
     _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")              \
     _Pragma ("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
+# endif
 # define YY_IGNORE_MAYBE_UNINITIALIZED_END      \
     _Pragma ("GCC diagnostic pop")
 #else
@@ -650,7 +670,7 @@ static const yytype_int8 yytranslate[] =
 };
 
 #if YYDEBUG
-  /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
+/* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
        0,   120,   120,   121,   125,   134,   135,   142,   147,   152,
@@ -693,17 +713,6 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#ifdef YYPRINT
-/* YYTOKNUM[NUM] -- (External) token number corresponding to the
-   (internal) symbol number NUM (which must be that of a token).  */
-static const yytype_int16 yytoknum[] =
-{
-       0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
-     265,   266,   267,   268,    38,    60,    62,    35,    40,    41,
-      43,    45,    44,    91,    93,    64,    47
-};
-#endif
-
 #define YYPACT_NINF (-98)
 
 #define yypact_value_is_default(Yyn) \
@@ -714,8 +723,8 @@ static const yytype_int16 yytoknum[] =
 #define yytable_value_is_error(Yyn) \
   0
 
-  /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
-     STATE-NUM.  */
+/* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
+   STATE-NUM.  */
 static const yytype_int16 yypact[] =
 {
       89,    14,     9,    31,    35,   -98,   -98,   -98,   -98,     0,
@@ -738,9 +747,9 @@ static const yytype_int16 yypact[] =
      191,   192,   -98,   -98,   193,   194,   -98,   -98,   -98,   -98
 };
 
-  /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
-     Performed when YYTABLE does not specify something else to do.  Zero
-     means the default is an error.  */
+/* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
+   Performed when YYTABLE does not specify something else to do.  Zero
+   means the default is an error.  */
 static const yytype_int8 yydefact[] =
 {
       68,    86,    87,    88,    89,    64,    67,    66,    13,    14,
@@ -763,7 +772,7 @@ static const yytype_int8 yydefact[] =
        0,     0,    37,    52,     0,     0,    41,    43,    51,    53
 };
 
-  /* YYPGOTO[NTERM-NUM].  */
+/* YYPGOTO[NTERM-NUM].  */
 static const yytype_int16 yypgoto[] =
 {
      -98,   -98,   196,   -98,   -98,   -98,   -81,     6,   -98,    -9,
@@ -771,17 +780,17 @@ static const yytype_int16 yypgoto[] =
       12
 };
 
-  /* YYDEFGOTO[NTERM-NUM].  */
+/* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-      -1,    16,    46,    17,    18,    19,   100,    40,   101,   102,
+       0,    16,    46,    17,    18,    19,   100,    40,   101,   102,
       20,    92,    22,   103,    64,   120,    62,    23,    74,    75,
       76
 };
 
-  /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
-     positive, shift that token.  If negative, reduce the rule whose
-     number is the opposite.  If YYTABLE_NINF, syntax error.  */
+/* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
+   positive, shift that token.  If negative, reduce the rule whose
+   number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int16 yytable[] =
 {
      106,   110,    21,    78,   111,    41,    50,   117,    50,   -10,
@@ -834,8 +843,8 @@ static const yytype_int16 yycheck[] =
       19,    19,    19,    19,    -1,    19
 };
 
-  /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
-     symbol of state STATE-NUM.  */
+/* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
+   state STATE-NUM.  */
 static const yytype_int8 yystos[] =
 {
        0,     3,     4,     5,     6,     7,     8,    10,    11,    13,
@@ -858,7 +867,7 @@ static const yytype_int8 yystos[] =
       42,    42,    19,    19,    33,    13,    19,    19,    19,    19
 };
 
-  /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
+/* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr1[] =
 {
        0,    27,    28,    28,    28,    29,    29,    30,    30,    30,
@@ -872,7 +881,7 @@ static const yytype_int8 yyr1[] =
       44,    45,    45,    45,    45,    46,    47,    47,    47,    47
 };
 
-  /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
+/* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr2[] =
 {
        0,     2,     1,     2,     2,     0,     1,     2,     2,     1,
@@ -895,6 +904,7 @@ enum { YYENOMEM = -2 };
 #define YYACCEPT        goto yyacceptlab
 #define YYABORT         goto yyabortlab
 #define YYERROR         goto yyerrorlab
+#define YYNOMEM         goto yyexhaustedlab
 
 
 #define YYRECOVERING()  (!!yyerrstatus)
@@ -935,10 +945,7 @@ do {                                            \
     YYFPRINTF Args;                             \
 } while (0)
 
-/* This macro is provided for backward compatibility. */
-# ifndef YY_LOCATION_PRINT
-#  define YY_LOCATION_PRINT(File, Loc) ((void) 0)
-# endif
+
 
 
 # define YY_SYMBOL_PRINT(Title, Kind, Value, Location)                    \
@@ -962,15 +969,11 @@ yy_symbol_value_print (FILE *yyo,
                        yysymbol_kind_t yykind, YYSTYPE const * const yyvaluep)
 {
   FILE *yyoutput = yyo;
-  YYUSE (yyoutput);
+  YY_USE (yyoutput);
   if (!yyvaluep)
     return;
-# ifdef YYPRINT
-  if (yykind < YYNTOKENS)
-    YYPRINT (yyo, yytoknum[yykind], *yyvaluep);
-# endif
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-  YYUSE (yykind);
+  YY_USE (yykind);
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
 
@@ -1084,13 +1087,13 @@ static void
 yydestruct (const char *yymsg,
             yysymbol_kind_t yykind, YYSTYPE *yyvaluep)
 {
-  YYUSE (yyvaluep);
+  YY_USE (yyvaluep);
   if (!yymsg)
     yymsg = "Deleting";
   YY_SYMBOL_PRINT (yymsg, yykind, yyvaluep, yylocationp);
 
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-  YYUSE (yykind);
+  YY_USE (yykind);
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
 
@@ -1153,6 +1156,7 @@ yyparse (void)
   YYDPRINTF ((stderr, "Starting parse\n"));
 
   yychar = YYEMPTY; /* Cause a token to be read.  */
+
   goto yysetstate;
 
 
@@ -1178,7 +1182,7 @@ yysetstate:
 
   if (yyss + yystacksize - 1 <= yyssp)
 #if !defined yyoverflow && !defined YYSTACK_RELOCATE
-    goto yyexhaustedlab;
+    YYNOMEM;
 #else
     {
       /* Get the current used size of the three stacks, in elements.  */
@@ -1206,7 +1210,7 @@ yysetstate:
 # else /* defined YYSTACK_RELOCATE */
       /* Extend the stack our own way.  */
       if (YYMAXDEPTH <= yystacksize)
-        goto yyexhaustedlab;
+        YYNOMEM;
       yystacksize *= 2;
       if (YYMAXDEPTH < yystacksize)
         yystacksize = YYMAXDEPTH;
@@ -1217,7 +1221,7 @@ yysetstate:
           YY_CAST (union yyalloc *,
                    YYSTACK_ALLOC (YY_CAST (YYSIZE_T, YYSTACK_BYTES (yystacksize))));
         if (! yyptr)
-          goto yyexhaustedlab;
+          YYNOMEM;
         YYSTACK_RELOCATE (yyss_alloc, yyss);
         YYSTACK_RELOCATE (yyvs_alloc, yyvs);
 #  undef YYSTACK_RELOCATE
@@ -1238,6 +1242,7 @@ yysetstate:
         YYABORT;
     }
 #endif /* !defined yyoverflow && !defined YYSTACK_RELOCATE */
+
 
   if (yystate == YYFINAL)
     YYACCEPT;
@@ -1355,7 +1360,7 @@ yyreduce:
                 {
 		  op->trailing_ampersand = (yyvsp[0].trailing_ampersand);
 		}
-#line 1359 "config/m68k-parse.c"
+#line 1364 "config/m68k-parse.c"
     break;
 
   case 4: /* operand: mit_operand optional_ampersand  */
@@ -1363,19 +1368,19 @@ yyreduce:
                 {
 		  op->trailing_ampersand = (yyvsp[0].trailing_ampersand);
 		}
-#line 1367 "config/m68k-parse.c"
+#line 1372 "config/m68k-parse.c"
     break;
 
   case 5: /* optional_ampersand: %empty  */
 #line 134 "./config/m68k-parse.y"
                 { (yyval.trailing_ampersand) = 0; }
-#line 1373 "config/m68k-parse.c"
+#line 1378 "config/m68k-parse.c"
     break;
 
   case 6: /* optional_ampersand: '&'  */
 #line 136 "./config/m68k-parse.y"
                 { (yyval.trailing_ampersand) = 1; }
-#line 1379 "config/m68k-parse.c"
+#line 1384 "config/m68k-parse.c"
     break;
 
   case 7: /* generic_operand: '<' '<'  */
@@ -1383,7 +1388,7 @@ yyreduce:
                 {
 		  op->mode = LSH;
 		}
-#line 1387 "config/m68k-parse.c"
+#line 1392 "config/m68k-parse.c"
     break;
 
   case 8: /* generic_operand: '>' '>'  */
@@ -1391,7 +1396,7 @@ yyreduce:
                 {
 		  op->mode = RSH;
 		}
-#line 1395 "config/m68k-parse.c"
+#line 1400 "config/m68k-parse.c"
     break;
 
   case 9: /* generic_operand: DR  */
@@ -1400,7 +1405,7 @@ yyreduce:
 		  op->mode = DREG;
 		  op->reg = (yyvsp[0].reg);
 		}
-#line 1404 "config/m68k-parse.c"
+#line 1409 "config/m68k-parse.c"
     break;
 
   case 10: /* generic_operand: AR  */
@@ -1409,7 +1414,7 @@ yyreduce:
 		  op->mode = AREG;
 		  op->reg = (yyvsp[0].reg);
 		}
-#line 1413 "config/m68k-parse.c"
+#line 1418 "config/m68k-parse.c"
     break;
 
   case 11: /* generic_operand: FPR  */
@@ -1418,7 +1423,7 @@ yyreduce:
 		  op->mode = FPREG;
 		  op->reg = (yyvsp[0].reg);
 		}
-#line 1422 "config/m68k-parse.c"
+#line 1427 "config/m68k-parse.c"
     break;
 
   case 12: /* generic_operand: FPCR  */
@@ -1427,7 +1432,7 @@ yyreduce:
 		  op->mode = CONTROL;
 		  op->reg = (yyvsp[0].reg);
 		}
-#line 1431 "config/m68k-parse.c"
+#line 1436 "config/m68k-parse.c"
     break;
 
   case 13: /* generic_operand: CREG  */
@@ -1436,7 +1441,7 @@ yyreduce:
 		  op->mode = CONTROL;
 		  op->reg = (yyvsp[0].reg);
 		}
-#line 1440 "config/m68k-parse.c"
+#line 1445 "config/m68k-parse.c"
     break;
 
   case 14: /* generic_operand: EXPR  */
@@ -1445,7 +1450,7 @@ yyreduce:
 		  op->mode = ABSL;
 		  op->disp = (yyvsp[0].exp);
 		}
-#line 1449 "config/m68k-parse.c"
+#line 1454 "config/m68k-parse.c"
     break;
 
   case 15: /* generic_operand: '#' EXPR  */
@@ -1454,7 +1459,7 @@ yyreduce:
 		  op->mode = IMMED;
 		  op->disp = (yyvsp[0].exp);
 		}
-#line 1458 "config/m68k-parse.c"
+#line 1463 "config/m68k-parse.c"
     break;
 
   case 16: /* generic_operand: '&' EXPR  */
@@ -1463,7 +1468,7 @@ yyreduce:
 		  op->mode = IMMED;
 		  op->disp = (yyvsp[0].exp);
 		}
-#line 1467 "config/m68k-parse.c"
+#line 1472 "config/m68k-parse.c"
     break;
 
   case 17: /* generic_operand: reglist  */
@@ -1472,7 +1477,7 @@ yyreduce:
 		  op->mode = REGLST;
 		  op->mask = (yyvsp[0].mask);
 		}
-#line 1476 "config/m68k-parse.c"
+#line 1481 "config/m68k-parse.c"
     break;
 
   case 18: /* motorola_operand: '(' AR ')'  */
@@ -1481,7 +1486,7 @@ yyreduce:
 		  op->mode = AINDR;
 		  op->reg = (yyvsp[-1].reg);
 		}
-#line 1485 "config/m68k-parse.c"
+#line 1490 "config/m68k-parse.c"
     break;
 
   case 19: /* motorola_operand: '(' AR ')' '+'  */
@@ -1490,7 +1495,7 @@ yyreduce:
 		  op->mode = AINC;
 		  op->reg = (yyvsp[-2].reg);
 		}
-#line 1494 "config/m68k-parse.c"
+#line 1499 "config/m68k-parse.c"
     break;
 
   case 20: /* motorola_operand: '-' '(' AR ')'  */
@@ -1499,7 +1504,7 @@ yyreduce:
 		  op->mode = ADEC;
 		  op->reg = (yyvsp[-1].reg);
 		}
-#line 1503 "config/m68k-parse.c"
+#line 1508 "config/m68k-parse.c"
     break;
 
   case 21: /* motorola_operand: '(' EXPR ',' zapc ')'  */
@@ -1513,7 +1518,7 @@ yyreduce:
 		  else
 		    op->mode = DISP;
 		}
-#line 1517 "config/m68k-parse.c"
+#line 1522 "config/m68k-parse.c"
     break;
 
   case 22: /* motorola_operand: '(' zapc ',' EXPR ')'  */
@@ -1527,7 +1532,7 @@ yyreduce:
 		  else
 		    op->mode = DISP;
 		}
-#line 1531 "config/m68k-parse.c"
+#line 1536 "config/m68k-parse.c"
     break;
 
   case 23: /* motorola_operand: EXPR '(' zapc ')'  */
@@ -1541,7 +1546,7 @@ yyreduce:
 		  else
 		    op->mode = DISP;
 		}
-#line 1545 "config/m68k-parse.c"
+#line 1550 "config/m68k-parse.c"
     break;
 
   case 24: /* motorola_operand: '(' LPC ')'  */
@@ -1550,7 +1555,7 @@ yyreduce:
 		  op->mode = DISP;
 		  op->reg = (yyvsp[-1].reg);
 		}
-#line 1554 "config/m68k-parse.c"
+#line 1559 "config/m68k-parse.c"
     break;
 
   case 25: /* motorola_operand: '(' ZAR ')'  */
@@ -1559,7 +1564,7 @@ yyreduce:
 		  op->mode = BASE;
 		  op->reg = (yyvsp[-1].reg);
 		}
-#line 1563 "config/m68k-parse.c"
+#line 1568 "config/m68k-parse.c"
     break;
 
   case 26: /* motorola_operand: '(' LZPC ')'  */
@@ -1568,7 +1573,7 @@ yyreduce:
 		  op->mode = BASE;
 		  op->reg = (yyvsp[-1].reg);
 		}
-#line 1572 "config/m68k-parse.c"
+#line 1577 "config/m68k-parse.c"
     break;
 
   case 27: /* motorola_operand: '(' EXPR ',' zapc ',' zireg ')'  */
@@ -1579,7 +1584,7 @@ yyreduce:
 		  op->disp = (yyvsp[-5].exp);
 		  op->index = (yyvsp[-1].indexreg);
 		}
-#line 1583 "config/m68k-parse.c"
+#line 1588 "config/m68k-parse.c"
     break;
 
   case 28: /* motorola_operand: '(' EXPR ',' zapc ',' zpc ')'  */
@@ -1594,7 +1599,7 @@ yyreduce:
 		  op->index.size = SIZE_UNSPEC;
 		  op->index.scale = 1;
 		}
-#line 1598 "config/m68k-parse.c"
+#line 1603 "config/m68k-parse.c"
     break;
 
   case 29: /* motorola_operand: '(' EXPR ',' zdireg optczapc ')'  */
@@ -1605,7 +1610,7 @@ yyreduce:
 		  op->disp = (yyvsp[-4].exp);
 		  op->index = (yyvsp[-2].indexreg);
 		}
-#line 1609 "config/m68k-parse.c"
+#line 1614 "config/m68k-parse.c"
     break;
 
   case 30: /* motorola_operand: '(' zdireg ',' EXPR ')'  */
@@ -1615,7 +1620,7 @@ yyreduce:
 		  op->disp = (yyvsp[-1].exp);
 		  op->index = (yyvsp[-3].indexreg);
 		}
-#line 1619 "config/m68k-parse.c"
+#line 1624 "config/m68k-parse.c"
     break;
 
   case 31: /* motorola_operand: EXPR '(' zapc ',' zireg ')'  */
@@ -1626,7 +1631,7 @@ yyreduce:
 		  op->disp = (yyvsp[-5].exp);
 		  op->index = (yyvsp[-1].indexreg);
 		}
-#line 1630 "config/m68k-parse.c"
+#line 1635 "config/m68k-parse.c"
     break;
 
   case 32: /* motorola_operand: '(' zapc ',' zireg ')'  */
@@ -1636,7 +1641,7 @@ yyreduce:
 		  op->reg = (yyvsp[-3].reg);
 		  op->index = (yyvsp[-1].indexreg);
 		}
-#line 1640 "config/m68k-parse.c"
+#line 1645 "config/m68k-parse.c"
     break;
 
   case 33: /* motorola_operand: EXPR '(' zapc ',' zpc ')'  */
@@ -1651,7 +1656,7 @@ yyreduce:
 		  op->index.size = SIZE_UNSPEC;
 		  op->index.scale = 1;
 		}
-#line 1655 "config/m68k-parse.c"
+#line 1660 "config/m68k-parse.c"
     break;
 
   case 34: /* motorola_operand: '(' zapc ',' zpc ')'  */
@@ -1665,7 +1670,7 @@ yyreduce:
 		  op->index.size = SIZE_UNSPEC;
 		  op->index.scale = 1;
 		}
-#line 1669 "config/m68k-parse.c"
+#line 1674 "config/m68k-parse.c"
     break;
 
   case 35: /* motorola_operand: EXPR '(' zdireg optczapc ')'  */
@@ -1676,7 +1681,7 @@ yyreduce:
 		  op->disp = (yyvsp[-4].exp);
 		  op->index = (yyvsp[-2].indexreg);
 		}
-#line 1680 "config/m68k-parse.c"
+#line 1685 "config/m68k-parse.c"
     break;
 
   case 36: /* motorola_operand: '(' zdireg optczapc ')'  */
@@ -1686,7 +1691,7 @@ yyreduce:
 		  op->reg = (yyvsp[-1].reg);
 		  op->index = (yyvsp[-2].indexreg);
 		}
-#line 1690 "config/m68k-parse.c"
+#line 1695 "config/m68k-parse.c"
     break;
 
   case 37: /* motorola_operand: '(' '[' EXPR optczapc ']' ',' zireg optcexpr ')'  */
@@ -1698,7 +1703,7 @@ yyreduce:
 		  op->index = (yyvsp[-2].indexreg);
 		  op->odisp = (yyvsp[-1].exp);
 		}
-#line 1702 "config/m68k-parse.c"
+#line 1707 "config/m68k-parse.c"
     break;
 
   case 38: /* motorola_operand: '(' '[' EXPR optczapc ']' optcexpr ')'  */
@@ -1709,7 +1714,7 @@ yyreduce:
 		  op->disp = (yyvsp[-4].exp);
 		  op->odisp = (yyvsp[-1].exp);
 		}
-#line 1713 "config/m68k-parse.c"
+#line 1718 "config/m68k-parse.c"
     break;
 
   case 39: /* motorola_operand: '(' '[' zapc ']' ',' zireg optcexpr ')'  */
@@ -1720,7 +1725,7 @@ yyreduce:
 		  op->index = (yyvsp[-2].indexreg);
 		  op->odisp = (yyvsp[-1].exp);
 		}
-#line 1724 "config/m68k-parse.c"
+#line 1729 "config/m68k-parse.c"
     break;
 
   case 40: /* motorola_operand: '(' '[' zapc ']' optcexpr ')'  */
@@ -1730,7 +1735,7 @@ yyreduce:
 		  op->reg = (yyvsp[-3].reg);
 		  op->odisp = (yyvsp[-1].exp);
 		}
-#line 1734 "config/m68k-parse.c"
+#line 1739 "config/m68k-parse.c"
     break;
 
   case 41: /* motorola_operand: '(' '[' EXPR ',' zapc ',' zireg ']' optcexpr ')'  */
@@ -1742,7 +1747,7 @@ yyreduce:
 		  op->index = (yyvsp[-3].indexreg);
 		  op->odisp = (yyvsp[-1].exp);
 		}
-#line 1746 "config/m68k-parse.c"
+#line 1751 "config/m68k-parse.c"
     break;
 
   case 42: /* motorola_operand: '(' '[' zapc ',' zireg ']' optcexpr ')'  */
@@ -1753,7 +1758,7 @@ yyreduce:
 		  op->index = (yyvsp[-3].indexreg);
 		  op->odisp = (yyvsp[-1].exp);
 		}
-#line 1757 "config/m68k-parse.c"
+#line 1762 "config/m68k-parse.c"
     break;
 
   case 43: /* motorola_operand: '(' '[' EXPR ',' zapc ',' zpc ']' optcexpr ')'  */
@@ -1769,7 +1774,7 @@ yyreduce:
 		  op->index.scale = 1;
 		  op->odisp = (yyvsp[-1].exp);
 		}
-#line 1773 "config/m68k-parse.c"
+#line 1778 "config/m68k-parse.c"
     break;
 
   case 44: /* motorola_operand: '(' '[' zapc ',' zpc ']' optcexpr ')'  */
@@ -1784,7 +1789,7 @@ yyreduce:
 		  op->index.scale = 1;
 		  op->odisp = (yyvsp[-1].exp);
 		}
-#line 1788 "config/m68k-parse.c"
+#line 1793 "config/m68k-parse.c"
     break;
 
   case 45: /* motorola_operand: '(' '[' optexprc zdireg optczapc ']' optcexpr ')'  */
@@ -1796,7 +1801,7 @@ yyreduce:
 		  op->index = (yyvsp[-4].indexreg);
 		  op->odisp = (yyvsp[-1].exp);
 		}
-#line 1800 "config/m68k-parse.c"
+#line 1805 "config/m68k-parse.c"
     break;
 
   case 46: /* mit_operand: optzapc '@'  */
@@ -1808,7 +1813,7 @@ yyreduce:
 		  op->mode = AINDR;
 		  op->reg = (yyvsp[-1].reg);
 		}
-#line 1812 "config/m68k-parse.c"
+#line 1817 "config/m68k-parse.c"
     break;
 
   case 47: /* mit_operand: optzapc '@' '+'  */
@@ -1820,7 +1825,7 @@ yyreduce:
 		  op->mode = AINC;
 		  op->reg = (yyvsp[-2].reg);
 		}
-#line 1824 "config/m68k-parse.c"
+#line 1829 "config/m68k-parse.c"
     break;
 
   case 48: /* mit_operand: optzapc '@' '-'  */
@@ -1832,7 +1837,7 @@ yyreduce:
 		  op->mode = ADEC;
 		  op->reg = (yyvsp[-2].reg);
 		}
-#line 1836 "config/m68k-parse.c"
+#line 1841 "config/m68k-parse.c"
     break;
 
   case 49: /* mit_operand: optzapc '@' '(' EXPR ')'  */
@@ -1846,7 +1851,7 @@ yyreduce:
 		  else
 		    op->mode = DISP;
 		}
-#line 1850 "config/m68k-parse.c"
+#line 1855 "config/m68k-parse.c"
     break;
 
   case 50: /* mit_operand: optzapc '@' '(' optexprc zireg ')'  */
@@ -1857,7 +1862,7 @@ yyreduce:
 		  op->disp = (yyvsp[-2].exp);
 		  op->index = (yyvsp[-1].indexreg);
 		}
-#line 1861 "config/m68k-parse.c"
+#line 1866 "config/m68k-parse.c"
     break;
 
   case 51: /* mit_operand: optzapc '@' '(' EXPR ')' '@' '(' optexprc zireg ')'  */
@@ -1869,7 +1874,7 @@ yyreduce:
 		  op->index = (yyvsp[-1].indexreg);
 		  op->odisp = (yyvsp[-2].exp);
 		}
-#line 1873 "config/m68k-parse.c"
+#line 1878 "config/m68k-parse.c"
     break;
 
   case 52: /* mit_operand: optzapc '@' '(' EXPR ')' '@' '(' EXPR ')'  */
@@ -1880,7 +1885,7 @@ yyreduce:
 		  op->disp = (yyvsp[-5].exp);
 		  op->odisp = (yyvsp[-1].exp);
 		}
-#line 1884 "config/m68k-parse.c"
+#line 1889 "config/m68k-parse.c"
     break;
 
   case 53: /* mit_operand: optzapc '@' '(' optexprc zireg ')' '@' '(' EXPR ')'  */
@@ -1892,7 +1897,7 @@ yyreduce:
 		  op->index = (yyvsp[-5].indexreg);
 		  op->odisp = (yyvsp[-1].exp);
 		}
-#line 1896 "config/m68k-parse.c"
+#line 1901 "config/m68k-parse.c"
     break;
 
   case 55: /* zireg: zadr  */
@@ -1902,7 +1907,7 @@ yyreduce:
 		  (yyval.indexreg).size = SIZE_UNSPEC;
 		  (yyval.indexreg).scale = 1;
 		}
-#line 1906 "config/m68k-parse.c"
+#line 1911 "config/m68k-parse.c"
     break;
 
   case 57: /* zdireg: zdr  */
@@ -1912,7 +1917,7 @@ yyreduce:
 		  (yyval.indexreg).size = SIZE_UNSPEC;
 		  (yyval.indexreg).scale = 1;
 		}
-#line 1916 "config/m68k-parse.c"
+#line 1921 "config/m68k-parse.c"
     break;
 
   case 68: /* optzapc: %empty  */
@@ -1920,7 +1925,7 @@ yyreduce:
                 {
 		  (yyval.reg) = ZADDR0;
 		}
-#line 1924 "config/m68k-parse.c"
+#line 1929 "config/m68k-parse.c"
     break;
 
   case 72: /* optczapc: %empty  */
@@ -1928,7 +1933,7 @@ yyreduce:
                 {
 		  (yyval.reg) = ZADDR0;
 		}
-#line 1932 "config/m68k-parse.c"
+#line 1937 "config/m68k-parse.c"
     break;
 
   case 73: /* optczapc: ',' zapc  */
@@ -1936,7 +1941,7 @@ yyreduce:
                 {
 		  (yyval.reg) = (yyvsp[0].reg);
 		}
-#line 1940 "config/m68k-parse.c"
+#line 1945 "config/m68k-parse.c"
     break;
 
   case 74: /* optcexpr: %empty  */
@@ -1945,7 +1950,7 @@ yyreduce:
 		  (yyval.exp).exp.X_op = O_absent;
 		  (yyval.exp).size = SIZE_UNSPEC;
 		}
-#line 1949 "config/m68k-parse.c"
+#line 1954 "config/m68k-parse.c"
     break;
 
   case 75: /* optcexpr: ',' EXPR  */
@@ -1953,7 +1958,7 @@ yyreduce:
                 {
 		  (yyval.exp) = (yyvsp[0].exp);
 		}
-#line 1957 "config/m68k-parse.c"
+#line 1962 "config/m68k-parse.c"
     break;
 
   case 76: /* optexprc: %empty  */
@@ -1962,7 +1967,7 @@ yyreduce:
 		  (yyval.exp).exp.X_op = O_absent;
 		  (yyval.exp).size = SIZE_UNSPEC;
 		}
-#line 1966 "config/m68k-parse.c"
+#line 1971 "config/m68k-parse.c"
     break;
 
   case 77: /* optexprc: EXPR ','  */
@@ -1970,7 +1975,7 @@ yyreduce:
                 {
 		  (yyval.exp) = (yyvsp[-1].exp);
 		}
-#line 1974 "config/m68k-parse.c"
+#line 1979 "config/m68k-parse.c"
     break;
 
   case 79: /* reglist: reglistpair '/' ireglist  */
@@ -1978,7 +1983,7 @@ yyreduce:
                 {
 		  (yyval.mask) = (yyvsp[-2].mask) | (yyvsp[0].mask);
 		}
-#line 1982 "config/m68k-parse.c"
+#line 1987 "config/m68k-parse.c"
     break;
 
   case 80: /* reglist: reglistreg '/' ireglist  */
@@ -1986,7 +1991,7 @@ yyreduce:
                 {
 		  (yyval.mask) = (1 << (yyvsp[-2].onereg)) | (yyvsp[0].mask);
 		}
-#line 1990 "config/m68k-parse.c"
+#line 1995 "config/m68k-parse.c"
     break;
 
   case 81: /* ireglist: reglistreg  */
@@ -1994,7 +1999,7 @@ yyreduce:
                 {
 		  (yyval.mask) = 1 << (yyvsp[0].onereg);
 		}
-#line 1998 "config/m68k-parse.c"
+#line 2003 "config/m68k-parse.c"
     break;
 
   case 83: /* ireglist: reglistpair '/' ireglist  */
@@ -2002,7 +2007,7 @@ yyreduce:
                 {
 		  (yyval.mask) = (yyvsp[-2].mask) | (yyvsp[0].mask);
 		}
-#line 2006 "config/m68k-parse.c"
+#line 2011 "config/m68k-parse.c"
     break;
 
   case 84: /* ireglist: reglistreg '/' ireglist  */
@@ -2010,7 +2015,7 @@ yyreduce:
                 {
 		  (yyval.mask) = (1 << (yyvsp[-2].onereg)) | (yyvsp[0].mask);
 		}
-#line 2014 "config/m68k-parse.c"
+#line 2019 "config/m68k-parse.c"
     break;
 
   case 85: /* reglistpair: reglistreg '-' reglistreg  */
@@ -2021,7 +2026,7 @@ yyreduce:
 		  else
 		    (yyval.mask) = (1 << ((yyvsp[-2].onereg) + 1)) - 1 - ((1 << (yyvsp[0].onereg)) - 1);
 		}
-#line 2025 "config/m68k-parse.c"
+#line 2030 "config/m68k-parse.c"
     break;
 
   case 86: /* reglistreg: DR  */
@@ -2029,7 +2034,7 @@ yyreduce:
                 {
 		  (yyval.onereg) = (yyvsp[0].reg) - DATA0;
 		}
-#line 2033 "config/m68k-parse.c"
+#line 2038 "config/m68k-parse.c"
     break;
 
   case 87: /* reglistreg: AR  */
@@ -2037,7 +2042,7 @@ yyreduce:
                 {
 		  (yyval.onereg) = (yyvsp[0].reg) - ADDR0 + 8;
 		}
-#line 2041 "config/m68k-parse.c"
+#line 2046 "config/m68k-parse.c"
     break;
 
   case 88: /* reglistreg: FPR  */
@@ -2045,7 +2050,7 @@ yyreduce:
                 {
 		  (yyval.onereg) = (yyvsp[0].reg) - FP0 + 16;
 		}
-#line 2049 "config/m68k-parse.c"
+#line 2054 "config/m68k-parse.c"
     break;
 
   case 89: /* reglistreg: FPCR  */
@@ -2058,11 +2063,11 @@ yyreduce:
 		  else
 		    (yyval.onereg) = 26;
 		}
-#line 2062 "config/m68k-parse.c"
+#line 2067 "config/m68k-parse.c"
     break;
 
 
-#line 2066 "config/m68k-parse.c"
+#line 2071 "config/m68k-parse.c"
 
       default: break;
     }
@@ -2144,6 +2149,7 @@ yyerrorlab:
      label yyerrorlab therefore never appears in user code.  */
   if (0)
     YYERROR;
+  ++yynerrs;
 
   /* Do not reclaim the symbols of the rule whose action triggered
      this YYERROR.  */
@@ -2204,7 +2210,7 @@ yyerrlab1:
 `-------------------------------------*/
 yyacceptlab:
   yyresult = 0;
-  goto yyreturn;
+  goto yyreturnlab;
 
 
 /*-----------------------------------.
@@ -2212,24 +2218,22 @@ yyacceptlab:
 `-----------------------------------*/
 yyabortlab:
   yyresult = 1;
-  goto yyreturn;
+  goto yyreturnlab;
 
 
-#if !defined yyoverflow
-/*-------------------------------------------------.
-| yyexhaustedlab -- memory exhaustion comes here.  |
-`-------------------------------------------------*/
+/*-----------------------------------------------------------.
+| yyexhaustedlab -- YYNOMEM (memory exhaustion) comes here.  |
+`-----------------------------------------------------------*/
 yyexhaustedlab:
   yyerror (YY_("memory exhausted"));
   yyresult = 2;
-  goto yyreturn;
-#endif
+  goto yyreturnlab;
 
 
-/*-------------------------------------------------------.
-| yyreturn -- parsing is finished, clean up and return.  |
-`-------------------------------------------------------*/
-yyreturn:
+/*----------------------------------------------------------.
+| yyreturnlab -- parsing is finished, clean up and return.  |
+`----------------------------------------------------------*/
+yyreturnlab:
   if (yychar != YYEMPTY)
     {
       /* Make sure we have latest lookahead translation.  See comments at

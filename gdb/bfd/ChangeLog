@@ -1,3 +1,154 @@
+2022-03-18  Viorel Preoteasa  <viorel.preoteasa@gmail.com>
+
+	PR 28924
+	* elf32-arm.c (THM_MAX_FWD_BRANCH_OFFSET): Fix definition.
+	(THM2_MAX_FWD_BRANCH_OFFSET): Likewise.
+
+2022-03-16  Simon Marchi  <simon.marchi@efficios.com>
+
+	* Makefile.am (ALL_MACHINES, ALL_MACHINES_CFILES):
+	Add cpu-amdgcn.c.
+	(BFD64_BACKENDS): Add elf64-amdgcn.lo.
+	(BFD64_BACKENDS_CFILES): Add elf64-amdgcn.c.
+	* Makefile.in: Re-generate.
+	* cpu-amdgcn.c: New.
+	* elf64-amdgcn.c: New.
+	* archures.c (bfd_architecture): Add bfd_arch_amdgcn and related
+	mach defines.
+	(bfd_amdgcn_arch): New.
+	(bfd_archures_list): Add bfd_amdgcn_arch.
+	* bfd-in2.h: Re-generate.
+	* config.bfd: Handle amdgcn* target.
+	* configure.ac: Handle amdgcn_elf64_le_vec.
+	* configure: Re-generate.
+	* elf-bfd.h (elf_target_id): Add AMDGCN_ELF_DATA.
+	* targets.c (amdgcn_elf64_le_vec): New.
+	(_bfd_target_vector): Add amdgcn_elf64_le_vec.
+
+2022-03-01  Torbjörn Svensson  <torbjorn.svensson@st.com>
+	    Fred Eisele  <fredrick.eisele@gmail.com>
+
+	PR 25713
+	* bfdio.c (_bfd_real_fopen): Fix typo.
+
+2022-03-01  Nick Clifton  <nickc@redhat.com>
+
+	PR 28848
+	* elf32-arm.c (elf32_arm_merge_eabi_attributes): If the first
+	input bfd has a Tag_ABI_HardFP_use set to 3 but does not also have
+	TAG_FP_arch set then reset the TAG_ABI_HardFP_use.
+
+2022-02-28  Torbjörn Svensson  <torbjorn.svensson@st.com>
+	    Fred Eisele  <fredrick.eisele@gmail.com>
+
+	PR 25713
+	* bfdio.c (_bfd_real_fopen): Fix handling of paths longer than 260
+	characters on Windows hosts.
+
+2022-02-28  Nick Clifton  <nickc@redhat.com>
+
+	PR 28886
+	* config.bfd: Update error message for obsolete configurations.
+
+2022-02-17  Nick Clifton  <nickc@redhat.com>
+
+	* po/sr.po: Updated Serbian translation.
+
+2022-02-16  Fangrui Song  <maskray@google.com>
+	Nick Clifton  <nickc@redhat.com>
+
+	PR ld/28841
+	* bfd-in2.h (struct bfd_section): Add type.
+	(discarded_section): Add field.
+	* elf.c (elf_fake_sections): Handle bfd_section::type.
+	* section.c (BFD_FAKE_SECTION): Add field.
+	* mri.c (mri_draw_tree): Update function call.
+
+2022-02-11  Michael Forney  <mforney@mforney.org>
+
+        * bfd.c (bfd_set_gp_value): Remove return with expression
+        in void function.
+
+2022-02-09  Nick Clifton  <nickc@redhat.com>
+
+	* config.bfd: Move pending obsolesence targets into the definitely
+	obsolete list.
+
+2022-02-02  Nick Clifton  <nickc@redhat.com>
+
+	PR 28834
+	* dwarf2.c (read_section): Change the heuristic that checks for
+	overlarge dwarf debug info sections.
+
+2022-02-02  Stafford Horne  <shorne@gmail.com>
+
+	PR 28735
+	* elf32-or1k.c (or1k_elf_got16_no_overflow_howto): Define.
+	(or1k_elf_relocate_section): Use new howto instead of trying to
+	mask out relocation bits.
+
+2022-01-24  Roland McGrath  <mcgrathr@google.com>
+
+	* doc/local.mk (%D%/bfdver.texi): Add mkdir command.
+
+2022-01-24  Nick Clifton  <nickc@redhat.com>
+
+	* po/fr.po: Updated French translation.
+	* po/ro.po: Updated Romanian translation.
+	* po/uk.po: Updated Ukranian translation.
+
+2022-01-22  Nick Clifton  <nickc@redhat.com>
+
+	* version.m4: Change to 2.38.50.
+	* configure: Regenerate.
+	* po/bfd.pot: Regenerate.
+
+2022-01-22  Nick Clifton  <nickc@redhat.com>
+
+	* 2.38 release branch created.
+
+2022-01-17  Nick Clifton  <nickc@redhat.com>
+
+	* Makefile.in: Regenerate.
+	* configure: Regenerate.
+	* doc/Makefile.in: Regenerate.
+	* po/bfd.pot: Regenerate.
+
+2021-12-15  Nikita Popov  <npv1310@gmail.com>
+
+	PR 28687
+	* dwarf1.c (parse_die): Fix undefined behaviour in range tests.
+
+2021-11-17  Nick Clifton  <nickc@redhat.com>
+
+	PR 28452
+	* elf.c (assign_file_positions_for_non_load_sections): Replace
+	assertion with a warning message.
+
+2021-10-19  Nick Clifton  <nickc@redhat.com>
+
+	* linker.c (_bfd_generic_link_add_one_symbol): Test for a NULL
+	name before checking to see if the symbol is __gnu_lto_slim.
+	* archive.c (_bfd_compute_and_write_armap): Likewise.
+
+2021-09-27  Nick Alcock  <nick.alcock@oracle.com>
+
+	* configure: Regenerate.
+
+2021-09-15  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* archures.c (bfd_arch_list): Use 'char *' instead of 'char **'
+	when calculating space for a string list.
+
+2021-09-014  Cupertino Miranda  <cmiranda@synopsys.com>
+           Claudiu Zissulescu  <claziss@synopsys.com>
+
+	* arc-got.h (arc_static_sym_data): New structure.
+	(get_static_sym_data): New function.
+	(relocate_fix_got_relocs_for_got_info): Move the computation fo
+	symbol value and section to above introduced function, and use
+	this new function.
+
 2021-09-07  Luis Machado  <luis.machado@linaro.org>
 
 	Revert: [AArch64] MTE corefile support
@@ -7,9 +158,87 @@
 	* elf.c (elfcore_make_memtag_note_section): New function.
 	(elfcore_grok_note): Handle NT_MEMTAG note types.
 
-2021-07-03  Joel Brobecker  <brobecker@adacore.com>
+2021-09-07  Nick Clifton  <nickc@redhat.com>
 
-	* development.sh (development): Set to false.
+	PR 28305
+	* elf32-xtensa.c (elf_xtensa_do_reloc): Add check for put of range
+	reloc.
+
+	PR 28303
+	* elfxx-riscv.c (riscv_elf_add_sub_reloc): Add check for out of
+	range relocs.
+
+2021-08-10  Nick Clifton  <nickc@redhat.com>
+
+	* po/sr.po: Updated Serbian translation.
+
+2021-07-18  Nick Clifton  <nickc@redhat.com>
+
+	* config.bfd: Move pending obsoletion targets to obsolete list.
+
+2021-07-16  Giulio Benetti  <giulio.benetti@benettiengineering.com>
+
+	* elf32-or1k.c (or1k_elf_relocate_section): Use a separate entry
+	in switch case R_OR1K_INSN_REL_26 where we need to check for
+	!SYMBOL_CALLS_LOCAL() instead of !SYMBOL_REFERENCES_LOCAL().
+
+2021-07-14  Clément Chigot  <clement.chigot@atos.net>
+
+	* libxcoff.h (struct xcoff_dwsect_name): Add DWARF name.
+	* coff-rs6000.c (xcoff_dwsect_names): Update.
+	* coffcode.h (sec_to_styp_flags): Likewise.
+	(coff_new_section_hook): Likewise.
+
+2021-07-10  Alan Modra  <amodra@gmail.com>
+
+	* dwarf2.c (read_address): Remove accidental commit.
+	(read_ranges): Compare offset rather than pointers.
+
+2021-07-08  Nick Clifton  <nickc@redhat.com>
+
+	* po/pt.po: Updated Portuguese translation.
+
+2021-07-07  Nick Clifton  <nickc@redhat.com>
+
+	* elfcode.h (elf_swap_symbol_out): Revert accidental change that
+	removed an abort if the shndx pointer is NULL.
+
+2021-07-07  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* sysdep.h [!ENABLE_NLS]: Prevent inclusion of <libintl.h> on
+	Solaris.
+
+2021-07-07  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* configure.ac: Check for strnlen declaration.
+	* configure, config.in: Regenerate.
+
+2021-07-07  Nick Clifton  <nickc@redhat.com>
+
+	PR 28051
+	* coff-rs6000.c (xcoff_reloc_type_tls): Reformat error messages in
+	order to fix problems when translating.
+	* cofflink.c (_bfd_coff_write_global_sym): Likewise.
+	* elfnn-aarch64.c (_bfd_aarch64_erratum_843419_branch_to_stub):
+	Likewise.
+	* po/bfd.pot: Regenerate.
+
+2021-07-06  Michael Matz  <matz@suse.de>
+
+	PR ld/28021
+	* elfnn-riscv.c (riscv_relax_delete_bytes): Check for any
+	versioning.
+
+2021-07-06  Alan Modra  <amodra@gmail.com>
+
+	PR 28055
+	* elf64-bpf.c (bpf_elf_generic_reloc): Add missing ATTRIBUTE_UNUSED.
+
+2021-07-05  Alan Modra  <amodra@gmail.com>
+
+	PR 28055
+	* elf64-bpf.c (bpf_elf_generic_reloc): Use correct bfd for bfd_put
+	and bfd_put_32 calls.  Correct section limit checks.
 
 2021-07-03  Nick Clifton  <nickc@redhat.com>
 
@@ -2026,7 +2255,7 @@
 
 For older changes see ChangeLog-2020
 
-Copyright (C) 2021 Free Software Foundation, Inc.
+Copyright (C) 2021-2022 Free Software Foundation, Inc.
 
 Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright

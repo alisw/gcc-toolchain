@@ -801,6 +801,7 @@ with_gnu_ld
 enable_libtool_lock
 enable_largefile
 enable_cet
+enable_werror
 with_system_libunwind
 enable_host_shared
 '
@@ -1448,6 +1449,7 @@ Optional Features:
   --disable-libtool-lock  avoid locking (might break parallel builds)
   --disable-largefile     omit support for large files
   --enable-cet            enable Intel CET in target libraries [default=auto]
+  --disable-werror        disable building with -Werror
   --enable-host-shared    build host code as shared libraries
   --enable-cet            enable Intel CET in host libraries [default=auto]
 
@@ -11509,7 +11511,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11512 "configure"
+#line 11514 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11615,7 +11617,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11618 "configure"
+#line 11620 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12300,10 +12302,14 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-if test -n "${with_target_subdir}"; then
-  WARN_FLAGS="$WARN_FLAGS -Werror"
+# Check whether --enable-werror was given.
+if test "${enable_werror+set}" = set; then :
+  enableval=$enable_werror;
 fi
 
+if test "x$enable_werror" != "xno" && test -n "${with_target_subdir}"; then :
+  WARN_FLAGS="$WARN_FLAGS -Werror"
+fi
 
 
 if test -n "${with_target_subdir}"; then
@@ -12517,6 +12523,34 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+int
+main ()
+{
+  asm ("endbr32");
+  return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  have_multi_byte_nop=yes
+else
+  have_multi_byte_nop=no
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+    have_cet=no
+    if test x$have_multi_byte_nop = xyes; then
+      if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
 static void
 foo (void)
 {
@@ -12553,6 +12587,7 @@ rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
   conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
 
+    fi
     if test x$enable_cet = xno -a x$have_cet = xyes; then
       as_fn_error $? "Intel CET must be enabled on Intel CET enabled host" "$LINENO" 5
     fi

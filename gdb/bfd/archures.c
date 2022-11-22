@@ -1,5 +1,5 @@
 /* BFD library support routines for architectures.
-   Copyright (C) 1990-2021 Free Software Foundation, Inc.
+   Copyright (C) 1990-2022 Free Software Foundation, Inc.
    Hacked by John Gilmore and Steve Chamberlain of Cygnus Support.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -337,6 +337,7 @@ DESCRIPTION
 .#define bfd_mach_arm_8M_BASE   25
 .#define bfd_mach_arm_8M_MAIN   26
 .#define bfd_mach_arm_8_1M_MAIN 27
+.#define bfd_mach_arm_9         28
 .  bfd_arch_nds32,     {* Andes NDS32.  *}
 .#define bfd_mach_n1		1
 .#define bfd_mach_n1h		2
@@ -555,6 +556,22 @@ DESCRIPTION
 .#define bfd_mach_ck807		6
 .#define bfd_mach_ck810		7
 .#define bfd_mach_ck860		8
+.  bfd_arch_loongarch,       {* LoongArch *}
+.#define bfd_mach_loongarch32	1
+.#define bfd_mach_loongarch64	2
+.  bfd_arch_amdgcn,     {* AMDGCN *}
+.#define bfd_mach_amdgcn_unknown 0x000
+.#define bfd_mach_amdgcn_gfx900  0x02c
+.#define bfd_mach_amdgcn_gfx904  0x02e
+.#define bfd_mach_amdgcn_gfx906  0x02f
+.#define bfd_mach_amdgcn_gfx908  0x030
+.#define bfd_mach_amdgcn_gfx90a  0x03f
+.#define bfd_mach_amdgcn_gfx1010 0x033
+.#define bfd_mach_amdgcn_gfx1011 0x034
+.#define bfd_mach_amdgcn_gfx1012 0x035
+.#define bfd_mach_amdgcn_gfx1030 0x036
+.#define bfd_mach_amdgcn_gfx1031 0x037
+.#define bfd_mach_amdgcn_gfx1032 0x038
 .  bfd_arch_last
 .  };
 */
@@ -610,6 +627,7 @@ DESCRIPTION
 
 extern const bfd_arch_info_type bfd_aarch64_arch;
 extern const bfd_arch_info_type bfd_alpha_arch;
+extern const bfd_arch_info_type bfd_amdgcn_arch;
 extern const bfd_arch_info_type bfd_arc_arch;
 extern const bfd_arch_info_type bfd_arm_arch;
 extern const bfd_arch_info_type bfd_avr_arch;
@@ -635,6 +653,7 @@ extern const bfd_arch_info_type bfd_iq2000_arch;
 extern const bfd_arch_info_type bfd_k1om_arch;
 extern const bfd_arch_info_type bfd_l1om_arch;
 extern const bfd_arch_info_type bfd_lm32_arch;
+extern const bfd_arch_info_type bfd_loongarch_arch;
 extern const bfd_arch_info_type bfd_m32c_arch;
 extern const bfd_arch_info_type bfd_m32r_arch;
 extern const bfd_arch_info_type bfd_m68hc11_arch;
@@ -699,6 +718,7 @@ static const bfd_arch_info_type * const bfd_archures_list[] =
 #else
     &bfd_aarch64_arch,
     &bfd_alpha_arch,
+    &bfd_amdgcn_arch,
     &bfd_arc_arch,
     &bfd_arm_arch,
     &bfd_avr_arch,
@@ -724,6 +744,7 @@ static const bfd_arch_info_type * const bfd_archures_list[] =
     &bfd_k1om_arch,
     &bfd_l1om_arch,
     &bfd_lm32_arch,
+    &bfd_loongarch_arch,
     &bfd_m32c_arch,
     &bfd_m32r_arch,
     &bfd_m68hc11_arch,
@@ -864,7 +885,7 @@ bfd_arch_list (void)
 	}
     }
 
-  amt = (vec_length + 1) * sizeof (char **);
+  amt = (vec_length + 1) * sizeof (char *);
   name_list = (const char **) bfd_malloc (amt);
   if (name_list == NULL)
     return NULL;

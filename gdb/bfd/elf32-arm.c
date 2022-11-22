@@ -1,5 +1,5 @@
 /* 32-bit ELF support for ARM
-   Copyright (C) 1998-2021 Free Software Foundation, Inc.
+   Copyright (C) 1998-2022 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -2536,11 +2536,23 @@ static const bfd_vma elf32_arm_nacl_plt_entry [] =
   0xea000000,		/* b	.Lplt_tail			*/
 };
 
+/* PR 28924:
+   There was a bug due to too high values of THM_MAX_FWD_BRANCH_OFFSET and
+   THM2_MAX_FWD_BRANCH_OFFSET.  The first macro concerns the case when Thumb-2
+   is not available, and second macro when Thumb-2 is available.  Among other
+   things, they affect the range of branches represented as BLX instructions
+   in Encoding T2 defined in Section A8.8.25 of the ARM Architecture
+   Reference Manual ARMv7-A and ARMv7-R edition issue C.d.  Such branches are
+   specified there to have a maximum forward offset that is a multiple of 4.
+   Previously, the respective values defined here were multiples of 2 but not
+   4 and they are included in comments for reference.  */
 #define ARM_MAX_FWD_BRANCH_OFFSET  ((((1 << 23) - 1) << 2) + 8)
-#define ARM_MAX_BWD_BRANCH_OFFSET  ((-((1 << 23) << 2)) + 8)
-#define THM_MAX_FWD_BRANCH_OFFSET  ((1 << 22) -2 + 4)
+#define ARM_MAX_BWD_BRANCH_OFFSET ((-((1 << 23) << 2)) + 8)
+#define THM_MAX_FWD_BRANCH_OFFSET   ((1 << 22) - 4 + 4)
+/* #def THM_MAX_FWD_BRANCH_OFFSET   ((1 << 22) - 2 + 4) */
 #define THM_MAX_BWD_BRANCH_OFFSET  (-(1 << 22) + 4)
-#define THM2_MAX_FWD_BRANCH_OFFSET (((1 << 24) - 2) + 4)
+#define THM2_MAX_FWD_BRANCH_OFFSET (((1 << 24) - 4) + 4)
+/* #def THM2_MAX_FWD_BRANCH_OFFSET (((1 << 24) - 2) + 4) */
 #define THM2_MAX_BWD_BRANCH_OFFSET (-(1 << 24) + 4)
 #define THM2_MAX_FWD_COND_BRANCH_OFFSET (((1 << 20) -2) + 4)
 #define THM2_MAX_BWD_COND_BRANCH_OFFSET (-(1 << 20) + 4)
@@ -3941,7 +3953,7 @@ using_thumb2_bl (struct elf32_arm_link_hash_table *globals)
     bfd_elf_get_obj_attr_int (globals->obfd, OBJ_ATTR_PROC, Tag_CPU_arch);
 
   /* Force return logic to be reviewed for each new architecture.  */
-  BFD_ASSERT (arch <= TAG_CPU_ARCH_V8_1M_MAIN);
+  BFD_ASSERT (arch <= TAG_CPU_ARCH_V9);
 
   /* Architecture was introduced after ARMv6T2 (eg. ARMv6-M).  */
   return (arch == TAG_CPU_ARCH_V6T2
@@ -4130,13 +4142,14 @@ arch_has_arm_nop (struct elf32_arm_link_hash_table *globals)
 					     Tag_CPU_arch);
 
   /* Force return logic to be reviewed for each new architecture.  */
-  BFD_ASSERT (arch <= TAG_CPU_ARCH_V8_1M_MAIN);
+  BFD_ASSERT (arch <= TAG_CPU_ARCH_V9);
 
   return (arch == TAG_CPU_ARCH_V6T2
 	  || arch == TAG_CPU_ARCH_V6K
 	  || arch == TAG_CPU_ARCH_V7
 	  || arch == TAG_CPU_ARCH_V8
-	  || arch == TAG_CPU_ARCH_V8R);
+	  || arch == TAG_CPU_ARCH_V8R
+	  || arch == TAG_CPU_ARCH_V9);
 }
 
 static bool
@@ -13852,6 +13865,8 @@ bfd_arm_get_mach_from_attributes (bfd * abfd)
 	return bfd_mach_arm_8M_MAIN;
     case TAG_CPU_ARCH_V8_1M_MAIN:
 	return bfd_mach_arm_8_1M_MAIN;
+    case TAG_CPU_ARCH_V9:
+	return bfd_mach_arm_9;
 
     default:
       /* Force entry to be added for any new known Tag_CPU_arch value.  */
@@ -14202,7 +14217,14 @@ tag_cpu_arch_combine (bfd *ibfd, int oldtag, int *secondary_compat_out,
       T(V8),		/* V6_M.  */
       T(V8),		/* V6S_M.  */
       T(V8),		/* V7E_M.  */
-      T(V8)		/* V8.  */
+      T(V8),		/* V8.  */
+      T(V8),		/* V8-R.  */
+      T(V8),		/* V8-M.BASE.  */
+      T(V8),		/* V8-M.MAIN.  */
+      T(V8),		/* V8.1.  */
+      T(V8),		/* V8.2.  */
+      T(V8),		/* V8.3.  */
+      T(V8),		/* V8.1-M.MAIN.  */
     };
   const int v8r[] =
     {
@@ -14289,6 +14311,32 @@ tag_cpu_arch_combine (bfd *ibfd, int oldtag, int *secondary_compat_out,
       -1,		/* Unused (20).  */
       T(V8_1M_MAIN)	/* V8.1-M MAINLINE.  */
     };
+  const int v9[] =
+    {
+      T(V9),		/* PRE_V4.  */
+      T(V9),		/* V4.  */
+      T(V9),		/* V4T.  */
+      T(V9),		/* V5T.  */
+      T(V9),		/* V5TE.  */
+      T(V9),		/* V5TEJ.  */
+      T(V9),		/* V6.  */
+      T(V9),		/* V6KZ.  */
+      T(V9),		/* V6T2.  */
+      T(V9),		/* V6K.  */
+      T(V9),		/* V7.  */
+      T(V9),		/* V6_M.  */
+      T(V9),		/* V6S_M.  */
+      T(V9),		/* V7E_M.  */
+      T(V9),		/* V8.  */
+      T(V9),		/* V8-R.  */
+      T(V9),		/* V8-M.BASE.  */
+      T(V9),		/* V8-M.MAIN.  */
+      T(V9),		/* V8.1.  */
+      T(V9),		/* V8.2.  */
+      T(V9),		/* V8.3.  */
+      T(V9),		/* V8.1-M.MAIN.  */
+      T(V9),		/* V9.  */
+     };
   const int v4t_plus_v6_m[] =
     {
       -1,		/* PRE_V4.  */
@@ -14313,6 +14361,7 @@ tag_cpu_arch_combine (bfd *ibfd, int oldtag, int *secondary_compat_out,
       -1,		/* Unused (19).  */
       -1,		/* Unused (20).  */
       T(V8_1M_MAIN),	/* V8.1-M MAINLINE.  */
+      T(V9),		/* V9.  */
       T(V4T_PLUS_V6_M)	/* V4T plus V6_M.  */
     };
   const int *comb[] =
@@ -14331,6 +14380,7 @@ tag_cpu_arch_combine (bfd *ibfd, int oldtag, int *secondary_compat_out,
       NULL,
       NULL,
       v8_1m_mainline,
+      v9,
       /* Pseudo-architecture.  */
       v4t_plus_v6_m
     };
@@ -14485,6 +14535,14 @@ elf32_arm_merge_eabi_attributes (bfd *ibfd, struct bfd_link_info *info)
 	  out_attr[Tag_MPextension_use_legacy].i = 0;
 	}
 
+      /* PR 28859 and 28848:  Handle the case where the first input file,
+	 eg crti.o, has a Tag_ABI_HardFP_use of 3 but no Tag_FP_arch set.
+	 Using Tag_ABI_HardFP_use in this way is deprecated, so reset the
+	 attribute to zero.
+	 FIXME: Should we handle other non-zero values of Tag_ABI_HardFO_use ? */
+      if (out_attr[Tag_ABI_HardFP_use].i == 3 && out_attr[Tag_FP_arch].i == 0)
+	out_attr[Tag_ABI_HardFP_use].i = 0;
+
       return result;
     }
 
@@ -14547,10 +14605,16 @@ elf32_arm_merge_eabi_attributes (bfd *ibfd, struct bfd_link_info *info)
 		"ARM v7",
 		"ARM v6-M",
 		"ARM v6S-M",
+		"ARM v7E-M",
 		"ARM v8",
-		"",
+		"ARM v8-R",
 		"ARM v8-M.baseline",
 		"ARM v8-M.mainline",
+		"ARM v8.1-A",
+		"ARM v8.2-A",
+		"ARM v8.3-A",
+		"ARM v8.1-M.mainline",
+		"ARM v9",
 	    };
 
 	    /* Merge Tag_CPU_arch and Tag_also_compatible_with.  */
@@ -14612,6 +14676,10 @@ elf32_arm_merge_eabi_attributes (bfd *ibfd, struct bfd_link_info *info)
 	case Tag_T2EE_use:
 	case Tag_MPextension_use:
 	case Tag_MVE_arch:
+	case Tag_PAC_extension:
+	case Tag_BTI_extension:
+	case Tag_BTI_use:
+	case Tag_PACRET_use:
 	  /* Use the largest value specified.  */
 	  if (in_attr[i].i > out_attr[i].i)
 	    out_attr[i].i = in_attr[i].i;
@@ -20186,7 +20254,6 @@ elf32_arm_backend_symbol_processing (bfd *abfd, asymbol *sym)
 #else
 #define ELF_MAXPAGESIZE			0x10000
 #endif
-#define ELF_MINPAGESIZE			0x1000
 #define ELF_COMMONPAGESIZE		0x1000
 
 #define bfd_elf32_mkobject			elf32_arm_mkobject
@@ -20362,7 +20429,6 @@ elf32_arm_nacl_plt_sym_val (bfd_vma i, const asection *plt,
 #undef  elf_backend_final_write_processing
 #define elf_backend_final_write_processing	elf32_arm_final_write_processing
 #undef	ELF_MINPAGESIZE
-#define ELF_MINPAGESIZE			0x1000
 #undef	ELF_COMMONPAGESIZE
 #define ELF_COMMONPAGESIZE		0x1000
 

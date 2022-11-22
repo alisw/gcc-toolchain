@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.7.4.  */
+/* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison implementation for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2020 Free Software Foundation,
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2021 Free Software Foundation,
    Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -46,10 +46,10 @@
    USER NAME SPACE" below.  */
 
 /* Identify Bison output, and Bison version.  */
-#define YYBISON 30704
+#define YYBISON 30802
 
 /* Bison version string.  */
-#define YYBISON_VERSION "3.7.4"
+#define YYBISON_VERSION "3.8.2"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -481,7 +481,9 @@ typedef union YYSTYPE YYSTYPE;
 
 extern YYSTYPE yylval;
 
+
 int yyparse (void);
+
 
 #endif /* !YY_YY_CONFIG_LOONGARCH_PARSE_H_INCLUDED  */
 /* Symbol kind.  */
@@ -574,6 +576,18 @@ typedef __INT_LEAST16_TYPE__ yytype_int16;
 typedef int_least16_t yytype_int16;
 #else
 typedef short yytype_int16;
+#endif
+
+/* Work around bug in HP-UX 11.23, which defines these macros
+   incorrectly for preprocessor constants.  This workaround can likely
+   be removed in 2023, as HPE has promised support for HP-UX 11.23
+   (aka HP-UX 11i v2) only through the end of 2022; see Table 2 of
+   <https://h20195.www2.hpe.com/V2/getpdf.aspx/4AA4-7673ENW.pdf>.  */
+#ifdef __hpux
+# undef UINT_LEAST8_MAX
+# undef UINT_LEAST16_MAX
+# define UINT_LEAST8_MAX 255
+# define UINT_LEAST16_MAX 65535
 #endif
 
 #if defined __UINT_LEAST8_MAX__ && __UINT_LEAST8_MAX__ <= __INT_MAX__
@@ -673,17 +687,23 @@ typedef int yy_state_fast_t;
 
 /* Suppress unused-variable warnings by "using" E.  */
 #if ! defined lint || defined __GNUC__
-# define YYUSE(E) ((void) (E))
+# define YY_USE(E) ((void) (E))
 #else
-# define YYUSE(E) /* empty */
+# define YY_USE(E) /* empty */
 #endif
 
-#if defined __GNUC__ && ! defined __ICC && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
 /* Suppress an incorrect diagnostic about yylval being uninitialized.  */
-# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                            \
+#if defined __GNUC__ && ! defined __ICC && 406 <= __GNUC__ * 100 + __GNUC_MINOR__
+# if __GNUC__ * 100 + __GNUC_MINOR__ < 407
+#  define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                           \
+    _Pragma ("GCC diagnostic push")                                     \
+    _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")
+# else
+#  define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                           \
     _Pragma ("GCC diagnostic push")                                     \
     _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")              \
     _Pragma ("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
+# endif
 # define YY_IGNORE_MAYBE_UNINITIALIZED_END      \
     _Pragma ("GCC diagnostic pop")
 #else
@@ -898,7 +918,7 @@ static const yytype_int8 yytranslate[] =
 };
 
 #if YYDEBUG
-  /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
+/* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
        0,   354,   354,   355,   356,   357,   361,   362,   363,   367,
@@ -940,17 +960,6 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#ifdef YYPRINT
-/* YYTOKNUM[NUM] -- (External) token number corresponding to the
-   (internal) symbol number NUM (which must be that of a token).  */
-static const yytype_int16 yytoknum[] =
-{
-       0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
-     265,   266,   267,    40,    41,    37,    45,    43,   126,    33,
-      42,    47,    60,    62,    38,    94,   124,    63,    58
-};
-#endif
-
 #define YYPACT_NINF (-11)
 
 #define yypact_value_is_default(Yyn) \
@@ -961,8 +970,8 @@ static const yytype_int16 yytoknum[] =
 #define yytable_value_is_error(Yyn) \
   0
 
-  /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
-     STATE-NUM.  */
+/* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
+   STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
        2,   -11,     2,    10,     2,     2,     2,     2,   -11,   -11,
@@ -976,9 +985,9 @@ static const yytype_int8 yypact[] =
      -11
 };
 
-  /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
-     Performed when YYTABLE does not specify something else to do.  Zero
-     means the default is an error.  */
+/* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
+   Performed when YYTABLE does not specify something else to do.  Zero
+   means the default is an error.  */
 static const yytype_int8 yydefact[] =
 {
        0,     2,     0,     0,     0,     0,     0,     0,     9,    14,
@@ -992,23 +1001,23 @@ static const yytype_int8 yydefact[] =
        7
 };
 
-  /* YYPGOTO[NTERM-NUM].  */
+/* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
      -11,   -11,   -10,    -3,    20,    21,    -6,    17,    24,    25,
       18,    26,    28,   -11,    -5,    -2
 };
 
-  /* YYDEFGOTO[NTERM-NUM].  */
+/* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-      -1,     8,    72,     9,    10,    11,    12,    13,    14,    15,
+       0,     8,    72,     9,    10,    11,    12,    13,    14,    15,
       16,    17,    18,    19,    20,    21
 };
 
-  /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
-     positive, shift that token.  If negative, reduce the rule whose
-     number is the opposite.  If YYTABLE_NINF, syntax error.  */
+/* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
+   positive, shift that token.  If negative, reduce the rule whose
+   number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int8 yytable[] =
 {
       22,    24,    25,    26,    27,     1,    28,    35,    36,    31,
@@ -1033,8 +1042,8 @@ static const yytype_int8 yycheck[] =
       44,    -1,    -1,    45
 };
 
-  /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
-     symbol of state STATE-NUM.  */
+/* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
+   state STATE-NUM.  */
 static const yytype_int8 yystos[] =
 {
        0,     3,    13,    15,    16,    17,    18,    19,    30,    32,
@@ -1048,7 +1057,7 @@ static const yytype_int8 yystos[] =
        3
 };
 
-  /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
+/* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr1[] =
 {
        0,    29,    30,    30,    30,    30,    31,    31,    31,    32,
@@ -1058,7 +1067,7 @@ static const yytype_int8 yyr1[] =
       42,    42,    43,    43,    44
 };
 
-  /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
+/* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr2[] =
 {
        0,     2,     1,     3,     6,     6,     3,     3,     0,     1,
@@ -1077,6 +1086,7 @@ enum { YYENOMEM = -2 };
 #define YYACCEPT        goto yyacceptlab
 #define YYABORT         goto yyabortlab
 #define YYERROR         goto yyerrorlab
+#define YYNOMEM         goto yyexhaustedlab
 
 
 #define YYRECOVERING()  (!!yyerrstatus)
@@ -1117,10 +1127,7 @@ do {                                            \
     YYFPRINTF Args;                             \
 } while (0)
 
-/* This macro is provided for backward compatibility. */
-# ifndef YY_LOCATION_PRINT
-#  define YY_LOCATION_PRINT(File, Loc) ((void) 0)
-# endif
+
 
 
 # define YY_SYMBOL_PRINT(Title, Kind, Value, Location)                    \
@@ -1144,15 +1151,11 @@ yy_symbol_value_print (FILE *yyo,
                        yysymbol_kind_t yykind, YYSTYPE const * const yyvaluep)
 {
   FILE *yyoutput = yyo;
-  YYUSE (yyoutput);
+  YY_USE (yyoutput);
   if (!yyvaluep)
     return;
-# ifdef YYPRINT
-  if (yykind < YYNTOKENS)
-    YYPRINT (yyo, yytoknum[yykind], *yyvaluep);
-# endif
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-  YYUSE (yykind);
+  YY_USE (yykind);
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
 
@@ -1266,13 +1269,13 @@ static void
 yydestruct (const char *yymsg,
             yysymbol_kind_t yykind, YYSTYPE *yyvaluep)
 {
-  YYUSE (yyvaluep);
+  YY_USE (yyvaluep);
   if (!yymsg)
     yymsg = "Deleting";
   YY_SYMBOL_PRINT (yymsg, yykind, yyvaluep, yylocationp);
 
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-  YYUSE (yykind);
+  YY_USE (yykind);
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
 
@@ -1335,6 +1338,7 @@ yyparse (void)
   YYDPRINTF ((stderr, "Starting parse\n"));
 
   yychar = YYEMPTY; /* Cause a token to be read.  */
+
   goto yysetstate;
 
 
@@ -1360,7 +1364,7 @@ yysetstate:
 
   if (yyss + yystacksize - 1 <= yyssp)
 #if !defined yyoverflow && !defined YYSTACK_RELOCATE
-    goto yyexhaustedlab;
+    YYNOMEM;
 #else
     {
       /* Get the current used size of the three stacks, in elements.  */
@@ -1388,7 +1392,7 @@ yysetstate:
 # else /* defined YYSTACK_RELOCATE */
       /* Extend the stack our own way.  */
       if (YYMAXDEPTH <= yystacksize)
-        goto yyexhaustedlab;
+        YYNOMEM;
       yystacksize *= 2;
       if (YYMAXDEPTH < yystacksize)
         yystacksize = YYMAXDEPTH;
@@ -1399,7 +1403,7 @@ yysetstate:
           YY_CAST (union yyalloc *,
                    YYSTACK_ALLOC (YY_CAST (YYSIZE_T, YYSTACK_BYTES (yystacksize))));
         if (! yyptr)
-          goto yyexhaustedlab;
+          YYNOMEM;
         YYSTACK_RELOCATE (yyss_alloc, yyss);
         YYSTACK_RELOCATE (yyvs_alloc, yyvs);
 #  undef YYSTACK_RELOCATE
@@ -1420,6 +1424,7 @@ yysetstate:
         YYABORT;
     }
 #endif /* !defined yyoverflow && !defined YYSTACK_RELOCATE */
+
 
   if (yystate == YYFINAL)
     YYACCEPT;
@@ -1535,179 +1540,179 @@ yyreduce:
   case 2: /* primary_expression: INTEGER  */
 #line 354 "./config/loongarch-parse.y"
                   {emit_const ((yyvsp[0].imm));}
-#line 1539 "config/loongarch-parse.c"
+#line 1544 "config/loongarch-parse.c"
     break;
 
   case 4: /* primary_expression: '%' IDENTIFIER '(' IDENTIFIER addend ')'  */
 #line 356 "./config/loongarch-parse.y"
                                                    {reloc ((yyvsp[-4].c_str), (yyvsp[-2].c_str), (yyvsp[-1].imm)); free ((yyvsp[-4].c_str)); free ((yyvsp[-2].c_str));}
-#line 1545 "config/loongarch-parse.c"
+#line 1550 "config/loongarch-parse.c"
     break;
 
   case 5: /* primary_expression: '%' IDENTIFIER '(' INTEGER addend ')'  */
 #line 357 "./config/loongarch-parse.y"
                                                 {reloc ((yyvsp[-4].c_str), NULL, (yyvsp[-2].imm) + (yyvsp[-1].imm)); free ((yyvsp[-4].c_str));}
-#line 1551 "config/loongarch-parse.c"
+#line 1556 "config/loongarch-parse.c"
     break;
 
   case 6: /* addend: addend '-' INTEGER  */
 #line 361 "./config/loongarch-parse.y"
                              {(yyval.imm) -= (yyvsp[0].imm);}
-#line 1557 "config/loongarch-parse.c"
+#line 1562 "config/loongarch-parse.c"
     break;
 
   case 7: /* addend: addend '+' INTEGER  */
 #line 362 "./config/loongarch-parse.y"
                              {(yyval.imm) += (yyvsp[0].imm);}
-#line 1563 "config/loongarch-parse.c"
+#line 1568 "config/loongarch-parse.c"
     break;
 
   case 8: /* addend: %empty  */
 #line 363 "./config/loongarch-parse.y"
           {(yyval.imm) = 0;}
-#line 1569 "config/loongarch-parse.c"
+#line 1574 "config/loongarch-parse.c"
     break;
 
   case 10: /* unary_expression: '+' unary_expression  */
 #line 368 "./config/loongarch-parse.y"
                                {emit_unary ('+');}
-#line 1575 "config/loongarch-parse.c"
+#line 1580 "config/loongarch-parse.c"
     break;
 
   case 11: /* unary_expression: '-' unary_expression  */
 #line 369 "./config/loongarch-parse.y"
                                {emit_unary ('-');}
-#line 1581 "config/loongarch-parse.c"
+#line 1586 "config/loongarch-parse.c"
     break;
 
   case 12: /* unary_expression: '~' unary_expression  */
 #line 370 "./config/loongarch-parse.y"
                                {emit_unary ('~');}
-#line 1587 "config/loongarch-parse.c"
+#line 1592 "config/loongarch-parse.c"
     break;
 
   case 13: /* unary_expression: '!' unary_expression  */
 #line 371 "./config/loongarch-parse.y"
                                {emit_unary ('!');}
-#line 1593 "config/loongarch-parse.c"
+#line 1598 "config/loongarch-parse.c"
     break;
 
   case 15: /* multiplicative_expression: multiplicative_expression '*' unary_expression  */
 #line 376 "./config/loongarch-parse.y"
                                                          {emit_bin ('*');}
-#line 1599 "config/loongarch-parse.c"
+#line 1604 "config/loongarch-parse.c"
     break;
 
   case 16: /* multiplicative_expression: multiplicative_expression '/' unary_expression  */
 #line 377 "./config/loongarch-parse.y"
                                                          {emit_bin ('/');}
-#line 1605 "config/loongarch-parse.c"
+#line 1610 "config/loongarch-parse.c"
     break;
 
   case 17: /* multiplicative_expression: multiplicative_expression '%' unary_expression  */
 #line 378 "./config/loongarch-parse.y"
                                                          {emit_bin ('%');}
-#line 1611 "config/loongarch-parse.c"
+#line 1616 "config/loongarch-parse.c"
     break;
 
   case 19: /* additive_expression: additive_expression '+' multiplicative_expression  */
 #line 383 "./config/loongarch-parse.y"
                                                             {emit_bin ('+');}
-#line 1617 "config/loongarch-parse.c"
+#line 1622 "config/loongarch-parse.c"
     break;
 
   case 20: /* additive_expression: additive_expression '-' multiplicative_expression  */
 #line 384 "./config/loongarch-parse.y"
                                                             {emit_bin ('-');}
-#line 1623 "config/loongarch-parse.c"
+#line 1628 "config/loongarch-parse.c"
     break;
 
   case 22: /* shift_expression: shift_expression LEFT_OP additive_expression  */
 #line 389 "./config/loongarch-parse.y"
                                                        {emit_bin (LEFT_OP);}
-#line 1629 "config/loongarch-parse.c"
+#line 1634 "config/loongarch-parse.c"
     break;
 
   case 23: /* shift_expression: shift_expression RIGHT_OP additive_expression  */
 #line 390 "./config/loongarch-parse.y"
                                                         {emit_bin (RIGHT_OP);}
-#line 1635 "config/loongarch-parse.c"
+#line 1640 "config/loongarch-parse.c"
     break;
 
   case 25: /* relational_expression: relational_expression '<' shift_expression  */
 #line 395 "./config/loongarch-parse.y"
                                                      {emit_bin ('<');}
-#line 1641 "config/loongarch-parse.c"
+#line 1646 "config/loongarch-parse.c"
     break;
 
   case 26: /* relational_expression: relational_expression '>' shift_expression  */
 #line 396 "./config/loongarch-parse.y"
                                                      {emit_bin ('>');}
-#line 1647 "config/loongarch-parse.c"
+#line 1652 "config/loongarch-parse.c"
     break;
 
   case 27: /* relational_expression: relational_expression LE_OP shift_expression  */
 #line 397 "./config/loongarch-parse.y"
                                                        {emit_bin (LE_OP);}
-#line 1653 "config/loongarch-parse.c"
+#line 1658 "config/loongarch-parse.c"
     break;
 
   case 28: /* relational_expression: relational_expression GE_OP shift_expression  */
 #line 398 "./config/loongarch-parse.y"
                                                        {emit_bin (GE_OP);}
-#line 1659 "config/loongarch-parse.c"
+#line 1664 "config/loongarch-parse.c"
     break;
 
   case 30: /* equality_expression: equality_expression EQ_OP relational_expression  */
 #line 403 "./config/loongarch-parse.y"
                                                           {emit_bin (EQ_OP);}
-#line 1665 "config/loongarch-parse.c"
+#line 1670 "config/loongarch-parse.c"
     break;
 
   case 31: /* equality_expression: equality_expression NE_OP relational_expression  */
 #line 404 "./config/loongarch-parse.y"
                                                           {emit_bin (NE_OP);}
-#line 1671 "config/loongarch-parse.c"
+#line 1676 "config/loongarch-parse.c"
     break;
 
   case 33: /* and_expression: and_expression '&' equality_expression  */
 #line 409 "./config/loongarch-parse.y"
                                                  {emit_bin ('&');}
-#line 1677 "config/loongarch-parse.c"
+#line 1682 "config/loongarch-parse.c"
     break;
 
   case 35: /* exclusive_or_expression: exclusive_or_expression '^' and_expression  */
 #line 414 "./config/loongarch-parse.y"
                                                      {emit_bin ('^');}
-#line 1683 "config/loongarch-parse.c"
+#line 1688 "config/loongarch-parse.c"
     break;
 
   case 37: /* inclusive_or_expression: inclusive_or_expression '|' exclusive_or_expression  */
 #line 419 "./config/loongarch-parse.y"
                                                               {emit_bin ('|');}
-#line 1689 "config/loongarch-parse.c"
+#line 1694 "config/loongarch-parse.c"
     break;
 
   case 39: /* logical_and_expression: logical_and_expression AND_OP inclusive_or_expression  */
 #line 424 "./config/loongarch-parse.y"
                                                                 {emit_bin (AND_OP);}
-#line 1695 "config/loongarch-parse.c"
+#line 1700 "config/loongarch-parse.c"
     break;
 
   case 41: /* logical_or_expression: logical_or_expression OR_OP logical_and_expression  */
 #line 429 "./config/loongarch-parse.y"
                                                              {emit_bin (OR_OP);}
-#line 1701 "config/loongarch-parse.c"
+#line 1706 "config/loongarch-parse.c"
     break;
 
   case 43: /* conditional_expression: logical_or_expression '?' expression ':' conditional_expression  */
 #line 434 "./config/loongarch-parse.y"
                                                                           {emit_if_else ();}
-#line 1707 "config/loongarch-parse.c"
+#line 1712 "config/loongarch-parse.c"
     break;
 
 
-#line 1711 "config/loongarch-parse.c"
+#line 1716 "config/loongarch-parse.c"
 
       default: break;
     }
@@ -1789,6 +1794,7 @@ yyerrorlab:
      label yyerrorlab therefore never appears in user code.  */
   if (0)
     YYERROR;
+  ++yynerrs;
 
   /* Do not reclaim the symbols of the rule whose action triggered
      this YYERROR.  */
@@ -1849,7 +1855,7 @@ yyerrlab1:
 `-------------------------------------*/
 yyacceptlab:
   yyresult = 0;
-  goto yyreturn;
+  goto yyreturnlab;
 
 
 /*-----------------------------------.
@@ -1857,24 +1863,22 @@ yyacceptlab:
 `-----------------------------------*/
 yyabortlab:
   yyresult = 1;
-  goto yyreturn;
+  goto yyreturnlab;
 
 
-#if !defined yyoverflow
-/*-------------------------------------------------.
-| yyexhaustedlab -- memory exhaustion comes here.  |
-`-------------------------------------------------*/
+/*-----------------------------------------------------------.
+| yyexhaustedlab -- YYNOMEM (memory exhaustion) comes here.  |
+`-----------------------------------------------------------*/
 yyexhaustedlab:
   yyerror (YY_("memory exhausted"));
   yyresult = 2;
-  goto yyreturn;
-#endif
+  goto yyreturnlab;
 
 
-/*-------------------------------------------------------.
-| yyreturn -- parsing is finished, clean up and return.  |
-`-------------------------------------------------------*/
-yyreturn:
+/*----------------------------------------------------------.
+| yyreturnlab -- parsing is finished, clean up and return.  |
+`----------------------------------------------------------*/
+yyreturnlab:
   if (yychar != YYEMPTY)
     {
       /* Make sure we have latest lookahead translation.  See comments at

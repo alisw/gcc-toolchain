@@ -1562,7 +1562,7 @@ process_xcoff_symbol (struct coff_symbol *cs, struct objfile *objfile)
 
   /* default assumptions */
   SET_SYMBOL_VALUE_ADDRESS (sym, cs->c_value + off);
-  SYMBOL_DOMAIN (sym) = VAR_DOMAIN;
+  sym->set_domain (VAR_DOMAIN);
   sym->set_section_index (secnum_to_section (cs->c_secnum, objfile));
 
   if (ISFCN (cs->c_type))
@@ -1572,9 +1572,9 @@ process_xcoff_symbol (struct coff_symbol *cs, struct objfile *objfile)
 	 patch_block_stabs (), unless the file was compiled without -g.  */
 
       sym->set_linkage_name (SYMNAME_ALLOC (name, symname_alloced));
-      SYMBOL_TYPE (sym) = objfile_type (objfile)->nodebug_text_symbol;
+      sym->set_type (objfile_type (objfile)->nodebug_text_symbol);
 
-      SYMBOL_ACLASS_INDEX (sym) = LOC_BLOCK;
+      sym->set_aclass_index (LOC_BLOCK);
       sym2 = new (&objfile->objfile_obstack) symbol (*sym);
 
       if (cs->c_sclass == C_EXT || C_WEAKEXT)
@@ -1585,7 +1585,7 @@ process_xcoff_symbol (struct coff_symbol *cs, struct objfile *objfile)
   else
     {
       /* In case we can't figure out the type, provide default.  */
-      SYMBOL_TYPE (sym) = objfile_type (objfile)->nodebug_data_symbol;
+      sym->set_type (objfile_type (objfile)->nodebug_data_symbol);
 
       switch (cs->c_sclass)
 	{
@@ -1678,12 +1678,12 @@ coff_getfilename (union internal_auxent *aux_entry, struct objfile *objfile)
 {
   static char buffer[BUFSIZ];
 
-  if (aux_entry->x_file.x_n.x_zeroes == 0)
+  if (aux_entry->x_file.x_n.x_n.x_zeroes == 0)
     strcpy (buffer, (XCOFF_DATA (objfile)->strtbl
-		     + aux_entry->x_file.x_n.x_offset));
+		     + aux_entry->x_file.x_n.x_n.x_offset));
   else
     {
-      strncpy (buffer, aux_entry->x_file.x_fname, FILNMLEN);
+      strncpy (buffer, aux_entry->x_file.x_n.x_fname, FILNMLEN);
       buffer[FILNMLEN] = '\0';
     }
   return (buffer);
@@ -2734,13 +2734,8 @@ scan_xcoff_symtab (minimal_symbol_reader &reader,
 	      case 'f':
 		if (! pst)
 		  {
-		    int name_len = p - namestring;
-		    char *name = (char *) xmalloc (name_len + 1);
-
-		    memcpy (name, namestring, name_len);
-		    name[name_len] = '\0';
-		    function_outside_compilation_unit_complaint (name);
-		    xfree (name);
+		    std::string name (namestring, (p - namestring));
+		    function_outside_compilation_unit_complaint (name.c_str ());
 		  }
 		pst->add_psymbol (gdb::string_view (namestring,
 						    p - namestring),
@@ -2758,13 +2753,8 @@ scan_xcoff_symtab (minimal_symbol_reader &reader,
 	      case 'F':
 		if (! pst)
 		  {
-		    int name_len = p - namestring;
-		    char *name = (char *) xmalloc (name_len + 1);
-
-		    memcpy (name, namestring, name_len);
-		    name[name_len] = '\0';
-		    function_outside_compilation_unit_complaint (name);
-		    xfree (name);
+		    std::string name (namestring, (p - namestring));
+		    function_outside_compilation_unit_complaint (name.c_str ());
 		  }
 
 		/* We need only the minimal symbols for these

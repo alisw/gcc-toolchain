@@ -1,5 +1,5 @@
 /* C++ modules.  Experimental!
-   Copyright (C) 2017-2021 Free Software Foundation, Inc.
+   Copyright (C) 2017-2022 Free Software Foundation, Inc.
    Written by Nathan Sidwell <nathan@acm.org> while at FaceBook
 
    This file is part of GCC.
@@ -202,6 +202,7 @@ Classes used:
 
 #define _DEFAULT_SOURCE 1 /* To get TZ field of struct tm, if available.  */
 #include "config.h"
+#define INCLUDE_MEMORY
 #define INCLUDE_STRING
 #define INCLUDE_VECTOR
 #include "system.h"
@@ -274,7 +275,14 @@ static inline cpp_hashnode *cpp_node (tree id)
 
 static inline tree identifier (const cpp_hashnode *node)
 {
+  /* HT_NODE() expands to node->ident that HT_IDENT_TO_GCC_IDENT()
+     then subtracts a nonzero constant, deriving a pointer to
+     a different member than ident.  That's strictly undefined
+     and detected by -Warray-bounds.  Suppress it.  See PR 101372.  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
   return HT_IDENT_TO_GCC_IDENT (HT_NODE (const_cast<cpp_hashnode *> (node)));
+#pragma GCC diagnostic pop
 }
 
 /* Id for dumping module information.  */
@@ -4610,7 +4618,7 @@ create_dirs (char *path)
       }
 }
 
-/* Given a CLASSTYPE_DECL_LIST VALUE get the the template friend decl,
+/* Given a CLASSTYPE_DECL_LIST VALUE get the template friend decl,
    if that's what this is.  */
 
 static tree
@@ -6027,6 +6035,9 @@ trees_out::core_vals (tree t)
       WT (t->function_decl.function_specific_target);
       WT (t->function_decl.function_specific_optimization);
       WT (t->function_decl.vindex);
+
+      if (DECL_HAS_DEPENDENT_EXPLICIT_SPEC_P (t))
+	WT (lookup_explicit_specifier (t));
       break;
 
     case USING_DECL:
@@ -6098,9 +6109,8 @@ trees_out::core_vals (tree t)
       break;
 
     case STATEMENT_LIST:
-      for (tree_stmt_iterator iter = tsi_start (t);
-	   !tsi_end_p (iter); tsi_next (&iter))
-	if (tree stmt = tsi_stmt (iter))
+      for (tree stmt : tsi_range (t))
+	if (stmt)
 	  WT (stmt);
       WT (NULL_TREE);
       break;
@@ -6525,6 +6535,13 @@ trees_in::core_vals (tree t)
 	RT (t->function_decl.function_specific_target);
 	RT (t->function_decl.function_specific_optimization);
 	RT (t->function_decl.vindex);
+
+	if (DECL_HAS_DEPENDENT_EXPLICIT_SPEC_P (t))
+	  {
+	    tree spec;
+	    RT (spec);
+	    store_explicit_specifier (t, spec);
+	  }
       }
       break;
 
@@ -8783,6 +8800,7 @@ trees_out::type_node (tree type)
     case DECLTYPE_TYPE:
     case TYPEOF_TYPE:
     case UNDERLYING_TYPE:
+    case DEPENDENT_OPERATOR_TYPE:
       tree_node (TYPE_VALUES_RAW (type));
       if (TREE_CODE (type) == DECLTYPE_TYPE)
 	/* We stash a whole bunch of things into decltype's
@@ -9305,6 +9323,7 @@ trees_in::tree_node (bool is_use)
 	  case DECLTYPE_TYPE:
 	  case TYPEOF_TYPE:
 	  case UNDERLYING_TYPE:
+	  case DEPENDENT_OPERATOR_TYPE:
 	    {
 	      tree expr = tree_node ();
 	      if (!get_overrun ())
@@ -10059,9 +10078,10 @@ trees_out::get_merge_kind (tree decl, depset *dep)
       tree ctx = CP_DECL_CONTEXT (decl);
       if (TREE_CODE (ctx) == FUNCTION_DECL)
 	{
-	  /* USING_DECLs cannot have DECL_TEMPLATE_INFO -- this isn't
-	     permitting them to have one.   */
+	  /* USING_DECLs and NAMESPACE_DECLs cannot have DECL_TEMPLATE_INFO --
+	     this isn't permitting them to have one.   */
 	  gcc_checking_assert (TREE_CODE (decl) == USING_DECL
+			       || TREE_CODE (decl) == NAMESPACE_DECL
 			       || !DECL_LANG_SPECIFIC (decl)
 			       || !DECL_TEMPLATE_INFO (decl));
 
@@ -11744,7 +11764,7 @@ trees_out::mark_class_def (tree defn)
 /* Nop sorting, needed for resorting the member vec.  */
 
 static void
-nop (void *, void *)
+nop (void *, void *, void *)
 {
 }
 
@@ -11853,8 +11873,9 @@ trees_in::read_class_def (tree defn, tree maybe_template)
 		{
 		  CLASSTYPE_BEFRIENDING_CLASSES (type_dup)
 		    = CLASSTYPE_BEFRIENDING_CLASSES (type);
-		  CLASSTYPE_TYPEINFO_VAR (type_dup)
-		    = CLASSTYPE_TYPEINFO_VAR (type);
+		  if (!ANON_AGGR_TYPE_P (type))
+		    CLASSTYPE_TYPEINFO_VAR (type_dup)
+		      = CLASSTYPE_TYPEINFO_VAR (type);
 		}
 	      for (tree v = type; v; v = TYPE_NEXT_VARIANT (v))
 		TYPE_LANG_SPECIFIC (v) = ls;
@@ -11884,6 +11905,11 @@ trees_in::read_class_def (tree defn, tree maybe_template)
 	      gcc_checking_assert (!*chain == !DECL_CLONED_FUNCTION_P (decl));
 	      *chain = decl;
 	      chain = &DECL_CHAIN (decl);
+
+	      if (TREE_CODE (decl) == FIELD_DECL
+		  && ANON_AGGR_TYPE_P (TREE_TYPE (decl)))
+		ANON_AGGR_TYPE_FIELD
+		  (TYPE_MAIN_VARIANT (TREE_TYPE (decl))) = decl;
 
 	      if (TREE_CODE (decl) == USING_DECL
 		  && TREE_CODE (USING_DECL_SCOPE (decl)) == RECORD_TYPE)
@@ -12808,7 +12834,7 @@ specialization_add (bool decl_p, spec_entry *entry, void *data_)
     {
       /* We exclusively use decls to locate things.  Make sure there's
 	 no mismatch between the two specialization tables we keep.
-	 pt.c optimizes instantiation lookup using a complicated
+	 pt.cc optimizes instantiation lookup using a complicated
 	 heuristic.  We don't attempt to replicate that algorithm, but
 	 observe its behaviour and reproduce it upon read back.  */
 
@@ -12951,7 +12977,7 @@ depset::hash::add_specializations (bool decl_p)
 	/* Implicit instantiations only walked if we reach them.  */
 	needs_reaching = true;
       else if (!DECL_LANG_SPECIFIC (spec)
-	       || !DECL_MODULE_PURVIEW_P (spec))
+	       || !DECL_MODULE_PURVIEW_P (STRIP_TEMPLATE (spec)))
 	/* Likewise, GMF explicit or partial specializations.  */
 	needs_reaching = true;
 
@@ -13868,20 +13894,18 @@ void
 module_state::mangle (bool include_partition)
 {
   if (subst)
-    mangle_module_substitution (subst - 1);
+    mangle_module_substitution (subst);
   else
     {
       if (parent)
 	parent->mangle (include_partition);
-      if (include_partition || !is_partition ())
+      if (include_partition || !is_partition ()) 
 	{
-	  char p = 0;
-	  // Partitions are significant for global initializer functions
-	  if (is_partition () && !parent->is_partition ())
-	    p = 'P';
+	  // Partitions are significant for global initializer
+	  // functions
+	  bool partition = is_partition () && !parent->is_partition ();
+	  subst = mangle_module_component (name, partition);
 	  substs.safe_push (this);
-	  subst = substs.length ();
-	  mangle_identifier (p, name);
 	}
     }
 }
@@ -13890,6 +13914,8 @@ void
 mangle_module (int mod, bool include_partition)
 {
   module_state *imp = (*modules)[mod];
+
+  gcc_checking_assert (!imp->is_header ());
 
   if (!imp->name)
     /* Set when importing the primary module interface.  */
@@ -14864,7 +14890,7 @@ module_state::read_cluster (unsigned snum)
 	}
 
     }
-  /* Look, function.c's interface to cfun does too much for us, we
+  /* Look, function.cc's interface to cfun does too much for us, we
      just need to restore the old value.  I do not want to go
      redesigning that API right now.  */
 #undef cfun
@@ -17971,7 +17997,7 @@ module_state::read_language (bool outermost)
 
   function_depth++; /* Prevent unexpected GCs.  */
 
-  if (counts[MSC_entities] != entity_num)
+  if (ok && counts[MSC_entities] != entity_num)
     ok = false;
   if (ok && counts[MSC_entities]
       && !read_entities (counts[MSC_entities],
@@ -18366,14 +18392,15 @@ get_originating_module (tree decl, bool for_mangle)
   if (!DECL_LANG_SPECIFIC (not_tmpl))
     return for_mangle ? -1 : 0;
 
-  if (for_mangle
-      && (DECL_MODULE_EXPORT_P (owner) || !DECL_MODULE_PURVIEW_P (not_tmpl)))
+  if (for_mangle && !DECL_MODULE_PURVIEW_P (not_tmpl))
     return -1;
 
-  if (!DECL_MODULE_IMPORT_P (not_tmpl))
-    return 0;
+  int mod = !DECL_MODULE_IMPORT_P (not_tmpl) ? 0 : get_importing_module (owner);
 
-  return get_importing_module (owner);
+  if (for_mangle && (*modules)[mod]->is_header ())
+    return -1;
+
+  return mod;
 }
 
 unsigned

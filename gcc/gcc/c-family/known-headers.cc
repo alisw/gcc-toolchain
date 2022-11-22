@@ -1,5 +1,5 @@
 /* Support for suggestions about missing #include directives.
-   Copyright (C) 2017-2021 Free Software Foundation, Inc.
+   Copyright (C) 2017-2022 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -18,7 +18,7 @@ along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
 #include "config.h"
-#define INCLUDE_UNIQUE_PTR
+#define INCLUDE_MEMORY
 #include "system.h"
 #include "coretypes.h"
 #include "c-family/c-common.h"
@@ -162,7 +162,14 @@ get_stdlib_header_for_name (const char *name, enum stdlib lib)
     {"stdout", {"<stdio.h>", "<cstdio>"} },
 
     /* <stdlib.h> and <cstdlib>.  */
+    {"EXIT_FAILURE", {"<stdlib.h>", "<cstdlib>"} },
+    {"EXIT_SUCCESS", {"<stdlib.h>", "<cstdlib>"} },
+    {"abort", {"<stdlib.h>", "<cstdlib>"} },
+    {"atexit", {"<stdlib.h>", "<cstdlib>"} },
+    {"calloc", {"<stdlib.h>", "<cstdlib>"} },
+    {"exit", {"<stdlib.h>", "<cstdlib>"} },
     {"free", {"<stdlib.h>", "<cstdlib>"} },
+    {"getenv", {"<stdlib.h>", "<cstdlib>"} },
     {"malloc", {"<stdlib.h>", "<cstdlib>"} },
     {"realloc", {"<stdlib.h>", "<cstdlib>"} },
 
@@ -192,6 +199,20 @@ get_stdlib_header_for_name (const char *name, enum stdlib lib)
     {"SIZE_MAX", {"<stdint.h>", "<cstdint>"} },
     {"WINT_MAX", {"<stdint.h>", "<cstdint>"} },
     {"WINT_MIN", {"<stdint.h>", "<cstdint>"} },
+
+    /* <time.h>.  */
+    {"asctime", {"<time.h>", "<ctime>"} },
+    {"clock", {"<time.h>", "<ctime>"} },
+    {"clock_t", {"<time.h>", "<ctime>"} },
+    {"ctime", {"<time.h>", "<ctime>"} },
+    {"difftime", {"<time.h>", "<ctime>"} },
+    {"gmtime", {"<time.h>", "<ctime>"} },
+    {"localtime", {"<time.h>", "<ctime>"} },
+    {"mktime", {"<time.h>", "<ctime>"} },
+    {"strftime", {"<time.h>", "<ctime>"} },
+    {"time", {"<time.h>", "<ctime>"} },
+    {"time_t", {"<time.h>", "<ctime>"} },
+    {"tm", {"<time.h>", "<ctime>"} },
 
     /* <wchar.h>.  */
     {"WCHAR_MAX", {"<wchar.h>", "<cwchar>"} },

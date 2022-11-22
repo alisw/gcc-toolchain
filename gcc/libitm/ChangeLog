@@ -1,18 +1,36 @@
-2021-07-28  Release Manager
+2022-08-19  Release Manager
 
-	* GCC 11.2.0 released.
+	* GCC 12.2.0 released.
 
-2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
+2022-05-06  Release Manager
 
-	Backported from master:
-	2021-06-17  Jonathan Wakely  <jwakely@redhat.com>
+	* GCC 12.1.0 released.
+
+2022-02-03  David Seifert  <soap@gentoo.org>
+	    Jakub Jelinek  <jakub@redhat.com>
+
+	* configure.ac: Support --disable-werror.
+	* configure: Regenerate.
+
+2022-01-31  Martin Liska  <mliska@suse.cz>
+
+	* acinclude.m4: Detect *_ld_is_mold and use it.
+	* configure: Regenerate.
+
+2022-01-03  Jakub Jelinek  <jakub@redhat.com>
+
+	* libitm.texi: Bump @copying's copyright year.
+
+2021-11-26  Iain Sandoe  <iain@sandoe.co.uk>
+
+	* eh_cpp.cc (GTM::gtm_thread::init_cpp_exceptions): If the
+	target does not support HAVE_ELF_STYLE_WEAKREF then do not
+	try to test the __cxa_get_globals against NULL.
+
+2021-06-17  Jonathan Wakely  <jwakely@redhat.com>
 
 	PR libstdc++/91488
 	* testsuite/libitm.c++/libstdc++-pr91488.C: New test.
-
-2021-04-27  Release Manager
-
-	* GCC 11.1.0 released.
 
 2021-01-15  Jakub Jelinek  <jakub@redhat.com>
 
@@ -2309,7 +2327,7 @@
 
 	* Initial commit.
 
-Copyright (C) 2008-2021 Free Software Foundation, Inc.
+Copyright (C) 2008-2022 Free Software Foundation, Inc.
 
 Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright

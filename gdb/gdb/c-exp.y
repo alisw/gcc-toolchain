@@ -167,7 +167,7 @@ static struct stoken operator_stoken (const char *);
 static struct stoken typename_stoken (const char *);
 static void check_parameter_typelist (std::vector<struct type *> *);
 
-#ifdef YYBISON
+#if defined(YYBISON) && YYBISON < 30800
 static void c_print_token (FILE *file, int type, YYSTYPE value);
 #define YYPRINT(FILE, TYPE, VALUE) c_print_token (FILE, TYPE, VALUE)
 #endif
@@ -1093,7 +1093,7 @@ block	:	block COLONCOLON name
 			    = lookup_symbol (copy.c_str (), $1,
 					     VAR_DOMAIN, NULL).symbol;
 
-			  if (!tem || SYMBOL_CLASS (tem) != LOC_BLOCK)
+			  if (!tem || tem->aclass () != LOC_BLOCK)
 			    error (_("No function \"%s\" in specified context."),
 				   copy.c_str ());
 			  $$ = SYMBOL_BLOCK_VALUE (tem); }
@@ -1102,7 +1102,7 @@ block	:	block COLONCOLON name
 variable:	name_not_typename ENTRY
 			{ struct symbol *sym = $1.sym.symbol;
 
-			  if (sym == NULL || !SYMBOL_IS_ARGUMENT (sym)
+			  if (sym == NULL || !sym->is_argument ()
 			      || !symbol_read_needs_frame (sym))
 			    error (_("@entry can be used only for function "
 				     "parameters, not for \"%s\""),
@@ -1780,11 +1780,11 @@ oper:	OPERATOR NEW
 	|	OPERATOR OBJC_LBRAC ']'
 			{ $$ = operator_stoken ("[]"); }
 	|	OPERATOR conversion_type_id
-			{ string_file buf;
-
+			{
+			  string_file buf;
 			  c_print_type ($2, NULL, &buf, -1, 0,
 					&type_print_raw_options);
-			  std::string name = std::move (buf.string ());
+			  std::string name = buf.release ();
 
 			  /* This also needs canonicalization.  */
 			  gdb::unique_xmalloc_ptr<char> canon
@@ -2644,7 +2644,6 @@ lex_one_token (struct parser_state *par_state, bool *is_quoted_name)
 {
   int c;
   int namelen;
-  unsigned int i;
   const char *tokstart;
   bool saw_structop = last_was_structop;
 
@@ -2667,33 +2666,33 @@ lex_one_token (struct parser_state *par_state, bool *is_quoted_name)
 
   tokstart = pstate->lexptr;
   /* See if it is a special token of length 3.  */
-  for (i = 0; i < sizeof tokentab3 / sizeof tokentab3[0]; i++)
-    if (strncmp (tokstart, tokentab3[i].oper, 3) == 0)
+  for (const auto &token : tokentab3)
+    if (strncmp (tokstart, token.oper, 3) == 0)
       {
-	if ((tokentab3[i].flags & FLAG_CXX) != 0
+	if ((token.flags & FLAG_CXX) != 0
 	    && par_state->language ()->la_language != language_cplus)
 	  break;
-	gdb_assert ((tokentab3[i].flags & FLAG_C) == 0);
+	gdb_assert ((token.flags & FLAG_C) == 0);
 
 	pstate->lexptr += 3;
-	yylval.opcode = tokentab3[i].opcode;
-	return tokentab3[i].token;
+	yylval.opcode = token.opcode;
+	return token.token;
       }
 
   /* See if it is a special token of length 2.  */
-  for (i = 0; i < sizeof tokentab2 / sizeof tokentab2[0]; i++)
-    if (strncmp (tokstart, tokentab2[i].oper, 2) == 0)
+  for (const auto &token : tokentab2)
+    if (strncmp (tokstart, token.oper, 2) == 0)
       {
-	if ((tokentab2[i].flags & FLAG_CXX) != 0
+	if ((token.flags & FLAG_CXX) != 0
 	    && par_state->language ()->la_language != language_cplus)
 	  break;
-	gdb_assert ((tokentab2[i].flags & FLAG_C) == 0);
+	gdb_assert ((token.flags & FLAG_C) == 0);
 
 	pstate->lexptr += 2;
-	yylval.opcode = tokentab2[i].opcode;
-	if (tokentab2[i].token == ARROW)
+	yylval.opcode = token.opcode;
+	if (token.token == ARROW)
 	  last_was_structop = 1;
-	return tokentab2[i].token;
+	return token.token;
       }
 
   switch (c = *tokstart)
@@ -2979,18 +2978,18 @@ lex_one_token (struct parser_state *par_state, bool *is_quoted_name)
 
   /* Catch specific keywords.  */
   std::string copy = copy_name (yylval.sval);
-  for (i = 0; i < sizeof ident_tokens / sizeof ident_tokens[0]; i++)
-    if (copy == ident_tokens[i].oper)
+  for (const auto &token : ident_tokens)
+    if (copy == token.oper)
       {
-	if ((ident_tokens[i].flags & FLAG_CXX) != 0
+	if ((token.flags & FLAG_CXX) != 0
 	    && par_state->language ()->la_language != language_cplus)
 	  break;
-	if ((ident_tokens[i].flags & FLAG_C) != 0
+	if ((token.flags & FLAG_C) != 0
 	    && par_state->language ()->la_language != language_c
 	    && par_state->language ()->la_language != language_objc)
 	  break;
 
-	if ((ident_tokens[i].flags & FLAG_SHADOW) != 0)
+	if ((token.flags & FLAG_SHADOW) != 0)
 	  {
 	    struct field_of_this_result is_a_field_of_this;
 
@@ -3009,8 +3008,8 @@ lex_one_token (struct parser_state *par_state, bool *is_quoted_name)
 
 	/* It is ok to always set this, even though we don't always
 	   strictly need to.  */
-	yylval.opcode = ident_tokens[i].opcode;
-	return ident_tokens[i].token;
+	yylval.opcode = token.opcode;
+	return token.token;
       }
 
   if (*tokstart == '$')
@@ -3068,7 +3067,7 @@ classify_name (struct parser_state *par_state, const struct block *block,
 			par_state->language ()->name_of_this ()
 			? &is_a_field_of_this : NULL);
 
-  if (bsym.symbol && SYMBOL_CLASS (bsym.symbol) == LOC_BLOCK)
+  if (bsym.symbol && bsym.symbol->aclass () == LOC_BLOCK)
     {
       yylval.ssym.sym = bsym;
       yylval.ssym.is_a_field_of_this = is_a_field_of_this.type != NULL;
@@ -3091,7 +3090,7 @@ classify_name (struct parser_state *par_state, const struct block *block,
 				&inner_is_a_field_of_this);
 	  if (bsym.symbol != NULL)
 	    {
-	      yylval.tsym.type = SYMBOL_TYPE (bsym.symbol);
+	      yylval.tsym.type = bsym.symbol->type ();
 	      return TYPENAME;
 	    }
 	}
@@ -3110,16 +3109,16 @@ classify_name (struct parser_state *par_state, const struct block *block,
 	  symtab = lookup_symtab (copy.c_str ());
 	  if (symtab)
 	    {
-	      yylval.bval = BLOCKVECTOR_BLOCK (SYMTAB_BLOCKVECTOR (symtab),
+	      yylval.bval = BLOCKVECTOR_BLOCK (symtab->blockvector (),
 					       STATIC_BLOCK);
 	      return FILENAME;
 	    }
 	}
     }
 
-  if (bsym.symbol && SYMBOL_CLASS (bsym.symbol) == LOC_TYPEDEF)
+  if (bsym.symbol && bsym.symbol->aclass () == LOC_TYPEDEF)
     {
-      yylval.tsym.type = SYMBOL_TYPE (bsym.symbol);
+      yylval.tsym.type = bsym.symbol->type ();
       return TYPENAME;
     }
 
@@ -3136,7 +3135,7 @@ classify_name (struct parser_state *par_state, const struct block *block,
 	  sym = lookup_struct_typedef (copy.c_str (),
 				       par_state->expression_context_block, 1);
 	  if (sym)
-	    yylval.theclass.type = SYMBOL_TYPE (sym);
+	    yylval.theclass.type = sym->type ();
 	  return CLASSNAME;
 	}
     }
@@ -3212,7 +3211,7 @@ classify_inner_name (struct parser_state *par_state,
       return ERROR;
     }
 
-  switch (SYMBOL_CLASS (yylval.ssym.sym.symbol))
+  switch (yylval.ssym.sym.symbol->aclass ())
     {
     case LOC_BLOCK:
     case LOC_LABEL:
@@ -3232,7 +3231,7 @@ classify_inner_name (struct parser_state *par_state,
       return ERROR;
 
     case LOC_TYPEDEF:
-      yylval.tsym.type = SYMBOL_TYPE (yylval.ssym.sym.symbol);
+      yylval.tsym.type = yylval.ssym.sym.symbol->type ();
       return TYPENAME;
 
     default:
@@ -3446,7 +3445,8 @@ c_parse (struct parser_state *par_state)
   return result;
 }
 
-#ifdef YYBISON
+#if defined(YYBISON) && YYBISON < 30800
+
 
 /* This is called via the YYPRINT macro when parser debugging is
    enabled.  It prints a token's value.  */

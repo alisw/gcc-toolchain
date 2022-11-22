@@ -1,5 +1,5 @@
 /* Definition of RISC-V target for GNU compiler.
-   Copyright (C) 2011-2021 Free Software Foundation, Inc.
+   Copyright (C) 2011-2022 Free Software Foundation, Inc.
    Contributed by Andrew Waterman (andrew@sifive.com).
    Based on MIPS target for GNU compiler.
 
@@ -60,6 +60,7 @@ extern const char *riscv_default_mtune (int argc, const char **argv);
    --with-arch is ignored if -march or -mcpu is specified.
    --with-abi is ignored if -mabi is specified.
    --with-tune is ignored if -mtune or -mcpu is specified.
+   --with-isa-spec is ignored if -misa-spec is specified.
 
    But using default -march/-mtune value if -mcpu don't have valid option.  */
 #define OPTION_DEFAULT_SPECS \
@@ -70,6 +71,7 @@ extern const char *riscv_default_mtune (int argc, const char **argv);
 	   "  %{!mcpu=*:-march=%(VALUE)}"				\
 	   "  %{mcpu=*:%:riscv_expand_arch_from_cpu(%* %(VALUE))}}" },	\
   {"abi", "%{!mabi=*:-mabi=%(VALUE)}" }, \
+  {"isa_spec", "%{!misa-spec=*:-misa-spec=%(VALUE)}" }, \
 
 #ifdef IN_LIBGCC2
 #undef TARGET_64BIT
@@ -98,6 +100,7 @@ extern const char *riscv_default_mtune (int argc, const char **argv);
 %{" FPIE_OR_FPIC_SPEC ":-fpic} \
 %{march=*} \
 %{mabi=*} \
+%{mno-relax} \
 %{mbig-endian} \
 %{mlittle-endian} \
 %(subtarget_asm_spec)" \
@@ -145,6 +148,10 @@ ASM_MISA_SPEC
 #ifndef IN_LIBGCC2
 #define MIN_UNITS_PER_WORD 4
 #endif
+
+/* Allows SImode op in builtin overflow pattern, see internal-fn.cc.  */
+#undef TARGET_MIN_ARITHMETIC_PRECISION
+#define TARGET_MIN_ARITHMETIC_PRECISION riscv_min_arithmetic_precision
 
 /* The `Q' extension is not yet supported.  */
 #define UNITS_PER_FP_REG (TARGET_DOUBLE_FLOAT ? 8 : 4)
@@ -520,6 +527,11 @@ enum reg_class
 #define LUI_OPERAND(VALUE)						\
   (((VALUE) | ((1UL<<31) - IMM_REACH)) == ((1UL<<31) - IMM_REACH)	\
    || ((VALUE) | ((1UL<<31) - IMM_REACH)) + IMM_REACH == 0)
+
+/* If this is a single bit mask, then we can load it with bseti.  Special
+   handling of SImode 0x80000000 on RV64 is done in riscv_build_integer_1. */
+#define SINGLE_BIT_MASK_OPERAND(VALUE)					\
+  (pow2p_hwi (VALUE))
 
 /* Stack layout; function entry, exit and calling.  */
 
@@ -983,10 +995,15 @@ extern unsigned riscv_stack_boundary;
    offset (an unsigned 5-bit value scaled by 4).  */
 #define CSW_MAX_OFFSET (((4LL << C_S_BITS) - 1) & ~3)
 
-/* Called from RISCV_REORG, this is defined in riscv-sr.c.  */
+/* Called from RISCV_REORG, this is defined in riscv-sr.cc.  */
 
 extern void riscv_remove_unneeded_save_restore_calls (void);
 
 #define HARD_REGNO_RENAME_OK(FROM, TO) riscv_hard_regno_rename_ok (FROM, TO)
+
+#define CLZ_DEFINED_VALUE_AT_ZERO(MODE, VALUE) \
+  ((VALUE) = GET_MODE_UNIT_BITSIZE (MODE), 2)
+#define CTZ_DEFINED_VALUE_AT_ZERO(MODE, VALUE) \
+  ((VALUE) = GET_MODE_UNIT_BITSIZE (MODE), 2)
 
 #endif /* ! GCC_RISCV_H */

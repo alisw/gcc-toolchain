@@ -17,6 +17,9 @@ if ![supports_reverse] {
     return
 }
 
+# Check if start command is supported.
+require use_gdb_stub 0
+
 standard_testfile
 
 if {[prepare_for_testing "failed to prepare" $testfile $srcfile \
@@ -24,7 +27,6 @@ if {[prepare_for_testing "failed to prepare" $testfile $srcfile \
     return -1
 }
 if { ![runto_main] } then {
-    fail "run to main"
     return
 }
 

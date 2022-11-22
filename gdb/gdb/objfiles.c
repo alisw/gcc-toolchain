@@ -36,7 +36,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "gdb_obstack.h"
+#include "gdbsupport/gdb_obstack.h"
 #include "hashtab.h"
 
 #include "breakpoint.h"
@@ -591,7 +591,7 @@ objfile::~objfile ()
   {
     struct symtab_and_line cursal = get_current_source_symtab_and_line ();
 
-    if (cursal.symtab && SYMTAB_OBJFILE (cursal.symtab) == this)
+    if (cursal.symtab && cursal.symtab->objfile () == this)
       clear_current_source_symtab_and_line ();
   }
 
@@ -616,8 +616,8 @@ relocate_one_symbol (struct symbol *sym, struct objfile *objfile,
      any symbols in STRUCT_DOMAIN or UNDEF_DOMAIN.
      But I'm leaving out that test, on the theory that
      they can't possibly pass the tests below.  */
-  if ((SYMBOL_CLASS (sym) == LOC_LABEL
-       || SYMBOL_CLASS (sym) == LOC_STATIC)
+  if ((sym->aclass () == LOC_LABEL
+       || sym->aclass () == LOC_STATIC)
       && sym->section_index () >= 0)
     {
       SET_SYMBOL_VALUE_ADDRESS (sym,
@@ -651,24 +651,24 @@ objfile_relocate1 (struct objfile *objfile,
   {
     for (compunit_symtab *cust : objfile->compunits ())
       {
-	for (symtab *s : compunit_filetabs (cust))
+	for (symtab *s : cust->filetabs ())
 	  {
 	    struct linetable *l;
 
 	    /* First the line table.  */
-	    l = SYMTAB_LINETABLE (s);
+	    l = s->linetable ();
 	    if (l)
 	      {
 		for (int i = 0; i < l->nitems; ++i)
-		  l->item[i].pc += delta[COMPUNIT_BLOCK_LINE_SECTION (cust)];
+		  l->item[i].pc += delta[cust->block_line_section ()];
 	      }
 	  }
       }
 
     for (compunit_symtab *cust : objfile->compunits ())
       {
-	const struct blockvector *bv = COMPUNIT_BLOCKVECTOR (cust);
-	int block_line_section = COMPUNIT_BLOCK_LINE_SECTION (cust);
+	const struct blockvector *bv = cust->blockvector ();
+	int block_line_section = cust->block_line_section ();
 
 	if (BLOCKVECTOR_MAP (bv))
 	  addrmap_relocate (BLOCKVECTOR_MAP (bv), delta[block_line_section]);
@@ -1373,4 +1373,30 @@ objfile_flavour_name (struct objfile *objfile)
   if (objfile->obfd != NULL)
     return bfd_flavour_name (bfd_get_flavour (objfile->obfd));
   return NULL;
+}
+
+/* See objfiles.h.  */
+
+struct type *
+objfile_int_type (struct objfile *of, int size_in_bytes, bool unsigned_p)
+{
+  struct type *int_type;
+
+  /* Helper macro to examine the various builtin types.  */
+#define TRY_TYPE(F)							\
+  int_type = (unsigned_p						\
+	      ? objfile_type (of)->builtin_unsigned_ ## F		\
+	      : objfile_type (of)->builtin_ ## F);			\
+  if (int_type != NULL && TYPE_LENGTH (int_type) == size_in_bytes)	\
+    return int_type
+
+  TRY_TYPE (char);
+  TRY_TYPE (short);
+  TRY_TYPE (int);
+  TRY_TYPE (long);
+  TRY_TYPE (long_long);
+
+#undef TRY_TYPE
+
+  gdb_assert_not_reached ("unable to find suitable integer type");
 }

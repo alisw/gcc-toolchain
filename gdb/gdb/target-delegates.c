@@ -1,8 +1,28 @@
-/* THIS FILE IS GENERATED -*- buffer-read-only: t -*- */
+/* *INDENT-OFF* */ /* THIS FILE IS GENERATED -*- buffer-read-only: t -*- */
 /* vi:set ro: */
 
-/* To regenerate this file, run:*/
-/*      make-target-delegates target.h > target-delegates.c */
+/* Boilerplate target methods for GDB
+
+   Copyright (C) 2013-2022 Free Software Foundation, Inc.
+
+   This file is part of GDB.
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+
+/* To regenerate this file, run:
+   ./make-target-delegates.py
+*/
 
 struct dummy_target : public target_ops
 {
@@ -51,12 +71,11 @@ struct dummy_target : public target_ops
   void terminal_info (const char *arg0, int arg1) override;
   void kill () override;
   void load (const char *arg0, int arg1) override;
-  void post_startup_inferior (ptid_t arg0) override;
   int insert_fork_catchpoint (int arg0) override;
   int remove_fork_catchpoint (int arg0) override;
   int insert_vfork_catchpoint (int arg0) override;
   int remove_vfork_catchpoint (int arg0) override;
-  void follow_fork (bool arg0, bool arg1) override;
+  void follow_fork (inferior *arg0, ptid_t arg1, target_waitkind arg2, bool arg3, bool arg4) override;
   int insert_exec_catchpoint (int arg0) override;
   int remove_exec_catchpoint (int arg0) override;
   void follow_exec (inferior *arg0, ptid_t arg1, const char *arg2) override;
@@ -99,7 +118,7 @@ struct dummy_target : public target_ops
   void flash_erase (ULONGEST arg0, LONGEST arg1) override;
   void flash_done () override;
   const struct target_desc *read_description () override;
-  ptid_t get_ada_task_ptid (long arg0, long arg1) override;
+  ptid_t get_ada_task_ptid (long arg0, ULONGEST arg1) override;
   int auxv_parse (gdb_byte **arg0, gdb_byte *arg1, CORE_ADDR *arg2, CORE_ADDR *arg3) override;
   int search_memory (CORE_ADDR arg0, ULONGEST arg1, const gdb_byte *arg2, ULONGEST arg3, CORE_ADDR *arg4) override;
   bool can_execute_reverse () override;
@@ -146,7 +165,7 @@ struct dummy_target : public target_ops
   traceframe_info_up traceframe_info () override;
   bool use_agent (bool arg0) override;
   bool can_use_agent () override;
-  struct btrace_target_info *enable_btrace (ptid_t arg0, const struct btrace_config *arg1) override;
+  struct btrace_target_info *enable_btrace (thread_info *arg0, const struct btrace_config *arg1) override;
   void disable_btrace (struct btrace_target_info *arg0) override;
   void teardown_btrace (struct btrace_target_info *arg0) override;
   enum btrace_error read_btrace (struct btrace_data *arg0, struct btrace_target_info *arg1, enum btrace_read_type arg2) override;
@@ -226,12 +245,11 @@ struct debug_target : public target_ops
   void terminal_info (const char *arg0, int arg1) override;
   void kill () override;
   void load (const char *arg0, int arg1) override;
-  void post_startup_inferior (ptid_t arg0) override;
   int insert_fork_catchpoint (int arg0) override;
   int remove_fork_catchpoint (int arg0) override;
   int insert_vfork_catchpoint (int arg0) override;
   int remove_vfork_catchpoint (int arg0) override;
-  void follow_fork (bool arg0, bool arg1) override;
+  void follow_fork (inferior *arg0, ptid_t arg1, target_waitkind arg2, bool arg3, bool arg4) override;
   int insert_exec_catchpoint (int arg0) override;
   int remove_exec_catchpoint (int arg0) override;
   void follow_exec (inferior *arg0, ptid_t arg1, const char *arg2) override;
@@ -274,7 +292,7 @@ struct debug_target : public target_ops
   void flash_erase (ULONGEST arg0, LONGEST arg1) override;
   void flash_done () override;
   const struct target_desc *read_description () override;
-  ptid_t get_ada_task_ptid (long arg0, long arg1) override;
+  ptid_t get_ada_task_ptid (long arg0, ULONGEST arg1) override;
   int auxv_parse (gdb_byte **arg0, gdb_byte *arg1, CORE_ADDR *arg2, CORE_ADDR *arg3) override;
   int search_memory (CORE_ADDR arg0, ULONGEST arg1, const gdb_byte *arg2, ULONGEST arg3, CORE_ADDR *arg4) override;
   bool can_execute_reverse () override;
@@ -321,7 +339,7 @@ struct debug_target : public target_ops
   traceframe_info_up traceframe_info () override;
   bool use_agent (bool arg0) override;
   bool can_use_agent () override;
-  struct btrace_target_info *enable_btrace (ptid_t arg0, const struct btrace_config *arg1) override;
+  struct btrace_target_info *enable_btrace (thread_info *arg0, const struct btrace_config *arg1) override;
   void disable_btrace (struct btrace_target_info *arg0) override;
   void teardown_btrace (struct btrace_target_info *arg0) override;
   enum btrace_error read_btrace (struct btrace_data *arg0, struct btrace_target_info *arg1, enum btrace_read_type arg2) override;
@@ -1393,27 +1411,6 @@ debug_target::load (const char *arg0, int arg1)
   fputs_unfiltered (")\n", gdb_stdlog);
 }
 
-void
-target_ops::post_startup_inferior (ptid_t arg0)
-{
-  this->beneath ()->post_startup_inferior (arg0);
-}
-
-void
-dummy_target::post_startup_inferior (ptid_t arg0)
-{
-}
-
-void
-debug_target::post_startup_inferior (ptid_t arg0)
-{
-  fprintf_unfiltered (gdb_stdlog, "-> %s->post_startup_inferior (...)\n", this->beneath ()->shortname ());
-  this->beneath ()->post_startup_inferior (arg0);
-  fprintf_unfiltered (gdb_stdlog, "<- %s->post_startup_inferior (", this->beneath ()->shortname ());
-  target_debug_print_ptid_t (arg0);
-  fputs_unfiltered (")\n", gdb_stdlog);
-}
-
 int
 target_ops::insert_fork_catchpoint (int arg0)
 {
@@ -1519,26 +1516,32 @@ debug_target::remove_vfork_catchpoint (int arg0)
 }
 
 void
-target_ops::follow_fork (bool arg0, bool arg1)
+target_ops::follow_fork (inferior *arg0, ptid_t arg1, target_waitkind arg2, bool arg3, bool arg4)
 {
-  this->beneath ()->follow_fork (arg0, arg1);
+  this->beneath ()->follow_fork (arg0, arg1, arg2, arg3, arg4);
 }
 
 void
-dummy_target::follow_fork (bool arg0, bool arg1)
+dummy_target::follow_fork (inferior *arg0, ptid_t arg1, target_waitkind arg2, bool arg3, bool arg4)
 {
-  default_follow_fork (this, arg0, arg1);
+  default_follow_fork (this, arg0, arg1, arg2, arg3, arg4);
 }
 
 void
-debug_target::follow_fork (bool arg0, bool arg1)
+debug_target::follow_fork (inferior *arg0, ptid_t arg1, target_waitkind arg2, bool arg3, bool arg4)
 {
   fprintf_unfiltered (gdb_stdlog, "-> %s->follow_fork (...)\n", this->beneath ()->shortname ());
-  this->beneath ()->follow_fork (arg0, arg1);
+  this->beneath ()->follow_fork (arg0, arg1, arg2, arg3, arg4);
   fprintf_unfiltered (gdb_stdlog, "<- %s->follow_fork (", this->beneath ()->shortname ());
-  target_debug_print_bool (arg0);
+  target_debug_print_inferior_p (arg0);
   fputs_unfiltered (", ", gdb_stdlog);
-  target_debug_print_bool (arg1);
+  target_debug_print_ptid_t (arg1);
+  fputs_unfiltered (", ", gdb_stdlog);
+  target_debug_print_target_waitkind (arg2);
+  fputs_unfiltered (", ", gdb_stdlog);
+  target_debug_print_bool (arg3);
+  fputs_unfiltered (", ", gdb_stdlog);
+  target_debug_print_bool (arg4);
   fputs_unfiltered (")\n", gdb_stdlog);
 }
 
@@ -2592,19 +2595,19 @@ debug_target::read_description ()
 }
 
 ptid_t
-target_ops::get_ada_task_ptid (long arg0, long arg1)
+target_ops::get_ada_task_ptid (long arg0, ULONGEST arg1)
 {
   return this->beneath ()->get_ada_task_ptid (arg0, arg1);
 }
 
 ptid_t
-dummy_target::get_ada_task_ptid (long arg0, long arg1)
+dummy_target::get_ada_task_ptid (long arg0, ULONGEST arg1)
 {
   return default_get_ada_task_ptid (this, arg0, arg1);
 }
 
 ptid_t
-debug_target::get_ada_task_ptid (long arg0, long arg1)
+debug_target::get_ada_task_ptid (long arg0, ULONGEST arg1)
 {
   ptid_t result;
   fprintf_unfiltered (gdb_stdlog, "-> %s->get_ada_task_ptid (...)\n", this->beneath ()->shortname ());
@@ -2612,7 +2615,7 @@ debug_target::get_ada_task_ptid (long arg0, long arg1)
   fprintf_unfiltered (gdb_stdlog, "<- %s->get_ada_task_ptid (", this->beneath ()->shortname ());
   target_debug_print_long (arg0);
   fputs_unfiltered (", ", gdb_stdlog);
-  target_debug_print_long (arg1);
+  target_debug_print_ULONGEST (arg1);
   fputs_unfiltered (") = ", gdb_stdlog);
   target_debug_print_ptid_t (result);
   fputs_unfiltered ("\n", gdb_stdlog);
@@ -3778,25 +3781,25 @@ debug_target::can_use_agent ()
 }
 
 struct btrace_target_info *
-target_ops::enable_btrace (ptid_t arg0, const struct btrace_config *arg1)
+target_ops::enable_btrace (thread_info *arg0, const struct btrace_config *arg1)
 {
   return this->beneath ()->enable_btrace (arg0, arg1);
 }
 
 struct btrace_target_info *
-dummy_target::enable_btrace (ptid_t arg0, const struct btrace_config *arg1)
+dummy_target::enable_btrace (thread_info *arg0, const struct btrace_config *arg1)
 {
   tcomplain ();
 }
 
 struct btrace_target_info *
-debug_target::enable_btrace (ptid_t arg0, const struct btrace_config *arg1)
+debug_target::enable_btrace (thread_info *arg0, const struct btrace_config *arg1)
 {
   struct btrace_target_info * result;
   fprintf_unfiltered (gdb_stdlog, "-> %s->enable_btrace (...)\n", this->beneath ()->shortname ());
   result = this->beneath ()->enable_btrace (arg0, arg1);
   fprintf_unfiltered (gdb_stdlog, "<- %s->enable_btrace (", this->beneath ()->shortname ());
-  target_debug_print_ptid_t (arg0);
+  target_debug_print_thread_info_p (arg0);
   fputs_unfiltered (", ", gdb_stdlog);
   target_debug_print_const_struct_btrace_config_p (arg1);
   fputs_unfiltered (") = ", gdb_stdlog);

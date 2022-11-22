@@ -1358,8 +1358,20 @@ is_strip_section_1 (bfd *abfd ATTRIBUTE_UNUSED, asection *sec)
 	{
 	  /* By default we don't want to strip .reloc section.
 	     This section has for pe-coff special meaning.   See
-	     pe-dll.c file in ld, and peXXigen.c in bfd for details.  */
-	  if (strcmp (bfd_section_name (sec), ".reloc") != 0)
+	     pe-dll.c file in ld, and peXXigen.c in bfd for details.
+	     Similarly we do not want to strip debuglink sections.  */
+	  const char * kept_sections[] =
+	    {
+	      ".reloc",
+	      ".gnu_debuglink",
+	      ".gnu_debugaltlink"
+	    };
+	  int i;
+
+	  for (i = ARRAY_SIZE (kept_sections);i--;)
+	    if (strcmp (bfd_section_name (sec), kept_sections[i]) == 0)
+	      break;
+	  if (i == -1)
 	    return true;
 	}
 
@@ -1681,11 +1693,11 @@ filter_symbols (bfd *abfd, bfd *obfd, asymbol **osyms,
 
       if (keep)
 	{
-	  if (((flags & BSF_GLOBAL) != 0
+	  if (((flags & (BSF_GLOBAL | BSF_GNU_UNIQUE))
 	       || undefined)
 	      && (weaken || is_specified_symbol (name, weaken_specific_htab)))
 	    {
-	      sym->flags &= ~ BSF_GLOBAL;
+	      sym->flags &= ~ (BSF_GLOBAL | BSF_GNU_UNIQUE);
 	      sym->flags |= BSF_WEAK;
 	    }
 
@@ -2735,7 +2747,14 @@ copy_object (bfd *ibfd, bfd *obfd, const bfd_arch_info_type *input_arch)
       /* Copy PE parameters before changing them.  */
       if (bfd_get_flavour (ibfd) == bfd_target_coff_flavour
 	  && bfd_pei_p (ibfd))
-	pe->pe_opthdr = pe_data (ibfd)->pe_opthdr;
+	{
+	  pe->pe_opthdr = pe_data (ibfd)->pe_opthdr;
+
+ 	  if (preserve_dates)
+	    pe->timestamp = pe_data (ibfd)->coff.timestamp;
+	  else
+	    pe->timestamp = -1;
+	}
 
       if (pe_file_alignment != (bfd_vma) -1)
 	pe->pe_opthdr.FileAlignment = pe_file_alignment;
@@ -2781,11 +2800,6 @@ copy_object (bfd *ibfd, bfd *obfd, const bfd_arch_info_type *input_arch)
 
 		     file_alignment, section_alignment);
 	}
-
-      if (preserve_dates
-	  && bfd_get_flavour (ibfd) == bfd_target_coff_flavour
-	  && bfd_pei_p (ibfd))
-	pe->timestamp = pe_data (ibfd)->coff.timestamp;
     }
 
   free (isympp);
@@ -3911,15 +3925,9 @@ copy_file (const char *input_filename, const char *output_filename, int ofd,
       bfd_nonfatal_message (input_filename, NULL, NULL, NULL);
 
       if (obj_error == bfd_error_file_ambiguously_recognized)
-	{
-	  list_matching_formats (obj_matching);
-	  free (obj_matching);
-	}
+	list_matching_formats (obj_matching);
       if (core_error == bfd_error_file_ambiguously_recognized)
-	{
-	  list_matching_formats (core_matching);
-	  free (core_matching);
-	}
+	list_matching_formats (core_matching);
 
       status = 1;
     }
@@ -4328,14 +4336,13 @@ copy_relocations_in_section (bfd *ibfd, sec_ptr isection, void *obfdarg)
 	}
       else
 	{
-	  relpp = (arelent **) xmalloc (relsize);
+	  relpp = bfd_xalloc (obfd, relsize);
 	  relcount = bfd_canonicalize_reloc (ibfd, isection, relpp, isympp);
 	  if (relcount < 0)
 	    {
 	      status = 1;
 	      bfd_nonfatal_message (NULL, ibfd, isection,
 				    _("relocation count is negative"));
-	      free (relpp);
 	      return;
 	    }
 	}
@@ -4344,34 +4351,24 @@ copy_relocations_in_section (bfd *ibfd, sec_ptr isection, void *obfdarg)
 	{
 	  /* Remove relocations which are not in
 	     keep_strip_specific_list.  */
-	  arelent **temp_relpp;
-	  long temp_relcount = 0;
+	  arelent **w_relpp;
 	  long i;
 
-	  temp_relpp = (arelent **) xmalloc (relsize);
-	  for (i = 0; i < relcount; i++)
-	    {
-	      /* PR 17512: file: 9e907e0c.  */
-	      if (relpp[i]->sym_ptr_ptr
-		  /* PR 20096 */
-		  && * relpp[i]->sym_ptr_ptr)
-		if (is_specified_symbol (bfd_asymbol_name (*relpp[i]->sym_ptr_ptr),
-					 keep_specific_htab))
-		  temp_relpp [temp_relcount++] = relpp [i];
-	    }
-	  relcount = temp_relcount;
-	  if (relpp != isection->orelocation)
-	    free (relpp);
-	  relpp = temp_relpp;
+	  for (w_relpp = relpp, i = 0; i < relcount; i++)
+	    /* PR 17512: file: 9e907e0c.  */
+	    if (relpp[i]->sym_ptr_ptr
+		/* PR 20096 */
+		&& *relpp[i]->sym_ptr_ptr
+		&& is_specified_symbol (bfd_asymbol_name (*relpp[i]->sym_ptr_ptr),
+					keep_specific_htab))
+	      *w_relpp++ = relpp[i];
+	  relcount = w_relpp - relpp;
+	  *w_relpp = 0;
 	}
 
       bfd_set_reloc (obfd, osection, relcount == 0 ? NULL : relpp, relcount);
       if (relcount == 0)
-	{
-	  osection->flags &= ~SEC_RELOC;
-	  if (relpp != isection->orelocation)
-	    free (relpp);
-	}
+	osection->flags &= ~SEC_RELOC;
     }
 }
 

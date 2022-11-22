@@ -80,14 +80,6 @@ extern unsigned long i386_mach (void);
 #define ELF_TARGET_FORMAT32	"elf32-x86-64"
 #endif
 
-#ifndef ELF_TARGET_L1OM_FORMAT
-#define ELF_TARGET_L1OM_FORMAT	"elf64-l1om"
-#endif
-
-#ifndef ELF_TARGET_K1OM_FORMAT
-#define ELF_TARGET_K1OM_FORMAT	"elf64-k1om"
-#endif
-
 #ifndef ELF_TARGET_IAMCU_FORMAT
 #define ELF_TARGET_IAMCU_FORMAT	"elf32-iamcu"
 #endif
@@ -215,7 +207,8 @@ if ((n)									\
     goto around;							\
   }
 
-#define MAX_MEM_FOR_RS_ALIGN_CODE  (alignment ? ((1 << alignment) - 1) : 1)
+#define MAX_MEM_FOR_RS_ALIGN_CODE \
+  (alignment ? ((size_t) 1 << alignment) - 1 : (size_t) 1)
 
 extern void i386_cons_align (int);
 #define md_cons_align(nbytes) i386_cons_align (nbytes)
@@ -235,6 +228,8 @@ extern long i386_generic_table_relax_frag (segT, fragS *, long);
 enum processor_type
 {
   PROCESSOR_UNKNOWN,
+  PROCESSOR_GENERIC32,
+  PROCESSOR_GENERIC64,
   PROCESSOR_I386,
   PROCESSOR_I486,
   PROCESSOR_PENTIUM,
@@ -244,18 +239,16 @@ enum processor_type
   PROCESSOR_CORE,
   PROCESSOR_CORE2,
   PROCESSOR_COREI7,
-  PROCESSOR_L1OM,
-  PROCESSOR_K1OM,
   PROCESSOR_IAMCU,
   PROCESSOR_K6,
   PROCESSOR_ATHLON,
   PROCESSOR_K8,
-  PROCESSOR_GENERIC32,
-  PROCESSOR_GENERIC64,
   PROCESSOR_AMDFAM10,
   PROCESSOR_BD,
   PROCESSOR_ZNVER,
-  PROCESSOR_BT
+  PROCESSOR_BT,
+  /* Keep this last.  */
+  PROCESSOR_NONE
 };
 
 extern enum processor_type cpu_arch_tune;

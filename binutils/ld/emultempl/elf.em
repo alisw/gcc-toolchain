@@ -53,6 +53,8 @@ fragment <<EOF
 
 /* Declare functions used by various EXTRA_EM_FILEs.  */
 static void gld${EMULATION_NAME}_before_parse (void);
+static void gld${EMULATION_NAME}_before_plugin_all_symbols_read
+  (void);
 static void gld${EMULATION_NAME}_after_open (void);
 static void gld${EMULATION_NAME}_before_allocation (void);
 static void gld${EMULATION_NAME}_after_allocation (void);
@@ -90,6 +92,9 @@ EOF
 fi
 fragment <<EOF
   link_info.separate_code = DEFAULT_LD_Z_SEPARATE_CODE;
+  link_info.warn_execstack = DEFAULT_LD_WARN_EXECSTACK;
+  link_info.no_warn_rwx_segments = ! DEFAULT_LD_WARN_RWX_SEGMENTS;
+  link_info.default_execstack = DEFAULT_LD_EXECSTACK;
 }
 
 EOF
@@ -124,6 +129,17 @@ if test x"$LDEMUL_AFTER_OPEN" != xgld"$EMULATION_NAME"_after_open; then
   fi
 
 fragment <<EOF
+
+/* This is called before calling plugin 'all symbols read' hook.  */
+
+static void
+gld${EMULATION_NAME}_before_plugin_all_symbols_read (void)
+{
+  ldelf_before_plugin_all_symbols_read ($IS_LIBPATH, $IS_NATIVE,
+				        $IS_LINUX_TARGET,
+					$IS_FREEBSD_TARGET,
+					$ELFSIZE, "$prefix");
+}
 
 /* This is called after all the input files have been opened.  */
 
@@ -556,6 +572,7 @@ enum elf_options
   OPTION_EXCLUDE_LIBS,
   OPTION_HASH_STYLE,
   OPTION_BUILD_ID,
+  OPTION_PACKAGE_METADATA,
   OPTION_AUDIT,
   OPTION_COMPRESS_DEBUG
 };
@@ -586,6 +603,7 @@ EOF
 fi
 fragment <<EOF
     {"build-id", optional_argument, NULL, OPTION_BUILD_ID},
+    {"package-metadata", optional_argument, NULL, OPTION_PACKAGE_METADATA},
     {"compress-debug-sections", required_argument, NULL, OPTION_COMPRESS_DEBUG},
 EOF
 if test x"$GENERATE_SHLIB_SCRIPT" = xyes; then
@@ -632,6 +650,13 @@ gld${EMULATION_NAME}_handle_option (int optc)
 	optarg = DEFAULT_BUILD_ID_STYLE;
       if (strcmp (optarg, "none"))
 	ldelf_emit_note_gnu_build_id = xstrdup (optarg);
+      break;
+
+    case OPTION_PACKAGE_METADATA:
+      free ((char *) ldelf_emit_note_fdo_package_metadata);
+      ldelf_emit_note_fdo_package_metadata = NULL;
+      if (optarg != NULL && strlen(optarg) > 0)
+	ldelf_emit_note_fdo_package_metadata = xstrdup (optarg);
       break;
 
     case OPTION_COMPRESS_DEBUG:
@@ -909,41 +934,18 @@ EOF
 fi
 fi
 
-fragment <<EOF
+LDEMUL_AFTER_PARSE=${LDEMUL_AFTER_PARSE-ldelf_after_parse}
+LDEMUL_BEFORE_PLUGIN_ALL_SYMBOLS_READ=${LDEMUL_BEFORE_PLUGIN_ALL_SYMBOLS_READ-gld${EMULATION_NAME}_before_plugin_all_symbols_read}
+LDEMUL_AFTER_OPEN=${LDEMUL_AFTER_OPEN-gld${EMULATION_NAME}_after_open}
+LDEMUL_BEFORE_PLACE_ORPHANS=${LDEMUL_BEFORE_PLACE_ORPHANS-ldelf_before_place_orphans}
+LDEMUL_AFTER_ALLOCATION=${LDEMUL_AFTER_ALLOCATION-gld${EMULATION_NAME}_after_allocation}
+LDEMUL_SET_OUTPUT_ARCH=${LDEMUL_SET_OUTPUT_ARCH-ldelf_set_output_arch}
+LDEMUL_BEFORE_ALLOCATION=${LDEMUL_BEFORE_ALLOCATION-gld${EMULATION_NAME}_before_allocation}
+LDEMUL_OPEN_DYNAMIC_ARCHIVE=${LDEMUL_OPEN_DYNAMIC_ARCHIVE-ldelf_open_dynamic_archive}
+LDEMUL_PLACE_ORPHAN=${LDEMUL_PLACE_ORPHAN-ldelf_place_orphan}
+LDEMUL_ADD_OPTIONS=gld${EMULATION_NAME}_add_options
+LDEMUL_HANDLE_OPTION=gld${EMULATION_NAME}_handle_option
+LDEMUL_LIST_OPTIONS=${LDEMUL_LIST_OPTIONS-${gld_list_options}}
+LDEMUL_RECOGNIZED_FILE=${LDEMUL_RECOGNIZED_FILE-ldelf_load_symbols}
 
-struct ld_emulation_xfer_struct ld_${EMULATION_NAME}_emulation =
-{
-  ${LDEMUL_BEFORE_PARSE-gld${EMULATION_NAME}_before_parse},
-  ${LDEMUL_SYSLIB-syslib_default},
-  ${LDEMUL_HLL-hll_default},
-  ${LDEMUL_AFTER_PARSE-ldelf_after_parse},
-  ${LDEMUL_AFTER_OPEN-gld${EMULATION_NAME}_after_open},
-  ${LDEMUL_AFTER_CHECK_RELOCS-after_check_relocs_default},
-  ${LDEMUL_BEFORE_PLACE_ORPHANS-ldelf_before_place_orphans},
-  ${LDEMUL_AFTER_ALLOCATION-gld${EMULATION_NAME}_after_allocation},
-  ${LDEMUL_SET_OUTPUT_ARCH-ldelf_set_output_arch},
-  ${LDEMUL_CHOOSE_TARGET-ldemul_default_target},
-  ${LDEMUL_BEFORE_ALLOCATION-gld${EMULATION_NAME}_before_allocation},
-  ${LDEMUL_GET_SCRIPT-gld${EMULATION_NAME}_get_script},
-  "${EMULATION_NAME}",
-  "${OUTPUT_FORMAT}",
-  ${LDEMUL_FINISH-finish_default},
-  ${LDEMUL_CREATE_OUTPUT_SECTION_STATEMENTS-NULL},
-  ${LDEMUL_OPEN_DYNAMIC_ARCHIVE-ldelf_open_dynamic_archive},
-  ${LDEMUL_PLACE_ORPHAN-ldelf_place_orphan},
-  ${LDEMUL_SET_SYMBOLS-NULL},
-  ${LDEMUL_PARSE_ARGS-NULL},
-  gld${EMULATION_NAME}_add_options,
-  gld${EMULATION_NAME}_handle_option,
-  ${LDEMUL_UNRECOGNIZED_FILE-NULL},
-  ${LDEMUL_LIST_OPTIONS-${gld_list_options}},
-  ${LDEMUL_RECOGNIZED_FILE-ldelf_load_symbols},
-  ${LDEMUL_FIND_POTENTIAL_LIBRARIES-NULL},
-  ${LDEMUL_NEW_VERS_PATTERN-NULL},
-  ${LDEMUL_EXTRA_MAP_FILE_TEXT-NULL},
-  ${LDEMUL_EMIT_CTF_EARLY-NULL},
-  ${LDEMUL_ACQUIRE_STRINGS_FOR_CTF-NULL},
-  ${LDEMUL_NEW_DYNSYM_FOR_CTF-NULL},
-  ${LDEMUL_PRINT_SYMBOL-NULL}
-};
-EOF
+source_em ${srcdir}/emultempl/emulation.em

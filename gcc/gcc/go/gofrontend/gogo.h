@@ -533,6 +533,10 @@ class Gogo
   register_package(const std::string& pkgpath,
 		   const std::string& pkgpath_symbol, Location);
 
+  // Add the unsafe bindings to the unsafe package.
+  void
+  add_unsafe_bindings(Package*);
+
   // Look up a package by pkgpath, and return its pkgpath_symbol.
   std::string
   pkgpath_symbol_for_package(const std::string&);
@@ -3042,6 +3046,10 @@ class Named_object
   // The location where this object was defined or referenced.
   Location
   location() const;
+
+  // Traverse a Named_object.
+  int
+  traverse(Traverse*, bool is_global);
 
   // Convert a variable to the backend representation.
   Bvariable*

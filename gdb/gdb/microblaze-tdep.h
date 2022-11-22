@@ -20,9 +20,10 @@
 #ifndef MICROBLAZE_TDEP_H
 #define MICROBLAZE_TDEP_H 1
 
+#include "gdbarch.h"
 
 /* Microblaze architecture-specific information.  */
-struct gdbarch_tdep
+struct microblaze_gdbarch_tdep : gdbarch_tdep
 {
 };
 

@@ -1,5 +1,5 @@
 /* Generic BFD library interface and support routines.
-   Copyright (C) 1990-2021 Free Software Foundation, Inc.
+   Copyright (C) 1990-2022 Free Software Foundation, Inc.
    Written by Cygnus Support.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -276,9 +276,18 @@ CODE_FRAGMENT
 .  {* The number of sections.  *}
 .  unsigned int section_count;
 .
+.  {* The archive plugin file descriptor.  *}
+.  int archive_plugin_fd;
+.
+.  {* The number of opens on the archive plugin file descriptor.  *}
+.  unsigned int archive_plugin_fd_open_count;
+.
 .  {* A field used by _bfd_generic_link_add_archive_symbols.  This will
 .     be used only for archive elements.  *}
 .  int archive_pass;
+.
+.  {* The total size of memory from bfd_alloc.  *}
+.  bfd_size_type alloc_size;
 .
 .  {* Stuff only useful for object files:
 .     The start address.  *}
@@ -1729,6 +1738,7 @@ bfd_get_sign_extend_vma (bfd *abfd)
       || strcmp (name, "pei-i386") == 0
       || strcmp (name, "pe-x86-64") == 0
       || strcmp (name, "pei-x86-64") == 0
+      || strcmp (name, "pei-aarch64-little") == 0
       || strcmp (name, "pe-arm-wince-little") == 0
       || strcmp (name, "pei-arm-wince-little") == 0
       || strcmp (name, "aixcoff-rs6000") == 0
@@ -1849,6 +1859,24 @@ _bfd_set_gp_value (bfd *abfd, bfd_vma v)
     ecoff_data (abfd)->gp = v;
   else if (abfd->xvec->flavour == bfd_target_elf_flavour)
     elf_gp (abfd) = v;
+}
+
+/*
+FUNCTION
+	bfd_set_gp_value
+
+SYNOPSIS
+	void bfd_set_gp_value (bfd *abfd, bfd_vma v);
+
+DESCRIPTION
+	Allow external access to the fucntion to set the GP value.
+	This is specifically added for gdb-compile support.
+*/
+
+void
+bfd_set_gp_value (bfd *abfd, bfd_vma v)
+{
+  _bfd_set_gp_value (abfd, v);
 }
 
 /*
@@ -2316,7 +2344,7 @@ FUNCTION
 	bfd_emul_get_commonpagesize
 
 SYNOPSIS
-	bfd_vma bfd_emul_get_commonpagesize (const char *, bool);
+	bfd_vma bfd_emul_get_commonpagesize (const char *);
 
 DESCRIPTION
 	Returns the common page size, in bytes, as determined by
@@ -2327,7 +2355,7 @@ RETURNS
 */
 
 bfd_vma
-bfd_emul_get_commonpagesize (const char *emul, bool relro)
+bfd_emul_get_commonpagesize (const char *emul)
 {
   const bfd_target *target;
 
@@ -2338,10 +2366,7 @@ bfd_emul_get_commonpagesize (const char *emul, bool relro)
       const struct elf_backend_data *bed;
 
       bed = xvec_get_elf_backend_data (target);
-      if (relro)
-	return bed->relropagesize;
-      else
-	return bed->commonpagesize;
+      return bed->commonpagesize;
     }
   return 0;
 }
@@ -2476,7 +2501,7 @@ bfd_update_compression_header (bfd *abfd, bfd_byte *contents,
 	      Elf32_External_Chdr *echdr = (Elf32_External_Chdr *) contents;
 	      bfd_put_32 (abfd, ELFCOMPRESS_ZLIB, &echdr->ch_type);
 	      bfd_put_32 (abfd, sec->size, &echdr->ch_size);
-	      bfd_put_32 (abfd, 1 << sec->alignment_power,
+	      bfd_put_32 (abfd, 1u << sec->alignment_power,
 			  &echdr->ch_addralign);
 	      /* bfd_log2 (alignof (Elf32_Chdr)) */
 	      bfd_set_section_alignment (sec, 2);
@@ -2488,7 +2513,7 @@ bfd_update_compression_header (bfd *abfd, bfd_byte *contents,
 	      bfd_put_32 (abfd, ELFCOMPRESS_ZLIB, &echdr->ch_type);
 	      bfd_put_32 (abfd, 0, &echdr->ch_reserved);
 	      bfd_put_64 (abfd, sec->size, &echdr->ch_size);
-	      bfd_put_64 (abfd, 1 << sec->alignment_power,
+	      bfd_put_64 (abfd, UINT64_C (1) << sec->alignment_power,
 			  &echdr->ch_addralign);
 	      /* bfd_log2 (alignof (Elf64_Chdr)) */
 	      bfd_set_section_alignment (sec, 3);

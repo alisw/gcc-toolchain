@@ -682,6 +682,12 @@ install_gdb_sigint_handler (struct signal_handler *previous)
     previous->handler_saved = 0;
 }
 
+#if GDB_SELF_TEST
+namespace selftests {
+void (*hook_set_active_ext_lang) () = nullptr;
+}
+#endif
+
 /* Set the currently active extension language to NOW_ACTIVE.
    The result is a pointer to a malloc'd block of memory to pass to
    restore_active_ext_lang.
@@ -708,6 +714,11 @@ install_gdb_sigint_handler (struct signal_handler *previous)
 struct active_ext_lang_state *
 set_active_ext_lang (const struct extension_language_defn *now_active)
 {
+#if GDB_SELF_TEST
+  if (selftests::hook_set_active_ext_lang)
+    selftests::hook_set_active_ext_lang ();
+#endif
+
   struct active_ext_lang_state *previous
     = XCNEW (struct active_ext_lang_state);
 
@@ -886,6 +897,26 @@ ext_lang_colorize (const std::string &filename, const std::string &contents)
 	  || extlang->ops->colorize == nullptr)
 	continue;
       result = extlang->ops->colorize (filename, contents);
+      if (result.has_value ())
+	return result;
+    }
+
+  return result;
+}
+
+/* See extension.h.  */
+
+gdb::optional<std::string>
+ext_lang_colorize_disasm (const std::string &content, gdbarch *gdbarch)
+{
+  gdb::optional<std::string> result;
+
+  for (const struct extension_language_defn *extlang : extension_languages)
+    {
+      if (extlang->ops == nullptr
+	  || extlang->ops->colorize_disasm == nullptr)
+	continue;
+      result = extlang->ops->colorize_disasm (content, gdbarch);
       if (result.has_value ())
 	return result;
     }

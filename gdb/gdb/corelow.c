@@ -214,7 +214,7 @@ core_target::build_file_mappings ()
     /* read_core_file_mappings will invoke this lambda for each mapping
        that it finds.  */
     [&] (int num, ULONGEST start, ULONGEST end, ULONGEST file_ofs,
-	 const char *filename)
+	 const char *filename, const bfd_build_id *build_id)
       {
 	/* Architecture-specific read_core_mapping methods are expected to
 	   weed out non-file-backed mappings.  */
@@ -437,7 +437,7 @@ core_target_open (const char *arg, int from_tty)
     flags |= O_RDWR;
   else
     flags |= O_RDONLY;
-  scratch_chan = gdb_open_cloexec (filename.get (), flags, 0);
+  scratch_chan = gdb_open_cloexec (filename.get (), flags, 0).release ();
   if (scratch_chan < 0)
     perror_with_name (filename.get ());
 
@@ -943,7 +943,7 @@ core_target::xfer_partial (enum target_object object, const char *annex,
 		return TARGET_XFER_OK;
 	    }
 	}
-      /* FALL THROUGH */
+      return TARGET_XFER_E_IO;
 
     case TARGET_OBJECT_LIBRARIES_AIX:
       if (m_core_gdbarch != nullptr
@@ -964,7 +964,7 @@ core_target::xfer_partial (enum target_object object, const char *annex,
 		return TARGET_XFER_OK;
 	    }
 	}
-      /* FALL THROUGH */
+      return TARGET_XFER_E_IO;
 
     case TARGET_OBJECT_SIGNAL_INFO:
       if (readbuf)

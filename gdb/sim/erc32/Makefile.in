@@ -32,8 +32,8 @@ SIM_EXTRA_CLEAN = clean-sis
 # behaviour of UART interrupt routines ...
 SIM_EXTRA_CFLAGS += -DFAST_UART -I$(srcroot)
 
-# Code doesn't build cleanly yet.
-SIM_WERROR_CFLAGS =
+# Some modules don't build cleanly yet.
+exec.o: SIM_WERROR_CFLAGS =
 
 ## COMMON_POST_CONFIG_FRAG
 
@@ -41,9 +41,9 @@ SIM_WERROR_CFLAGS =
 SIS_OFILES = exec.o erc32.o func.o help.o float.o
 
 all: sis$(EXEEXT)
-sis$(EXEEXT): sis.o $(SIS_OFILES) $(COMMON_OBJS) $(LIBDEPS)
-	$(CC) $(ALL_CFLAGS) -o sis$(EXEEXT) \
-	  sis.o $(SIS_OFILES) $(COMMON_OBJS) $(EXTRA_LIBS)
+sis$(EXEEXT): sis.o $(SIS_OFILES) libsim.a $(LIBDEPS)
+	$(ECHO_CCLD) $(CC) $(ALL_CFLAGS) -o sis$(EXEEXT) \
+	  sis.o $(SIS_OFILES) libsim.a $(EXTRA_LIBS)
 
 # Copy the files into directories where they will be run.
 install-sis: installdirs
@@ -52,11 +52,3 @@ install-sis: installdirs
 
 clean-sis:
 	rm -f sis
-
-configure:
-	@echo "Rebuilding configure..."
-	if [ x"${srcdir}" = x"@srcdir@" ] ; then \
-	  srcdir=. ; export srcdir ; \
-	else true ; fi ; \
-	(cd $${srcdir}; autoconf --localdir=../common)
-

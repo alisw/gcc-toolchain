@@ -1,6 +1,269 @@
 		What has changed in GDB?
 	     (Organized release by release)
 
+*** Changes in GDB 12
+
+* DBX mode is deprecated, and will be removed in GDB 13
+
+* GDB 12 is the last release of GDB that will support building against
+  Python 2.  From GDB 13, it will only be possible to build GDB itself
+  with Python 3 support.
+
+* Improved C++ template support
+
+  GDB now treats functions/types involving C++ templates like it does function
+  overloads.  Users may omit parameter lists to set breakpoints on families of
+  template functions, including types/functions composed of multiple template types:
+
+  (gdb) break template_func(template_1, int)
+
+  The above will set breakpoints at every function `template_func' where
+  the first function parameter is any template type named `template_1' and
+  the second function parameter is `int'.
+
+  TAB completion also gains similar improvements.
+
+* The FreeBSD native target now supports async mode.
+
+* Configure changes
+
+--enable-threading
+
+  Enable or disable multithreaded symbol loading.  This is enabled
+  by default, but passing --disable-threading or --enable-threading=no
+  to configure will disable it.
+
+  Disabling this can cause a performance penalty when there are a lot of
+  symbols to load, but is useful for debugging purposes.
+
+* New commands
+
+maint set backtrace-on-fatal-signal on|off
+maint show backtrace-on-fatal-signal
+  This setting is 'on' by default.  When 'on' GDB will print a limited
+  backtrace to stderr in the situation where GDB terminates with a
+  fatal signal.  This only supported on some platforms where the
+  backtrace and backtrace_symbols_fd functions are available.
+
+set source open on|off
+show source open
+  This setting, which is on by default, controls whether GDB will try
+  to open source code files.  Switching this off will stop GDB trying
+  to open and read source code files, which can be useful if the files
+  are located over a slow network connection.
+
+set varsize-limit
+show varsize-limit
+  These are now deprecated aliases for "set max-value-size" and
+  "show max-value-size".
+
+task apply [all | TASK-IDS...] [FLAG]... COMMAND
+  Like "thread apply", but applies COMMAND to Ada tasks.
+
+watch [...] task ID
+  Watchpoints can now be restricted to a specific Ada task.
+
+maint set internal-error backtrace on|off
+maint show internal-error backtrace
+maint set internal-warning backtrace on|off
+maint show internal-warning backtrace
+  GDB can now print a backtrace of itself when it encounters either an
+  internal-error, or an internal-warning.  This is on by default for
+  internal-error and off by default for internal-warning.
+
+set logging on|off
+  Deprecated and replaced by "set logging enabled on|off".
+
+set logging enabled on|off
+show logging enabled
+  These commands set or show whether logging is enabled or disabled.
+
+exit
+  You can now exit GDB by using the new command "exit", in addition to
+  the existing "quit" command.
+
+set debug threads on|off
+show debug threads
+  Print additional debug messages about thread creation and deletion.
+
+set debug linux-nat on|off
+show debug linux-nat
+  These new commands replaced the old 'set debug lin-lwp' and 'show
+  debug lin-lwp' respectively.  Turning this setting on prints debug
+  messages relating to GDB's handling of native Linux inferiors.
+
+maint flush source-cache
+  Flush the contents of the source code cache.
+
+maint set gnu-source-highlight enabled on|off
+maint show gnu-source-highlight enabled
+  Whether GDB should use the GNU Source Highlight library for adding
+  styling to source code.  When off, the library will not be used, even
+  when available.  When GNU Source Highlight isn't used, or can't add
+  styling to a particular source file, then the Python Pygments
+  library will be used instead.
+
+set suppress-cli-notifications (on|off)
+show suppress-cli-notifications
+  This controls whether printing the notifications is suppressed for CLI.
+  CLI notifications occur when you change the selected context
+  (i.e., the current inferior, thread and/or the frame), or when
+  the program being debugged stops (e.g., because of hitting a
+  breakpoint, completing source-stepping, an interrupt, etc.).
+
+set style disassembler enabled on|off
+show style disassembler enabled
+  If GDB is compiled with Python support, and the Python Pygments
+  package is available, then, when this setting is on, disassembler
+  output will have styling applied.
+
+set ada source-charset
+show ada source-charset
+  Set the character set encoding that is assumed for Ada symbols.  Valid
+  values for this follow the values that can be passed to the GNAT
+  compiler via the '-gnati' option.  The default is ISO-8859-1.
+
+* Changed commands
+
+print
+  Printing of floating-point values with base-modifying formats like
+  /x has been changed to display the underlying bytes of the value in
+  the desired base.  This was GDB's documented behavior, but was never
+  implemented correctly.
+
+maint packet
+  This command can now print a reply, if the reply includes
+  non-printable characters.  Any non-printable characters are printed
+  as escaped hex, e.g. \x?? where '??' is replaces with the value of
+  the non-printable character.
+
+clone-inferior
+  The clone-inferior command now ensures that the TTY, CMD and ARGS
+  settings are copied from the original inferior to the new one.
+  All modifications to the environment variables done using the 'set
+  environment' or 'unset environment' commands are also copied to the new
+  inferior.
+
+set debug lin-lwp on|off
+show debug lin-lwp
+  These commands have been removed from GDB.  The new command 'set
+  debug linux-nat' and 'show debug linux-nat' should be used
+  instead.
+
+info win
+  This command now includes information about the width of the tui
+  windows in its output.
+
+* GDB's Ada parser now supports an extension for specifying the exact
+  byte contents of a floating-point literal.  This can be useful for
+  setting floating-point registers to a precise value without loss of
+  precision.  The syntax is an extension of the based literal syntax.
+  Use, e.g., "16lf#0123abcd#" -- the number of "l"s controls the width
+  of the floating-point type, and the "f" is the marker for floating
+  point.
+
+* MI changes
+
+ ** The '-add-inferior' with no option flags now inherits the
+    connection of the current inferior, this restores the behaviour of
+    GDB as it was prior to GDB 10.
+
+ ** The '-add-inferior' command now accepts a '--no-connection'
+    option, which causes the new inferior to start without a
+    connection.
+
+* New targets
+
+GNU/Linux/LoongArch		loongarch*-*-linux*
+
+* Removed targets
+
+S+core				score-*-*
+
+* Python API
+
+  ** New function gdb.add_history(), which takes a gdb.Value object
+     and adds the value it represents to GDB's history list.  An
+     integer, the index of the new item in the history list, is
+     returned.
+
+  ** New function gdb.history_count(), which returns the number of
+     values in GDB's value history.
+
+  ** New gdb.events.gdb_exiting event.  This event is called with a
+     gdb.GdbExitingEvent object which has the read-only attribute
+     'exit_code', which contains the value of the GDB exit code.  This
+     event is triggered once GDB decides it is going to exit, but
+     before GDB starts to clean up its internal state.
+
+  ** New function gdb.architecture_names(), which returns a list
+     containing all of the possible Architecture.name() values.  Each
+     entry is a string.
+
+  ** New function gdb.Architecture.integer_type(), which returns an
+     integer type given a size and a signed-ness.
+
+  ** New gdb.TargetConnection object type that represents a connection
+     (as displayed by the 'info connections' command).  A sub-class,
+     gdb.RemoteTargetConnection, is used to represent 'remote' and
+     'extended-remote' connections.
+
+  ** The gdb.Inferior type now has a 'connection' property which is an
+     instance of gdb.TargetConnection, the connection used by this
+     inferior.  This can be None if the inferior has no connection.
+
+  ** New 'gdb.events.connection_removed' event registry, which emits a
+     'gdb.ConnectionEvent' when a connection is removed from GDB.
+     This event has a 'connection' property, a gdb.TargetConnection
+     object for the connection being removed.
+
+  ** New gdb.connections() function that returns a list of all
+     currently active connections.
+
+  ** New gdb.RemoteTargetConnection.send_packet(PACKET) method.  This
+     is equivalent to the existing 'maint packet' CLI command; it
+     allows a user specified packet to be sent to the remote target.
+
+  ** New function gdb.host_charset(), returns a string, which is the
+     name of the current host charset.
+
+  ** New gdb.set_parameter(NAME, VALUE).  This sets the gdb parameter
+     NAME to VALUE.
+
+  ** New gdb.with_parameter(NAME, VALUE).  This returns a context
+     manager that temporarily sets the gdb parameter NAME to VALUE,
+     then resets it when the context is exited.
+
+  ** The gdb.Value.format_string method now takes a 'styling'
+     argument, which is a boolean.  When true, the returned string can
+     include escape sequences to apply styling.  The styling will only
+     be present if styling is otherwise turned on in GDB (see 'help
+     set styling').  When false, which is the default if the argument
+     is not given, then no styling is applied to the returned string.
+
+  ** New read-only attribute gdb.InferiorThread.details, which is
+     either a string, containing additional, target specific thread
+     state information, or None, if there is no such additional
+     information.
+
+  ** New read-only attribute gdb.Type.is_scalar, which is True for
+     scalar types, and False for all other types.
+
+  ** New read-only attribute gdb.Type.is_signed.  This attribute
+     should only be read when Type.is_scalar is True, and will be True
+     for signed types, and False for all other types.  Attempting to
+     read this attribute for non-scalar types will raise a ValueError.
+
+  ** It is now possible to add GDB/MI commands implemented in Python.
+
+* New features in the GDB remote stub, GDBserver
+
+  ** GDBserver is now supported on OpenRISC GNU/Linux.
+
+* New native configurations
+
+GNU/Linux/OpenRISC		or1k*-*-linux*
+
 *** Changes in GDB 11
 
 * The 'set disassembler-options' command now supports specifying options
@@ -108,6 +371,10 @@
   registers of a target.  The precise requirements of this register
   feature are documented in the GDB manual.
 
+* For ARM targets, the "org.gnu.gdb.arm.m-profile-mve" feature is now
+  supported by GDB and describes a new VPR register from the ARM MVE
+  (Helium) extension. See the GDB manual for more information.
+
 * TUI improvements
 
   ** TUI windows now support mouse actions.  The mouse wheel scrolls
@@ -142,6 +409,9 @@ maintenance flush dcache
 
 maintenance info target-sections
   Print GDB's internal target sections table.
+
+maintenance info jit
+  Print the JIT code objects in the inferior known to GDB.
 
 memory-tag show-logical-tag POINTER
   Print the logical tag for POINTER.
@@ -261,6 +531,9 @@ QMemTags
   ** New procedures for obtaining value variants:
      value-reference-value, value-rvalue-reference-value and
      value-const-value.
+
+  ** Temporary breakpoints can now be created with make-breakpoint and
+     tested for using breakpoint-temporary?.
 
 * Python API
 

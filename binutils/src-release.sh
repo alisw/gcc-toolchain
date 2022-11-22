@@ -38,7 +38,7 @@ MAKEINFOFLAGS=--split-size=5000000
 # Support for building net releases
 
 # Files in root used in any net release.
-DEVO_SUPPORT="ar-lib ChangeLog ChangeLog.git.2.37-2.38 compile config config-ml.in config.guess \
+DEVO_SUPPORT="ar-lib ChangeLog compile config config-ml.in config.guess \
 	config.rpath config.sub configure configure.ac COPYING COPYING.LIB \
 	COPYING3 COPYING3.LIB depcomp install-sh libtool.m4 ltgcc.m4 \
 	ltmain.sh ltoptions.m4 ltsugar.m4 ltversion.m4 lt~obsolete.m4 \
@@ -93,7 +93,7 @@ do_proto_toplev()
     # built in the gold dir.  The disables speed the build a little.
     enables=
     disables=
-    for dir in binutils gas gdb gold gprof ld libctf libdecnumber readline sim; do
+    for dir in binutils gas gdb gold gprof gprofng ld libctf libdecnumber readline sim; do
 	case " $tool $support_files " in
 	    *" $dir "*) enables="$enables --enable-$dir" ;;
 	    *) disables="$disables --disable-$dir" ;;
@@ -295,7 +295,7 @@ gdb_tar_compress()
 }
 
 # The FSF "binutils" release includes gprof and ld.
-BINUTILS_SUPPORT_DIRS="bfd gas include libiberty libctf opcodes ld elfcpp gold gprof intl setup.com makefile.vms cpu zlib"
+BINUTILS_SUPPORT_DIRS="bfd gas include libiberty libctf opcodes ld elfcpp gold gprof gprofng intl setup.com makefile.vms cpu zlib"
 binutils_release()
 {
     compressors=$1

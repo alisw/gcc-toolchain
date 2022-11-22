@@ -257,7 +257,7 @@ class ui_out
   void vmessage (const ui_file_style &in_style,
 		 const char *format, va_list args) ATTRIBUTE_PRINTF (3, 0);
 
-  void wrap_hint (const char *identstring);
+  void wrap_hint (int indent);
 
   void flush ();
 
@@ -301,17 +301,17 @@ class ui_out
     progress_meter (const progress_meter &) = delete;
     progress_meter &operator= (const progress_meter &) = delete;
 
+    /* Emit some progress for this progress meter.  HOWMUCH may range
+       from 0.0 to 1.0.  */
+    void progress (double howmuch)
+    {
+      m_uiout->do_progress_notify (howmuch);
+    }
+
   private:
 
     struct ui_out *m_uiout;
   };
-
-  /* Emit some progress corresponding to the most recently created
-     progress meter.  HOWMUCH may range from 0.0 to 1.0.  */
-  void progress (double howmuch)
-  {
-    do_progress_notify (howmuch);
-  }
 
  protected:
 
@@ -343,7 +343,7 @@ class ui_out
   virtual void do_message (const ui_file_style &style,
 			   const char *format, va_list args)
     ATTRIBUTE_PRINTF (3,0) = 0;
-  virtual void do_wrap_hint (const char *identstring) = 0;
+  virtual void do_wrap_hint (int indent) = 0;
   virtual void do_flush () = 0;
   virtual void do_redirect (struct ui_file *outstream) = 0;
 

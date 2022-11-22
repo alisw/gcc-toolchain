@@ -31,6 +31,7 @@
 #include "trad-frame.h"
 #include "remote.h"
 #include "opcodes/s12z-opc.h"
+#include "gdbarch.h"
 
 /* Two of the registers included in S12Z_N_REGISTERS are
    the CCH and CCL "registers" which are just views into
@@ -139,19 +140,15 @@ s12z_dwarf_reg_to_regnum (struct gdbarch *gdbarch, int num)
 
 /* Support functions for frame handling.  */
 
-/* Copy of gdb_buffered_insn_length_fprintf from disasm.c.  */
 
-static int ATTRIBUTE_PRINTF (2, 3)
-s12z_fprintf_disasm (void *stream, const char *format, ...)
-{
-  return 0;
-}
+/* Return a disassemble_info initialized for s12z disassembly, however,
+   the disassembler will not actually print anything.  */
 
 static struct disassemble_info
 s12z_disassemble_info (struct gdbarch *gdbarch)
 {
   struct disassemble_info di;
-  init_disassemble_info (&di, &null_stream, s12z_fprintf_disasm);
+  init_disassemble_info_for_no_printing (&di);
   di.arch = gdbarch_bfd_arch_info (gdbarch)->arch;
   di.mach = gdbarch_bfd_arch_info (gdbarch)->mach;
   di.endian = gdbarch_byte_order (gdbarch);
@@ -482,7 +479,7 @@ constexpr gdb_byte s12z_break_insn[] = {0x00};
 
 typedef BP_MANIPULATION (s12z_break_insn) s12z_breakpoint;
 
-struct gdbarch_tdep
+struct s12z_gdbarch_tdep : gdbarch_tdep
 {
 };
 
@@ -634,13 +631,13 @@ show_bdccsr_command (const char *args, int from_tty)
   struct string_file output;
   target_rcmd ("bdccsr", &output);
 
-  printf_unfiltered ("The current BDCCSR value is %s\n", output.string().c_str());
+  printf_filtered ("The current BDCCSR value is %s\n", output.string().c_str());
 }
 
 static struct gdbarch *
 s12z_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
 {
-  struct gdbarch_tdep *tdep = XNEW (struct gdbarch_tdep);
+  s12z_gdbarch_tdep *tdep = new s12z_gdbarch_tdep;
   struct gdbarch *gdbarch = gdbarch_alloc (&info, tdep);
 
   add_cmd ("bdccsr", class_support, show_bdccsr_command,

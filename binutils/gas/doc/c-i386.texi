@@ -110,8 +110,6 @@ processor names are recognized:
 @code{core},
 @code{core2},
 @code{corei7},
-@code{l1om},
-@code{k1om},
 @code{iamcu},
 @code{k6},
 @code{k6_2},
@@ -1506,11 +1504,12 @@ directive enables a warning when gas detects an instruction that is not
 supported on the CPU specified.  The choices for @var{cpu_type} are:
 
 @multitable @columnfractions .20 .20 .20 .20
+@item @samp{default} @tab @samp{push} @tab @samp{pop}
 @item @samp{i8086} @tab @samp{i186} @tab @samp{i286} @tab @samp{i386}
 @item @samp{i486} @tab @samp{i586} @tab @samp{i686} @tab @samp{pentium}
 @item @samp{pentiumpro} @tab @samp{pentiumii} @tab @samp{pentiumiii} @tab @samp{pentium4}
 @item @samp{prescott} @tab @samp{nocona} @tab @samp{core} @tab @samp{core2}
-@item @samp{corei7} @tab @samp{l1om} @tab @samp{k1om} @tab @samp{iamcu}
+@item @samp{corei7} @tab @samp{iamcu}
 @item @samp{k6} @tab @samp{k6_2} @tab @samp{athlon} @tab @samp{k8}
 @item @samp{amdfam10} @tab @samp{bdver1} @tab @samp{bdver2} @tab @samp{bdver3}
 @item @samp{bdver4} @tab @samp{znver1} @tab @samp{znver2} @tab @samp{znver3}
@@ -1533,7 +1532,7 @@ supported on the CPU specified.  The choices for @var{cpu_type} are:
 @item @samp{.avx512_vpopcntdq} @tab @samp{.avx512_vbmi2} @tab @samp{.avx512_vnni}
 @item @samp{.avx512_bitalg} @tab @samp{.avx512_bf16} @tab @samp{.avx512_vp2intersect}
 @item @samp{.tdx} @tab @samp{.avx_vnni}  @tab @samp{.avx512_fp16}
-@item @samp{.clwb} @tab @samp{.rdpid} @tab @samp{.ptwrite} @tab @item @samp{.ibt}
+@item @samp{.clwb} @tab @samp{.rdpid} @tab @samp{.ptwrite} @tab @samp{.ibt}
 @item @samp{.wbnoinvd} @tab @samp{.pconfig} @tab @samp{.waitpkg} @tab @samp{.cldemote}
 @item @samp{.shstk} @tab @samp{.gfni} @tab @samp{.vaes} @tab @samp{.vpclmulqdq}
 @item @samp{.movdiri} @tab @samp{.movdir64b} @tab @samp{.enqcmd} @tab @samp{.tsxldtrk}

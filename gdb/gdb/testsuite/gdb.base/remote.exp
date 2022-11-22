@@ -159,7 +159,6 @@ set sizeof_random_data [get_sizeof "random_data" 48*1024]
 # Part THREE: Check the upload behavour
 #
 if ![runto_main] then {
-    fail "cannot run to main"
     return
 }
 
@@ -195,5 +194,10 @@ gdb_test_no_output "set remote hardware-breakpoint-limit -1"
 # and make sure 32-bit INT_MAX is accepted by a zinteger command.
 gdb_test_no_output "set remote hardware-watchpoint-limit 2147483647"
 gdb_test_no_output "set remote hardware-breakpoint-limit 2147483647"
+
+# Check the X/P/p alias commands display the correct packet names.
+foreach pkt {X P p} {
+    gdb_test "show remote ${pkt}-packet" "Support for the `${pkt}' packet is.*"
+}
 
 gdb_exit

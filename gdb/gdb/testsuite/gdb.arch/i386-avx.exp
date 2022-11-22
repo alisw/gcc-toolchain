@@ -35,12 +35,17 @@ if [get_compiler_info] {
     return -1
 }
 
-set additional_flags ""
+set flags { debug }
+
+# C11 for _Alignas, gnu for asm.
+lappend flags additional_flags=-std=gnu11
+
 if { [test_compiler_info gcc*] || [test_compiler_info clang*] } {
-    set additional_flags "additional_flags=-mavx -I${srcdir}/.."
+    lappend flags "additional_flags=-mavx -I${srcdir}/.."
 }
 
-if { [gdb_compile "${srcdir}/${subdir}/${srcfile}" "${binfile}" executable [list debug $additional_flags]] != "" } {
+if { [gdb_compile "${srcdir}/${subdir}/${srcfile}" "${binfile}" executable \
+	  $flags] != "" } {
     unsupported "compiler does not support AVX"
     return
 }
@@ -48,7 +53,6 @@ if { [gdb_compile "${srcdir}/${subdir}/${srcfile}" "${binfile}" executable [list
 clean_restart ${binfile}
 
 if ![runto_main] then {
-    fail "can't run to main"
     return 0
 }
 
@@ -101,7 +105,6 @@ with_test_prefix "force-disable xml descriptions" {
 	}
 
 	if ![runto_main] then {
-	    fail "run to main"
 	    return
 	}
 

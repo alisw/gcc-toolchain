@@ -17,7 +17,7 @@
 
 standard_testfile
 
-if [prepare_for_testing "failed to prepare" \
+if [build_executable "failed to prepare" \
     ${testfile} ${srcfile} {debug}] {
     return -1
 }
@@ -31,7 +31,6 @@ proc test { style } {
 	clean_restart $binfile
 
 	if ![runto_main] {
-	    fail "can't run to main"
 	    return -1
 	}
 

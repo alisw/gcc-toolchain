@@ -49,6 +49,7 @@
 #include <algorithm>
 #include "gdbsupport/pathstuff.h"
 #include "cli/cli-style.h"
+#include "gdbsupport/buildargv.h"
 
 void (*deprecated_file_changed_hook) (const char *);
 
@@ -102,7 +103,7 @@ static void
 show_exec_file_mismatch_command (struct ui_file *file, int from_tty,
 				 struct cmd_list_element *c, const char *value)
 {
-  fprintf_filtered (gdb_stdout,
+  fprintf_filtered (file,
 		    _("exec-file-mismatch handling is currently \"%s\".\n"),
 		    exec_file_mismatch_names[exec_file_mismatch_mode]);
 }
@@ -201,7 +202,7 @@ try_open_exec_file (const char *exec_file_host, struct inferior *inf,
 	}
       catch (const gdb_exception_error &err)
 	{
-	  if (!exception_print_same (prev_err, err))
+	  if (prev_err != err)
 	    warning ("%s", err.what ());
 	}
     }
@@ -378,7 +379,7 @@ exec_file_attach (const char *filename, int from_tty)
   if (!filename)
     {
       if (from_tty)
-	printf_unfiltered (_("No executable file now.\n"));
+	printf_filtered (_("No executable file now.\n"));
 
       set_gdbarch_from_file (NULL);
     }
@@ -676,10 +677,10 @@ program_space::remove_target_sections (void *owner)
 /* See exec.h.  */
 
 void
-exec_on_vfork ()
+exec_on_vfork (inferior *vfork_child)
 {
-  if (!current_program_space->target_sections ().empty ())
-    current_inferior ()->push_target (&exec_ops);
+  if (!vfork_child->pspace->target_sections ().empty ())
+    vfork_child->push_target (&exec_ops);
 }
 
 
@@ -908,7 +909,7 @@ print_section_info (const target_section_table *t, bfd *abfd)
   printf_filtered ("\t`%ps', ",
 		   styled_string (file_name_style.style (),
 				  bfd_get_filename (abfd)));
-  wrap_here ("        ");
+  gdb_stdout->wrap_here (8);
   printf_filtered (_("file type %s.\n"), bfd_get_target (abfd));
   if (abfd == current_program_space->exec_bfd ())
     {

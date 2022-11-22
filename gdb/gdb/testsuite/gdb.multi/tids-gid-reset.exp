@@ -22,7 +22,8 @@
 
 standard_testfile
 
-if { [prepare_for_testing "failed to prepare" ${testfile} ${srcfile} {pthreads debug}] } {
+if { [build_executable "failed to prepare" ${testfile} ${srcfile} \
+	  {pthreads debug}] } {
     return -1
 }
 
@@ -66,7 +67,6 @@ with_test_prefix "multi-inferior" {
     gdb_load ${binfile}
 
     if ![runto_main] then {
-	fail "starting inferior 2"
 	return
     }
 

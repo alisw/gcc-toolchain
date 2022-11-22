@@ -35,13 +35,15 @@
 #include "target-descriptions.h"
 #include "readline/tilde.h"
 #include "progspace-and-thread.h"
+#include "gdbsupport/buildargv.h"
+#include "cli/cli-style.h"
 
 /* Keep a registry of per-inferior data-pointers required by other GDB
    modules.  */
 
 DEFINE_REGISTRY (inferior, REGISTRY_ACCESS_FIELD)
 
-struct inferior *inferior_list = NULL;
+intrusive_list<inferior> inferior_list;
 static int highest_inferior_num;
 
 /* See inferior.h.  */
@@ -89,19 +91,37 @@ inferior::inferior (int pid_)
   m_target_stack.push (get_dummy_target ());
 }
 
-void
-inferior::set_tty (const char *terminal_name)
+/* See inferior.h.  */
+
+int
+inferior::unpush_target (struct target_ops *t)
 {
-  if (terminal_name != nullptr && *terminal_name != '\0')
-    m_terminal = make_unique_xstrdup (terminal_name);
-  else
-    m_terminal = NULL;
+  /* If unpushing the process stratum target from the inferior while threads
+     exist in the inferior, ensure that we don't leave any threads of the
+     inferior in the target's "resumed with pending wait status" list.
+
+     See also the comment in set_thread_exited.  */
+  if (t->stratum () == process_stratum)
+    {
+      process_stratum_target *proc_target = as_process_stratum_target (t);
+
+      for (thread_info *thread : this->non_exited_threads ())
+	proc_target->maybe_remove_resumed_with_pending_wait_status (thread);
+    }
+
+  return m_target_stack.unpush (t);
 }
 
-const char *
+void
+inferior::set_tty (std::string terminal_name)
+{
+  m_terminal = std::move (terminal_name);
+}
+
+const std::string &
 inferior::tty ()
 {
-  return m_terminal.get ();
+  return m_terminal;
 }
 
 void
@@ -126,16 +146,7 @@ add_inferior_silent (int pid)
 {
   inferior *inf = new inferior (pid);
 
-  if (inferior_list == NULL)
-    inferior_list = inf;
-  else
-    {
-      inferior *last;
-
-      for (last = inferior_list; last->next != NULL; last = last->next)
-	;
-      last->next = inf;
-    }
+  inferior_list.push_back (*inf);
 
   gdb::observers::inferior_added.notify (inf);
 
@@ -163,27 +174,29 @@ add_inferior (int pid)
   return inf;
 }
 
+/* See inferior.h.  */
+
 void
-delete_inferior (struct inferior *todel)
+inferior::clear_thread_list (bool silent)
 {
-  struct inferior *inf, *infprev;
+  thread_list.clear_and_dispose ([=] (thread_info *thr)
+    {
+      threads_debug_printf ("deleting thread %s, silent = %d",
+			    thr->ptid.to_string ().c_str (), silent);
+      set_thread_exited (thr, silent);
+      if (thr->deletable ())
+	delete thr;
+    });
+  ptid_thread_map.clear ();
+}
 
-  infprev = NULL;
+void
+delete_inferior (struct inferior *inf)
+{
+  inf->clear_thread_list (true);
 
-  for (inf = inferior_list; inf; infprev = inf, inf = inf->next)
-    if (inf == todel)
-      break;
-
-  if (!inf)
-    return;
-
-  for (thread_info *tp : inf->threads_safe ())
-    delete_thread_silent (tp);
-
-  if (infprev)
-    infprev->next = inf->next;
-  else
-    inferior_list = inf->next;
+  auto it = inferior_list.iterator_to (*inf);
+  inferior_list.erase (it);
 
   gdb::observers::inferior_removed.notify (inf);
 
@@ -198,24 +211,9 @@ delete_inferior (struct inferior *todel)
    exit of its threads.  */
 
 static void
-exit_inferior_1 (struct inferior *inftoex, int silent)
+exit_inferior_1 (struct inferior *inf, int silent)
 {
-  struct inferior *inf;
-
-  for (inf = inferior_list; inf; inf = inf->next)
-    if (inf == inftoex)
-      break;
-
-  if (!inf)
-    return;
-
-  for (thread_info *tp : inf->threads_safe ())
-    {
-      if (silent)
-	delete_thread_silent (tp);
-      else
-	delete_thread (tp);
-    }
+  inf->clear_thread_list (silent);
 
   gdb::observers::inferior_exit.notify (inf);
 
@@ -382,22 +380,14 @@ have_live_inferiors (void)
 void
 prune_inferiors (void)
 {
-  inferior *ss;
-
-  ss = inferior_list;
-  while (ss)
+  for (inferior *inf : all_inferiors_safe ())
     {
-      if (!ss->deletable ()
-	  || !ss->removable
-	  || ss->pid != 0)
-	{
-	  ss = ss->next;
-	  continue;
-	}
+      if (!inf->deletable ()
+	  || !inf->removable
+	  || inf->pid != 0)
+	continue;
 
-      inferior *ss_next = ss->next;
-      delete_inferior (ss);
-      ss = ss_next;
+      delete_inferior (inf);
     }
 }
 
@@ -532,7 +522,8 @@ print_inferior (struct ui_out *uiout, const char *requested_inferiors)
       uiout->field_string ("connection-id", conn);
 
       if (inf->pspace->exec_filename != nullptr)
-	uiout->field_string ("exec", inf->pspace->exec_filename.get ());
+	uiout->field_string ("exec", inf->pspace->exec_filename.get (),
+			     file_name_style.style ());
       else
 	uiout->field_skip ("exec");
 
@@ -768,11 +759,9 @@ add_inferior_with_spaces (void)
   return inf;
 }
 
-/* Switch to inferior NEW_INF, a new inferior, and unless
-   NO_CONNECTION is true, push the process_stratum_target of ORG_INF
-   to NEW_INF.  */
+/* See inferior.h.  */
 
-static void
+void
 switch_to_inferior_and_push_target (inferior *new_inf,
 				    bool no_connection, inferior *org_inf)
 {
@@ -946,6 +935,23 @@ clone_inferior_command (const char *args, int from_tty)
 	copy_inferior_target_desc_info (inf, orginf);
 
       clone_program_space (pspace, orginf->pspace);
+
+      /* Copy properties from the original inferior to the new one.  */
+      inf->set_args (orginf->args ());
+      inf->set_cwd (orginf->cwd ());
+      inf->set_tty (orginf->tty ());
+      for (const std::string &set_var : orginf->environment.user_set_env ())
+	{
+	  /* set_var has the form NAME=value.  Split on the first '='.  */
+	  const std::string::size_type pos = set_var.find ('=');
+	  gdb_assert (pos != std::string::npos);
+	  const std::string varname = set_var.substr (0, pos);
+	  inf->environment.set
+	    (varname.c_str (), orginf->environment.get (varname.c_str ()));
+	}
+      for (const std::string &unset_var
+	   : orginf->environment.user_unset_env ())
+	inf->environment.unset (unset_var.c_str ());
     }
 }
 
@@ -974,7 +980,6 @@ static const struct internalvar_funcs inferior_funcs =
 {
   inferior_id_make_value,
   NULL,
-  NULL
 };
 
 

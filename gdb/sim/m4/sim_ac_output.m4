@@ -1,4 +1,4 @@
-dnl   Copyright (C) 1997-2021 Free Software Foundation, Inc.
+dnl Copyright (C) 1997-2022 Free Software Foundation, Inc.
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -21,15 +21,8 @@ dnl one afterwards.  The two pieces of the common fragment are inserted into
 dnl the target's fragment at the appropriate points.
 AC_DEFUN([SIM_AC_OUTPUT],
 [dnl
-dnl Make @cgen_breaks@ non-null only if the sim uses CGEN.
-cgen_breaks=""
-if grep CGEN_MAINT $srcdir/Makefile.in >/dev/null; then
-cgen_breaks="break cgen_rtx_error";
-fi
-AC_SUBST(cgen_breaks)
 AC_CONFIG_FILES(Makefile.sim:Makefile.in)
 AC_CONFIG_FILES(Make-common.sim:../common/Make-common.in)
-AC_CONFIG_FILES(.gdbinit:../common/gdbinit.in)
 AC_CONFIG_COMMANDS([Makefile],
 [echo "Merging Makefile.sim+Make-common.sim into Makefile ..."
  rm -f Makesim1.tmp Makesim2.tmp Makefile

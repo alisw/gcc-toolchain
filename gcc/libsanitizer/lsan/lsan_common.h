@@ -18,6 +18,7 @@
 #include "sanitizer_common/sanitizer_common.h"
 #include "sanitizer_common/sanitizer_internal_defs.h"
 #include "sanitizer_common/sanitizer_platform.h"
+#include "sanitizer_common/sanitizer_stackdepot.h"
 #include "sanitizer_common/sanitizer_stoptheworld.h"
 #include "sanitizer_common/sanitizer_symbolizer.h"
 
@@ -41,6 +42,8 @@
 #define CAN_SANITIZE_LEAKS 1
 #elif defined(__arm__) && SANITIZER_LINUX
 #define CAN_SANITIZE_LEAKS 1
+#elif SANITIZER_RISCV64 && SANITIZER_LINUX
+#define CAN_SANITIZE_LEAKS 1
 #elif SANITIZER_NETBSD || SANITIZER_FUCHSIA
 #define CAN_SANITIZE_LEAKS 1
 #else
@@ -50,6 +53,7 @@
 namespace __sanitizer {
 class FlagParser;
 class ThreadRegistry;
+class ThreadContextBase;
 struct DTLS;
 }
 
@@ -62,8 +66,6 @@ enum ChunkTag {
   kReachable = 2,
   kIgnored = 3
 };
-
-const u32 kInvalidTid = (u32) -1;
 
 struct Flags {
 #define LSAN_FLAG(Type, Name, DefaultValue, Description) Type Name;
@@ -103,8 +105,9 @@ class LeakReport {
                       ChunkTag tag);
   void ReportTopLeaks(uptr max_leaks);
   void PrintSummary();
-  void ApplySuppressions();
+  uptr ApplySuppressions();
   uptr UnsuppressedLeakCount();
+  uptr IndirectUnsuppressedLeakCount();
 
  private:
   void PrintReportForLeak(uptr index);
@@ -137,10 +140,11 @@ struct CheckForLeaksParam {
   bool success = false;
 };
 
-InternalMmapVector<RootRegion> const *GetRootRegions();
+InternalMmapVectorNoCtor<RootRegion> const *GetRootRegions();
 void ScanRootRegion(Frontier *frontier, RootRegion const &region,
                     uptr region_begin, uptr region_end, bool is_readable);
 void ForEachExtraStackRangeCb(uptr begin, uptr end, void* arg);
+void GetAdditionalThreadContextPtrs(ThreadContextBase *tctx, void *ptrs);
 // Run stoptheworld while holding any platform-specific locks, as well as the
 // allocator and thread registry locks.
 void LockStuffAndStopTheWorld(StopTheWorldCallback callback,
@@ -218,8 +222,8 @@ void UnlockAllocator();
 // Returns true if [addr, addr + sizeof(void *)) is poisoned.
 bool WordIsPoisoned(uptr addr);
 // Wrappers for ThreadRegistry access.
-void LockThreadRegistry();
-void UnlockThreadRegistry();
+void LockThreadRegistry() NO_THREAD_SAFETY_ANALYSIS;
+void UnlockThreadRegistry() NO_THREAD_SAFETY_ANALYSIS;
 ThreadRegistry *GetThreadRegistryLocked();
 bool GetThreadRangesLocked(tid_t os_id, uptr *stack_begin, uptr *stack_end,
                            uptr *tls_begin, uptr *tls_end, uptr *cache_begin,
@@ -276,6 +280,13 @@ int __lsan_is_turned_off();
 
 SANITIZER_INTERFACE_ATTRIBUTE SANITIZER_WEAK_ATTRIBUTE
 const char *__lsan_default_suppressions();
+
+SANITIZER_INTERFACE_ATTRIBUTE
+void __lsan_register_root_region(const void *p, __lsan::uptr size);
+
+SANITIZER_INTERFACE_ATTRIBUTE
+void __lsan_unregister_root_region(const void *p, __lsan::uptr size);
+
 }  // extern "C"
 
 #endif  // LSAN_COMMON_H

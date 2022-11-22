@@ -18,16 +18,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if [istarget pru-*] {
-    # all machines
-    set all_machs "pru"
+sim_init
 
-    foreach src [lsort [glob -nocomplain $srcdir/$subdir/*.s]] {
-	# If we're only testing specific files and this isn't one of them,
-	# skip it.
-	if ![runtest_file_p $runtests $src] {
-	    continue
-	}
-	run_sim_test $src $all_machs
+# all machines
+set all_machs "pru"
+
+foreach src [lsort [glob -nocomplain $srcdir/$subdir/*.s]] {
+    # If we're only testing specific files and this isn't one of them, skip it.
+    if ![runtest_file_p $runtests $src] {
+	continue
     }
+    run_sim_test $src $all_machs
 }

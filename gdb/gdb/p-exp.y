@@ -619,7 +619,7 @@ block	:	BLOCKNAME
 			      struct symtab *tem =
 				  lookup_symtab (copy.c_str ());
 			      if (tem)
-				$$ = BLOCKVECTOR_BLOCK (SYMTAB_BLOCKVECTOR (tem),
+				$$ = BLOCKVECTOR_BLOCK (tem->blockvector (),
 							STATIC_BLOCK);
 			      else
 				error (_("No file or function \"%s\"."),
@@ -635,7 +635,7 @@ block	:	block COLONCOLON name
 			    = lookup_symbol (copy.c_str (), $1,
 					     VAR_DOMAIN, NULL).symbol;
 
-			  if (!tem || SYMBOL_CLASS (tem) != LOC_BLOCK)
+			  if (!tem || tem->aclass () != LOC_BLOCK)
 			    error (_("No function \"%s\" in specified context."),
 				   copy.c_str ());
 			  $$ = SYMBOL_BLOCK_VALUE (tem); }
@@ -690,7 +690,7 @@ variable:	name_not_typename
 				pstate->block_tracker->update (sym);
 
 			      pstate->push_new<var_value_operation> (sym);
-			      current_type = sym.symbol->type; }
+			      current_type = sym.symbol->type (); }
 			  else if ($1.is_a_field_of_this)
 			    {
 			      struct value * this_val;
@@ -1107,28 +1107,28 @@ yylex (void)
 
   /* See if it is a special token of length 3.  */
   if (explen > 2)
-    for (int i = 0; i < sizeof (tokentab3) / sizeof (tokentab3[0]); i++)
-      if (strncasecmp (tokstart, tokentab3[i].oper, 3) == 0
-	  && (!isalpha (tokentab3[i].oper[0]) || explen == 3
+    for (const auto &token : tokentab3)
+      if (strncasecmp (tokstart, token.oper, 3) == 0
+	  && (!isalpha (token.oper[0]) || explen == 3
 	      || (!isalpha (tokstart[3])
 		  && !isdigit (tokstart[3]) && tokstart[3] != '_')))
 	{
 	  pstate->lexptr += 3;
-	  yylval.opcode = tokentab3[i].opcode;
-	  return tokentab3[i].token;
+	  yylval.opcode = token.opcode;
+	  return token.token;
 	}
 
   /* See if it is a special token of length 2.  */
   if (explen > 1)
-  for (int i = 0; i < sizeof (tokentab2) / sizeof (tokentab2[0]); i++)
-      if (strncasecmp (tokstart, tokentab2[i].oper, 2) == 0
-	  && (!isalpha (tokentab2[i].oper[0]) || explen == 2
+    for (const auto &token : tokentab2)
+      if (strncasecmp (tokstart, token.oper, 2) == 0
+	  && (!isalpha (token.oper[0]) || explen == 2
 	      || (!isalpha (tokstart[2])
 		  && !isdigit (tokstart[2]) && tokstart[2] != '_')))
 	{
 	  pstate->lexptr += 2;
-	  yylval.opcode = tokentab2[i].opcode;
-	  return tokentab2[i].token;
+	  yylval.opcode = token.opcode;
+	  return token.token;
 	}
 
   switch (c = *tokstart)
@@ -1544,7 +1544,7 @@ yylex (void)
     /* Call lookup_symtab, not lookup_partial_symtab, in case there are
        no psymtabs (coff, xcoff, or some future change to blow away the
        psymtabs once once symbols are read).  */
-    if ((sym && SYMBOL_CLASS (sym) == LOC_BLOCK)
+    if ((sym && sym->aclass () == LOC_BLOCK)
 	|| lookup_symtab (tmp.c_str ()))
       {
 	yylval.ssym.sym.symbol = sym;
@@ -1553,7 +1553,7 @@ yylex (void)
 	free (uptokstart);
 	return BLOCKNAME;
       }
-    if (sym && SYMBOL_CLASS (sym) == LOC_TYPEDEF)
+    if (sym && sym->aclass () == LOC_TYPEDEF)
 	{
 #if 1
 	  /* Despite the following flaw, we need to keep this code enabled.
@@ -1622,7 +1622,7 @@ yylex (void)
 					 VAR_DOMAIN, NULL).symbol;
 		      if (cur_sym)
 			{
-			  if (SYMBOL_CLASS (cur_sym) == LOC_TYPEDEF)
+			  if (cur_sym->aclass () == LOC_TYPEDEF)
 			    {
 			      best_sym = cur_sym;
 			      pstate->lexptr = p;
@@ -1640,9 +1640,9 @@ yylex (void)
 		break;
 	    }
 
-	  yylval.tsym.type = SYMBOL_TYPE (best_sym);
+	  yylval.tsym.type = best_sym->type ();
 #else /* not 0 */
-	  yylval.tsym.type = SYMBOL_TYPE (sym);
+	  yylval.tsym.type = sym->type ();
 #endif /* not 0 */
 	  free (uptokstart);
 	  return TYPENAME;

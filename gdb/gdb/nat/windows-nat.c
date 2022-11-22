@@ -197,63 +197,63 @@ handle_exception (struct target_waitstatus *ourstatus, bool debug_exceptions)
 
   memcpy (&siginfo_er, rec, sizeof siginfo_er);
 
-  ourstatus->kind = TARGET_WAITKIND_STOPPED;
-
   /* Record the context of the current thread.  */
   thread_rec (ptid_t (current_event.dwProcessId, current_event.dwThreadId, 0),
 	      DONT_SUSPEND);
+
+  last_sig = GDB_SIGNAL_0;
 
   switch (code)
     {
     case EXCEPTION_ACCESS_VIOLATION:
       DEBUG_EXCEPTION_SIMPLE ("EXCEPTION_ACCESS_VIOLATION");
-      ourstatus->value.sig = GDB_SIGNAL_SEGV;
+      ourstatus->set_stopped (GDB_SIGNAL_SEGV);
       if (handle_access_violation (rec))
 	return HANDLE_EXCEPTION_UNHANDLED;
       break;
     case STATUS_STACK_OVERFLOW:
       DEBUG_EXCEPTION_SIMPLE ("STATUS_STACK_OVERFLOW");
-      ourstatus->value.sig = GDB_SIGNAL_SEGV;
+      ourstatus->set_stopped (GDB_SIGNAL_SEGV);
       break;
     case STATUS_FLOAT_DENORMAL_OPERAND:
       DEBUG_EXCEPTION_SIMPLE ("STATUS_FLOAT_DENORMAL_OPERAND");
-      ourstatus->value.sig = GDB_SIGNAL_FPE;
+      ourstatus->set_stopped (GDB_SIGNAL_FPE);
       break;
     case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
       DEBUG_EXCEPTION_SIMPLE ("EXCEPTION_ARRAY_BOUNDS_EXCEEDED");
-      ourstatus->value.sig = GDB_SIGNAL_FPE;
+      ourstatus->set_stopped (GDB_SIGNAL_FPE);
       break;
     case STATUS_FLOAT_INEXACT_RESULT:
       DEBUG_EXCEPTION_SIMPLE ("STATUS_FLOAT_INEXACT_RESULT");
-      ourstatus->value.sig = GDB_SIGNAL_FPE;
+      ourstatus->set_stopped (GDB_SIGNAL_FPE);
       break;
     case STATUS_FLOAT_INVALID_OPERATION:
       DEBUG_EXCEPTION_SIMPLE ("STATUS_FLOAT_INVALID_OPERATION");
-      ourstatus->value.sig = GDB_SIGNAL_FPE;
+      ourstatus->set_stopped (GDB_SIGNAL_FPE);
       break;
     case STATUS_FLOAT_OVERFLOW:
       DEBUG_EXCEPTION_SIMPLE ("STATUS_FLOAT_OVERFLOW");
-      ourstatus->value.sig = GDB_SIGNAL_FPE;
+      ourstatus->set_stopped (GDB_SIGNAL_FPE);
       break;
     case STATUS_FLOAT_STACK_CHECK:
       DEBUG_EXCEPTION_SIMPLE ("STATUS_FLOAT_STACK_CHECK");
-      ourstatus->value.sig = GDB_SIGNAL_FPE;
+      ourstatus->set_stopped (GDB_SIGNAL_FPE);
       break;
     case STATUS_FLOAT_UNDERFLOW:
       DEBUG_EXCEPTION_SIMPLE ("STATUS_FLOAT_UNDERFLOW");
-      ourstatus->value.sig = GDB_SIGNAL_FPE;
+      ourstatus->set_stopped (GDB_SIGNAL_FPE);
       break;
     case STATUS_FLOAT_DIVIDE_BY_ZERO:
       DEBUG_EXCEPTION_SIMPLE ("STATUS_FLOAT_DIVIDE_BY_ZERO");
-      ourstatus->value.sig = GDB_SIGNAL_FPE;
+      ourstatus->set_stopped (GDB_SIGNAL_FPE);
       break;
     case STATUS_INTEGER_DIVIDE_BY_ZERO:
       DEBUG_EXCEPTION_SIMPLE ("STATUS_INTEGER_DIVIDE_BY_ZERO");
-      ourstatus->value.sig = GDB_SIGNAL_FPE;
+      ourstatus->set_stopped (GDB_SIGNAL_FPE);
       break;
     case STATUS_INTEGER_OVERFLOW:
       DEBUG_EXCEPTION_SIMPLE ("STATUS_INTEGER_OVERFLOW");
-      ourstatus->value.sig = GDB_SIGNAL_FPE;
+      ourstatus->set_stopped (GDB_SIGNAL_FPE);
       break;
     case EXCEPTION_BREAKPOINT:
 #ifdef __x86_64__
@@ -263,8 +263,10 @@ handle_exception (struct target_waitstatus *ourstatus, bool debug_exceptions)
 	     on startup, first a BREAKPOINT for the 64bit ntdll.dll,
 	     then a WX86_BREAKPOINT for the 32bit ntdll.dll.
 	     Here we only care about the WX86_BREAKPOINT's.  */
-	  ourstatus->kind = TARGET_WAITKIND_SPURIOUS;
+	  DEBUG_EXCEPTION_SIMPLE ("EXCEPTION_BREAKPOINT - ignore_first_breakpoint");
+	  ourstatus->set_spurious ();
 	  ignore_first_breakpoint = false;
+	  break;
 	}
       else if (wow64_process)
 	{
@@ -275,47 +277,47 @@ handle_exception (struct target_waitstatus *ourstatus, bool debug_exceptions)
 	     gdb lets the target process continue.
 	     So handle it as SIGINT instead, then the target is stopped
 	     unconditionally.  */
-	  DEBUG_EXCEPTION_SIMPLE ("EXCEPTION_BREAKPOINT");
+	  DEBUG_EXCEPTION_SIMPLE ("EXCEPTION_BREAKPOINT - wow64_process");
 	  rec->ExceptionCode = DBG_CONTROL_C;
-	  ourstatus->value.sig = GDB_SIGNAL_INT;
+	  ourstatus->set_stopped (GDB_SIGNAL_INT);
 	  break;
 	}
 #endif
       /* FALLTHROUGH */
     case STATUS_WX86_BREAKPOINT:
       DEBUG_EXCEPTION_SIMPLE ("EXCEPTION_BREAKPOINT");
-      ourstatus->value.sig = GDB_SIGNAL_TRAP;
+      ourstatus->set_stopped (GDB_SIGNAL_TRAP);
       break;
     case DBG_CONTROL_C:
       DEBUG_EXCEPTION_SIMPLE ("DBG_CONTROL_C");
-      ourstatus->value.sig = GDB_SIGNAL_INT;
+      ourstatus->set_stopped (GDB_SIGNAL_INT);
       break;
     case DBG_CONTROL_BREAK:
       DEBUG_EXCEPTION_SIMPLE ("DBG_CONTROL_BREAK");
-      ourstatus->value.sig = GDB_SIGNAL_INT;
+      ourstatus->set_stopped (GDB_SIGNAL_INT);
       break;
     case EXCEPTION_SINGLE_STEP:
     case STATUS_WX86_SINGLE_STEP:
       DEBUG_EXCEPTION_SIMPLE ("EXCEPTION_SINGLE_STEP");
-      ourstatus->value.sig = GDB_SIGNAL_TRAP;
+      ourstatus->set_stopped (GDB_SIGNAL_TRAP);
       break;
     case EXCEPTION_ILLEGAL_INSTRUCTION:
       DEBUG_EXCEPTION_SIMPLE ("EXCEPTION_ILLEGAL_INSTRUCTION");
-      ourstatus->value.sig = GDB_SIGNAL_ILL;
+      ourstatus->set_stopped (GDB_SIGNAL_ILL);
       break;
     case EXCEPTION_PRIV_INSTRUCTION:
       DEBUG_EXCEPTION_SIMPLE ("EXCEPTION_PRIV_INSTRUCTION");
-      ourstatus->value.sig = GDB_SIGNAL_ILL;
+      ourstatus->set_stopped (GDB_SIGNAL_ILL);
       break;
     case EXCEPTION_NONCONTINUABLE_EXCEPTION:
       DEBUG_EXCEPTION_SIMPLE ("EXCEPTION_NONCONTINUABLE_EXCEPTION");
-      ourstatus->value.sig = GDB_SIGNAL_ILL;
+      ourstatus->set_stopped (GDB_SIGNAL_ILL);
       break;
     case MS_VC_EXCEPTION:
       DEBUG_EXCEPTION_SIMPLE ("MS_VC_EXCEPTION");
       if (handle_ms_vc_exception (rec))
 	{
-	  ourstatus->value.sig = GDB_SIGNAL_TRAP;
+	  ourstatus->set_stopped (GDB_SIGNAL_TRAP);
 	  result = HANDLE_EXCEPTION_IGNORED;
 	  break;
 	}
@@ -329,11 +331,13 @@ handle_exception (struct target_waitstatus *ourstatus, bool debug_exceptions)
 	(unsigned) current_event.u.Exception.ExceptionRecord.ExceptionCode,
 	host_address_to_string (
 	  current_event.u.Exception.ExceptionRecord.ExceptionAddress));
-      ourstatus->value.sig = GDB_SIGNAL_UNKNOWN;
+      ourstatus->set_stopped (GDB_SIGNAL_UNKNOWN);
       break;
     }
 
-  last_sig = ourstatus->value.sig;
+  if (ourstatus->kind () == TARGET_WAITKIND_STOPPED)
+    last_sig = ourstatus->sig ();
+
   return result;
 
 #undef DEBUG_EXCEPTION_SIMPLE

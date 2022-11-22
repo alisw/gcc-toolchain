@@ -1,8 +1,15 @@
-2022-02-09  Nick Clifton  <nickc@redhat.com>
+2022-08-05  Nick Clifton  <nickc@redhat.com>
 
-	2.38 release.
-	* Makefile.in: Regenerate.
+	2.39 Release.
 	* configure: Regenerate.
+
+2022-07-08  Nick Clifton  <nickc@redhat.com>
+
+	* 2.39 branch created.
+
+2022-03-16  Nick Clifton  <nickc@redhat.com>
+
+	* po/ru.po: Updated Russian translation.
 
 2022-01-24  Nick Clifton  <nickc@redhat.com>
 
@@ -11,8 +18,8 @@
 2022-01-22  Nick Clifton  <nickc@redhat.com>
 
 	* configure: Regenerate.
-	* po/gprof.pot: Regenerate.
 	* Makefile.in: Regenerate.
+	* po/gprof.pot: Regenerate.
 
 2022-01-22  Nick Clifton  <nickc@redhat.com>
 

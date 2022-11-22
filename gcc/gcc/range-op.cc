@@ -1,5 +1,5 @@
 /* Code for range operators.
-   Copyright (C) 2017-2021 Free Software Foundation, Inc.
+   Copyright (C) 2017-2022 Free Software Foundation, Inc.
    Contributed by Andrew MacLeod <amacleod@redhat.com>
    and Aldy Hernandez <aldyh@redhat.com>.
 
@@ -44,6 +44,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "gimple-walk.h"
 #include "tree-cfg.h"
 #include "wide-int.h"
+#include "value-relation.h"
 #include "range-op.h"
 
 // Return the upper limit for a type.
@@ -132,13 +133,71 @@ range_operator::wi_fold (irange &r, tree type,
   r.set_varying (type);
 }
 
+// Call wi_fold, except further split small subranges into constants.
+// This can provide better precision. For something   8 >> [0,1]
+// Instead of [8, 16], we will produce [8,8][16,16]
+
+void
+range_operator::wi_fold_in_parts (irange &r, tree type,
+				  const wide_int &lh_lb,
+				  const wide_int &lh_ub,
+				  const wide_int &rh_lb,
+				  const wide_int &rh_ub) const
+{
+  int_range_max tmp;
+  widest_int rh_range = wi::sub (widest_int::from (rh_ub, TYPE_SIGN (type)),
+				 widest_int::from (rh_lb, TYPE_SIGN (type)));
+  widest_int lh_range = wi::sub (widest_int::from (lh_ub, TYPE_SIGN (type)),
+				 widest_int::from (lh_lb, TYPE_SIGN (type)));
+  // If there are 2, 3, or 4 values in the RH range, do them separately.
+  // Call wi_fold_in_parts to check the RH side.
+  if (rh_range > 0 && rh_range < 4)
+    {
+      wi_fold_in_parts (r, type, lh_lb, lh_ub, rh_lb, rh_lb);
+      if (rh_range > 1)
+	{
+	  wi_fold_in_parts (tmp, type, lh_lb, lh_ub, rh_lb + 1, rh_lb + 1);
+	  r.union_ (tmp);
+	  if (rh_range == 3)
+	    {
+	      wi_fold_in_parts (tmp, type, lh_lb, lh_ub, rh_lb + 2, rh_lb + 2);
+	      r.union_ (tmp);
+	    }
+	}
+      wi_fold_in_parts (tmp, type, lh_lb, lh_ub, rh_ub, rh_ub);
+      r.union_ (tmp);
+    }
+  // Otherise check for 2, 3, or 4 values in the LH range and split them up.
+  // The RH side has been checked, so no recursion needed.
+  else if (lh_range > 0 && lh_range < 4)
+    {
+      wi_fold (r, type, lh_lb, lh_lb, rh_lb, rh_ub);
+      if (lh_range > 1)
+	{
+	  wi_fold (tmp, type, lh_lb + 1, lh_lb + 1, rh_lb, rh_ub);
+	  r.union_ (tmp);
+	  if (lh_range == 3)
+	    {
+	      wi_fold (tmp, type, lh_lb + 2, lh_lb + 2, rh_lb, rh_ub);
+	      r.union_ (tmp);
+	    }
+	}
+      wi_fold (tmp, type, lh_ub, lh_ub, rh_lb, rh_ub);
+      r.union_ (tmp);
+    }
+  // Otherwise just call wi_fold.
+  else
+    wi_fold (r, type, lh_lb, lh_ub, rh_lb, rh_ub);
+}
+
 // The default for fold is to break all ranges into sub-ranges and
 // invoke the wi_fold method on each sub-range pair.
 
 bool
 range_operator::fold_range (irange &r, tree type,
 			    const irange &lh,
-			    const irange &rh) const
+			    const irange &rh,
+			    relation_kind rel) const
 {
   gcc_checking_assert (irange::supports_type_p (type));
   if (empty_range_varying (r, type, lh, rh))
@@ -148,10 +207,13 @@ range_operator::fold_range (irange &r, tree type,
   unsigned num_rh = rh.num_pairs ();
 
   // If both ranges are single pairs, fold directly into the result range.
-  if (num_lh == 1 && num_rh == 1)
+  // If the number of subranges grows too high, produce a summary result as the
+  // loop becomes exponential with little benefit.  See PR 103821.
+  if ((num_lh == 1 && num_rh == 1) || num_lh * num_rh > 12)
     {
-      wi_fold (r, type, lh.lower_bound (0), lh.upper_bound (0),
-	       rh.lower_bound (0), rh.upper_bound (0));
+      wi_fold_in_parts (r, type, lh.lower_bound (), lh.upper_bound (),
+			rh.lower_bound (), rh.upper_bound ());
+      op1_op2_relation_effect (r, type, lh, rh, rel);
       return true;
     }
 
@@ -164,11 +226,15 @@ range_operator::fold_range (irange &r, tree type,
 	wide_int lh_ub = lh.upper_bound (x);
 	wide_int rh_lb = rh.lower_bound (y);
 	wide_int rh_ub = rh.upper_bound (y);
-	wi_fold (tmp, type, lh_lb, lh_ub, rh_lb, rh_ub);
+	wi_fold_in_parts (tmp, type, lh_lb, lh_ub, rh_lb, rh_ub);
 	r.union_ (tmp);
 	if (r.varying_p ())
-	  return true;
+	  {
+	    op1_op2_relation_effect (r, type, lh, rh, rel);
+	    return true;
+	  }
       }
+  op1_op2_relation_effect (r, type, lh, rh, rel);
   return true;
 }
 
@@ -178,7 +244,8 @@ bool
 range_operator::op1_range (irange &r ATTRIBUTE_UNUSED,
 			   tree type ATTRIBUTE_UNUSED,
 			   const irange &lhs ATTRIBUTE_UNUSED,
-			   const irange &op2 ATTRIBUTE_UNUSED) const
+			   const irange &op2 ATTRIBUTE_UNUSED,
+			   relation_kind rel ATTRIBUTE_UNUSED) const
 {
   return false;
 }
@@ -189,11 +256,47 @@ bool
 range_operator::op2_range (irange &r ATTRIBUTE_UNUSED,
 			   tree type ATTRIBUTE_UNUSED,
 			   const irange &lhs ATTRIBUTE_UNUSED,
-			   const irange &op1 ATTRIBUTE_UNUSED) const
+			   const irange &op1 ATTRIBUTE_UNUSED,
+			   relation_kind rel ATTRIBUTE_UNUSED) const
 {
   return false;
 }
 
+// The default relation routines return VREL_NONE.
+
+enum tree_code
+range_operator::lhs_op1_relation (const irange &lhs ATTRIBUTE_UNUSED,
+				  const irange &op1 ATTRIBUTE_UNUSED,
+				  const irange &op2 ATTRIBUTE_UNUSED) const
+{
+  return VREL_NONE;
+}
+
+enum tree_code
+range_operator::lhs_op2_relation (const irange &lhs ATTRIBUTE_UNUSED,
+				  const irange &op1 ATTRIBUTE_UNUSED,
+				  const irange &op2 ATTRIBUTE_UNUSED) const
+{
+  return VREL_NONE;
+}
+
+enum tree_code
+range_operator::op1_op2_relation (const irange &lhs ATTRIBUTE_UNUSED) const
+{
+  return VREL_NONE;
+}
+
+// Default is no relation affects the LHS.
+
+bool
+range_operator::op1_op2_relation_effect (irange &lhs_range ATTRIBUTE_UNUSED,
+				       tree type ATTRIBUTE_UNUSED,
+				       const irange &op1_range ATTRIBUTE_UNUSED,
+				       const irange &op2_range ATTRIBUTE_UNUSED,
+				       relation_kind rel ATTRIBUTE_UNUSED) const
+{
+  return false;
+}
 
 // Create and return a range from a pair of wide-ints that are known
 // to have overflowed (or underflowed).
@@ -385,27 +488,82 @@ get_bool_state (irange &r, const irange &lhs, tree val_type)
   return BRS_TRUE;
 }
 
+// For relation opcodes, first try to see if the supplied relation
+// forces a true or false result, and return that.
+// Then check for undefined operands.  If none of this applies,
+// return false.
+
+static inline bool
+relop_early_resolve (irange &r, tree type, const irange &op1,
+		     const irange &op2, relation_kind rel,
+		     relation_kind my_rel)
+{
+  // If known relation is a complete subset of this relation, always true.
+  if (relation_union (rel, my_rel) == my_rel)
+    {
+      r = range_true (type);
+      return true;
+    }
+
+  // If known relation has no subset of this relation, always false.
+  if (relation_intersect (rel, my_rel) == VREL_EMPTY)
+    {
+      r = range_false (type);
+      return true;
+    }
+
+  // If either operand is undefined, return VARYING.
+  if (empty_range_varying (r, type, op1, op2))
+    return true;
+
+  return false;
+}
+
 
 class operator_equal : public range_operator
 {
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &op1,
-			   const irange &op2) const;
+			   const irange &op2,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &val) const;
+			  const irange &val,
+			  relation_kind rel = VREL_NONE) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &val) const;
+			  const irange &val,
+			  relation_kind rel = VREL_NONE) const;
+  virtual enum tree_code op1_op2_relation (const irange &lhs) const;
 } op_equal;
+
+// Check if the LHS range indicates a relation between OP1 and OP2.
+
+enum tree_code
+operator_equal::op1_op2_relation (const irange &lhs) const
+{
+  if (lhs.undefined_p ())
+    return VREL_EMPTY;
+
+  // FALSE = op1 == op2 indicates NE_EXPR.
+  if (lhs.zero_p ())
+    return NE_EXPR;
+
+  // TRUE = op1 == op2 indicates EQ_EXPR.
+  if (!lhs.contains_p (build_zero_cst (lhs.type ())))
+    return EQ_EXPR;
+  return VREL_NONE;
+}
+
 
 bool
 operator_equal::fold_range (irange &r, tree type,
 			    const irange &op1,
-			    const irange &op2) const
+			    const irange &op2,
+			    relation_kind rel) const
 {
-  if (empty_range_varying (r, type, op1, op2))
+  if (relop_early_resolve (r, type, op1, op2, rel, EQ_EXPR))
     return true;
 
   // We can be sure the values are always equal or not if both ranges
@@ -435,7 +593,8 @@ operator_equal::fold_range (irange &r, tree type,
 bool
 operator_equal::op1_range (irange &r, tree type,
 			   const irange &lhs,
-			   const irange &op2) const
+			   const irange &op2,
+			   relation_kind rel ATTRIBUTE_UNUSED) const
 {
   switch (get_bool_state (r, lhs, type))
     {
@@ -465,32 +624,55 @@ operator_equal::op1_range (irange &r, tree type,
 bool
 operator_equal::op2_range (irange &r, tree type,
 			   const irange &lhs,
-			   const irange &op1) const
+			   const irange &op1,
+			   relation_kind rel) const
 {
-  return operator_equal::op1_range (r, type, lhs, op1);
+  return operator_equal::op1_range (r, type, lhs, op1, rel);
 }
-
 
 class operator_not_equal : public range_operator
 {
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &op1,
-			   const irange &op2) const;
+			   const irange &op2,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel = VREL_NONE) const;
+  virtual enum tree_code op1_op2_relation (const irange &lhs) const;
 } op_not_equal;
+
+// Check if the LHS range indicates a relation between OP1 and OP2.
+
+enum tree_code
+operator_not_equal::op1_op2_relation (const irange &lhs) const
+{
+  if (lhs.undefined_p ())
+    return VREL_EMPTY;
+
+  // FALSE = op1 != op2  indicates EQ_EXPR.
+  if (lhs.zero_p ())
+    return EQ_EXPR;
+
+  // TRUE = op1 != op2  indicates NE_EXPR.
+  if (!lhs.contains_p (build_zero_cst (lhs.type ())))
+    return NE_EXPR;
+  return VREL_NONE;
+}
 
 bool
 operator_not_equal::fold_range (irange &r, tree type,
 				const irange &op1,
-				const irange &op2) const
+				const irange &op2,
+				relation_kind rel) const
 {
-  if (empty_range_varying (r, type, op1, op2))
+  if (relop_early_resolve (r, type, op1, op2, rel, NE_EXPR))
     return true;
 
   // We can be sure the values are always equal or not if both ranges
@@ -520,7 +702,8 @@ operator_not_equal::fold_range (irange &r, tree type,
 bool
 operator_not_equal::op1_range (irange &r, tree type,
 			       const irange &lhs,
-			       const irange &op2) const
+			       const irange &op2,
+			       relation_kind rel ATTRIBUTE_UNUSED) const
 {
   switch (get_bool_state (r, lhs, type))
     {
@@ -551,9 +734,10 @@ operator_not_equal::op1_range (irange &r, tree type,
 bool
 operator_not_equal::op2_range (irange &r, tree type,
 			       const irange &lhs,
-			       const irange &op1) const
+			       const irange &op1,
+			       relation_kind rel) const
 {
-  return operator_not_equal::op1_range (r, type, lhs, op1);
+  return operator_not_equal::op1_range (r, type, lhs, op1, rel);
 }
 
 // (X < VAL) produces the range of [MIN, VAL - 1].
@@ -621,21 +805,44 @@ class operator_lt :  public range_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &op1,
-			   const irange &op2) const;
+			   const irange &op2,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel = VREL_NONE) const;
+  virtual enum tree_code op1_op2_relation (const irange &lhs) const;
 } op_lt;
+
+// Check if the LHS range indicates a relation between OP1 and OP2.
+
+enum tree_code
+operator_lt::op1_op2_relation (const irange &lhs) const
+{
+  if (lhs.undefined_p ())
+    return VREL_EMPTY;
+
+  // FALSE = op1 < op2 indicates GE_EXPR.
+  if (lhs.zero_p ())
+    return GE_EXPR;
+
+  // TRUE = op1 < op2 indicates LT_EXPR.
+  if (!lhs.contains_p (build_zero_cst (lhs.type ())))
+    return LT_EXPR;
+  return VREL_NONE;
+}
 
 bool
 operator_lt::fold_range (irange &r, tree type,
 			 const irange &op1,
-			 const irange &op2) const
+			 const irange &op2,
+			 relation_kind rel) const
 {
-  if (empty_range_varying (r, type, op1, op2))
+  if (relop_early_resolve (r, type, op1, op2, rel, LT_EXPR))
     return true;
 
   signop sign = TYPE_SIGN (op1.type ());
@@ -653,7 +860,8 @@ operator_lt::fold_range (irange &r, tree type,
 bool
 operator_lt::op1_range (irange &r, tree type,
 			const irange &lhs,
-			const irange &op2) const
+			const irange &op2,
+			relation_kind rel ATTRIBUTE_UNUSED) const
 {
   switch (get_bool_state (r, lhs, type))
     {
@@ -674,7 +882,8 @@ operator_lt::op1_range (irange &r, tree type,
 bool
 operator_lt::op2_range (irange &r, tree type,
 			const irange &lhs,
-			const irange &op1) const
+			const irange &op1,
+			relation_kind rel ATTRIBUTE_UNUSED) const
 {
   switch (get_bool_state (r, lhs, type))
     {
@@ -698,21 +907,44 @@ class operator_le :  public range_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &op1,
-			   const irange &op2) const;
+			   const irange &op2,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel = VREL_NONE) const;
+  virtual enum tree_code op1_op2_relation (const irange &lhs) const;
 } op_le;
+
+// Check if the LHS range indicates a relation between OP1 and OP2.
+
+enum tree_code
+operator_le::op1_op2_relation (const irange &lhs) const
+{
+  if (lhs.undefined_p ())
+    return VREL_EMPTY;
+
+  // FALSE = op1 <= op2 indicates GT_EXPR.
+  if (lhs.zero_p ())
+    return GT_EXPR;
+
+  // TRUE = op1 <= op2 indicates LE_EXPR.
+  if (!lhs.contains_p (build_zero_cst (lhs.type ())))
+    return LE_EXPR;
+  return VREL_NONE;
+}
 
 bool
 operator_le::fold_range (irange &r, tree type,
 			 const irange &op1,
-			 const irange &op2) const
+			 const irange &op2,
+			 relation_kind rel) const
 {
-  if (empty_range_varying (r, type, op1, op2))
+  if (relop_early_resolve (r, type, op1, op2, rel, LE_EXPR))
     return true;
 
   signop sign = TYPE_SIGN (op1.type ());
@@ -730,7 +962,8 @@ operator_le::fold_range (irange &r, tree type,
 bool
 operator_le::op1_range (irange &r, tree type,
 			const irange &lhs,
-			const irange &op2) const
+			const irange &op2,
+			relation_kind rel ATTRIBUTE_UNUSED) const
 {
   switch (get_bool_state (r, lhs, type))
     {
@@ -751,7 +984,8 @@ operator_le::op1_range (irange &r, tree type,
 bool
 operator_le::op2_range (irange &r, tree type,
 			const irange &lhs,
-			const irange &op1) const
+			const irange &op1,
+			relation_kind rel ATTRIBUTE_UNUSED) const
 {
   switch (get_bool_state (r, lhs, type))
     {
@@ -775,20 +1009,44 @@ class operator_gt :  public range_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &op1,
-			   const irange &op2) const;
+			   const irange &op2,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel = VREL_NONE) const;
+  virtual enum tree_code op1_op2_relation (const irange &lhs) const;
 } op_gt;
+
+// Check if the LHS range indicates a relation between OP1 and OP2.
+
+enum tree_code
+operator_gt::op1_op2_relation (const irange &lhs) const
+{
+  if (lhs.undefined_p ())
+    return VREL_EMPTY;
+
+  // FALSE = op1 > op2 indicates LE_EXPR.
+  if (lhs.zero_p ())
+    return LE_EXPR;
+
+  // TRUE = op1 > op2 indicates GT_EXPR.
+  if (!lhs.contains_p (build_zero_cst (lhs.type ())))
+    return GT_EXPR;
+  return VREL_NONE;
+}
+
 
 bool
 operator_gt::fold_range (irange &r, tree type,
-			 const irange &op1, const irange &op2) const
+			 const irange &op1, const irange &op2,
+			 relation_kind rel) const
 {
-  if (empty_range_varying (r, type, op1, op2))
+  if (relop_early_resolve (r, type, op1, op2, rel, GT_EXPR))
     return true;
 
   signop sign = TYPE_SIGN (op1.type ());
@@ -805,7 +1063,8 @@ operator_gt::fold_range (irange &r, tree type,
 
 bool
 operator_gt::op1_range (irange &r, tree type,
-			const irange &lhs, const irange &op2) const
+			const irange &lhs, const irange &op2,
+			relation_kind rel ATTRIBUTE_UNUSED) const
 {
   switch (get_bool_state (r, lhs, type))
     {
@@ -826,7 +1085,8 @@ operator_gt::op1_range (irange &r, tree type,
 bool
 operator_gt::op2_range (irange &r, tree type,
 			const irange &lhs,
-			const irange &op1) const
+			const irange &op1,
+			relation_kind rel ATTRIBUTE_UNUSED) const
 {
   switch (get_bool_state (r, lhs, type))
     {
@@ -850,21 +1110,44 @@ class operator_ge :  public range_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &op1,
-			   const irange &op2) const;
+			   const irange &op2,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel = VREL_NONE) const;
+  virtual enum tree_code op1_op2_relation (const irange &lhs) const;
 } op_ge;
+
+// Check if the LHS range indicates a relation between OP1 and OP2.
+
+enum tree_code
+operator_ge::op1_op2_relation (const irange &lhs) const
+{
+  if (lhs.undefined_p ())
+    return VREL_EMPTY;
+
+  // FALSE = op1 >= op2 indicates LT_EXPR.
+  if (lhs.zero_p ())
+    return LT_EXPR;
+
+  // TRUE = op1 >= op2 indicates GE_EXPR.
+  if (!lhs.contains_p (build_zero_cst (lhs.type ())))
+    return GE_EXPR;
+  return VREL_NONE;
+}
 
 bool
 operator_ge::fold_range (irange &r, tree type,
 			 const irange &op1,
-			 const irange &op2) const
+			 const irange &op2,
+			 relation_kind rel) const
 {
-  if (empty_range_varying (r, type, op1, op2))
+  if (relop_early_resolve (r, type, op1, op2, rel, GE_EXPR))
     return true;
 
   signop sign = TYPE_SIGN (op1.type ());
@@ -882,7 +1165,8 @@ operator_ge::fold_range (irange &r, tree type,
 bool
 operator_ge::op1_range (irange &r, tree type,
 			const irange &lhs,
-			const irange &op2) const
+			const irange &op2,
+			relation_kind rel ATTRIBUTE_UNUSED) const
 {
   switch (get_bool_state (r, lhs, type))
     {
@@ -903,7 +1187,8 @@ operator_ge::op1_range (irange &r, tree type,
 bool
 operator_ge::op2_range (irange &r, tree type,
 			const irange &lhs,
-			const irange &op1) const
+			const irange &op1,
+			relation_kind rel ATTRIBUTE_UNUSED) const
 {
   switch (get_bool_state (r, lhs, type))
     {
@@ -927,16 +1212,98 @@ class operator_plus : public range_operator
 public:
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel ATTRIBUTE_UNUSED) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel ATTRIBUTE_UNUSED) const;
   virtual void wi_fold (irange &r, tree type,
 		        const wide_int &lh_lb,
 		        const wide_int &lh_ub,
 		        const wide_int &rh_lb,
 		        const wide_int &rh_ub) const;
+  virtual enum tree_code lhs_op1_relation (const irange &lhs, const irange &op1,
+					   const irange &op2) const;
+  virtual enum tree_code lhs_op2_relation (const irange &lhs, const irange &op1,
+					   const irange &op2) const;
 } op_plus;
+
+// Check to see if the range of OP2 indicates anything about the relation
+// between LHS and OP1.
+
+enum tree_code
+operator_plus::lhs_op1_relation (const irange &lhs,
+				 const irange &op1,
+				 const irange &op2) const
+{
+  if (lhs.undefined_p () || op1.undefined_p () || op2.undefined_p ())
+    return VREL_NONE;
+
+  tree type = lhs.type ();
+  unsigned prec = TYPE_PRECISION (type);
+  wi::overflow_type ovf1, ovf2;
+  signop sign = TYPE_SIGN (type);
+
+  // LHS = OP1 + 0  indicates LHS == OP1.
+  if (op2.zero_p ())
+    return EQ_EXPR;
+
+  if (TYPE_OVERFLOW_WRAPS (type))
+    {
+      wi::add (op1.lower_bound (), op2.lower_bound (), sign, &ovf1);
+      wi::add (op1.upper_bound (), op2.upper_bound (), sign, &ovf2);
+    }
+  else
+    ovf1 = ovf2 = wi::OVF_NONE;
+
+  // Never wrapping additions.
+  if (!ovf1 && !ovf2)
+    {
+      // Positive op2 means lhs > op1.
+      if (wi::gt_p (op2.lower_bound (), wi::zero (prec), sign))
+	return GT_EXPR;
+      if (wi::ge_p (op2.lower_bound (), wi::zero (prec), sign))
+	return GE_EXPR;
+
+      // Negative op2 means lhs < op1.
+      if (wi::lt_p (op2.upper_bound (), wi::zero (prec), sign))
+	return LT_EXPR;
+      if (wi::le_p (op2.upper_bound (), wi::zero (prec), sign))
+	return LE_EXPR;
+    }
+  // Always wrapping additions.
+  else if (ovf1 && ovf1 == ovf2)
+    {
+      // Positive op2 means lhs < op1.
+      if (wi::gt_p (op2.lower_bound (), wi::zero (prec), sign))
+	return LT_EXPR;
+      if (wi::ge_p (op2.lower_bound (), wi::zero (prec), sign))
+	return LE_EXPR;
+
+      // Negative op2 means lhs > op1.
+      if (wi::lt_p (op2.upper_bound (), wi::zero (prec), sign))
+	return GT_EXPR;
+      if (wi::le_p (op2.upper_bound (), wi::zero (prec), sign))
+	return GE_EXPR;
+    }
+
+  // If op2 does not contain 0, then LHS and OP1 can never be equal.
+  if (!range_includes_zero_p (&op2))
+    return NE_EXPR;
+
+  return VREL_NONE;
+}
+
+// PLUS is symmetrical, so we can simply call lhs_op1_relation with reversed
+// operands.
+
+enum tree_code
+operator_plus::lhs_op2_relation (const irange &lhs, const irange &op1,
+				 const irange &op2) const
+{
+  return lhs_op1_relation (lhs, op2, op1);
+}
 
 void
 operator_plus::wi_fold (irange &r, tree type,
@@ -953,7 +1320,8 @@ operator_plus::wi_fold (irange &r, tree type,
 bool
 operator_plus::op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const
+			  const irange &op2,
+			  relation_kind rel ATTRIBUTE_UNUSED) const
 {
   return range_op_handler (MINUS_EXPR, type)->fold_range (r, type, lhs, op2);
 }
@@ -961,7 +1329,8 @@ operator_plus::op1_range (irange &r, tree type,
 bool
 operator_plus::op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const
+			  const irange &op1,
+			  relation_kind rel ATTRIBUTE_UNUSED) const
 {
   return range_op_handler (MINUS_EXPR, type)->fold_range (r, type, lhs, op1);
 }
@@ -972,15 +1341,22 @@ class operator_minus : public range_operator
 public:
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel ATTRIBUTE_UNUSED) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel ATTRIBUTE_UNUSED) const;
   virtual void wi_fold (irange &r, tree type,
 		        const wide_int &lh_lb,
 		        const wide_int &lh_ub,
 		        const wide_int &rh_lb,
 		        const wide_int &rh_ub) const;
+  virtual bool op1_op2_relation_effect (irange &lhs_range,
+					tree type,
+					const irange &op1_range,
+					const irange &op2_range,
+					relation_kind rel) const;
 } op_minus;
 
 void 
@@ -995,10 +1371,91 @@ operator_minus::wi_fold (irange &r, tree type,
   value_range_with_overflow (r, type, new_lb, new_ub, ov_lb, ov_ub);
 }
 
+// Check to see if the relation REL between OP1 and OP2 has any effect on the
+// LHS of the expression.  If so, apply it to LHS_RANGE.  This is a helper
+// function for both MINUS_EXPR and POINTER_DIFF_EXPR.
+
+static bool
+minus_op1_op2_relation_effect (irange &lhs_range, tree type,
+			       const irange &op1_range ATTRIBUTE_UNUSED,
+			       const irange &op2_range ATTRIBUTE_UNUSED,
+			       relation_kind rel)
+{
+  if (rel == VREL_NONE)
+    return false;
+
+  int_range<2> rel_range;
+  unsigned prec = TYPE_PRECISION (type);
+  signop sgn = TYPE_SIGN (type);
+
+  // == and != produce [0,0] and ~[0,0] regardless of wrapping.
+  if (rel == EQ_EXPR)
+    rel_range = int_range<2> (type, wi::zero (prec), wi::zero (prec));
+  else if (rel == NE_EXPR)
+    rel_range = int_range<2> (type, wi::zero (prec), wi::zero (prec),
+			      VR_ANTI_RANGE);
+  else if (TYPE_OVERFLOW_WRAPS (type))
+    {
+      switch (rel)
+	{
+	  // For wrapping signed values and unsigned, if op1 > op2 or
+	  // op1 < op2, then op1 - op2 can be restricted to ~[0, 0].
+	  case GT_EXPR:
+	  case LT_EXPR:
+	      rel_range = int_range<2> (type, wi::zero (prec), wi::zero (prec),
+					VR_ANTI_RANGE);
+	    break;
+	  default:
+	    return false;
+	}
+    }
+  else
+    {
+      switch (rel)
+	{
+	  // op1 > op2, op1 - op2 can be restricted to [1, +INF]
+	  case GT_EXPR:
+	    rel_range = int_range<2> (type, wi::one (prec),
+				      wi::max_value (prec, sgn));
+	    break;
+	  // op1 >= op2, op1 - op2 can be restricted to [0, +INF]
+	  case GE_EXPR:
+	    rel_range = int_range<2> (type, wi::zero (prec),
+				      wi::max_value (prec, sgn));
+	    break;
+	  // op1 < op2, op1 - op2 can be restricted to [-INF, -1]
+	  case LT_EXPR:
+	    rel_range = int_range<2> (type, wi::min_value (prec, sgn),
+				      wi::minus_one (prec));
+	    break;
+	  // op1 <= op2, op1 - op2 can be restricted to [-INF, 0]
+	  case LE_EXPR:
+	    rel_range = int_range<2> (type, wi::min_value (prec, sgn),
+				      wi::zero (prec));
+	    break;
+	  default:
+	    return false;
+	}
+    }
+  lhs_range.intersect (rel_range);
+  return true;
+}
+
+bool
+operator_minus::op1_op2_relation_effect (irange &lhs_range, tree type,
+					 const irange &op1_range,
+					 const irange &op2_range,
+					 relation_kind rel) const
+{
+  return minus_op1_op2_relation_effect (lhs_range, type, op1_range, op2_range,
+					rel);
+}
+
 bool
 operator_minus::op1_range (irange &r, tree type,
 			   const irange &lhs,
-			   const irange &op2) const
+			   const irange &op2,
+			   relation_kind rel ATTRIBUTE_UNUSED) const
 {
   return range_op_handler (PLUS_EXPR, type)->fold_range (r, type, lhs, op2);
 }
@@ -1006,9 +1463,30 @@ operator_minus::op1_range (irange &r, tree type,
 bool
 operator_minus::op2_range (irange &r, tree type,
 			   const irange &lhs,
-			   const irange &op1) const
+			   const irange &op1,
+			   relation_kind rel ATTRIBUTE_UNUSED) const
 {
   return fold_range (r, type, op1, lhs);
+}
+
+
+class operator_pointer_diff : public range_operator
+{
+  virtual bool op1_op2_relation_effect (irange &lhs_range,
+					tree type,
+					const irange &op1_range,
+					const irange &op2_range,
+					relation_kind rel) const;
+} op_pointer_diff;
+
+bool
+operator_pointer_diff::op1_op2_relation_effect (irange &lhs_range, tree type,
+						const irange &op1_range,
+						const irange &op2_range,
+						relation_kind rel) const
+{
+  return minus_op1_op2_relation_effect (lhs_range, type, op1_range, op2_range,
+					rel);
 }
 
 
@@ -1141,15 +1619,18 @@ public:
 				const wide_int &w0, const wide_int &w1) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel ATTRIBUTE_UNUSED) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel ATTRIBUTE_UNUSED) const;
 } op_mult;
 
 bool
 operator_mult::op1_range (irange &r, tree type,
-			  const irange &lhs, const irange &op2) const
+			  const irange &lhs, const irange &op2,
+			  relation_kind rel ATTRIBUTE_UNUSED) const
 {
   tree offset;
 
@@ -1167,9 +1648,10 @@ operator_mult::op1_range (irange &r, tree type,
 
 bool
 operator_mult::op2_range (irange &r, tree type,
-			  const irange &lhs, const irange &op1) const
+			  const irange &lhs, const irange &op1,
+			  relation_kind rel) const
 {
-  return operator_mult::op1_range (r, type, lhs, op1);
+  return operator_mult::op1_range (r, type, lhs, op1, rel);
 }
 
 bool
@@ -1334,13 +1816,6 @@ operator_div::wi_fold (irange &r, tree type,
 		       const wide_int &lh_lb, const wide_int &lh_ub,
 		       const wide_int &rh_lb, const wide_int &rh_ub) const
 {
-  // If we know we will divide by zero...
-  if (rh_lb == 0 && rh_ub == 0)
-    {
-      r.set_varying (type);
-      return;
-    }
-
   const wide_int dividend_min = lh_lb;
   const wide_int dividend_max = lh_ub;
   const wide_int divisor_min = rh_lb;
@@ -1357,17 +1832,10 @@ operator_div::wi_fold (irange &r, tree type,
       return;
     }
 
-  // If flag_non_call_exceptions, we must not eliminate a division by zero.
-  if (cfun->can_throw_non_call_exceptions)
-    {
-      r.set_varying (type);
-      return;
-    }
-
   // If we're definitely dividing by zero, there's nothing to do.
   if (wi_zero_p (type, divisor_min, divisor_max))
     {
-      r.set_varying (type);
+      r.set_undefined ();
       return;
     }
 
@@ -1405,14 +1873,16 @@ public:
   operator_exact_divide () : operator_div (TRUNC_DIV_EXPR) { }
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel ATTRIBUTE_UNUSED) const;
 
 } op_exact_div;
 
 bool
 operator_exact_divide::op1_range (irange &r, tree type,
 				  const irange &lhs,
-				  const irange &op2) const
+				  const irange &op2,
+				  relation_kind rel ATTRIBUTE_UNUSED) const
 {
   tree offset;
   // [2, 4] = op1 / [3,3]   since its exact divide, no need to worry about
@@ -1433,10 +1903,12 @@ class operator_lshift : public cross_product_operator
 public:
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
   virtual bool fold_range (irange &r, tree type,
 			   const irange &op1,
-			   const irange &op2) const;
+			   const irange &op2,
+			   relation_kind rel = VREL_NONE) const;
 
   virtual void wi_fold (irange &r, tree type,
 			const wide_int &lh_lb, const wide_int &lh_ub,
@@ -1452,7 +1924,8 @@ class operator_rshift : public cross_product_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &op1,
-			   const irange &op2) const;
+			   const irange &op2,
+			   relation_kind rel = VREL_NONE) const;
   virtual void wi_fold (irange &r, tree type,
 			const wide_int &lh_lb,
 			const wide_int &lh_ub,
@@ -1464,14 +1937,32 @@ public:
 				const wide_int &w1) const;
   virtual bool op1_range (irange &, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
+  virtual enum tree_code lhs_op1_relation (const irange &lhs,
+					   const irange &op1,
+					   const irange &op2) const;
 } op_rshift;
 
+
+enum tree_code
+operator_rshift::lhs_op1_relation (const irange &lhs ATTRIBUTE_UNUSED,
+				   const irange &op1,
+				   const irange &op2) const
+{
+  // If both operands range are >= 0, then the LHS <= op1.
+  if (!op1.undefined_p () && !op2.undefined_p ()
+      && wi::ge_p (op1.lower_bound (), 0, TYPE_SIGN (op1.type ()))
+      && wi::ge_p (op2.lower_bound (), 0, TYPE_SIGN (op2.type ())))
+    return LE_EXPR;
+  return VREL_NONE;
+}
 
 bool
 operator_lshift::fold_range (irange &r, tree type,
 			     const irange &op1,
-			     const irange &op2) const
+			     const irange &op2,
+			     relation_kind rel) const
 {
   int_range_max shift_range;
   if (!get_shift_range (shift_range, type, op2))
@@ -1502,7 +1993,7 @@ operator_lshift::fold_range (irange &r, tree type,
     }
   else
     // Otherwise, invoke the generic fold routine.
-    return range_operator::fold_range (r, type, op1, shift_range);
+    return range_operator::fold_range (r, type, op1, shift_range, rel);
 }
 
 void
@@ -1516,8 +2007,14 @@ operator_lshift::wi_fold (irange &r, tree type,
   int bound_shift = overflow_pos - rh_ub.to_shwi ();
   // If bound_shift == HOST_BITS_PER_WIDE_INT, the llshift can
   // overflow.  However, for that to happen, rh.max needs to be zero,
-  // which means rh is a singleton range of zero, which means it
-  // should be handled by the lshift fold_range above.
+  // which means rh is a singleton range of zero, which means we simply return
+  // [lh_lb, lh_ub] as the range.
+  if (wi::eq_p (rh_ub, rh_lb) && wi::eq_p (rh_ub, 0))
+    {
+      r = int_range<2> (type, lh_lb, lh_ub);
+      return;
+    }
+
   wide_int bound = wi::set_bit_in_zero (bound_shift, prec);
   wide_int complement = ~(bound - 1);
   wide_int low_bound, high_bound;
@@ -1586,9 +2083,16 @@ bool
 operator_lshift::op1_range (irange &r,
 			    tree type,
 			    const irange &lhs,
-			    const irange &op2) const
+			    const irange &op2,
+			    relation_kind rel ATTRIBUTE_UNUSED) const
 {
   tree shift_amount;
+
+  if (!lhs.contains_p (build_zero_cst (type)))
+    r.set_nonzero (type);
+  else
+    r.set_varying (type);
+
   if (op2.singleton_p (&shift_amount))
     {
       wide_int shift = wi::to_wide (shift_amount);
@@ -1600,21 +2104,22 @@ operator_lshift::op1_range (irange &r,
 	return false;
       if (shift == 0)
 	{
-	  r = lhs;
+	  r.intersect (lhs);
 	  return true;
 	}
 
       // Work completely in unsigned mode to start.
       tree utype = type;
+      int_range_max tmp_range;
       if (TYPE_SIGN (type) == SIGNED)
 	{
 	  int_range_max tmp = lhs;
 	  utype = unsigned_type_for (type);
 	  range_cast (tmp, utype);
-	  op_rshift.fold_range (r, utype, tmp, op2);
+	  op_rshift.fold_range (tmp_range, utype, tmp, op2);
 	}
       else
-	op_rshift.fold_range (r, utype, lhs, op2);
+	op_rshift.fold_range (tmp_range, utype, lhs, op2);
 
       // Start with ranges which can produce the LHS by right shifting the
       // result by the shift amount.
@@ -1630,23 +2135,27 @@ operator_lshift::op1_range (irange &r,
       unsigned low_bits = TYPE_PRECISION (utype)
 			  - TREE_INT_CST_LOW (shift_amount);
       wide_int up_mask = wi::mask (low_bits, true, TYPE_PRECISION (utype));
-      wide_int new_ub = wi::bit_or (up_mask, r.upper_bound ());
-      wide_int new_lb = wi::set_bit (r.lower_bound (), low_bits);
+      wide_int new_ub = wi::bit_or (up_mask, tmp_range.upper_bound ());
+      wide_int new_lb = wi::set_bit (tmp_range.lower_bound (), low_bits);
       int_range<2> fill_range (utype, new_lb, new_ub);
-      r.union_ (fill_range);
+      tmp_range.union_ (fill_range);
 
       if (utype != type)
-	range_cast (r, type);
+	range_cast (tmp_range, type);
+
+      r.intersect (tmp_range);
       return true;
     }
-  return false;
+
+  return !r.varying_p ();
 }
 
 bool
 operator_rshift::op1_range (irange &r,
 			    tree type,
 			    const irange &lhs,
-			    const irange &op2) const
+			    const irange &op2,
+			    relation_kind rel ATTRIBUTE_UNUSED) const
 {
   tree shift;
   if (op2.singleton_p (&shift))
@@ -1722,7 +2231,8 @@ operator_rshift::wi_op_overflows (wide_int &res,
 bool
 operator_rshift::fold_range (irange &r, tree type,
 			     const irange &op1,
-			     const irange &op2) const
+			     const irange &op2,
+			     relation_kind rel) const
 {
   int_range_max shift;
   if (!get_shift_range (shift, type, op2))
@@ -1734,7 +2244,7 @@ operator_rshift::fold_range (irange &r, tree type,
       return true;
     }
 
-  return range_operator::fold_range (r, type, op1, shift);
+  return range_operator::fold_range (r, type, op1, shift, rel);
 }
 
 void
@@ -1751,10 +2261,12 @@ class operator_cast: public range_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &op1,
-			   const irange &op2) const;
+			   const irange &op2,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
 private:
   bool truncating_cast_p (const irange &inner, const irange &outer) const;
   bool inside_domain_p (const wide_int &min, const wide_int &max,
@@ -1832,7 +2344,8 @@ operator_cast::fold_pair (irange &r, unsigned index,
 bool
 operator_cast::fold_range (irange &r, tree type ATTRIBUTE_UNUSED,
 			   const irange &inner,
-			   const irange &outer) const
+			   const irange &outer,
+			   relation_kind rel ATTRIBUTE_UNUSED) const
 {
   if (empty_range_varying (r, type, inner, outer))
     return true;
@@ -1858,7 +2371,8 @@ operator_cast::fold_range (irange &r, tree type ATTRIBUTE_UNUSED,
 bool
 operator_cast::op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const
+			  const irange &op2,
+			  relation_kind rel ATTRIBUTE_UNUSED) const
 {
   tree lhs_type = lhs.type ();
   gcc_checking_assert (types_compatible_p (op2.type(), type));
@@ -1968,20 +2482,24 @@ class operator_logical_and : public range_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &lh,
-			   const irange &rh) const;
+			   const irange &rh,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel = VREL_NONE) const;
 } op_logical_and;
 
 
 bool
 operator_logical_and::fold_range (irange &r, tree type,
 				  const irange &lh,
-				  const irange &rh) const
+				  const irange &rh,
+				  relation_kind rel ATTRIBUTE_UNUSED) const
 {
   if (empty_range_varying (r, type, lh, rh))
     return true;
@@ -2003,7 +2521,8 @@ operator_logical_and::fold_range (irange &r, tree type,
 bool
 operator_logical_and::op1_range (irange &r, tree type,
 				 const irange &lhs,
-				 const irange &op2 ATTRIBUTE_UNUSED) const
+				 const irange &op2 ATTRIBUTE_UNUSED,
+				 relation_kind rel ATTRIBUTE_UNUSED) const
 {
    switch (get_bool_state (r, lhs, type))
      {
@@ -2013,7 +2532,7 @@ operator_logical_and::op1_range (irange &r, tree type,
        break;
      default:
        // Any other result means only one side has to be false, the
-       // other side can be anything. So we cannott be sure of any
+       // other side can be anything.  So we cannot be sure of any
        // result here.
        r = range_true_and_false (type);
        break;
@@ -2024,7 +2543,8 @@ operator_logical_and::op1_range (irange &r, tree type,
 bool
 operator_logical_and::op2_range (irange &r, tree type,
 				 const irange &lhs,
-				 const irange &op1) const
+				 const irange &op1,
+				 relation_kind rel ATTRIBUTE_UNUSED) const
 {
   return operator_logical_and::op1_range (r, type, lhs, op1);
 }
@@ -2035,13 +2555,16 @@ class operator_bitwise_and : public range_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &lh,
-			   const irange &rh) const;
+			   const irange &rh,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel = VREL_NONE) const;
   virtual void wi_fold (irange &r, tree type,
 		        const wide_int &lh_lb,
 		        const wide_int &lh_ub,
@@ -2120,7 +2643,8 @@ operator_bitwise_and::remove_impossible_ranges (irange &r,
 bool
 operator_bitwise_and::fold_range (irange &r, tree type,
 				  const irange &lh,
-				  const irange &rh) const
+				  const irange &rh,
+				  relation_kind rel ATTRIBUTE_UNUSED) const
 {
   if (range_operator::fold_range (r, type, lh, rh))
     {
@@ -2411,7 +2935,8 @@ operator_bitwise_and::simple_op1_range_solver (irange &r, tree type,
 bool
 operator_bitwise_and::op1_range (irange &r, tree type,
 				 const irange &lhs,
-				 const irange &op2) const
+				 const irange &op2,
+				 relation_kind rel ATTRIBUTE_UNUSED) const
 {
   if (types_compatible_p (type, boolean_type_node))
     return op_logical_and.op1_range (r, type, lhs, op2);
@@ -2434,7 +2959,8 @@ operator_bitwise_and::op1_range (irange &r, tree type,
 bool
 operator_bitwise_and::op2_range (irange &r, tree type,
 				 const irange &lhs,
-				 const irange &op1) const
+				 const irange &op1,
+				 relation_kind rel ATTRIBUTE_UNUSED) const
 {
   return operator_bitwise_and::op1_range (r, type, lhs, op1);
 }
@@ -2445,19 +2971,23 @@ class operator_logical_or : public range_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &lh,
-			   const irange &rh) const;
+			   const irange &rh,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel = VREL_NONE) const;
 } op_logical_or;
 
 bool
 operator_logical_or::fold_range (irange &r, tree type ATTRIBUTE_UNUSED,
 				 const irange &lh,
-				 const irange &rh) const
+				 const irange &rh,
+				 relation_kind rel ATTRIBUTE_UNUSED) const
 {
   if (empty_range_varying (r, type, lh, rh))
     return true;
@@ -2470,7 +3000,8 @@ operator_logical_or::fold_range (irange &r, tree type ATTRIBUTE_UNUSED,
 bool
 operator_logical_or::op1_range (irange &r, tree type,
 				const irange &lhs,
-				const irange &op2 ATTRIBUTE_UNUSED) const
+				const irange &op2 ATTRIBUTE_UNUSED,
+				relation_kind rel ATTRIBUTE_UNUSED) const
 {
    switch (get_bool_state (r, lhs, type))
      {
@@ -2491,7 +3022,8 @@ operator_logical_or::op1_range (irange &r, tree type,
 bool
 operator_logical_or::op2_range (irange &r, tree type,
 				const irange &lhs,
-				const irange &op1) const
+				const irange &op1,
+				relation_kind rel ATTRIBUTE_UNUSED) const
 {
   return operator_logical_or::op1_range (r, type, lhs, op1);
 }
@@ -2502,10 +3034,12 @@ class operator_bitwise_or : public range_operator
 public:
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel= VREL_NONE) const;
   virtual void wi_fold (irange &r, tree type,
 		        const wide_int &lh_lb,
 		        const wide_int &lh_ub,
@@ -2548,17 +3082,27 @@ operator_bitwise_or::wi_fold (irange &r, tree type,
     new_lb = wi::max (new_lb, lh_lb, sign);
   if (wi::lt_p (rh_ub, 0, sign))
     new_lb = wi::max (new_lb, rh_lb, sign);
-  // If the limits got swapped around, return varying.
-  if (wi::gt_p (new_lb, new_ub,sign))
-    r.set_varying (type);
-  else
-    value_range_with_overflow (r, type, new_lb, new_ub);
+  // If the limits got swapped around, return a conservative range.
+  if (wi::gt_p (new_lb, new_ub, sign))
+    {
+      // Make sure that nonzero|X is nonzero.
+      if (wi::gt_p (lh_lb, 0, sign)
+	  || wi::gt_p (rh_lb, 0, sign)
+	  || wi::lt_p (lh_ub, 0, sign)
+	  || wi::lt_p (rh_ub, 0, sign))
+	r.set_nonzero (type);
+      else
+	r.set_varying (type);
+      return;
+    }
+  value_range_with_overflow (r, type, new_lb, new_ub);
 }
 
 bool
 operator_bitwise_or::op1_range (irange &r, tree type,
 				const irange &lhs,
-				const irange &op2) const
+				const irange &op2,
+				relation_kind rel ATTRIBUTE_UNUSED) const
 {
   // If this is really a logical wi_fold, call that.
   if (types_compatible_p (type, boolean_type_node))
@@ -2577,7 +3121,8 @@ operator_bitwise_or::op1_range (irange &r, tree type,
 bool
 operator_bitwise_or::op2_range (irange &r, tree type,
 				const irange &lhs,
-				const irange &op1) const
+				const irange &op1,
+				relation_kind rel ATTRIBUTE_UNUSED) const
 {
   return operator_bitwise_or::op1_range (r, type, lhs, op1);
 }
@@ -2593,10 +3138,17 @@ public:
 		        const wide_int &rh_ub) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel = VREL_NONE) const;
+  virtual bool op1_op2_relation_effect (irange &lhs_range,
+					tree type,
+					const irange &op1_range,
+					const irange &op2_range,
+					relation_kind rel) const;
 } op_bitwise_xor;
 
 void
@@ -2631,9 +3183,38 @@ operator_bitwise_xor::wi_fold (irange &r, tree type,
 }
 
 bool
+operator_bitwise_xor::op1_op2_relation_effect (irange &lhs_range,
+					       tree type,
+					       const irange &,
+					       const irange &,
+					       relation_kind rel) const
+{
+  if (rel == VREL_NONE)
+    return false;
+
+  int_range<2> rel_range;
+
+  switch (rel)
+    {
+    case EQ_EXPR:
+      rel_range.set_zero (type);
+      break;
+    case NE_EXPR:
+      rel_range.set_nonzero (type);
+      break;
+    default:
+      return false;
+    }
+
+  lhs_range.intersect (rel_range);
+  return true;
+}
+
+bool
 operator_bitwise_xor::op1_range (irange &r, tree type,
 				 const irange &lhs,
-				 const irange &op2) const
+				 const irange &op2,
+				 relation_kind rel ATTRIBUTE_UNUSED) const
 {
   if (lhs.undefined_p () || lhs.varying_p ())
     {
@@ -2667,7 +3248,8 @@ operator_bitwise_xor::op1_range (irange &r, tree type,
 bool
 operator_bitwise_xor::op2_range (irange &r, tree type,
 				 const irange &lhs,
-				 const irange &op1) const
+				 const irange &op1,
+				 relation_kind rel ATTRIBUTE_UNUSED) const
 {
   return operator_bitwise_xor::op1_range (r, type, lhs, op1);
 }
@@ -2682,10 +3264,12 @@ public:
 		        const wide_int &rh_ub) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel ATTRIBUTE_UNUSED) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel ATTRIBUTE_UNUSED) const;
 } op_trunc_mod;
 
 void
@@ -2702,8 +3286,20 @@ operator_trunc_mod::wi_fold (irange &r, tree type,
   // Mod 0 is undefined.
   if (wi_zero_p (type, rh_lb, rh_ub))
     {
-      r.set_varying (type);
+      r.set_undefined ();
       return;
+    }
+
+  // Check for constant and try to fold.
+  if (lh_lb == lh_ub && rh_lb == rh_ub)
+    {
+      wi::overflow_type ov = wi::OVF_NONE;
+      tmp = wi::mod_trunc (lh_lb, rh_lb, sign, &ov);
+      if (ov == wi::OVF_NONE)
+	{
+	  r = int_range<2> (type, tmp, tmp);
+	  return;
+	}
     }
 
   // ABS (A % B) < ABS (B) and either 0 <= A % B <= A or A <= A % B <= 0.
@@ -2735,7 +3331,8 @@ operator_trunc_mod::wi_fold (irange &r, tree type,
 bool
 operator_trunc_mod::op1_range (irange &r, tree type,
 			       const irange &lhs,
-			       const irange &) const
+			       const irange &,
+			       relation_kind rel ATTRIBUTE_UNUSED) const
 {
   // PR 91029.
   signop sign = TYPE_SIGN (type);
@@ -2758,7 +3355,8 @@ operator_trunc_mod::op1_range (irange &r, tree type,
 bool
 operator_trunc_mod::op2_range (irange &r, tree type,
 			       const irange &lhs,
-			       const irange &) const
+			       const irange &,
+			       relation_kind rel ATTRIBUTE_UNUSED) const
 {
   // PR 91029.
   signop sign = TYPE_SIGN (type);
@@ -2797,10 +3395,12 @@ class operator_logical_not : public range_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &lh,
-			   const irange &rh) const;
+			   const irange &rh,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
 } op_logical_not;
 
 // Folding a logical NOT, oddly enough, involves doing nothing on the
@@ -2820,7 +3420,8 @@ public:
 bool
 operator_logical_not::fold_range (irange &r, tree type,
 				  const irange &lh,
-				  const irange &rh ATTRIBUTE_UNUSED) const
+				  const irange &rh ATTRIBUTE_UNUSED,
+				  relation_kind rel ATTRIBUTE_UNUSED) const
 {
   if (empty_range_varying (r, type, lh, rh))
     return true;
@@ -2836,7 +3437,8 @@ bool
 operator_logical_not::op1_range (irange &r,
 				 tree type,
 				 const irange &lhs,
-				 const irange &op2) const
+				 const irange &op2,
+				 relation_kind rel ATTRIBUTE_UNUSED) const
 {
   // Logical NOT is involutary...do it again.
   return fold_range (r, type, lhs, op2);
@@ -2848,16 +3450,19 @@ class operator_bitwise_not : public range_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &lh,
-			   const irange &rh) const;
+			   const irange &rh,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
 } op_bitwise_not;
 
 bool
 operator_bitwise_not::fold_range (irange &r, tree type,
 				  const irange &lh,
-				  const irange &rh) const
+				  const irange &rh,
+				  relation_kind rel ATTRIBUTE_UNUSED) const
 {
   if (empty_range_varying (r, type, lh, rh))
     return true;
@@ -2875,7 +3480,8 @@ operator_bitwise_not::fold_range (irange &r, tree type,
 bool
 operator_bitwise_not::op1_range (irange &r, tree type,
 				 const irange &lhs,
-				 const irange &op2) const
+				 const irange &op2,
+				 relation_kind rel ATTRIBUTE_UNUSED) const
 {
   if (types_compatible_p (type, boolean_type_node))
     return op_logical_not.op1_range (r, type, lhs, op2);
@@ -2890,13 +3496,15 @@ class operator_cst : public range_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &op1,
-			   const irange &op2) const;
+			   const irange &op2,
+			   relation_kind rel = VREL_NONE) const;
 } op_integer_cst;
 
 bool
 operator_cst::fold_range (irange &r, tree type ATTRIBUTE_UNUSED,
 			  const irange &lh,
-			  const irange &rh ATTRIBUTE_UNUSED) const
+			  const irange &rh ATTRIBUTE_UNUSED,
+			  relation_kind rel ATTRIBUTE_UNUSED) const
 {
   r = lh;
   return true;
@@ -2908,16 +3516,35 @@ class operator_identity : public range_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &op1,
-			   const irange &op2) const;
+			   const irange &op2,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
+  virtual enum tree_code lhs_op1_relation (const irange &lhs,
+					   const irange &op1,
+					   const irange &op2) const;
 } op_identity;
+
+// Determine if there is a relationship between LHS and OP1.
+
+enum tree_code
+operator_identity::lhs_op1_relation (const irange &lhs,
+				     const irange &op1 ATTRIBUTE_UNUSED,
+				     const irange &op2 ATTRIBUTE_UNUSED) const
+{
+  if (lhs.undefined_p ())
+    return VREL_NONE;
+  // Simply a copy, so they are equivalent.
+  return EQ_EXPR;
+}
 
 bool
 operator_identity::fold_range (irange &r, tree type ATTRIBUTE_UNUSED,
 			       const irange &lh,
-			       const irange &rh ATTRIBUTE_UNUSED) const
+			       const irange &rh ATTRIBUTE_UNUSED,
+			       relation_kind rel ATTRIBUTE_UNUSED) const
 {
   r = lh;
   return true;
@@ -2926,7 +3553,8 @@ operator_identity::fold_range (irange &r, tree type ATTRIBUTE_UNUSED,
 bool
 operator_identity::op1_range (irange &r, tree type ATTRIBUTE_UNUSED,
 			      const irange &lhs,
-			      const irange &op2 ATTRIBUTE_UNUSED) const
+			      const irange &op2 ATTRIBUTE_UNUSED,
+			      relation_kind rel ATTRIBUTE_UNUSED) const
 {
   r = lhs;
   return true;
@@ -2938,13 +3566,15 @@ class operator_unknown : public range_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &op1,
-			   const irange &op2) const;
+			   const irange &op2,
+			   relation_kind rel = VREL_NONE) const;
 } op_unknown;
 
 bool
 operator_unknown::fold_range (irange &r, tree type,
 			      const irange &lh ATTRIBUTE_UNUSED,
-			      const irange &rh ATTRIBUTE_UNUSED) const
+			      const irange &rh ATTRIBUTE_UNUSED,
+			      relation_kind rel ATTRIBUTE_UNUSED) const
 {
   r.set_varying (type);
   return true;
@@ -2961,7 +3591,8 @@ class operator_abs : public range_operator
 		        const wide_int &rh_ub) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel ATTRIBUTE_UNUSED) const;
 } op_abs;
 
 void
@@ -3041,7 +3672,8 @@ operator_abs::wi_fold (irange &r, tree type,
 bool
 operator_abs::op1_range (irange &r, tree type,
 			 const irange &lhs,
-			 const irange &op2) const
+			 const irange &op2,
+			 relation_kind rel ATTRIBUTE_UNUSED) const
 {
   if (empty_range_varying (r, type, lhs, op2))
     return true;
@@ -3060,6 +3692,12 @@ operator_abs::op1_range (irange &r, tree type,
     r.union_ (int_range<1> (type,
 			    -positives.upper_bound (i),
 			    -positives.lower_bound (i)));
+  // With flag_wrapv, -TYPE_MIN_VALUE = TYPE_MIN_VALUE which is
+  // unrepresentable.  Add -TYPE_MIN_VALUE in this case.
+  wide_int min_value = wi::min_value (TYPE_PRECISION (type), TYPE_SIGN (type));
+  wide_int lb = lhs.lower_bound ();
+  if (!TYPE_OVERFLOW_UNDEFINED (type) && wi::eq_p (lb, min_value))
+    r.union_ (int_range<2> (type, lb, lb));
   return true;
 }
 
@@ -3113,16 +3751,19 @@ class operator_negate : public range_operator
  public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &op1,
-			   const irange &op2) const;
+			   const irange &op2,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
 } op_negate;
 
 bool
 operator_negate::fold_range (irange &r, tree type,
 			     const irange &lh,
-			     const irange &rh) const
+			     const irange &rh,
+			     relation_kind rel ATTRIBUTE_UNUSED) const
 {
   if (empty_range_varying (r, type, lh, rh))
     return true;
@@ -3135,7 +3776,8 @@ operator_negate::fold_range (irange &r, tree type,
 bool
 operator_negate::op1_range (irange &r, tree type,
 			    const irange &lhs,
-			    const irange &op2) const
+			    const irange &op2,
+			    relation_kind rel ATTRIBUTE_UNUSED) const
 {
   // NEGATE is involutory.
   return fold_range (r, type, lhs, op2);
@@ -3147,16 +3789,19 @@ class operator_addr_expr : public range_operator
 public:
   virtual bool fold_range (irange &r, tree type,
 			   const irange &op1,
-			   const irange &op2) const;
+			   const irange &op2,
+			   relation_kind rel = VREL_NONE) const;
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
 } op_addr;
 
 bool
 operator_addr_expr::fold_range (irange &r, tree type,
 				const irange &lh,
-				const irange &rh) const
+				const irange &rh,
+				relation_kind rel ATTRIBUTE_UNUSED) const
 {
   if (empty_range_varying (r, type, lh, rh))
     return true;
@@ -3174,7 +3819,8 @@ operator_addr_expr::fold_range (irange &r, tree type,
 bool
 operator_addr_expr::op1_range (irange &r, tree type,
 			       const irange &lhs,
-			       const irange &op2) const
+			       const irange &op2,
+			       relation_kind rel ATTRIBUTE_UNUSED) const
 {
   return operator_addr_expr::fold_range (r, type, lhs, op2);
 }
@@ -3293,10 +3939,12 @@ class pointer_or_operator : public range_operator
 public:
   virtual bool op1_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op2) const;
+			  const irange &op2,
+			  relation_kind rel = VREL_NONE) const;
   virtual bool op2_range (irange &r, tree type,
 			  const irange &lhs,
-			  const irange &op1) const;
+			  const irange &op1,
+			  relation_kind rel = VREL_NONE) const;
   virtual void wi_fold (irange &r, tree type,
 			const wide_int &lh_lb, const wide_int &lh_ub,
 			const wide_int &rh_lb, const wide_int &rh_ub) const;
@@ -3305,7 +3953,8 @@ public:
 bool
 pointer_or_operator::op1_range (irange &r, tree type,
 				const irange &lhs,
-				const irange &op2 ATTRIBUTE_UNUSED) const
+				const irange &op2 ATTRIBUTE_UNUSED,
+				relation_kind rel ATTRIBUTE_UNUSED) const
 {
   if (lhs.zero_p ())
     {
@@ -3320,7 +3969,8 @@ pointer_or_operator::op1_range (irange &r, tree type,
 bool
 pointer_or_operator::op2_range (irange &r, tree type,
 				const irange &lhs,
-				const irange &op1) const
+				const irange &op1,
+				relation_kind rel ATTRIBUTE_UNUSED) const
 {
   return pointer_or_operator::op1_range (r, type, lhs, op1);
 }
@@ -3417,7 +4067,8 @@ integral_table::integral_table ()
   set (PAREN_EXPR, op_identity);
   set (OBJ_TYPE_REF, op_identity);
   set (IMAGPART_EXPR, op_unknown);
-  set (POINTER_DIFF_EXPR, op_unknown);
+  set (REALPART_EXPR, op_unknown);
+  set (POINTER_DIFF_EXPR, op_pointer_diff);
   set (ABS_EXPR, op_abs);
   set (ABSU_EXPR, op_absu);
   set (NEGATE_EXPR, op_negate);
@@ -3758,6 +4409,42 @@ range_op_bitwise_and_tests ()
   i1 = int_range<1> (integer_type_node);
   op_bitwise_and.op1_range (res, integer_type_node, i1, i2);
   ASSERT_TRUE (res == int_range<1> (integer_type_node));
+
+  // (NONZERO | X) is nonzero.
+  i1.set_nonzero (integer_type_node);
+  i2.set_varying (integer_type_node);
+  op_bitwise_or.fold_range (res, integer_type_node, i1, i2);
+  ASSERT_TRUE (res.nonzero_p ());
+
+  // (NEGATIVE | X) is nonzero.
+  i1 = int_range<1> (INT (-5), INT (-3));
+  i2.set_varying (integer_type_node);
+  op_bitwise_or.fold_range (res, integer_type_node, i1, i2);
+  ASSERT_FALSE (res.contains_p (INT (0)));
+}
+
+static void
+range_relational_tests ()
+{
+  int_range<2> lhs (unsigned_char_type_node);
+  int_range<2> op1 (UCHAR (8), UCHAR (10));
+  int_range<2> op2 (UCHAR (20), UCHAR (20));
+
+  // Never wrapping additions mean LHS > OP1.
+  tree_code code = op_plus.lhs_op1_relation (lhs, op1, op2);
+  ASSERT_TRUE (code == GT_EXPR);
+
+  // Most wrapping additions mean nothing...
+  op1 = int_range<2> (UCHAR (8), UCHAR (10));
+  op2 = int_range<2> (UCHAR (0), UCHAR (255));
+  code = op_plus.lhs_op1_relation (lhs, op1, op2);
+  ASSERT_TRUE (code == VREL_NONE);
+
+  // However, always wrapping additions mean LHS < OP1.
+  op1 = int_range<2> (UCHAR (1), UCHAR (255));
+  op2 = int_range<2> (UCHAR (255), UCHAR (255));
+  code = op_plus.lhs_op1_relation (lhs, op1, op2);
+  ASSERT_TRUE (code == LT_EXPR);
 }
 
 void
@@ -3767,6 +4454,7 @@ range_op_tests ()
   range_op_lshift_tests ();
   range_op_bitwise_and_tests ();
   range_op_cast_tests ();
+  range_relational_tests ();
 }
 
 } // namespace selftest

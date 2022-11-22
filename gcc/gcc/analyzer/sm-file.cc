@@ -1,5 +1,5 @@
 /* A state machine for detecting misuses of <stdio.h>'s FILE * API.
-   Copyright (C) 2019-2021 Free Software Foundation, Inc.
+   Copyright (C) 2019-2022 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -77,9 +77,9 @@ public:
   void on_condition (sm_context *sm_ctxt,
 		     const supernode *node,
 		     const gimple *stmt,
-		     tree lhs,
+		     const svalue *lhs,
 		     enum tree_code op,
-		     tree rhs) const FINAL OVERRIDE;
+		     const svalue *rhs) const FINAL OVERRIDE;
 
   bool can_purge_p (state_t s) const FINAL OVERRIDE;
   pending_diagnostic *on_leak (tree var) const FINAL OVERRIDE;
@@ -125,11 +125,21 @@ public:
       return label_text::borrow ("opened here");
     if (change.m_old_state == m_sm.m_unchecked
 	&& change.m_new_state == m_sm.m_nonnull)
-      return change.formatted_print ("assuming %qE is non-NULL",
-				     change.m_expr);
+      {
+	if (change.m_expr)
+	  return change.formatted_print ("assuming %qE is non-NULL",
+					 change.m_expr);
+	else
+	  return change.formatted_print ("assuming FILE * is non-NULL");
+      }
     if (change.m_new_state == m_sm.m_null)
-      return change.formatted_print ("assuming %qE is NULL",
-				     change.m_expr);
+      {
+	if (change.m_expr)
+	  return change.formatted_print ("assuming %qE is NULL",
+					 change.m_expr);
+	else
+	  return change.formatted_print ("assuming FILE * is NULL");
+      }
     return label_text ();
   }
 
@@ -147,9 +157,14 @@ public:
 
   const char *get_kind () const FINAL OVERRIDE { return "double_fclose"; }
 
+  int get_controlling_option () const FINAL OVERRIDE
+  {
+    return OPT_Wanalyzer_double_fclose;
+  }
+
   bool emit (rich_location *rich_loc) FINAL OVERRIDE
   {
-    return warning_at (rich_loc, OPT_Wanalyzer_double_fclose,
+    return warning_at (rich_loc, get_controlling_option (),
 		       "double %<fclose%> of FILE %qE",
 		       m_arg);
   }
@@ -187,15 +202,24 @@ public:
 
   const char *get_kind () const FINAL OVERRIDE { return "file_leak"; }
 
+  int get_controlling_option () const FINAL OVERRIDE
+  {
+    return OPT_Wanalyzer_file_leak;
+  }
+
   bool emit (rich_location *rich_loc) FINAL OVERRIDE
   {
     diagnostic_metadata m;
     /* CWE-775: "Missing Release of File Descriptor or Handle after
        Effective Lifetime". */
     m.add_cwe (775);
-    return warning_meta (rich_loc, m, OPT_Wanalyzer_file_leak,
-			 "leak of FILE %qE",
-			 m_arg);
+    if (m_arg)
+      return warning_meta (rich_loc, m, get_controlling_option (),
+			   "leak of FILE %qE",
+			   m_arg);
+    else
+      return warning_meta (rich_loc, m, get_controlling_option (),
+			   "leak of FILE");
   }
 
   label_text describe_state_change (const evdesc::state_change &change)
@@ -212,10 +236,21 @@ public:
   label_text describe_final_event (const evdesc::final_event &ev) FINAL OVERRIDE
   {
     if (m_fopen_event.known_p ())
-      return ev.formatted_print ("%qE leaks here; was opened at %@",
-				 ev.m_expr, &m_fopen_event);
+      {
+	if (ev.m_expr)
+	  return ev.formatted_print ("%qE leaks here; was opened at %@",
+				     ev.m_expr, &m_fopen_event);
+	else
+	  return ev.formatted_print ("leaks here; was opened at %@",
+				     &m_fopen_event);
+      }
     else
-      return ev.formatted_print ("%qE leaks here", ev.m_expr);
+      {
+	if (ev.m_expr)
+	  return ev.formatted_print ("%qE leaks here", ev.m_expr);
+	else
+	  return ev.formatted_print ("leaks here");
+      }
   }
 
 private:
@@ -312,9 +347,8 @@ is_file_using_fn_p (tree fndecl)
 
   /* Also support variants of these names prefixed with "_IO_".  */
   const char *name = IDENTIFIER_POINTER (DECL_NAME (fndecl));
-  if (strncmp (name, "_IO_", 4) == 0)
-    if (fs.contains_name_p (name + 4))
-      return true;
+  if (startswith (name, "_IO_") && fs.contains_name_p (name + 4))
+    return true;
 
   return false;
 }
@@ -382,19 +416,18 @@ void
 fileptr_state_machine::on_condition (sm_context *sm_ctxt,
 				     const supernode *node,
 				     const gimple *stmt,
-				     tree lhs,
+				     const svalue *lhs,
 				     enum tree_code op,
-				     tree rhs) const
+				     const svalue *rhs) const
 {
-  if (!zerop (rhs))
+  if (!rhs->all_zeroes_p ())
     return;
 
   // TODO: has to be a FILE *, specifically
-  if (TREE_CODE (TREE_TYPE (lhs)) != POINTER_TYPE)
+  if (!any_pointer_p (lhs))
     return;
-
   // TODO: has to be a FILE *, specifically
-  if (TREE_CODE (TREE_TYPE (rhs)) != POINTER_TYPE)
+  if (!any_pointer_p (rhs))
     return;
 
   if (op == NE_EXPR)

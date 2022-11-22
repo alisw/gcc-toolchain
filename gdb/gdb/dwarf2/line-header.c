@@ -96,25 +96,6 @@ line_header::file_file_name (int file) const
     }
 }
 
-gdb::unique_xmalloc_ptr<char>
-line_header::file_full_name (int file, const char *comp_dir) const
-{
-  /* Is the file number a valid index into the line header's file name
-     table?  Remember that file numbers start with one, not zero.  */
-  if (is_valid_file_index (file))
-    {
-      gdb::unique_xmalloc_ptr<char> relative = file_file_name (file);
-
-      if (IS_ABSOLUTE_PATH (relative.get ()) || comp_dir == NULL)
-	return relative;
-      return gdb::unique_xmalloc_ptr<char> (concat (comp_dir, SLASH_STRING,
-						    relative.get (),
-						    (char *) NULL));
-    }
-  else
-    return file_file_name (file);
-}
-
 static void
 dwarf2_statement_list_fits_in_line_number_section_complaint (void)
 {
@@ -156,7 +137,7 @@ read_checked_initial_length_and_offset (bfd *abfd, const gdb_byte *buf,
 static void
 read_formatted_entries (dwarf2_per_objfile *per_objfile, bfd *abfd,
 			const gdb_byte **bufp, struct line_header *lh,
-			const struct comp_unit_head *cu_header,
+			unsigned int offset_size,
 			void (*callback) (struct line_header *lh,
 					  const char *name,
 					  dir_index d_index,
@@ -206,9 +187,12 @@ read_formatted_entries (dwarf2_per_objfile *per_objfile, bfd *abfd,
 	      break;
 
 	    case DW_FORM_line_strp:
-	      string.emplace
-		(per_objfile->read_line_string (buf, cu_header, &bytes_read));
-	      buf += bytes_read;
+	      {
+		const char *str
+		  = per_objfile->read_line_string (buf, offset_size);
+		string.emplace (str);
+		buf += offset_size;
+	      }
 	      break;
 
 	    case DW_FORM_data1:
@@ -391,7 +375,7 @@ dwarf_decode_line_header  (sect_offset sect_off, bool is_dwz,
     {
       /* Read directory table.  */
       read_formatted_entries (per_objfile, abfd, &line_ptr, lh.get (),
-			      cu_header,
+			      offset_size,
 			      [] (struct line_header *header, const char *name,
 				  dir_index d_index, unsigned int mod_time,
 				  unsigned int length)
@@ -401,7 +385,7 @@ dwarf_decode_line_header  (sect_offset sect_off, bool is_dwz,
 
       /* Read file name table.  */
       read_formatted_entries (per_objfile, abfd, &line_ptr, lh.get (),
-			      cu_header,
+			      offset_size,
 			      [] (struct line_header *header, const char *name,
 				  dir_index d_index, unsigned int mod_time,
 				  unsigned int length)

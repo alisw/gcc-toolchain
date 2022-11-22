@@ -6,7 +6,7 @@
  *                                                                          *
  *                              C Header File                               *
  *                                                                          *
- *          Copyright (C) 1992-2020, Free Software Foundation, Inc.         *
+ *          Copyright (C) 1992-2021, Free Software Foundation, Inc.         *
  *                                                                          *
  * GNAT is free software;  you can  redistribute it  and/or modify it under *
  * terms of the  GNU General Public License as published  by the Free Soft- *
@@ -410,10 +410,6 @@ do {						   \
 
 /* Flags added to decl nodes.  */
 
-/* Nonzero in a FUNCTION_DECL that represents a stubbed function
-   discriminant.  */
-#define DECL_STUBBED_P(NODE) DECL_LANG_FLAG_0 (FUNCTION_DECL_CHECK (NODE))
-
 /* Nonzero in a VAR_DECL if it is guaranteed to be constant after having
    been elaborated and TREE_READONLY is not set on it.  */
 #define DECL_READONLY_ONCE_ELAB(NODE) DECL_LANG_FLAG_0 (VAR_DECL_CHECK (NODE))
@@ -580,6 +576,6 @@ do {						   \
 #define EXIT_STMT_LABEL(NODE)    TREE_OPERAND_CHECK_CODE (NODE, EXIT_STMT, 1)
 
 /* Small kludge to be able to define Ada built-in functions locally.
-   We overload them on top of the HSAIL/BRIG builtin functions.  */
-#define BUILT_IN_LIKELY   BUILT_IN_HSAIL_WORKITEMABSID
-#define BUILT_IN_UNLIKELY BUILT_IN_HSAIL_GRIDSIZE
+   We overload them on top of the C++ coroutines builtin functions.  */
+#define BUILT_IN_LIKELY   BUILT_IN_CORO_PROMISE
+#define BUILT_IN_UNLIKELY BUILT_IN_CORO_RESUME

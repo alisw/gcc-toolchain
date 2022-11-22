@@ -102,19 +102,18 @@ class ChunkHeader {
 
  public:
   uptr UsedSize() const {
-    uptr R = user_requested_size_lo;
-    if (sizeof(uptr) > sizeof(user_requested_size_lo))
-      R += (uptr)user_requested_size_hi << (8 * sizeof(user_requested_size_lo));
-    return R;
+    static_assert(sizeof(user_requested_size_lo) == 4,
+                  "Expression below requires this");
+    return FIRST_32_SECOND_64(0, ((uptr)user_requested_size_hi << 32)) +
+           user_requested_size_lo;
   }
 
   void SetUsedSize(uptr size) {
     user_requested_size_lo = size;
-    if (sizeof(uptr) > sizeof(user_requested_size_lo)) {
-      size >>= (8 * sizeof(user_requested_size_lo));
-      user_requested_size_hi = size;
-      CHECK_EQ(user_requested_size_hi, size);
-    }
+    static_assert(sizeof(user_requested_size_lo) == 4,
+                  "Expression below requires this");
+    user_requested_size_hi = FIRST_32_SECOND_64(0, size >> 32);
+    CHECK_EQ(UsedSize(), size);
   }
 
   void SetAllocContext(u32 tid, u32 stack) {
@@ -476,7 +475,7 @@ struct Allocator {
       return false;
     if (m->Beg() != addr) return false;
     AsanThread *t = GetCurrentThread();
-    m->SetAllocContext(t ? t->tid() : 0, StackDepotPut(*stack));
+    m->SetAllocContext(t ? t->tid() : kMainTid, StackDepotPut(*stack));
     return true;
   }
 
@@ -522,7 +521,7 @@ struct Allocator {
         size > max_user_defined_malloc_size) {
       if (AllocatorMayReturnNull()) {
         Report("WARNING: AddressSanitizer failed to allocate 0x%zx bytes\n",
-               (void*)size);
+               size);
         return nullptr;
       }
       uptr malloc_limit =
@@ -570,7 +569,7 @@ struct Allocator {
     m->SetUsedSize(size);
     m->user_requested_alignment_log = user_requested_alignment_log;
 
-    m->SetAllocContext(t ? t->tid() : 0, StackDepotPut(*stack));
+    m->SetAllocContext(t ? t->tid() : kMainTid, StackDepotPut(*stack));
 
     uptr size_rounded_down_to_granularity =
         RoundDownTo(size, SHADOW_GRANULARITY);
@@ -852,12 +851,12 @@ struct Allocator {
     quarantine.PrintStats();
   }
 
-  void ForceLock() {
+  void ForceLock() ACQUIRE(fallback_mutex) {
     allocator.ForceLock();
     fallback_mutex.Lock();
   }
 
-  void ForceUnlock() {
+  void ForceUnlock() RELEASE(fallback_mutex) {
     fallback_mutex.Unlock();
     allocator.ForceUnlock();
   }
@@ -908,13 +907,6 @@ AllocType AsanChunkView::GetAllocType() const {
   return (AllocType)chunk_->alloc_type;
 }
 
-static StackTrace GetStackTraceFromId(u32 id) {
-  CHECK(id);
-  StackTrace res = StackDepotGet(id);
-  CHECK(res.trace);
-  return res;
-}
-
 u32 AsanChunkView::GetAllocStackId() const {
   u32 tid = 0;
   u32 stack = 0;
@@ -929,14 +921,6 @@ u32 AsanChunkView::GetFreeStackId() const {
   u32 stack = 0;
   chunk_->GetFreeContext(tid, stack);
   return stack;
-}
-
-StackTrace AsanChunkView::GetAllocStack() const {
-  return GetStackTraceFromId(GetAllocStackId());
-}
-
-StackTrace AsanChunkView::GetFreeStack() const {
-  return GetStackTraceFromId(GetFreeStackId());
 }
 
 void InitializeAllocator(const AllocatorOptions &options) {
@@ -1081,11 +1065,9 @@ uptr asan_mz_size(const void *ptr) {
   return instance.AllocationSize(reinterpret_cast<uptr>(ptr));
 }
 
-void asan_mz_force_lock() {
-  instance.ForceLock();
-}
+void asan_mz_force_lock() NO_THREAD_SAFETY_ANALYSIS { instance.ForceLock(); }
 
-void asan_mz_force_unlock() {
+void asan_mz_force_unlock() NO_THREAD_SAFETY_ANALYSIS {
   instance.ForceUnlock();
 }
 
@@ -1183,6 +1165,34 @@ IgnoreObjectResult IgnoreObjectLocked(const void *p) {
   m->lsan_tag = __lsan::kIgnored;
   return kIgnoreObjectSuccess;
 }
+
+void GetAdditionalThreadContextPtrs(ThreadContextBase *tctx, void *ptrs) {
+  // Look for the arg pointer of threads that have been created or are running.
+  // This is necessary to prevent false positive leaks due to the AsanThread
+  // holding the only live reference to a heap object.  This can happen because
+  // the `pthread_create()` interceptor doesn't wait for the child thread to
+  // start before returning and thus loosing the the only live reference to the
+  // heap object on the stack.
+
+  __asan::AsanThreadContext *atctx =
+      reinterpret_cast<__asan::AsanThreadContext *>(tctx);
+  __asan::AsanThread *asan_thread = atctx->thread;
+
+  // Note ThreadStatusRunning is required because there is a small window where
+  // the thread status switches to `ThreadStatusRunning` but the `arg` pointer
+  // still isn't on the stack yet.
+  if (atctx->status != ThreadStatusCreated &&
+      atctx->status != ThreadStatusRunning)
+    return;
+
+  uptr thread_arg = reinterpret_cast<uptr>(asan_thread->get_arg());
+  if (!thread_arg)
+    return;
+
+  auto ptrsVec = reinterpret_cast<InternalMmapVector<uptr> *>(ptrs);
+  ptrsVec->push_back(thread_arg);
+}
+
 }  // namespace __lsan
 
 // ---------------------- Interface ---------------- {{{1

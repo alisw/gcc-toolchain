@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.7.4.  */
+/* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison implementation for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2020 Free Software Foundation,
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2021 Free Software Foundation,
    Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -46,10 +46,10 @@
    USER NAME SPACE" below.  */
 
 /* Identify Bison output, and Bison version.  */
-#define YYBISON 30704
+#define YYBISON 30802
 
 /* Bison version string.  */
-#define YYBISON_VERSION "3.7.4"
+#define YYBISON_VERSION "3.8.2"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -916,7 +916,9 @@ typedef union YYSTYPE YYSTYPE;
 
 extern YYSTYPE yylval;
 
+
 int yyparse (void);
+
 
 #endif /* !YY_YY_CONFIG_BFIN_PARSE_H_INCLUDED  */
 /* Symbol kind.  */
@@ -1187,6 +1189,18 @@ typedef int_least16_t yytype_int16;
 typedef short yytype_int16;
 #endif
 
+/* Work around bug in HP-UX 11.23, which defines these macros
+   incorrectly for preprocessor constants.  This workaround can likely
+   be removed in 2023, as HPE has promised support for HP-UX 11.23
+   (aka HP-UX 11i v2) only through the end of 2022; see Table 2 of
+   <https://h20195.www2.hpe.com/V2/getpdf.aspx/4AA4-7673ENW.pdf>.  */
+#ifdef __hpux
+# undef UINT_LEAST8_MAX
+# undef UINT_LEAST16_MAX
+# define UINT_LEAST8_MAX 255
+# define UINT_LEAST16_MAX 65535
+#endif
+
 #if defined __UINT_LEAST8_MAX__ && __UINT_LEAST8_MAX__ <= __INT_MAX__
 typedef __UINT_LEAST8_TYPE__ yytype_uint8;
 #elif (!defined __UINT_LEAST8_MAX__ && defined YY_STDINT_H \
@@ -1284,17 +1298,23 @@ typedef int yy_state_fast_t;
 
 /* Suppress unused-variable warnings by "using" E.  */
 #if ! defined lint || defined __GNUC__
-# define YYUSE(E) ((void) (E))
+# define YY_USE(E) ((void) (E))
 #else
-# define YYUSE(E) /* empty */
+# define YY_USE(E) /* empty */
 #endif
 
-#if defined __GNUC__ && ! defined __ICC && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
 /* Suppress an incorrect diagnostic about yylval being uninitialized.  */
-# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                            \
+#if defined __GNUC__ && ! defined __ICC && 406 <= __GNUC__ * 100 + __GNUC_MINOR__
+# if __GNUC__ * 100 + __GNUC_MINOR__ < 407
+#  define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                           \
+    _Pragma ("GCC diagnostic push")                                     \
+    _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")
+# else
+#  define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                           \
     _Pragma ("GCC diagnostic push")                                     \
     _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")              \
     _Pragma ("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
+# endif
 # define YY_IGNORE_MAYBE_UNINITIALIZED_END      \
     _Pragma ("GCC diagnostic pop")
 #else
@@ -1525,7 +1545,7 @@ static const yytype_uint8 yytranslate[] =
 };
 
 #if YYDEBUG
-  /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
+/* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
        0,   648,   648,   649,   661,   663,   696,   723,   734,   738,
@@ -1624,32 +1644,6 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#ifdef YYPRINT
-/* YYTOKNUM[NUM] -- (External) token number corresponding to the
-   (internal) symbol number NUM (which must be that of a token).  */
-static const yytype_int16 yytoknum[] =
-{
-       0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
-     265,   266,   267,   268,   269,   270,   271,   272,   273,   274,
-     275,   276,   277,   278,   279,   280,   281,   282,   283,   284,
-     285,   286,   287,   288,   289,   290,   291,   292,   293,   294,
-     295,   296,   297,   298,   299,   300,   301,   302,   303,   304,
-     305,   306,   307,   308,   309,   310,   311,   312,   313,   314,
-     315,   316,   317,   318,   319,   320,   321,   322,   323,   324,
-     325,   326,   327,   328,   329,   330,   331,   332,   333,   334,
-     335,   336,   337,   338,   339,   340,   341,   342,   343,   344,
-     345,   346,   347,   348,   349,   350,   351,   352,   353,   354,
-     355,   356,   357,   358,   359,   360,   361,   362,   363,   364,
-     365,   366,   367,   368,   369,   370,   371,   372,   373,   374,
-     375,   376,   377,   378,   379,   380,   381,   382,   383,   384,
-     385,   386,   387,   388,   389,   390,   391,   392,   393,   394,
-     395,   396,   397,   398,   399,   400,   401,   402,   403,   404,
-     405,   406,   407,   408,   409,   410,   411,   412,   413,   414,
-     415,   416,   417,   418,   419,   420,   421,   422,   423,   424,
-     425,   426,   427,   428
-};
-#endif
-
 #define YYPACT_NINF (-869)
 
 #define yypact_value_is_default(Yyn) \
@@ -1660,8 +1654,8 @@ static const yytype_int16 yytoknum[] =
 #define yytable_value_is_error(Yyn) \
   0
 
-  /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
-     STATE-NUM.  */
+/* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
+   STATE-NUM.  */
 static const yytype_int16 yypact[] =
 {
      862,  -869,   -96,   -14,  -869,   653,   618,  -869,  -869,   -22,
@@ -1769,9 +1763,9 @@ static const yytype_int16 yypact[] =
     -869
 };
 
-  /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
-     Performed when YYTABLE does not specify something else to do.  Zero
-     means the default is an error.  */
+/* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
+   Performed when YYTABLE does not specify something else to do.  Zero
+   means the default is an error.  */
 static const yytype_int16 yydefact[] =
 {
        0,     7,     0,     0,   204,     0,     0,   227,   228,     0,
@@ -1879,7 +1873,7 @@ static const yytype_int16 yydefact[] =
       17
 };
 
-  /* YYPGOTO[NTERM-NUM].  */
+/* YYPGOTO[NTERM-NUM].  */
 static const yytype_int16 yypgoto[] =
 {
     -869,  -869,  -869,  -133,    41,  -216,  -733,  -868,   313,  -869,
@@ -1889,19 +1883,19 @@ static const yytype_int16 yypgoto[] =
     -869,  -869,  -869,  1247,  -869,   -27,     0
 };
 
-  /* YYDEFGOTO[NTERM-NUM].  */
+/* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int16 yydefgoto[] =
 {
-      -1,    65,    66,    67,   370,   179,   751,   721,   957,   608,
+       0,    65,    66,    67,   370,   179,   751,   721,   957,   608,
      611,   940,   357,   381,   495,   497,   659,   911,   916,   949,
      230,   319,   645,    69,   126,   231,   354,   298,   951,   953,
      299,   371,   372,    72,    73,    74,   177,    98,    75,    82,
      817,   633,   634,   118,    83,    84,    85
 };
 
-  /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
-     positive, shift that token.  If negative, reduce the rule whose
-     number is the opposite.  If YYTABLE_NINF, syntax error.  */
+/* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
+   positive, shift that token.  If negative, reduce the rule whose
+   number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int16 yytable[] =
 {
      106,   107,    70,   109,   111,   113,   355,   115,   116,   119,
@@ -2172,8 +2166,8 @@ static const yytype_int16 yycheck[] =
       -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,   322
 };
 
-  /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
-     symbol of state STATE-NUM.  */
+/* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
+   state STATE-NUM.  */
 static const yytype_uint8 yystos[] =
 {
        0,     1,    11,    23,    24,    25,    27,    29,    30,    31,
@@ -2281,7 +2275,7 @@ static const yytype_uint8 yystos[] =
      192
 };
 
-  /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
+/* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
 static const yytype_uint8 yyr1[] =
 {
        0,   174,   175,   175,   176,   176,   176,   176,   177,   177,
@@ -2322,7 +2316,7 @@ static const yytype_uint8 yyr1[] =
      220,   220,   220,   220,   220
 };
 
-  /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
+/* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr2[] =
 {
        0,     2,     0,     1,     2,     6,     4,     1,     1,     2,
@@ -2372,6 +2366,7 @@ enum { YYENOMEM = -2 };
 #define YYACCEPT        goto yyacceptlab
 #define YYABORT         goto yyabortlab
 #define YYERROR         goto yyerrorlab
+#define YYNOMEM         goto yyexhaustedlab
 
 
 #define YYRECOVERING()  (!!yyerrstatus)
@@ -2412,10 +2407,7 @@ do {                                            \
     YYFPRINTF Args;                             \
 } while (0)
 
-/* This macro is provided for backward compatibility. */
-# ifndef YY_LOCATION_PRINT
-#  define YY_LOCATION_PRINT(File, Loc) ((void) 0)
-# endif
+
 
 
 # define YY_SYMBOL_PRINT(Title, Kind, Value, Location)                    \
@@ -2439,15 +2431,11 @@ yy_symbol_value_print (FILE *yyo,
                        yysymbol_kind_t yykind, YYSTYPE const * const yyvaluep)
 {
   FILE *yyoutput = yyo;
-  YYUSE (yyoutput);
+  YY_USE (yyoutput);
   if (!yyvaluep)
     return;
-# ifdef YYPRINT
-  if (yykind < YYNTOKENS)
-    YYPRINT (yyo, yytoknum[yykind], *yyvaluep);
-# endif
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-  YYUSE (yykind);
+  YY_USE (yykind);
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
 
@@ -2561,13 +2549,13 @@ static void
 yydestruct (const char *yymsg,
             yysymbol_kind_t yykind, YYSTYPE *yyvaluep)
 {
-  YYUSE (yyvaluep);
+  YY_USE (yyvaluep);
   if (!yymsg)
     yymsg = "Deleting";
   YY_SYMBOL_PRINT (yymsg, yykind, yyvaluep, yylocationp);
 
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-  YYUSE (yykind);
+  YY_USE (yykind);
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
 
@@ -2630,6 +2618,7 @@ yyparse (void)
   YYDPRINTF ((stderr, "Starting parse\n"));
 
   yychar = YYEMPTY; /* Cause a token to be read.  */
+
   goto yysetstate;
 
 
@@ -2655,7 +2644,7 @@ yysetstate:
 
   if (yyss + yystacksize - 1 <= yyssp)
 #if !defined yyoverflow && !defined YYSTACK_RELOCATE
-    goto yyexhaustedlab;
+    YYNOMEM;
 #else
     {
       /* Get the current used size of the three stacks, in elements.  */
@@ -2683,7 +2672,7 @@ yysetstate:
 # else /* defined YYSTACK_RELOCATE */
       /* Extend the stack our own way.  */
       if (YYMAXDEPTH <= yystacksize)
-        goto yyexhaustedlab;
+        YYNOMEM;
       yystacksize *= 2;
       if (YYMAXDEPTH < yystacksize)
         yystacksize = YYMAXDEPTH;
@@ -2694,7 +2683,7 @@ yysetstate:
           YY_CAST (union yyalloc *,
                    YYSTACK_ALLOC (YY_CAST (YYSIZE_T, YYSTACK_BYTES (yystacksize))));
         if (! yyptr)
-          goto yyexhaustedlab;
+          YYNOMEM;
         YYSTACK_RELOCATE (yyss_alloc, yyss);
         YYSTACK_RELOCATE (yyvs_alloc, yyvs);
 #  undef YYSTACK_RELOCATE
@@ -2715,6 +2704,7 @@ yysetstate:
         YYABORT;
     }
 #endif /* !defined yyoverflow && !defined YYSTACK_RELOCATE */
+
 
   if (yystate == YYFINAL)
     YYACCEPT;
@@ -2838,7 +2828,7 @@ yyreduce:
 	  else
 	    return INSN_GENERATED;
 	}
-#line 2842 "config/bfin-parse.c"
+#line 2832 "config/bfin-parse.c"
     break;
 
   case 5: /* asm: asm_1 DOUBLE_BAR asm_1 DOUBLE_BAR asm_1 SEMICOLON  */
@@ -2874,7 +2864,7 @@ yyreduce:
 	  else
 	    error ("\nIllegal Multi Issue Construct, at least any one of the slot must be DSP32 instruction group\n");
 	}
-#line 2878 "config/bfin-parse.c"
+#line 2868 "config/bfin-parse.c"
     break;
 
   case 6: /* asm: asm_1 DOUBLE_BAR asm_1 SEMICOLON  */
@@ -2905,7 +2895,7 @@ yyreduce:
 	  else
 	    return yyerror ("Wrong 16 bit instructions groups, slot 1 and slot 2 must be the 16-bit instruction group");
 	}
-#line 2909 "config/bfin-parse.c"
+#line 2899 "config/bfin-parse.c"
     break;
 
   case 7: /* asm: error  */
@@ -2915,7 +2905,7 @@ yyreduce:
 	yyerror ("");
 	yyerrok;
 	}
-#line 2919 "config/bfin-parse.c"
+#line 2909 "config/bfin-parse.c"
     break;
 
   case 8: /* asm_1: MNOP  */
@@ -2923,7 +2913,7 @@ yyreduce:
         {
 	  (yyval.instr) = DSP32MAC (3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0);
 	}
-#line 2927 "config/bfin-parse.c"
+#line 2917 "config/bfin-parse.c"
     break;
 
   case 9: /* asm_1: assign_macfunc opt_mode  */
@@ -2961,7 +2951,7 @@ yyreduce:
 	  (yyval.instr) = DSP32MAC (op1, (yyvsp[0].mod).MM, (yyvsp[0].mod).mod, w1, (yyvsp[-1].macfunc).P, h01, h11, h00, h10,
 			 &(yyvsp[-1].macfunc).dst, op0, &(yyvsp[-1].macfunc).s0, &(yyvsp[-1].macfunc).s1, w0);
 	}
-#line 2965 "config/bfin-parse.c"
+#line 2955 "config/bfin-parse.c"
     break;
 
   case 10: /* asm_1: assign_macfunc opt_mode COMMA assign_macfunc opt_mode  */
@@ -2982,7 +2972,7 @@ yyreduce:
 			 IS_H ((yyvsp[-4].macfunc).s0),  IS_H ((yyvsp[-4].macfunc).s1), IS_H ((yyvsp[-1].macfunc).s0), IS_H ((yyvsp[-1].macfunc).s1),
 			 dst, (yyvsp[-1].macfunc).op, &(yyvsp[-4].macfunc).s0, &(yyvsp[-4].macfunc).s1, (yyvsp[-1].macfunc).w);
 	}
-#line 2986 "config/bfin-parse.c"
+#line 2976 "config/bfin-parse.c"
     break;
 
   case 11: /* asm_1: DISALGNEXCPT  */
@@ -2991,7 +2981,7 @@ yyreduce:
 	  notethat ("dsp32alu: DISALGNEXCPT\n");
 	  (yyval.instr) = DSP32ALU (18, 0, 0, 0, 0, 0, 0, 0, 3);
 	}
-#line 2995 "config/bfin-parse.c"
+#line 2985 "config/bfin-parse.c"
     break;
 
   case 12: /* asm_1: REG ASSIGN LPAREN a_plusassign REG_A RPAREN  */
@@ -3005,7 +2995,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3009 "config/bfin-parse.c"
+#line 2999 "config/bfin-parse.c"
     break;
 
   case 13: /* asm_1: HALF_REG ASSIGN LPAREN a_plusassign REG_A RPAREN  */
@@ -3019,7 +3009,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3023 "config/bfin-parse.c"
+#line 3013 "config/bfin-parse.c"
     break;
 
   case 14: /* asm_1: A_ZERO_DOT_H ASSIGN HALF_REG  */
@@ -3028,7 +3018,7 @@ yyreduce:
 	  notethat ("dsp32alu: A_ZERO_DOT_H = dregs_hi\n");
 	  (yyval.instr) = DSP32ALU (9, IS_H ((yyvsp[0].reg)), 0, 0, &(yyvsp[0].reg), 0, 0, 0, 0);
 	}
-#line 3032 "config/bfin-parse.c"
+#line 3022 "config/bfin-parse.c"
     break;
 
   case 15: /* asm_1: A_ONE_DOT_H ASSIGN HALF_REG  */
@@ -3037,7 +3027,7 @@ yyreduce:
 	  notethat ("dsp32alu: A_ZERO_DOT_H = dregs_hi\n");
 	  (yyval.instr) = DSP32ALU (9, IS_H ((yyvsp[0].reg)), 0, 0, &(yyvsp[0].reg), 0, 0, 0, 2);
 	}
-#line 3041 "config/bfin-parse.c"
+#line 3031 "config/bfin-parse.c"
     break;
 
   case 16: /* asm_1: LPAREN REG COMMA REG RPAREN ASSIGN BYTEOP16P LPAREN REG COLON expr COMMA REG COLON expr RPAREN aligndir  */
@@ -3057,7 +3047,7 @@ yyreduce:
 	      (yyval.instr) = DSP32ALU (21, 0, &(yyvsp[-15].reg), &(yyvsp[-13].reg), &(yyvsp[-8].reg), &(yyvsp[-4].reg), (yyvsp[0].r0).r0, 0, 0);
 	    }
 	}
-#line 3061 "config/bfin-parse.c"
+#line 3051 "config/bfin-parse.c"
     break;
 
   case 17: /* asm_1: LPAREN REG COMMA REG RPAREN ASSIGN BYTEOP16M LPAREN REG COLON expr COMMA REG COLON expr RPAREN aligndir  */
@@ -3077,7 +3067,7 @@ yyreduce:
 	      (yyval.instr) = DSP32ALU (21, 0, &(yyvsp[-15].reg), &(yyvsp[-13].reg), &(yyvsp[-8].reg), &(yyvsp[-4].reg), (yyvsp[0].r0).r0, 0, 1);
 	    }
 	}
-#line 3081 "config/bfin-parse.c"
+#line 3071 "config/bfin-parse.c"
     break;
 
   case 18: /* asm_1: LPAREN REG COMMA REG RPAREN ASSIGN BYTEUNPACK REG COLON expr aligndir  */
@@ -3095,7 +3085,7 @@ yyreduce:
 	      (yyval.instr) = DSP32ALU (24, 0, &(yyvsp[-9].reg), &(yyvsp[-7].reg), &(yyvsp[-3].reg), 0, (yyvsp[0].r0).r0, 0, 1);
 	    }
 	}
-#line 3099 "config/bfin-parse.c"
+#line 3089 "config/bfin-parse.c"
     break;
 
   case 19: /* asm_1: LPAREN REG COMMA REG RPAREN ASSIGN SEARCH REG LPAREN searchmod RPAREN  */
@@ -3112,7 +3102,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3116 "config/bfin-parse.c"
+#line 3106 "config/bfin-parse.c"
     break;
 
   case 20: /* asm_1: REG ASSIGN A_ONE_DOT_L PLUS A_ONE_DOT_H COMMA REG ASSIGN A_ZERO_DOT_L PLUS A_ZERO_DOT_H  */
@@ -3129,7 +3119,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3133 "config/bfin-parse.c"
+#line 3123 "config/bfin-parse.c"
     break;
 
   case 21: /* asm_1: REG ASSIGN REG_A PLUS REG_A COMMA REG ASSIGN REG_A MINUS REG_A amod1  */
@@ -3154,7 +3144,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3158 "config/bfin-parse.c"
+#line 3148 "config/bfin-parse.c"
     break;
 
   case 22: /* asm_1: REG ASSIGN REG plus_minus REG COMMA REG ASSIGN REG plus_minus REG amod1  */
@@ -3173,7 +3163,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3177 "config/bfin-parse.c"
+#line 3167 "config/bfin-parse.c"
     break;
 
   case 23: /* asm_1: REG ASSIGN REG op_bar_op REG COMMA REG ASSIGN REG op_bar_op REG amod2  */
@@ -3201,7 +3191,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bar operand mismatch");
 	}
-#line 3205 "config/bfin-parse.c"
+#line 3195 "config/bfin-parse.c"
     break;
 
   case 24: /* asm_1: REG ASSIGN ABS REG vmod  */
@@ -3227,7 +3217,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 3231 "config/bfin-parse.c"
+#line 3221 "config/bfin-parse.c"
     break;
 
   case 25: /* asm_1: a_assign ABS REG_A  */
@@ -3236,7 +3226,7 @@ yyreduce:
 	  notethat ("dsp32alu: Ax = ABS Ax\n");
 	  (yyval.instr) = DSP32ALU (16, IS_A1 ((yyvsp[-2].reg)), 0, 0, &reg7, &reg7, 0, 0, IS_A1 ((yyvsp[0].reg)));
 	}
-#line 3240 "config/bfin-parse.c"
+#line 3230 "config/bfin-parse.c"
     break;
 
   case 26: /* asm_1: A_ZERO_DOT_L ASSIGN HALF_REG  */
@@ -3250,7 +3240,7 @@ yyreduce:
 	  else
 	    return yyerror ("A0.l = Rx.l expected");
 	}
-#line 3254 "config/bfin-parse.c"
+#line 3244 "config/bfin-parse.c"
     break;
 
   case 27: /* asm_1: A_ONE_DOT_L ASSIGN HALF_REG  */
@@ -3264,7 +3254,7 @@ yyreduce:
 	  else
 	    return yyerror ("A1.l = Rx.l expected");
 	}
-#line 3268 "config/bfin-parse.c"
+#line 3258 "config/bfin-parse.c"
     break;
 
   case 28: /* asm_1: REG ASSIGN c_align LPAREN REG COMMA REG RPAREN  */
@@ -3278,7 +3268,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 3282 "config/bfin-parse.c"
+#line 3272 "config/bfin-parse.c"
     break;
 
   case 29: /* asm_1: REG ASSIGN BYTEOP1P LPAREN REG COLON expr COMMA REG COLON expr RPAREN byteop_mod  */
@@ -3296,7 +3286,7 @@ yyreduce:
 	      (yyval.instr) = DSP32ALU (20, 0, 0, &(yyvsp[-12].reg), &(yyvsp[-8].reg), &(yyvsp[-4].reg), (yyvsp[0].modcodes).s0, 0, (yyvsp[0].modcodes).r0);
 	    }
 	}
-#line 3300 "config/bfin-parse.c"
+#line 3290 "config/bfin-parse.c"
     break;
 
   case 30: /* asm_1: REG ASSIGN BYTEOP1P LPAREN REG COLON expr COMMA REG COLON expr RPAREN  */
@@ -3314,7 +3304,7 @@ yyreduce:
 	      (yyval.instr) = DSP32ALU (20, 0, 0, &(yyvsp[-11].reg), &(yyvsp[-7].reg), &(yyvsp[-3].reg), 0, 0, 0);
 	    }
 	}
-#line 3318 "config/bfin-parse.c"
+#line 3308 "config/bfin-parse.c"
     break;
 
   case 31: /* asm_1: REG ASSIGN BYTEOP2P LPAREN REG COLON expr COMMA REG COLON expr RPAREN rnd_op  */
@@ -3332,7 +3322,7 @@ yyreduce:
 	      (yyval.instr) = DSP32ALU (22, (yyvsp[0].modcodes).r0, 0, &(yyvsp[-12].reg), &(yyvsp[-8].reg), &(yyvsp[-4].reg), (yyvsp[0].modcodes).s0, (yyvsp[0].modcodes).x0, (yyvsp[0].modcodes).aop);
 	    }
 	}
-#line 3336 "config/bfin-parse.c"
+#line 3326 "config/bfin-parse.c"
     break;
 
   case 32: /* asm_1: REG ASSIGN BYTEOP3P LPAREN REG COLON expr COMMA REG COLON expr RPAREN b3_op  */
@@ -3350,7 +3340,7 @@ yyreduce:
 	      (yyval.instr) = DSP32ALU (23, (yyvsp[0].modcodes).x0, 0, &(yyvsp[-12].reg), &(yyvsp[-8].reg), &(yyvsp[-4].reg), (yyvsp[0].modcodes).s0, 0, 0);
 	    }
 	}
-#line 3354 "config/bfin-parse.c"
+#line 3344 "config/bfin-parse.c"
     break;
 
   case 33: /* asm_1: REG ASSIGN BYTEPACK LPAREN REG COMMA REG RPAREN  */
@@ -3364,7 +3354,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 3368 "config/bfin-parse.c"
+#line 3358 "config/bfin-parse.c"
     break;
 
   case 34: /* asm_1: HALF_REG ASSIGN HALF_REG ASSIGN SIGN LPAREN HALF_REG RPAREN STAR HALF_REG PLUS SIGN LPAREN HALF_REG RPAREN STAR HALF_REG  */
@@ -3381,7 +3371,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 3385 "config/bfin-parse.c"
+#line 3375 "config/bfin-parse.c"
     break;
 
   case 35: /* asm_1: REG ASSIGN REG plus_minus REG amod1  */
@@ -3411,7 +3401,7 @@ yyreduce:
 	    else
 	      return yyerror ("Dregs expected");
 	}
-#line 3415 "config/bfin-parse.c"
+#line 3405 "config/bfin-parse.c"
     break;
 
   case 36: /* asm_1: REG ASSIGN min_max LPAREN REG COMMA REG RPAREN vmod  */
@@ -3432,7 +3422,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 3436 "config/bfin-parse.c"
+#line 3426 "config/bfin-parse.c"
     break;
 
   case 37: /* asm_1: a_assign MINUS REG_A  */
@@ -3441,7 +3431,7 @@ yyreduce:
 	  notethat ("dsp32alu: Ax = - Ax\n");
 	  (yyval.instr) = DSP32ALU (14, IS_A1 ((yyvsp[-2].reg)), 0, 0, &reg7, &reg7, 0, 0, IS_A1 ((yyvsp[0].reg)));
 	}
-#line 3445 "config/bfin-parse.c"
+#line 3435 "config/bfin-parse.c"
     break;
 
   case 38: /* asm_1: HALF_REG ASSIGN HALF_REG plus_minus HALF_REG amod1  */
@@ -3451,7 +3441,7 @@ yyreduce:
 	  (yyval.instr) = DSP32ALU (2 | (yyvsp[-2].r0).r0, IS_H ((yyvsp[-5].reg)), 0, &(yyvsp[-5].reg), &(yyvsp[-3].reg), &(yyvsp[-1].reg),
 			 (yyvsp[0].modcodes).s0, (yyvsp[0].modcodes).x0, HL2 ((yyvsp[-3].reg), (yyvsp[-1].reg)));
 	}
-#line 3455 "config/bfin-parse.c"
+#line 3445 "config/bfin-parse.c"
     break;
 
   case 39: /* asm_1: a_assign a_assign expr  */
@@ -3465,7 +3455,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad value, 0 expected");
 	}
-#line 3469 "config/bfin-parse.c"
+#line 3459 "config/bfin-parse.c"
     break;
 
   case 40: /* asm_1: a_assign REG_A LPAREN S RPAREN  */
@@ -3479,7 +3469,7 @@ yyreduce:
 	  else
 	    return yyerror ("Registers must be equal");
 	}
-#line 3483 "config/bfin-parse.c"
+#line 3473 "config/bfin-parse.c"
     break;
 
   case 41: /* asm_1: HALF_REG ASSIGN REG LPAREN RND RPAREN  */
@@ -3493,7 +3483,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 3497 "config/bfin-parse.c"
+#line 3487 "config/bfin-parse.c"
     break;
 
   case 42: /* asm_1: HALF_REG ASSIGN REG plus_minus REG LPAREN RND12 RPAREN  */
@@ -3507,7 +3497,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 3511 "config/bfin-parse.c"
+#line 3501 "config/bfin-parse.c"
     break;
 
   case 43: /* asm_1: HALF_REG ASSIGN REG plus_minus REG LPAREN RND20 RPAREN  */
@@ -3521,7 +3511,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 3525 "config/bfin-parse.c"
+#line 3515 "config/bfin-parse.c"
     break;
 
   case 44: /* asm_1: a_assign REG_A  */
@@ -3535,7 +3525,7 @@ yyreduce:
 	  else
 	    return yyerror ("Accu reg arguments must differ");
 	}
-#line 3539 "config/bfin-parse.c"
+#line 3529 "config/bfin-parse.c"
     break;
 
   case 45: /* asm_1: a_assign REG  */
@@ -3549,7 +3539,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 3553 "config/bfin-parse.c"
+#line 3543 "config/bfin-parse.c"
     break;
 
   case 46: /* asm_1: REG ASSIGN HALF_REG xpmod  */
@@ -3578,7 +3568,7 @@ yyreduce:
 	  else
 	    return yyerror ("Low reg expected");
 	}
-#line 3582 "config/bfin-parse.c"
+#line 3572 "config/bfin-parse.c"
     break;
 
   case 47: /* asm_1: HALF_REG ASSIGN expr  */
@@ -3595,7 +3585,7 @@ yyreduce:
 
 	  (yyval.instr) = LDIMMHALF_R (&(yyvsp[-2].reg), IS_H ((yyvsp[-2].reg)), 0, 0, (yyvsp[0].expr));
 	}
-#line 3599 "config/bfin-parse.c"
+#line 3589 "config/bfin-parse.c"
     break;
 
   case 48: /* asm_1: a_assign expr  */
@@ -3608,7 +3598,7 @@ yyreduce:
 
 	  (yyval.instr) = DSP32ALU (8, 0, 0, 0, 0, 0, 0, 0, IS_A1 ((yyvsp[-1].reg)));
 	}
-#line 3612 "config/bfin-parse.c"
+#line 3602 "config/bfin-parse.c"
     break;
 
   case 49: /* asm_1: REG ASSIGN expr xpmod1  */
@@ -3656,7 +3646,7 @@ yyreduce:
 	      (yyval.instr) = LDIMMHALF_R5 (&(yyvsp[-3].reg), 0, 0, 1, (yyvsp[-1].expr));
 	    }
 	}
-#line 3660 "config/bfin-parse.c"
+#line 3650 "config/bfin-parse.c"
     break;
 
   case 50: /* asm_1: HALF_REG ASSIGN REG  */
@@ -3678,7 +3668,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3682 "config/bfin-parse.c"
+#line 3672 "config/bfin-parse.c"
     break;
 
   case 51: /* asm_1: REG ASSIGN REG op_bar_op REG amod0  */
@@ -3692,7 +3682,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3696 "config/bfin-parse.c"
+#line 3686 "config/bfin-parse.c"
     break;
 
   case 52: /* asm_1: REG ASSIGN BYTE_DREG xpmod  */
@@ -3706,7 +3696,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3710 "config/bfin-parse.c"
+#line 3700 "config/bfin-parse.c"
     break;
 
   case 53: /* asm_1: a_assign ABS REG_A COMMA a_assign ABS REG_A  */
@@ -3720,7 +3710,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3724 "config/bfin-parse.c"
+#line 3714 "config/bfin-parse.c"
     break;
 
   case 54: /* asm_1: a_assign MINUS REG_A COMMA a_assign MINUS REG_A  */
@@ -3734,7 +3724,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3738 "config/bfin-parse.c"
+#line 3728 "config/bfin-parse.c"
     break;
 
   case 55: /* asm_1: a_minusassign REG_A w32_or_nothing  */
@@ -3748,7 +3738,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3752 "config/bfin-parse.c"
+#line 3742 "config/bfin-parse.c"
     break;
 
   case 56: /* asm_1: REG _MINUS_ASSIGN expr  */
@@ -3767,7 +3757,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register or value mismatch");
 	}
-#line 3771 "config/bfin-parse.c"
+#line 3761 "config/bfin-parse.c"
     break;
 
   case 57: /* asm_1: REG _PLUS_ASSIGN REG LPAREN BREV RPAREN  */
@@ -3787,7 +3777,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3791 "config/bfin-parse.c"
+#line 3781 "config/bfin-parse.c"
     break;
 
   case 58: /* asm_1: REG _MINUS_ASSIGN REG  */
@@ -3806,7 +3796,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3810 "config/bfin-parse.c"
+#line 3800 "config/bfin-parse.c"
     break;
 
   case 59: /* asm_1: REG_A _PLUS_ASSIGN REG_A w32_or_nothing  */
@@ -3820,7 +3810,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3824 "config/bfin-parse.c"
+#line 3814 "config/bfin-parse.c"
     break;
 
   case 60: /* asm_1: REG _PLUS_ASSIGN REG  */
@@ -3834,7 +3824,7 @@ yyreduce:
 	  else
 	    return yyerror ("iregs += mregs expected");
 	}
-#line 3838 "config/bfin-parse.c"
+#line 3828 "config/bfin-parse.c"
     break;
 
   case 61: /* asm_1: REG _PLUS_ASSIGN expr  */
@@ -3870,7 +3860,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3874 "config/bfin-parse.c"
+#line 3864 "config/bfin-parse.c"
     break;
 
   case 62: /* asm_1: REG _STAR_ASSIGN REG  */
@@ -3884,7 +3874,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3888 "config/bfin-parse.c"
+#line 3878 "config/bfin-parse.c"
     break;
 
   case 63: /* asm_1: SAA LPAREN REG COLON expr COMMA REG COLON expr RPAREN aligndir  */
@@ -3900,7 +3890,7 @@ yyreduce:
 	      (yyval.instr) = DSP32ALU (18, 0, 0, 0, &(yyvsp[-8].reg), &(yyvsp[-4].reg), (yyvsp[0].r0).r0, 0, 0);
 	    }
 	}
-#line 3904 "config/bfin-parse.c"
+#line 3894 "config/bfin-parse.c"
     break;
 
   case 64: /* asm_1: a_assign REG_A LPAREN S RPAREN COMMA a_assign REG_A LPAREN S RPAREN  */
@@ -3914,7 +3904,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3918 "config/bfin-parse.c"
+#line 3908 "config/bfin-parse.c"
     break;
 
   case 65: /* asm_1: REG ASSIGN LPAREN REG PLUS REG RPAREN LESS_LESS expr  */
@@ -3955,7 +3945,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 3959 "config/bfin-parse.c"
+#line 3949 "config/bfin-parse.c"
     break;
 
   case 66: /* asm_1: REG ASSIGN REG BAR REG  */
@@ -3969,7 +3959,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 3973 "config/bfin-parse.c"
+#line 3963 "config/bfin-parse.c"
     break;
 
   case 67: /* asm_1: REG ASSIGN REG CARET REG  */
@@ -3983,7 +3973,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 3987 "config/bfin-parse.c"
+#line 3977 "config/bfin-parse.c"
     break;
 
   case 68: /* asm_1: REG ASSIGN REG PLUS LPAREN REG LESS_LESS expr RPAREN  */
@@ -4007,7 +3997,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 4011 "config/bfin-parse.c"
+#line 4001 "config/bfin-parse.c"
     break;
 
   case 69: /* asm_1: CCREG ASSIGN REG_A _ASSIGN_ASSIGN REG_A  */
@@ -4021,7 +4011,7 @@ yyreduce:
 	  else
 	    return yyerror ("AREGs are in bad order or same");
 	}
-#line 4025 "config/bfin-parse.c"
+#line 4015 "config/bfin-parse.c"
     break;
 
   case 70: /* asm_1: CCREG ASSIGN REG_A LESS_THAN REG_A  */
@@ -4035,7 +4025,7 @@ yyreduce:
 	  else
 	    return yyerror ("AREGs are in bad order or same");
 	}
-#line 4039 "config/bfin-parse.c"
+#line 4029 "config/bfin-parse.c"
     break;
 
   case 71: /* asm_1: CCREG ASSIGN REG LESS_THAN REG iu_or_nothing  */
@@ -4050,7 +4040,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register in comparison");
 	}
-#line 4054 "config/bfin-parse.c"
+#line 4044 "config/bfin-parse.c"
     break;
 
   case 72: /* asm_1: CCREG ASSIGN REG LESS_THAN expr iu_or_nothing  */
@@ -4068,7 +4058,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad constant value");
 	}
-#line 4072 "config/bfin-parse.c"
+#line 4062 "config/bfin-parse.c"
     break;
 
   case 73: /* asm_1: CCREG ASSIGN REG _ASSIGN_ASSIGN REG  */
@@ -4083,7 +4073,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register in comparison");
 	}
-#line 4087 "config/bfin-parse.c"
+#line 4077 "config/bfin-parse.c"
     break;
 
   case 74: /* asm_1: CCREG ASSIGN REG _ASSIGN_ASSIGN expr  */
@@ -4100,7 +4090,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad constant range");
 	}
-#line 4104 "config/bfin-parse.c"
+#line 4094 "config/bfin-parse.c"
     break;
 
   case 75: /* asm_1: CCREG ASSIGN REG_A _LESS_THAN_ASSIGN REG_A  */
@@ -4114,7 +4104,7 @@ yyreduce:
 	  else
 	    return yyerror ("AREGs are in bad order or same");
 	}
-#line 4118 "config/bfin-parse.c"
+#line 4108 "config/bfin-parse.c"
     break;
 
   case 76: /* asm_1: CCREG ASSIGN REG _LESS_THAN_ASSIGN REG iu_or_nothing  */
@@ -4130,7 +4120,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register in comparison");
 	}
-#line 4134 "config/bfin-parse.c"
+#line 4124 "config/bfin-parse.c"
     break;
 
   case 77: /* asm_1: CCREG ASSIGN REG _LESS_THAN_ASSIGN expr iu_or_nothing  */
@@ -4148,7 +4138,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad constant value");
 	}
-#line 4152 "config/bfin-parse.c"
+#line 4142 "config/bfin-parse.c"
     break;
 
   case 78: /* asm_1: REG ASSIGN REG AMPERSAND REG  */
@@ -4162,7 +4152,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 4166 "config/bfin-parse.c"
+#line 4156 "config/bfin-parse.c"
     break;
 
   case 79: /* asm_1: ccstat  */
@@ -4171,7 +4161,7 @@ yyreduce:
 	  notethat ("CC2stat operation\n");
 	  (yyval.instr) = bfin_gen_cc2stat ((yyvsp[0].modcodes).r0, (yyvsp[0].modcodes).x0, (yyvsp[0].modcodes).s0);
 	}
-#line 4175 "config/bfin-parse.c"
+#line 4165 "config/bfin-parse.c"
     break;
 
   case 80: /* asm_1: REG ASSIGN REG  */
@@ -4196,7 +4186,7 @@ yyreduce:
 	  else
 	    return yyerror ("Unsupported register move");
 	}
-#line 4200 "config/bfin-parse.c"
+#line 4190 "config/bfin-parse.c"
     break;
 
   case 81: /* asm_1: CCREG ASSIGN REG  */
@@ -4210,7 +4200,7 @@ yyreduce:
 	  else
 	    return yyerror ("Only 'CC = Dreg' supported");
 	}
-#line 4214 "config/bfin-parse.c"
+#line 4204 "config/bfin-parse.c"
     break;
 
   case 82: /* asm_1: REG ASSIGN CCREG  */
@@ -4224,7 +4214,7 @@ yyreduce:
 	  else
 	    return yyerror ("Only 'Dreg = CC' supported");
 	}
-#line 4228 "config/bfin-parse.c"
+#line 4218 "config/bfin-parse.c"
     break;
 
   case 83: /* asm_1: CCREG _ASSIGN_BANG CCREG  */
@@ -4233,7 +4223,7 @@ yyreduce:
 	  notethat ("CC2dreg: CC =! CC\n");
 	  (yyval.instr) = bfin_gen_cc2dreg (3, 0);
 	}
-#line 4237 "config/bfin-parse.c"
+#line 4227 "config/bfin-parse.c"
     break;
 
   case 84: /* asm_1: HALF_REG ASSIGN multiply_halfregs opt_mode  */
@@ -4262,7 +4252,7 @@ yyreduce:
 			      &(yyvsp[-3].reg), 0, &(yyvsp[-1].macfunc).s0, &(yyvsp[-1].macfunc).s1, 1);
 	    }
 	}
-#line 4266 "config/bfin-parse.c"
+#line 4256 "config/bfin-parse.c"
     break;
 
   case 85: /* asm_1: REG ASSIGN multiply_halfregs opt_mode  */
@@ -4295,7 +4285,7 @@ yyreduce:
 			      &(yyvsp[-3].reg),  0, &(yyvsp[-1].macfunc).s0, &(yyvsp[-1].macfunc).s1, 1);
 	    }
 	}
-#line 4299 "config/bfin-parse.c"
+#line 4289 "config/bfin-parse.c"
     break;
 
   case 86: /* asm_1: HALF_REG ASSIGN multiply_halfregs opt_mode COMMA HALF_REG ASSIGN multiply_halfregs opt_mode  */
@@ -4326,7 +4316,7 @@ yyreduce:
 			    IS_H ((yyvsp[-1].macfunc).s0), IS_H ((yyvsp[-1].macfunc).s1), IS_H ((yyvsp[-6].macfunc).s0), IS_H ((yyvsp[-6].macfunc).s1),
 			    &(yyvsp[-8].reg), 0, &(yyvsp[-6].macfunc).s0, &(yyvsp[-6].macfunc).s1, 1);
 	}
-#line 4330 "config/bfin-parse.c"
+#line 4320 "config/bfin-parse.c"
     break;
 
   case 87: /* asm_1: REG ASSIGN multiply_halfregs opt_mode COMMA REG ASSIGN multiply_halfregs opt_mode  */
@@ -4358,7 +4348,7 @@ yyreduce:
 			    IS_H ((yyvsp[-6].macfunc).s0), IS_H ((yyvsp[-6].macfunc).s1), IS_H ((yyvsp[-1].macfunc).s0), IS_H ((yyvsp[-1].macfunc).s1),
 			    &(yyvsp[-8].reg), 0, &(yyvsp[-6].macfunc).s0, &(yyvsp[-6].macfunc).s1, 1);
 	}
-#line 4362 "config/bfin-parse.c"
+#line 4352 "config/bfin-parse.c"
     break;
 
   case 88: /* asm_1: a_assign ASHIFT REG_A BY HALF_REG  */
@@ -4375,7 +4365,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 4379 "config/bfin-parse.c"
+#line 4369 "config/bfin-parse.c"
     break;
 
   case 89: /* asm_1: HALF_REG ASSIGN ASHIFT HALF_REG BY HALF_REG smod  */
@@ -4389,7 +4379,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 4393 "config/bfin-parse.c"
+#line 4383 "config/bfin-parse.c"
     break;
 
   case 90: /* asm_1: a_assign REG_A LESS_LESS expr  */
@@ -4406,7 +4396,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad shift value");
 	}
-#line 4410 "config/bfin-parse.c"
+#line 4400 "config/bfin-parse.c"
     break;
 
   case 91: /* asm_1: REG ASSIGN REG LESS_LESS expr vsmod  */
@@ -4444,7 +4434,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad shift value or register");
 	}
-#line 4448 "config/bfin-parse.c"
+#line 4438 "config/bfin-parse.c"
     break;
 
   case 92: /* asm_1: HALF_REG ASSIGN HALF_REG LESS_LESS expr smod  */
@@ -4466,7 +4456,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad shift value");
 	}
-#line 4470 "config/bfin-parse.c"
+#line 4460 "config/bfin-parse.c"
     break;
 
   case 93: /* asm_1: REG ASSIGN ASHIFT REG BY HALF_REG vsmod  */
@@ -4493,7 +4483,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 4497 "config/bfin-parse.c"
+#line 4487 "config/bfin-parse.c"
     break;
 
   case 94: /* asm_1: HALF_REG ASSIGN EXPADJ LPAREN REG COMMA HALF_REG RPAREN vmod  */
@@ -4507,7 +4497,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad shift value or register");
 	}
-#line 4511 "config/bfin-parse.c"
+#line 4501 "config/bfin-parse.c"
     break;
 
   case 95: /* asm_1: HALF_REG ASSIGN EXPADJ LPAREN HALF_REG COMMA HALF_REG RPAREN  */
@@ -4526,7 +4516,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad shift value or register");
 	}
-#line 4530 "config/bfin-parse.c"
+#line 4520 "config/bfin-parse.c"
     break;
 
   case 96: /* asm_1: REG ASSIGN DEPOSIT LPAREN REG COMMA REG RPAREN  */
@@ -4540,7 +4530,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4544 "config/bfin-parse.c"
+#line 4534 "config/bfin-parse.c"
     break;
 
   case 97: /* asm_1: REG ASSIGN DEPOSIT LPAREN REG COMMA REG RPAREN LPAREN X RPAREN  */
@@ -4554,7 +4544,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4558 "config/bfin-parse.c"
+#line 4548 "config/bfin-parse.c"
     break;
 
   case 98: /* asm_1: REG ASSIGN EXTRACT LPAREN REG COMMA HALF_REG RPAREN xpmod  */
@@ -4568,7 +4558,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4572 "config/bfin-parse.c"
+#line 4562 "config/bfin-parse.c"
     break;
 
   case 99: /* asm_1: a_assign REG_A _GREATER_GREATER_GREATER expr  */
@@ -4585,7 +4575,7 @@ yyreduce:
 	  else
 	    return yyerror ("Shift value range error");
 	}
-#line 4589 "config/bfin-parse.c"
+#line 4579 "config/bfin-parse.c"
     break;
 
   case 100: /* asm_1: a_assign LSHIFT REG_A BY HALF_REG  */
@@ -4599,7 +4589,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4603 "config/bfin-parse.c"
+#line 4593 "config/bfin-parse.c"
     break;
 
   case 101: /* asm_1: HALF_REG ASSIGN LSHIFT HALF_REG BY HALF_REG  */
@@ -4613,7 +4603,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4617 "config/bfin-parse.c"
+#line 4607 "config/bfin-parse.c"
     break;
 
   case 102: /* asm_1: REG ASSIGN LSHIFT REG BY HALF_REG vmod  */
@@ -4627,7 +4617,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4631 "config/bfin-parse.c"
+#line 4621 "config/bfin-parse.c"
     break;
 
   case 103: /* asm_1: REG ASSIGN SHIFT REG BY HALF_REG  */
@@ -4641,7 +4631,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4645 "config/bfin-parse.c"
+#line 4635 "config/bfin-parse.c"
     break;
 
   case 104: /* asm_1: a_assign REG_A GREATER_GREATER expr  */
@@ -4655,7 +4645,7 @@ yyreduce:
 	  else
 	    return yyerror ("Accu register expected");
 	}
-#line 4659 "config/bfin-parse.c"
+#line 4649 "config/bfin-parse.c"
     break;
 
   case 105: /* asm_1: REG ASSIGN REG GREATER_GREATER expr vmod  */
@@ -4692,7 +4682,7 @@ yyreduce:
 	        return yyerror ("Register mismatch");
 	    }
 	}
-#line 4696 "config/bfin-parse.c"
+#line 4686 "config/bfin-parse.c"
     break;
 
   case 106: /* asm_1: HALF_REG ASSIGN HALF_REG GREATER_GREATER expr  */
@@ -4706,7 +4696,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4710 "config/bfin-parse.c"
+#line 4700 "config/bfin-parse.c"
     break;
 
   case 107: /* asm_1: HALF_REG ASSIGN HALF_REG _GREATER_GREATER_GREATER expr smod  */
@@ -4721,7 +4711,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register or modifier mismatch");
 	}
-#line 4725 "config/bfin-parse.c"
+#line 4715 "config/bfin-parse.c"
     break;
 
   case 108: /* asm_1: REG ASSIGN REG _GREATER_GREATER_GREATER expr vsmod  */
@@ -4744,7 +4734,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4748 "config/bfin-parse.c"
+#line 4738 "config/bfin-parse.c"
     break;
 
   case 109: /* asm_1: HALF_REG ASSIGN ONES REG  */
@@ -4758,7 +4748,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4762 "config/bfin-parse.c"
+#line 4752 "config/bfin-parse.c"
     break;
 
   case 110: /* asm_1: REG ASSIGN PACK LPAREN HALF_REG COMMA HALF_REG RPAREN  */
@@ -4772,7 +4762,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4776 "config/bfin-parse.c"
+#line 4766 "config/bfin-parse.c"
     break;
 
   case 111: /* asm_1: HALF_REG ASSIGN CCREG ASSIGN BXORSHIFT LPAREN REG_A COMMA REG RPAREN  */
@@ -4788,7 +4778,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4792 "config/bfin-parse.c"
+#line 4782 "config/bfin-parse.c"
     break;
 
   case 112: /* asm_1: HALF_REG ASSIGN CCREG ASSIGN BXOR LPAREN REG_A COMMA REG RPAREN  */
@@ -4804,7 +4794,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4808 "config/bfin-parse.c"
+#line 4798 "config/bfin-parse.c"
     break;
 
   case 113: /* asm_1: HALF_REG ASSIGN CCREG ASSIGN BXOR LPAREN REG_A COMMA REG_A COMMA CCREG RPAREN  */
@@ -4818,7 +4808,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4822 "config/bfin-parse.c"
+#line 4812 "config/bfin-parse.c"
     break;
 
   case 114: /* asm_1: a_assign ROT REG_A BY HALF_REG  */
@@ -4832,7 +4822,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4836 "config/bfin-parse.c"
+#line 4826 "config/bfin-parse.c"
     break;
 
   case 115: /* asm_1: REG ASSIGN ROT REG BY HALF_REG  */
@@ -4846,7 +4836,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4850 "config/bfin-parse.c"
+#line 4840 "config/bfin-parse.c"
     break;
 
   case 116: /* asm_1: a_assign ROT REG_A BY expr  */
@@ -4860,7 +4850,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4864 "config/bfin-parse.c"
+#line 4854 "config/bfin-parse.c"
     break;
 
   case 117: /* asm_1: REG ASSIGN ROT REG BY expr  */
@@ -4873,7 +4863,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4877 "config/bfin-parse.c"
+#line 4867 "config/bfin-parse.c"
     break;
 
   case 118: /* asm_1: HALF_REG ASSIGN SIGNBITS REG_A  */
@@ -4887,7 +4877,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4891 "config/bfin-parse.c"
+#line 4881 "config/bfin-parse.c"
     break;
 
   case 119: /* asm_1: HALF_REG ASSIGN SIGNBITS REG  */
@@ -4901,7 +4891,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4905 "config/bfin-parse.c"
+#line 4895 "config/bfin-parse.c"
     break;
 
   case 120: /* asm_1: HALF_REG ASSIGN SIGNBITS HALF_REG  */
@@ -4915,7 +4905,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4919 "config/bfin-parse.c"
+#line 4909 "config/bfin-parse.c"
     break;
 
   case 121: /* asm_1: HALF_REG ASSIGN VIT_MAX LPAREN REG RPAREN asr_asl  */
@@ -4929,7 +4919,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4933 "config/bfin-parse.c"
+#line 4923 "config/bfin-parse.c"
     break;
 
   case 122: /* asm_1: REG ASSIGN VIT_MAX LPAREN REG COMMA REG RPAREN asr_asl  */
@@ -4943,7 +4933,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4947 "config/bfin-parse.c"
+#line 4937 "config/bfin-parse.c"
     break;
 
   case 123: /* asm_1: BITMUX LPAREN REG COMMA REG COMMA REG_A RPAREN asr_asl  */
@@ -4960,7 +4950,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4964 "config/bfin-parse.c"
+#line 4954 "config/bfin-parse.c"
     break;
 
   case 124: /* asm_1: a_assign BXORSHIFT LPAREN REG_A COMMA REG_A COMMA CCREG RPAREN  */
@@ -4974,7 +4964,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 4978 "config/bfin-parse.c"
+#line 4968 "config/bfin-parse.c"
     break;
 
   case 125: /* asm_1: BITCLR LPAREN REG COMMA expr RPAREN  */
@@ -4988,7 +4978,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 4992 "config/bfin-parse.c"
+#line 4982 "config/bfin-parse.c"
     break;
 
   case 126: /* asm_1: BITSET LPAREN REG COMMA expr RPAREN  */
@@ -5002,7 +4992,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 5006 "config/bfin-parse.c"
+#line 4996 "config/bfin-parse.c"
     break;
 
   case 127: /* asm_1: BITTGL LPAREN REG COMMA expr RPAREN  */
@@ -5016,7 +5006,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 5020 "config/bfin-parse.c"
+#line 5010 "config/bfin-parse.c"
     break;
 
   case 128: /* asm_1: CCREG _ASSIGN_BANG BITTST LPAREN REG COMMA expr RPAREN  */
@@ -5030,7 +5020,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch or value error");
 	}
-#line 5034 "config/bfin-parse.c"
+#line 5024 "config/bfin-parse.c"
     break;
 
   case 129: /* asm_1: CCREG ASSIGN BITTST LPAREN REG COMMA expr RPAREN  */
@@ -5044,7 +5034,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch or value error");
 	}
-#line 5048 "config/bfin-parse.c"
+#line 5038 "config/bfin-parse.c"
     break;
 
   case 130: /* asm_1: IF BANG CCREG REG ASSIGN REG  */
@@ -5059,7 +5049,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 5063 "config/bfin-parse.c"
+#line 5053 "config/bfin-parse.c"
     break;
 
   case 131: /* asm_1: IF CCREG REG ASSIGN REG  */
@@ -5074,7 +5064,7 @@ yyreduce:
 	  else
 	    return yyerror ("Register mismatch");
 	}
-#line 5078 "config/bfin-parse.c"
+#line 5068 "config/bfin-parse.c"
     break;
 
   case 132: /* asm_1: IF BANG CCREG JUMP expr  */
@@ -5088,7 +5078,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad jump offset");
 	}
-#line 5092 "config/bfin-parse.c"
+#line 5082 "config/bfin-parse.c"
     break;
 
   case 133: /* asm_1: IF BANG CCREG JUMP expr LPAREN BP RPAREN  */
@@ -5102,7 +5092,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad jump offset");
 	}
-#line 5106 "config/bfin-parse.c"
+#line 5096 "config/bfin-parse.c"
     break;
 
   case 134: /* asm_1: IF CCREG JUMP expr  */
@@ -5116,7 +5106,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad jump offset");
 	}
-#line 5120 "config/bfin-parse.c"
+#line 5110 "config/bfin-parse.c"
     break;
 
   case 135: /* asm_1: IF CCREG JUMP expr LPAREN BP RPAREN  */
@@ -5130,7 +5120,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad jump offset");
 	}
-#line 5134 "config/bfin-parse.c"
+#line 5124 "config/bfin-parse.c"
     break;
 
   case 136: /* asm_1: NOP  */
@@ -5139,7 +5129,7 @@ yyreduce:
 	  notethat ("ProgCtrl: NOP\n");
 	  (yyval.instr) = PROGCTRL (0, 0);
 	}
-#line 5143 "config/bfin-parse.c"
+#line 5133 "config/bfin-parse.c"
     break;
 
   case 137: /* asm_1: RTS  */
@@ -5148,7 +5138,7 @@ yyreduce:
 	  notethat ("ProgCtrl: RTS\n");
 	  (yyval.instr) = PROGCTRL (1, 0);
 	}
-#line 5152 "config/bfin-parse.c"
+#line 5142 "config/bfin-parse.c"
     break;
 
   case 138: /* asm_1: RTI  */
@@ -5157,7 +5147,7 @@ yyreduce:
 	  notethat ("ProgCtrl: RTI\n");
 	  (yyval.instr) = PROGCTRL (1, 1);
 	}
-#line 5161 "config/bfin-parse.c"
+#line 5151 "config/bfin-parse.c"
     break;
 
   case 139: /* asm_1: RTX  */
@@ -5166,7 +5156,7 @@ yyreduce:
 	  notethat ("ProgCtrl: RTX\n");
 	  (yyval.instr) = PROGCTRL (1, 2);
 	}
-#line 5170 "config/bfin-parse.c"
+#line 5160 "config/bfin-parse.c"
     break;
 
   case 140: /* asm_1: RTN  */
@@ -5175,7 +5165,7 @@ yyreduce:
 	  notethat ("ProgCtrl: RTN\n");
 	  (yyval.instr) = PROGCTRL (1, 3);
 	}
-#line 5179 "config/bfin-parse.c"
+#line 5169 "config/bfin-parse.c"
     break;
 
   case 141: /* asm_1: RTE  */
@@ -5184,7 +5174,7 @@ yyreduce:
 	  notethat ("ProgCtrl: RTE\n");
 	  (yyval.instr) = PROGCTRL (1, 4);
 	}
-#line 5188 "config/bfin-parse.c"
+#line 5178 "config/bfin-parse.c"
     break;
 
   case 142: /* asm_1: IDLE  */
@@ -5193,7 +5183,7 @@ yyreduce:
 	  notethat ("ProgCtrl: IDLE\n");
 	  (yyval.instr) = PROGCTRL (2, 0);
 	}
-#line 5197 "config/bfin-parse.c"
+#line 5187 "config/bfin-parse.c"
     break;
 
   case 143: /* asm_1: CSYNC  */
@@ -5202,7 +5192,7 @@ yyreduce:
 	  notethat ("ProgCtrl: CSYNC\n");
 	  (yyval.instr) = PROGCTRL (2, 3);
 	}
-#line 5206 "config/bfin-parse.c"
+#line 5196 "config/bfin-parse.c"
     break;
 
   case 144: /* asm_1: SSYNC  */
@@ -5211,7 +5201,7 @@ yyreduce:
 	  notethat ("ProgCtrl: SSYNC\n");
 	  (yyval.instr) = PROGCTRL (2, 4);
 	}
-#line 5215 "config/bfin-parse.c"
+#line 5205 "config/bfin-parse.c"
     break;
 
   case 145: /* asm_1: EMUEXCPT  */
@@ -5220,7 +5210,7 @@ yyreduce:
 	  notethat ("ProgCtrl: EMUEXCPT\n");
 	  (yyval.instr) = PROGCTRL (2, 5);
 	}
-#line 5224 "config/bfin-parse.c"
+#line 5214 "config/bfin-parse.c"
     break;
 
   case 146: /* asm_1: CLI REG  */
@@ -5234,7 +5224,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dreg expected for CLI");
 	}
-#line 5238 "config/bfin-parse.c"
+#line 5228 "config/bfin-parse.c"
     break;
 
   case 147: /* asm_1: STI REG  */
@@ -5248,7 +5238,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dreg expected for STI");
 	}
-#line 5252 "config/bfin-parse.c"
+#line 5242 "config/bfin-parse.c"
     break;
 
   case 148: /* asm_1: JUMP LPAREN REG RPAREN  */
@@ -5262,7 +5252,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register for indirect jump");
 	}
-#line 5266 "config/bfin-parse.c"
+#line 5256 "config/bfin-parse.c"
     break;
 
   case 149: /* asm_1: CALL LPAREN REG RPAREN  */
@@ -5276,7 +5266,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register for indirect call");
 	}
-#line 5280 "config/bfin-parse.c"
+#line 5270 "config/bfin-parse.c"
     break;
 
   case 150: /* asm_1: CALL LPAREN PC PLUS REG RPAREN  */
@@ -5290,7 +5280,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register for indirect call");
 	}
-#line 5294 "config/bfin-parse.c"
+#line 5284 "config/bfin-parse.c"
     break;
 
   case 151: /* asm_1: JUMP LPAREN PC PLUS REG RPAREN  */
@@ -5304,7 +5294,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register for indirect jump");
 	}
-#line 5308 "config/bfin-parse.c"
+#line 5298 "config/bfin-parse.c"
     break;
 
   case 152: /* asm_1: RAISE expr  */
@@ -5318,7 +5308,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad value for RAISE");
 	}
-#line 5322 "config/bfin-parse.c"
+#line 5312 "config/bfin-parse.c"
     break;
 
   case 153: /* asm_1: EXCPT expr  */
@@ -5327,7 +5317,7 @@ yyreduce:
 		notethat ("ProgCtrl: EMUEXCPT\n");
 		(yyval.instr) = PROGCTRL (10, uimm4 ((yyvsp[0].expr)));
 	}
-#line 5331 "config/bfin-parse.c"
+#line 5321 "config/bfin-parse.c"
     break;
 
   case 154: /* asm_1: TESTSET LPAREN REG RPAREN  */
@@ -5344,7 +5334,7 @@ yyreduce:
 	  else
 	    return yyerror ("Preg expected");
 	}
-#line 5348 "config/bfin-parse.c"
+#line 5338 "config/bfin-parse.c"
     break;
 
   case 155: /* asm_1: JUMP expr  */
@@ -5358,7 +5348,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad value for relative jump");
 	}
-#line 5362 "config/bfin-parse.c"
+#line 5352 "config/bfin-parse.c"
     break;
 
   case 156: /* asm_1: JUMP_DOT_S expr  */
@@ -5372,7 +5362,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad value for relative jump");
 	}
-#line 5376 "config/bfin-parse.c"
+#line 5366 "config/bfin-parse.c"
     break;
 
   case 157: /* asm_1: JUMP_DOT_L expr  */
@@ -5386,7 +5376,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad value for long jump");
 	}
-#line 5390 "config/bfin-parse.c"
+#line 5380 "config/bfin-parse.c"
     break;
 
   case 158: /* asm_1: JUMP_DOT_L pltpc  */
@@ -5400,7 +5390,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad value for long jump");
 	}
-#line 5404 "config/bfin-parse.c"
+#line 5394 "config/bfin-parse.c"
     break;
 
   case 159: /* asm_1: CALL expr  */
@@ -5414,7 +5404,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad call address");
 	}
-#line 5418 "config/bfin-parse.c"
+#line 5408 "config/bfin-parse.c"
     break;
 
   case 160: /* asm_1: CALL pltpc  */
@@ -5428,7 +5418,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad call address");
 	}
-#line 5432 "config/bfin-parse.c"
+#line 5422 "config/bfin-parse.c"
     break;
 
   case 161: /* asm_1: DIVQ LPAREN REG COMMA REG RPAREN  */
@@ -5439,7 +5429,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad registers for DIVQ");
 	}
-#line 5443 "config/bfin-parse.c"
+#line 5433 "config/bfin-parse.c"
     break;
 
   case 162: /* asm_1: DIVS LPAREN REG COMMA REG RPAREN  */
@@ -5450,7 +5440,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad registers for DIVS");
 	}
-#line 5454 "config/bfin-parse.c"
+#line 5444 "config/bfin-parse.c"
     break;
 
   case 163: /* asm_1: REG ASSIGN MINUS REG vsmod  */
@@ -5477,7 +5467,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 5481 "config/bfin-parse.c"
+#line 5471 "config/bfin-parse.c"
     break;
 
   case 164: /* asm_1: REG ASSIGN TILDA REG  */
@@ -5491,7 +5481,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 5495 "config/bfin-parse.c"
+#line 5485 "config/bfin-parse.c"
     break;
 
   case 165: /* asm_1: REG _GREATER_GREATER_ASSIGN REG  */
@@ -5505,7 +5495,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 5509 "config/bfin-parse.c"
+#line 5499 "config/bfin-parse.c"
     break;
 
   case 166: /* asm_1: REG _GREATER_GREATER_ASSIGN expr  */
@@ -5519,7 +5509,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected or value error");
 	}
-#line 5523 "config/bfin-parse.c"
+#line 5513 "config/bfin-parse.c"
     break;
 
   case 167: /* asm_1: REG _GREATER_GREATER_GREATER_THAN_ASSIGN REG  */
@@ -5533,7 +5523,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 5537 "config/bfin-parse.c"
+#line 5527 "config/bfin-parse.c"
     break;
 
   case 168: /* asm_1: REG _LESS_LESS_ASSIGN REG  */
@@ -5547,7 +5537,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 5551 "config/bfin-parse.c"
+#line 5541 "config/bfin-parse.c"
     break;
 
   case 169: /* asm_1: REG _LESS_LESS_ASSIGN expr  */
@@ -5561,7 +5551,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected or const value error");
 	}
-#line 5565 "config/bfin-parse.c"
+#line 5555 "config/bfin-parse.c"
     break;
 
   case 170: /* asm_1: REG _GREATER_GREATER_GREATER_THAN_ASSIGN expr  */
@@ -5575,7 +5565,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 5579 "config/bfin-parse.c"
+#line 5569 "config/bfin-parse.c"
     break;
 
   case 171: /* asm_1: FLUSH LBRACK REG RBRACK  */
@@ -5587,7 +5577,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register(s) for FLUSH");
 	}
-#line 5591 "config/bfin-parse.c"
+#line 5581 "config/bfin-parse.c"
     break;
 
   case 172: /* asm_1: FLUSH reg_with_postinc  */
@@ -5601,7 +5591,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register(s) for FLUSH");
 	}
-#line 5605 "config/bfin-parse.c"
+#line 5595 "config/bfin-parse.c"
     break;
 
   case 173: /* asm_1: FLUSHINV LBRACK REG RBRACK  */
@@ -5615,7 +5605,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register(s) for FLUSH");
 	}
-#line 5619 "config/bfin-parse.c"
+#line 5609 "config/bfin-parse.c"
     break;
 
   case 174: /* asm_1: FLUSHINV reg_with_postinc  */
@@ -5629,7 +5619,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register(s) for FLUSH");
 	}
-#line 5633 "config/bfin-parse.c"
+#line 5623 "config/bfin-parse.c"
     break;
 
   case 175: /* asm_1: IFLUSH LBRACK REG RBRACK  */
@@ -5643,7 +5633,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register(s) for FLUSH");
 	}
-#line 5647 "config/bfin-parse.c"
+#line 5637 "config/bfin-parse.c"
     break;
 
   case 176: /* asm_1: IFLUSH reg_with_postinc  */
@@ -5657,7 +5647,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register(s) for FLUSH");
 	}
-#line 5661 "config/bfin-parse.c"
+#line 5651 "config/bfin-parse.c"
     break;
 
   case 177: /* asm_1: PREFETCH LBRACK REG RBRACK  */
@@ -5671,7 +5661,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register(s) for PREFETCH");
 	}
-#line 5675 "config/bfin-parse.c"
+#line 5665 "config/bfin-parse.c"
     break;
 
   case 178: /* asm_1: PREFETCH reg_with_postinc  */
@@ -5685,7 +5675,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register(s) for PREFETCH");
 	}
-#line 5689 "config/bfin-parse.c"
+#line 5679 "config/bfin-parse.c"
     break;
 
   case 179: /* asm_1: B LBRACK REG post_op RBRACK ASSIGN REG  */
@@ -5699,7 +5689,7 @@ yyreduce:
 	  notethat ("LDST: B [ pregs <post_op> ] = dregs\n");
 	  (yyval.instr) = LDST (&(yyvsp[-4].reg), &(yyvsp[0].reg), (yyvsp[-3].modcodes).x0, 2, 0, 1);
 	}
-#line 5703 "config/bfin-parse.c"
+#line 5693 "config/bfin-parse.c"
     break;
 
   case 180: /* asm_1: B LBRACK REG plus_minus expr RBRACK ASSIGN REG  */
@@ -5726,7 +5716,7 @@ yyreduce:
 	  else
 	    return yyerror ("Displacement out of range");
 	}
-#line 5730 "config/bfin-parse.c"
+#line 5720 "config/bfin-parse.c"
     break;
 
   case 181: /* asm_1: W LBRACK REG plus_minus expr RBRACK ASSIGN REG  */
@@ -5758,7 +5748,7 @@ yyreduce:
 	  else
 	    return yyerror ("Displacement out of range");
 	}
-#line 5762 "config/bfin-parse.c"
+#line 5752 "config/bfin-parse.c"
     break;
 
   case 182: /* asm_1: W LBRACK REG post_op RBRACK ASSIGN REG  */
@@ -5772,7 +5762,7 @@ yyreduce:
 	  notethat ("LDST: W [ pregs <post_op> ] = dregs\n");
 	  (yyval.instr) = LDST (&(yyvsp[-4].reg), &(yyvsp[0].reg), (yyvsp[-3].modcodes).x0, 1, 0, 1);
 	}
-#line 5776 "config/bfin-parse.c"
+#line 5766 "config/bfin-parse.c"
     break;
 
   case 183: /* asm_1: W LBRACK REG post_op RBRACK ASSIGN HALF_REG  */
@@ -5799,7 +5789,7 @@ yyreduce:
 	      (yyval.instr) = LDSTPMOD (&(yyvsp[-4].reg), &(yyvsp[0].reg), &(yyvsp[-4].reg), 1 + IS_H ((yyvsp[0].reg)), 1);
 	    }
 	}
-#line 5803 "config/bfin-parse.c"
+#line 5793 "config/bfin-parse.c"
     break;
 
   case 184: /* asm_1: LBRACK REG plus_minus expr RBRACK ASSIGN REG  */
@@ -5839,7 +5829,7 @@ yyreduce:
 	  else
 	    return yyerror ("Displacement out of range");
 	}
-#line 5843 "config/bfin-parse.c"
+#line 5833 "config/bfin-parse.c"
     break;
 
   case 185: /* asm_1: REG ASSIGN W LBRACK REG plus_minus expr RBRACK xpmod  */
@@ -5870,7 +5860,7 @@ yyreduce:
 	  else
 	    return yyerror ("Displacement out of range");
 	}
-#line 5874 "config/bfin-parse.c"
+#line 5864 "config/bfin-parse.c"
     break;
 
   case 186: /* asm_1: HALF_REG ASSIGN W LBRACK REG post_op RBRACK  */
@@ -5897,7 +5887,7 @@ yyreduce:
 	      (yyval.instr) = LDSTPMOD (&(yyvsp[-2].reg), &(yyvsp[-6].reg), &(yyvsp[-2].reg), 1 + IS_H ((yyvsp[-6].reg)), 0);
 	    }
 	}
-#line 5901 "config/bfin-parse.c"
+#line 5891 "config/bfin-parse.c"
     break;
 
   case 187: /* asm_1: REG ASSIGN W LBRACK REG post_op RBRACK xpmod  */
@@ -5911,7 +5901,7 @@ yyreduce:
 	  notethat ("LDST: dregs = W [ pregs <post_op> ] (.)\n");
 	  (yyval.instr) = LDST (&(yyvsp[-3].reg), &(yyvsp[-7].reg), (yyvsp[-2].modcodes).x0, 1, (yyvsp[0].r0).r0, 0);
 	}
-#line 5915 "config/bfin-parse.c"
+#line 5905 "config/bfin-parse.c"
     break;
 
   case 188: /* asm_1: REG ASSIGN W LBRACK REG _PLUS_PLUS REG RBRACK xpmod  */
@@ -5925,7 +5915,7 @@ yyreduce:
 	  notethat ("LDSTpmod: dregs = W [ pregs ++ pregs ] (.)\n");
 	  (yyval.instr) = LDSTPMOD (&(yyvsp[-4].reg), &(yyvsp[-8].reg), &(yyvsp[-2].reg), 3, (yyvsp[0].r0).r0);
 	}
-#line 5929 "config/bfin-parse.c"
+#line 5919 "config/bfin-parse.c"
     break;
 
   case 189: /* asm_1: HALF_REG ASSIGN W LBRACK REG _PLUS_PLUS REG RBRACK  */
@@ -5939,7 +5929,7 @@ yyreduce:
 	  notethat ("LDSTpmod: dregs_half = W [ pregs ++ pregs ]\n");
 	  (yyval.instr) = LDSTPMOD (&(yyvsp[-3].reg), &(yyvsp[-7].reg), &(yyvsp[-1].reg), 1 + IS_H ((yyvsp[-7].reg)), 0);
 	}
-#line 5943 "config/bfin-parse.c"
+#line 5933 "config/bfin-parse.c"
     break;
 
   case 190: /* asm_1: LBRACK REG post_op RBRACK ASSIGN REG  */
@@ -5968,7 +5958,7 @@ yyreduce:
 	      (yyval.instr) = LDST (&(yyvsp[-4].reg), &(yyvsp[0].reg), (yyvsp[-3].modcodes).x0, 0, 1, 1);
 	    }
 	}
-#line 5972 "config/bfin-parse.c"
+#line 5962 "config/bfin-parse.c"
     break;
 
   case 191: /* asm_1: LBRACK REG _PLUS_PLUS REG RBRACK ASSIGN REG  */
@@ -5990,7 +5980,7 @@ yyreduce:
 	  else
 	    return yyerror ("Preg ++ Preg or Ireg ++ Mreg expected in address");
 	}
-#line 5994 "config/bfin-parse.c"
+#line 5984 "config/bfin-parse.c"
     break;
 
   case 192: /* asm_1: W LBRACK REG _PLUS_PLUS REG RBRACK ASSIGN HALF_REG  */
@@ -6007,7 +5997,7 @@ yyreduce:
 	  else
 	    return yyerror ("Preg ++ Preg expected in address");
 	}
-#line 6011 "config/bfin-parse.c"
+#line 6001 "config/bfin-parse.c"
     break;
 
   case 193: /* asm_1: REG ASSIGN B LBRACK REG plus_minus expr RBRACK xpmod  */
@@ -6034,7 +6024,7 @@ yyreduce:
 	  else
 	    return yyerror ("Displacement out of range");
 	}
-#line 6038 "config/bfin-parse.c"
+#line 6028 "config/bfin-parse.c"
     break;
 
   case 194: /* asm_1: REG ASSIGN B LBRACK REG post_op RBRACK xpmod  */
@@ -6049,7 +6039,7 @@ yyreduce:
 		    (yyvsp[0].r0).r0 ? 'X' : 'Z');
 	  (yyval.instr) = LDST (&(yyvsp[-3].reg), &(yyvsp[-7].reg), (yyvsp[-2].modcodes).x0, 2, (yyvsp[0].r0).r0, 0);
 	}
-#line 6053 "config/bfin-parse.c"
+#line 6043 "config/bfin-parse.c"
     break;
 
   case 195: /* asm_1: REG ASSIGN LBRACK REG _PLUS_PLUS REG RBRACK  */
@@ -6071,7 +6061,7 @@ yyreduce:
 	  else
 	    return yyerror ("Preg ++ Preg or Ireg ++ Mreg expected in address");
 	}
-#line 6075 "config/bfin-parse.c"
+#line 6065 "config/bfin-parse.c"
     break;
 
   case 196: /* asm_1: REG ASSIGN LBRACK REG plus_minus got_or_expr RBRACK  */
@@ -6120,7 +6110,7 @@ yyreduce:
 	  else
 	    return yyerror ("Displacement out of range");
 	}
-#line 6124 "config/bfin-parse.c"
+#line 6114 "config/bfin-parse.c"
     break;
 
   case 197: /* asm_1: REG ASSIGN LBRACK REG post_op RBRACK  */
@@ -6158,7 +6148,7 @@ yyreduce:
 	      (yyval.instr) = PUSHPOPREG (&(yyvsp[-5].reg), 0);
 	    }
 	}
-#line 6162 "config/bfin-parse.c"
+#line 6152 "config/bfin-parse.c"
     break;
 
   case 198: /* asm_1: reg_with_predec ASSIGN LPAREN REG COLON expr COMMA REG COLON expr RPAREN  */
@@ -6177,7 +6167,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register for PushPopMultiple");
 	}
-#line 6181 "config/bfin-parse.c"
+#line 6171 "config/bfin-parse.c"
     break;
 
   case 199: /* asm_1: reg_with_predec ASSIGN LPAREN REG COLON expr RPAREN  */
@@ -6199,7 +6189,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register for PushPopMultiple");
 	}
-#line 6203 "config/bfin-parse.c"
+#line 6193 "config/bfin-parse.c"
     break;
 
   case 200: /* asm_1: LPAREN REG COLON expr COMMA REG COLON expr RPAREN ASSIGN reg_with_postinc  */
@@ -6216,7 +6206,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register range for PushPopMultiple");
 	}
-#line 6220 "config/bfin-parse.c"
+#line 6210 "config/bfin-parse.c"
     break;
 
   case 201: /* asm_1: LPAREN REG COLON expr RPAREN ASSIGN reg_with_postinc  */
@@ -6238,7 +6228,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register range for PushPopMultiple");
 	}
-#line 6242 "config/bfin-parse.c"
+#line 6232 "config/bfin-parse.c"
     break;
 
   case 202: /* asm_1: reg_with_predec ASSIGN REG  */
@@ -6255,7 +6245,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register for PushPopReg");
 	}
-#line 6259 "config/bfin-parse.c"
+#line 6249 "config/bfin-parse.c"
     break;
 
   case 203: /* asm_1: LINK expr  */
@@ -6266,7 +6256,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad constant for LINK");
 	}
-#line 6270 "config/bfin-parse.c"
+#line 6260 "config/bfin-parse.c"
     break;
 
   case 204: /* asm_1: UNLINK  */
@@ -6275,7 +6265,7 @@ yyreduce:
 		notethat ("linkage: UNLINK\n");
 		(yyval.instr) = LINKAGE (1, 0);
 	}
-#line 6279 "config/bfin-parse.c"
+#line 6269 "config/bfin-parse.c"
     break;
 
   case 205: /* asm_1: LSETUP LPAREN expr COMMA expr RPAREN REG  */
@@ -6290,7 +6280,7 @@ yyreduce:
 	    return yyerror ("Bad register or values for LSETUP");
 
 	}
-#line 6294 "config/bfin-parse.c"
+#line 6284 "config/bfin-parse.c"
     break;
 
   case 206: /* asm_1: LSETUP LPAREN expr COMMA expr RPAREN REG ASSIGN REG  */
@@ -6305,7 +6295,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register or values for LSETUP");
 	}
-#line 6309 "config/bfin-parse.c"
+#line 6299 "config/bfin-parse.c"
     break;
 
   case 207: /* asm_1: LSETUP LPAREN expr COMMA expr RPAREN REG ASSIGN REG GREATER_GREATER expr  */
@@ -6321,7 +6311,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register or values for LSETUP");
 	}
-#line 6325 "config/bfin-parse.c"
+#line 6315 "config/bfin-parse.c"
     break;
 
   case 208: /* asm_1: LOOP expr REG  */
@@ -6333,7 +6323,7 @@ yyreduce:
             return yyerror ("Invalid loop counter register");
 	(yyval.instr) = bfin_gen_loop ((yyvsp[-1].expr), &(yyvsp[0].reg), 0, 0);
 	}
-#line 6337 "config/bfin-parse.c"
+#line 6327 "config/bfin-parse.c"
     break;
 
   case 209: /* asm_1: LOOP expr REG ASSIGN REG  */
@@ -6347,7 +6337,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register or values for LOOP");
 	}
-#line 6351 "config/bfin-parse.c"
+#line 6341 "config/bfin-parse.c"
     break;
 
   case 210: /* asm_1: LOOP expr REG ASSIGN REG GREATER_GREATER expr  */
@@ -6361,7 +6351,7 @@ yyreduce:
 	  else
 	    return yyerror ("Bad register or values for LOOP");
 	}
-#line 6365 "config/bfin-parse.c"
+#line 6355 "config/bfin-parse.c"
     break;
 
   case 211: /* asm_1: LOOP_BEGIN NUMBER  */
@@ -6376,7 +6366,7 @@ yyreduce:
 	  bfin_loop_beginend (tmp, 1);
 	  (yyval.instr) = 0;
 	}
-#line 6380 "config/bfin-parse.c"
+#line 6370 "config/bfin-parse.c"
     break;
 
   case 212: /* asm_1: LOOP_BEGIN expr  */
@@ -6388,7 +6378,7 @@ yyreduce:
 	  bfin_loop_beginend ((yyvsp[0].expr), 1);
 	  (yyval.instr) = 0;
 	}
-#line 6392 "config/bfin-parse.c"
+#line 6382 "config/bfin-parse.c"
     break;
 
   case 213: /* asm_1: LOOP_END NUMBER  */
@@ -6403,7 +6393,7 @@ yyreduce:
 	  bfin_loop_beginend (tmp, 0);
 	  (yyval.instr) = 0;
 	}
-#line 6407 "config/bfin-parse.c"
+#line 6397 "config/bfin-parse.c"
     break;
 
   case 214: /* asm_1: LOOP_END expr  */
@@ -6415,7 +6405,7 @@ yyreduce:
 	  bfin_loop_beginend ((yyvsp[0].expr), 0);
 	  (yyval.instr) = 0;
 	}
-#line 6419 "config/bfin-parse.c"
+#line 6409 "config/bfin-parse.c"
     break;
 
   case 215: /* asm_1: ABORT  */
@@ -6424,7 +6414,7 @@ yyreduce:
 	  notethat ("psedoDEBUG: ABORT\n");
 	  (yyval.instr) = bfin_gen_pseudodbg (3, 3, 0);
 	}
-#line 6428 "config/bfin-parse.c"
+#line 6418 "config/bfin-parse.c"
     break;
 
   case 216: /* asm_1: DBG  */
@@ -6433,7 +6423,7 @@ yyreduce:
 	  notethat ("pseudoDEBUG: DBG\n");
 	  (yyval.instr) = bfin_gen_pseudodbg (3, 7, 0);
 	}
-#line 6437 "config/bfin-parse.c"
+#line 6427 "config/bfin-parse.c"
     break;
 
   case 217: /* asm_1: DBG REG_A  */
@@ -6442,7 +6432,7 @@ yyreduce:
 	  notethat ("pseudoDEBUG: DBG REG_A\n");
 	  (yyval.instr) = bfin_gen_pseudodbg (3, IS_A1 ((yyvsp[0].reg)), 0);
 	}
-#line 6446 "config/bfin-parse.c"
+#line 6436 "config/bfin-parse.c"
     break;
 
   case 218: /* asm_1: DBG REG  */
@@ -6451,7 +6441,7 @@ yyreduce:
 	  notethat ("pseudoDEBUG: DBG allregs\n");
 	  (yyval.instr) = bfin_gen_pseudodbg (0, (yyvsp[0].reg).regno & CODE_MASK, ((yyvsp[0].reg).regno & CLASS_MASK) >> 4);
 	}
-#line 6455 "config/bfin-parse.c"
+#line 6445 "config/bfin-parse.c"
     break;
 
   case 219: /* asm_1: DBGCMPLX LPAREN REG RPAREN  */
@@ -6462,7 +6452,7 @@ yyreduce:
 	  notethat ("pseudoDEBUG: DBGCMPLX (dregs )\n");
 	  (yyval.instr) = bfin_gen_pseudodbg (3, 6, ((yyvsp[-1].reg).regno & CODE_MASK) >> 4);
 	}
-#line 6466 "config/bfin-parse.c"
+#line 6456 "config/bfin-parse.c"
     break;
 
   case 220: /* asm_1: DBGHALT  */
@@ -6471,7 +6461,7 @@ yyreduce:
 	  notethat ("psedoDEBUG: DBGHALT\n");
 	  (yyval.instr) = bfin_gen_pseudodbg (3, 5, 0);
 	}
-#line 6475 "config/bfin-parse.c"
+#line 6465 "config/bfin-parse.c"
     break;
 
   case 221: /* asm_1: HLT  */
@@ -6480,7 +6470,7 @@ yyreduce:
 	  notethat ("psedoDEBUG: HLT\n");
 	  (yyval.instr) = bfin_gen_pseudodbg (3, 4, 0);
 	}
-#line 6484 "config/bfin-parse.c"
+#line 6474 "config/bfin-parse.c"
     break;
 
   case 222: /* asm_1: DBGA LPAREN HALF_REG COMMA expr RPAREN  */
@@ -6489,7 +6479,7 @@ yyreduce:
 	  notethat ("pseudodbg_assert: DBGA (regs_lo/hi , uimm16 )\n");
 	  (yyval.instr) = bfin_gen_pseudodbg_assert (IS_H ((yyvsp[-3].reg)), &(yyvsp[-3].reg), uimm16 ((yyvsp[-1].expr)));
 	}
-#line 6493 "config/bfin-parse.c"
+#line 6483 "config/bfin-parse.c"
     break;
 
   case 223: /* asm_1: DBGAH LPAREN REG COMMA expr RPAREN  */
@@ -6498,7 +6488,7 @@ yyreduce:
 	  notethat ("pseudodbg_assert: DBGAH (regs , uimm16 )\n");
 	  (yyval.instr) = bfin_gen_pseudodbg_assert (3, &(yyvsp[-3].reg), uimm16 ((yyvsp[-1].expr)));
 	}
-#line 6502 "config/bfin-parse.c"
+#line 6492 "config/bfin-parse.c"
     break;
 
   case 224: /* asm_1: DBGAL LPAREN REG COMMA expr RPAREN  */
@@ -6507,7 +6497,7 @@ yyreduce:
 	  notethat ("psedodbg_assert: DBGAL (regs , uimm16 )\n");
 	  (yyval.instr) = bfin_gen_pseudodbg_assert (2, &(yyvsp[-3].reg), uimm16 ((yyvsp[-1].expr)));
 	}
-#line 6511 "config/bfin-parse.c"
+#line 6501 "config/bfin-parse.c"
     break;
 
   case 225: /* asm_1: OUTC expr  */
@@ -6518,7 +6508,7 @@ yyreduce:
 	  notethat ("psedodbg_assert: OUTC uimm8\n");
 	  (yyval.instr) = bfin_gen_pseudochr (uimm8 ((yyvsp[0].expr)));
 	}
-#line 6522 "config/bfin-parse.c"
+#line 6512 "config/bfin-parse.c"
     break;
 
   case 226: /* asm_1: OUTC REG  */
@@ -6529,7 +6519,7 @@ yyreduce:
 	  notethat ("psedodbg_assert: OUTC dreg\n");
 	  (yyval.instr) = bfin_gen_pseudodbg (2, (yyvsp[0].reg).regno & CODE_MASK, 0);
 	}
-#line 6533 "config/bfin-parse.c"
+#line 6523 "config/bfin-parse.c"
     break;
 
   case 227: /* REG_A: REG_A_DOUBLE_ZERO  */
@@ -6537,7 +6527,7 @@ yyreduce:
         {
 	(yyval.reg) = (yyvsp[0].reg);
 	}
-#line 6541 "config/bfin-parse.c"
+#line 6531 "config/bfin-parse.c"
     break;
 
   case 228: /* REG_A: REG_A_DOUBLE_ONE  */
@@ -6545,7 +6535,7 @@ yyreduce:
         {
 	(yyval.reg) = (yyvsp[0].reg);
 	}
-#line 6549 "config/bfin-parse.c"
+#line 6539 "config/bfin-parse.c"
     break;
 
   case 229: /* opt_mode: %empty  */
@@ -6554,7 +6544,7 @@ yyreduce:
 	(yyval.mod).MM = 0;
 	(yyval.mod).mod = 0;
 	}
-#line 6558 "config/bfin-parse.c"
+#line 6548 "config/bfin-parse.c"
     break;
 
   case 230: /* opt_mode: LPAREN M COMMA MMOD RPAREN  */
@@ -6563,7 +6553,7 @@ yyreduce:
 	(yyval.mod).MM = 1;
 	(yyval.mod).mod = (yyvsp[-1].value);
 	}
-#line 6567 "config/bfin-parse.c"
+#line 6557 "config/bfin-parse.c"
     break;
 
   case 231: /* opt_mode: LPAREN MMOD COMMA M RPAREN  */
@@ -6572,7 +6562,7 @@ yyreduce:
 	(yyval.mod).MM = 1;
 	(yyval.mod).mod = (yyvsp[-3].value);
 	}
-#line 6576 "config/bfin-parse.c"
+#line 6566 "config/bfin-parse.c"
     break;
 
   case 232: /* opt_mode: LPAREN MMOD RPAREN  */
@@ -6581,7 +6571,7 @@ yyreduce:
 	(yyval.mod).MM = 0;
 	(yyval.mod).mod = (yyvsp[-1].value);
 	}
-#line 6585 "config/bfin-parse.c"
+#line 6575 "config/bfin-parse.c"
     break;
 
   case 233: /* opt_mode: LPAREN M RPAREN  */
@@ -6590,7 +6580,7 @@ yyreduce:
 	(yyval.mod).MM = 1;
 	(yyval.mod).mod = 0;
 	}
-#line 6594 "config/bfin-parse.c"
+#line 6584 "config/bfin-parse.c"
     break;
 
   case 234: /* asr_asl: LPAREN ASL RPAREN  */
@@ -6598,7 +6588,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 1;
 	}
-#line 6602 "config/bfin-parse.c"
+#line 6592 "config/bfin-parse.c"
     break;
 
   case 235: /* asr_asl: LPAREN ASR RPAREN  */
@@ -6606,7 +6596,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 6610 "config/bfin-parse.c"
+#line 6600 "config/bfin-parse.c"
     break;
 
   case 236: /* sco: %empty  */
@@ -6615,7 +6605,7 @@ yyreduce:
 	(yyval.modcodes).s0 = 0;
 	(yyval.modcodes).x0 = 0;
 	}
-#line 6619 "config/bfin-parse.c"
+#line 6609 "config/bfin-parse.c"
     break;
 
   case 237: /* sco: S  */
@@ -6624,7 +6614,7 @@ yyreduce:
 	(yyval.modcodes).s0 = 1;
 	(yyval.modcodes).x0 = 0;
 	}
-#line 6628 "config/bfin-parse.c"
+#line 6618 "config/bfin-parse.c"
     break;
 
   case 238: /* sco: CO  */
@@ -6633,7 +6623,7 @@ yyreduce:
 	(yyval.modcodes).s0 = 0;
 	(yyval.modcodes).x0 = 1;
 	}
-#line 6637 "config/bfin-parse.c"
+#line 6627 "config/bfin-parse.c"
     break;
 
   case 239: /* sco: SCO  */
@@ -6642,7 +6632,7 @@ yyreduce:
 	(yyval.modcodes).s0 = 1;
 	(yyval.modcodes).x0 = 1;
 	}
-#line 6646 "config/bfin-parse.c"
+#line 6636 "config/bfin-parse.c"
     break;
 
   case 240: /* asr_asl_0: ASL  */
@@ -6650,7 +6640,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 1;
 	}
-#line 6654 "config/bfin-parse.c"
+#line 6644 "config/bfin-parse.c"
     break;
 
   case 241: /* asr_asl_0: ASR  */
@@ -6658,7 +6648,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 6662 "config/bfin-parse.c"
+#line 6652 "config/bfin-parse.c"
     break;
 
   case 242: /* amod0: %empty  */
@@ -6667,7 +6657,7 @@ yyreduce:
 	(yyval.modcodes).s0 = 0;
 	(yyval.modcodes).x0 = 0;
 	}
-#line 6671 "config/bfin-parse.c"
+#line 6661 "config/bfin-parse.c"
     break;
 
   case 243: /* amod0: LPAREN sco RPAREN  */
@@ -6676,7 +6666,7 @@ yyreduce:
 	(yyval.modcodes).s0 = (yyvsp[-1].modcodes).s0;
 	(yyval.modcodes).x0 = (yyvsp[-1].modcodes).x0;
 	}
-#line 6680 "config/bfin-parse.c"
+#line 6670 "config/bfin-parse.c"
     break;
 
   case 244: /* amod1: %empty  */
@@ -6686,7 +6676,7 @@ yyreduce:
 	(yyval.modcodes).x0 = 0;
 	(yyval.modcodes).aop = 0;
 	}
-#line 6690 "config/bfin-parse.c"
+#line 6680 "config/bfin-parse.c"
     break;
 
   case 245: /* amod1: LPAREN NS RPAREN  */
@@ -6696,7 +6686,7 @@ yyreduce:
 	(yyval.modcodes).x0 = 0;
 	(yyval.modcodes).aop = 1;
 	}
-#line 6700 "config/bfin-parse.c"
+#line 6690 "config/bfin-parse.c"
     break;
 
   case 246: /* amod1: LPAREN S RPAREN  */
@@ -6706,7 +6696,7 @@ yyreduce:
 	(yyval.modcodes).x0 = 0;
 	(yyval.modcodes).aop = 1;
 	}
-#line 6710 "config/bfin-parse.c"
+#line 6700 "config/bfin-parse.c"
     break;
 
   case 247: /* amod2: %empty  */
@@ -6716,7 +6706,7 @@ yyreduce:
 	(yyval.modcodes).s0 = 0;
 	(yyval.modcodes).x0 = 0;
 	}
-#line 6720 "config/bfin-parse.c"
+#line 6710 "config/bfin-parse.c"
     break;
 
   case 248: /* amod2: LPAREN asr_asl_0 RPAREN  */
@@ -6726,7 +6716,7 @@ yyreduce:
 	(yyval.modcodes).s0 = 0;
 	(yyval.modcodes).x0 = 0;
 	}
-#line 6730 "config/bfin-parse.c"
+#line 6720 "config/bfin-parse.c"
     break;
 
   case 249: /* amod2: LPAREN sco RPAREN  */
@@ -6736,7 +6726,7 @@ yyreduce:
 	(yyval.modcodes).s0 = (yyvsp[-1].modcodes).s0;
 	(yyval.modcodes).x0 = (yyvsp[-1].modcodes).x0;
 	}
-#line 6740 "config/bfin-parse.c"
+#line 6730 "config/bfin-parse.c"
     break;
 
   case 250: /* amod2: LPAREN asr_asl_0 COMMA sco RPAREN  */
@@ -6746,7 +6736,7 @@ yyreduce:
 	(yyval.modcodes).s0 = (yyvsp[-1].modcodes).s0;
 	(yyval.modcodes).x0 = (yyvsp[-1].modcodes).x0;
 	}
-#line 6750 "config/bfin-parse.c"
+#line 6740 "config/bfin-parse.c"
     break;
 
   case 251: /* amod2: LPAREN sco COMMA asr_asl_0 RPAREN  */
@@ -6756,7 +6746,7 @@ yyreduce:
 	(yyval.modcodes).s0 = (yyvsp[-3].modcodes).s0;
 	(yyval.modcodes).x0 = (yyvsp[-3].modcodes).x0;
 	}
-#line 6760 "config/bfin-parse.c"
+#line 6750 "config/bfin-parse.c"
     break;
 
   case 252: /* xpmod: %empty  */
@@ -6764,7 +6754,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 6768 "config/bfin-parse.c"
+#line 6758 "config/bfin-parse.c"
     break;
 
   case 253: /* xpmod: LPAREN Z RPAREN  */
@@ -6772,7 +6762,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 6776 "config/bfin-parse.c"
+#line 6766 "config/bfin-parse.c"
     break;
 
   case 254: /* xpmod: LPAREN X RPAREN  */
@@ -6780,7 +6770,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 1;
 	}
-#line 6784 "config/bfin-parse.c"
+#line 6774 "config/bfin-parse.c"
     break;
 
   case 255: /* xpmod1: %empty  */
@@ -6788,7 +6778,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 6792 "config/bfin-parse.c"
+#line 6782 "config/bfin-parse.c"
     break;
 
   case 256: /* xpmod1: LPAREN X RPAREN  */
@@ -6796,7 +6786,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 6800 "config/bfin-parse.c"
+#line 6790 "config/bfin-parse.c"
     break;
 
   case 257: /* xpmod1: LPAREN Z RPAREN  */
@@ -6804,7 +6794,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 1;
 	}
-#line 6808 "config/bfin-parse.c"
+#line 6798 "config/bfin-parse.c"
     break;
 
   case 258: /* vsmod: %empty  */
@@ -6814,7 +6804,7 @@ yyreduce:
 	(yyval.modcodes).s0 = 0;
 	(yyval.modcodes).aop = 0;
 	}
-#line 6818 "config/bfin-parse.c"
+#line 6808 "config/bfin-parse.c"
     break;
 
   case 259: /* vsmod: LPAREN NS RPAREN  */
@@ -6824,7 +6814,7 @@ yyreduce:
 	(yyval.modcodes).s0 = 0;
 	(yyval.modcodes).aop = 3;
 	}
-#line 6828 "config/bfin-parse.c"
+#line 6818 "config/bfin-parse.c"
     break;
 
   case 260: /* vsmod: LPAREN S RPAREN  */
@@ -6834,7 +6824,7 @@ yyreduce:
 	(yyval.modcodes).s0 = 1;
 	(yyval.modcodes).aop = 3;
 	}
-#line 6838 "config/bfin-parse.c"
+#line 6828 "config/bfin-parse.c"
     break;
 
   case 261: /* vsmod: LPAREN V RPAREN  */
@@ -6844,7 +6834,7 @@ yyreduce:
 	(yyval.modcodes).s0 = 0;
 	(yyval.modcodes).aop = 3;
 	}
-#line 6848 "config/bfin-parse.c"
+#line 6838 "config/bfin-parse.c"
     break;
 
   case 262: /* vsmod: LPAREN V COMMA S RPAREN  */
@@ -6853,7 +6843,7 @@ yyreduce:
 	(yyval.modcodes).r0 = 1;
 	(yyval.modcodes).s0 = 1;
 	}
-#line 6857 "config/bfin-parse.c"
+#line 6847 "config/bfin-parse.c"
     break;
 
   case 263: /* vsmod: LPAREN S COMMA V RPAREN  */
@@ -6862,7 +6852,7 @@ yyreduce:
 	(yyval.modcodes).r0 = 1;
 	(yyval.modcodes).s0 = 1;
 	}
-#line 6866 "config/bfin-parse.c"
+#line 6856 "config/bfin-parse.c"
     break;
 
   case 264: /* vmod: %empty  */
@@ -6870,7 +6860,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 6874 "config/bfin-parse.c"
+#line 6864 "config/bfin-parse.c"
     break;
 
   case 265: /* vmod: LPAREN V RPAREN  */
@@ -6878,7 +6868,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 1;
 	}
-#line 6882 "config/bfin-parse.c"
+#line 6872 "config/bfin-parse.c"
     break;
 
   case 266: /* smod: %empty  */
@@ -6886,7 +6876,7 @@ yyreduce:
         {
 	(yyval.modcodes).s0 = 0;
 	}
-#line 6890 "config/bfin-parse.c"
+#line 6880 "config/bfin-parse.c"
     break;
 
   case 267: /* smod: LPAREN S RPAREN  */
@@ -6894,7 +6884,7 @@ yyreduce:
         {
 	(yyval.modcodes).s0 = 1;
 	}
-#line 6898 "config/bfin-parse.c"
+#line 6888 "config/bfin-parse.c"
     break;
 
   case 268: /* searchmod: GE  */
@@ -6902,7 +6892,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 1;
 	}
-#line 6906 "config/bfin-parse.c"
+#line 6896 "config/bfin-parse.c"
     break;
 
   case 269: /* searchmod: GT  */
@@ -6910,7 +6900,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 6914 "config/bfin-parse.c"
+#line 6904 "config/bfin-parse.c"
     break;
 
   case 270: /* searchmod: LE  */
@@ -6918,7 +6908,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 3;
 	}
-#line 6922 "config/bfin-parse.c"
+#line 6912 "config/bfin-parse.c"
     break;
 
   case 271: /* searchmod: LT  */
@@ -6926,7 +6916,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 2;
 	}
-#line 6930 "config/bfin-parse.c"
+#line 6920 "config/bfin-parse.c"
     break;
 
   case 272: /* aligndir: %empty  */
@@ -6934,7 +6924,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 6938 "config/bfin-parse.c"
+#line 6928 "config/bfin-parse.c"
     break;
 
   case 273: /* aligndir: LPAREN R RPAREN  */
@@ -6942,7 +6932,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 1;
 	}
-#line 6946 "config/bfin-parse.c"
+#line 6936 "config/bfin-parse.c"
     break;
 
   case 274: /* byteop_mod: LPAREN R RPAREN  */
@@ -6951,7 +6941,7 @@ yyreduce:
 	(yyval.modcodes).r0 = 0;
 	(yyval.modcodes).s0 = 1;
 	}
-#line 6955 "config/bfin-parse.c"
+#line 6945 "config/bfin-parse.c"
     break;
 
   case 275: /* byteop_mod: LPAREN MMOD RPAREN  */
@@ -6962,7 +6952,7 @@ yyreduce:
 	(yyval.modcodes).r0 = 1;
 	(yyval.modcodes).s0 = 0;
 	}
-#line 6966 "config/bfin-parse.c"
+#line 6956 "config/bfin-parse.c"
     break;
 
   case 276: /* byteop_mod: LPAREN MMOD COMMA R RPAREN  */
@@ -6973,7 +6963,7 @@ yyreduce:
 	(yyval.modcodes).r0 = 1;
 	(yyval.modcodes).s0 = 1;
 	}
-#line 6977 "config/bfin-parse.c"
+#line 6967 "config/bfin-parse.c"
     break;
 
   case 277: /* byteop_mod: LPAREN R COMMA MMOD RPAREN  */
@@ -6984,7 +6974,7 @@ yyreduce:
 	(yyval.modcodes).r0 = 1;
 	(yyval.modcodes).s0 = 1;
 	}
-#line 6988 "config/bfin-parse.c"
+#line 6978 "config/bfin-parse.c"
     break;
 
   case 278: /* c_align: ALIGN8  */
@@ -6992,7 +6982,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 6996 "config/bfin-parse.c"
+#line 6986 "config/bfin-parse.c"
     break;
 
   case 279: /* c_align: ALIGN16  */
@@ -7000,7 +6990,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 1;
 	}
-#line 7004 "config/bfin-parse.c"
+#line 6994 "config/bfin-parse.c"
     break;
 
   case 280: /* c_align: ALIGN24  */
@@ -7008,7 +6998,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 2;
 	}
-#line 7012 "config/bfin-parse.c"
+#line 7002 "config/bfin-parse.c"
     break;
 
   case 281: /* w32_or_nothing: %empty  */
@@ -7016,7 +7006,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 7020 "config/bfin-parse.c"
+#line 7010 "config/bfin-parse.c"
     break;
 
   case 282: /* w32_or_nothing: LPAREN MMOD RPAREN  */
@@ -7027,7 +7017,7 @@ yyreduce:
 	  else
 	    return yyerror ("Only (W32) allowed");
 	}
-#line 7031 "config/bfin-parse.c"
+#line 7021 "config/bfin-parse.c"
     break;
 
   case 283: /* iu_or_nothing: %empty  */
@@ -7035,7 +7025,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 1;
 	}
-#line 7039 "config/bfin-parse.c"
+#line 7029 "config/bfin-parse.c"
     break;
 
   case 284: /* iu_or_nothing: LPAREN MMOD RPAREN  */
@@ -7046,7 +7036,7 @@ yyreduce:
 	  else
 	    return yyerror ("(IU) expected");
 	}
-#line 7050 "config/bfin-parse.c"
+#line 7040 "config/bfin-parse.c"
     break;
 
   case 285: /* reg_with_predec: LBRACK _MINUS_MINUS REG RBRACK  */
@@ -7054,7 +7044,7 @@ yyreduce:
         {
 	(yyval.reg) = (yyvsp[-1].reg);
 	}
-#line 7058 "config/bfin-parse.c"
+#line 7048 "config/bfin-parse.c"
     break;
 
   case 286: /* reg_with_postinc: LBRACK REG _PLUS_PLUS RBRACK  */
@@ -7062,7 +7052,7 @@ yyreduce:
         {
 	(yyval.reg) = (yyvsp[-2].reg);
 	}
-#line 7066 "config/bfin-parse.c"
+#line 7056 "config/bfin-parse.c"
     break;
 
   case 287: /* min_max: MIN  */
@@ -7070,7 +7060,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 1;
 	}
-#line 7074 "config/bfin-parse.c"
+#line 7064 "config/bfin-parse.c"
     break;
 
   case 288: /* min_max: MAX  */
@@ -7078,7 +7068,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 7082 "config/bfin-parse.c"
+#line 7072 "config/bfin-parse.c"
     break;
 
   case 289: /* op_bar_op: _PLUS_BAR_PLUS  */
@@ -7086,7 +7076,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 7090 "config/bfin-parse.c"
+#line 7080 "config/bfin-parse.c"
     break;
 
   case 290: /* op_bar_op: _PLUS_BAR_MINUS  */
@@ -7094,7 +7084,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 1;
 	}
-#line 7098 "config/bfin-parse.c"
+#line 7088 "config/bfin-parse.c"
     break;
 
   case 291: /* op_bar_op: _MINUS_BAR_PLUS  */
@@ -7102,7 +7092,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 2;
 	}
-#line 7106 "config/bfin-parse.c"
+#line 7096 "config/bfin-parse.c"
     break;
 
   case 292: /* op_bar_op: _MINUS_BAR_MINUS  */
@@ -7110,7 +7100,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 3;
 	}
-#line 7114 "config/bfin-parse.c"
+#line 7104 "config/bfin-parse.c"
     break;
 
   case 293: /* plus_minus: PLUS  */
@@ -7118,7 +7108,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 7122 "config/bfin-parse.c"
+#line 7112 "config/bfin-parse.c"
     break;
 
   case 294: /* plus_minus: MINUS  */
@@ -7126,7 +7116,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 1;
 	}
-#line 7130 "config/bfin-parse.c"
+#line 7120 "config/bfin-parse.c"
     break;
 
   case 295: /* rnd_op: LPAREN RNDH RPAREN  */
@@ -7137,7 +7127,7 @@ yyreduce:
 	  (yyval.modcodes).x0 = 0;	/* x.  */
 	  (yyval.modcodes).aop = 0;	/* aop.  */
 	}
-#line 7141 "config/bfin-parse.c"
+#line 7131 "config/bfin-parse.c"
     break;
 
   case 296: /* rnd_op: LPAREN TH RPAREN  */
@@ -7148,7 +7138,7 @@ yyreduce:
 	  (yyval.modcodes).x0 = 0;	/* x.  */
 	  (yyval.modcodes).aop = 1;	/* aop.  */
 	}
-#line 7152 "config/bfin-parse.c"
+#line 7142 "config/bfin-parse.c"
     break;
 
   case 297: /* rnd_op: LPAREN RNDL RPAREN  */
@@ -7159,7 +7149,7 @@ yyreduce:
 	  (yyval.modcodes).x0 = 0;	/* x.  */
 	  (yyval.modcodes).aop = 0;	/* aop.  */
 	}
-#line 7163 "config/bfin-parse.c"
+#line 7153 "config/bfin-parse.c"
     break;
 
   case 298: /* rnd_op: LPAREN TL RPAREN  */
@@ -7170,7 +7160,7 @@ yyreduce:
 	  (yyval.modcodes).x0 = 0;	/* x.  */
 	  (yyval.modcodes).aop = 1;
 	}
-#line 7174 "config/bfin-parse.c"
+#line 7164 "config/bfin-parse.c"
     break;
 
   case 299: /* rnd_op: LPAREN RNDH COMMA R RPAREN  */
@@ -7181,7 +7171,7 @@ yyreduce:
 	  (yyval.modcodes).x0 = 0;	/* x.  */
 	  (yyval.modcodes).aop = 0;	/* aop.  */
 	}
-#line 7185 "config/bfin-parse.c"
+#line 7175 "config/bfin-parse.c"
     break;
 
   case 300: /* rnd_op: LPAREN TH COMMA R RPAREN  */
@@ -7192,7 +7182,7 @@ yyreduce:
 	  (yyval.modcodes).x0 = 0;	/* x.  */
 	  (yyval.modcodes).aop = 1;	/* aop.  */
 	}
-#line 7196 "config/bfin-parse.c"
+#line 7186 "config/bfin-parse.c"
     break;
 
   case 301: /* rnd_op: LPAREN RNDL COMMA R RPAREN  */
@@ -7203,7 +7193,7 @@ yyreduce:
 	  (yyval.modcodes).x0 = 0;	/* x.  */
 	  (yyval.modcodes).aop = 0;	/* aop.  */
 	}
-#line 7207 "config/bfin-parse.c"
+#line 7197 "config/bfin-parse.c"
     break;
 
   case 302: /* rnd_op: LPAREN TL COMMA R RPAREN  */
@@ -7214,7 +7204,7 @@ yyreduce:
 	  (yyval.modcodes).x0 = 0;	/* x.  */
 	  (yyval.modcodes).aop = 1;	/* aop.  */
 	}
-#line 7218 "config/bfin-parse.c"
+#line 7208 "config/bfin-parse.c"
     break;
 
   case 303: /* b3_op: LPAREN LO RPAREN  */
@@ -7223,7 +7213,7 @@ yyreduce:
 	  (yyval.modcodes).s0 = 0;	/* s.  */
 	  (yyval.modcodes).x0 = 0;	/* HL.  */
 	}
-#line 7227 "config/bfin-parse.c"
+#line 7217 "config/bfin-parse.c"
     break;
 
   case 304: /* b3_op: LPAREN HI RPAREN  */
@@ -7232,7 +7222,7 @@ yyreduce:
 	  (yyval.modcodes).s0 = 0;	/* s.  */
 	  (yyval.modcodes).x0 = 1;	/* HL.  */
 	}
-#line 7236 "config/bfin-parse.c"
+#line 7226 "config/bfin-parse.c"
     break;
 
   case 305: /* b3_op: LPAREN LO COMMA R RPAREN  */
@@ -7241,7 +7231,7 @@ yyreduce:
 	  (yyval.modcodes).s0 = 1;	/* s.  */
 	  (yyval.modcodes).x0 = 0;	/* HL.  */
 	}
-#line 7245 "config/bfin-parse.c"
+#line 7235 "config/bfin-parse.c"
     break;
 
   case 306: /* b3_op: LPAREN HI COMMA R RPAREN  */
@@ -7250,7 +7240,7 @@ yyreduce:
 	  (yyval.modcodes).s0 = 1;	/* s.  */
 	  (yyval.modcodes).x0 = 1;	/* HL.  */
 	}
-#line 7254 "config/bfin-parse.c"
+#line 7244 "config/bfin-parse.c"
     break;
 
   case 307: /* post_op: %empty  */
@@ -7258,7 +7248,7 @@ yyreduce:
         {
 	(yyval.modcodes).x0 = 2;
 	}
-#line 7262 "config/bfin-parse.c"
+#line 7252 "config/bfin-parse.c"
     break;
 
   case 308: /* post_op: _PLUS_PLUS  */
@@ -7266,7 +7256,7 @@ yyreduce:
         {
 	(yyval.modcodes).x0 = 0;
 	}
-#line 7270 "config/bfin-parse.c"
+#line 7260 "config/bfin-parse.c"
     break;
 
   case 309: /* post_op: _MINUS_MINUS  */
@@ -7274,7 +7264,7 @@ yyreduce:
         {
 	(yyval.modcodes).x0 = 1;
 	}
-#line 7278 "config/bfin-parse.c"
+#line 7268 "config/bfin-parse.c"
     break;
 
   case 310: /* a_assign: REG_A ASSIGN  */
@@ -7282,7 +7272,7 @@ yyreduce:
         {
 	(yyval.reg) = (yyvsp[-1].reg);
 	}
-#line 7286 "config/bfin-parse.c"
+#line 7276 "config/bfin-parse.c"
     break;
 
   case 311: /* a_minusassign: REG_A _MINUS_ASSIGN  */
@@ -7290,7 +7280,7 @@ yyreduce:
         {
 	(yyval.reg) = (yyvsp[-1].reg);
 	}
-#line 7294 "config/bfin-parse.c"
+#line 7284 "config/bfin-parse.c"
     break;
 
   case 312: /* a_plusassign: REG_A _PLUS_ASSIGN  */
@@ -7298,7 +7288,7 @@ yyreduce:
         {
 	(yyval.reg) = (yyvsp[-1].reg);
 	}
-#line 7302 "config/bfin-parse.c"
+#line 7292 "config/bfin-parse.c"
     break;
 
   case 313: /* assign_macfunc: REG ASSIGN REG_A  */
@@ -7317,7 +7307,7 @@ yyreduce:
 	  (yyval.macfunc).s0.regno = 0;
           (yyval.macfunc).s1.regno = 0;
 	}
-#line 7321 "config/bfin-parse.c"
+#line 7311 "config/bfin-parse.c"
     break;
 
   case 314: /* assign_macfunc: a_macfunc  */
@@ -7327,7 +7317,7 @@ yyreduce:
 	  (yyval.macfunc).w = 0; (yyval.macfunc).P = 0;
 	  (yyval.macfunc).dst.regno = 0;
 	}
-#line 7331 "config/bfin-parse.c"
+#line 7321 "config/bfin-parse.c"
     break;
 
   case 315: /* assign_macfunc: REG ASSIGN LPAREN a_macfunc RPAREN  */
@@ -7343,7 +7333,7 @@ yyreduce:
           (yyval.macfunc).P = 1;
           (yyval.macfunc).dst = (yyvsp[-4].reg);
 	}
-#line 7347 "config/bfin-parse.c"
+#line 7337 "config/bfin-parse.c"
     break;
 
   case 316: /* assign_macfunc: HALF_REG ASSIGN LPAREN a_macfunc RPAREN  */
@@ -7359,7 +7349,7 @@ yyreduce:
 	  (yyval.macfunc).P = 0;
           (yyval.macfunc).dst = (yyvsp[-4].reg);
 	}
-#line 7363 "config/bfin-parse.c"
+#line 7353 "config/bfin-parse.c"
     break;
 
   case 317: /* assign_macfunc: HALF_REG ASSIGN REG_A  */
@@ -7378,7 +7368,7 @@ yyreduce:
 	  (yyval.macfunc).s0.regno = 0;
           (yyval.macfunc).s1.regno = 0;
 	}
-#line 7382 "config/bfin-parse.c"
+#line 7372 "config/bfin-parse.c"
     break;
 
   case 318: /* a_macfunc: a_assign multiply_halfregs  */
@@ -7389,7 +7379,7 @@ yyreduce:
 	  (yyval.macfunc).s0 = (yyvsp[0].macfunc).s0;
 	  (yyval.macfunc).s1 = (yyvsp[0].macfunc).s1;
 	}
-#line 7393 "config/bfin-parse.c"
+#line 7383 "config/bfin-parse.c"
     break;
 
   case 319: /* a_macfunc: a_plusassign multiply_halfregs  */
@@ -7400,7 +7390,7 @@ yyreduce:
 	  (yyval.macfunc).s0 = (yyvsp[0].macfunc).s0;
 	  (yyval.macfunc).s1 = (yyvsp[0].macfunc).s1;
 	}
-#line 7404 "config/bfin-parse.c"
+#line 7394 "config/bfin-parse.c"
     break;
 
   case 320: /* a_macfunc: a_minusassign multiply_halfregs  */
@@ -7411,7 +7401,7 @@ yyreduce:
 	  (yyval.macfunc).s0 = (yyvsp[0].macfunc).s0;
 	  (yyval.macfunc).s1 = (yyvsp[0].macfunc).s1;
 	}
-#line 7415 "config/bfin-parse.c"
+#line 7405 "config/bfin-parse.c"
     break;
 
   case 321: /* multiply_halfregs: HALF_REG STAR HALF_REG  */
@@ -7425,7 +7415,7 @@ yyreduce:
 	  else
 	    return yyerror ("Dregs expected");
 	}
-#line 7429 "config/bfin-parse.c"
+#line 7419 "config/bfin-parse.c"
     break;
 
   case 322: /* cc_op: ASSIGN  */
@@ -7433,7 +7423,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 0;
 	}
-#line 7437 "config/bfin-parse.c"
+#line 7427 "config/bfin-parse.c"
     break;
 
   case 323: /* cc_op: _BAR_ASSIGN  */
@@ -7441,7 +7431,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 1;
 	}
-#line 7445 "config/bfin-parse.c"
+#line 7435 "config/bfin-parse.c"
     break;
 
   case 324: /* cc_op: _AMPERSAND_ASSIGN  */
@@ -7449,7 +7439,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 2;
 	}
-#line 7453 "config/bfin-parse.c"
+#line 7443 "config/bfin-parse.c"
     break;
 
   case 325: /* cc_op: _CARET_ASSIGN  */
@@ -7457,7 +7447,7 @@ yyreduce:
         {
 	(yyval.r0).r0 = 3;
 	}
-#line 7461 "config/bfin-parse.c"
+#line 7451 "config/bfin-parse.c"
     break;
 
   case 326: /* ccstat: CCREG cc_op STATUS_REG  */
@@ -7467,7 +7457,7 @@ yyreduce:
 	  (yyval.modcodes).x0 = (yyvsp[-1].r0).r0;
 	  (yyval.modcodes).s0 = 0;
 	}
-#line 7471 "config/bfin-parse.c"
+#line 7461 "config/bfin-parse.c"
     break;
 
   case 327: /* ccstat: CCREG cc_op V  */
@@ -7477,7 +7467,7 @@ yyreduce:
 	  (yyval.modcodes).x0 = (yyvsp[-1].r0).r0;
 	  (yyval.modcodes).s0 = 0;
 	}
-#line 7481 "config/bfin-parse.c"
+#line 7471 "config/bfin-parse.c"
     break;
 
   case 328: /* ccstat: STATUS_REG cc_op CCREG  */
@@ -7487,7 +7477,7 @@ yyreduce:
 	  (yyval.modcodes).x0 = (yyvsp[-1].r0).r0;
 	  (yyval.modcodes).s0 = 1;
 	}
-#line 7491 "config/bfin-parse.c"
+#line 7481 "config/bfin-parse.c"
     break;
 
   case 329: /* ccstat: V cc_op CCREG  */
@@ -7497,7 +7487,7 @@ yyreduce:
 	  (yyval.modcodes).x0 = (yyvsp[-1].r0).r0;
 	  (yyval.modcodes).s0 = 1;
 	}
-#line 7501 "config/bfin-parse.c"
+#line 7491 "config/bfin-parse.c"
     break;
 
   case 330: /* symbol: SYMBOL  */
@@ -7507,25 +7497,25 @@ yyreduce:
 	val.s_value = S_GET_NAME((yyvsp[0].symbol));
 	(yyval.expr) = Expr_Node_Create (Expr_Node_Reloc, val, NULL, NULL);
 	}
-#line 7511 "config/bfin-parse.c"
+#line 7501 "config/bfin-parse.c"
     break;
 
   case 331: /* any_gotrel: GOT  */
 #line 4385 "./config/bfin-parse.y"
         { (yyval.value) = BFD_RELOC_BFIN_GOT; }
-#line 7517 "config/bfin-parse.c"
+#line 7507 "config/bfin-parse.c"
     break;
 
   case 332: /* any_gotrel: GOT17M4  */
 #line 4387 "./config/bfin-parse.y"
         { (yyval.value) = BFD_RELOC_BFIN_GOT17M4; }
-#line 7523 "config/bfin-parse.c"
+#line 7513 "config/bfin-parse.c"
     break;
 
   case 333: /* any_gotrel: FUNCDESC_GOT17M4  */
 #line 4389 "./config/bfin-parse.y"
         { (yyval.value) = BFD_RELOC_BFIN_FUNCDESC_GOT17M4; }
-#line 7529 "config/bfin-parse.c"
+#line 7519 "config/bfin-parse.c"
     break;
 
   case 334: /* got: symbol AT any_gotrel  */
@@ -7535,7 +7525,7 @@ yyreduce:
 	val.i_value = (yyvsp[0].value);
 	(yyval.expr) = Expr_Node_Create (Expr_Node_GOT_Reloc, val, (yyvsp[-2].expr), NULL);
 	}
-#line 7539 "config/bfin-parse.c"
+#line 7529 "config/bfin-parse.c"
     break;
 
   case 335: /* got_or_expr: got  */
@@ -7543,7 +7533,7 @@ yyreduce:
         {
 	(yyval.expr) = (yyvsp[0].expr);
 	}
-#line 7547 "config/bfin-parse.c"
+#line 7537 "config/bfin-parse.c"
     break;
 
   case 336: /* got_or_expr: expr  */
@@ -7551,7 +7541,7 @@ yyreduce:
         {
 	(yyval.expr) = (yyvsp[0].expr);
 	}
-#line 7555 "config/bfin-parse.c"
+#line 7545 "config/bfin-parse.c"
     break;
 
   case 337: /* pltpc: symbol AT PLTPC  */
@@ -7559,7 +7549,7 @@ yyreduce:
         {
 	(yyval.expr) = (yyvsp[-2].expr);
 	}
-#line 7563 "config/bfin-parse.c"
+#line 7553 "config/bfin-parse.c"
     break;
 
   case 338: /* eterm: NUMBER  */
@@ -7569,7 +7559,7 @@ yyreduce:
 	val.i_value = (yyvsp[0].value);
 	(yyval.expr) = Expr_Node_Create (Expr_Node_Constant, val, NULL, NULL);
 	}
-#line 7573 "config/bfin-parse.c"
+#line 7563 "config/bfin-parse.c"
     break;
 
   case 339: /* eterm: symbol  */
@@ -7577,7 +7567,7 @@ yyreduce:
         {
 	(yyval.expr) = (yyvsp[0].expr);
 	}
-#line 7581 "config/bfin-parse.c"
+#line 7571 "config/bfin-parse.c"
     break;
 
   case 340: /* eterm: LPAREN expr_1 RPAREN  */
@@ -7585,7 +7575,7 @@ yyreduce:
         {
 	(yyval.expr) = (yyvsp[-1].expr);
 	}
-#line 7589 "config/bfin-parse.c"
+#line 7579 "config/bfin-parse.c"
     break;
 
   case 341: /* eterm: TILDA expr_1  */
@@ -7593,7 +7583,7 @@ yyreduce:
         {
 	(yyval.expr) = unary (Expr_Op_Type_COMP, (yyvsp[0].expr));
 	}
-#line 7597 "config/bfin-parse.c"
+#line 7587 "config/bfin-parse.c"
     break;
 
   case 342: /* eterm: MINUS expr_1  */
@@ -7601,7 +7591,7 @@ yyreduce:
         {
 	(yyval.expr) = unary (Expr_Op_Type_NEG, (yyvsp[0].expr));
 	}
-#line 7605 "config/bfin-parse.c"
+#line 7595 "config/bfin-parse.c"
     break;
 
   case 343: /* expr: expr_1  */
@@ -7609,7 +7599,7 @@ yyreduce:
         {
 	(yyval.expr) = (yyvsp[0].expr);
 	}
-#line 7613 "config/bfin-parse.c"
+#line 7603 "config/bfin-parse.c"
     break;
 
   case 344: /* expr_1: expr_1 STAR expr_1  */
@@ -7617,7 +7607,7 @@ yyreduce:
         {
 	(yyval.expr) = binary (Expr_Op_Type_Mult, (yyvsp[-2].expr), (yyvsp[0].expr));
 	}
-#line 7621 "config/bfin-parse.c"
+#line 7611 "config/bfin-parse.c"
     break;
 
   case 345: /* expr_1: expr_1 SLASH expr_1  */
@@ -7625,7 +7615,7 @@ yyreduce:
         {
 	(yyval.expr) = binary (Expr_Op_Type_Div, (yyvsp[-2].expr), (yyvsp[0].expr));
 	}
-#line 7629 "config/bfin-parse.c"
+#line 7619 "config/bfin-parse.c"
     break;
 
   case 346: /* expr_1: expr_1 PERCENT expr_1  */
@@ -7633,7 +7623,7 @@ yyreduce:
         {
 	(yyval.expr) = binary (Expr_Op_Type_Mod, (yyvsp[-2].expr), (yyvsp[0].expr));
 	}
-#line 7637 "config/bfin-parse.c"
+#line 7627 "config/bfin-parse.c"
     break;
 
   case 347: /* expr_1: expr_1 PLUS expr_1  */
@@ -7641,7 +7631,7 @@ yyreduce:
         {
 	(yyval.expr) = binary (Expr_Op_Type_Add, (yyvsp[-2].expr), (yyvsp[0].expr));
 	}
-#line 7645 "config/bfin-parse.c"
+#line 7635 "config/bfin-parse.c"
     break;
 
   case 348: /* expr_1: expr_1 MINUS expr_1  */
@@ -7649,7 +7639,7 @@ yyreduce:
         {
 	(yyval.expr) = binary (Expr_Op_Type_Sub, (yyvsp[-2].expr), (yyvsp[0].expr));
 	}
-#line 7653 "config/bfin-parse.c"
+#line 7643 "config/bfin-parse.c"
     break;
 
   case 349: /* expr_1: expr_1 LESS_LESS expr_1  */
@@ -7657,7 +7647,7 @@ yyreduce:
         {
 	(yyval.expr) = binary (Expr_Op_Type_Lshift, (yyvsp[-2].expr), (yyvsp[0].expr));
 	}
-#line 7661 "config/bfin-parse.c"
+#line 7651 "config/bfin-parse.c"
     break;
 
   case 350: /* expr_1: expr_1 GREATER_GREATER expr_1  */
@@ -7665,7 +7655,7 @@ yyreduce:
         {
 	(yyval.expr) = binary (Expr_Op_Type_Rshift, (yyvsp[-2].expr), (yyvsp[0].expr));
 	}
-#line 7669 "config/bfin-parse.c"
+#line 7659 "config/bfin-parse.c"
     break;
 
   case 351: /* expr_1: expr_1 AMPERSAND expr_1  */
@@ -7673,7 +7663,7 @@ yyreduce:
         {
 	(yyval.expr) = binary (Expr_Op_Type_BAND, (yyvsp[-2].expr), (yyvsp[0].expr));
 	}
-#line 7677 "config/bfin-parse.c"
+#line 7667 "config/bfin-parse.c"
     break;
 
   case 352: /* expr_1: expr_1 CARET expr_1  */
@@ -7681,7 +7671,7 @@ yyreduce:
         {
 	(yyval.expr) = binary (Expr_Op_Type_LOR, (yyvsp[-2].expr), (yyvsp[0].expr));
 	}
-#line 7685 "config/bfin-parse.c"
+#line 7675 "config/bfin-parse.c"
     break;
 
   case 353: /* expr_1: expr_1 BAR expr_1  */
@@ -7689,7 +7679,7 @@ yyreduce:
         {
 	(yyval.expr) = binary (Expr_Op_Type_BOR, (yyvsp[-2].expr), (yyvsp[0].expr));
 	}
-#line 7693 "config/bfin-parse.c"
+#line 7683 "config/bfin-parse.c"
     break;
 
   case 354: /* expr_1: eterm  */
@@ -7697,11 +7687,11 @@ yyreduce:
         {
 	(yyval.expr) = (yyvsp[0].expr);
 	}
-#line 7701 "config/bfin-parse.c"
+#line 7691 "config/bfin-parse.c"
     break;
 
 
-#line 7705 "config/bfin-parse.c"
+#line 7695 "config/bfin-parse.c"
 
       default: break;
     }
@@ -7783,6 +7773,7 @@ yyerrorlab:
      label yyerrorlab therefore never appears in user code.  */
   if (0)
     YYERROR;
+  ++yynerrs;
 
   /* Do not reclaim the symbols of the rule whose action triggered
      this YYERROR.  */
@@ -7843,7 +7834,7 @@ yyerrlab1:
 `-------------------------------------*/
 yyacceptlab:
   yyresult = 0;
-  goto yyreturn;
+  goto yyreturnlab;
 
 
 /*-----------------------------------.
@@ -7851,24 +7842,22 @@ yyacceptlab:
 `-----------------------------------*/
 yyabortlab:
   yyresult = 1;
-  goto yyreturn;
+  goto yyreturnlab;
 
 
-#if !defined yyoverflow
-/*-------------------------------------------------.
-| yyexhaustedlab -- memory exhaustion comes here.  |
-`-------------------------------------------------*/
+/*-----------------------------------------------------------.
+| yyexhaustedlab -- YYNOMEM (memory exhaustion) comes here.  |
+`-----------------------------------------------------------*/
 yyexhaustedlab:
   yyerror (YY_("memory exhausted"));
   yyresult = 2;
-  goto yyreturn;
-#endif
+  goto yyreturnlab;
 
 
-/*-------------------------------------------------------.
-| yyreturn -- parsing is finished, clean up and return.  |
-`-------------------------------------------------------*/
-yyreturn:
+/*----------------------------------------------------------.
+| yyreturnlab -- parsing is finished, clean up and return.  |
+`----------------------------------------------------------*/
+yyreturnlab:
   if (yychar != YYEMPTY)
     {
       /* Make sure we have latest lookahead translation.  See comments at

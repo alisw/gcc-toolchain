@@ -1,5 +1,5 @@
-/* LTO plugin for gold and/or GNU ld.
-   Copyright (C) 2009-2021 Free Software Foundation, Inc.
+/* LTO plugin for linkers like gold, GNU ld or mold.
+   Copyright (C) 2009-2022 Free Software Foundation, Inc.
    Contributed by Rafael Avila de Espindola (espindola@google.com).
 
 This program is free software; you can redistribute it and/or modify
@@ -16,11 +16,11 @@ You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
-/* The plugin has only one external function: onload. Gold passes it an array of
-   function that the plugin uses to communicate back to gold.
+/* The plugin has only one external function: onload. A linker passes it an array of
+   function that the plugin uses to communicate back to the linker.
 
-   With the functions provided by gold, the plugin can be notified when
-   gold first analyzes a file and pass a symbol table back to gold. The plugin
+   With the functions provided by the linker, the plugin can be notified when
+   the linker first analyzes a file and pass a symbol table back to the linker. The plugin
    is also notified when all symbols have been read and it is time to generate
    machine code for the necessary symbols.
 
@@ -32,7 +32,7 @@ along with this program; see the file COPYING3.  If not see
    -nop: Instead of running lto-wrapper, pass the original to the plugin. This
    only works if the input files are hybrid. 
    -linker-output-known: Do not determine linker output
-   -linker-output-auto-notlo-rel: Switch from rel to nolto-rel mode without
+   -linker-output-auto-nolto-rel: Switch from rel to nolto-rel mode without
    warning.  This is used on systems like VxWorks (kernel) where the link is
    always partial and repeated incremental linking is generally not used.
    -sym-style={none,win32,underscore|uscore}
@@ -89,16 +89,13 @@ along with this program; see the file COPYING3.  If not see
 
 #define LTO_SEGMENT_NAME "__GNU_LTO"
 
-/* LTO magic section name.  */
+/* Return true if STR string starts with PREFIX.  */
 
-#define LTO_SYMTAB_PREFIX	    ".gnu.lto_.symtab"
-#define LTO_SYMTAB_PREFIX_LEN	    (sizeof (LTO_SYMTAB_PREFIX) - 1)
-#define LTO_SYMTAB_EXT_PREFIX	    ".gnu.lto_.ext_symtab"
-#define LTO_SYMTAB_EXT_PREFIX_LEN   (sizeof (LTO_SYMTAB_EXT_PREFIX) - 1)
-#define LTO_LTO_PREFIX		    ".gnu.lto_.lto"
-#define LTO_LTO_PREFIX_LEN	    (sizeof (LTO_LTO_PREFIX) - 1)
-#define OFFLOAD_SECTION		    ".gnu.offload_lto_.opts"
-#define OFFLOAD_SECTION_LEN	    (sizeof (OFFLOAD_SECTION) - 1)
+static inline bool
+startswith (const char *str, const char *prefix)
+{
+  return strncmp (str, prefix, strlen (prefix)) == 0;
+}
 
 /* The part of the symbol table the plugin has to keep track of. Note that we
    must keep SYMS until all_symbols_read is called to give the linker time to
@@ -192,6 +189,8 @@ static int lto_wrapper_num_args;
 
 static char **pass_through_items = NULL;
 static unsigned int num_pass_through_items;
+
+static char *ltrans_objects = NULL;
 
 static bool debug;
 static bool save_temps;
@@ -636,10 +635,10 @@ exec_lto_wrapper (char *argv[])
 
   /* Write argv to a file to avoid a command line that is too long
      Save the file locally on save-temps.  */
+  const char *suffix = ".lto_wrapper_args";
+  suffix += skip_in_suffix;
   if (save_temps && link_output_name)
-    arguments_file_name = concat (link_output_name,
-				  ".lto_wrapper_args"
-				  + skip_in_suffix, NULL);
+    arguments_file_name = concat (link_output_name, suffix, NULL);
   else
     arguments_file_name = make_temp_file (".lto_wrapper_args");
   check (arguments_file_name, LDPL_FATAL,
@@ -742,6 +741,14 @@ all_symbols_read_handler (void)
       return LDPS_OK;
     }
 
+  if (ltrans_objects)
+    {
+      FILE *objs = fopen (ltrans_objects, "r");
+      add_output_files (objs);
+      fclose (objs);
+      return LDPS_OK;
+    }
+
   lto_argv = (char **) xcalloc (sizeof (char *), num_lto_args);
   lto_arg_ptr = (const char **) lto_argv;
   assert (lto_wrapper_argv);
@@ -792,8 +799,15 @@ all_symbols_read_handler (void)
       char *arg;
       char *offload_objects_file_name;
       struct plugin_offload_file *ofld;
+      const char *suffix = ".ofldlist";
 
-      offload_objects_file_name = make_temp_file (".ofldlist");
+      if (save_temps && link_output_name)
+	{
+	  suffix += skip_in_suffix;
+	  offload_objects_file_name = concat (link_output_name, suffix, NULL);
+	}
+      else
+	offload_objects_file_name = make_temp_file (suffix);
       check (offload_objects_file_name, LDPL_FATAL,
 	     "Failed to generate a temporary file name");
       f = fopen (offload_objects_file_name, "w");
@@ -832,7 +846,7 @@ all_symbols_read_handler (void)
       unsigned int i;
       for (i = 0; i < num_pass_through_items; i++)
         {
-          if (strncmp (pass_through_items[i], "-l", 2) == 0)
+	  if (startswith (pass_through_items[i], "-l"))
             add_input_library (pass_through_items[i] + 2);
           else
             add_input_file (pass_through_items[i]);
@@ -1022,7 +1036,7 @@ process_symtab (void *data, const char *name, off_t offset, off_t length)
   char *s;
   char *secdatastart, *secdata;
 
-  if (strncmp (name, LTO_SYMTAB_PREFIX, LTO_SYMTAB_PREFIX_LEN) != 0)
+  if (!startswith (name, ".gnu.lto_.symtab"))
     return 1;
 
   s = strrchr (name, '.');
@@ -1074,7 +1088,7 @@ process_symtab_extension (void *data, const char *name, off_t offset,
   char *s;
   char *secdatastart, *secdata;
 
-  if (strncmp (name, LTO_SYMTAB_EXT_PREFIX, LTO_SYMTAB_EXT_PREFIX_LEN) != 0)
+  if (!startswith (name, ".gnu.lto_.ext_symtab"))
     return 1;
 
   s = strrchr (name, '.');
@@ -1122,7 +1136,7 @@ err:
 static int
 process_offload_section (void *data, const char *name, off_t offset, off_t len)
 {
-  if (!strncmp (name, OFFLOAD_SECTION, OFFLOAD_SECTION_LEN))
+  if (startswith (name, ".gnu.offload_lto_.opts"))
     {
       struct plugin_objfile *obj = (struct plugin_objfile *) data;
       obj->offload = 1;
@@ -1132,7 +1146,7 @@ process_offload_section (void *data, const char *name, off_t offset, off_t len)
   return 1;
 }
 
-/* Callback used by gold to check if the plugin will claim FILE. Writes
+/* Callback used by a linker to check if the plugin will claim FILE. Writes
    the result in CLAIMED. */
 
 static enum ld_plugin_status
@@ -1314,7 +1328,9 @@ process_option (const char *option)
 {
   if (strcmp (option, "-linker-output-known") == 0)
     linker_output_known = true;
-  else if (strcmp (option, "-linker-output-auto-notlo-rel") == 0)
+  /* Also accept "notlo" for backwards compatibility.  */
+  else if ((strcmp (option, "-linker-output-auto-nolto-rel") == 0)
+           || (strcmp (option, "-linker-output-auto-notlo-rel") == 0))
     linker_output_auto_nolto_rel = true;
   else if (strcmp (option, "-debug") == 0)
     debug = true;
@@ -1325,7 +1341,7 @@ process_option (const char *option)
     save_temps = true;
   else if (strcmp (option, "-nop") == 0)
     nop = 1;
-  else if (!strncmp (option, "-pass-through=", strlen("-pass-through=")))
+  else if (startswith (option, "-pass-through="))
     {
       num_pass_through_items++;
       pass_through_items = xrealloc (pass_through_items,
@@ -1333,7 +1349,7 @@ process_option (const char *option)
       pass_through_items[num_pass_through_items - 1] =
           xstrdup (option + strlen ("-pass-through="));
     }
-  else if (!strncmp (option, "-sym-style=", sizeof ("-sym-style=") - 1))
+  else if (startswith (option, "-sym-style="))
     {
       switch (option[sizeof ("-sym-style=") - 1])
 	{
@@ -1348,6 +1364,8 @@ process_option (const char *option)
 	  break;
 	}
     }
+  else if (startswith (option, "-ltrans-objects="))
+    ltrans_objects = xstrdup (option + strlen ("-ltrans-objects="));
   else
     {
       int size;
@@ -1356,14 +1374,14 @@ process_option (const char *option)
       size = lto_wrapper_num_args * sizeof (char *);
       lto_wrapper_argv = (char **) xrealloc (lto_wrapper_argv, size);
       lto_wrapper_argv[lto_wrapper_num_args - 1] = opt;
-      if (strncmp (option, "-fresolution=", sizeof ("-fresolution=") - 1) == 0)
+      if (startswith (option, "-fresolution="))
 	resolution_file = opt + sizeof ("-fresolution=") - 1;
     }
   save_temps = save_temps || debug;
   verbose = verbose || debug;
 }
 
-/* Called by gold after loading the plugin. TV is the transfer vector. */
+/* Called by a linker after loading the plugin. TV is the transfer vector. */
 
 enum ld_plugin_status
 onload (struct ld_plugin_tv *tv)

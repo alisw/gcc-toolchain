@@ -1,10 +1,24 @@
-2021-07-28  Release Manager
+2022-08-19  Release Manager
 
-	* GCC 11.2.0 released.
+	* GCC 12.2.0 released.
 
-2021-04-27  Release Manager
+2022-05-06  Release Manager
 
-	* GCC 11.1.0 released.
+	* GCC 12.1.0 released.
+
+2022-01-11  Jakub Jelinek  <jakub@redhat.com>
+
+	* configure.ac: Set XCFLAGS to -mno-gnu-attribute on
+	powerpc64le*-linux*.
+	* configure: Regenerated.
+
+2022-01-03  Jakub Jelinek  <jakub@redhat.com>
+
+	* libquadmath.texi: Bump @copying's copyright year.
+
+2021-06-08  Martin Liska  <mliska@suse.cz>
+
+	* libquadmath.texi: Fix typo.
 
 2021-01-05  Samuel Thibault  <samuel.thibault@ens-lyon.org>
 

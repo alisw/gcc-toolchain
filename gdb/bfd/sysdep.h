@@ -1,5 +1,5 @@
 /* sysdep.h -- handle host dependencies for the BFD library
-   Copyright (C) 1995-2021 Free Software Foundation, Inc.
+   Copyright (C) 1995-2022 Free Software Foundation, Inc.
    Written by Cygnus Support.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -125,6 +125,17 @@ extern int fseeko64 (FILE *stream, off64_t offset, int whence);
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 #endif
+
+#ifndef ENABLE_NLS
+  /* The Solaris version of locale.h always includes libintl.h.  If we have
+     been configured with --disable-nls then ENABLE_NLS will not be defined
+     and the dummy definitions of bindtextdomain (et al) below will conflict
+     with the defintions in libintl.h.  So we define these values to prevent
+     the bogus inclusion of libintl.h.  */
+# define _LIBINTL_H
+# define _LIBGETTEXT_H
+#endif
+#include <locale.h>
 
 #ifdef ENABLE_NLS
 # include <libintl.h>

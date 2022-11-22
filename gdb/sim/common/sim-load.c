@@ -21,18 +21,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 /* This must come before any other includes.  */
 #include "defs.h"
 
-#include "ansidecl.h"
-#include <stdio.h> /* for NULL */
 #include <stdarg.h>
+#include <stdio.h> /* for NULL */
 #include <stdlib.h>
 #include <time.h>
 
-#include "sim-basics.h"
+#include "ansidecl.h"
 #include "bfd.h"
-#include "sim-utils.h"
 
 #include "sim/callback.h"
 #include "sim/sim.h"
+#include "sim-utils.h"
 
 static void eprintf (host_callback *, const char *, ...);
 static void xprintf (host_callback *, const char *, ...);

@@ -161,7 +161,7 @@ type_name_to_scope (const char *type_name, const struct block *block)
 
 	  scope.push_back (comp);
 
-	  if (SYMBOL_TYPE (bsymbol.symbol)->code () != TYPE_CODE_NAMESPACE)
+	  if (bsymbol.symbol->type ()->code () != TYPE_CODE_NAMESPACE)
 	    {
 	      /* We're done.  */
 	      break;
@@ -271,7 +271,7 @@ compile_cplus_instance::enter_scope (compile_scope &&new_scope)
 	(m_scopes.back ().begin (), m_scopes.back ().end () - 1,
 	 [this] (const scope_component &comp)
 	 {
-	  gdb_assert (SYMBOL_TYPE (comp.bsymbol.symbol)->code ()
+	  gdb_assert (comp.bsymbol.symbol->type ()->code ()
 		      == TYPE_CODE_NAMESPACE);
 
 	  const char *ns = (comp.name == CP_ANONYMOUS_NAMESPACE_STR ? nullptr
@@ -313,7 +313,7 @@ compile_cplus_instance::leave_scope ()
       std::for_each
 	(current.begin (),current.end () - 1,
 	 [this] (const scope_component &comp) {
-	  gdb_assert (SYMBOL_TYPE (comp.bsymbol.symbol)->code ()
+	  gdb_assert (comp.bsymbol.symbol->type ()->code ()
 		      == TYPE_CODE_NAMESPACE);
 	  this->plugin ().pop_binding_level (comp.name.c_str ());
 	});
@@ -345,14 +345,14 @@ compile_cplus_instance::new_scope (const char *type_name, struct type *type)
 	 unqualified name of the type to process.  */
       scope_component &comp = scope.back ();
 
-      if (!types_equal (type, SYMBOL_TYPE (comp.bsymbol.symbol))
+      if (!types_equal (type, comp.bsymbol.symbol->type ())
 	  && (m_scopes.empty ()
 	      || (m_scopes.back ().back ().bsymbol.symbol
 		  != comp.bsymbol.symbol)))
 	{
 	  /* The type is defined inside another class(es).  Convert that
 	     type instead of defining this type.  */
-	  convert_type (SYMBOL_TYPE (comp.bsymbol.symbol));
+	  convert_type (comp.bsymbol.symbol->type ());
 
 	  /* If the original type (passed in to us) is defined in a nested
 	     class, the previous call will give us that type's gcc_type.
@@ -582,7 +582,7 @@ compile_cplus_convert_struct_or_union_members
 {
   for (int i = TYPE_N_BASECLASSES (type); i < type->num_fields (); ++i)
     {
-      const char *field_name = TYPE_FIELD_NAME (type, i);
+      const char *field_name = type->field (i).name ();
 
       if (TYPE_FIELD_IGNORE (type, i)
 	  || TYPE_FIELD_ARTIFICIAL (type, i))
@@ -599,11 +599,11 @@ compile_cplus_convert_struct_or_union_members
 	{
 	  CORE_ADDR physaddr;
 
-	  switch (TYPE_FIELD_LOC_KIND (type, i))
+	  switch (type->field (i).loc_kind ())
 	    {
 	    case FIELD_LOC_KIND_PHYSADDR:
 	      {
-		physaddr = TYPE_FIELD_STATIC_PHYSADDR (type, i);
+		physaddr = type->field (i).loc_physaddr ();
 
 		instance->plugin ().build_decl
 		  ("field physaddr", field_name,
@@ -614,7 +614,7 @@ compile_cplus_convert_struct_or_union_members
 
 	    case FIELD_LOC_KIND_PHYSNAME:
 	      {
-		const char *physname = TYPE_FIELD_STATIC_PHYSNAME (type, i);
+		const char *physname = type->field (i).loc_physname ();
 		struct block_symbol sym
 		  = lookup_symbol (physname, instance->block (),
 				   VAR_DOMAIN, nullptr);
@@ -626,7 +626,7 @@ compile_cplus_convert_struct_or_union_members
 		    continue;
 		  }
 		const char *filename = symbol_symtab (sym.symbol)->filename;
-		unsigned int line = SYMBOL_LINE (sym.symbol);
+		unsigned int line = sym.symbol->line ();
 
 		physaddr = SYMBOL_VALUE_ADDRESS (sym.symbol);
 		instance->plugin ().build_decl
@@ -652,7 +652,7 @@ compile_cplus_convert_struct_or_union_members
 
 	  instance->plugin ().build_field
 	    (field_name, field_type, field_flags, bitsize,
-	     TYPE_FIELD_BITPOS (type, i));
+	     type->field (i).loc_bitpos ());
 	}
     }
 }
@@ -765,7 +765,7 @@ compile_cplus_convert_struct_or_union_methods (compile_cplus_instance *instance,
 	    }
 
 	  const char *filename = symbol_symtab (sym.symbol)->filename;
-	  unsigned int line = SYMBOL_LINE (sym.symbol);
+	  unsigned int line = sym.symbol->line ();
 	  CORE_ADDR address = BLOCK_START (SYMBOL_BLOCK_VALUE (sym.symbol));
 	  const char *kind;
 
@@ -937,14 +937,14 @@ compile_cplus_convert_enum (compile_cplus_instance *instance, struct type *type,
   for (int i = 0; i < type->num_fields (); ++i)
     {
       gdb::unique_xmalloc_ptr<char> fname
-	= compile_cplus_instance::decl_name (TYPE_FIELD_NAME (type, i));
+	= compile_cplus_instance::decl_name (type->field (i).name ());
 
-      if (TYPE_FIELD_LOC_KIND (type, i) != FIELD_LOC_KIND_ENUMVAL
+      if (type->field (i).loc_kind () != FIELD_LOC_KIND_ENUMVAL
 	  || fname == nullptr)
 	continue;
 
       instance->plugin ().build_enum_constant (result, fname.get (),
-					       TYPE_FIELD_ENUMVAL (type, i));
+					       type->field (i).loc_enumval ());
     }
 
   /* Finish enum definition and pop scopes.  */

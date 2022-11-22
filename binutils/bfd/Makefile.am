@@ -17,13 +17,18 @@
 # <http://www.gnu.org/licenses/>.
 #
 
-AUTOMAKE_OPTIONS = no-dist foreign
+AUTOMAKE_OPTIONS = no-dist foreign info-in-builddir no-texinfo.tex
 ACLOCAL_AMFLAGS = -I . -I .. -I ../config
+
+MOSTLYCLEANFILES =
+CLEANFILES =
+DISTCLEANFILES =
+MAINTAINERCLEANFILES =
 
 INCDIR = $(srcdir)/../include
 CSEARCH = -I. -I$(srcdir) -I$(INCDIR)
 
-SUBDIRS = doc po
+SUBDIRS = po
 
 bfddocdir = doc
 
@@ -92,6 +97,7 @@ BFD64_LIBS_CFILES = archive64.c
 ALL_MACHINES = \
 	cpu-aarch64.lo \
 	cpu-alpha.lo \
+	cpu-amdgcn.lo \
 	cpu-arc.lo \
 	cpu-arm.lo \
 	cpu-avr.lo \
@@ -112,8 +118,6 @@ ALL_MACHINES = \
 	cpu-hppa.lo \
 	cpu-i386.lo \
 	cpu-iamcu.lo \
-	cpu-l1om.lo \
-	cpu-k1om.lo \
 	cpu-ia64.lo \
 	cpu-ip2k.lo \
 	cpu-iq2000.lo \
@@ -167,7 +171,6 @@ ALL_MACHINES = \
 	cpu-vax.lo \
 	cpu-visium.lo \
 	cpu-wasm32.lo \
-	cpu-xc16x.lo \
 	cpu-xgate.lo \
 	cpu-xstormy16.lo \
 	cpu-xtensa.lo \
@@ -177,6 +180,7 @@ ALL_MACHINES = \
 ALL_MACHINES_CFILES = \
 	cpu-aarch64.c \
 	cpu-alpha.c \
+	cpu-amdgcn.c \
 	cpu-arc.c \
 	cpu-arm.c \
 	cpu-avr.c \
@@ -197,8 +201,6 @@ ALL_MACHINES_CFILES = \
 	cpu-hppa.c \
 	cpu-i386.c \
 	cpu-iamcu.c \
-	cpu-l1om.c \
-	cpu-k1om.c \
 	cpu-ia64.c \
 	cpu-ip2k.c \
 	cpu-iq2000.c \
@@ -252,7 +254,6 @@ ALL_MACHINES_CFILES = \
 	cpu-vax.c \
 	cpu-visium.c \
 	cpu-wasm32.c \
-	cpu-xc16x.c \
 	cpu-xgate.c \
 	cpu-xstormy16.c \
 	cpu-xtensa.c \
@@ -349,7 +350,6 @@ BFD32_BACKENDS = \
 	elf32-vax.lo \
 	elf32-visium.lo \
 	elf32-wasm32.lo \
-	elf32-xc16x.lo \
 	elf32-xgate.lo \
 	elf32-xstormy16.lo \
 	elf32-xtensa.lo \
@@ -482,7 +482,6 @@ BFD32_BACKENDS_CFILES = \
 	elf32-vax.c \
 	elf32-visium.c \
 	elf32-wasm32.c \
-	elf32-xc16x.c \
 	elf32-xgate.c \
 	elf32-xstormy16.c \
 	elf32-xtensa.c \
@@ -545,6 +544,7 @@ BFD64_BACKENDS = \
 	elf32-score.lo \
 	elf32-score7.lo \
 	elf64-alpha.lo \
+	elf64-amdgcn.lo \
 	elf64-gen.lo \
 	elf64-hppa.lo \
 	elf64-ia64.lo \
@@ -591,6 +591,7 @@ BFD64_BACKENDS_CFILES = \
 	elf32-score.c \
 	elf32-score7.c \
 	elf64-alpha.c \
+	elf64-amdgcn.c \
 	elf64-gen.c \
 	elf64-hppa.c \
 	elf64-ia64-vms.c \
@@ -796,7 +797,7 @@ libbfd.a: stamp-lib ; @true
 # vector names.  It is built from config.bfd.  It is not compiled by
 # itself, but is included by targets.c.
 targmatch.h: config.bfd targmatch.sed
-	$(AM_V_at)rm -f targmatch.h
+	$(AM_V_at)rm -f targmatch.new
 	$(AM_V_GEN)$(SED) -f $(srcdir)/targmatch.sed < $(srcdir)/config.bfd > targmatch.new
 	$(AM_V_at)mv -f targmatch.new targmatch.h
 
@@ -920,11 +921,6 @@ LIBBFD_H_FILES = libbfd-in.h libbfd.c bfdio.c bfdwin.c \
 	cache.c reloc.c archures.c linker.c
 LIBCOFF_H_FILES = libcoff-in.h coffcode.h
 
-MKDOC = doc/chew$(EXEEXT_FOR_BUILD)
-
-$(MKDOC):
-	cd $(bfddocdir) && $(MAKE) chew$(EXEEXT_FOR_BUILD)
-
 headers: stmp-bin2-h stmp-lbfd-h stmp-lcoff-h
 
 # We only rebuild the header files automatically if we have been
@@ -967,12 +963,12 @@ stmp-lcoff-h: $(LIBCOFF_H_FILES) $(MKDOC)
 	$(AM_V_at)$(SHELL) $(srcdir)/../move-if-change libcoff.h-new $(srcdir)/libcoff.h
 	$(AM_V_at)touch stmp-lcoff-h
 
-MOSTLYCLEANFILES = ofiles stamp-ofiles
+MOSTLYCLEANFILES += ofiles stamp-ofiles
 
-CLEANFILES = bfd.h dep.sed stmp-bfd-h DEP DEPA DEP1 DEP2 libbfd.a stamp-lib \
+CLEANFILES += bfd.h dep.sed stmp-bfd-h DEP DEPA DEP1 DEP2 libbfd.a stamp-lib \
 	stmp-bin2-h stmp-lbfd-h stmp-lcoff-h
 
-DISTCLEANFILES = $(BUILD_CFILES) $(BUILD_HFILES) libtool-soversion
+DISTCLEANFILES += $(BUILD_CFILES) $(BUILD_HFILES) libtool-soversion
 
 bfdver.h: $(srcdir)/version.h $(srcdir)/development.sh $(srcdir)/Makefile.in
 	$(AM_V_GEN)\
@@ -1009,3 +1005,5 @@ coff-tic54x.lo: coff-tic54x.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC)$(LTCOMPILE) -c -o $@ $< $(NO_WERROR)
+
+include doc/local.mk

@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.7.4.  */
+/* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison implementation for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2020 Free Software Foundation,
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2021 Free Software Foundation,
    Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -46,10 +46,10 @@
    USER NAME SPACE" below.  */
 
 /* Identify Bison output, and Bison version.  */
-#define YYBISON 30704
+#define YYBISON 30802
 
 /* Bison version string.  */
-#define YYBISON_VERSION "3.7.4"
+#define YYBISON_VERSION "3.8.2"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -423,7 +423,9 @@ typedef union YYSTYPE YYSTYPE;
 
 extern YYSTYPE yylval;
 
+
 int yyparse (void);
+
 
 #endif /* !YY_YY_ITBL_PARSE_H_INCLUDED  */
 /* Symbol kind.  */
@@ -506,6 +508,18 @@ typedef __INT_LEAST16_TYPE__ yytype_int16;
 typedef int_least16_t yytype_int16;
 #else
 typedef short yytype_int16;
+#endif
+
+/* Work around bug in HP-UX 11.23, which defines these macros
+   incorrectly for preprocessor constants.  This workaround can likely
+   be removed in 2023, as HPE has promised support for HP-UX 11.23
+   (aka HP-UX 11i v2) only through the end of 2022; see Table 2 of
+   <https://h20195.www2.hpe.com/V2/getpdf.aspx/4AA4-7673ENW.pdf>.  */
+#ifdef __hpux
+# undef UINT_LEAST8_MAX
+# undef UINT_LEAST16_MAX
+# define UINT_LEAST8_MAX 255
+# define UINT_LEAST16_MAX 65535
 #endif
 
 #if defined __UINT_LEAST8_MAX__ && __UINT_LEAST8_MAX__ <= __INT_MAX__
@@ -605,17 +619,23 @@ typedef int yy_state_fast_t;
 
 /* Suppress unused-variable warnings by "using" E.  */
 #if ! defined lint || defined __GNUC__
-# define YYUSE(E) ((void) (E))
+# define YY_USE(E) ((void) (E))
 #else
-# define YYUSE(E) /* empty */
+# define YY_USE(E) /* empty */
 #endif
 
-#if defined __GNUC__ && ! defined __ICC && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
 /* Suppress an incorrect diagnostic about yylval being uninitialized.  */
-# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                            \
+#if defined __GNUC__ && ! defined __ICC && 406 <= __GNUC__ * 100 + __GNUC_MINOR__
+# if __GNUC__ * 100 + __GNUC_MINOR__ < 407
+#  define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                           \
+    _Pragma ("GCC diagnostic push")                                     \
+    _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")
+# else
+#  define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                           \
     _Pragma ("GCC diagnostic push")                                     \
     _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")              \
     _Pragma ("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
+# endif
 # define YY_IGNORE_MAYBE_UNINITIALIZED_END      \
     _Pragma ("GCC diagnostic pop")
 #else
@@ -830,7 +850,7 @@ static const yytype_int8 yytranslate[] =
 };
 
 #if YYDEBUG
-  /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
+/* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
        0,   299,   299,   303,   304,   308,   315,   314,   323,   324,
@@ -865,16 +885,6 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#ifdef YYPRINT
-/* YYTOKNUM[NUM] -- (External) token number corresponding to the
-   (internal) symbol number NUM (which must be that of a token).  */
-static const yytype_int16 yytoknum[] =
-{
-       0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
-     265,   266,   267,    44,   124,    91,    93,    42,    58,    45
-};
-#endif
-
 #define YYPACT_NINF (-16)
 
 #define yypact_value_is_default(Yyn) \
@@ -885,8 +895,8 @@ static const yytype_int16 yytoknum[] =
 #define yytable_value_is_error(Yyn) \
   0
 
-  /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
-     STATE-NUM.  */
+/* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
+   STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
        0,    -9,   -16,   -16,    10,   -16,     0,    12,   -16,   -16,
@@ -897,9 +907,9 @@ static const yytype_int8 yypact[] =
      -16
 };
 
-  /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
-     Performed when YYTABLE does not specify something else to do.  Zero
-     means the default is an error.  */
+/* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
+   Performed when YYTABLE does not specify something else to do.  Zero
+   means the default is an error.  */
 static const yytype_int8 yydefact[] =
 {
        0,     0,     8,    24,     0,     2,     0,     0,     9,     1,
@@ -910,23 +920,23 @@ static const yytype_int8 yydefact[] =
       16
 };
 
-  /* YYPGOTO[NTERM-NUM].  */
+/* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
      -16,   -16,    32,   -16,   -16,   -15,   -16,     2,    -3,    -8,
        4,   -16,    34,    27,    28
 };
 
-  /* YYDEFGOTO[NTERM-NUM].  */
+/* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-      -1,     4,     5,     6,    32,    39,    40,    41,    31,    27,
+       0,     4,     5,     6,    32,    39,    40,    41,    31,    27,
       23,     7,    42,    17,    20
 };
 
-  /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
-     positive, shift that token.  If negative, reduce the rule whose
-     number is the opposite.  If YYTABLE_NINF, syntax error.  */
+/* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
+   positive, shift that token.  If negative, reduce the rule whose
+   number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int8 yytable[] =
 {
       -4,     1,     8,    29,    11,    12,    13,    36,    37,    30,
@@ -945,8 +955,8 @@ static const yytype_int8 yycheck[] =
       38,     7,    15,    -1,    40,    -1,    18
 };
 
-  /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
-     symbol of state STATE-NUM.  */
+/* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
+   state STATE-NUM.  */
 static const yytype_int8 yystos[] =
 {
        0,     1,    11,    12,    21,    22,    23,    31,    11,     0,
@@ -957,7 +967,7 @@ static const yytype_int8 yystos[] =
       29
 };
 
-  /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
+/* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr1[] =
 {
        0,    20,    21,    22,    22,    23,    24,    23,    23,    23,
@@ -965,7 +975,7 @@ static const yytype_int8 yyr1[] =
       29,    29,    30,    30,    31,    32,    32,    32,    33,    34
 };
 
-  /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
+/* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr2[] =
 {
        0,     2,     1,     2,     0,     5,     0,     9,     1,     2,
@@ -982,6 +992,7 @@ enum { YYENOMEM = -2 };
 #define YYACCEPT        goto yyacceptlab
 #define YYABORT         goto yyabortlab
 #define YYERROR         goto yyerrorlab
+#define YYNOMEM         goto yyexhaustedlab
 
 
 #define YYRECOVERING()  (!!yyerrstatus)
@@ -1022,10 +1033,7 @@ do {                                            \
     YYFPRINTF Args;                             \
 } while (0)
 
-/* This macro is provided for backward compatibility. */
-# ifndef YY_LOCATION_PRINT
-#  define YY_LOCATION_PRINT(File, Loc) ((void) 0)
-# endif
+
 
 
 # define YY_SYMBOL_PRINT(Title, Kind, Value, Location)                    \
@@ -1049,15 +1057,11 @@ yy_symbol_value_print (FILE *yyo,
                        yysymbol_kind_t yykind, YYSTYPE const * const yyvaluep)
 {
   FILE *yyoutput = yyo;
-  YYUSE (yyoutput);
+  YY_USE (yyoutput);
   if (!yyvaluep)
     return;
-# ifdef YYPRINT
-  if (yykind < YYNTOKENS)
-    YYPRINT (yyo, yytoknum[yykind], *yyvaluep);
-# endif
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-  YYUSE (yykind);
+  YY_USE (yykind);
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
 
@@ -1171,13 +1175,13 @@ static void
 yydestruct (const char *yymsg,
             yysymbol_kind_t yykind, YYSTYPE *yyvaluep)
 {
-  YYUSE (yyvaluep);
+  YY_USE (yyvaluep);
   if (!yymsg)
     yymsg = "Deleting";
   YY_SYMBOL_PRINT (yymsg, yykind, yyvaluep, yylocationp);
 
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-  YYUSE (yykind);
+  YY_USE (yykind);
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
 
@@ -1240,6 +1244,7 @@ yyparse (void)
   YYDPRINTF ((stderr, "Starting parse\n"));
 
   yychar = YYEMPTY; /* Cause a token to be read.  */
+
   goto yysetstate;
 
 
@@ -1265,7 +1270,7 @@ yysetstate:
 
   if (yyss + yystacksize - 1 <= yyssp)
 #if !defined yyoverflow && !defined YYSTACK_RELOCATE
-    goto yyexhaustedlab;
+    YYNOMEM;
 #else
     {
       /* Get the current used size of the three stacks, in elements.  */
@@ -1293,7 +1298,7 @@ yysetstate:
 # else /* defined YYSTACK_RELOCATE */
       /* Extend the stack our own way.  */
       if (YYMAXDEPTH <= yystacksize)
-        goto yyexhaustedlab;
+        YYNOMEM;
       yystacksize *= 2;
       if (YYMAXDEPTH < yystacksize)
         yystacksize = YYMAXDEPTH;
@@ -1304,7 +1309,7 @@ yysetstate:
           YY_CAST (union yyalloc *,
                    YYSTACK_ALLOC (YY_CAST (YYSIZE_T, YYSTACK_BYTES (yystacksize))));
         if (! yyptr)
-          goto yyexhaustedlab;
+          YYNOMEM;
         YYSTACK_RELOCATE (yyss_alloc, yyss);
         YYSTACK_RELOCATE (yyvs_alloc, yyvs);
 #  undef YYSTACK_RELOCATE
@@ -1325,6 +1330,7 @@ yysetstate:
         YYABORT;
     }
 #endif /* !defined yyoverflow && !defined YYSTACK_RELOCATE */
+
 
   if (yystate == YYFINAL)
     YYACCEPT;
@@ -1444,7 +1450,7 @@ yyreduce:
 	    	    insntbl_line, (yyvsp[-4].num), (yyvsp[-3].num), (yyvsp[-2].str), (yyvsp[-1].val)));
 	    itbl_add_reg ((yyvsp[-4].num), (yyvsp[-3].num), (yyvsp[-2].str), (yyvsp[-1].val));
 	  }
-#line 1448 "itbl-parse.c"
+#line 1454 "itbl-parse.c"
     break;
 
   case 6: /* $@1: %empty  */
@@ -1455,13 +1461,13 @@ yyreduce:
 	    DBG ((" sbit=%d ebit=%d flags=0x%x\n", sbit, ebit, (yyvsp[0].val)));
 	    insn=itbl_add_insn ((yyvsp[-5].num), (yyvsp[-3].str), (yyvsp[-2].val), sbit, ebit, (yyvsp[0].val));
 	  }
-#line 1459 "itbl-parse.c"
+#line 1465 "itbl-parse.c"
     break;
 
   case 7: /* entry: pnum INSN name value range flags $@1 fieldspecs NL  */
 #line 322 "./itbl-parse.y"
           {}
-#line 1465 "itbl-parse.c"
+#line 1471 "itbl-parse.c"
     break;
 
   case 13: /* ftype: regtype  */
@@ -1470,7 +1476,7 @@ yyreduce:
 	    DBGL2 (("ftype\n"));
 	    (yyval.num) = (yyvsp[0].num);
 	  }
-#line 1474 "itbl-parse.c"
+#line 1480 "itbl-parse.c"
     break;
 
   case 14: /* ftype: ADDR  */
@@ -1479,7 +1485,7 @@ yyreduce:
 	    DBGL2 (("addr\n"));
 	    (yyval.num) = ADDR;
 	  }
-#line 1483 "itbl-parse.c"
+#line 1489 "itbl-parse.c"
     break;
 
   case 15: /* ftype: IMMED  */
@@ -1488,7 +1494,7 @@ yyreduce:
 	    DBGL2 (("immed\n"));
 	    (yyval.num) = IMMED;
 	  }
-#line 1492 "itbl-parse.c"
+#line 1498 "itbl-parse.c"
     break;
 
   case 16: /* fieldspec: ftype range flags  */
@@ -1498,7 +1504,7 @@ yyreduce:
 	    	    insntbl_line, (yyvsp[-2].num), sbit, ebit, (yyvsp[0].val)));
 	    itbl_add_operand (insn, (yyvsp[-2].num), sbit, ebit, (yyvsp[0].val));
 	  }
-#line 1502 "itbl-parse.c"
+#line 1508 "itbl-parse.c"
     break;
 
   case 17: /* flagexpr: NUM '|' flagexpr  */
@@ -1506,7 +1512,7 @@ yyreduce:
           {
 	    (yyval.val) = (yyvsp[-2].num) | (yyvsp[0].val);
 	  }
-#line 1510 "itbl-parse.c"
+#line 1516 "itbl-parse.c"
     break;
 
   case 18: /* flagexpr: '[' flagexpr ']'  */
@@ -1514,7 +1520,7 @@ yyreduce:
           {
 	    (yyval.val) = (yyvsp[-1].val);
 	  }
-#line 1518 "itbl-parse.c"
+#line 1524 "itbl-parse.c"
     break;
 
   case 19: /* flagexpr: NUM  */
@@ -1522,7 +1528,7 @@ yyreduce:
           {
 	    (yyval.val) = (yyvsp[0].num);
 	  }
-#line 1526 "itbl-parse.c"
+#line 1532 "itbl-parse.c"
     break;
 
   case 20: /* flags: '*' flagexpr  */
@@ -1531,7 +1537,7 @@ yyreduce:
 	    DBGL2 (("flags=%d\n", (yyvsp[0].val)));
 	    (yyval.val) = (yyvsp[0].val);
 	  }
-#line 1535 "itbl-parse.c"
+#line 1541 "itbl-parse.c"
     break;
 
   case 21: /* flags: %empty  */
@@ -1539,7 +1545,7 @@ yyreduce:
           {
 	    (yyval.val) = 0;
 	  }
-#line 1543 "itbl-parse.c"
+#line 1549 "itbl-parse.c"
     break;
 
   case 22: /* range: ':' NUM '-' NUM  */
@@ -1549,7 +1555,7 @@ yyreduce:
 	    sbit = (yyvsp[-2].num);
 	    ebit = (yyvsp[0].num);
 	  }
-#line 1553 "itbl-parse.c"
+#line 1559 "itbl-parse.c"
     break;
 
   case 23: /* range: %empty  */
@@ -1558,7 +1564,7 @@ yyreduce:
 	    sbit = 31;
 	    ebit = 0;
 	  }
-#line 1562 "itbl-parse.c"
+#line 1568 "itbl-parse.c"
     break;
 
   case 24: /* pnum: PNUM  */
@@ -1567,7 +1573,7 @@ yyreduce:
 	    DBGL2 (("pnum=%d\n",(yyvsp[0].num)));
 	    (yyval.num) = (yyvsp[0].num);
 	  }
-#line 1571 "itbl-parse.c"
+#line 1577 "itbl-parse.c"
     break;
 
   case 25: /* regtype: DREG  */
@@ -1576,7 +1582,7 @@ yyreduce:
 	    DBGL2 (("dreg\n"));
 	    (yyval.num) = DREG;
 	  }
-#line 1580 "itbl-parse.c"
+#line 1586 "itbl-parse.c"
     break;
 
   case 26: /* regtype: CREG  */
@@ -1585,7 +1591,7 @@ yyreduce:
 	    DBGL2 (("creg\n"));
 	    (yyval.num) = CREG;
 	  }
-#line 1589 "itbl-parse.c"
+#line 1595 "itbl-parse.c"
     break;
 
   case 27: /* regtype: GREG  */
@@ -1594,7 +1600,7 @@ yyreduce:
 	    DBGL2 (("greg\n"));
 	    (yyval.num) = GREG;
 	  }
-#line 1598 "itbl-parse.c"
+#line 1604 "itbl-parse.c"
     break;
 
   case 28: /* name: ID  */
@@ -1603,7 +1609,7 @@ yyreduce:
 	    DBGL2 (("name=%s\n",(yyvsp[0].str)));
 	    (yyval.str) = (yyvsp[0].str);
 	  }
-#line 1607 "itbl-parse.c"
+#line 1613 "itbl-parse.c"
     break;
 
   case 29: /* value: NUM  */
@@ -1612,11 +1618,11 @@ yyreduce:
 	    DBGL2 (("val=x%x\n",(yyvsp[0].num)));
 	    (yyval.val) = (yyvsp[0].num);
 	  }
-#line 1616 "itbl-parse.c"
+#line 1622 "itbl-parse.c"
     break;
 
 
-#line 1620 "itbl-parse.c"
+#line 1626 "itbl-parse.c"
 
       default: break;
     }
@@ -1698,6 +1704,7 @@ yyerrorlab:
      label yyerrorlab therefore never appears in user code.  */
   if (0)
     YYERROR;
+  ++yynerrs;
 
   /* Do not reclaim the symbols of the rule whose action triggered
      this YYERROR.  */
@@ -1758,7 +1765,7 @@ yyerrlab1:
 `-------------------------------------*/
 yyacceptlab:
   yyresult = 0;
-  goto yyreturn;
+  goto yyreturnlab;
 
 
 /*-----------------------------------.
@@ -1766,24 +1773,22 @@ yyacceptlab:
 `-----------------------------------*/
 yyabortlab:
   yyresult = 1;
-  goto yyreturn;
+  goto yyreturnlab;
 
 
-#if !defined yyoverflow
-/*-------------------------------------------------.
-| yyexhaustedlab -- memory exhaustion comes here.  |
-`-------------------------------------------------*/
+/*-----------------------------------------------------------.
+| yyexhaustedlab -- YYNOMEM (memory exhaustion) comes here.  |
+`-----------------------------------------------------------*/
 yyexhaustedlab:
   yyerror (YY_("memory exhausted"));
   yyresult = 2;
-  goto yyreturn;
-#endif
+  goto yyreturnlab;
 
 
-/*-------------------------------------------------------.
-| yyreturn -- parsing is finished, clean up and return.  |
-`-------------------------------------------------------*/
-yyreturn:
+/*----------------------------------------------------------.
+| yyreturnlab -- parsing is finished, clean up and return.  |
+`----------------------------------------------------------*/
+yyreturnlab:
   if (yychar != YYEMPTY)
     {
       /* Make sure we have latest lookahead translation.  See comments at

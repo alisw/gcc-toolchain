@@ -317,7 +317,7 @@ print_formatted (struct value *val, int size,
 
 	case 'i':
 	  /* We often wrap here if there are long symbolic names.  */
-	  wrap_here ("    ");
+	  stream->wrap_here (4);
 	  next_address = (value_address (val)
 			  + gdb_print_insn (type->arch (),
 					    value_address (val), stream,
@@ -426,19 +426,14 @@ print_scalar_formatted (const gdb_byte *valaddr, struct type *type,
       len = newlen;
     }
 
-  /* Historically gdb has printed floats by first casting them to a
-     long, and then printing the long.  PR cli/16242 suggests changing
-     this to using C-style hex float format.
-
-     Biased range types and sub-word scalar types must also be handled
+  /* Biased range types and sub-word scalar types must be handled
      here; the value is correctly computed by unpack_long.  */
   gdb::byte_vector converted_bytes;
   /* Some cases below will unpack the value again.  In the biased
      range case, we want to avoid this, so we store the unpacked value
      here for possible use later.  */
   gdb::optional<LONGEST> val_long;
-  if (((type->code () == TYPE_CODE_FLT
-	|| is_fixed_point_type (type))
+  if ((is_fixed_point_type (type)
        && (options->format == 'o'
 	   || options->format == 'x'
 	   || options->format == 't'
@@ -826,7 +821,7 @@ find_instruction_backward (struct gdbarch *gdbarch, CORE_ADDR addr,
 	     is calculated after the loop.  */
 	  printf_filtered (_("No line number information available "
 			     "for address "));
-	  wrap_here ("  ");
+	  gdb_stdout->wrap_here (2);
 	  print_address (gdbarch, loop_start - 1, gdb_stdout);
 	  printf_filtered ("\n");
 	  break;
@@ -1155,7 +1150,7 @@ do_examine (struct format_data fmt, struct gdbarch *gdbarch, CORE_ADDR addr)
 	}
 
       if (format == 'i')
-	fputs_filtered (pc_prefix (next_address), gdb_stdout);
+	puts_filtered (pc_prefix (next_address));
       print_address (next_gdbarch, next_address, gdb_stdout);
       printf_filtered (":");
       for (i = maxelts;
@@ -1498,7 +1493,7 @@ output_command (const char *exp, int from_tty)
 
   annotate_value_end ();
 
-  wrap_here ("");
+  gdb_stdout->wrap_here (0);
   gdb_flush (gdb_stdout);
 }
 
@@ -1683,11 +1678,10 @@ info_address_command (const char *exp, int from_tty)
     }
 
   printf_filtered ("Symbol \"");
-  fprintf_symbol_filtered (gdb_stdout, sym->print_name (),
-			   current_language->la_language, DMGL_ANSI);
+  puts_filtered (sym->print_name ());
   printf_filtered ("\" is ");
   val = SYMBOL_VALUE (sym);
-  if (SYMBOL_OBJFILE_OWNED (sym))
+  if (sym->is_objfile_owned ())
     section = sym->obj_section (symbol_objfile (sym));
   else
     section = NULL;
@@ -1701,7 +1695,7 @@ info_address_command (const char *exp, int from_tty)
       return;
     }
 
-  switch (SYMBOL_CLASS (sym))
+  switch (sym->aclass ())
     {
     case LOC_CONST:
     case LOC_CONST_BYTES:
@@ -1725,7 +1719,7 @@ info_address_command (const char *exp, int from_tty)
       break;
 
     case LOC_COMPUTED:
-      gdb_assert_not_reached (_("LOC_COMPUTED variable missing a method"));
+      gdb_assert_not_reached ("LOC_COMPUTED variable missing a method");
 
     case LOC_REGISTER:
       /* GDBARCH is the architecture associated with the objfile the symbol
@@ -1736,7 +1730,7 @@ info_address_command (const char *exp, int from_tty)
 	 in that objfile.  */
       regno = SYMBOL_REGISTER_OPS (sym)->register_number (sym, gdbarch);
 
-      if (SYMBOL_IS_ARGUMENT (sym))
+      if (sym->is_argument ())
 	printf_filtered (_("an argument in register %s"),
 			 gdbarch_register_name (gdbarch, regno));
       else
@@ -2059,7 +2053,7 @@ map_display_numbers (const char *args,
 				      return item->number == num;
 				    });
 	  if (iter == all_displays.end ())
-	    printf_unfiltered (_("No display number %d.\n"), num);
+	    printf_filtered (_("No display number %d.\n"), num);
 	  else
 	    function (iter->get ());
 	}
@@ -2185,9 +2179,9 @@ do_one_display (struct display *d)
 	}
       catch (const gdb_exception_error &ex)
 	{
-	  fprintf_filtered (gdb_stdout, _("%p[<error: %s>%p]\n"),
-			    metadata_style.style ().ptr (), ex.what (),
-			    nullptr);
+	  printf_filtered (_("%p[<error: %s>%p]\n"),
+			   metadata_style.style ().ptr (), ex.what (),
+			   nullptr);
 	}
     }
   else
@@ -2254,7 +2248,7 @@ disable_display (int num)
 	d->enabled_p = false;
 	return;
       }
-  printf_unfiltered (_("No display number %d.\n"), num);
+  printf_filtered (_("No display number %d.\n"), num);
 }
 
 void
@@ -2275,7 +2269,7 @@ static void
 info_display_command (const char *ignore, int from_tty)
 {
   if (all_displays.empty ())
-    printf_unfiltered (_("There are no auto-display expressions now.\n"));
+    printf_filtered (_("There are no auto-display expressions now.\n"));
   else
     printf_filtered (_("Auto-display expressions now in effect:\n\
 Num Enb Expression\n"));
@@ -2448,7 +2442,7 @@ printf_c_string (struct ui_file *stream, const char *format,
 	 null terminated) to be printed without problems.  */
       gdb_byte *tem_str = (gdb_byte *) alloca (len + 1);
 
-      memcpy (tem_str, value_contents (value), len);
+      memcpy (tem_str, value_contents (value).data (), len);
       tem_str [len] = 0;
       str = tem_str;
     }
@@ -2512,7 +2506,7 @@ printf_wide_c_string (struct ui_file *stream, const char *format,
   if (VALUE_LVAL (value) == lval_internalvar
       && c_is_string_type_p (value_type (value)))
     {
-      str = value_contents (value);
+      str = value_contents (value).data ();
       len = TYPE_LENGTH (value_type (value));
     }
   else
@@ -2621,14 +2615,15 @@ printf_floating (struct ui_file *stream, const char *format,
     {
       param_type = float_type_from_length (param_type);
       if (param_type != value_type (value))
-	value = value_from_contents (param_type, value_contents (value));
+	value = value_from_contents (param_type,
+				     value_contents (value).data ());
     }
 
   value = value_cast (fmt_type, value);
 
   /* Convert the value to a string and print it.  */
   std::string str
-    = target_float_to_string (value_contents (value), fmt_type, format);
+    = target_float_to_string (value_contents (value).data (), fmt_type, format);
   fputs_filtered (str.c_str (), stream);
 }
 
@@ -2789,7 +2784,7 @@ ui_printf (const char *arg, struct ui_file *stream)
 		  || valtype->code () != TYPE_CODE_INT)
 		error (_("expected wchar_t argument for %%lc"));
 
-	      bytes = value_contents (val_args[i]);
+	      bytes = value_contents (val_args[i]).data ();
 
 	      auto_obstack output;
 
@@ -2895,7 +2890,7 @@ printf_command (const char *arg, int from_tty)
 {
   ui_printf (arg, gdb_stdout);
   reset_terminal_style (gdb_stdout);
-  wrap_here ("");
+  gdb_stdout->wrap_here (0);
   gdb_stdout->flush ();
 }
 

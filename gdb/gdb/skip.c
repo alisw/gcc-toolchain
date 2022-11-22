@@ -33,10 +33,11 @@
 #include "source.h"
 #include "filenames.h"
 #include "fnmatch.h"
-#include "gdb_regex.h"
+#include "gdbsupport/gdb_regex.h"
 #include "gdbsupport/gdb_optional.h"
 #include <list>
 #include "cli/cli-style.h"
+#include "gdbsupport/buildargv.h"
 
 /* True if we want to print debug printouts related to file/function
    skipping. */
@@ -650,7 +651,7 @@ complete_skip_number (cmd_list_element *cmd,
 
   for (const skiplist_entry &entry : skiplist_entries)
     {
-      gdb::unique_xmalloc_ptr<char> name (xstrprintf ("%d", entry.number ()));
+      gdb::unique_xmalloc_ptr<char> name = xstrprintf ("%d", entry.number ());
       if (strncmp (word, name.get (), word_len) == 0)
 	completer.add_completion (std::move (name));
     }

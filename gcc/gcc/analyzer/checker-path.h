@@ -1,5 +1,5 @@
 /* Subclasses of diagnostic_path and diagnostic_event for analyzer diagnostics.
-   Copyright (C) 2019-2021 Free Software Foundation, Inc.
+   Copyright (C) 2019-2022 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -31,6 +31,7 @@ enum event_kind
   EK_DEBUG,
   EK_CUSTOM,
   EK_STMT,
+  EK_REGION_CREATION,
   EK_FUNCTION_ENTRY,
   EK_STATE_CHANGE,
   EK_START_CFG_EDGE,
@@ -56,7 +57,9 @@ extern const char *event_kind_to_string (enum event_kind ek);
      checker_event
        debug_event (EK_DEBUG)
        custom_event (EK_CUSTOM)
+	 precanned_custom_event
        statement_event (EK_STMT)
+       region_creation_event (EK_REGION_CREATION)
        function_entry_event (EK_FUNCTION_ENTRY)
        state_change_event (EK_STATE_CHANGE)
        superedge_event
@@ -144,19 +147,30 @@ private:
   char *m_desc;
 };
 
-/* A concrete event subclass for custom events.  These are not filtered,
+/* An abstract event subclass for custom events.  These are not filtered,
    as they are likely to be pertinent to the diagnostic.  */
 
 class custom_event : public checker_event
 {
+protected:
+  custom_event (location_t loc, tree fndecl, int depth)
+  : checker_event (EK_CUSTOM, loc, fndecl, depth)
+  {
+  }
+};
+
+/* A concrete custom_event subclass with a precanned message.  */
+
+class precanned_custom_event : public custom_event
+{
 public:
-  custom_event (location_t loc, tree fndecl, int depth,
-		const char *desc)
-  : checker_event (EK_CUSTOM, loc, fndecl, depth),
+  precanned_custom_event (location_t loc, tree fndecl, int depth,
+			  const char *desc)
+  : custom_event (loc, fndecl, depth),
     m_desc (xstrdup (desc))
   {
   }
-  ~custom_event ()
+  ~precanned_custom_event ()
   {
     free (m_desc);
   }
@@ -180,6 +194,21 @@ public:
 
   const gimple * const m_stmt;
   const program_state m_dst_state;
+};
+
+/* A concrete event subclass describing the creation of a region that
+   is significant for a diagnostic  e.g. "region created on stack here".  */
+
+class region_creation_event : public checker_event
+{
+public:
+  region_creation_event (const region *reg,
+			 location_t loc, tree fndecl, int depth);
+
+  label_text get_desc (bool) const FINAL OVERRIDE;
+
+private:
+  const region *m_reg;
 };
 
 /* An event subclass describing the entry to a function.  */
@@ -326,6 +355,9 @@ public:
   label_text get_desc (bool can_colorize) const FINAL OVERRIDE;
 
   bool is_call_p () const FINAL OVERRIDE;
+
+  const supernode *m_src_snode;
+  const supernode *m_dest_snode;
 };
 
 /* A concrete event subclass for an interprocedural return.  */
@@ -339,6 +371,9 @@ public:
   label_text get_desc (bool can_colorize) const FINAL OVERRIDE;
 
   bool is_return_p () const FINAL OVERRIDE;
+
+  const supernode *m_src_snode;
+  const supernode *m_dest_snode;
 };
 
 /* A concrete event subclass for the start of a consolidated run of CFG
@@ -542,6 +577,10 @@ public:
     delete m_events[idx];
     m_events[idx] = new_event;
   }
+
+  void add_region_creation_event (const region *reg,
+				  location_t loc,
+				  tree fndecl, int depth);
 
   void add_final_event (const state_machine *sm,
 			const exploded_node *enode, const gimple *stmt,

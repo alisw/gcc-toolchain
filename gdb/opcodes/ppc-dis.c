@@ -1,5 +1,5 @@
 /* ppc-dis.c -- Disassemble PowerPC instructions
-   Copyright (C) 1994-2021 Free Software Foundation, Inc.
+   Copyright (C) 1994-2022 Free Software Foundation, Inc.
    Written by Ian Lance Taylor, Cygnus Support
 
    This file is part of the GNU opcodes library.
@@ -598,8 +598,9 @@ lookup_powerpc (uint64_t insn, ppc_cpu_t dialect)
 
       if ((insn & opcode->mask) != opcode->opcode
 	  || ((dialect & PPC_OPCODE_ANY) == 0
-	      && (opcode->flags & dialect) == 0)
-	  || (opcode->deprecated & dialect) != 0)
+	      && ((opcode->flags & dialect) == 0
+		  || (opcode->deprecated & dialect) != 0))
+	  || (opcode->deprecated & dialect & PPC_OPCODE_RAW) != 0)
 	continue;
 
       /* Check validity of operands.  */

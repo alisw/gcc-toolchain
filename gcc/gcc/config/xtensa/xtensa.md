@@ -1,5 +1,5 @@
 ;; GCC machine description for Tensilica's Xtensa architecture.
-;; Copyright (C) 2001-2021 Free Software Foundation, Inc.
+;; Copyright (C) 2001-2022 Free Software Foundation, Inc.
 ;; Contributed by Bob Wilson (bwilson@tensilica.com) at Tensilica.
 
 ;; This file is part of GCC.
@@ -754,11 +754,14 @@
 	 because of offering further optimization opportunities.  */
       if (register_operand (operands[0], DImode))
 	{
-	  rtx first, second;
+	  rtx lowpart, highpart;
 
-	  split_double (operands[1], &first, &second);
-	  emit_insn (gen_movsi (gen_lowpart (SImode, operands[0]), first));
-	  emit_insn (gen_movsi (gen_highpart (SImode, operands[0]), second));
+	  if (TARGET_BIG_ENDIAN)
+	    split_double (operands[1], &highpart, &lowpart);
+	  else
+	    split_double (operands[1], &lowpart, &highpart);
+	  emit_insn (gen_movsi (gen_lowpart (SImode, operands[0]), lowpart));
+	  emit_insn (gen_movsi (gen_highpart (SImode, operands[0]), highpart));
 	  DONE;
 	}
 
@@ -779,7 +782,7 @@
   "register_operand (operands[0], DImode)
    || register_operand (operands[1], DImode)"
   "#"
-  "reload_completed"
+  "&& reload_completed"
   [(set (match_dup 0) (match_dup 2))
    (set (match_dup 1) (match_dup 3))]
 {
@@ -1053,7 +1056,7 @@
   "register_operand (operands[0], DFmode)
    || register_operand (operands[1], DFmode)"
   "#"
-  "reload_completed"
+  "&& reload_completed"
   [(set (match_dup 0) (match_dup 2))
    (set (match_dup 1) (match_dup 3))]
 {
