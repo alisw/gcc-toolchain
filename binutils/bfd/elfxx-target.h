@@ -91,9 +91,6 @@
 #define bfd_elfNN_write_object_contents _bfd_elf_write_object_contents
 #define bfd_elfNN_write_corefile_contents _bfd_elf_write_corefile_contents
 
-#define bfd_elfNN_get_section_contents_in_window \
-  _bfd_generic_get_section_contents_in_window
-
 #ifndef elf_backend_can_refcount
 #define elf_backend_can_refcount 0
 #endif
@@ -147,6 +144,9 @@
 #endif
 #ifndef elf_backend_strtab_flags
 #define elf_backend_strtab_flags 0
+#endif
+#ifndef elf_backend_use_mmap
+#define elf_backend_use_mmap false
 #endif
 
 #define bfd_elfNN_bfd_debug_info_start		_bfd_void_bfd
@@ -230,6 +230,8 @@
   _bfd_elf_copy_private_symbol_data
 #endif
 
+#define bfd_elfNN_init_private_section_data \
+  _bfd_elf_init_private_section_data
 #ifndef bfd_elfNN_bfd_copy_private_section_data
 #define bfd_elfNN_bfd_copy_private_section_data \
   _bfd_elf_copy_private_section_data
@@ -487,11 +489,11 @@
 #ifndef elf_backend_adjust_dynamic_symbol
 #define elf_backend_adjust_dynamic_symbol 0
 #endif
-#ifndef elf_backend_always_size_sections
-#define elf_backend_always_size_sections 0
+#ifndef elf_backend_early_size_sections
+#define elf_backend_early_size_sections 0
 #endif
-#ifndef elf_backend_size_dynamic_sections
-#define elf_backend_size_dynamic_sections 0
+#ifndef elf_backend_late_size_sections
+#define elf_backend_late_size_sections 0
 #endif
 #ifndef elf_backend_strip_zero_sized_dynamic_sections
 #define elf_backend_strip_zero_sized_dynamic_sections 0
@@ -853,8 +855,8 @@ static const struct elf_backend_data elfNN_bed =
   elf_backend_check_directives,
   elf_backend_notice_as_needed,
   elf_backend_adjust_dynamic_symbol,
-  elf_backend_always_size_sections,
-  elf_backend_size_dynamic_sections,
+  elf_backend_early_size_sections,
+  elf_backend_late_size_sections,
   elf_backend_strip_zero_sized_dynamic_sections,
   elf_backend_init_index_section,
   elf_backend_relocate_section,
@@ -972,7 +974,8 @@ static const struct elf_backend_data elfNN_bed =
   elf_backend_extern_protected_data,
   elf_backend_always_renumber_dynsyms,
   elf_backend_linux_prpsinfo32_ugid16,
-  elf_backend_linux_prpsinfo64_ugid16
+  elf_backend_linux_prpsinfo64_ugid16,
+  elf_backend_use_mmap
 };
 
 /* Forward declaration for use when initialising alternative_target field.  */

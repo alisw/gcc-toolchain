@@ -343,7 +343,7 @@ under the MIT license.
 
 The source of C<isl> can be obtained either as a tarball
 or from the git repository.  Both are available from
-L<https://libisl.sourceforge.io/>.
+L<http://isl.gforge.inria.fr/>.
 The installation process depends on how you obtained
 the source.
 
@@ -422,11 +422,11 @@ for values out of the 32 bit range. In most applications, C<isl> will run
 fastest with the C<imath-32> option, followed by C<gmp> and C<imath>, the
 slowest.
 
-=item C<--with-gmp-prefix=>I<path>
+=item C<--with-gmp-prefix>
 
 Installation prefix for C<GMP> (architecture-independent files).
 
-=item C<--with-gmp-exec-prefix=>I<path>
+=item C<--with-gmp-exec-prefix>
 
 Installation prefix for C<GMP> (architecture-dependent files).
 
@@ -436,46 +436,11 @@ Installation prefix for C<GMP> (architecture-dependent files).
 
 	make
 
-=item 4 Test (optional)
-
-	make check
-
-=item 5 Install (optional)
+=item 4 Install (optional)
 
 	make install
 
 =back
-
-=head2 Building the foreign language bindings
-
-The tarball already contains the generated foreign language bindings,
-but they are not included in the git repository.
-Building the C++ and Python bindings relies on the LLVM/clang libraries,
-see C<http://clang.llvm.org/get_started.html>.
-The C<configure> script will not assume that these are available
-on the system.
-To enable building the foreign language bindings,
-one of the following options needs to be specified.
-
-=over
-
-=item C<--with-clang=system>
-
-Use the system clang libraries (installed in a default location).
-
-=item C<--with-clang-prefix=>I<path>
-
-Use the system clang libraries installed in I<path>.
-
-=back
-
-It is best to use the latest release of the clang libraries (16.0),
-although any release since 3.5 should work as well.
-Note that if you build the clang libraries from source,
-then you need to make sure they are also installed (using C<make install>).
-If the compiler that was used to compile the clang libraries
-is different from the default C++ compiler, then use C<CXX_FOR_BUILD>
-to specify this non-default C++ compiler when running C<isl>'s C<./configure>.
 
 =head1 Integer Set Library
 
@@ -1006,8 +971,6 @@ using the following functions.
 	__isl_give isl_id *isl_id_set_free_user(
 		__isl_take isl_id *id,
 		void (*free_user)(void *user));
-	void (*isl_id_get_free_user(__isl_keep isl_id *id))
-		(void *user);
 	__isl_give isl_id *isl_id_copy(isl_id *id);
 	__isl_null isl_id *isl_id_free(__isl_take isl_id *id);
 
@@ -1019,7 +982,6 @@ using the following functions.
 
 The callback set by C<isl_id_set_free_user> is called on the user
 pointer when the last reference to the C<isl_id> is freed.
-This callback can be retrieved using C<isl_id_get_free_user>.
 Note that C<isl_id_get_name> returns a pointer to some internal
 data structure, so the result can only be used while the
 corresponding C<isl_id> is alive.
@@ -1235,7 +1197,6 @@ C<isl_dim_out> (only for relations), C<isl_dim_set>
 	#include <isl/set.h>
 	isl_size isl_basic_set_dim(__isl_keep isl_basic_set *bset,
 		enum isl_dim_type type);
-	isl_size isl_set_tuple_dim(__isl_keep isl_set *set);
 	isl_size isl_set_dim(__isl_keep isl_set *set,
 		enum isl_dim_type type);
 
@@ -1246,10 +1207,6 @@ C<isl_dim_out> (only for relations), C<isl_dim_set>
 	#include <isl/map.h>
 	isl_size isl_basic_map_dim(__isl_keep isl_basic_map *bmap,
 		enum isl_dim_type type);
-	isl_size isl_map_domain_tuple_dim(
-		__isl_keep isl_map *map);
-	isl_size isl_map_range_tuple_dim(
-		__isl_keep isl_map *map);
 	isl_size isl_map_dim(__isl_keep isl_map *map,
 		enum isl_dim_type type);
 
@@ -2914,9 +2871,6 @@ a specified dimension on a given domain can be created using
 	__isl_give isl_aff *isl_aff_param_on_domain_space_id(
 		__isl_take isl_space *space,
 		__isl_take isl_id *id);
-	__isl_give isl_aff *isl_space_param_aff_on_domain_id(
-		__isl_take isl_space *space,
-		__isl_take isl_id *id);
 	__isl_give isl_aff *isl_aff_var_on_domain(
 		__isl_take isl_local_space *ls,
 		enum isl_dim_type type, unsigned pos);
@@ -2927,8 +2881,6 @@ a specified dimension on a given domain can be created using
 
 The space passed to C<isl_aff_param_on_domain_space_id>
 is required to have a parameter with the given identifier.
-C<isl_aff_param_on_domain_space_id> and
-C<isl_space_param_aff_on_domain_id> perform the same operation.
 
 C<isl_aff_zero_on_domain_space> and C<isl_space_zero_aff_on_domain>
 perform the same operation.
@@ -3682,10 +3634,6 @@ expression is known to be defined over a single universe domain.
 	isl_bool isl_pw_aff_isa_aff(__isl_keep isl_pw_aff *pa);
 	__isl_give isl_aff *isl_pw_aff_as_aff(
 		__isl_take isl_pw_aff *pa);
-	isl_bool isl_multi_pw_aff_isa_multi_aff(
-		__isl_keep isl_multi_pw_aff *mpa);
-	__isl_give isl_multi_aff *isl_multi_pw_aff_as_multi_aff(
-		__isl_take isl_multi_pw_aff *mpa);
 	isl_bool isl_pw_multi_aff_isa_multi_aff(
 		__isl_keep isl_pw_multi_aff *pma);
 	__isl_give isl_multi_aff *isl_pw_multi_aff_as_multi_aff(
@@ -3777,9 +3725,6 @@ then create a piecewise expression over a given domain.
 	__isl_give isl_pw_aff *isl_pw_aff_val_on_domain(
 		__isl_take isl_set *domain,
 		__isl_take isl_val *v);
-	__isl_give isl_pw_aff *isl_set_pw_aff_on_domain_val(
-		__isl_take isl_set *domain,
-		__isl_take isl_val *v);
 	__isl_give isl_pw_multi_aff *
 	isl_pw_multi_aff_multi_val_on_domain(
 		__isl_take isl_set *domain,
@@ -3791,17 +3736,9 @@ then create a piecewise expression over a given domain.
 	__isl_give isl_pw_aff *isl_pw_aff_param_on_domain_id(
 		__isl_take isl_set *domain,
 		__isl_take isl_id *id);
-	__isl_give isl_pw_aff *isl_set_param_pw_aff_on_domain_id(
-		__isl_take isl_set *domain,
-		__isl_take isl_id *id);
 
-C<isl_set_pw_aff_on_domain_val> is an alternative name
-for C<isl_pw_aff_val_on_domain>.
-Similarly for the pair
-C<isl_set_pw_multi_aff_on_domain_multi_val> and
-C<isl_pw_multi_aff_multi_val_on_domain> and
-for the pair C<isl_set_param_pw_aff_on_domain_id> and
-C<isl_pw_aff_param_on_domain_id>.
+C<isl_set_pw_multi_aff_on_domain_multi_val> is an alternative name
+for C<isl_pw_multi_aff_multi_val_on_domain>.
 
 As a convenience, a piecewise multiple expression can
 also be created from a piecewise expression.
@@ -4349,10 +4286,6 @@ Objects can be read from input using the following functions.
 	__isl_give isl_multi_val *isl_multi_val_read_from_str(
 		isl_ctx *ctx, const char *str);
 
-	#include <isl/space.h>
-	__isl_give isl_space *isl_space_read_from_str(
-		isl_ctx *ctx, const char *str);
-
 	#include <isl/set.h>
 	__isl_give isl_basic_set *isl_basic_set_read_from_file(
 		isl_ctx *ctx, FILE *input);
@@ -4488,9 +4421,6 @@ To actually print something, use
 	#include <isl/val.h>
 	__isl_give isl_printer *isl_printer_print_val(
 		__isl_take isl_printer *p, __isl_keep isl_val *v);
-	__isl_give isl_printer *isl_printer_print_multi_val(
-		__isl_take isl_printer *p,
-		__isl_keep isl_multi_val *mv);
 
 	#include <isl/set.h>
 	__isl_give isl_printer *isl_printer_print_basic_set(
@@ -4517,6 +4447,11 @@ To actually print something, use
 	__isl_give isl_printer *isl_printer_print_union_map(
 		__isl_take isl_printer *p,
 		__isl_keep isl_union_map *umap);
+
+	#include <isl/val.h>
+	__isl_give isl_printer *isl_printer_print_multi_val(
+		__isl_take isl_printer *p,
+		__isl_keep isl_multi_val *mv);
 
 	#include <isl/id.h>
 	__isl_give isl_printer *isl_printer_print_multi_id(
@@ -4830,10 +4765,6 @@ all set dimensions.
 
 =item * Stride
 
-Stride detection is based on heuristics.
-The strides returned by the functions below are always valid,
-but there may be larger valid strides that are not detected.
-
 	isl_stat isl_set_dim_residue_class_val(
 		__isl_keep isl_set *set,
 		int pos, __isl_give isl_val **modulo,
@@ -4852,16 +4783,11 @@ can be found then assign C<1> to C<*modulo> and C<1> to C<*residue>.
 		__isl_keep isl_set *set, int pos);
 	__isl_give isl_val *isl_set_get_stride(
 		__isl_keep isl_set *set, int pos);
-	__isl_give isl_fixed_box *isl_set_get_lattice_tile(
-		__isl_keep isl_set *set);
 
 	#include <isl/map.h>
 	__isl_give isl_stride_info *
 	isl_map_get_range_stride_info(
 		__isl_keep isl_map *map, int pos);
-	__isl_give isl_fixed_box *
-	isl_map_get_range_lattice_tile(
-		__isl_keep isl_map *map);
 
 Check if the values of the given set dimension are equal to
 some affine expression of the other dimensions (the offset)
@@ -4873,19 +4799,6 @@ If no more specific information can be found, then the stride
 is taken to be one and the offset is taken to be the zero expression.
 The function C<isl_set_get_stride> performs the same
 computation as C<isl_set_get_stride_info> but only returns the stride.
-The function C<isl_map_get_range_lattice_tile> collects the stride
-information over all output dimensions.
-In particular, it returns a tile of a rectangular lattice
-(possibly of size 1 in all directions)
-containing the output in terms of the parameters and the input dimensions.
-The size and the offset of this tile correspond to
-the strides and the offsets of the stride information and
-can be extracted from the returned
-C<isl_fixed_box> using the functions described under "Box hull" in
-L</"Unary Operations">.  Note that the C<isl_fixed_box> object returned by
-C<isl_map_get_range_lattice_tile> is always valid.
-The function C<isl_set_get_lattice_tile> collects the same stride
-information over all set dimensions.
 For the other functions,
 the stride and offset can be extracted from the returned object
 using the following functions.
@@ -5418,38 +5331,13 @@ earlier dimensions before those that involve later dimensions.
 	#include <isl/space.h>
 	__isl_give isl_space *isl_space_reverse(
 		__isl_take isl_space *space);
-	__isl_give isl_space *isl_space_wrapped_reverse(
-		__isl_take isl_space *space);
-	__isl_give isl_space *isl_space_domain_reverse(
-		__isl_take isl_space *space);
 	__isl_give isl_space *isl_space_range_reverse(
 		__isl_take isl_space *space);
-
-	#include <isl/aff.h>
-	__isl_give isl_aff *isl_aff_domain_reverse(
-		__isl_take isl_aff *aff);
-	__isl_give isl_multi_aff *
-	isl_multi_aff_domain_reverse(
-		__isl_take isl_multi_aff *ma);
-	__isl_give isl_pw_aff *isl_pw_aff_domain_reverse(
-		__isl_take isl_pw_aff *pa);
-	__isl_give isl_pw_multi_aff *
-	isl_pw_multi_aff_domain_reverse(
-		__isl_take isl_pw_multi_aff *pma);
-	__isl_give isl_multi_pw_aff *
-	isl_multi_pw_aff_domain_reverse(
-		__isl_take isl_multi_pw_aff *mpa);
-
-	#include <isl/set.h>
-	__isl_give isl_set *isl_set_wrapped_reverse(
-		__isl_take isl_set *set);
 
 	#include <isl/map.h>
 	__isl_give isl_basic_map *isl_basic_map_reverse(
 		__isl_take isl_basic_map *bmap);
 	__isl_give isl_map *isl_map_reverse(
-		__isl_take isl_map *map);
-	__isl_give isl_map *isl_map_domain_reverse(
 		__isl_take isl_map *map);
 	__isl_give isl_map *isl_map_range_reverse(
 		__isl_take isl_map *map);
@@ -5457,29 +5345,13 @@ earlier dimensions before those that involve later dimensions.
 	#include <isl/union_map.h>
 	__isl_give isl_union_map *isl_union_map_reverse(
 		__isl_take isl_union_map *umap);
-	__isl_give isl_union_map *isl_union_map_domain_reverse(
-		__isl_take isl_union_map *umap);
 	__isl_give isl_union_map *isl_union_map_range_reverse(
 		__isl_take isl_union_map *umap);
-
-	#include <isl/polynomial.h>
-	__isl_give isl_qpolynomial *
-	isl_qpolynomial_domain_reverse(
-		__isl_take isl_qpolynomial *qp);
-	__isl_give isl_pw_qpolynomial *
-	isl_pw_qpolynomial_domain_reverse(
-		__isl_take isl_pw_qpolynomial *pwqp);
-	__isl_give isl_union_pw_qpolynomial *
-	isl_union_pw_qpolynomial_domain_reverse(
-		__isl_take isl_union_pw_qpolynomial *upwqp);
 
 The function C<isl_space_range_reverse> reverses the relation
 that is embedded in the range of the input map space.
 The identifier of the range, if any, is only preserved
 if this embedded relation has identical input and output tuples.
-Similarly for C<isl_space_domain_reverse>.
-Along the same lines, C<isl_space_wrapped_reverse> reverses
-the relation that is embedded in a set space.
 
 =item * Tuple binding
 
@@ -5580,18 +5452,6 @@ in the domain of the input function.
 		__isl_take isl_space *space);
 	__isl_give isl_space *isl_space_params(
 		__isl_take isl_space *space);
-	__isl_give isl_space *
-	isl_space_domain_wrapped_domain(
-		__isl_take isl_space *space);
-	__isl_give isl_space *
-	isl_space_domain_wrapped_range(
-		__isl_take isl_space *space);
-	__isl_give isl_space *
-	isl_space_range_wrapped_domain(
-		__isl_take isl_space *space);
-	__isl_give isl_space *
-	isl_space_range_wrapped_range(
-		__isl_take isl_space *space);
 
 	#include <isl/local_space.h>
 	__isl_give isl_local_space *isl_local_space_domain(
@@ -5622,8 +5482,6 @@ in the domain of the input function.
 		__isl_take isl_basic_set *bset);
 	__isl_give isl_set *isl_set_params(__isl_take isl_set *set);
 
-The function C<isl_space_domain_wrapped_domain> returns the domain
-of the binary relation wrapped inside the domain of the input.
 The function C<isl_set_project_onto_map> returns a relation
 that projects the input set onto the given set dimensions.
 
@@ -5631,12 +5489,6 @@ that projects the input set onto the given set dimensions.
 	__isl_give isl_basic_map *isl_basic_map_project_out(
 		__isl_take isl_basic_map *bmap,
 		enum isl_dim_type type, unsigned first, unsigned n);
-	__isl_give isl_map *isl_map_project_out_param_id(
-		__isl_take isl_map *map,
-		__isl_take isl_id *id);
-	__isl_give isl_map *isl_map_project_out_param_id_list(
-		__isl_take isl_map *map,
-		__isl_take isl_id_list *list);
 	__isl_give isl_map *isl_map_project_out(__isl_take isl_map *map,
 		enum isl_dim_type type, unsigned first, unsigned n);
 	__isl_give isl_map *isl_map_project_out_all_params(
@@ -5666,14 +5518,6 @@ The function C<isl_union_set_project_out> can only project out
 parameters.
 
 	#include <isl/union_map.h>
-	__isl_give isl_union_map *
-	isl_union_map_project_out_param_id(
-		__isl_take isl_union_map *umap,
-		__isl_take isl_id *id);
-	__isl_give isl_union_map *
-	isl_union_map_project_out_param_id_list(
-		__isl_take isl_union_map *umap,
-		__isl_take isl_id_list *list);
 	__isl_give isl_union_map *isl_union_map_project_out(
 		__isl_take isl_union_map *umap,
 		enum isl_dim_type type, unsigned first, unsigned n);
@@ -6540,14 +6384,6 @@ The box can be copied and freed using the following functions.
 	__isl_null isl_fixed_box *isl_fixed_box_free(
 		__isl_take isl_fixed_box *box);
 
-An object of type C<isl_fixed_box> can be read from input
-using the following function.
-
-	#include <isl/fixed_box.h>
-	__isl_give isl_fixed_box *
-	isl_fixed_box_read_from_str(isl_ctx *ctx,
-		const char *str);
-
 A representation of the information contained in an object
 of type C<isl_fixed_box> can be obtained using
 
@@ -6659,10 +6495,6 @@ there is one, negative infinity or infinity if the problem is unbounded and
 NaN if the problem is empty.
 
 	#include <isl/ilp.h>
-	__isl_give isl_val *isl_pw_aff_min_val(
-		__isl_take isl_pw_aff *pa);
-	__isl_give isl_val *isl_pw_aff_max_val(
-		__isl_take isl_pw_aff *pa);
 	__isl_give isl_multi_val *
 	isl_pw_multi_aff_min_multi_val(
 		__isl_take isl_pw_multi_aff *pma);
@@ -7112,28 +6944,12 @@ All parameters need to be named.
 	__isl_give isl_map *isl_map_drop_unused_params(
 		__isl_take isl_map *map);
 
-	#include <isl/union_set.h>
-	__isl_give isl_union_set *
-	isl_union_set_drop_unused_params(
-		__isl_take isl_union_set *uset);
-
-	#include <isl/union_map.h>
-	__isl_give isl_union_map *
-	isl_union_map_drop_unused_params(
-		__isl_take isl_union_map *umap);
-
 	#include <isl/aff.h>
 	__isl_give isl_pw_aff *isl_pw_aff_drop_unused_params(
 		__isl_take isl_pw_aff *pa);
 	__isl_give isl_pw_multi_aff *
 	isl_pw_multi_aff_drop_unused_params(
 		__isl_take isl_pw_multi_aff *pma);
-	__isl_give isl_union_pw_aff *
-	isl_union_pw_aff_drop_unused_params(
-		__isl_take isl_union_pw_aff *upa);
-	__isl_give isl_union_pw_multi_aff *
-	isl_union_pw_multi_aff_drop_unused_params(
-		__isl_take isl_union_pw_multi_aff *upma);
 
 	#include <isl/polynomial.h>
 	__isl_give isl_pw_qpolynomial *
@@ -7142,12 +6958,6 @@ All parameters need to be named.
 	__isl_give isl_pw_qpolynomial_fold *
 	isl_pw_qpolynomial_fold_drop_unused_params(
 		__isl_take isl_pw_qpolynomial_fold *pwf);
-	__isl_give isl_union_pw_qpolynomial *
-	isl_union_pw_qpolynomial_drop_unused_params(
-		__isl_take isl_union_pw_qpolynomial *upwqp);
-	__isl_give isl_union_pw_qpolynomial_fold *
-	isl_union_pw_qpolynomial_fold_drop_unused_params(
-		__isl_take isl_union_pw_qpolynomial_fold *upwf);
 
 =item * Unary Arithmetic Operations
 
@@ -7519,14 +7329,6 @@ the same (number of) parameters.
 	isl_map_intersect_range_factor_range(
 		__isl_take isl_map *map,
 		__isl_take isl_map *factor);
-	__isl_give isl_map *
-	isl_map_intersect_domain_wrapped_domain(
-		__isl_take isl_map *map,
-		__isl_take isl_set *domain);
-	__isl_give isl_map *
-	isl_map_intersect_range_wrapped_domain(
-		__isl_take isl_map *map,
-		__isl_take isl_set *domain);
 
 	#include <isl/union_set.h>
 	__isl_give isl_union_set *isl_union_set_intersect_params(
@@ -7581,14 +7383,6 @@ the same (number of) parameters.
 	isl_union_map_intersect_range_factor_range(
 		__isl_take isl_union_map *umap,
 		__isl_take isl_union_map *factor);
-	__isl_give isl_union_map *
-	isl_union_map_intersect_domain_wrapped_domain_union_set(
-		__isl_take isl_union_map *umap,
-		__isl_take isl_union_set *domain);
-	__isl_give isl_union_map *
-	isl_union_map_intersect_range_wrapped_domain_union_set(
-		__isl_take isl_union_map *umap,
-		__isl_take isl_union_set *domain);
 
 	#include <isl/aff.h>
 	__isl_give isl_pw_aff *isl_pw_aff_intersect_domain(
@@ -9227,10 +9021,6 @@ only defined on the shared definition domain of the arguments.
 	isl_multi_aff_scale_down_multi_val(
 		__isl_take isl_multi_aff *ma,
 		__isl_take isl_multi_val *mv);
-	__isl_give isl_pw_multi_aff *
-	isl_pw_multi_aff_scale_down_multi_val(
-		__isl_take isl_pw_multi_aff *pma,
-		__isl_take isl_multi_val *mv);
 	__isl_give isl_multi_pw_aff *
 	isl_multi_pw_aff_scale_down_multi_val(
 		__isl_take isl_multi_pw_aff *mpa,
@@ -9509,9 +9299,6 @@ Lists can be created, copied, modified and freed using the following functions.
 		unsigned pos1, unsigned pos2);
 	__isl_give isl_set_list *isl_set_list_reverse(
 		__isl_take isl_set_list *list);
-	__isl_give isl_set_list *isl_set_list_set_at(
-		__isl_take isl_set_list *list, int index,
-		__isl_take isl_set *set);
 	__isl_give isl_set_list *isl_set_list_set_set(
 		__isl_take isl_set_list *list, int index,
 		__isl_take isl_set *set);
@@ -9539,7 +9326,6 @@ C<isl_set_list_from_set> performs the same operation.
 C<isl_set_list_clear> removes all elements from a list.
 C<isl_set_list_swap> swaps the elements at the specified locations.
 C<isl_set_list_reverse> reverses the elements in the list.
-C<isl_set_list_set_set> is an alternative name for C<isl_set_list_set_at>.
 
 Lists can be inspected using the following functions.
 
@@ -9562,8 +9348,7 @@ Lists can be inspected using the following functions.
 		isl_bool (*follows)(__isl_keep isl_set *a,
 			__isl_keep isl_set *b, void *user),
 		void *follows_user,
-		isl_stat (*fn)(__isl_take isl_set_list *scc,
-			void *user),
+		isl_stat (*fn)(__isl_take isl_set *el, void *user),
 		void *fn_user);
 
 C<isl_set_list_n_set> is an alternative name for C<isl_set_list_size>.
@@ -9589,47 +9374,6 @@ in isl format.
 	#include <isl/set.h>
 	__isl_give char *isl_set_list_to_str(
 		__isl_keep isl_set_list *list);
-
-An C<isl_val_list>, C<isl_id_list>,
-C<isl_aff_list>, C<isl_pw_aff_list>, C<isl_pw_multi_aff_list>,
-C<isl_union_pw_aff_list>,
-C<isl_set_list>, C<isl_map_list> or C<isl_union_set_list> object
-can also be read from input using the following functions.
-
-	#include <isl/val.h>
-	__isl_give isl_val_list *isl_val_list_read_from_str(
-		isl_ctx *ctx, const char *str);
-
-	#include <isl/id.h>
-	__isl_give isl_id_list *isl_id_list_read_from_str(
-		isl_ctx *ctx, const char *str);
-
-	#include <isl/aff.h>
-	__isl_give isl_aff_list *
-	isl_aff_list_read_from_str(isl_ctx *ctx,
-		const char *str);
-	__isl_give isl_pw_aff_list *
-	isl_pw_aff_list_read_from_str(isl_ctx *ctx,
-		const char *str);
-	__isl_give isl_pw_multi_aff_list *
-	isl_pw_multi_aff_list_read_from_str(isl_ctx *ctx,
-		const char *str);
-	__isl_give isl_union_pw_aff_list *
-	isl_union_pw_aff_list_read_from_str(isl_ctx *ctx,
-		const char *str);
-
-	#include <isl/set.h>
-	__isl_give isl_set_list *isl_set_list_read_from_str(
-		isl_ctx *ctx, const char *str);
-
-	#include <isl/map.h>
-	__isl_give isl_map_list *isl_map_list_read_from_str(
-		isl_ctx *ctx, const char *str);
-
-	#include <isl/union_set.h>
-	__isl_give isl_union_set_list *
-	isl_union_set_list_read_from_str(isl_ctx *ctx,
-		const char *str);
 
 =head2 Associative arrays
 
@@ -9675,11 +9419,6 @@ Associative arrays can be inspected using the following functions.
 		isl_stat (*fn)(__isl_take isl_id *key,
 			__isl_take isl_ast_expr *val, void *user),
 		void *user);
-	isl_bool isl_id_to_ast_expr_every(
-		__isl_keep isl_id_to_ast_expr *id2expr,
-		isl_bool (*test)(__isl_keep isl_id *key,
-			__isl_keep isl_ast_expr *val, void *user),
-		void *user);
 
 The function C<isl_id_to_ast_expr_try_get> returns a structure
 containing two elements, C<valid> and C<value>.
@@ -9703,33 +9442,12 @@ Associative arrays can be modified using the following functions.
 		__isl_take isl_id_to_ast_expr *id2expr,
 		__isl_take isl_id *key);
 
-Associative arrays can be checked for (obvious) equality
-using the following function.
-
-	#include <isl/id_to_ast_expr.h>
-	isl_bool isl_id_to_ast_expr_is_equal(
-		__isl_take isl_id_to_ast_expr *id2expr1,
-		__isl_take isl_id_to_ast_expr *id2expr2);
-
-Note that depending on how the keys and values are being compared,
-for other types of keys and/or values, this function may be called
-C<plain_is_equal> rather than C<is_equal>.
-
-Associative arrays can be printed using the following functions.
+Associative arrays can be printed using the following function.
 
 	#include <isl/id_to_ast_expr.h>
 	__isl_give isl_printer *isl_printer_print_id_to_ast_expr(
 		__isl_take isl_printer *p,
 		__isl_keep isl_id_to_ast_expr *id2expr);
-	__isl_give char *isl_id_to_ast_expr_to_str(
-		__isl_keep isl_id_to_ast_expr *id2expr);
-
-They can be read from input using the following function.
-
-	#include <isl/id_to_ast_expr.h>
-	__isl_give isl_id_to_ast_expr *
-	isl_id_to_ast_expr_read_from_str(isl_ctx *ctx,
-		const char *str);
 
 =head2 Vectors
 
@@ -10297,9 +10015,6 @@ exists.
 		__isl_keep isl_schedule_node *node);
 	__isl_give isl_schedule_node *isl_schedule_node_parent(
 		__isl_take isl_schedule_node *node);
-	__isl_give isl_schedule_node *
-	isl_schedule_node_grandparent(
-		__isl_take isl_schedule_node *node);
 	__isl_give isl_schedule_node *isl_schedule_node_root(
 		__isl_take isl_schedule_node *node);
 	__isl_give isl_schedule_node *isl_schedule_node_ancestor(
@@ -10311,10 +10026,6 @@ exists.
 		__isl_take isl_schedule_node *node, int pos);
 	isl_bool isl_schedule_node_has_children(
 		__isl_keep isl_schedule_node *node);
-	__isl_give isl_schedule_node *
-	isl_schedule_node_grandchild(
-		__isl_take isl_schedule_node *node,
-		int pos1, int pos2);
 	__isl_give isl_schedule_node *isl_schedule_node_first_child(
 		__isl_take isl_schedule_node *node);
 	isl_bool isl_schedule_node_has_previous_sibling(
@@ -10756,26 +10467,19 @@ introduced expansion node.  Grouping instances of different statements
 ensures that they will be treated as a single statement by the
 AST generator up to the point of the expansion node.
 
-The following functions can be used to flatten a nested
+The following function can be used to flatten a nested
 sequence.
 
 	#include <isl/schedule_node.h>
 	__isl_give isl_schedule_node *
 	isl_schedule_node_sequence_splice_child(
 		__isl_take isl_schedule_node *node, int pos);
-	__isl_give isl_schedule_node *
-	isl_schedule_node_sequence_splice_children(
-		__isl_take isl_schedule_node *node);
 
 That is, given a sequence node C<node> that has another sequence node
 in its child at position C<pos> (in particular, the child of that filter
-node is a sequence node), the function
-C<isl_schedule_node_sequence_splice_child>
-attaches the children of that other sequence
+node is a sequence node), attach the children of that other sequence
 node as children of C<node>, replacing the original child at position
 C<pos>.
-C<isl_schedule_node_sequence_splice_children> does this for all
-such children.
 
 The partial schedule of a band node can be scaled (down) or reduced using
 the following functions.
@@ -11969,10 +11673,6 @@ A member access.
 This operation has two arguments, a structure and the name of
 the member of the structure being accessed.
 
-=item C<isl_ast_expr_op_address_of>
-
-The address of its single argument, which is always an array access.
-
 =back
 
 	#include <isl/ast.h>
@@ -12147,18 +11847,6 @@ The function C<isl_ast_expr_substitute_ids> replaces the
 subexpressions of C<expr> of type C<isl_ast_expr_id>
 by the corresponding expression in C<id2expr>, if there is any.
 
-
-The following function can be used to modify the descendants
-of a specific node in an AST using a depth-first post-order
-traversal of those descendants (including the node itself).
-
-	#include <isl/ast.h>
-	__isl_give isl_ast_node *
-	isl_ast_node_map_descendant_bottom_up(
-		__isl_take isl_ast_node *node,
-		__isl_give isl_ast_node *(*fn)(
-			__isl_take isl_ast_node *node,
-			void *user), void *user);
 
 User specified data can be attached to an C<isl_ast_node> and obtained
 from the same C<isl_ast_node> using the following functions.
@@ -12931,21 +12619,8 @@ AST generation or a
 user defined node created using the following function.
 
 	#include <isl/ast.h>
-	__isl_give isl_ast_node *isl_ast_node_user_from_expr(
-		__isl_take isl_ast_expr *expr);
 	__isl_give isl_ast_node *isl_ast_node_alloc_user(
 		__isl_take isl_ast_expr *expr);
-
-C<isl_ast_node_alloc_user> is an alternative name for
-C<isl_ast_node_user_from_expr>.
-
-In some cases, a single user defined node is not enough,
-in which case the following function can be used
-to create a block node from multiple AST nodes.
-
-	#include <isl/ast.h>
-	__isl_give isl_ast_node *isl_ast_node_block_from_children(
-		__isl_take isl_ast_node_list *list);
 
 	#include <isl/ast_build.h>
 	__isl_give isl_ast_build *

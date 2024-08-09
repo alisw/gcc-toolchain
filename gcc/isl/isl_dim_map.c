@@ -72,14 +72,14 @@ void isl_dim_map_dim_range(__isl_keep isl_dim_map *dim_map,
 	unsigned first, unsigned n, unsigned dst_pos)
 {
 	int i;
-	isl_size off;
+	unsigned src_pos;
 
-	off = isl_space_offset(space, type);
-	if (!dim_map || off < 0)
+	if (!dim_map || !space)
 		return;
 	
+	src_pos = 1 + isl_space_offset(space, type);
 	for (i = 0; i < n; ++i) {
-		dim_map->m[1 + dst_pos + i].pos = 1 + off + first + i;
+		dim_map->m[1 + dst_pos + i].pos = src_pos + first + i;
 		dim_map->m[1 + dst_pos + i].sgn = 1;
 	}
 }
@@ -243,7 +243,7 @@ __isl_give isl_dim_map *isl_dim_map_from_reordering(
 	if (!dim_map)
 		return NULL;
 
-	for (i = 0; i < exp->src_len; ++i) {
+	for (i = 0; i < exp->len; ++i) {
 		dim_map->m[1 + exp->pos[i]].pos = 1 + i;
 		dim_map->m[1 + exp->pos[i]].sgn = 1;
 	}

@@ -1,4 +1,4 @@
-This is ldint.info, produced by makeinfo version 7.0.2 from ldint.texi.
+This is ldint.info, produced by makeinfo version 7.0.3 from ldint.texi.
 
 This file documents the internals of the GNU linker ld.
 
@@ -214,24 +214,30 @@ script is invoked.
 ‘(empty)’
      The script generated is used by default (when none of the following
      cases apply).  The output has an extension of ‘.x’.
+
 ‘n’
      The script generated is used when the linker is invoked with the
      ‘-n’ option.  The output has an extension of ‘.xn’.
+
 ‘N’
      The script generated is used when the linker is invoked with the
      ‘-N’ option.  The output has an extension of ‘.xbn’.
+
 ‘r’
      The script generated is used when the linker is invoked with the
      ‘-r’ option.  The output has an extension of ‘.xr’.
+
 ‘u’
      The script generated is used when the linker is invoked with the
      ‘-Ur’ option.  The output has an extension of ‘.xu’.
+
 ‘shared’
      The ‘scripttempl’ script is only invoked with ‘LD_FLAG’ set to this
      value if ‘GENERATE_SHLIB_SCRIPT’ is defined in the ‘emulparams’
      file.  The ‘emultempl’ script must arrange to use this script at
      the appropriate time, normally when the linker is invoked with the
      ‘-shared’ option.  The output has an extension of ‘.xs’.
+
 ‘c’
      The ‘scripttempl’ script is only invoked with ‘LD_FLAG’ set to this
      value if ‘GENERATE_COMBRELOC_SCRIPT’ is defined in the ‘emulparams’
@@ -239,6 +245,7 @@ script is invoked.
      arrange to use this script at the appropriate time, normally when
      the linker is invoked with the ‘-z combreloc’ option.  The output
      has an extension of ‘.xc’.
+
 ‘cshared’
      The ‘scripttempl’ script is only invoked with ‘LD_FLAG’ set to this
      value if ‘GENERATE_COMBRELOC_SCRIPT’ is defined in the ‘emulparams’
@@ -247,6 +254,58 @@ script is invoked.
      arrange to use this script at the appropriate time, normally when
      the linker is invoked with the ‘-shared -z combreloc’ option.  The
      output has an extension of ‘.xsc’.
+
+‘wshared’
+     Like _cshared_ but in addition to needing the ‘-shared’ and ‘-z
+     combreloc’ options, it also needs the ‘-z relro’ option.  If the
+     ‘-z now’ option is also used then the output has an extension of
+     ‘.xsw’, otherwise it is ‘.xsco’.
+
+‘pie’
+     The ‘scripttempl’ script is only invoked with ‘LD_FLAG’ set to this
+     value if ‘GENERATE_PIE_SCRIPT’ is defined in the ‘emulparams’ file.
+     The ‘emultempl’ script must arrange to use this script at the
+     appropriate time, normally when the linker is invoked with the
+     ‘-pie’ option.  The output has an extension of ‘.xd’.
+
+     In addition if the ‘scripttempl’ script is also invoked with
+     ‘GENERATE_RELRO_SCRIPT’ defined then a second script is created
+     with an extension of ‘.xdo’ to match the ‘-pie’ and ‘-z relro’
+     options.
+
+‘cpie’
+     Like ‘pie’ but this version is used when the ‘scripttempl’ script
+     is invoked with both ‘GENERATE_PIE_SCRIPT’ and
+     ‘GENERATE_COMBRELOC_SCRIPT’ defined.  The ‘emultempl’ script must
+     arrange to use this script at the appropriate time, normally when
+     the linker is invoked with the ‘-pie’ and ‘-z combreloc’ options.
+     The output has an extension of ‘.xdc’.
+
+‘wpie’
+     Like ‘cpie’, but in addition the ‘-z relro’ and ‘-z now’ options
+     need to be defined.  The output has an extension of ‘.xdw’.
+
+‘textonly’
+‘pietextonly’
+‘cpietextonly’
+‘wpietextonly’
+
+‘ctextonly’
+‘wtextonly’
+‘sharedtextonly’
+‘csharedtextonly’
+‘wsharedtextonly’
+
+‘rotextonly’
+‘roctextonly’
+‘rowtextonly’
+‘rosharedtextonly’
+‘rocsharedtextonly’
+‘rowsharedtextonly’
+‘ropietextonly’
+‘rocpietextonly’
+‘rowpietextonly’
+
 ‘auto_import’
      The ‘scripttempl’ script is only invoked with ‘LD_FLAG’ set to this
      value if ‘GENERATE_AUTO_IMPORT_SCRIPT’ is defined in the
@@ -1120,11 +1179,11 @@ Node: README1911
 Node: Emulations2147
 Node: emulation parameters4470
 Node: linker scripts7862
-Node: linker emulations16395
-Node: Emulation Walkthrough18881
-Node: Architecture Specific25686
-Node: ix8626114
-Node: GNU Free Documentation License30470
+Node: linker emulations18250
+Node: Emulation Walkthrough20736
+Node: Architecture Specific27541
+Node: ix8627969
+Node: GNU Free Documentation License32325
 
 End Tag Table
 

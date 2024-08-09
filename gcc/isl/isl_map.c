@@ -6,7 +6,6 @@
  * Copyright 2016      INRIA Paris
  * Copyright 2016      Sven Verdoolaege
  * Copyright 2018-2019 Cerebras Systems
- * Copyright 2022      Cerebras Systems
  *
  * Use of this software is governed by the MIT license
  *
@@ -113,30 +112,9 @@ isl_size isl_map_dim(__isl_keep isl_map *map, enum isl_dim_type type)
 	return isl_space_dim(isl_map_peek_space(map), type);
 }
 
-/* Return the dimensionality of the domain (tuple) of the map.
- */
-isl_size isl_map_domain_tuple_dim(__isl_keep isl_map *map)
-{
-	return isl_map_dim(map, isl_dim_in);
-}
-
-/* Return the dimensionality of the range (tuple) of the map.
- */
-isl_size isl_map_range_tuple_dim(__isl_keep isl_map *map)
-{
-	return isl_map_dim(map, isl_dim_out);
-}
-
 isl_size isl_set_dim(__isl_keep isl_set *set, enum isl_dim_type type)
 {
 	return isl_map_dim(set_to_map(set), type);
-}
-
-/* Return the dimensionality of the (tuple of the) set.
- */
-isl_size isl_set_tuple_dim(__isl_keep isl_set *set)
-{
-	return isl_set_dim(set, isl_dim_set);
 }
 
 /* Return the position of the variables of the given type
@@ -148,6 +126,8 @@ isl_size isl_basic_map_var_offset(__isl_keep isl_basic_map *bmap,
 	isl_space *space;
 
 	space = isl_basic_map_peek_space(bmap);
+	if (!space)
+		return isl_size_error;
 
 	switch (type) {
 	case isl_dim_param:
@@ -1463,7 +1443,14 @@ __isl_give isl_basic_set *isl_basic_set_dup(__isl_keep isl_basic_set *bset)
 
 __isl_give isl_basic_set *isl_basic_set_copy(__isl_keep isl_basic_set *bset)
 {
-	return bset_from_bmap(isl_basic_map_copy(bset_to_bmap(bset)));
+	if (!bset)
+		return NULL;
+
+	if (ISL_F_ISSET(bset, ISL_BASIC_SET_FINAL)) {
+		bset->ref++;
+		return bset;
+	}
+	return isl_basic_set_dup(bset);
 }
 
 __isl_give isl_set *isl_set_copy(__isl_keep isl_set *set)
@@ -2647,7 +2634,7 @@ static isl_bool div_involves_vars(__isl_keep isl_basic_map *bmap, int div,
 
 	if (isl_int_is_zero(bmap->div[div][0]))
 		return isl_bool_false;
-	if (isl_seq_first_non_zero(bmap->div[div] + 1 + 1 + first, n) >= 0)
+	if (isl_seq_first_non_zero(bmap->div[div] + 1 + first, n) >= 0)
 		return isl_bool_true;
 
 	for (i = bmap->n_div - 1; i >= 0; --i) {
@@ -2864,14 +2851,10 @@ __isl_give isl_basic_map *isl_basic_map_remove_divs_involving_dims(
 	enum isl_dim_type type, unsigned first, unsigned n)
 {
 	int i;
-	isl_size off;
 
 	if (isl_basic_map_check_range(bmap, type, first, n) < 0)
 		return isl_basic_map_free(bmap);
-	off = isl_basic_map_var_offset(bmap, type);
-	if (off < 0)
-		return isl_basic_map_free(bmap);
-	first += off;
+	first += isl_basic_map_offset(bmap, type);
 
 	for (i = bmap->n_div - 1; i >= 0; --i) {
 		isl_bool involves;
@@ -3783,41 +3766,6 @@ __isl_give isl_basic_set *isl_basic_set_intersect_params(
 	return isl_basic_set_intersect(bset1, bset2);
 }
 
-/* Does "map" consist of a single disjunct, without any local variables?
- */
-static isl_bool is_convex_no_locals(__isl_keep isl_map *map)
-{
-	isl_size n_div;
-
-	if (!map)
-		return isl_bool_error;
-	if (map->n != 1)
-		return isl_bool_false;
-	n_div = isl_basic_map_dim(map->p[0], isl_dim_div);
-	if (n_div < 0)
-		return isl_bool_error;
-	if (n_div != 0)
-		return isl_bool_false;
-	return isl_bool_true;
-}
-
-/* Check that "map" consists of a single disjunct, without any local variables.
- */
-static isl_stat check_convex_no_locals(__isl_keep isl_map *map)
-{
-	isl_bool ok;
-
-	ok = is_convex_no_locals(map);
-	if (ok < 0)
-		return isl_stat_error;
-	if (ok)
-		return isl_stat_ok;
-
-	isl_die(isl_map_get_ctx(map), isl_error_internal,
-		"unexpectedly not convex or involving local variables",
-		return isl_stat_error);
-}
-
 /* Special case of isl_map_intersect, where both map1 and map2
  * are convex, without any divs and such that either map1 or map2
  * contains a single constraint.  This constraint is then simply
@@ -3826,9 +3774,10 @@ static isl_stat check_convex_no_locals(__isl_keep isl_map *map)
 static __isl_give isl_map *map_intersect_add_constraint(
 	__isl_take isl_map *map1, __isl_take isl_map *map2)
 {
-	if (check_convex_no_locals(map1) < 0 ||
-	    check_convex_no_locals(map2) < 0)
-		goto error;
+	isl_assert(map1->ctx, map1->n == 1, goto error);
+	isl_assert(map2->ctx, map1->n == 1, goto error);
+	isl_assert(map1->ctx, map1->p[0]->n_div == 0, goto error);
+	isl_assert(map2->ctx, map1->p[0]->n_div == 0, goto error);
 
 	if (map2->p[0]->n_eq + map2->p[0]->n_ineq != 1)
 		return isl_map_intersect(map2, map1);
@@ -3894,8 +3843,8 @@ static __isl_give isl_map *map_intersect_internal(__isl_take isl_map *map1,
 		return map2;
 	}
 
-	if (is_convex_no_locals(map1) == isl_bool_true &&
-	    is_convex_no_locals(map2) == isl_bool_true &&
+	if (map1->n == 1 && map2->n == 1 &&
+	    map1->p[0]->n_div == 0 && map2->p[0]->n_div == 0 &&
 	    isl_space_is_equal(map1->dim, map2->dim) &&
 	    (map1->p[0]->n_eq + map1->p[0]->n_ineq == 1 ||
 	     map2->p[0]->n_eq + map2->p[0]->n_ineq == 1))
@@ -4009,47 +3958,6 @@ __isl_give isl_basic_map *isl_basic_map_reverse(__isl_take isl_basic_map *bmap)
 	return isl_basic_map_reset_space(bmap, space);
 }
 
-/* Given a basic map where the tuple of type "type" is a wrapped map,
- * swap domain and range of that wrapped map.
- */
-static __isl_give isl_basic_map *isl_basic_map_reverse_wrapped(
-	__isl_take isl_basic_map *bmap, enum isl_dim_type type)
-{
-	isl_space *space;
-	isl_size offset, n1, n2;
-
-	space = isl_basic_map_peek_space(bmap);
-	offset = isl_basic_map_var_offset(bmap, type);
-	n1 = isl_space_wrapped_dim(space, type, isl_dim_in);
-	n2 = isl_space_wrapped_dim(space, type, isl_dim_out);
-	if (offset < 0 || n1 < 0 || n2 < 0)
-		return isl_basic_map_free(bmap);
-
-	bmap = isl_basic_map_swap_vars(bmap, 1 + offset, n1, n2);
-
-	space = isl_basic_map_take_space(bmap);
-	space = isl_space_reverse_wrapped(space, type);
-	bmap = isl_basic_map_restore_space(bmap, space);
-
-	return bmap;
-}
-
-/* Given a basic map (A -> B) -> C, return the corresponding basic map
- * (B -> A) -> C.
- */
-static __isl_give isl_basic_map *isl_basic_map_domain_reverse(
-	__isl_take isl_basic_map *bmap)
-{
-	isl_space *space;
-
-	space = isl_basic_map_peek_space(bmap);
-	if (isl_space_check_domain_is_wrapping(space) < 0)
-		return isl_basic_map_free(bmap);
-	bmap = isl_basic_map_reverse_wrapped(bmap, isl_dim_in);
-
-	return bmap;
-}
-
 /* Given a basic map A -> (B -> C), return the corresponding basic map
  * A -> (C -> B).
  */
@@ -4057,27 +3965,22 @@ static __isl_give isl_basic_map *isl_basic_map_range_reverse(
 	__isl_take isl_basic_map *bmap)
 {
 	isl_space *space;
+	isl_size offset, n1, n2;
 
 	space = isl_basic_map_peek_space(bmap);
 	if (isl_space_check_range_is_wrapping(space) < 0)
 		return isl_basic_map_free(bmap);
-	bmap = isl_basic_map_reverse_wrapped(bmap, isl_dim_out);
-
-	return bmap;
-}
-
-/* Given a basic map that is actually a basic set (A -> B),
- * return the corresponding basic set (B -> A) as a basic map.
- */
-static __isl_give isl_basic_map *isl_basic_map_set_reverse(
-	__isl_take isl_basic_map *bmap)
-{
-	isl_space *space;
-
-	space = isl_basic_map_peek_space(bmap);
-	if (isl_space_check_is_wrapping(space) < 0)
+	offset = isl_basic_map_var_offset(bmap, isl_dim_out);
+	n1 = isl_space_wrapped_dim(space, isl_dim_out, isl_dim_in);
+	n2 = isl_space_wrapped_dim(space, isl_dim_out, isl_dim_out);
+	if (offset < 0 || n1 < 0 || n2 < 0)
 		return isl_basic_map_free(bmap);
-	bmap = isl_basic_map_reverse_wrapped(bmap, isl_dim_set);
+
+	bmap = isl_basic_map_swap_vars(bmap, 1 + offset, n1, n2);
+
+	space = isl_basic_map_take_space(bmap);
+	space = isl_space_range_reverse(space);
+	bmap = isl_basic_map_restore_space(bmap, space);
 
 	return bmap;
 }
@@ -4664,7 +4567,6 @@ error:
 #undef TYPE
 #define TYPE	isl_map
 #include "isl_project_out_all_params_templ.c"
-#include "isl_project_out_param_templ.c"
 
 /* Turn all the dimensions of type "type", except the "n" starting at "first"
  * into existentially quantified variables.
@@ -4698,7 +4600,19 @@ __isl_give isl_set *isl_set_project_out(__isl_take isl_set *set,
 __isl_give isl_set *isl_set_project_out_param_id(__isl_take isl_set *set,
 	__isl_take isl_id *id)
 {
-	return set_from_map(isl_map_project_out_param_id(set_to_map(set), id));
+	int pos;
+
+	if (!set || !id)
+		goto error;
+	pos = isl_set_find_dim_by_id(set, isl_dim_param, id);
+	isl_id_free(id);
+	if (pos < 0)
+		return set;
+	return isl_set_project_out(set, isl_dim_param, pos, 1);
+error:
+	isl_set_free(set);
+	isl_id_free(id);
+	return NULL;
 }
 
 /* If "set" involves any of the parameters with identifiers in "list",
@@ -4707,11 +4621,25 @@ __isl_give isl_set *isl_set_project_out_param_id(__isl_take isl_set *set,
 __isl_give isl_set *isl_set_project_out_param_id_list(__isl_take isl_set *set,
 	__isl_take isl_id_list *list)
 {
-	isl_map *map;
+	int i;
+	isl_size n;
 
-	map = set_to_map(set);
-	map = isl_map_project_out_param_id_list(map, list);
-	return set_from_map(map);
+	n = isl_id_list_size(list);
+	if (n < 0)
+		goto error;
+	for (i = 0; i < n; ++i) {
+		isl_id *id;
+
+		id = isl_id_list_get_at(list, i);
+		set = isl_set_project_out_param_id(set, id);
+	}
+
+	isl_id_list_free(list);
+	return set;
+error:
+	isl_id_list_free(list);
+	isl_set_free(set);
+	return NULL;
 }
 
 /* Project out all parameters from "set" by existentially quantifying
@@ -7234,31 +7162,12 @@ __isl_give isl_map *isl_map_reverse(__isl_take isl_map *map)
 					&isl_basic_map_reverse);
 }
 
-/* Given a map (A -> B) -> C, return the corresponding map (B -> A) -> C.
- */
-__isl_give isl_map *isl_map_domain_reverse(__isl_take isl_map *map)
-{
-	return isl_map_transform(map, &isl_space_domain_reverse,
-					&isl_basic_map_domain_reverse);
-}
-
 /* Given a map A -> (B -> C), return the corresponding map A -> (C -> B).
  */
 __isl_give isl_map *isl_map_range_reverse(__isl_take isl_map *map)
 {
 	return isl_map_transform(map, &isl_space_range_reverse,
 					&isl_basic_map_range_reverse);
-}
-
-/* Given a set (A -> B), return the corresponding set (B -> A).
- */
-__isl_give isl_set *isl_set_wrapped_reverse(__isl_take isl_set *set)
-{
-	isl_map *map = set_to_map(set);
-
-	map = isl_map_transform(map, &isl_space_wrapped_reverse,
-					&isl_basic_map_set_reverse);
-	return set_from_map(map);
 }
 
 #undef TYPE
@@ -8443,8 +8352,8 @@ error:
 	return NULL;
 }
 
-#undef BASE
-#define BASE map
+#undef TYPE
+#define TYPE isl_map
 static
 #include "isl_copy_tuple_id_templ.c"
 
@@ -8621,63 +8530,6 @@ __isl_give isl_set *isl_set_intersect_factor_range(__isl_take isl_set *set,
 
 	return set_from_map(isl_map_intersect_factor(set_to_map(set),
 						set_to_map(range), &control));
-}
-
-#undef BASE
-#define BASE set
-static
-#include "isl_copy_tuple_id_templ.c"
-
-/* Given a map "map" in a space [A -> B] -> C and a set "domain"
- * in the space A, return the intersection.
- *
- * The set "domain" is extended to a set living in the space [A -> B] and
- * the domain of "map" is intersected with this set.
- *
- * If "map" has an identifier on the domain tuple,
- * then this identifier needs to be set on this product
- * before the intersection is computed.
- */
-__isl_give isl_map *isl_map_intersect_domain_wrapped_domain(
-	__isl_take isl_map *map, __isl_take isl_set *domain)
-{
-	isl_space *space;
-	isl_set *factor;
-
-	isl_map_align_params_set(&map, &domain);
-	space = isl_map_get_space(map);
-	space = isl_space_domain_wrapped_range(space);
-	factor = isl_set_universe(space);
-	domain = isl_set_product(domain, factor);
-	space = isl_map_peek_space(map);
-	domain = isl_set_copy_tuple_id(domain, isl_dim_set, space, isl_dim_in);
-	return isl_map_intersect_domain(map, domain);
-}
-
-/* Given a map "map" in a space A -> [B -> C] and a set "domain"
- * in the space B, return the intersection.
- *
- * The set "domain" is extended to a set living in the space [B -> C] and
- * the range of "map" is intersected with this set.
- *
- * If "map" has an identifier on the range tuple,
- * then this identifier needs to be set on this product
- * before the intersection is computed.
- */
-__isl_give isl_map *isl_map_intersect_range_wrapped_domain(
-	__isl_take isl_map *map, __isl_take isl_set *domain)
-{
-	isl_space *space;
-	isl_set *factor;
-
-	isl_map_align_params_set(&map, &domain);
-	space = isl_map_get_space(map);
-	space = isl_space_range_wrapped_range(space);
-	factor = isl_set_universe(space);
-	domain = isl_set_product(domain, factor);
-	space = isl_map_peek_space(map);
-	domain = isl_set_copy_tuple_id(domain, isl_dim_set, space, isl_dim_out);
-	return isl_map_intersect_range(map, domain);
 }
 
 __isl_give isl_map *isl_map_apply_domain(__isl_take isl_map *map1,
@@ -10454,18 +10306,6 @@ int isl_basic_map_plain_cmp(__isl_keep isl_basic_map *bmap1,
 			return cmp;
 	}
 	for (i = 0; i < bmap1->n_div; ++i) {
-		isl_bool unknown1, unknown2;
-
-		unknown1 = isl_basic_map_div_is_marked_unknown(bmap1, i);
-		unknown2 = isl_basic_map_div_is_marked_unknown(bmap2, i);
-		if (unknown1 < 0 || unknown2 < 0)
-			return -1;
-		if (unknown1 && unknown2)
-			continue;
-		if (unknown1)
-			return 1;
-		if (unknown2)
-			return -1;
 		cmp = isl_seq_cmp(bmap1->div[i], bmap2->div[i], 1+1+total);
 		if (cmp)
 			return cmp;
@@ -12157,7 +11997,8 @@ static int unique(isl_int *p, unsigned pos, unsigned len)
 isl_bool isl_basic_set_is_box(__isl_keep isl_basic_set *bset)
 {
 	int i, j;
-	isl_size nvar, ovar, n_div;
+	isl_size nvar, n_div;
+	unsigned ovar;
 
 	n_div = isl_basic_set_dim(bset, isl_dim_div);
 	if (n_div < 0)
@@ -12166,9 +12007,9 @@ isl_bool isl_basic_set_is_box(__isl_keep isl_basic_set *bset)
 		return isl_bool_false;
 
 	nvar = isl_basic_set_dim(bset, isl_dim_set);
-	ovar = isl_space_offset(bset->dim, isl_dim_set);
-	if (nvar < 0 || ovar < 0)
+	if (nvar < 0)
 		return isl_bool_error;
+	ovar = isl_space_offset(bset->dim, isl_dim_set);
 	for (j = 0; j < nvar; ++j) {
 		int lower = 0, upper = 0;
 		for (i = 0; i < bset->n_eq; ++i) {
@@ -12573,11 +12414,10 @@ __isl_give isl_map *isl_map_align_params(__isl_take isl_map *map,
 	if (aligned < 0)
 		goto error;
 	if (!aligned) {
-		isl_space *space;
 		isl_reordering *exp;
 
-		space = isl_map_peek_space(map);
-		exp = isl_parameter_alignment_reordering(space, model);
+		exp = isl_parameter_alignment_reordering(map->dim, model);
+		exp = isl_reordering_extend_space(exp, isl_map_get_space(map));
 		map = isl_map_realign(map, exp);
 	}
 
@@ -12603,7 +12443,6 @@ __isl_give isl_basic_map *isl_basic_map_align_params(
 {
 	isl_ctx *ctx;
 	isl_bool equal_params;
-	isl_space *bmap_space;
 
 	if (!bmap || !model)
 		goto error;
@@ -12614,15 +12453,16 @@ __isl_give isl_basic_map *isl_basic_map_align_params(
 			"model has unnamed parameters", goto error);
 	if (isl_basic_map_check_named_params(bmap) < 0)
 		goto error;
-	bmap_space = isl_basic_map_peek_space(bmap);
-	equal_params = isl_space_has_equal_params(bmap_space, model);
+	equal_params = isl_space_has_equal_params(bmap->dim, model);
 	if (equal_params < 0)
 		goto error;
 	if (!equal_params) {
 		isl_reordering *exp;
 		struct isl_dim_map *dim_map;
 
-		exp = isl_parameter_alignment_reordering(bmap_space, model);
+		exp = isl_parameter_alignment_reordering(bmap->dim, model);
+		exp = isl_reordering_extend_space(exp,
+					isl_basic_map_get_space(bmap));
 		dim_map = isl_dim_map_from_reordering(exp);
 		bmap = isl_basic_map_realign(bmap,
 				    isl_reordering_get_space(exp),
@@ -12678,10 +12518,29 @@ __isl_give isl_basic_set *isl_basic_set_align_params(
 	return isl_basic_map_align_params(bset, model);
 }
 
-#undef TYPE
-#define TYPE	isl_map
-#define isl_map_drop_dims	isl_map_drop
-#include "isl_drop_unused_params_templ.c"
+/* Drop all parameters not referenced by "map".
+ */
+__isl_give isl_map *isl_map_drop_unused_params(__isl_take isl_map *map)
+{
+	int i;
+	isl_size n;
+
+	n = isl_map_dim(map, isl_dim_param);
+	if (isl_map_check_named_params(map) < 0 || n < 0)
+		return isl_map_free(map);
+
+	for (i = n - 1; i >= 0; i--) {
+		isl_bool involves;
+
+		involves = isl_map_involves_dims(map, isl_dim_param, i, 1);
+		if (involves < 0)
+			return isl_map_free(map);
+		if (!involves)
+			map = isl_map_project_out(map, isl_dim_param, i, 1);
+	}
+
+	return map;
+}
 
 /* Drop all parameters not referenced by "set".
  */
@@ -12691,10 +12550,31 @@ __isl_give isl_set *isl_set_drop_unused_params(
 	return set_from_map(isl_map_drop_unused_params(set_to_map(set)));
 }
 
-#undef TYPE
-#define TYPE	isl_basic_map
-#define isl_basic_map_drop_dims	isl_basic_map_drop
-#include "isl_drop_unused_params_templ.c"
+/* Drop all parameters not referenced by "bmap".
+ */
+__isl_give isl_basic_map *isl_basic_map_drop_unused_params(
+	__isl_take isl_basic_map *bmap)
+{
+	isl_size nparam;
+	int i;
+
+	nparam = isl_basic_map_dim(bmap, isl_dim_param);
+	if (nparam < 0 || isl_basic_map_check_named_params(bmap) < 0)
+		return isl_basic_map_free(bmap);
+
+	for (i = nparam - 1; i >= 0; i--) {
+		isl_bool involves;
+
+		involves = isl_basic_map_involves_dims(bmap,
+							isl_dim_param, i, 1);
+		if (involves < 0)
+			return isl_basic_map_free(bmap);
+		if (!involves)
+			bmap = isl_basic_map_drop(bmap, isl_dim_param, i, 1);
+	}
+
+	return bmap;
+}
 
 /* Drop all parameters not referenced by "bset".
  */
@@ -13590,19 +13470,129 @@ __isl_give isl_aff *isl_basic_set_get_div(__isl_keep isl_basic_set *bset,
 	return isl_basic_map_get_div(bset, pos);
 }
 
-/* Plug in "subs" for set dimension "pos" of "set".
+/* Plug in "subs" for dimension "type", "pos" of "bset".
+ *
+ * Let i be the dimension to replace and let "subs" be of the form
+ *
+ *	f/d
+ *
+ * Any integer division with a non-zero coefficient for i,
+ *
+ *	floor((a i + g)/m)
+ *
+ * is replaced by
+ *
+ *	floor((a f + d g)/(m d))
+ *
+ * Constraints of the form
+ *
+ *	a i + g
+ *
+ * are replaced by
+ *
+ *	a f + d g
+ *
+ * We currently require that "subs" is an integral expression.
+ * Handling rational expressions may require us to add stride constraints
+ * as we do in isl_basic_set_preimage_multi_aff.
+ */
+__isl_give isl_basic_set *isl_basic_set_substitute(
+	__isl_take isl_basic_set *bset,
+	enum isl_dim_type type, unsigned pos, __isl_keep isl_aff *subs)
+{
+	int i;
+	isl_int v;
+	isl_ctx *ctx;
+	isl_size n_div;
+
+	if (bset && isl_basic_set_plain_is_empty(bset))
+		return bset;
+
+	bset = isl_basic_set_cow(bset);
+	if (!bset || !subs)
+		goto error;
+
+	ctx = isl_basic_set_get_ctx(bset);
+	if (!isl_space_is_equal(bset->dim, subs->ls->dim))
+		isl_die(ctx, isl_error_invalid,
+			"spaces don't match", goto error);
+	n_div = isl_local_space_dim(subs->ls, isl_dim_div);
+	if (n_div < 0)
+		goto error;
+	if (n_div != 0)
+		isl_die(ctx, isl_error_unsupported,
+			"cannot handle divs yet", goto error);
+	if (!isl_int_is_one(subs->v->el[0]))
+		isl_die(ctx, isl_error_invalid,
+			"can only substitute integer expressions", goto error);
+
+	pos += isl_basic_set_offset(bset, type);
+
+	isl_int_init(v);
+
+	for (i = 0; i < bset->n_eq; ++i) {
+		if (isl_int_is_zero(bset->eq[i][pos]))
+			continue;
+		isl_int_set(v, bset->eq[i][pos]);
+		isl_int_set_si(bset->eq[i][pos], 0);
+		isl_seq_combine(bset->eq[i], subs->v->el[0], bset->eq[i],
+				v, subs->v->el + 1, subs->v->size - 1);
+	}
+
+	for (i = 0; i < bset->n_ineq; ++i) {
+		if (isl_int_is_zero(bset->ineq[i][pos]))
+			continue;
+		isl_int_set(v, bset->ineq[i][pos]);
+		isl_int_set_si(bset->ineq[i][pos], 0);
+		isl_seq_combine(bset->ineq[i], subs->v->el[0], bset->ineq[i],
+				v, subs->v->el + 1, subs->v->size - 1);
+	}
+
+	for (i = 0; i < bset->n_div; ++i) {
+		if (isl_int_is_zero(bset->div[i][1 + pos]))
+			continue;
+		isl_int_set(v, bset->div[i][1 + pos]);
+		isl_int_set_si(bset->div[i][1 + pos], 0);
+		isl_seq_combine(bset->div[i] + 1,
+				subs->v->el[0], bset->div[i] + 1,
+				v, subs->v->el + 1, subs->v->size - 1);
+		isl_int_mul(bset->div[i][0], bset->div[i][0], subs->v->el[0]);
+	}
+
+	isl_int_clear(v);
+
+	bset = isl_basic_set_simplify(bset);
+	return isl_basic_set_finalize(bset);
+error:
+	isl_basic_set_free(bset);
+	return NULL;
+}
+
+/* Plug in "subs" for dimension "type", "pos" of "set".
  */
 __isl_give isl_set *isl_set_substitute(__isl_take isl_set *set,
-	unsigned pos, __isl_keep isl_aff *subs)
+	enum isl_dim_type type, unsigned pos, __isl_keep isl_aff *subs)
 {
-	isl_multi_aff *ma;
+	int i;
 
 	if (set && isl_set_plain_is_empty(set))
 		return set;
 
-	ma = isl_multi_aff_identity_on_domain_space(isl_set_get_space(set));
-	ma = isl_multi_aff_set_aff(ma, pos, isl_aff_copy(subs));
-	return isl_set_preimage_multi_aff(set, ma);
+	set = isl_set_cow(set);
+	if (!set || !subs)
+		goto error;
+
+	for (i = set->n - 1; i >= 0; --i) {
+		set->p[i] = isl_basic_set_substitute(set->p[i], type, pos, subs);
+		set = set_from_map(remove_if_empty(set_to_map(set), i));
+		if (!set)
+			return NULL;
+	}
+
+	return set;
+error:
+	isl_set_free(set);
+	return NULL;
 }
 
 /* Check if the range of "ma" is compatible with the domain or range
@@ -14135,13 +14125,10 @@ static __isl_give isl_map *isl_map_preimage_pw_multi_aff_aligned(
 		goto error;
 
 	if (pma->n == 0) {
-		isl_space *space;
-
-		space = isl_pw_multi_aff_get_domain_space(pma);
 		isl_pw_multi_aff_free(pma);
-		space = isl_space_set(isl_map_get_space(map), type, space);
+		res = isl_map_empty(isl_map_get_space(map));
 		isl_map_free(map);
-		return isl_map_empty(space);
+		return res;
 	}
 
 	res = isl_map_preimage_multi_aff(isl_map_copy(map), type,
@@ -14310,167 +14297,6 @@ __isl_give isl_set *isl_set_preimage_multi_pw_aff(__isl_take isl_set *set,
 	__isl_take isl_multi_pw_aff *mpa)
 {
 	return isl_map_preimage_multi_pw_aff(set, isl_dim_set, mpa);
-}
-
-/* Given that inequality "ineq" of "bmap" expresses an upper bound
- * on the output dimension "pos" in terms of the parameters,
- * the input dimensions and possibly some integer divisions,
- * but not any other output dimensions, extract this upper bound
- * as a function of all dimensions (with zero coefficients
- * for the output dimensions).
- *
- * That is, the inequality is of the form
- *
- *	e(...) + c - m x >= 0
- *
- * where e does not depend on any other output dimensions.
- * Return (e(...) + c) / m, with the denominator m in the first position.
- */
-__isl_give isl_vec *isl_basic_map_inequality_extract_output_upper_bound(
-	__isl_keep isl_basic_map *bmap, int ineq, int pos)
-{
-	isl_ctx *ctx;
-	isl_vec *v;
-	isl_size v_out, total;
-
-	v_out = isl_basic_map_var_offset(bmap, isl_dim_out);
-	total = isl_basic_map_dim(bmap, isl_dim_all);
-	if (v_out < 0 || total < 0)
-		return NULL;
-	ctx = isl_basic_map_get_ctx(bmap);
-	v = isl_vec_alloc(ctx, 1 + 1 + total);
-	if (!v)
-		return NULL;
-	isl_int_neg(v->el[0], bmap->ineq[ineq][1 + v_out + pos]);
-	isl_seq_cpy(v->el + 1, bmap->ineq[ineq], 1 + total);
-	isl_int_set_si(v->el[1 + 1 + v_out + pos], 0);
-
-	return v;
-}
-
-/* Is constraint "c" of "bmap" of the form
- *
- *	e(...) + c1 - m x >= 0
- *
- * or
- *
- *	-e(...) + c2 + m x >= 0
- *
- * where m > 1 and e does not involve any other output variables?
- *
- * "v_out" is the offset to the output variables.
- * "d" is the position of x among the output variables.
- * "v_div" is the offset to the local variables.
- * "total" is the total number of variables.
- *
- * Since the purpose of this function is to use the constraint
- * to express the output variable as an integer division,
- * do not allow the constraint to involve any local variables
- * that do not have an explicit representation.
- */
-static isl_bool is_potential_div_constraint(__isl_keep isl_basic_map *bmap,
-	isl_int *c, int v_out, int d, int v_div, int total)
-{
-	int i = 0;
-
-	if (isl_int_is_zero(c[1 + v_out + d]))
-		return isl_bool_false;
-	if (isl_int_is_one(c[1 + v_out + d]))
-		return isl_bool_false;
-	if (isl_int_is_negone(c[1 + v_out + d]))
-		return isl_bool_false;
-	if (isl_seq_first_non_zero(c + 1 + v_out, d) != -1)
-		return isl_bool_false;
-	if (isl_seq_first_non_zero(c + 1 + v_out + d + 1,
-				    v_div - (v_out + d + 1)) != -1)
-		return isl_bool_false;
-	for (i = 0; v_div + i < total; ++i) {
-		isl_bool known, involves;
-
-		if (isl_int_is_zero(c[1 + v_div + i]))
-			continue;
-		known = isl_basic_map_div_is_known(bmap, i);
-		if (known < 0 || !known)
-			return known;
-		involves = div_involves_vars(bmap, i, v_out, v_div - v_out);
-		if (involves < 0 || involves)
-			return isl_bool_not(involves);
-	}
-	return isl_bool_true;
-}
-
-/* Look for a pair of constraints
- *
- *	e(...) + c1 - m x >= 0		i.e.,		m x <= e(...) + c1
- *
- * and
- *
- *	-e(...) + c2 + m x >= 0		i.e.,		m x >= e(...) - c2
- *
- * that express that the output dimension x at position "pos"
- * is some integer division of an expression in terms of the parameters,
- * input dimensions and integer divisions.
- * If such a pair can be found, then return the index
- * of the upper bound constraint, m x <= e(...) + c1.
- * Otherwise, return an index beyond the number of constraints.
- *
- * In order for the constraints above to express an integer division,
- * m needs to be greater than 1 and such that
- *
- *	c1 + c2 < m			i.e.,		-c2 >= c1 - (m - 1)
- *
- * In particular, this ensures that
- *
- *	x = floor((e(...) + c1) / m)
- */
-isl_size isl_basic_map_find_output_upper_div_constraint(
-	__isl_keep isl_basic_map *bmap, int pos)
-{
-	int i, j;
-	isl_size n_ineq;
-	isl_size v_out, v_div;
-	isl_size total;
-	isl_int sum;
-
-	total = isl_basic_map_dim(bmap, isl_dim_all);
-	v_out = isl_basic_map_var_offset(bmap, isl_dim_out);
-	v_div = isl_basic_map_var_offset(bmap, isl_dim_div);
-	n_ineq = isl_basic_map_n_inequality(bmap);
-	if (total < 0 || v_out < 0 || v_div < 0 || n_ineq < 0)
-		return isl_size_error;
-
-	isl_int_init(sum);
-	for (i = 0; i < n_ineq; ++i) {
-		isl_bool potential;
-
-		potential = is_potential_div_constraint(bmap, bmap->ineq[i],
-						v_out, pos, v_div, total);
-		if (potential < 0)
-			goto error;
-		if (!potential)
-			continue;
-		for (j = i + 1; j < n_ineq; ++j) {
-			if (!isl_seq_is_neg(bmap->ineq[i] + 1,
-					bmap->ineq[j] + 1, total))
-				continue;
-			isl_int_add(sum, bmap->ineq[i][0], bmap->ineq[j][0]);
-			if (isl_int_abs_lt(sum, bmap->ineq[i][1 + v_out + pos]))
-				break;
-		}
-		if (j < n_ineq)
-			break;
-	}
-	isl_int_clear(sum);
-
-	if (i >= n_ineq)
-		return n_ineq;
-	if (isl_int_is_pos(bmap->ineq[j][1 + v_out + pos]))
-		return i;
-	else
-		return j;
-error:
-	isl_int_clear(sum);
-	return isl_size_error;
 }
 
 /* Return a copy of the equality constraints of "bset" as a matrix.

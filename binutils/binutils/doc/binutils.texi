@@ -457,7 +457,7 @@ Specify dependencies of this library.  The dependencies must immediately
 follow this option character, must use the same syntax as the linker
 command line, and must be specified within a single argument.  I.e., if
 multiple items are needed, they must be quoted to form a single command
-line argument.  For example @samp{L "-L/usr/local/lib -lmydep1 -lmydep2"}
+line argument.  For example @samp{l "-L/usr/local/lib -lmydep1 -lmydep2"}
 
 @item N
 Uses the @var{count} parameter.  This is used if there are multiple
@@ -1737,6 +1737,10 @@ above.  If @var{sectionpattern} does not match any sections in the
 input file, a warning will be issued, unless
 @option{--no-change-warnings} is used.
 
+Note - changing the VMA of sections in a fully linked binary can be
+dangerous since there may be code that expects the sections to be
+located at their old address.
+
 @item --change-warnings
 @itemx --adjust-warnings
 If @option{--change-section-address} or @option{--change-section-lma} or
@@ -1766,7 +1770,14 @@ SHF_X86_64_LARGE.
 @item --set-section-alignment @var{sectionpattern}=@var{align}
 Set the alignment for any sections matching @var{sectionpattern}.
 @var{align} specifies the alignment in bytes and must be a power of
-two, i.e. 1, 2, 4, 8@dots{}. 
+two, i.e. 1, 2, 4, 8@dots{}.
+
+Note - setting a section's alignment will not automatically align its
+LMA or VMA addresses.  If those need to be changed as well then the
+@option{--change-section-lma} and/or @option{--change-section-vma}
+options should be used.  Also note that changing VMAs can cause
+problems in fully linked binaries where there may be code that expects
+the contents of the sections to be located at their old address.
 
 @item --add-section @var{sectionname}=@var{filename}
 Add a new section named @var{sectionname} while copying the file.  The
@@ -2031,7 +2042,7 @@ As long as the debug info file has been installed into one of these
 locations before the debugger is run everything should work
 correctly.
 
-@item --keep-section-symbils
+@item --keep-section-symbols
 When stripping a file, perhaps with @option{--strip-debug} or
 @option{--strip-unneeded}, retain any symbols specifying section names,
 which would otherwise get stripped.
@@ -2129,10 +2140,20 @@ for dlls.
 [This option is specific to PE targets.]
 
 @item --section-alignment @var{num}
-Sets the section alignment field in the PE header.  Sections in memory
-will always begin at addresses which are a multiple of this number.
-Defaults to 0x1000.
 [This option is specific to PE targets.]
+
+Sets the section alignment field in the PE header - if one is present
+in the binary.  Sections in memory will always begin at addresses
+which are a multiple of this number.  Defaults to 0x1000.
+
+Note - this option will also set the alignment field in each section's
+flags.
+
+Note - if a section's LMA or VMA addresses are no longer aligned, and
+those addresses have not been set via the @option{--set-section-lma} or
+@option{--set-section-vma} options, and the file has been fully
+relocated then a warning message will be issued.  It will then be up
+to the user to decide if the LMA and VMA need updating.
 
 @item --stack @var{reserve}
 @itemx --stack @var{reserve},@var{commit}
@@ -2662,11 +2683,12 @@ rather than @code{li}.  All of the @option{-m} arguments for
 @option{e300}, @option{e500}, @option{e500mc}, @option{e500mc64},
 @option{e500x2}, @option{e5500}, @option{e6500}, @option{efs},
 @option{power4}, @option{power5}, @option{power6}, @option{power7},
-@option{power8}, @option{power9}, @option{power10}, @option{ppc},
-@option{ppc32}, @option{ppc64}, @option{ppc64bridge}, @option{ppcps},
-@option{pwr}, @option{pwr2}, @option{pwr4}, @option{pwr5}, @option{pwr5x},
-@option{pwr6}, @option{pwr7}, @option{pwr8}, @option{pwr9}, @option{pwr10},
-@option{pwrx}, @option{titan}, @option{vle}, and @option{future}.
+@option{power8}, @option{power9}, @option{power10}, @option{power11},
+@option{ppc}, @option{ppc32}, @option{ppc64}, @option{ppc64bridge},
+@option{ppcps}, @option{pwr}, @option{pwr2}, @option{pwr4}, @option{pwr5},
+@option{pwr5x}, @option{pwr6}, @option{pwr7}, @option{pwr8}, @option{pwr9},
+@option{pwr10}, @option{pwr11}, @option{pwrx}, @option{titan}, @option{vle},
+and @option{future}.
 @option{32} and @option{64} modify the default or a prior CPU
 selection, disabling and enabling 64-bit insns respectively.  In
 addition, @option{altivec}, @option{any}, @option{lsp}, @option{htm},
@@ -4990,6 +5012,7 @@ readelf [@option{-a}|@option{--all}]
         [@option{-x} <number or name>|@option{--hex-dump=}<number or name>]
         [@option{-p} <number or name>|@option{--string-dump=}<number or name>]
         [@option{-R} <number or name>|@option{--relocated-dump=}<number or name>]
+        [@option{-j} <number or name>|@option{--display-section=}<number or name>]
         [@option{-z}|@option{--decompress}]
         [@option{-c}|@option{--archive-index}]
         [@option{-w[lLiaprmfFsoORtUuTgAck]}|
@@ -5248,6 +5271,8 @@ displayed.
 Displays the contents of the indicated section as a hexadecimal bytes.
 A number identifies a particular section by index in the section table;
 any other string identifies all sections with that name in the object file.
+This option can be repeated multiple times on the command line in
+order to request multiple hex dumps.
 
 @item -R <number or name>
 @itemx --relocated-dump=<number or name>
@@ -5256,12 +5281,31 @@ bytes.  A number identifies a particular section by index in the
 section table; any other string identifies all sections with that name
 in the object file.  The contents of the section will be relocated
 before they are displayed.
+This option can be repeated multiple times on the command line in
+order to request multiple relocated dumps.
 
 @item -p <number or name>
 @itemx --string-dump=<number or name>
 Displays the contents of the indicated section as printable strings.
 A number identifies a particular section by index in the section table;
 any other string identifies all sections with that name in the object file.
+This option can be repeated multiple times on the command line in
+order to request multiple string dumps.
+
+@item -j <number or name>
+@itemx --display-section
+Displays the contents of the indicated section according to its
+section header type.  Sections containing relocations will be
+displayed as if the @option{--relocations} option had been used,
+sections contains symbols will be displayed as if the @option{--syms}
+option had been used and so on.
+
+A number identifies a particular section by index in the section
+table; any other string identifies all sections with that name in the
+input file(s).
+
+This option can be repeated multiple times on the command line in
+order to request multiple section dumps.
 
 @item -z
 @itemx --decompress

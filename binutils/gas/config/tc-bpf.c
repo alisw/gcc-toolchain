@@ -434,6 +434,7 @@ relaxed_branch_length (fragS *fragp, asection *sec, int update)
           && sec == S_GET_SEGMENT (fragp->fr_symbol))
         {
           offsetT val = S_GET_VALUE (fragp->fr_symbol) + fragp->fr_offset;
+          val -= fragp->fr_address + fragp->fr_fix;
 
           /* Convert to 64-bit words, minus one.  */
           val = (val - 8) / 8;
@@ -578,6 +579,7 @@ md_convert_frag (bfd *abfd ATTRIBUTE_UNUSED,
            && sec == S_GET_SEGMENT (fragp->fr_symbol))
     {
       offsetT val = S_GET_VALUE (fragp->fr_symbol) + fragp->fr_offset;
+      val -= fragp->fr_address + fragp->fr_fix;
       /* Convert to 64-bit blocks minus one.  */
       disp_to_target = (val - 8) / 8;
       disp_is_known = 1;
@@ -626,15 +628,27 @@ md_convert_frag (bfd *abfd ATTRIBUTE_UNUSED,
             {
               /* 16-bit disp is known and not in range.  Turn the JA
                  into a JAL with a 32-bit displacement.  */
-              char bytes[8];
+              char bytes[8] = {0};
 
               bytes[0] = ((BPF_CLASS_JMP32|BPF_CODE_JA|BPF_SRC_K) >> 56) & 0xff;
               bytes[1] = (word >> 48) & 0xff;
               bytes[2] = 0; /* disp16 high */
               bytes[3] = 0; /* disp16 lo */
-              encode_int32 ((int32_t) disp_to_target, bytes + 4);
-
               write_insn_bytes (buf, bytes);
+
+              /* Install fixup for the JAL.  */
+              reloc_howto_type *reloc_howto
+                = bfd_reloc_type_lookup (stdoutput, BFD_RELOC_BPF_DISP32);
+              if (!reloc_howto)
+                abort();
+
+              fixp = fix_new_exp (fragp, buf - (bfd_byte *) fragp->fr_literal,
+                                  bfd_get_reloc_size (reloc_howto),
+                                  &exp,
+                                  reloc_howto->pc_relative,
+                                  BFD_RELOC_BPF_DISP32);
+              fixp->fx_file = fragp->fr_file;
+              fixp->fx_line = fragp->fr_line;
             }
         }
       else
@@ -731,8 +745,23 @@ md_convert_frag (bfd *abfd ATTRIBUTE_UNUSED,
               bytes[1] = 0;
               bytes[2] = 0;
               bytes[3] = 0;
-              encode_int32 ((int32_t) disp_to_target, bytes + 4);
+              encode_int32 ((int32_t) 0, bytes + 4);
               write_insn_bytes (buf, bytes);
+
+              /* Install fixup for the JAL.  */
+              reloc_howto_type *reloc_howto
+                = bfd_reloc_type_lookup (stdoutput, BFD_RELOC_BPF_DISP32);
+              if (!reloc_howto)
+                abort();
+
+              fixp = fix_new_exp (fragp, buf - (bfd_byte *) fragp->fr_literal,
+                                  bfd_get_reloc_size (reloc_howto),
+                                  &exp,
+                                  reloc_howto->pc_relative,
+                                  BFD_RELOC_BPF_DISP32);
+              fixp->fx_file = fragp->fr_file;
+              fixp->fx_line = fragp->fr_line;
+
               buf += 8;
             }
         }
@@ -935,7 +964,7 @@ encode_insn (struct bpf_insn *insn, char *bytes,
       if (immediate_overflow (imm, 32))
         as_bad (_("immediate out of range, shall fit in 32 bits"));
       else
-        encode_int32 (insn->imm32.X_add_number, bytes + 4);        
+        encode_int32 (insn->imm32.X_add_number, bytes + 4);
     }
 
   if (insn->has_disp32 && insn->disp32.X_op == O_constant)
@@ -1240,7 +1269,7 @@ parse_expression (char *s, expressionS *exp)
   s = input_line_pointer;
   input_line_pointer = saved_input_line_pointer;
 
-  switch (exp->X_op == O_absent || exp_parse_failed)
+  if (exp->X_op == O_absent || exp_parse_failed)
     return NULL;
 
   /* The expression parser may consume trailing whitespaces.  We have
@@ -1454,7 +1483,7 @@ md_assemble (char *str ATTRIBUTE_UNUSED)
   partial_match_length = 0;
   errmsg = NULL;
 
-#define PARSE_ERROR(...) parse_error (s - str, __VA_ARGS__)
+#define PARSE_ERROR(...) parse_error (s > str ? s - str : 0, __VA_ARGS__)
 
   while ((opcode = bpf_get_opcode (idx++)) != NULL)
     {
@@ -1590,6 +1619,8 @@ md_assemble (char *str ATTRIBUTE_UNUSED)
               else if (strncmp (p, "%i32", 4) == 0
                        || strncmp (p, "%I32", 4) == 0)
                 {
+                  char *exp = NULL;
+
                   if (p[1] == 'I')
                     {
                       while (*s == ' ' || *s == '\t')
@@ -1601,17 +1632,20 @@ md_assemble (char *str ATTRIBUTE_UNUSED)
                         }
                     }
 
-                  s = parse_expression (s, &insn.imm32);
-                  if (s == NULL)
+                  exp = parse_expression (s, &insn.imm32);
+                  if (exp == NULL)
                     {
                       PARSE_ERROR ("expected signed 32-bit immediate");
                       break;
                     }
+                  s = exp;
                   insn.has_imm32 = 1;
                   p += 4;
                 }
               else if (strncmp (p, "%o16", 4) == 0)
                 {
+                  char *exp = NULL;
+
                   while (*s == ' ' || *s == '\t')
                     s += 1;
                   if (*s != '+' && *s != '-')
@@ -1620,46 +1654,53 @@ md_assemble (char *str ATTRIBUTE_UNUSED)
                       break;
                     }
 
-                  s = parse_expression (s, &insn.offset16);
-                  if (s == NULL)
+                  exp = parse_expression (s, &insn.offset16);
+                  if (exp == NULL)
                     {
                       PARSE_ERROR ("expected signed 16-bit offset");
                       break;
                     }
+                  s = exp;
                   insn.has_offset16 = 1;
                   p += 4;
                 }
               else if (strncmp (p, "%d16", 4) == 0)
                 {
-                  s = parse_expression (s, &insn.disp16);
-                  if (s == NULL)
+                  char *exp = parse_expression (s, &insn.disp16);
+
+                  if (exp == NULL)
                     {
                       PARSE_ERROR ("expected signed 16-bit displacement");
                       break;
                     }
+                  s = exp;
                   insn.has_disp16 = 1;
                   insn.is_relaxable = (insn.disp16.X_op != O_constant);
                   p += 4;
                 }
               else if (strncmp (p, "%d32", 4) == 0)
                 {
-                  s = parse_expression (s, &insn.disp32);
-                  if (s == NULL)
+                  char *exp = parse_expression (s, &insn.disp32);
+
+                  if (exp == NULL)
                     {
                       PARSE_ERROR ("expected signed 32-bit displacement");
                       break;
                     }
+                  s = exp;
                   insn.has_disp32 = 1;
                   p += 4;
                 }
               else if (strncmp (p, "%i64", 4) == 0)
                 {
-                  s = parse_expression (s, &insn.imm64);
-                  if (s == NULL)
+                  char *exp = parse_expression (s, &insn.imm64);
+
+                  if (exp == NULL)
                     {
                       PARSE_ERROR ("expected signed 64-bit immediate");
                       break;
                     }
+                  s = exp;
                   insn.has_imm64 = 1;
                   insn.size = 16;
                   p += 4;
@@ -1717,6 +1758,7 @@ md_assemble (char *str ATTRIBUTE_UNUSED)
         {
           as_bad ("%s", errmsg);
           free (errmsg);
+          errmsg = NULL;
         }
 
       return;

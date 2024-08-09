@@ -487,6 +487,7 @@ static bitfield opcode_modifiers[] =
   BITFIELD (Disp8MemShift),
   BITFIELD (Optimize),
   BITFIELD (Dialect),
+  BITFIELD (IntelSuffix),
   BITFIELD (ISA64),
   BITFIELD (NoEgpr),
   BITFIELD (NF),
@@ -1126,6 +1127,7 @@ process_i386_opcode_modifier (FILE *table, char *mod, unsigned int space,
 			      char **opnd, int lineno, bool rex2_disallowed)
 {
   char *str, *next, *last;
+  bool disp8_shift_derived = false;
   bitfield modifiers [ARRAY_SIZE (opcode_modifiers)];
   static const char *const spaces[] = {
 #define SPACE(n) [SPACE_##n] = #n
@@ -1190,7 +1192,10 @@ process_i386_opcode_modifier (FILE *table, char *mod, unsigned int space,
 	      if (strcasecmp(str, "Broadcast") == 0)
 		val = get_element_size (opnd, lineno) + BYTE_BROADCAST;
 	      else if (strcasecmp(str, "Disp8MemShift") == 0)
-		val = get_element_size (opnd, lineno);
+		{
+		  val = get_element_size (opnd, lineno);
+		  disp8_shift_derived = true;
+		}
 
 	      set_bitfield (str, modifiers, val, ARRAY_SIZE (modifiers),
 			    lineno);
@@ -1243,13 +1248,21 @@ process_i386_opcode_modifier (FILE *table, char *mod, unsigned int space,
 
   /* Rather than evaluating multiple conditions at runtime to determine
      whether an EVEX encoding is being dealt with, derive that information
-     right here.  A missing EVex attribute means "dynamic".  */
-  if (!modifiers[EVex].value
-      && (modifiers[Disp8MemShift].value
-	  || modifiers[Broadcast].value
+     right here.  A missing EVex attribute means "dynamic".  There's one
+     exception though: A value-less Disp8MemShift needs zapping rather than
+     respecting if no other attribute indicates EVEX encoding.  This is for
+     certain SSE2AVX templatized templates to work reasonably.  */
+  if (!modifiers[EVex].value)
+    {
+      if (modifiers[Broadcast].value
 	  || modifiers[Masking].value
-	  || modifiers[SAE].value))
-    modifiers[EVex].value = EVEXDYN;
+	  || modifiers[SAE].value)
+	modifiers[EVex].value = EVEXDYN;
+      else if (disp8_shift_derived)
+	modifiers[Disp8MemShift].value = 0;
+      else if (modifiers[Disp8MemShift].value)
+	modifiers[EVex].value = EVEXDYN;
+    }
 
   /* Vex, legacy map2 and map3 and rex2_disallowed do not support EGPR.
      For templates supporting both Vex and EVex allowing EGPR.  */
@@ -1538,10 +1551,10 @@ opcode_hash_eq (const void *p, const void *q)
   return strcmp (name, entry->name) == 0;
 }
 
-static void
+static bool
 parse_template (char *buf, int lineno)
 {
-  char sep, *end, *name;
+  char sep, *end, *ptr;
   struct template *tmpl;
   struct template_instance *last_inst = NULL;
 
@@ -1568,8 +1581,16 @@ parse_template (char *buf, int lineno)
 	prev->next = tmpl->next;
       else
 	templates = tmpl->next;
-      return;
+      return true;
     }
+
+  /* Check whether this actually is a reference to an existing template:
+     If there's '>' ahead of ':', it can't be a new template definition
+     (and template undefs have are dealt with above).  */
+  ptr = strchr (buf, '>');
+  if (ptr != NULL && ptr < end)
+    return false;
+
   *end++ = '\0';
   remove_trailing_whitespaces (buf);
 
@@ -1644,6 +1665,8 @@ parse_template (char *buf, int lineno)
 
   tmpl->next = templates;
   templates = tmpl;
+
+  return true;
 }
 
 static unsigned int
@@ -1900,10 +1923,12 @@ process_i386_opcodes (FILE *table)
 	  /* Ignore comments.  */
 	case '\0':
 	  continue;
-	  break;
+
 	case '<':
-	  parse_template (p, lineno);
-	  continue;
+	  if (parse_template (p, lineno))
+	    continue;
+	  break;
+
 	default:
 	  if (!marker)
 	    continue;

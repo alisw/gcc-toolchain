@@ -506,7 +506,9 @@ add_symbols (void *handle, int nsyms, const struct ld_plugin_symbol *syms)
   int n;
 
   ASSERT (called_plugin);
-  symptrs = xmalloc (nsyms * sizeof *symptrs);
+  symptrs = bfd_alloc (abfd, nsyms * sizeof *symptrs);
+  if (symptrs == NULL)
+    return LDPS_ERR;
   for (n = 0; n < nsyms; n++)
     {
       enum ld_plugin_status rv;
@@ -514,6 +516,8 @@ add_symbols (void *handle, int nsyms, const struct ld_plugin_symbol *syms)
 
       bfdsym = bfd_make_empty_symbol (abfd);
       symptrs[n] = bfdsym;
+      if (bfdsym == NULL)
+	return LDPS_ERR;
       rv = asymbol_from_plugin_symbol (abfd, bfdsym, syms + n);
       if (rv != LDPS_OK)
 	return rv;
@@ -773,14 +777,9 @@ get_symbols (const void *handle, int nsyms, struct ld_plugin_symbol *syms,
       if (syms[n].def != LDPK_UNDEF && syms[n].def != LDPK_WEAKUNDEF)
 	{
 	  blhe = h;
-	  if (blhe && link_info.wrap_hash != NULL)
-	    {
-	      /* Check if a symbol is a wrapper symbol.  */
-	      struct bfd_link_hash_entry *unwrap
-		= unwrap_hash_lookup (&link_info, (bfd *) abfd, blhe);
-	      if (unwrap && unwrap != h)
-		wrap_status = wrapper;
-	     }
+	  /* Check if a symbol is a wrapper symbol.  */
+	  if (blhe && blhe->wrapper_symbol)
+	    wrap_status = wrapper;
 	}
       else
 	{
@@ -924,7 +923,7 @@ add_input_file (const char *pathname)
 			    NULL);
   if (!is)
     return LDPS_ERR;
-  is->flags.lto_output = 1;
+  is->plugin = called_plugin;
   return LDPS_OK;
 }
 
@@ -939,17 +938,23 @@ add_input_library (const char *pathname)
 			    NULL);
   if (!is)
     return LDPS_ERR;
-  is->flags.lto_output = 1;
+  is->plugin = called_plugin;
   return LDPS_OK;
 }
 
 /* Set the extra library path to be used by libraries added via
    add_input_library.  */
+
 static enum ld_plugin_status
 set_extra_library_path (const char *path)
 {
+  search_dirs_type * sdt;
+
   ASSERT (called_plugin);
-  ldfile_add_library_path (xstrdup (path), false);
+  sdt = ldfile_add_library_path (xstrdup (path), search_dir_plugin);
+  if (sdt == NULL)
+    return LDPS_ERR;
+  sdt->plugin = called_plugin;
   return LDPS_OK;
 }
 
@@ -1363,14 +1368,17 @@ plugin_call_cleanup (void)
     {
       if (curplug->cleanup_handler && !curplug->cleanup_done)
 	{
-	  enum ld_plugin_status rv;
-	  curplug->cleanup_done = true;
-	  called_plugin = curplug;
-	  rv = (*curplug->cleanup_handler) ();
-	  called_plugin = NULL;
-	  if (rv != LDPS_OK)
-	    info_msg (_("%P: %s: error in plugin cleanup: %d (ignored)\n"),
-		      curplug->name, rv);
+	  if (!config.plugin_save_temps)
+	    {
+	      enum ld_plugin_status rv;
+	      curplug->cleanup_done = true;
+	      called_plugin = curplug;
+	      rv = (*curplug->cleanup_handler) ();
+	      called_plugin = NULL;
+	      if (rv != LDPS_OK)
+		info_msg (_("%P: %s: error in plugin cleanup: %d (ignored)\n"),
+			  curplug->name, rv);
+	    }
 	  dlclose (curplug->dlhandle);
 	}
       curplug = curplug->next;

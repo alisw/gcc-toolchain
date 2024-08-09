@@ -232,6 +232,8 @@ struct elf_link_hash_entry
      a strong defined symbol alias.  U.ALIAS points to a list of aliases,
      the definition having is_weakalias clear.  */
   unsigned int is_weakalias : 1;
+  /* Symbol has a relocation.  */
+  unsigned int has_reloc : 1;
 
   /* String table index in .dynstr if this is a dynamic symbol.  */
   unsigned long dynstr_index;
@@ -737,6 +739,10 @@ struct elf_link_hash_table
   /* Small local sym cache.  */
   struct sym_cache sym_cache;
 
+  /* Hash table of symbols which are first defined in archives or shared
+     objects when there are any IR inputs.  */
+  struct bfd_hash_table *first_hash;
+
   /* Short-cuts to get to dynamic linker sections.  */
   asection *sgot;
   asection *sgotplt;
@@ -753,6 +759,7 @@ struct elf_link_hash_table
   asection *irelifunc;
   asection *dynsym;
   asection *srelrdyn;
+  asection *dynamic;
 };
 
 /* Returns TRUE if the hash table is a struct elf_link_hash_table.  */
@@ -1187,7 +1194,7 @@ struct elf_backend_data
   /* The ADJUST_DYNAMIC_SYMBOL function is called by the ELF backend
      linker for every symbol which is defined by a dynamic object and
      referenced by a regular object.  This is called after all the
-     input files have been seen, but before the SIZE_DYNAMIC_SECTIONS
+     input files have been seen, but before the LATE_SIZE_SECTIONS
      function has been called.  The hash table entry should be
      bfd_link_hash_defined ore bfd_link_hash_defweak, and it should be
      defined in a section from a dynamic object.  Dynamic object
@@ -1199,24 +1206,23 @@ struct elf_backend_data
   bool (*elf_backend_adjust_dynamic_symbol)
     (struct bfd_link_info *info, struct elf_link_hash_entry *h);
 
-  /* The ALWAYS_SIZE_SECTIONS function is called by the backend linker
-     after all the linker input files have been seen but before the
-     section sizes have been set.  This is called after
-     ADJUST_DYNAMIC_SYMBOL, but before SIZE_DYNAMIC_SECTIONS.  */
-  bool (*elf_backend_always_size_sections)
+  /* The EARLY_SIZE_SECTIONS and LATE_SIZE_SECTIONS functions are
+     called by the backend linker after all linker input files have
+     been seen and sections have been assigned to output sections, but
+     before the section sizes have been set.  Both of these functions
+     are called even when no dynamic object is seen by the linker.
+     Between them, they must set the sizes of the dynamic sections and
+     other backend specific sections, and may fill in their contents.
+     Most backends need only use LATE_SIZE_SECTIONS.
+     EARLY_SIZE_SECTIONS is called before --export-dynamic makes some
+     symbols dynamic and before ADJUST_DYNAMIC_SYMBOL processes
+     dynamic symbols, LATE_SIZE_SECTIONS afterwards.  The generic ELF
+     linker can handle the .dynsym, .dynstr and .hash sections.
+     Besides those, these functions must handle the .interp section
+     and any other sections created by CREATE_DYNAMIC_SECTIONS.  */
+  bool (*elf_backend_early_size_sections)
     (bfd *output_bfd, struct bfd_link_info *info);
-
-  /* The SIZE_DYNAMIC_SECTIONS function is called by the ELF backend
-     linker after all the linker input files have been seen but before
-     the sections sizes have been set.  This is called after
-     ADJUST_DYNAMIC_SYMBOL has been called on all appropriate symbols.
-     It is only called when linking against a dynamic object.  It must
-     set the sizes of the dynamic sections, and may fill in their
-     contents as well.  The generic ELF linker can handle the .dynsym,
-     .dynstr and .hash sections.  This function must handle the
-     .interp section and any sections created by the
-     CREATE_DYNAMIC_SECTIONS entry point.  */
-  bool (*elf_backend_size_dynamic_sections)
+  bool (*elf_backend_late_size_sections)
     (bfd *output_bfd, struct bfd_link_info *info);
 
   /* The STRIP_ZERO_SIZED_DYNAMIC_SECTIONS function is called by the
@@ -1775,6 +1781,12 @@ struct elf_backend_data
   /* True if the 64-bit Linux PRPSINFO structure's `pr_uid' and `pr_gid'
      members use a 16-bit data type.  */
   unsigned linux_prpsinfo64_ugid16 : 1;
+
+  /* True if the backend can use mmap to map in all input section
+     contents.  All bfd_malloc_and_get_section and free usages on
+     section contents must be replaced by _bfd_elf_mmap_section_contents
+     and _bfd_elf_munmap_section_contents.  */
+  unsigned use_mmap : 1;
 };
 
 /* Information about reloc sections associated with a bfd_elf_section_data
@@ -1855,6 +1867,15 @@ struct bfd_elf_section_data
 
   /* Link from a text section to its .eh_frame_entry section.  */
   asection *eh_frame_entry;
+
+  /* If the mmapped_p flag is set, this points to the actual mmapped
+     address of contents.  If it is set to NULL, contents isn't
+     mmapped.  */
+  void *contents_addr;
+
+  /* If the mmapped_p flag is set, this is the actual mmapped size of
+     contents.  */
+  size_t contents_size;
 
   /* TRUE if the section has secondary reloc sections associated with it.
      FIXME: In the future it might be better to change this into a list
@@ -2135,13 +2156,6 @@ struct elf_obj_tdata
      in the list.  */
   struct sdt_note *sdt_note_head;
 
-  Elf_Internal_Shdr **group_sect_ptr;
-  unsigned int num_group;
-
-  /* Index into group_sect_ptr, updated by setup_group when finding a
-     section's group.  Used to optimize subsequent group searches.  */
-  unsigned int group_search_offset;
-
   unsigned int symtab_section, dynsymtab_section;
   unsigned int dynversym_section, dynverdef_section, dynverref_section;
 
@@ -2359,8 +2373,6 @@ extern bool _bfd_elf_copy_private_header_data
   (bfd *, bfd *);
 extern bool _bfd_elf_copy_private_symbol_data
   (bfd *, asymbol *, bfd *, asymbol *);
-#define _bfd_generic_init_private_section_data \
-  _bfd_elf_init_private_section_data
 extern bool _bfd_elf_init_private_section_data
   (bfd *, asection *, bfd *, asection *, struct bfd_link_info *);
 extern bool _bfd_elf_copy_private_section_data
@@ -2591,9 +2603,9 @@ extern char *_bfd_elfcore_strndup
   (bfd *, char *, size_t);
 
 extern Elf_Internal_Rela *_bfd_elf_link_read_relocs
-  (bfd *, asection *, void *, Elf_Internal_Rela *, bool);
+  (bfd *, const asection *, void *, Elf_Internal_Rela *, bool);
 extern Elf_Internal_Rela *_bfd_elf_link_info_read_relocs
-  (bfd *, struct bfd_link_info *, asection *, void *, Elf_Internal_Rela *,
+  (bfd *, struct bfd_link_info *, const asection *, void *, Elf_Internal_Rela *,
    bool);
 
 extern bool _bfd_elf_link_output_relocs
@@ -3126,6 +3138,15 @@ extern bool _bfd_elf_maybe_set_textrel
 extern bool _bfd_elf_add_dynamic_tags
   (bfd *, struct bfd_link_info *, bool);
 
+extern bool _bfd_elf_mmap_section_contents
+  (bfd *abfd, asection *section, bfd_byte **buf);
+extern void _bfd_elf_munmap_section_contents
+  (asection *, void *);
+extern bool _bfd_elf_link_mmap_section_contents
+  (bfd *abfd, asection *section, bfd_byte **buf);
+extern void _bfd_elf_link_munmap_section_contents
+  (asection *);
+
 /* Large common section.  */
 extern asection _bfd_elf_large_com_section;
 
@@ -3160,8 +3181,14 @@ extern asection _bfd_elf_large_com_section;
 									\
       if (info->wrap_hash != NULL					\
 	  && (input_section->flags & SEC_DEBUGGING) != 0)		\
-	h = ((struct elf_link_hash_entry *)				\
-	     unwrap_hash_lookup (info, input_bfd, &h->root));		\
+	{								\
+	  struct bfd_link_hash_entry * new_h;				\
+	  new_h = unwrap_hash_lookup (info, input_bfd, &h->root);	\
+	  /* PR 31710: This lookup can fail if the input source has a	\
+	     symbol that starts with __wrap_.  */			\
+	  if (new_h != NULL)						\
+	    h = (struct elf_link_hash_entry *) new_h;			\
+	}								\
 									\
       while (h->root.type == bfd_link_hash_indirect			\
 	     || h->root.type == bfd_link_hash_warning)			\

@@ -121,21 +121,6 @@ static isl_stat isl_space_check_is_map(__isl_keep isl_space *space)
 	return isl_stat_ok;
 }
 
-/* Check that "space" is the space of a set wrapping a map space.
- */
-isl_stat isl_space_check_is_wrapping(__isl_keep isl_space *space)
-{
-	isl_bool wrapping;
-
-	wrapping = isl_space_is_wrapping(space);
-	if (wrapping < 0)
-		return isl_stat_error;
-	if (!wrapping)
-		isl_die(isl_space_get_ctx(space), isl_error_invalid,
-			"not a product", return isl_stat_error);
-	return isl_stat_ok;
-}
-
 /* Check that "space" is the space of a map
  * where the domain is a wrapped map space.
  */
@@ -377,10 +362,10 @@ isl_size isl_space_wrapped_dim(__isl_keep isl_space *space,
 	return isl_space_dim(isl_space_peek_nested(space, pos), inner);
 }
 
-isl_size isl_space_offset(__isl_keep isl_space *space, enum isl_dim_type type)
+unsigned isl_space_offset(__isl_keep isl_space *space, enum isl_dim_type type)
 {
 	if (!space)
-		return isl_size_error;
+		return 0;
 	return offset(space, type);
 }
 
@@ -398,7 +383,6 @@ static __isl_give isl_space *copy_ids(__isl_take isl_space *dst,
 		id = get_id(src, src_type, i);
 		if (!id)
 			continue;
-		isl_id_free(get_id(dst, dst_type, offset + i));
 		dst = set_id(dst, dst_type, offset + i, isl_id_copy(id));
 		if (!dst)
 			return NULL;
@@ -406,7 +390,7 @@ static __isl_give isl_space *copy_ids(__isl_take isl_space *dst,
 	return dst;
 }
 
-__isl_give isl_space *isl_space_dup(__isl_keep isl_space *space)
+__isl_take isl_space *isl_space_dup(__isl_keep isl_space *space)
 {
 	isl_space *dup;
 	if (!space)
@@ -492,8 +476,9 @@ __isl_null isl_space *isl_space_free(__isl_take isl_space *space)
 static int name_ok(isl_ctx *ctx, const char *s)
 {
 	char *p;
+	long dummy;
 
-	strtol(s, &p, 0);
+	dummy = strtol(s, &p, 0);
 	if (p != s)
 		isl_die(ctx, isl_error_invalid, "name looks like a number",
 			return 0);
@@ -887,14 +872,14 @@ int isl_space_find_dim_by_id(__isl_keep isl_space *space,
 	enum isl_dim_type type, __isl_keep isl_id *id)
 {
 	int i;
-	isl_size offset;
+	int offset;
 	isl_size n;
 
 	n = isl_space_dim(space, type);
-	offset = isl_space_offset(space, type);
-	if (n < 0 || offset < 0 || !id)
+	if (n < 0 || !id)
 		return -1;
 
+	offset = isl_space_offset(space, type);
 	for (i = 0; i < n && offset + i < space->n_id; ++i)
 		if (space->ids[offset + i] == id)
 			return i;
@@ -906,14 +891,14 @@ int isl_space_find_dim_by_name(__isl_keep isl_space *space,
 	enum isl_dim_type type, const char *name)
 {
 	int i;
-	isl_size offset;
+	int offset;
 	isl_size n;
 
 	n = isl_space_dim(space, type);
-	offset = isl_space_offset(space, type);
-	if (n < 0 || offset < 0 || !name)
+	if (n < 0 || !name)
 		return -1;
 
+	offset = isl_space_offset(space, type);
 	for (i = 0; i < n && offset + i < space->n_id; ++i) {
 		isl_id *id = get_id(space, type, i);
 		if (id && id->name && !strcmp(id->name, name))
@@ -1875,38 +1860,6 @@ __isl_give isl_space *isl_space_factor_range(__isl_take isl_space *space)
 	return space;
 }
 
-/* Given a space of the form [A -> B] -> C, return the space A.
- */
-__isl_give isl_space *isl_space_domain_wrapped_domain(
-	__isl_take isl_space *space)
-{
-	return isl_space_factor_domain(isl_space_domain(space));
-}
-
-/* Given a space of the form [A -> B] -> C, return the space B.
- */
-__isl_give isl_space *isl_space_domain_wrapped_range(
-	__isl_take isl_space *space)
-{
-	return isl_space_factor_range(isl_space_domain(space));
-}
-
-/* Given a space of the form A -> [B -> C], return the space B.
- */
-__isl_give isl_space *isl_space_range_wrapped_domain(
-	__isl_take isl_space *space)
-{
-	return isl_space_factor_domain(isl_space_range(space));
-}
-
-/* Given a space of the form A -> [B -> C], return the space C.
- */
-__isl_give isl_space *isl_space_range_wrapped_range(
-	__isl_take isl_space *space)
-{
-	return isl_space_factor_range(isl_space_range(space));
-}
-
 __isl_give isl_space *isl_space_map_from_set(__isl_take isl_space *space)
 {
 	isl_ctx *ctx;
@@ -2030,93 +1983,32 @@ error:
 	return NULL;
 }
 
-/* Given a space where the tuple of type "type" is a wrapped map space,
- * swap domain and range of that wrapped space.
- *
- * If the tuple is named, then the name is only preserved
- * if the nested tuples are equal, in which case the output
- * of this function is identical to the input, except possibly
- * for the dimension identifiers.
- *
- * Make a reasonable attempt at moving the dimension identifiers
- * along with the tuples.
- */
-__isl_give isl_space *isl_space_reverse_wrapped(__isl_take isl_space *space,
-	enum isl_dim_type type)
-{
-	int pos = type - isl_dim_in;
-	isl_space *nested;
-	isl_bool equal;
-	isl_size n_in;
-
-	nested = isl_space_peek_nested(space, pos);
-	equal = isl_space_tuple_is_equal(nested, isl_dim_in,
-					nested, isl_dim_out);
-	if (equal < 0)
-		return isl_space_free(space);
-
-	nested = isl_space_take_nested(space, pos);
-	nested = isl_space_reverse(nested);
-	space = isl_space_restore_nested(space, pos, nested);
-	if (!equal)
-		space = isl_space_reset_tuple_id(space, type);
-	nested = isl_space_peek_nested(space, pos);
-	n_in = isl_space_dim(nested, isl_dim_in);
-	if (n_in < 0)
-		return isl_space_free(space);
-	space = copy_ids(space, type, 0, nested, isl_dim_in);
-	space = copy_ids(space, type, n_in, nested, isl_dim_out);
-
-	return space;
-}
-
-/* Given a space (A -> B), return the corresponding space
- * (B -> A).
- *
- * If the domain tuple is named, then the name is only preserved
- * if A and B are equal tuples, in which case the output
- * of this function is identical to the input, except possibly
- * for the dimension identifiers.
- */
-__isl_give isl_space *isl_space_wrapped_reverse(__isl_take isl_space *space)
-{
-	if (isl_space_check_is_wrapping(space) < 0)
-		return isl_space_free(space);
-	space = isl_space_reverse_wrapped(space, isl_dim_set);
-
-	return space;
-}
-
-/* Given a space (A -> B) -> C, return the corresponding space
- * (B -> A) -> C.
- *
- * If the domain tuple is named, then the name is only preserved
- * if A and B are equal tuples, in which case the output
- * of this function is identical to the input, except possibly
- * for the dimension identifiers.
- */
-__isl_give isl_space *isl_space_domain_reverse(__isl_take isl_space *space)
-{
-	if (isl_space_check_domain_is_wrapping(space) < 0)
-		return isl_space_free(space);
-	space = isl_space_reverse_wrapped(space, isl_dim_in);
-
-	return space;
-}
-
 /* Given a space A -> (B -> C), return the corresponding space
  * A -> (C -> B).
  *
  * If the range tuple is named, then the name is only preserved
  * if B and C are equal tuples, in which case the output
- * of this function is identical to the input, except possibly
- * for the dimension identifiers.
+ * of this function is identical to the input.
  */
 __isl_give isl_space *isl_space_range_reverse(__isl_take isl_space *space)
 {
+	isl_space *nested;
+	isl_bool equal;
+
 	if (isl_space_check_range_is_wrapping(space) < 0)
 		return isl_space_free(space);
-	space = isl_space_reverse_wrapped(space, isl_dim_out);
+
+	nested = isl_space_peek_nested(space, 1);
+	equal = isl_space_tuple_is_equal(nested, isl_dim_in,
+					nested, isl_dim_out);
+	if (equal < 0)
+		return isl_space_free(space);
+
+	nested = isl_space_take_nested(space, 1);
+	nested = isl_space_reverse(nested);
+	space = isl_space_restore_nested(space, 1, nested);
+	if (!equal)
+		space = isl_space_reset_tuple_id(space, isl_dim_out);
 
 	return space;
 }
@@ -3302,15 +3194,13 @@ __isl_give isl_space *isl_space_uncurry(__isl_take isl_space *space)
 isl_bool isl_space_has_named_params(__isl_keep isl_space *space)
 {
 	int i;
-	isl_size off;
+	unsigned off;
 
 	if (!space)
 		return isl_bool_error;
 	if (space->nparam == 0)
 		return isl_bool_true;
 	off = isl_space_offset(space, isl_dim_param);
-	if (off < 0)
-		return isl_bool_error;
 	if (off + space->nparam > space->n_id)
 		return isl_bool_false;
 	for (i = 0; i < space->nparam; ++i)
@@ -3348,7 +3238,7 @@ __isl_give isl_space *isl_space_align_params(__isl_take isl_space *space1,
 		goto error;
 
 	exp = isl_parameter_alignment_reordering(space1, space2);
-	isl_space_free(space1);
+	exp = isl_reordering_extend_space(exp, space1);
 	isl_space_free(space2);
 	space1 = isl_reordering_get_space(exp);
 	isl_reordering_free(exp);

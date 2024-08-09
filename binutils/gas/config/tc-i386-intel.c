@@ -209,11 +209,18 @@ operatorT i386_operator (const char *name, unsigned int operands, char *pc)
 	      || i386_types[j].sz[0] > 8
 	      || (i386_types[j].sz[0] & (i386_types[j].sz[0] - 1)))
 	    return O_illegal;
-	  if (i.vec_encoding == vex_encoding_default)
-	    i.vec_encoding = vex_encoding_evex;
-	  else if (i.vec_encoding != vex_encoding_evex
-		   && i.vec_encoding != vex_encoding_evex512)
-	    return O_illegal;
+	  switch (pp.encoding)
+	    {
+	    case encoding_default:
+	    case encoding_egpr:
+	      pp.encoding = encoding_evex;
+	      break;
+	    case encoding_evex:
+	    case encoding_evex512:
+	      break;
+	    default:
+	      return O_illegal;
+	    }
 	  if (!i.broadcast.bytes && !i.broadcast.type)
 	    {
 	      i.broadcast.bytes = i386_types[j].sz[0];
@@ -369,21 +376,25 @@ i386_intel_simplify_register (expressionS *e)
   return 2;
 }
 
-static int i386_intel_simplify (expressionS *);
-
-static INLINE int i386_intel_simplify_symbol(symbolS *sym)
+static int
+i386_intel_simplify_symbol (symbolS *sym)
 {
-  int ret = i386_intel_simplify (symbol_get_value_expression (sym));
+  if (symbol_resolving_p (sym))
+    return 1;
 
+  symbol_mark_resolving (sym);
+  int ret = i386_intel_simplify (symbol_get_value_expression (sym));
   if (ret == 2)
-  {
-    S_SET_SEGMENT(sym, absolute_section);
-    ret = 1;
-  }
+    {
+      S_SET_SEGMENT (sym, absolute_section);
+      ret = 1;
+    }
+  symbol_clear_resolving (sym);
   return ret;
 }
 
-static int i386_intel_simplify (expressionS *e)
+static int
+i386_intel_simplify (expressionS *e)
 {
   const reg_entry *the_reg = (this_operand >= 0
 			      ? i.op[this_operand].regs : NULL);

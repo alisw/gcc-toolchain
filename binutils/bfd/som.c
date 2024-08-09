@@ -6762,7 +6762,6 @@ som_bfd_link_split_section (bfd *abfd ATTRIBUTE_UNUSED, asection *sec)
 #define som_bfd_make_debug_symbol		_bfd_nosymbols_bfd_make_debug_symbol
 #define som_read_minisymbols			_bfd_generic_read_minisymbols
 #define som_minisymbol_to_symbol		_bfd_generic_minisymbol_to_symbol
-#define som_get_section_contents_in_window	_bfd_generic_get_section_contents_in_window
 #define som_bfd_get_relocated_section_contents	bfd_generic_get_relocated_section_contents
 #define som_bfd_relax_section			bfd_generic_relax_section
 #define som_bfd_link_hash_table_create		_bfd_generic_link_hash_table_create
@@ -6782,6 +6781,7 @@ som_bfd_link_split_section (bfd *abfd ATTRIBUTE_UNUSED, asection *sec)
 #define som_bfd_link_hide_symbol		_bfd_generic_link_hide_symbol
 #define som_bfd_define_start_stop		bfd_generic_define_start_stop
 #define som_bfd_merge_private_bfd_data		_bfd_generic_bfd_merge_private_bfd_data
+#define som_init_private_section_data		_bfd_generic_init_private_section_data
 #define som_bfd_copy_private_header_data	_bfd_generic_bfd_copy_private_header_data
 #define som_bfd_set_private_flags		_bfd_generic_bfd_set_private_flags
 #define som_find_inliner_info			_bfd_nosymbols_find_inliner_info

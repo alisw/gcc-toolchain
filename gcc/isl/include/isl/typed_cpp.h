@@ -52,9 +52,6 @@ template <typename...>
 struct map;
 
 template <typename...>
-struct map_list;
-
-template <typename...>
 struct multi_aff;
 
 template <typename...>
@@ -92,9 +89,6 @@ struct pw_multi_aff_list;
 
 template <typename...>
 struct set;
-
-template <typename...>
-struct set_list;
 
 template <typename...>
 struct space;
@@ -148,8 +142,6 @@ struct aff<Anonymous> : public isl::aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -171,8 +163,6 @@ struct aff<Anonymous> : public isl::aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -224,16 +214,10 @@ struct aff<Anonymous> : public isl::aff {
   inline typed::basic_set<> bind(const typed::multi_id<Anonymous> &tuple) const;
   inline typed::pw_aff<Anonymous> bind_domain(const typed::multi_id<> &tuple) const = delete;
   inline typed::pw_aff<Anonymous> bind_domain_wrapped_domain(const typed::multi_id<> &tuple) const = delete;
-  inline typed::aff<Anonymous> ceil() const;
   inline typed::pw_aff<Anonymous> coalesce() const;
-  inline typed::pw_aff<Anonymous> cond(const typed::pw_aff<Anonymous> &pwaff_true, const typed::pw_aff<Anonymous> &pwaff_false) const;
   inline typed::multi_val<Anonymous> constant_multi_val() const;
-  inline typed::val<Anonymous> constant_val() const;
   inline typed::val<Anonymous> get_constant_val() const = delete;
   inline typed::set<> domain() const;
-  inline typed::aff<Anonymous> domain_reverse() const = delete;
-  inline typed::pw_aff<Anonymous> drop_unused_params() const;
-  inline typed::pw_multi_aff<Anonymous> extract_pw_multi_aff(const typed::space<Anonymous> &space) const;
   inline typed::aff<Anonymous> floor() const;
   inline typed::set<Anonymous> ge_set(const typed::aff<> &aff2) const = delete;
   inline typed::set<Anonymous> ge_set(const typed::pw_aff<> &pwaff2) const = delete;
@@ -241,9 +225,6 @@ struct aff<Anonymous> : public isl::aff {
   inline typed::union_pw_aff<Anonymous> gist(const typed::union_set<> &context) const;
   inline typed::aff<Anonymous> gist(const typed::basic_set<> &context) const;
   inline typed::aff<Anonymous> gist(const typed::point<> &context) const;
-  inline typed::aff<Anonymous> gist_params(const typed::set<> &context) const;
-  inline typed::aff<Anonymous> gist_params(const typed::basic_set<> &context) const;
-  inline typed::aff<Anonymous> gist_params(const typed::point<> &context) const;
   inline typed::set<Anonymous> gt_set(const typed::aff<> &aff2) const = delete;
   inline typed::set<Anonymous> gt_set(const typed::pw_aff<> &pwaff2) const = delete;
   inline typed::multi_aff<Anonymous, Anonymous> identity() const;
@@ -252,7 +233,6 @@ struct aff<Anonymous> : public isl::aff {
   inline typed::pw_aff<Anonymous> intersect_domain(const typed::set<> &set) const = delete;
   inline typed::union_pw_aff<Anonymous> intersect_domain(const typed::space<> &space) const = delete;
   inline typed::union_pw_aff<Anonymous> intersect_domain(const typed::union_set<> &uset) const = delete;
-  inline typed::union_pw_aff<Anonymous> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
   inline typed::pw_aff<Anonymous> intersect_params(const typed::set<> &set) const;
   inline typed::set<Anonymous> le_set(const typed::aff<> &aff2) const = delete;
   inline typed::set<Anonymous> le_set(const typed::pw_aff<> &pwaff2) const = delete;
@@ -262,15 +242,12 @@ struct aff<Anonymous> : public isl::aff {
   inline typed::multi_pw_aff<Anonymous> max(const typed::multi_pw_aff<Anonymous> &multi2) const;
   inline typed::pw_aff<Anonymous> max(const typed::pw_aff<Anonymous> &pwaff2) const;
   inline typed::multi_val<Anonymous> max_multi_val() const;
-  inline typed::val<Anonymous> max_val() const;
   inline typed::multi_pw_aff<Anonymous> min(const typed::multi_pw_aff<Anonymous> &multi2) const;
   inline typed::pw_aff<Anonymous> min(const typed::pw_aff<Anonymous> &pwaff2) const;
   inline typed::multi_val<Anonymous> min_multi_val() const;
-  inline typed::val<Anonymous> min_val() const;
   inline typed::aff<Anonymous> mod(const typed::val<Anonymous> &mod) const;
   inline typed::aff<Anonymous> mod(long mod) const;
   inline typed::aff<Anonymous> neg() const;
-  inline typed::set<> params() const;
   inline typed::pw_multi_aff<Anonymous> preimage_domain_wrapped_domain(const typed::pw_multi_aff<> &pma2) const = delete;
   inline typed::union_pw_multi_aff<Anonymous> preimage_domain_wrapped_domain(const typed::union_pw_multi_aff<> &upma2) const = delete;
   template <typename Range>
@@ -284,7 +261,6 @@ struct aff<Anonymous> : public isl::aff {
   inline typed::pw_aff<Anonymous> pullback(const typed::pw_multi_aff<> &pma) const = delete;
   inline typed::union_pw_aff<Anonymous> pullback(const typed::union_pw_multi_aff<> &upma) const = delete;
   inline typed::aff<Anonymous> pullback(const typed::aff<> &ma) const = delete;
-  inline typed::pw_multi_aff_list<Anonymous> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<Anonymous> range_factor_domain() const = delete;
   inline typed::pw_multi_aff<Anonymous> range_factor_range() const = delete;
   inline typed::multi_aff<Anonymous> range_product(const typed::multi_aff<> &multi2) const = delete;
@@ -351,8 +327,6 @@ struct aff<Domain, Anonymous> : public isl::aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -374,8 +348,6 @@ struct aff<Domain, Anonymous> : public isl::aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -437,16 +409,10 @@ struct aff<Domain, Anonymous> : public isl::aff {
   inline typed::basic_set<Domain> bind(const typed::multi_id<Anonymous> &tuple) const;
   inline typed::pw_aff<Anonymous> bind_domain(const typed::multi_id<Domain> &tuple) const;
   inline typed::pw_aff<Domain, Anonymous> bind_domain_wrapped_domain(const typed::multi_id<> &tuple) const = delete;
-  inline typed::aff<Domain, Anonymous> ceil() const;
   inline typed::pw_aff<Domain, Anonymous> coalesce() const;
-  inline typed::pw_aff<Domain, Anonymous> cond(const typed::pw_aff<Domain, Anonymous> &pwaff_true, const typed::pw_aff<Domain, Anonymous> &pwaff_false) const;
   inline typed::multi_val<Anonymous> constant_multi_val() const;
-  inline typed::val<Anonymous> constant_val() const;
   inline typed::val<Domain, Anonymous> get_constant_val() const = delete;
   inline typed::set<Domain> domain() const;
-  inline typed::aff<Domain, Anonymous> domain_reverse() const = delete;
-  inline typed::pw_aff<Domain, Anonymous> drop_unused_params() const;
-  inline typed::pw_multi_aff<Domain, Anonymous> extract_pw_multi_aff(const typed::space<Domain, Anonymous> &space) const;
   inline typed::aff<Domain, Anonymous> floor() const;
   inline typed::set<Domain> ge_set(const typed::aff<Domain, Anonymous> &aff2) const;
   inline typed::set<Domain> ge_set(const typed::pw_aff<Domain, Anonymous> &pwaff2) const;
@@ -454,9 +420,6 @@ struct aff<Domain, Anonymous> : public isl::aff {
   inline typed::union_pw_aff<Domain, Anonymous> gist(const typed::union_set<Domain> &context) const;
   inline typed::aff<Domain, Anonymous> gist(const typed::basic_set<Domain> &context) const;
   inline typed::aff<Domain, Anonymous> gist(const typed::point<Domain> &context) const;
-  inline typed::aff<Domain, Anonymous> gist_params(const typed::set<> &context) const;
-  inline typed::aff<Domain, Anonymous> gist_params(const typed::basic_set<> &context) const;
-  inline typed::aff<Domain, Anonymous> gist_params(const typed::point<> &context) const;
   inline typed::set<Domain> gt_set(const typed::aff<Domain, Anonymous> &aff2) const;
   inline typed::set<Domain> gt_set(const typed::pw_aff<Domain, Anonymous> &pwaff2) const;
   inline typed::multi_aff<Domain, Anonymous> identity() const;
@@ -464,7 +427,6 @@ struct aff<Domain, Anonymous> : public isl::aff {
   inline typed::pw_aff<Domain, Anonymous> intersect_domain(const typed::set<Domain> &set) const;
   inline typed::union_pw_aff<Domain, Anonymous> intersect_domain(const typed::space<Domain> &space) const;
   inline typed::union_pw_aff<Domain, Anonymous> intersect_domain(const typed::union_set<Domain> &uset) const;
-  inline typed::union_pw_aff<Domain, Anonymous> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
   inline typed::pw_aff<Domain, Anonymous> intersect_params(const typed::set<> &set) const;
   inline typed::set<Domain> le_set(const typed::aff<Domain, Anonymous> &aff2) const;
   inline typed::set<Domain> le_set(const typed::pw_aff<Domain, Anonymous> &pwaff2) const;
@@ -474,15 +436,12 @@ struct aff<Domain, Anonymous> : public isl::aff {
   inline typed::multi_pw_aff<Domain, Anonymous> max(const typed::multi_pw_aff<Domain, Anonymous> &multi2) const;
   inline typed::pw_aff<Domain, Anonymous> max(const typed::pw_aff<Domain, Anonymous> &pwaff2) const;
   inline typed::multi_val<Anonymous> max_multi_val() const;
-  inline typed::val<Anonymous> max_val() const;
   inline typed::multi_pw_aff<Domain, Anonymous> min(const typed::multi_pw_aff<Domain, Anonymous> &multi2) const;
   inline typed::pw_aff<Domain, Anonymous> min(const typed::pw_aff<Domain, Anonymous> &pwaff2) const;
   inline typed::multi_val<Anonymous> min_multi_val() const;
-  inline typed::val<Anonymous> min_val() const;
   inline typed::aff<Domain, Anonymous> mod(const typed::val<Anonymous> &mod) const;
   inline typed::aff<Domain, Anonymous> mod(long mod) const;
   inline typed::aff<Domain, Anonymous> neg() const;
-  inline typed::set<> params() const;
   inline typed::pw_multi_aff<Domain, Anonymous> preimage_domain_wrapped_domain(const typed::pw_multi_aff<> &pma2) const = delete;
   inline typed::union_pw_multi_aff<Domain, Anonymous> preimage_domain_wrapped_domain(const typed::union_pw_multi_aff<> &upma2) const = delete;
   template <typename Domain2, typename Range2>
@@ -506,7 +465,6 @@ struct aff<Domain, Anonymous> : public isl::aff {
   template <typename Domain2>
   inline typed::aff<Domain2, Anonymous> pullback(const typed::aff<Domain2, Domain> &ma) const;
   inline typed::aff<Anonymous> pullback(const typed::aff<Domain> &ma) const;
-  inline typed::pw_multi_aff_list<Domain, Anonymous> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<Domain, Anonymous> range_factor_domain() const = delete;
   inline typed::pw_multi_aff<Domain, Anonymous> range_factor_range() const = delete;
   template <typename Range2>
@@ -577,8 +535,6 @@ struct aff<pair<Domain2, Range2>, Anonymous> : public isl::aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -600,8 +556,6 @@ struct aff<pair<Domain2, Range2>, Anonymous> : public isl::aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -664,16 +618,10 @@ struct aff<pair<Domain2, Range2>, Anonymous> : public isl::aff {
   inline typed::basic_set<pair<Domain2, Range2>> bind(const typed::multi_id<Anonymous> &tuple) const;
   inline typed::pw_aff<Anonymous> bind_domain(const typed::multi_id<pair<Domain2, Range2>> &tuple) const;
   inline typed::pw_aff<Range2, Anonymous> bind_domain_wrapped_domain(const typed::multi_id<Domain2> &tuple) const;
-  inline typed::aff<pair<Domain2, Range2>, Anonymous> ceil() const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> coalesce() const;
-  inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> cond(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff_true, const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff_false) const;
   inline typed::multi_val<Anonymous> constant_multi_val() const;
-  inline typed::val<Anonymous> constant_val() const;
   inline typed::val<pair<Domain2, Range2>, Anonymous> get_constant_val() const = delete;
   inline typed::set<pair<Domain2, Range2>> domain() const;
-  inline typed::aff<pair<Range2, Domain2>, Anonymous> domain_reverse() const;
-  inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> drop_unused_params() const;
-  inline typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous> extract_pw_multi_aff(const typed::space<pair<Domain2, Range2>, Anonymous> &space) const;
   inline typed::aff<pair<Domain2, Range2>, Anonymous> floor() const;
   inline typed::set<pair<Domain2, Range2>> ge_set(const typed::aff<pair<Domain2, Range2>, Anonymous> &aff2) const;
   inline typed::set<pair<Domain2, Range2>> ge_set(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff2) const;
@@ -681,9 +629,6 @@ struct aff<pair<Domain2, Range2>, Anonymous> : public isl::aff {
   inline typed::union_pw_aff<pair<Domain2, Range2>, Anonymous> gist(const typed::union_set<pair<Domain2, Range2>> &context) const;
   inline typed::aff<pair<Domain2, Range2>, Anonymous> gist(const typed::basic_set<pair<Domain2, Range2>> &context) const;
   inline typed::aff<pair<Domain2, Range2>, Anonymous> gist(const typed::point<pair<Domain2, Range2>> &context) const;
-  inline typed::aff<pair<Domain2, Range2>, Anonymous> gist_params(const typed::set<> &context) const;
-  inline typed::aff<pair<Domain2, Range2>, Anonymous> gist_params(const typed::basic_set<> &context) const;
-  inline typed::aff<pair<Domain2, Range2>, Anonymous> gist_params(const typed::point<> &context) const;
   inline typed::set<pair<Domain2, Range2>> gt_set(const typed::aff<pair<Domain2, Range2>, Anonymous> &aff2) const;
   inline typed::set<pair<Domain2, Range2>> gt_set(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff2) const;
   inline typed::multi_aff<pair<Domain2, Range2>, Anonymous> identity() const;
@@ -691,7 +636,6 @@ struct aff<pair<Domain2, Range2>, Anonymous> : public isl::aff {
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> intersect_domain(const typed::set<pair<Domain2, Range2>> &set) const;
   inline typed::union_pw_aff<pair<Domain2, Range2>, Anonymous> intersect_domain(const typed::space<pair<Domain2, Range2>> &space) const;
   inline typed::union_pw_aff<pair<Domain2, Range2>, Anonymous> intersect_domain(const typed::union_set<pair<Domain2, Range2>> &uset) const;
-  inline typed::union_pw_aff<pair<Domain2, Range2>, Anonymous> intersect_domain_wrapped_domain(const typed::union_set<Domain2> &uset) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> intersect_params(const typed::set<> &set) const;
   inline typed::set<pair<Domain2, Range2>> le_set(const typed::aff<pair<Domain2, Range2>, Anonymous> &aff2) const;
   inline typed::set<pair<Domain2, Range2>> le_set(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff2) const;
@@ -701,15 +645,12 @@ struct aff<pair<Domain2, Range2>, Anonymous> : public isl::aff {
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> max(const typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> &multi2) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> max(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff2) const;
   inline typed::multi_val<Anonymous> max_multi_val() const;
-  inline typed::val<Anonymous> max_val() const;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> min(const typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> &multi2) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> min(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff2) const;
   inline typed::multi_val<Anonymous> min_multi_val() const;
-  inline typed::val<Anonymous> min_val() const;
   inline typed::aff<pair<Domain2, Range2>, Anonymous> mod(const typed::val<Anonymous> &mod) const;
   inline typed::aff<pair<Domain2, Range2>, Anonymous> mod(long mod) const;
   inline typed::aff<pair<Domain2, Range2>, Anonymous> neg() const;
-  inline typed::set<> params() const;
   template <typename Domain3>
   inline typed::pw_multi_aff<pair<Domain3, Range2>, Anonymous> preimage_domain_wrapped_domain(const typed::pw_multi_aff<Domain3, Domain2> &pma2) const;
   template <typename Domain3>
@@ -735,7 +676,6 @@ struct aff<pair<Domain2, Range2>, Anonymous> : public isl::aff {
   template <typename Arg1>
   inline typed::aff<Arg1, Anonymous> pullback(const typed::aff<Arg1, pair<Domain2, Range2>> &ma) const;
   inline typed::aff<Anonymous> pullback(const typed::aff<pair<Domain2, Range2>> &ma) const;
-  inline typed::pw_multi_aff_list<pair<Domain2, Range2>, Anonymous> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous> range_factor_domain() const = delete;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous> range_factor_range() const = delete;
   template <typename Arg1>
@@ -806,8 +746,6 @@ struct aff_list<Anonymous> : public isl::aff_list {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -829,8 +767,6 @@ struct aff_list<Anonymous> : public isl::aff_list {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -857,14 +793,11 @@ struct aff_list<Anonymous> : public isl::aff_list {
   }
   inline explicit aff_list(const isl::ctx &ctx, int n);
   inline explicit aff_list(const typed::aff<Anonymous> &el);
-  inline explicit aff_list(const isl::ctx &ctx, const std::string &str);
   inline typed::aff_list<Anonymous> add(const typed::aff<Anonymous> &el) const;
   inline typed::aff<Anonymous> at(int index) const;
   inline typed::aff<Anonymous> get_at(int index) const = delete;
   inline typed::aff_list<Anonymous> drop(unsigned int first, unsigned int n) const;
   inline void foreach(const std::function<void(typed::aff<Anonymous>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::aff<Anonymous>, typed::aff<Anonymous>)> &follows, const std::function<void(typed::aff_list<Anonymous>)> &fn) const;
-  inline typed::aff_list<Anonymous> set_at(int index, const typed::aff<Anonymous> &el) const;
 };
 
 template <typename Domain>
@@ -885,8 +818,6 @@ struct aff_list<Domain, Anonymous> : public isl::aff_list {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -909,8 +840,6 @@ struct aff_list<Domain, Anonymous> : public isl::aff_list {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -947,14 +876,11 @@ struct aff_list<Domain, Anonymous> : public isl::aff_list {
   }
   inline explicit aff_list(const isl::ctx &ctx, int n);
   inline explicit aff_list(const typed::aff<Domain, Anonymous> &el);
-  inline explicit aff_list(const isl::ctx &ctx, const std::string &str);
   inline typed::aff_list<Domain, Anonymous> add(const typed::aff<Domain, Anonymous> &el) const;
   inline typed::aff<Domain, Anonymous> at(int index) const;
   inline typed::aff<Domain, Anonymous> get_at(int index) const = delete;
   inline typed::aff_list<Domain, Anonymous> drop(unsigned int first, unsigned int n) const;
   inline void foreach(const std::function<void(typed::aff<Domain, Anonymous>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::aff<Domain, Anonymous>, typed::aff<Domain, Anonymous>)> &follows, const std::function<void(typed::aff_list<Domain, Anonymous>)> &fn) const;
-  inline typed::aff_list<Domain, Anonymous> set_at(int index, const typed::aff<Domain, Anonymous> &el) const;
 };
 
 template <typename Domain, typename Range>
@@ -975,8 +901,6 @@ struct basic_map<Domain, Range> : public isl::basic_map {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -999,8 +923,6 @@ struct basic_map<Domain, Range> : public isl::basic_map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -1068,12 +990,9 @@ struct basic_map<Domain, Range> : public isl::basic_map {
   inline typed::map<pair<Domain, Domain2>, Range> domain_product(const typed::map<Domain2, Range> &map2) const;
   template <typename Domain2>
   inline typed::union_map<pair<Domain, Domain2>, Range> domain_product(const typed::union_map<Domain2, Range> &umap2) const;
-  inline typed::map<Domain, Range> domain_reverse() const = delete;
-  inline typed::map<Domain, Range> drop_unused_params() const;
   inline typed::map<Domain, Range> eq_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::union_map<Domain, Range> eq_at(const typed::multi_union_pw_aff<> &mupa) const = delete;
   inline bool every_map(const std::function<bool(typed::map<Domain, Range>)> &test) const;
-  inline typed::map<Domain, Range> extract_map(const typed::space<Domain, Range> &space) const;
   inline typed::basic_map<Domain, Range> flatten_domain() const = delete;
   inline typed::basic_map<Domain, Range> flatten_range() const = delete;
   inline void foreach_basic_map(const std::function<void(typed::basic_map<Domain, Range>)> &fn) const;
@@ -1083,7 +1002,6 @@ struct basic_map<Domain, Range> : public isl::basic_map {
   inline typed::union_map<Domain, Range> gist(const typed::union_map<Domain, Range> &context) const;
   inline typed::map<Domain, Range> gist_domain(const typed::set<Domain> &context) const;
   inline typed::union_map<Domain, Range> gist_domain(const typed::union_set<Domain> &uset) const;
-  inline typed::map<Domain, Range> gist_params(const typed::set<> &context) const;
   inline typed::basic_map<Domain, Range> intersect(const typed::basic_map<Domain, Range> &bmap2) const;
   inline typed::map<Domain, Range> intersect(const typed::map<Domain, Range> &map2) const;
   inline typed::union_map<Domain, Range> intersect(const typed::union_map<Domain, Range> &umap2) const;
@@ -1092,16 +1010,12 @@ struct basic_map<Domain, Range> : public isl::basic_map {
   inline typed::union_map<Domain, Range> intersect_domain(const typed::space<Domain> &space) const;
   inline typed::union_map<Domain, Range> intersect_domain(const typed::union_set<Domain> &uset) const;
   inline typed::basic_map<Domain, Range> intersect_domain(const typed::point<Domain> &bset) const;
-  inline typed::map<Domain, Range> intersect_domain_wrapped_domain(const typed::set<> &domain) const = delete;
-  inline typed::union_map<Domain, Range> intersect_domain_wrapped_domain(const typed::union_set<> &domain) const = delete;
   inline typed::map<Domain, Range> intersect_params(const typed::set<> &params) const;
   inline typed::basic_map<Domain, Range> intersect_range(const typed::basic_set<Range> &bset) const;
   inline typed::map<Domain, Range> intersect_range(const typed::set<Range> &set) const;
   inline typed::union_map<Domain, Range> intersect_range(const typed::space<Range> &space) const;
   inline typed::union_map<Domain, Range> intersect_range(const typed::union_set<Range> &uset) const;
   inline typed::basic_map<Domain, Range> intersect_range(const typed::point<Range> &bset) const;
-  inline typed::map<Domain, Range> intersect_range_wrapped_domain(const typed::set<> &domain) const = delete;
-  inline typed::union_map<Domain, Range> intersect_range_wrapped_domain(const typed::union_set<> &domain) const = delete;
   inline typed::map<Domain, Range> lex_ge_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::map<Domain, Range> lex_gt_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::map<Domain, Range> lex_le_at(const typed::multi_pw_aff<> &mpa) const = delete;
@@ -1111,10 +1025,8 @@ struct basic_map<Domain, Range> : public isl::basic_map {
   inline typed::map<Domain, Range> lexmin() const;
   inline typed::pw_multi_aff<Domain, Range> lexmin_pw_multi_aff() const;
   inline typed::map<Domain, Range> lower_bound(const typed::multi_pw_aff<Domain, Range> &lower) const;
-  inline typed::map_list<Domain, Range> map_list() const;
   inline typed::multi_pw_aff<Domain, Range> max_multi_pw_aff() const;
   inline typed::multi_pw_aff<Domain, Range> min_multi_pw_aff() const;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::map<Domain2, Range> preimage_domain(const typed::multi_aff<Domain2, Domain> &ma) const;
   template <typename Domain2>
@@ -1134,13 +1046,9 @@ struct basic_map<Domain, Range> : public isl::basic_map {
   template <typename Domain2, typename Range2>
   inline typed::union_map<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::union_map<Domain2, Range2> &umap2) const;
   inline typed::map<Domain, Range> project_out_all_params() const;
-  inline typed::map<Domain, Range> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::map<Domain, Range> project_out_param(const std::string &id) const;
-  inline typed::map<Domain, Range> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::set<Range> range() const;
   inline typed::map<Domain, Range> range_factor_domain() const = delete;
   inline typed::map<Domain, Range> range_factor_range() const = delete;
-  inline typed::fixed_box<Domain, Range> range_lattice_tile() const;
   inline typed::union_map<pair<Domain, Range>, Range> range_map() const;
   template <typename Range2>
   inline typed::map<Domain, pair<Range, Range2>> range_product(const typed::map<Domain, Range2> &map2) const;
@@ -1190,8 +1098,6 @@ struct basic_map<pair<Domain, Range>, Range2> : public isl::basic_map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -1213,8 +1119,6 @@ struct basic_map<pair<Domain, Range>, Range2> : public isl::basic_map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -1283,12 +1187,9 @@ struct basic_map<pair<Domain, Range>, Range2> : public isl::basic_map {
   inline typed::map<pair<pair<Domain, Range>, Domain2>, Range2> domain_product(const typed::map<Domain2, Range2> &map2) const;
   template <typename Domain2>
   inline typed::union_map<pair<pair<Domain, Range>, Domain2>, Range2> domain_product(const typed::union_map<Domain2, Range2> &umap2) const;
-  inline typed::map<pair<Range, Domain>, Range2> domain_reverse() const;
-  inline typed::map<pair<Domain, Range>, Range2> drop_unused_params() const;
   inline typed::map<pair<Domain, Range>, Range2> eq_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::union_map<pair<Domain, Range>, Range2> eq_at(const typed::multi_union_pw_aff<> &mupa) const = delete;
   inline bool every_map(const std::function<bool(typed::map<pair<Domain, Range>, Range2>)> &test) const;
-  inline typed::map<pair<Domain, Range>, Range2> extract_map(const typed::space<pair<Domain, Range>, Range2> &space) const;
   inline typed::basic_map<Anonymous, Range2> flatten_domain() const;
   inline typed::basic_map<pair<Domain, Range>, Range2> flatten_range() const = delete;
   inline void foreach_basic_map(const std::function<void(typed::basic_map<pair<Domain, Range>, Range2>)> &fn) const;
@@ -1298,7 +1199,6 @@ struct basic_map<pair<Domain, Range>, Range2> : public isl::basic_map {
   inline typed::union_map<pair<Domain, Range>, Range2> gist(const typed::union_map<pair<Domain, Range>, Range2> &context) const;
   inline typed::map<pair<Domain, Range>, Range2> gist_domain(const typed::set<pair<Domain, Range>> &context) const;
   inline typed::union_map<pair<Domain, Range>, Range2> gist_domain(const typed::union_set<pair<Domain, Range>> &uset) const;
-  inline typed::map<pair<Domain, Range>, Range2> gist_params(const typed::set<> &context) const;
   inline typed::basic_map<pair<Domain, Range>, Range2> intersect(const typed::basic_map<pair<Domain, Range>, Range2> &bmap2) const;
   inline typed::map<pair<Domain, Range>, Range2> intersect(const typed::map<pair<Domain, Range>, Range2> &map2) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect(const typed::union_map<pair<Domain, Range>, Range2> &umap2) const;
@@ -1307,16 +1207,12 @@ struct basic_map<pair<Domain, Range>, Range2> : public isl::basic_map {
   inline typed::union_map<pair<Domain, Range>, Range2> intersect_domain(const typed::space<pair<Domain, Range>> &space) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect_domain(const typed::union_set<pair<Domain, Range>> &uset) const;
   inline typed::basic_map<pair<Domain, Range>, Range2> intersect_domain(const typed::point<pair<Domain, Range>> &bset) const;
-  inline typed::map<pair<Domain, Range>, Range2> intersect_domain_wrapped_domain(const typed::set<Domain> &domain) const;
-  inline typed::union_map<pair<Domain, Range>, Range2> intersect_domain_wrapped_domain(const typed::union_set<Domain> &domain) const;
   inline typed::map<pair<Domain, Range>, Range2> intersect_params(const typed::set<> &params) const;
   inline typed::basic_map<pair<Domain, Range>, Range2> intersect_range(const typed::basic_set<Range2> &bset) const;
   inline typed::map<pair<Domain, Range>, Range2> intersect_range(const typed::set<Range2> &set) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect_range(const typed::space<Range2> &space) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect_range(const typed::union_set<Range2> &uset) const;
   inline typed::basic_map<pair<Domain, Range>, Range2> intersect_range(const typed::point<Range2> &bset) const;
-  inline typed::map<pair<Domain, Range>, Range2> intersect_range_wrapped_domain(const typed::set<> &domain) const = delete;
-  inline typed::union_map<pair<Domain, Range>, Range2> intersect_range_wrapped_domain(const typed::union_set<> &domain) const = delete;
   inline typed::map<pair<Domain, Range>, Range2> lex_ge_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::map<pair<Domain, Range>, Range2> lex_gt_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::map<pair<Domain, Range>, Range2> lex_le_at(const typed::multi_pw_aff<> &mpa) const = delete;
@@ -1326,10 +1222,8 @@ struct basic_map<pair<Domain, Range>, Range2> : public isl::basic_map {
   inline typed::map<pair<Domain, Range>, Range2> lexmin() const;
   inline typed::pw_multi_aff<pair<Domain, Range>, Range2> lexmin_pw_multi_aff() const;
   inline typed::map<pair<Domain, Range>, Range2> lower_bound(const typed::multi_pw_aff<pair<Domain, Range>, Range2> &lower) const;
-  inline typed::map_list<pair<Domain, Range>, Range2> map_list() const;
   inline typed::multi_pw_aff<pair<Domain, Range>, Range2> max_multi_pw_aff() const;
   inline typed::multi_pw_aff<pair<Domain, Range>, Range2> min_multi_pw_aff() const;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::map<Domain2, Range2> preimage_domain(const typed::multi_aff<Domain2, pair<Domain, Range>> &ma) const;
   template <typename Domain2>
@@ -1349,13 +1243,9 @@ struct basic_map<pair<Domain, Range>, Range2> : public isl::basic_map {
   template <typename Domain2, typename Arg3>
   inline typed::union_map<pair<pair<Domain, Range>, Domain2>, pair<Range2, Arg3>> product(const typed::union_map<Domain2, Arg3> &umap2) const;
   inline typed::map<pair<Domain, Range>, Range2> project_out_all_params() const;
-  inline typed::map<pair<Domain, Range>, Range2> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::map<pair<Domain, Range>, Range2> project_out_param(const std::string &id) const;
-  inline typed::map<pair<Domain, Range>, Range2> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::set<Range2> range() const;
   inline typed::map<pair<Domain, Range>, Range2> range_factor_domain() const = delete;
   inline typed::map<pair<Domain, Range>, Range2> range_factor_range() const = delete;
-  inline typed::fixed_box<pair<Domain, Range>, Range2> range_lattice_tile() const;
   inline typed::union_map<pair<pair<Domain, Range>, Range2>, Range2> range_map() const;
   template <typename Arg3>
   inline typed::map<pair<Domain, Range>, pair<Range2, Arg3>> range_product(const typed::map<pair<Domain, Range>, Arg3> &map2) const;
@@ -1403,8 +1293,6 @@ struct basic_map<Domain, Domain> : public isl::basic_map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -1426,8 +1314,6 @@ struct basic_map<Domain, Domain> : public isl::basic_map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -1494,14 +1380,11 @@ struct basic_map<Domain, Domain> : public isl::basic_map {
   inline typed::map<pair<Domain, Domain2>, Domain> domain_product(const typed::map<Domain2, Domain> &map2) const;
   template <typename Domain2>
   inline typed::union_map<pair<Domain, Domain2>, Domain> domain_product(const typed::union_map<Domain2, Domain> &umap2) const;
-  inline typed::map<Domain, Domain> domain_reverse() const = delete;
-  inline typed::map<Domain, Domain> drop_unused_params() const;
   template <typename Range>
   inline typed::map<Domain, Domain> eq_at(const typed::multi_pw_aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::union_map<Domain, Domain> eq_at(const typed::multi_union_pw_aff<Domain, Range> &mupa) const;
   inline bool every_map(const std::function<bool(typed::map<Domain, Domain>)> &test) const;
-  inline typed::map<Domain, Domain> extract_map(const typed::space<Domain, Domain> &space) const;
   inline typed::basic_map<Domain, Domain> flatten_domain() const = delete;
   inline typed::basic_map<Domain, Domain> flatten_range() const = delete;
   inline void foreach_basic_map(const std::function<void(typed::basic_map<Domain, Domain>)> &fn) const;
@@ -1511,7 +1394,6 @@ struct basic_map<Domain, Domain> : public isl::basic_map {
   inline typed::union_map<Domain, Domain> gist(const typed::union_map<Domain, Domain> &context) const;
   inline typed::map<Domain, Domain> gist_domain(const typed::set<Domain> &context) const;
   inline typed::union_map<Domain, Domain> gist_domain(const typed::union_set<Domain> &uset) const;
-  inline typed::map<Domain, Domain> gist_params(const typed::set<> &context) const;
   inline typed::basic_map<Domain, Domain> intersect(const typed::basic_map<Domain, Domain> &bmap2) const;
   inline typed::map<Domain, Domain> intersect(const typed::map<Domain, Domain> &map2) const;
   inline typed::union_map<Domain, Domain> intersect(const typed::union_map<Domain, Domain> &umap2) const;
@@ -1520,16 +1402,12 @@ struct basic_map<Domain, Domain> : public isl::basic_map {
   inline typed::union_map<Domain, Domain> intersect_domain(const typed::space<Domain> &space) const;
   inline typed::union_map<Domain, Domain> intersect_domain(const typed::union_set<Domain> &uset) const;
   inline typed::basic_map<Domain, Domain> intersect_domain(const typed::point<Domain> &bset) const;
-  inline typed::map<Domain, Domain> intersect_domain_wrapped_domain(const typed::set<> &domain) const = delete;
-  inline typed::union_map<Domain, Domain> intersect_domain_wrapped_domain(const typed::union_set<> &domain) const = delete;
   inline typed::map<Domain, Domain> intersect_params(const typed::set<> &params) const;
   inline typed::basic_map<Domain, Domain> intersect_range(const typed::basic_set<Domain> &bset) const;
   inline typed::map<Domain, Domain> intersect_range(const typed::set<Domain> &set) const;
   inline typed::union_map<Domain, Domain> intersect_range(const typed::space<Domain> &space) const;
   inline typed::union_map<Domain, Domain> intersect_range(const typed::union_set<Domain> &uset) const;
   inline typed::basic_map<Domain, Domain> intersect_range(const typed::point<Domain> &bset) const;
-  inline typed::map<Domain, Domain> intersect_range_wrapped_domain(const typed::set<> &domain) const = delete;
-  inline typed::union_map<Domain, Domain> intersect_range_wrapped_domain(const typed::union_set<> &domain) const = delete;
   template <typename Range>
   inline typed::map<Domain, Domain> lex_ge_at(const typed::multi_pw_aff<Domain, Range> &mpa) const;
   template <typename Range>
@@ -1543,10 +1421,8 @@ struct basic_map<Domain, Domain> : public isl::basic_map {
   inline typed::map<Domain, Domain> lexmin() const;
   inline typed::pw_multi_aff<Domain, Domain> lexmin_pw_multi_aff() const;
   inline typed::map<Domain, Domain> lower_bound(const typed::multi_pw_aff<Domain, Domain> &lower) const;
-  inline typed::map_list<Domain, Domain> map_list() const;
   inline typed::multi_pw_aff<Domain, Domain> max_multi_pw_aff() const;
   inline typed::multi_pw_aff<Domain, Domain> min_multi_pw_aff() const;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::map<Domain2, Domain> preimage_domain(const typed::multi_aff<Domain2, Domain> &ma) const;
   template <typename Domain2>
@@ -1566,13 +1442,9 @@ struct basic_map<Domain, Domain> : public isl::basic_map {
   template <typename Domain2, typename Range2>
   inline typed::union_map<pair<Domain, Domain2>, pair<Domain, Range2>> product(const typed::union_map<Domain2, Range2> &umap2) const;
   inline typed::map<Domain, Domain> project_out_all_params() const;
-  inline typed::map<Domain, Domain> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::map<Domain, Domain> project_out_param(const std::string &id) const;
-  inline typed::map<Domain, Domain> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::set<Domain> range() const;
   inline typed::map<Domain, Domain> range_factor_domain() const = delete;
   inline typed::map<Domain, Domain> range_factor_range() const = delete;
-  inline typed::fixed_box<Domain, Domain> range_lattice_tile() const;
   inline typed::union_map<pair<Domain, Domain>, Domain> range_map() const;
   template <typename Range2>
   inline typed::map<Domain, pair<Domain, Range2>> range_product(const typed::map<Domain, Range2> &map2) const;
@@ -1622,8 +1494,6 @@ struct basic_map<Domain, pair<Range, Range2>> : public isl::basic_map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -1645,8 +1515,6 @@ struct basic_map<Domain, pair<Range, Range2>> : public isl::basic_map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -1715,12 +1583,9 @@ struct basic_map<Domain, pair<Range, Range2>> : public isl::basic_map {
   inline typed::map<pair<Domain, Domain2>, pair<Range, Range2>> domain_product(const typed::map<Domain2, pair<Range, Range2>> &map2) const;
   template <typename Domain2>
   inline typed::union_map<pair<Domain, Domain2>, pair<Range, Range2>> domain_product(const typed::union_map<Domain2, pair<Range, Range2>> &umap2) const;
-  inline typed::map<Domain, pair<Range, Range2>> domain_reverse() const = delete;
-  inline typed::map<Domain, pair<Range, Range2>> drop_unused_params() const;
   inline typed::map<Domain, pair<Range, Range2>> eq_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::union_map<Domain, pair<Range, Range2>> eq_at(const typed::multi_union_pw_aff<> &mupa) const = delete;
   inline bool every_map(const std::function<bool(typed::map<Domain, pair<Range, Range2>>)> &test) const;
-  inline typed::map<Domain, pair<Range, Range2>> extract_map(const typed::space<Domain, pair<Range, Range2>> &space) const;
   inline typed::basic_map<Domain, pair<Range, Range2>> flatten_domain() const = delete;
   inline typed::basic_map<Domain, Anonymous> flatten_range() const;
   inline void foreach_basic_map(const std::function<void(typed::basic_map<Domain, pair<Range, Range2>>)> &fn) const;
@@ -1730,7 +1595,6 @@ struct basic_map<Domain, pair<Range, Range2>> : public isl::basic_map {
   inline typed::union_map<Domain, pair<Range, Range2>> gist(const typed::union_map<Domain, pair<Range, Range2>> &context) const;
   inline typed::map<Domain, pair<Range, Range2>> gist_domain(const typed::set<Domain> &context) const;
   inline typed::union_map<Domain, pair<Range, Range2>> gist_domain(const typed::union_set<Domain> &uset) const;
-  inline typed::map<Domain, pair<Range, Range2>> gist_params(const typed::set<> &context) const;
   inline typed::basic_map<Domain, pair<Range, Range2>> intersect(const typed::basic_map<Domain, pair<Range, Range2>> &bmap2) const;
   inline typed::map<Domain, pair<Range, Range2>> intersect(const typed::map<Domain, pair<Range, Range2>> &map2) const;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect(const typed::union_map<Domain, pair<Range, Range2>> &umap2) const;
@@ -1739,16 +1603,12 @@ struct basic_map<Domain, pair<Range, Range2>> : public isl::basic_map {
   inline typed::union_map<Domain, pair<Range, Range2>> intersect_domain(const typed::space<Domain> &space) const;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect_domain(const typed::union_set<Domain> &uset) const;
   inline typed::basic_map<Domain, pair<Range, Range2>> intersect_domain(const typed::point<Domain> &bset) const;
-  inline typed::map<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::set<> &domain) const = delete;
-  inline typed::union_map<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::union_set<> &domain) const = delete;
   inline typed::map<Domain, pair<Range, Range2>> intersect_params(const typed::set<> &params) const;
   inline typed::basic_map<Domain, pair<Range, Range2>> intersect_range(const typed::basic_set<pair<Range, Range2>> &bset) const;
   inline typed::map<Domain, pair<Range, Range2>> intersect_range(const typed::set<pair<Range, Range2>> &set) const;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect_range(const typed::space<pair<Range, Range2>> &space) const;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect_range(const typed::union_set<pair<Range, Range2>> &uset) const;
   inline typed::basic_map<Domain, pair<Range, Range2>> intersect_range(const typed::point<pair<Range, Range2>> &bset) const;
-  inline typed::map<Domain, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::set<Range> &domain) const;
-  inline typed::union_map<Domain, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::union_set<Range> &domain) const;
   inline typed::map<Domain, pair<Range, Range2>> lex_ge_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::map<Domain, pair<Range, Range2>> lex_gt_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::map<Domain, pair<Range, Range2>> lex_le_at(const typed::multi_pw_aff<> &mpa) const = delete;
@@ -1758,10 +1618,8 @@ struct basic_map<Domain, pair<Range, Range2>> : public isl::basic_map {
   inline typed::map<Domain, pair<Range, Range2>> lexmin() const;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> lexmin_pw_multi_aff() const;
   inline typed::map<Domain, pair<Range, Range2>> lower_bound(const typed::multi_pw_aff<Domain, pair<Range, Range2>> &lower) const;
-  inline typed::map_list<Domain, pair<Range, Range2>> map_list() const;
   inline typed::multi_pw_aff<Domain, pair<Range, Range2>> max_multi_pw_aff() const;
   inline typed::multi_pw_aff<Domain, pair<Range, Range2>> min_multi_pw_aff() const;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::map<Domain2, pair<Range, Range2>> preimage_domain(const typed::multi_aff<Domain2, Domain> &ma) const;
   template <typename Domain2>
@@ -1781,13 +1639,9 @@ struct basic_map<Domain, pair<Range, Range2>> : public isl::basic_map {
   template <typename Domain2, typename Arg3>
   inline typed::union_map<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>> product(const typed::union_map<Domain2, Arg3> &umap2) const;
   inline typed::map<Domain, pair<Range, Range2>> project_out_all_params() const;
-  inline typed::map<Domain, pair<Range, Range2>> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::map<Domain, pair<Range, Range2>> project_out_param(const std::string &id) const;
-  inline typed::map<Domain, pair<Range, Range2>> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::set<pair<Range, Range2>> range() const;
   inline typed::map<Domain, Range> range_factor_domain() const;
   inline typed::map<Domain, Range2> range_factor_range() const;
-  inline typed::fixed_box<Domain, pair<Range, Range2>> range_lattice_tile() const;
   inline typed::union_map<pair<Domain, pair<Range, Range2>>, pair<Range, Range2>> range_map() const;
   template <typename Arg3>
   inline typed::map<Domain, pair<pair<Range, Range2>, Arg3>> range_product(const typed::map<Domain, Arg3> &map2) const;
@@ -1835,8 +1689,6 @@ struct basic_map<pair<T1, T2>, pair<T1, T2>> : public isl::basic_map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -1858,8 +1710,6 @@ struct basic_map<pair<T1, T2>, pair<T1, T2>> : public isl::basic_map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -1927,14 +1777,11 @@ struct basic_map<pair<T1, T2>, pair<T1, T2>> : public isl::basic_map {
   inline typed::map<pair<pair<T1, T2>, Domain2>, pair<T1, T2>> domain_product(const typed::map<Domain2, pair<T1, T2>> &map2) const;
   template <typename Domain2>
   inline typed::union_map<pair<pair<T1, T2>, Domain2>, pair<T1, T2>> domain_product(const typed::union_map<Domain2, pair<T1, T2>> &umap2) const;
-  inline typed::map<pair<T2, T1>, pair<T1, T2>> domain_reverse() const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> drop_unused_params() const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> eq_at(const typed::multi_pw_aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> eq_at(const typed::multi_union_pw_aff<pair<T1, T2>, Range> &mupa) const;
   inline bool every_map(const std::function<bool(typed::map<pair<T1, T2>, pair<T1, T2>>)> &test) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> extract_map(const typed::space<pair<T1, T2>, pair<T1, T2>> &space) const;
   inline typed::basic_map<Anonymous, pair<T1, T2>> flatten_domain() const;
   inline typed::basic_map<pair<T1, T2>, Anonymous> flatten_range() const;
   inline void foreach_basic_map(const std::function<void(typed::basic_map<pair<T1, T2>, pair<T1, T2>>)> &fn) const;
@@ -1944,7 +1791,6 @@ struct basic_map<pair<T1, T2>, pair<T1, T2>> : public isl::basic_map {
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> gist(const typed::union_map<pair<T1, T2>, pair<T1, T2>> &context) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> gist_domain(const typed::set<pair<T1, T2>> &context) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> gist_domain(const typed::union_set<pair<T1, T2>> &uset) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> gist_params(const typed::set<> &context) const;
   inline typed::basic_map<pair<T1, T2>, pair<T1, T2>> intersect(const typed::basic_map<pair<T1, T2>, pair<T1, T2>> &bmap2) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect(const typed::map<pair<T1, T2>, pair<T1, T2>> &map2) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect(const typed::union_map<pair<T1, T2>, pair<T1, T2>> &umap2) const;
@@ -1953,16 +1799,12 @@ struct basic_map<pair<T1, T2>, pair<T1, T2>> : public isl::basic_map {
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_domain(const typed::space<pair<T1, T2>> &space) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_domain(const typed::union_set<pair<T1, T2>> &uset) const;
   inline typed::basic_map<pair<T1, T2>, pair<T1, T2>> intersect_domain(const typed::point<pair<T1, T2>> &bset) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_domain_wrapped_domain(const typed::set<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_domain_wrapped_domain(const typed::union_set<T1> &domain) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_params(const typed::set<> &params) const;
   inline typed::basic_map<pair<T1, T2>, pair<T1, T2>> intersect_range(const typed::basic_set<pair<T1, T2>> &bset) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_range(const typed::set<pair<T1, T2>> &set) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_range(const typed::space<pair<T1, T2>> &space) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_range(const typed::union_set<pair<T1, T2>> &uset) const;
   inline typed::basic_map<pair<T1, T2>, pair<T1, T2>> intersect_range(const typed::point<pair<T1, T2>> &bset) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_range_wrapped_domain(const typed::set<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_range_wrapped_domain(const typed::union_set<T1> &domain) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_ge_at(const typed::multi_pw_aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
@@ -1976,10 +1818,8 @@ struct basic_map<pair<T1, T2>, pair<T1, T2>> : public isl::basic_map {
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lexmin() const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<T1, T2>> lexmin_pw_multi_aff() const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lower_bound(const typed::multi_pw_aff<pair<T1, T2>, pair<T1, T2>> &lower) const;
-  inline typed::map_list<pair<T1, T2>, pair<T1, T2>> map_list() const;
   inline typed::multi_pw_aff<pair<T1, T2>, pair<T1, T2>> max_multi_pw_aff() const;
   inline typed::multi_pw_aff<pair<T1, T2>, pair<T1, T2>> min_multi_pw_aff() const;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::map<Domain2, pair<T1, T2>> preimage_domain(const typed::multi_aff<Domain2, pair<T1, T2>> &ma) const;
   template <typename Domain2>
@@ -1999,13 +1839,9 @@ struct basic_map<pair<T1, T2>, pair<T1, T2>> : public isl::basic_map {
   template <typename Domain2, typename Range2>
   inline typed::union_map<pair<pair<T1, T2>, Domain2>, pair<pair<T1, T2>, Range2>> product(const typed::union_map<Domain2, Range2> &umap2) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> project_out_all_params() const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> project_out_param(const std::string &id) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::set<pair<T1, T2>> range() const;
   inline typed::map<pair<T1, T2>, T1> range_factor_domain() const;
   inline typed::map<pair<T1, T2>, T2> range_factor_range() const;
-  inline typed::fixed_box<pair<T1, T2>, pair<T1, T2>> range_lattice_tile() const;
   inline typed::union_map<pair<pair<T1, T2>, pair<T1, T2>>, pair<T1, T2>> range_map() const;
   template <typename Range2>
   inline typed::map<pair<T1, T2>, pair<pair<T1, T2>, Range2>> range_product(const typed::map<pair<T1, T2>, Range2> &map2) const;
@@ -2051,8 +1887,6 @@ struct basic_map<pair<T1, T2>, pair<Range, Range2>> : public isl::basic_map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -2074,8 +1908,6 @@ struct basic_map<pair<T1, T2>, pair<Range, Range2>> : public isl::basic_map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -2145,12 +1977,9 @@ struct basic_map<pair<T1, T2>, pair<Range, Range2>> : public isl::basic_map {
   inline typed::map<pair<pair<T1, T2>, Domain2>, pair<Range, Range2>> domain_product(const typed::map<Domain2, pair<Range, Range2>> &map2) const;
   template <typename Domain2>
   inline typed::union_map<pair<pair<T1, T2>, Domain2>, pair<Range, Range2>> domain_product(const typed::union_map<Domain2, pair<Range, Range2>> &umap2) const;
-  inline typed::map<pair<T2, T1>, pair<Range, Range2>> domain_reverse() const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> drop_unused_params() const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> eq_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> eq_at(const typed::multi_union_pw_aff<> &mupa) const = delete;
   inline bool every_map(const std::function<bool(typed::map<pair<T1, T2>, pair<Range, Range2>>)> &test) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> extract_map(const typed::space<pair<T1, T2>, pair<Range, Range2>> &space) const;
   inline typed::basic_map<Anonymous, pair<Range, Range2>> flatten_domain() const;
   inline typed::basic_map<pair<T1, T2>, Anonymous> flatten_range() const;
   inline void foreach_basic_map(const std::function<void(typed::basic_map<pair<T1, T2>, pair<Range, Range2>>)> &fn) const;
@@ -2160,7 +1989,6 @@ struct basic_map<pair<T1, T2>, pair<Range, Range2>> : public isl::basic_map {
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> gist(const typed::union_map<pair<T1, T2>, pair<Range, Range2>> &context) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> gist_domain(const typed::set<pair<T1, T2>> &context) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> gist_domain(const typed::union_set<pair<T1, T2>> &uset) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> gist_params(const typed::set<> &context) const;
   inline typed::basic_map<pair<T1, T2>, pair<Range, Range2>> intersect(const typed::basic_map<pair<T1, T2>, pair<Range, Range2>> &bmap2) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect(const typed::map<pair<T1, T2>, pair<Range, Range2>> &map2) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect(const typed::union_map<pair<T1, T2>, pair<Range, Range2>> &umap2) const;
@@ -2169,16 +1997,12 @@ struct basic_map<pair<T1, T2>, pair<Range, Range2>> : public isl::basic_map {
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::space<pair<T1, T2>> &space) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::union_set<pair<T1, T2>> &uset) const;
   inline typed::basic_map<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::point<pair<T1, T2>> &bset) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::set<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::union_set<T1> &domain) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_params(const typed::set<> &params) const;
   inline typed::basic_map<pair<T1, T2>, pair<Range, Range2>> intersect_range(const typed::basic_set<pair<Range, Range2>> &bset) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_range(const typed::set<pair<Range, Range2>> &set) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_range(const typed::space<pair<Range, Range2>> &space) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_range(const typed::union_set<pair<Range, Range2>> &uset) const;
   inline typed::basic_map<pair<T1, T2>, pair<Range, Range2>> intersect_range(const typed::point<pair<Range, Range2>> &bset) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::set<Range> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::union_set<Range> &domain) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> lex_ge_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> lex_gt_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> lex_le_at(const typed::multi_pw_aff<> &mpa) const = delete;
@@ -2188,10 +2012,8 @@ struct basic_map<pair<T1, T2>, pair<Range, Range2>> : public isl::basic_map {
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> lexmin() const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> lexmin_pw_multi_aff() const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> lower_bound(const typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> &lower) const;
-  inline typed::map_list<pair<T1, T2>, pair<Range, Range2>> map_list() const;
   inline typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> max_multi_pw_aff() const;
   inline typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> min_multi_pw_aff() const;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::map<Domain2, pair<Range, Range2>> preimage_domain(const typed::multi_aff<Domain2, pair<T1, T2>> &ma) const;
   template <typename Domain2>
@@ -2211,13 +2033,9 @@ struct basic_map<pair<T1, T2>, pair<Range, Range2>> : public isl::basic_map {
   template <typename Domain2, typename Arg2>
   inline typed::union_map<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>> product(const typed::union_map<Domain2, Arg2> &umap2) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> project_out_all_params() const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> project_out_param(const std::string &id) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::set<pair<Range, Range2>> range() const;
   inline typed::map<pair<T1, T2>, Range> range_factor_domain() const;
   inline typed::map<pair<T1, T2>, Range2> range_factor_range() const;
-  inline typed::fixed_box<pair<T1, T2>, pair<Range, Range2>> range_lattice_tile() const;
   inline typed::union_map<pair<pair<T1, T2>, pair<Range, Range2>>, pair<Range, Range2>> range_map() const;
   template <typename Arg2>
   inline typed::map<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> range_product(const typed::map<pair<T1, T2>, Arg2> &map2) const;
@@ -2263,8 +2081,6 @@ struct basic_set<> : public isl::basic_set {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -2286,8 +2102,6 @@ struct basic_set<> : public isl::basic_set {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -2327,9 +2141,7 @@ struct basic_set<> : public isl::basic_set {
   inline typed::set<> bind(const typed::multi_id<> &tuple) const = delete;
   inline typed::set<> coalesce() const;
   inline typed::basic_set<> detect_equalities() const;
-  inline typed::set<> drop_unused_params() const;
   inline bool every_set(const std::function<bool(typed::set<>)> &test) const;
-  inline typed::set<> extract_set(const typed::space<> &space) const;
   inline void foreach_basic_set(const std::function<void(typed::basic_set<>)> &fn) const;
   inline void foreach_point(const std::function<void(typed::point<>)> &fn) const;
   inline void foreach_set(const std::function<void(typed::set<>)> &fn) const;
@@ -2337,9 +2149,7 @@ struct basic_set<> : public isl::basic_set {
   inline typed::set<> gist(const typed::set<> &context) const;
   inline typed::union_set<> gist(const typed::union_set<> &context) const;
   inline typed::basic_set<> gist(const typed::point<> &context) const;
-  inline typed::set<> gist_params(const typed::set<> &context) const = delete;
   inline typed::map<> identity() const = delete;
-  inline typed::pw_aff<Anonymous> indicator_function() const;
   inline typed::map<> insert_domain(const typed::space<> &domain) const = delete;
   inline typed::basic_set<> intersect(const typed::basic_set<> &bset2) const;
   inline typed::set<> intersect(const typed::set<> &set2) const;
@@ -2348,7 +2158,6 @@ struct basic_set<> : public isl::basic_set {
   inline typed::basic_set<> intersect_params(const typed::basic_set<> &bset2) const = delete;
   inline typed::set<> intersect_params(const typed::set<> &params) const = delete;
   inline typed::basic_set<> intersect_params(const typed::point<> &bset2) const = delete;
-  inline typed::fixed_box<> lattice_tile() const = delete;
   inline typed::set<> lexmax() const = delete;
   inline typed::pw_multi_aff<> lexmax_pw_multi_aff() const = delete;
   inline typed::set<> lexmin() const = delete;
@@ -2359,8 +2168,6 @@ struct basic_set<> : public isl::basic_set {
   inline typed::val<> max_val(const typed::aff<> &obj) const = delete;
   inline typed::multi_pw_aff<> min_multi_pw_aff() const = delete;
   inline typed::val<> min_val(const typed::aff<> &obj) const = delete;
-  inline typed::pw_aff<Anonymous> param_pw_aff_on_domain(const typed::id<Anonymous> &id) const;
-  inline typed::pw_aff<Anonymous> param_pw_aff_on_domain(const std::string &id) const;
   inline typed::basic_set<> params() const = delete;
   inline typed::multi_val<> plain_multi_val_if_fixed() const = delete;
   inline typed::set<> preimage(const typed::multi_aff<> &ma) const = delete;
@@ -2372,11 +2179,7 @@ struct basic_set<> : public isl::basic_set {
   inline typed::set<> project_out_param(const typed::id<Anonymous> &id) const;
   inline typed::set<> project_out_param(const std::string &id) const;
   inline typed::set<> project_out_param(const typed::id_list<Anonymous> &list) const;
-  inline typed::pw_aff<Anonymous> pw_aff_on_domain(const typed::val<Anonymous> &v) const;
-  inline typed::pw_aff<Anonymous> pw_aff_on_domain(long v) const;
-  template <typename Domain>
-  inline typed::pw_multi_aff<Domain> pw_multi_aff_on_domain(const typed::multi_val<Domain> &mv) const;
-  inline typed::set_list<> set_list() const;
+  inline typed::pw_multi_aff<> pw_multi_aff_on_domain(const typed::multi_val<> &mv) const = delete;
   inline typed::fixed_box<> simple_fixed_box_hull() const = delete;
   inline typed::space<> space() const;
   inline typed::set<> subtract(const typed::set<> &set2) const;
@@ -2394,7 +2197,6 @@ struct basic_set<> : public isl::basic_set {
   inline typed::map<> unwrap() const = delete;
   inline typed::set<> upper_bound(const typed::multi_pw_aff<> &upper) const = delete;
   inline typed::set<> upper_bound(const typed::multi_val<> &upper) const = delete;
-  inline typed::set<> wrapped_reverse() const = delete;
 };
 
 template <typename Domain>
@@ -2415,8 +2217,6 @@ struct basic_set<Domain> : public isl::basic_set {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -2439,8 +2239,6 @@ struct basic_set<Domain> : public isl::basic_set {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -2488,9 +2286,7 @@ struct basic_set<Domain> : public isl::basic_set {
   inline typed::set<> bind(const typed::multi_id<Domain> &tuple) const;
   inline typed::set<Domain> coalesce() const;
   inline typed::basic_set<Domain> detect_equalities() const;
-  inline typed::set<Domain> drop_unused_params() const;
   inline bool every_set(const std::function<bool(typed::set<Domain>)> &test) const;
-  inline typed::set<Domain> extract_set(const typed::space<Domain> &space) const;
   inline void foreach_basic_set(const std::function<void(typed::basic_set<Domain>)> &fn) const;
   inline void foreach_point(const std::function<void(typed::point<Domain>)> &fn) const;
   inline void foreach_set(const std::function<void(typed::set<Domain>)> &fn) const;
@@ -2498,9 +2294,7 @@ struct basic_set<Domain> : public isl::basic_set {
   inline typed::set<Domain> gist(const typed::set<Domain> &context) const;
   inline typed::union_set<Domain> gist(const typed::union_set<Domain> &context) const;
   inline typed::basic_set<Domain> gist(const typed::point<Domain> &context) const;
-  inline typed::set<Domain> gist_params(const typed::set<> &context) const;
   inline typed::map<Domain, Domain> identity() const;
-  inline typed::pw_aff<Domain, Anonymous> indicator_function() const;
   template <typename Arg1>
   inline typed::map<Arg1, Domain> insert_domain(const typed::space<Arg1> &domain) const;
   inline typed::basic_set<Domain> intersect(const typed::basic_set<Domain> &bset2) const;
@@ -2510,7 +2304,6 @@ struct basic_set<Domain> : public isl::basic_set {
   inline typed::basic_set<Domain> intersect_params(const typed::basic_set<> &bset2) const;
   inline typed::set<Domain> intersect_params(const typed::set<> &params) const;
   inline typed::basic_set<Domain> intersect_params(const typed::point<> &bset2) const;
-  inline typed::fixed_box<Domain> lattice_tile() const;
   inline typed::set<Domain> lexmax() const;
   inline typed::pw_multi_aff<Domain> lexmax_pw_multi_aff() const;
   inline typed::set<Domain> lexmin() const;
@@ -2521,8 +2314,6 @@ struct basic_set<Domain> : public isl::basic_set {
   inline typed::val<Domain> max_val(const typed::aff<> &obj) const = delete;
   inline typed::multi_pw_aff<Domain> min_multi_pw_aff() const;
   inline typed::val<Domain> min_val(const typed::aff<> &obj) const = delete;
-  inline typed::pw_aff<Domain, Anonymous> param_pw_aff_on_domain(const typed::id<Anonymous> &id) const;
-  inline typed::pw_aff<Domain, Anonymous> param_pw_aff_on_domain(const std::string &id) const;
   inline typed::basic_set<> params() const;
   inline typed::multi_val<Domain> plain_multi_val_if_fixed() const;
   template <typename Domain2>
@@ -2539,11 +2330,8 @@ struct basic_set<Domain> : public isl::basic_set {
   inline typed::set<Domain> project_out_param(const typed::id<Anonymous> &id) const;
   inline typed::set<Domain> project_out_param(const std::string &id) const;
   inline typed::set<Domain> project_out_param(const typed::id_list<Anonymous> &list) const;
-  inline typed::pw_aff<Domain, Anonymous> pw_aff_on_domain(const typed::val<Anonymous> &v) const;
-  inline typed::pw_aff<Domain, Anonymous> pw_aff_on_domain(long v) const;
   template <typename Range>
   inline typed::pw_multi_aff<Domain, Range> pw_multi_aff_on_domain(const typed::multi_val<Range> &mv) const;
-  inline typed::set_list<Domain> set_list() const;
   inline typed::fixed_box<Domain> simple_fixed_box_hull() const;
   inline typed::space<Domain> space() const;
   inline typed::set<Domain> subtract(const typed::set<Domain> &set2) const;
@@ -2561,7 +2349,6 @@ struct basic_set<Domain> : public isl::basic_set {
   inline typed::map<Domain> unwrap() const = delete;
   inline typed::set<Domain> upper_bound(const typed::multi_pw_aff<Domain> &upper) const;
   inline typed::set<Domain> upper_bound(const typed::multi_val<Domain> &upper) const;
-  inline typed::set<Domain> wrapped_reverse() const = delete;
 };
 
 template <typename Domain, typename Range>
@@ -2582,8 +2369,6 @@ struct basic_set<pair<Domain, Range>> : public isl::basic_set {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -2606,8 +2391,6 @@ struct basic_set<pair<Domain, Range>> : public isl::basic_set {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -2656,9 +2439,7 @@ struct basic_set<pair<Domain, Range>> : public isl::basic_set {
   inline typed::set<> bind(const typed::multi_id<pair<Domain, Range>> &tuple) const;
   inline typed::set<pair<Domain, Range>> coalesce() const;
   inline typed::basic_set<pair<Domain, Range>> detect_equalities() const;
-  inline typed::set<pair<Domain, Range>> drop_unused_params() const;
   inline bool every_set(const std::function<bool(typed::set<pair<Domain, Range>>)> &test) const;
-  inline typed::set<pair<Domain, Range>> extract_set(const typed::space<pair<Domain, Range>> &space) const;
   inline void foreach_basic_set(const std::function<void(typed::basic_set<pair<Domain, Range>>)> &fn) const;
   inline void foreach_point(const std::function<void(typed::point<pair<Domain, Range>>)> &fn) const;
   inline void foreach_set(const std::function<void(typed::set<pair<Domain, Range>>)> &fn) const;
@@ -2666,9 +2447,7 @@ struct basic_set<pair<Domain, Range>> : public isl::basic_set {
   inline typed::set<pair<Domain, Range>> gist(const typed::set<pair<Domain, Range>> &context) const;
   inline typed::union_set<pair<Domain, Range>> gist(const typed::union_set<pair<Domain, Range>> &context) const;
   inline typed::basic_set<pair<Domain, Range>> gist(const typed::point<pair<Domain, Range>> &context) const;
-  inline typed::set<pair<Domain, Range>> gist_params(const typed::set<> &context) const;
   inline typed::map<pair<Domain, Range>, pair<Domain, Range>> identity() const;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> indicator_function() const;
   template <typename Arg2>
   inline typed::map<Arg2, pair<Domain, Range>> insert_domain(const typed::space<Arg2> &domain) const;
   inline typed::basic_set<pair<Domain, Range>> intersect(const typed::basic_set<pair<Domain, Range>> &bset2) const;
@@ -2678,7 +2457,6 @@ struct basic_set<pair<Domain, Range>> : public isl::basic_set {
   inline typed::basic_set<pair<Domain, Range>> intersect_params(const typed::basic_set<> &bset2) const;
   inline typed::set<pair<Domain, Range>> intersect_params(const typed::set<> &params) const;
   inline typed::basic_set<pair<Domain, Range>> intersect_params(const typed::point<> &bset2) const;
-  inline typed::fixed_box<pair<Domain, Range>> lattice_tile() const;
   inline typed::set<pair<Domain, Range>> lexmax() const;
   inline typed::pw_multi_aff<pair<Domain, Range>> lexmax_pw_multi_aff() const;
   inline typed::set<pair<Domain, Range>> lexmin() const;
@@ -2689,8 +2467,6 @@ struct basic_set<pair<Domain, Range>> : public isl::basic_set {
   inline typed::val<pair<Domain, Range>> max_val(const typed::aff<> &obj) const = delete;
   inline typed::multi_pw_aff<pair<Domain, Range>> min_multi_pw_aff() const;
   inline typed::val<pair<Domain, Range>> min_val(const typed::aff<> &obj) const = delete;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> param_pw_aff_on_domain(const typed::id<Anonymous> &id) const;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> param_pw_aff_on_domain(const std::string &id) const;
   inline typed::basic_set<> params() const;
   inline typed::multi_val<pair<Domain, Range>> plain_multi_val_if_fixed() const;
   template <typename Domain2>
@@ -2707,11 +2483,8 @@ struct basic_set<pair<Domain, Range>> : public isl::basic_set {
   inline typed::set<pair<Domain, Range>> project_out_param(const typed::id<Anonymous> &id) const;
   inline typed::set<pair<Domain, Range>> project_out_param(const std::string &id) const;
   inline typed::set<pair<Domain, Range>> project_out_param(const typed::id_list<Anonymous> &list) const;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> pw_aff_on_domain(const typed::val<Anonymous> &v) const;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> pw_aff_on_domain(long v) const;
   template <typename Arg2>
   inline typed::pw_multi_aff<pair<Domain, Range>, Arg2> pw_multi_aff_on_domain(const typed::multi_val<Arg2> &mv) const;
-  inline typed::set_list<pair<Domain, Range>> set_list() const;
   inline typed::fixed_box<pair<Domain, Range>> simple_fixed_box_hull() const;
   inline typed::space<pair<Domain, Range>> space() const;
   inline typed::set<pair<Domain, Range>> subtract(const typed::set<pair<Domain, Range>> &set2) const;
@@ -2729,7 +2502,6 @@ struct basic_set<pair<Domain, Range>> : public isl::basic_set {
   inline typed::map<Domain, Range> unwrap() const;
   inline typed::set<pair<Domain, Range>> upper_bound(const typed::multi_pw_aff<pair<Domain, Range>> &upper) const;
   inline typed::set<pair<Domain, Range>> upper_bound(const typed::multi_val<pair<Domain, Range>> &upper) const;
-  inline typed::set<pair<Range, Domain>> wrapped_reverse() const;
 };
 
 template <typename Domain>
@@ -2750,8 +2522,6 @@ struct fixed_box<Domain> : public isl::fixed_box {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -2774,8 +2544,6 @@ struct fixed_box<Domain> : public isl::fixed_box {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -2810,7 +2578,6 @@ struct fixed_box<Domain> : public isl::fixed_box {
   static fixed_box from(const isl::fixed_box &obj) {
     return fixed_box(obj);
   }
-  inline explicit fixed_box(const isl::ctx &ctx, const std::string &str);
   inline typed::multi_aff<Domain> offset() const;
   inline typed::multi_aff<Domain> get_offset() const = delete;
   inline typed::multi_val<Domain> size() const;
@@ -2838,8 +2605,6 @@ struct fixed_box<Domain, Range> : public isl::fixed_box {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -2861,8 +2626,6 @@ struct fixed_box<Domain, Range> : public isl::fixed_box {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -2898,7 +2661,6 @@ struct fixed_box<Domain, Range> : public isl::fixed_box {
   static fixed_box from(const isl::fixed_box &obj) {
     return fixed_box(obj);
   }
-  inline explicit fixed_box(const isl::ctx &ctx, const std::string &str);
   inline typed::multi_aff<Domain, Range> offset() const;
   inline typed::multi_aff<Domain, Range> get_offset() const = delete;
   inline typed::multi_val<Range> size() const;
@@ -2926,8 +2688,6 @@ struct id<Anonymous> : public isl::id {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -2949,8 +2709,6 @@ struct id<Anonymous> : public isl::id {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -2998,8 +2756,6 @@ struct id_list<Anonymous> : public isl::id_list {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -3021,8 +2777,6 @@ struct id_list<Anonymous> : public isl::id_list {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -3049,16 +2803,12 @@ struct id_list<Anonymous> : public isl::id_list {
   }
   inline explicit id_list(const isl::ctx &ctx, int n);
   inline explicit id_list(const typed::id<Anonymous> &el);
-  inline explicit id_list(const isl::ctx &ctx, const std::string &str);
   inline typed::id_list<Anonymous> add(const typed::id<Anonymous> &el) const;
   inline typed::id_list<Anonymous> add(const std::string &el) const;
   inline typed::id<Anonymous> at(int index) const;
   inline typed::id<Anonymous> get_at(int index) const = delete;
   inline typed::id_list<Anonymous> drop(unsigned int first, unsigned int n) const;
   inline void foreach(const std::function<void(typed::id<Anonymous>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::id<Anonymous>, typed::id<Anonymous>)> &follows, const std::function<void(typed::id_list<Anonymous>)> &fn) const;
-  inline typed::id_list<Anonymous> set_at(int index, const typed::id<Anonymous> &el) const;
-  inline typed::id_list<Anonymous> set_at(int index, const std::string &el) const;
 };
 
 template <typename Domain, typename Range>
@@ -3079,8 +2829,6 @@ struct map<Domain, Range> : public isl::map {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -3103,8 +2851,6 @@ struct map<Domain, Range> : public isl::map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -3175,9 +2921,7 @@ struct map<Domain, Range> : public isl::map {
   inline typed::union_map<pair<Domain, Domain2>, Range> domain_product(const typed::union_map<Domain2, Range> &umap2) const;
   template <typename Domain2>
   inline typed::map<pair<Domain, Domain2>, Range> domain_product(const typed::basic_map<Domain2, Range> &map2) const;
-  inline typed::map<Domain, Range> domain_reverse() const = delete;
   inline typed::id<Domain, Range> get_domain_tuple_id() const = delete;
-  inline typed::map<Domain, Range> drop_unused_params() const;
   inline typed::map<Domain, Range> eq_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::union_map<Domain, Range> eq_at(const typed::multi_union_pw_aff<> &mupa) const = delete;
   inline typed::map<Domain, Range> eq_at(const typed::aff<> &mpa) const = delete;
@@ -3185,7 +2929,6 @@ struct map<Domain, Range> : public isl::map {
   inline typed::map<Domain, Range> eq_at(const typed::pw_aff<> &mpa) const = delete;
   inline typed::map<Domain, Range> eq_at(const typed::pw_multi_aff<> &mpa) const = delete;
   inline bool every_map(const std::function<bool(typed::map<Domain, Range>)> &test) const;
-  inline typed::map<Domain, Range> extract_map(const typed::space<Domain, Range> &space) const;
   inline typed::map<Domain, Range> flatten_domain() const = delete;
   inline typed::map<Domain, Range> flatten_range() const = delete;
   inline void foreach_basic_map(const std::function<void(typed::basic_map<Domain, Range>)> &fn) const;
@@ -3197,9 +2940,6 @@ struct map<Domain, Range> : public isl::map {
   inline typed::union_map<Domain, Range> gist_domain(const typed::union_set<Domain> &uset) const;
   inline typed::map<Domain, Range> gist_domain(const typed::basic_set<Domain> &context) const;
   inline typed::map<Domain, Range> gist_domain(const typed::point<Domain> &context) const;
-  inline typed::map<Domain, Range> gist_params(const typed::set<> &context) const;
-  inline typed::map<Domain, Range> gist_params(const typed::basic_set<> &context) const;
-  inline typed::map<Domain, Range> gist_params(const typed::point<> &context) const;
   inline typed::map<Domain, Range> intersect(const typed::map<Domain, Range> &map2) const;
   inline typed::union_map<Domain, Range> intersect(const typed::union_map<Domain, Range> &umap2) const;
   inline typed::map<Domain, Range> intersect(const typed::basic_map<Domain, Range> &map2) const;
@@ -3208,10 +2948,6 @@ struct map<Domain, Range> : public isl::map {
   inline typed::union_map<Domain, Range> intersect_domain(const typed::union_set<Domain> &uset) const;
   inline typed::map<Domain, Range> intersect_domain(const typed::basic_set<Domain> &set) const;
   inline typed::map<Domain, Range> intersect_domain(const typed::point<Domain> &set) const;
-  inline typed::map<Domain, Range> intersect_domain_wrapped_domain(const typed::set<> &domain) const = delete;
-  inline typed::union_map<Domain, Range> intersect_domain_wrapped_domain(const typed::union_set<> &domain) const = delete;
-  inline typed::map<Domain, Range> intersect_domain_wrapped_domain(const typed::basic_set<> &domain) const = delete;
-  inline typed::map<Domain, Range> intersect_domain_wrapped_domain(const typed::point<> &domain) const = delete;
   inline typed::map<Domain, Range> intersect_params(const typed::set<> &params) const;
   inline typed::map<Domain, Range> intersect_params(const typed::basic_set<> &params) const;
   inline typed::map<Domain, Range> intersect_params(const typed::point<> &params) const;
@@ -3220,10 +2956,6 @@ struct map<Domain, Range> : public isl::map {
   inline typed::union_map<Domain, Range> intersect_range(const typed::union_set<Range> &uset) const;
   inline typed::map<Domain, Range> intersect_range(const typed::basic_set<Range> &set) const;
   inline typed::map<Domain, Range> intersect_range(const typed::point<Range> &set) const;
-  inline typed::map<Domain, Range> intersect_range_wrapped_domain(const typed::set<> &domain) const = delete;
-  inline typed::union_map<Domain, Range> intersect_range_wrapped_domain(const typed::union_set<> &domain) const = delete;
-  inline typed::map<Domain, Range> intersect_range_wrapped_domain(const typed::basic_set<> &domain) const = delete;
-  inline typed::map<Domain, Range> intersect_range_wrapped_domain(const typed::point<> &domain) const = delete;
   inline typed::map<Domain, Range> lex_ge_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::map<Domain, Range> lex_ge_at(const typed::aff<> &mpa) const = delete;
   inline typed::map<Domain, Range> lex_ge_at(const typed::multi_aff<> &mpa) const = delete;
@@ -3253,10 +2985,8 @@ struct map<Domain, Range> : public isl::map {
   inline typed::map<Domain, Range> lower_bound(const typed::multi_aff<Domain, Range> &lower) const;
   inline typed::map<Domain, Range> lower_bound(const typed::pw_aff<Domain, Range> &lower) const;
   inline typed::map<Domain, Range> lower_bound(const typed::pw_multi_aff<Domain, Range> &lower) const;
-  inline typed::map_list<Domain, Range> map_list() const;
   inline typed::multi_pw_aff<Domain, Range> max_multi_pw_aff() const;
   inline typed::multi_pw_aff<Domain, Range> min_multi_pw_aff() const;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::map<Domain2, Range> preimage_domain(const typed::multi_aff<Domain2, Domain> &ma) const;
   template <typename Domain2>
@@ -3278,14 +3008,9 @@ struct map<Domain, Range> : public isl::map {
   template <typename Domain2, typename Range2>
   inline typed::map<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::basic_map<Domain2, Range2> &map2) const;
   inline typed::map<Domain, Range> project_out_all_params() const;
-  inline typed::map<Domain, Range> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::map<Domain, Range> project_out_param(const std::string &id) const;
-  inline typed::map<Domain, Range> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::set<Range> range() const;
   inline typed::map<Domain, Range> range_factor_domain() const = delete;
   inline typed::map<Domain, Range> range_factor_range() const = delete;
-  inline typed::fixed_box<Domain, Range> range_lattice_tile() const;
-  inline typed::fixed_box<Domain, Range> get_range_lattice_tile() const = delete;
   inline typed::union_map<pair<Domain, Range>, Range> range_map() const;
   template <typename Range2>
   inline typed::map<Domain, pair<Range, Range2>> range_product(const typed::map<Domain, Range2> &map2) const;
@@ -3346,8 +3071,6 @@ struct map<pair<Domain, Range>, Range2> : public isl::map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -3369,8 +3092,6 @@ struct map<pair<Domain, Range>, Range2> : public isl::map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -3442,9 +3163,7 @@ struct map<pair<Domain, Range>, Range2> : public isl::map {
   inline typed::union_map<pair<pair<Domain, Range>, Domain2>, Range2> domain_product(const typed::union_map<Domain2, Range2> &umap2) const;
   template <typename Domain2>
   inline typed::map<pair<pair<Domain, Range>, Domain2>, Range2> domain_product(const typed::basic_map<Domain2, Range2> &map2) const;
-  inline typed::map<pair<Range, Domain>, Range2> domain_reverse() const;
   inline typed::id<pair<Domain, Range>, Range2> get_domain_tuple_id() const = delete;
-  inline typed::map<pair<Domain, Range>, Range2> drop_unused_params() const;
   inline typed::map<pair<Domain, Range>, Range2> eq_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::union_map<pair<Domain, Range>, Range2> eq_at(const typed::multi_union_pw_aff<> &mupa) const = delete;
   inline typed::map<pair<Domain, Range>, Range2> eq_at(const typed::aff<> &mpa) const = delete;
@@ -3452,7 +3171,6 @@ struct map<pair<Domain, Range>, Range2> : public isl::map {
   inline typed::map<pair<Domain, Range>, Range2> eq_at(const typed::pw_aff<> &mpa) const = delete;
   inline typed::map<pair<Domain, Range>, Range2> eq_at(const typed::pw_multi_aff<> &mpa) const = delete;
   inline bool every_map(const std::function<bool(typed::map<pair<Domain, Range>, Range2>)> &test) const;
-  inline typed::map<pair<Domain, Range>, Range2> extract_map(const typed::space<pair<Domain, Range>, Range2> &space) const;
   inline typed::map<Anonymous, Range2> flatten_domain() const;
   inline typed::map<pair<Domain, Range>, Range2> flatten_range() const = delete;
   inline void foreach_basic_map(const std::function<void(typed::basic_map<pair<Domain, Range>, Range2>)> &fn) const;
@@ -3464,9 +3182,6 @@ struct map<pair<Domain, Range>, Range2> : public isl::map {
   inline typed::union_map<pair<Domain, Range>, Range2> gist_domain(const typed::union_set<pair<Domain, Range>> &uset) const;
   inline typed::map<pair<Domain, Range>, Range2> gist_domain(const typed::basic_set<pair<Domain, Range>> &context) const;
   inline typed::map<pair<Domain, Range>, Range2> gist_domain(const typed::point<pair<Domain, Range>> &context) const;
-  inline typed::map<pair<Domain, Range>, Range2> gist_params(const typed::set<> &context) const;
-  inline typed::map<pair<Domain, Range>, Range2> gist_params(const typed::basic_set<> &context) const;
-  inline typed::map<pair<Domain, Range>, Range2> gist_params(const typed::point<> &context) const;
   inline typed::map<pair<Domain, Range>, Range2> intersect(const typed::map<pair<Domain, Range>, Range2> &map2) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect(const typed::union_map<pair<Domain, Range>, Range2> &umap2) const;
   inline typed::map<pair<Domain, Range>, Range2> intersect(const typed::basic_map<pair<Domain, Range>, Range2> &map2) const;
@@ -3475,10 +3190,6 @@ struct map<pair<Domain, Range>, Range2> : public isl::map {
   inline typed::union_map<pair<Domain, Range>, Range2> intersect_domain(const typed::union_set<pair<Domain, Range>> &uset) const;
   inline typed::map<pair<Domain, Range>, Range2> intersect_domain(const typed::basic_set<pair<Domain, Range>> &set) const;
   inline typed::map<pair<Domain, Range>, Range2> intersect_domain(const typed::point<pair<Domain, Range>> &set) const;
-  inline typed::map<pair<Domain, Range>, Range2> intersect_domain_wrapped_domain(const typed::set<Domain> &domain) const;
-  inline typed::union_map<pair<Domain, Range>, Range2> intersect_domain_wrapped_domain(const typed::union_set<Domain> &domain) const;
-  inline typed::map<pair<Domain, Range>, Range2> intersect_domain_wrapped_domain(const typed::basic_set<Domain> &domain) const;
-  inline typed::map<pair<Domain, Range>, Range2> intersect_domain_wrapped_domain(const typed::point<Domain> &domain) const;
   inline typed::map<pair<Domain, Range>, Range2> intersect_params(const typed::set<> &params) const;
   inline typed::map<pair<Domain, Range>, Range2> intersect_params(const typed::basic_set<> &params) const;
   inline typed::map<pair<Domain, Range>, Range2> intersect_params(const typed::point<> &params) const;
@@ -3487,10 +3198,6 @@ struct map<pair<Domain, Range>, Range2> : public isl::map {
   inline typed::union_map<pair<Domain, Range>, Range2> intersect_range(const typed::union_set<Range2> &uset) const;
   inline typed::map<pair<Domain, Range>, Range2> intersect_range(const typed::basic_set<Range2> &set) const;
   inline typed::map<pair<Domain, Range>, Range2> intersect_range(const typed::point<Range2> &set) const;
-  inline typed::map<pair<Domain, Range>, Range2> intersect_range_wrapped_domain(const typed::set<> &domain) const = delete;
-  inline typed::union_map<pair<Domain, Range>, Range2> intersect_range_wrapped_domain(const typed::union_set<> &domain) const = delete;
-  inline typed::map<pair<Domain, Range>, Range2> intersect_range_wrapped_domain(const typed::basic_set<> &domain) const = delete;
-  inline typed::map<pair<Domain, Range>, Range2> intersect_range_wrapped_domain(const typed::point<> &domain) const = delete;
   inline typed::map<pair<Domain, Range>, Range2> lex_ge_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::map<pair<Domain, Range>, Range2> lex_ge_at(const typed::aff<> &mpa) const = delete;
   inline typed::map<pair<Domain, Range>, Range2> lex_ge_at(const typed::multi_aff<> &mpa) const = delete;
@@ -3520,10 +3227,8 @@ struct map<pair<Domain, Range>, Range2> : public isl::map {
   inline typed::map<pair<Domain, Range>, Range2> lower_bound(const typed::multi_aff<pair<Domain, Range>, Range2> &lower) const;
   inline typed::map<pair<Domain, Range>, Range2> lower_bound(const typed::pw_aff<pair<Domain, Range>, Range2> &lower) const;
   inline typed::map<pair<Domain, Range>, Range2> lower_bound(const typed::pw_multi_aff<pair<Domain, Range>, Range2> &lower) const;
-  inline typed::map_list<pair<Domain, Range>, Range2> map_list() const;
   inline typed::multi_pw_aff<pair<Domain, Range>, Range2> max_multi_pw_aff() const;
   inline typed::multi_pw_aff<pair<Domain, Range>, Range2> min_multi_pw_aff() const;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::map<Domain2, Range2> preimage_domain(const typed::multi_aff<Domain2, pair<Domain, Range>> &ma) const;
   template <typename Domain2>
@@ -3545,14 +3250,9 @@ struct map<pair<Domain, Range>, Range2> : public isl::map {
   template <typename Domain2, typename Arg3>
   inline typed::map<pair<pair<Domain, Range>, Domain2>, pair<Range2, Arg3>> product(const typed::basic_map<Domain2, Arg3> &map2) const;
   inline typed::map<pair<Domain, Range>, Range2> project_out_all_params() const;
-  inline typed::map<pair<Domain, Range>, Range2> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::map<pair<Domain, Range>, Range2> project_out_param(const std::string &id) const;
-  inline typed::map<pair<Domain, Range>, Range2> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::set<Range2> range() const;
   inline typed::map<pair<Domain, Range>, Range2> range_factor_domain() const = delete;
   inline typed::map<pair<Domain, Range>, Range2> range_factor_range() const = delete;
-  inline typed::fixed_box<pair<Domain, Range>, Range2> range_lattice_tile() const;
-  inline typed::fixed_box<pair<Domain, Range>, Range2> get_range_lattice_tile() const = delete;
   inline typed::union_map<pair<pair<Domain, Range>, Range2>, Range2> range_map() const;
   template <typename Arg3>
   inline typed::map<pair<Domain, Range>, pair<Range2, Arg3>> range_product(const typed::map<pair<Domain, Range>, Arg3> &map2) const;
@@ -3611,8 +3311,6 @@ struct map<Domain, Domain> : public isl::map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -3634,8 +3332,6 @@ struct map<Domain, Domain> : public isl::map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -3705,21 +3401,20 @@ struct map<Domain, Domain> : public isl::map {
   inline typed::union_map<pair<Domain, Domain2>, Domain> domain_product(const typed::union_map<Domain2, Domain> &umap2) const;
   template <typename Domain2>
   inline typed::map<pair<Domain, Domain2>, Domain> domain_product(const typed::basic_map<Domain2, Domain> &map2) const;
-  inline typed::map<Domain, Domain> domain_reverse() const = delete;
   inline typed::id<Domain, Domain> get_domain_tuple_id() const = delete;
-  inline typed::map<Domain, Domain> drop_unused_params() const;
   template <typename Range>
   inline typed::map<Domain, Domain> eq_at(const typed::multi_pw_aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::union_map<Domain, Domain> eq_at(const typed::multi_union_pw_aff<Domain, Range> &mupa) const;
-  inline typed::map<Domain, Domain> eq_at(const typed::aff<Domain, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<Domain, Domain> eq_at(const typed::aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::map<Domain, Domain> eq_at(const typed::multi_aff<Domain, Range> &mpa) const;
-  inline typed::map<Domain, Domain> eq_at(const typed::pw_aff<Domain, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<Domain, Domain> eq_at(const typed::pw_aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::map<Domain, Domain> eq_at(const typed::pw_multi_aff<Domain, Range> &mpa) const;
   inline bool every_map(const std::function<bool(typed::map<Domain, Domain>)> &test) const;
-  inline typed::map<Domain, Domain> extract_map(const typed::space<Domain, Domain> &space) const;
   inline typed::map<Domain, Domain> flatten_domain() const = delete;
   inline typed::map<Domain, Domain> flatten_range() const = delete;
   inline void foreach_basic_map(const std::function<void(typed::basic_map<Domain, Domain>)> &fn) const;
@@ -3731,9 +3426,6 @@ struct map<Domain, Domain> : public isl::map {
   inline typed::union_map<Domain, Domain> gist_domain(const typed::union_set<Domain> &uset) const;
   inline typed::map<Domain, Domain> gist_domain(const typed::basic_set<Domain> &context) const;
   inline typed::map<Domain, Domain> gist_domain(const typed::point<Domain> &context) const;
-  inline typed::map<Domain, Domain> gist_params(const typed::set<> &context) const;
-  inline typed::map<Domain, Domain> gist_params(const typed::basic_set<> &context) const;
-  inline typed::map<Domain, Domain> gist_params(const typed::point<> &context) const;
   inline typed::map<Domain, Domain> intersect(const typed::map<Domain, Domain> &map2) const;
   inline typed::union_map<Domain, Domain> intersect(const typed::union_map<Domain, Domain> &umap2) const;
   inline typed::map<Domain, Domain> intersect(const typed::basic_map<Domain, Domain> &map2) const;
@@ -3742,10 +3434,6 @@ struct map<Domain, Domain> : public isl::map {
   inline typed::union_map<Domain, Domain> intersect_domain(const typed::union_set<Domain> &uset) const;
   inline typed::map<Domain, Domain> intersect_domain(const typed::basic_set<Domain> &set) const;
   inline typed::map<Domain, Domain> intersect_domain(const typed::point<Domain> &set) const;
-  inline typed::map<Domain, Domain> intersect_domain_wrapped_domain(const typed::set<> &domain) const = delete;
-  inline typed::union_map<Domain, Domain> intersect_domain_wrapped_domain(const typed::union_set<> &domain) const = delete;
-  inline typed::map<Domain, Domain> intersect_domain_wrapped_domain(const typed::basic_set<> &domain) const = delete;
-  inline typed::map<Domain, Domain> intersect_domain_wrapped_domain(const typed::point<> &domain) const = delete;
   inline typed::map<Domain, Domain> intersect_params(const typed::set<> &params) const;
   inline typed::map<Domain, Domain> intersect_params(const typed::basic_set<> &params) const;
   inline typed::map<Domain, Domain> intersect_params(const typed::point<> &params) const;
@@ -3754,40 +3442,44 @@ struct map<Domain, Domain> : public isl::map {
   inline typed::union_map<Domain, Domain> intersect_range(const typed::union_set<Domain> &uset) const;
   inline typed::map<Domain, Domain> intersect_range(const typed::basic_set<Domain> &set) const;
   inline typed::map<Domain, Domain> intersect_range(const typed::point<Domain> &set) const;
-  inline typed::map<Domain, Domain> intersect_range_wrapped_domain(const typed::set<> &domain) const = delete;
-  inline typed::union_map<Domain, Domain> intersect_range_wrapped_domain(const typed::union_set<> &domain) const = delete;
-  inline typed::map<Domain, Domain> intersect_range_wrapped_domain(const typed::basic_set<> &domain) const = delete;
-  inline typed::map<Domain, Domain> intersect_range_wrapped_domain(const typed::point<> &domain) const = delete;
   template <typename Range>
   inline typed::map<Domain, Domain> lex_ge_at(const typed::multi_pw_aff<Domain, Range> &mpa) const;
-  inline typed::map<Domain, Domain> lex_ge_at(const typed::aff<Domain, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<Domain, Domain> lex_ge_at(const typed::aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::map<Domain, Domain> lex_ge_at(const typed::multi_aff<Domain, Range> &mpa) const;
-  inline typed::map<Domain, Domain> lex_ge_at(const typed::pw_aff<Domain, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<Domain, Domain> lex_ge_at(const typed::pw_aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::map<Domain, Domain> lex_ge_at(const typed::pw_multi_aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::map<Domain, Domain> lex_gt_at(const typed::multi_pw_aff<Domain, Range> &mpa) const;
-  inline typed::map<Domain, Domain> lex_gt_at(const typed::aff<Domain, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<Domain, Domain> lex_gt_at(const typed::aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::map<Domain, Domain> lex_gt_at(const typed::multi_aff<Domain, Range> &mpa) const;
-  inline typed::map<Domain, Domain> lex_gt_at(const typed::pw_aff<Domain, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<Domain, Domain> lex_gt_at(const typed::pw_aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::map<Domain, Domain> lex_gt_at(const typed::pw_multi_aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::map<Domain, Domain> lex_le_at(const typed::multi_pw_aff<Domain, Range> &mpa) const;
-  inline typed::map<Domain, Domain> lex_le_at(const typed::aff<Domain, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<Domain, Domain> lex_le_at(const typed::aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::map<Domain, Domain> lex_le_at(const typed::multi_aff<Domain, Range> &mpa) const;
-  inline typed::map<Domain, Domain> lex_le_at(const typed::pw_aff<Domain, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<Domain, Domain> lex_le_at(const typed::pw_aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::map<Domain, Domain> lex_le_at(const typed::pw_multi_aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::map<Domain, Domain> lex_lt_at(const typed::multi_pw_aff<Domain, Range> &mpa) const;
-  inline typed::map<Domain, Domain> lex_lt_at(const typed::aff<Domain, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<Domain, Domain> lex_lt_at(const typed::aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::map<Domain, Domain> lex_lt_at(const typed::multi_aff<Domain, Range> &mpa) const;
-  inline typed::map<Domain, Domain> lex_lt_at(const typed::pw_aff<Domain, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<Domain, Domain> lex_lt_at(const typed::pw_aff<Domain, Range> &mpa) const;
   template <typename Range>
   inline typed::map<Domain, Domain> lex_lt_at(const typed::pw_multi_aff<Domain, Range> &mpa) const;
   inline typed::map<Domain, Domain> lexmax() const;
@@ -3799,10 +3491,8 @@ struct map<Domain, Domain> : public isl::map {
   inline typed::map<Domain, Domain> lower_bound(const typed::multi_aff<Domain, Domain> &lower) const;
   inline typed::map<Domain, Domain> lower_bound(const typed::pw_aff<Domain, Domain> &lower) const;
   inline typed::map<Domain, Domain> lower_bound(const typed::pw_multi_aff<Domain, Domain> &lower) const;
-  inline typed::map_list<Domain, Domain> map_list() const;
   inline typed::multi_pw_aff<Domain, Domain> max_multi_pw_aff() const;
   inline typed::multi_pw_aff<Domain, Domain> min_multi_pw_aff() const;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::map<Domain2, Domain> preimage_domain(const typed::multi_aff<Domain2, Domain> &ma) const;
   template <typename Domain2>
@@ -3824,14 +3514,9 @@ struct map<Domain, Domain> : public isl::map {
   template <typename Domain2, typename Range2>
   inline typed::map<pair<Domain, Domain2>, pair<Domain, Range2>> product(const typed::basic_map<Domain2, Range2> &map2) const;
   inline typed::map<Domain, Domain> project_out_all_params() const;
-  inline typed::map<Domain, Domain> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::map<Domain, Domain> project_out_param(const std::string &id) const;
-  inline typed::map<Domain, Domain> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::set<Domain> range() const;
   inline typed::map<Domain, Domain> range_factor_domain() const = delete;
   inline typed::map<Domain, Domain> range_factor_range() const = delete;
-  inline typed::fixed_box<Domain, Domain> range_lattice_tile() const;
-  inline typed::fixed_box<Domain, Domain> get_range_lattice_tile() const = delete;
   inline typed::union_map<pair<Domain, Domain>, Domain> range_map() const;
   template <typename Range2>
   inline typed::map<Domain, pair<Domain, Range2>> range_product(const typed::map<Domain, Range2> &map2) const;
@@ -3892,8 +3577,6 @@ struct map<Domain, pair<Range, Range2>> : public isl::map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -3915,8 +3598,6 @@ struct map<Domain, pair<Range, Range2>> : public isl::map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -3988,9 +3669,7 @@ struct map<Domain, pair<Range, Range2>> : public isl::map {
   inline typed::union_map<pair<Domain, Domain2>, pair<Range, Range2>> domain_product(const typed::union_map<Domain2, pair<Range, Range2>> &umap2) const;
   template <typename Domain2>
   inline typed::map<pair<Domain, Domain2>, pair<Range, Range2>> domain_product(const typed::basic_map<Domain2, pair<Range, Range2>> &map2) const;
-  inline typed::map<Domain, pair<Range, Range2>> domain_reverse() const = delete;
   inline typed::id<Domain, pair<Range, Range2>> get_domain_tuple_id() const = delete;
-  inline typed::map<Domain, pair<Range, Range2>> drop_unused_params() const;
   inline typed::map<Domain, pair<Range, Range2>> eq_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::union_map<Domain, pair<Range, Range2>> eq_at(const typed::multi_union_pw_aff<> &mupa) const = delete;
   inline typed::map<Domain, pair<Range, Range2>> eq_at(const typed::aff<> &mpa) const = delete;
@@ -3998,7 +3677,6 @@ struct map<Domain, pair<Range, Range2>> : public isl::map {
   inline typed::map<Domain, pair<Range, Range2>> eq_at(const typed::pw_aff<> &mpa) const = delete;
   inline typed::map<Domain, pair<Range, Range2>> eq_at(const typed::pw_multi_aff<> &mpa) const = delete;
   inline bool every_map(const std::function<bool(typed::map<Domain, pair<Range, Range2>>)> &test) const;
-  inline typed::map<Domain, pair<Range, Range2>> extract_map(const typed::space<Domain, pair<Range, Range2>> &space) const;
   inline typed::map<Domain, pair<Range, Range2>> flatten_domain() const = delete;
   inline typed::map<Domain, Anonymous> flatten_range() const;
   inline void foreach_basic_map(const std::function<void(typed::basic_map<Domain, pair<Range, Range2>>)> &fn) const;
@@ -4010,9 +3688,6 @@ struct map<Domain, pair<Range, Range2>> : public isl::map {
   inline typed::union_map<Domain, pair<Range, Range2>> gist_domain(const typed::union_set<Domain> &uset) const;
   inline typed::map<Domain, pair<Range, Range2>> gist_domain(const typed::basic_set<Domain> &context) const;
   inline typed::map<Domain, pair<Range, Range2>> gist_domain(const typed::point<Domain> &context) const;
-  inline typed::map<Domain, pair<Range, Range2>> gist_params(const typed::set<> &context) const;
-  inline typed::map<Domain, pair<Range, Range2>> gist_params(const typed::basic_set<> &context) const;
-  inline typed::map<Domain, pair<Range, Range2>> gist_params(const typed::point<> &context) const;
   inline typed::map<Domain, pair<Range, Range2>> intersect(const typed::map<Domain, pair<Range, Range2>> &map2) const;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect(const typed::union_map<Domain, pair<Range, Range2>> &umap2) const;
   inline typed::map<Domain, pair<Range, Range2>> intersect(const typed::basic_map<Domain, pair<Range, Range2>> &map2) const;
@@ -4021,10 +3696,6 @@ struct map<Domain, pair<Range, Range2>> : public isl::map {
   inline typed::union_map<Domain, pair<Range, Range2>> intersect_domain(const typed::union_set<Domain> &uset) const;
   inline typed::map<Domain, pair<Range, Range2>> intersect_domain(const typed::basic_set<Domain> &set) const;
   inline typed::map<Domain, pair<Range, Range2>> intersect_domain(const typed::point<Domain> &set) const;
-  inline typed::map<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::set<> &domain) const = delete;
-  inline typed::union_map<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::union_set<> &domain) const = delete;
-  inline typed::map<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::basic_set<> &domain) const = delete;
-  inline typed::map<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::point<> &domain) const = delete;
   inline typed::map<Domain, pair<Range, Range2>> intersect_params(const typed::set<> &params) const;
   inline typed::map<Domain, pair<Range, Range2>> intersect_params(const typed::basic_set<> &params) const;
   inline typed::map<Domain, pair<Range, Range2>> intersect_params(const typed::point<> &params) const;
@@ -4033,10 +3704,6 @@ struct map<Domain, pair<Range, Range2>> : public isl::map {
   inline typed::union_map<Domain, pair<Range, Range2>> intersect_range(const typed::union_set<pair<Range, Range2>> &uset) const;
   inline typed::map<Domain, pair<Range, Range2>> intersect_range(const typed::basic_set<pair<Range, Range2>> &set) const;
   inline typed::map<Domain, pair<Range, Range2>> intersect_range(const typed::point<pair<Range, Range2>> &set) const;
-  inline typed::map<Domain, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::set<Range> &domain) const;
-  inline typed::union_map<Domain, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::union_set<Range> &domain) const;
-  inline typed::map<Domain, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::basic_set<Range> &domain) const;
-  inline typed::map<Domain, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::point<Range> &domain) const;
   inline typed::map<Domain, pair<Range, Range2>> lex_ge_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::map<Domain, pair<Range, Range2>> lex_ge_at(const typed::aff<> &mpa) const = delete;
   inline typed::map<Domain, pair<Range, Range2>> lex_ge_at(const typed::multi_aff<> &mpa) const = delete;
@@ -4066,10 +3733,8 @@ struct map<Domain, pair<Range, Range2>> : public isl::map {
   inline typed::map<Domain, pair<Range, Range2>> lower_bound(const typed::multi_aff<Domain, pair<Range, Range2>> &lower) const;
   inline typed::map<Domain, pair<Range, Range2>> lower_bound(const typed::pw_aff<Domain, pair<Range, Range2>> &lower) const;
   inline typed::map<Domain, pair<Range, Range2>> lower_bound(const typed::pw_multi_aff<Domain, pair<Range, Range2>> &lower) const;
-  inline typed::map_list<Domain, pair<Range, Range2>> map_list() const;
   inline typed::multi_pw_aff<Domain, pair<Range, Range2>> max_multi_pw_aff() const;
   inline typed::multi_pw_aff<Domain, pair<Range, Range2>> min_multi_pw_aff() const;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::map<Domain2, pair<Range, Range2>> preimage_domain(const typed::multi_aff<Domain2, Domain> &ma) const;
   template <typename Domain2>
@@ -4091,14 +3756,9 @@ struct map<Domain, pair<Range, Range2>> : public isl::map {
   template <typename Domain2, typename Arg3>
   inline typed::map<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>> product(const typed::basic_map<Domain2, Arg3> &map2) const;
   inline typed::map<Domain, pair<Range, Range2>> project_out_all_params() const;
-  inline typed::map<Domain, pair<Range, Range2>> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::map<Domain, pair<Range, Range2>> project_out_param(const std::string &id) const;
-  inline typed::map<Domain, pair<Range, Range2>> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::set<pair<Range, Range2>> range() const;
   inline typed::map<Domain, Range> range_factor_domain() const;
   inline typed::map<Domain, Range2> range_factor_range() const;
-  inline typed::fixed_box<Domain, pair<Range, Range2>> range_lattice_tile() const;
-  inline typed::fixed_box<Domain, pair<Range, Range2>> get_range_lattice_tile() const = delete;
   inline typed::union_map<pair<Domain, pair<Range, Range2>>, pair<Range, Range2>> range_map() const;
   template <typename Arg3>
   inline typed::map<Domain, pair<pair<Range, Range2>, Arg3>> range_product(const typed::map<Domain, Arg3> &map2) const;
@@ -4157,8 +3817,6 @@ struct map<pair<T1, T2>, pair<T1, T2>> : public isl::map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -4180,8 +3838,6 @@ struct map<pair<T1, T2>, pair<T1, T2>> : public isl::map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -4252,21 +3908,20 @@ struct map<pair<T1, T2>, pair<T1, T2>> : public isl::map {
   inline typed::union_map<pair<pair<T1, T2>, Domain2>, pair<T1, T2>> domain_product(const typed::union_map<Domain2, pair<T1, T2>> &umap2) const;
   template <typename Domain2>
   inline typed::map<pair<pair<T1, T2>, Domain2>, pair<T1, T2>> domain_product(const typed::basic_map<Domain2, pair<T1, T2>> &map2) const;
-  inline typed::map<pair<T2, T1>, pair<T1, T2>> domain_reverse() const;
   inline typed::id<pair<T1, T2>, pair<T1, T2>> get_domain_tuple_id() const = delete;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> drop_unused_params() const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> eq_at(const typed::multi_pw_aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> eq_at(const typed::multi_union_pw_aff<pair<T1, T2>, Range> &mupa) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> eq_at(const typed::aff<pair<T1, T2>, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<pair<T1, T2>, pair<T1, T2>> eq_at(const typed::aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> eq_at(const typed::multi_aff<pair<T1, T2>, Range> &mpa) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> eq_at(const typed::pw_aff<pair<T1, T2>, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<pair<T1, T2>, pair<T1, T2>> eq_at(const typed::pw_aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> eq_at(const typed::pw_multi_aff<pair<T1, T2>, Range> &mpa) const;
   inline bool every_map(const std::function<bool(typed::map<pair<T1, T2>, pair<T1, T2>>)> &test) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> extract_map(const typed::space<pair<T1, T2>, pair<T1, T2>> &space) const;
   inline typed::map<Anonymous, pair<T1, T2>> flatten_domain() const;
   inline typed::map<pair<T1, T2>, Anonymous> flatten_range() const;
   inline void foreach_basic_map(const std::function<void(typed::basic_map<pair<T1, T2>, pair<T1, T2>>)> &fn) const;
@@ -4278,9 +3933,6 @@ struct map<pair<T1, T2>, pair<T1, T2>> : public isl::map {
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> gist_domain(const typed::union_set<pair<T1, T2>> &uset) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> gist_domain(const typed::basic_set<pair<T1, T2>> &context) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> gist_domain(const typed::point<pair<T1, T2>> &context) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> gist_params(const typed::set<> &context) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> gist_params(const typed::basic_set<> &context) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> gist_params(const typed::point<> &context) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect(const typed::map<pair<T1, T2>, pair<T1, T2>> &map2) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect(const typed::union_map<pair<T1, T2>, pair<T1, T2>> &umap2) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect(const typed::basic_map<pair<T1, T2>, pair<T1, T2>> &map2) const;
@@ -4289,10 +3941,6 @@ struct map<pair<T1, T2>, pair<T1, T2>> : public isl::map {
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_domain(const typed::union_set<pair<T1, T2>> &uset) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_domain(const typed::basic_set<pair<T1, T2>> &set) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_domain(const typed::point<pair<T1, T2>> &set) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_domain_wrapped_domain(const typed::set<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_domain_wrapped_domain(const typed::union_set<T1> &domain) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_domain_wrapped_domain(const typed::basic_set<T1> &domain) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_domain_wrapped_domain(const typed::point<T1> &domain) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_params(const typed::set<> &params) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_params(const typed::basic_set<> &params) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_params(const typed::point<> &params) const;
@@ -4301,40 +3949,44 @@ struct map<pair<T1, T2>, pair<T1, T2>> : public isl::map {
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_range(const typed::union_set<pair<T1, T2>> &uset) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_range(const typed::basic_set<pair<T1, T2>> &set) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_range(const typed::point<pair<T1, T2>> &set) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_range_wrapped_domain(const typed::set<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_range_wrapped_domain(const typed::union_set<T1> &domain) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_range_wrapped_domain(const typed::basic_set<T1> &domain) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> intersect_range_wrapped_domain(const typed::point<T1> &domain) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_ge_at(const typed::multi_pw_aff<pair<T1, T2>, Range> &mpa) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_ge_at(const typed::aff<pair<T1, T2>, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_ge_at(const typed::aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_ge_at(const typed::multi_aff<pair<T1, T2>, Range> &mpa) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_ge_at(const typed::pw_aff<pair<T1, T2>, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_ge_at(const typed::pw_aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_ge_at(const typed::pw_multi_aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_gt_at(const typed::multi_pw_aff<pair<T1, T2>, Range> &mpa) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_gt_at(const typed::aff<pair<T1, T2>, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_gt_at(const typed::aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_gt_at(const typed::multi_aff<pair<T1, T2>, Range> &mpa) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_gt_at(const typed::pw_aff<pair<T1, T2>, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_gt_at(const typed::pw_aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_gt_at(const typed::pw_multi_aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_le_at(const typed::multi_pw_aff<pair<T1, T2>, Range> &mpa) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_le_at(const typed::aff<pair<T1, T2>, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_le_at(const typed::aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_le_at(const typed::multi_aff<pair<T1, T2>, Range> &mpa) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_le_at(const typed::pw_aff<pair<T1, T2>, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_le_at(const typed::pw_aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_le_at(const typed::pw_multi_aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_lt_at(const typed::multi_pw_aff<pair<T1, T2>, Range> &mpa) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_lt_at(const typed::aff<pair<T1, T2>, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_lt_at(const typed::aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_lt_at(const typed::multi_aff<pair<T1, T2>, Range> &mpa) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_lt_at(const typed::pw_aff<pair<T1, T2>, Anonymous> &mpa) const;
+  template <typename Range>
+  inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_lt_at(const typed::pw_aff<pair<T1, T2>, Range> &mpa) const;
   template <typename Range>
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lex_lt_at(const typed::pw_multi_aff<pair<T1, T2>, Range> &mpa) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lexmax() const;
@@ -4346,10 +3998,8 @@ struct map<pair<T1, T2>, pair<T1, T2>> : public isl::map {
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lower_bound(const typed::multi_aff<pair<T1, T2>, pair<T1, T2>> &lower) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lower_bound(const typed::pw_aff<pair<T1, T2>, pair<T1, T2>> &lower) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> lower_bound(const typed::pw_multi_aff<pair<T1, T2>, pair<T1, T2>> &lower) const;
-  inline typed::map_list<pair<T1, T2>, pair<T1, T2>> map_list() const;
   inline typed::multi_pw_aff<pair<T1, T2>, pair<T1, T2>> max_multi_pw_aff() const;
   inline typed::multi_pw_aff<pair<T1, T2>, pair<T1, T2>> min_multi_pw_aff() const;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::map<Domain2, pair<T1, T2>> preimage_domain(const typed::multi_aff<Domain2, pair<T1, T2>> &ma) const;
   template <typename Domain2>
@@ -4371,14 +4021,9 @@ struct map<pair<T1, T2>, pair<T1, T2>> : public isl::map {
   template <typename Domain2, typename Range2>
   inline typed::map<pair<pair<T1, T2>, Domain2>, pair<pair<T1, T2>, Range2>> product(const typed::basic_map<Domain2, Range2> &map2) const;
   inline typed::map<pair<T1, T2>, pair<T1, T2>> project_out_all_params() const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> project_out_param(const std::string &id) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::set<pair<T1, T2>> range() const;
   inline typed::map<pair<T1, T2>, T1> range_factor_domain() const;
   inline typed::map<pair<T1, T2>, T2> range_factor_range() const;
-  inline typed::fixed_box<pair<T1, T2>, pair<T1, T2>> range_lattice_tile() const;
-  inline typed::fixed_box<pair<T1, T2>, pair<T1, T2>> get_range_lattice_tile() const = delete;
   inline typed::union_map<pair<pair<T1, T2>, pair<T1, T2>>, pair<T1, T2>> range_map() const;
   template <typename Range2>
   inline typed::map<pair<T1, T2>, pair<pair<T1, T2>, Range2>> range_product(const typed::map<pair<T1, T2>, Range2> &map2) const;
@@ -4435,8 +4080,6 @@ struct map<pair<T1, T2>, pair<Range, Range2>> : public isl::map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -4458,8 +4101,6 @@ struct map<pair<T1, T2>, pair<Range, Range2>> : public isl::map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -4532,9 +4173,7 @@ struct map<pair<T1, T2>, pair<Range, Range2>> : public isl::map {
   inline typed::union_map<pair<pair<T1, T2>, Domain2>, pair<Range, Range2>> domain_product(const typed::union_map<Domain2, pair<Range, Range2>> &umap2) const;
   template <typename Domain2>
   inline typed::map<pair<pair<T1, T2>, Domain2>, pair<Range, Range2>> domain_product(const typed::basic_map<Domain2, pair<Range, Range2>> &map2) const;
-  inline typed::map<pair<T2, T1>, pair<Range, Range2>> domain_reverse() const;
   inline typed::id<pair<T1, T2>, pair<Range, Range2>> get_domain_tuple_id() const = delete;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> drop_unused_params() const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> eq_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> eq_at(const typed::multi_union_pw_aff<> &mupa) const = delete;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> eq_at(const typed::aff<> &mpa) const = delete;
@@ -4542,7 +4181,6 @@ struct map<pair<T1, T2>, pair<Range, Range2>> : public isl::map {
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> eq_at(const typed::pw_aff<> &mpa) const = delete;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> eq_at(const typed::pw_multi_aff<> &mpa) const = delete;
   inline bool every_map(const std::function<bool(typed::map<pair<T1, T2>, pair<Range, Range2>>)> &test) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> extract_map(const typed::space<pair<T1, T2>, pair<Range, Range2>> &space) const;
   inline typed::map<Anonymous, pair<Range, Range2>> flatten_domain() const;
   inline typed::map<pair<T1, T2>, Anonymous> flatten_range() const;
   inline void foreach_basic_map(const std::function<void(typed::basic_map<pair<T1, T2>, pair<Range, Range2>>)> &fn) const;
@@ -4554,9 +4192,6 @@ struct map<pair<T1, T2>, pair<Range, Range2>> : public isl::map {
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> gist_domain(const typed::union_set<pair<T1, T2>> &uset) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> gist_domain(const typed::basic_set<pair<T1, T2>> &context) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> gist_domain(const typed::point<pair<T1, T2>> &context) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> gist_params(const typed::set<> &context) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> gist_params(const typed::basic_set<> &context) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> gist_params(const typed::point<> &context) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect(const typed::map<pair<T1, T2>, pair<Range, Range2>> &map2) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect(const typed::union_map<pair<T1, T2>, pair<Range, Range2>> &umap2) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect(const typed::basic_map<pair<T1, T2>, pair<Range, Range2>> &map2) const;
@@ -4565,10 +4200,6 @@ struct map<pair<T1, T2>, pair<Range, Range2>> : public isl::map {
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::union_set<pair<T1, T2>> &uset) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::basic_set<pair<T1, T2>> &set) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::point<pair<T1, T2>> &set) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::set<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::union_set<T1> &domain) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::basic_set<T1> &domain) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::point<T1> &domain) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_params(const typed::set<> &params) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_params(const typed::basic_set<> &params) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_params(const typed::point<> &params) const;
@@ -4577,10 +4208,6 @@ struct map<pair<T1, T2>, pair<Range, Range2>> : public isl::map {
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_range(const typed::union_set<pair<Range, Range2>> &uset) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_range(const typed::basic_set<pair<Range, Range2>> &set) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_range(const typed::point<pair<Range, Range2>> &set) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::set<Range> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::union_set<Range> &domain) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::basic_set<Range> &domain) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::point<Range> &domain) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> lex_ge_at(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> lex_ge_at(const typed::aff<> &mpa) const = delete;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> lex_ge_at(const typed::multi_aff<> &mpa) const = delete;
@@ -4610,10 +4237,8 @@ struct map<pair<T1, T2>, pair<Range, Range2>> : public isl::map {
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> lower_bound(const typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> &lower) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> lower_bound(const typed::pw_aff<pair<T1, T2>, pair<Range, Range2>> &lower) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> lower_bound(const typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> &lower) const;
-  inline typed::map_list<pair<T1, T2>, pair<Range, Range2>> map_list() const;
   inline typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> max_multi_pw_aff() const;
   inline typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> min_multi_pw_aff() const;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::map<Domain2, pair<Range, Range2>> preimage_domain(const typed::multi_aff<Domain2, pair<T1, T2>> &ma) const;
   template <typename Domain2>
@@ -4635,14 +4260,9 @@ struct map<pair<T1, T2>, pair<Range, Range2>> : public isl::map {
   template <typename Domain2, typename Arg2>
   inline typed::map<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>> product(const typed::basic_map<Domain2, Arg2> &map2) const;
   inline typed::map<pair<T1, T2>, pair<Range, Range2>> project_out_all_params() const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> project_out_param(const std::string &id) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::set<pair<Range, Range2>> range() const;
   inline typed::map<pair<T1, T2>, Range> range_factor_domain() const;
   inline typed::map<pair<T1, T2>, Range2> range_factor_range() const;
-  inline typed::fixed_box<pair<T1, T2>, pair<Range, Range2>> range_lattice_tile() const;
-  inline typed::fixed_box<pair<T1, T2>, pair<Range, Range2>> get_range_lattice_tile() const = delete;
   inline typed::union_map<pair<pair<T1, T2>, pair<Range, Range2>>, pair<Range, Range2>> range_map() const;
   template <typename Arg2>
   inline typed::map<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> range_product(const typed::map<pair<T1, T2>, Arg2> &map2) const;
@@ -4680,98 +4300,6 @@ struct map<pair<T1, T2>, pair<Range, Range2>> : public isl::map {
   inline typed::set<pair<pair<T1, T2>, pair<Range, Range2>>> wrap() const;
 };
 
-template <typename Domain, typename Range>
-struct map_list<Domain, Range> : public isl::map_list {
-  template <typename...>
-  friend struct aff;
-  template <typename...>
-  friend struct aff_list;
-  template <typename...>
-  friend struct basic_map;
-  template <typename...>
-  friend struct basic_set;
-  template <typename...>
-  friend struct fixed_box;
-  template <typename...>
-  friend struct id;
-  template <typename...>
-  friend struct id_list;
-  template <typename...>
-  friend struct map;
-  template <typename...>
-  friend struct map_list;
-  template <typename...>
-  friend struct multi_aff;
-  template <typename...>
-  friend struct multi_id;
-  template <typename...>
-  friend struct multi_pw_aff;
-  template <typename...>
-  friend struct multi_union_pw_aff;
-  template <typename...>
-  friend struct multi_val;
-  template <typename...>
-  friend struct point;
-  template <typename...>
-  friend struct pw_aff;
-  template <typename...>
-  friend struct pw_aff_list;
-  template <typename...>
-  friend struct pw_multi_aff;
-  template <typename...>
-  friend struct pw_multi_aff_list;
-  template <typename...>
-  friend struct set;
-  template <typename...>
-  friend struct set_list;
-  template <typename...>
-  friend struct space;
-  template <typename...>
-  friend struct union_map;
-  template <typename...>
-  friend struct union_pw_aff;
-  template <typename...>
-  friend struct union_pw_aff_list;
-  template <typename...>
-  friend struct union_pw_multi_aff;
-  template <typename...>
-  friend struct union_set;
-  template <typename...>
-  friend struct union_set_list;
-  template <typename...>
-  friend struct val;
-  template <typename...>
-  friend struct val_list;
-
-  map_list() = default;
-  template <typename Arg1, typename Arg2,
-            typename std::enable_if<
-              std::is_base_of<Domain, Arg1>{} &&
-              std::is_base_of<Range, Arg2>{},
-            bool>::type = true>
-  map_list(const map_list<Arg1, Arg2> &obj) : isl::map_list(obj) {}
- private:
-  template <typename base,
-            typename std::enable_if<
-              std::is_same<base, isl::map_list>{}, bool>::type = true>
-  map_list(const base &obj) : isl::map_list(obj) {}
- public:
-  static map_list from(const isl::map_list &obj) {
-    return map_list(obj);
-  }
-  inline explicit map_list(const isl::ctx &ctx, int n);
-  inline explicit map_list(const typed::map<Domain, Range> &el);
-  inline explicit map_list(const isl::ctx &ctx, const std::string &str);
-  inline typed::map_list<Domain, Range> add(const typed::map<Domain, Range> &el) const;
-  inline typed::map_list<Domain, Range> add(const typed::basic_map<Domain, Range> &el) const;
-  inline typed::map<Domain, Range> at(int index) const;
-  inline typed::map<Domain, Range> get_at(int index) const = delete;
-  inline typed::map_list<Domain, Range> drop(unsigned int first, unsigned int n) const;
-  inline void foreach(const std::function<void(typed::map<Domain, Range>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::map<Domain, Range>, typed::map<Domain, Range>)> &follows, const std::function<void(typed::map_list<Domain, Range>)> &fn) const;
-  inline typed::map_list<Domain, Range> set_at(int index, const typed::map<Domain, Anonymous> &el) const;
-};
-
 template <typename Domain>
 struct multi_aff<Domain> : public isl::multi_aff {
   template <typename...>
@@ -4791,8 +4319,6 @@ struct multi_aff<Domain> : public isl::multi_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -4814,8 +4340,6 @@ struct multi_aff<Domain> : public isl::multi_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -4879,24 +4403,17 @@ struct multi_aff<Domain> : public isl::multi_aff {
   inline typed::multi_val<Domain> constant_multi_val() const;
   inline typed::multi_val<Domain> get_constant_multi_val() const = delete;
   inline typed::set<> domain() const;
-  inline typed::multi_aff<Domain> domain_reverse() const = delete;
-  inline typed::pw_multi_aff<Domain> drop_unused_params() const;
-  inline typed::pw_multi_aff<Domain> extract_pw_multi_aff(const typed::space<Domain> &space) const;
   inline typed::multi_aff<Domain> floor() const;
   inline typed::multi_aff<Domain> gist(const typed::set<> &context) const;
   inline typed::union_pw_multi_aff<Domain> gist(const typed::union_set<> &context) const;
   inline typed::multi_aff<Domain> gist(const typed::basic_set<> &context) const;
   inline typed::multi_aff<Domain> gist(const typed::point<> &context) const;
-  inline typed::multi_aff<Domain> gist_params(const typed::set<> &context) const;
-  inline typed::multi_aff<Domain> gist_params(const typed::basic_set<> &context) const;
-  inline typed::multi_aff<Domain> gist_params(const typed::point<> &context) const;
   inline typed::multi_aff<Domain, Domain> identity() const;
   template <typename Arg1>
   inline typed::multi_aff<Arg1, Domain> insert_domain(const typed::space<Arg1> &domain) const;
   inline typed::pw_multi_aff<Domain> intersect_domain(const typed::set<> &set) const = delete;
   inline typed::union_pw_multi_aff<Domain> intersect_domain(const typed::space<> &space) const = delete;
   inline typed::union_pw_multi_aff<Domain> intersect_domain(const typed::union_set<> &uset) const = delete;
-  inline typed::union_pw_multi_aff<Domain> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
   inline typed::pw_multi_aff<Domain> intersect_params(const typed::set<> &set) const;
   inline typed::aff_list<Anonymous> list() const;
   inline typed::aff_list<Domain> get_list() const = delete;
@@ -4913,13 +4430,13 @@ struct multi_aff<Domain> : public isl::multi_aff {
   inline typed::multi_pw_aff<pair<Domain, Range>> product(const typed::multi_pw_aff<Range> &multi2) const;
   template <typename Range>
   inline typed::pw_multi_aff<pair<Domain, Range>> product(const typed::pw_multi_aff<Range> &pma2) const;
-  inline typed::multi_aff<pair<Domain, Anonymous>> product(const typed::aff<Anonymous> &multi2) const;
+  template <typename Range>
+  inline typed::multi_aff<pair<Domain, Range>> product(const typed::aff<Range> &multi2) const;
   inline typed::multi_aff<Domain> pullback(const typed::multi_aff<> &ma2) const = delete;
   inline typed::multi_pw_aff<Domain> pullback(const typed::multi_pw_aff<> &mpa2) const = delete;
   inline typed::pw_multi_aff<Domain> pullback(const typed::pw_multi_aff<> &pma2) const = delete;
   inline typed::union_pw_multi_aff<Domain> pullback(const typed::union_pw_multi_aff<> &upma2) const = delete;
   inline typed::multi_aff<Domain> pullback(const typed::aff<> &ma2) const = delete;
-  inline typed::pw_multi_aff_list<Domain> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<Domain> range_factor_domain() const = delete;
   inline typed::pw_multi_aff<Domain> range_factor_range() const = delete;
   inline typed::multi_aff<Domain> range_product(const typed::multi_aff<> &multi2) const = delete;
@@ -4984,8 +4501,6 @@ struct multi_aff<Domain, Range> : public isl::multi_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -5007,8 +4522,6 @@ struct multi_aff<Domain, Range> : public isl::multi_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -5073,23 +4586,16 @@ struct multi_aff<Domain, Range> : public isl::multi_aff {
   inline typed::multi_val<Range> constant_multi_val() const;
   inline typed::multi_val<Domain, Range> get_constant_multi_val() const = delete;
   inline typed::set<Domain> domain() const;
-  inline typed::multi_aff<Domain, Range> domain_reverse() const = delete;
-  inline typed::pw_multi_aff<Domain, Range> drop_unused_params() const;
-  inline typed::pw_multi_aff<Domain, Range> extract_pw_multi_aff(const typed::space<Domain, Range> &space) const;
   inline typed::multi_aff<Domain, Range> floor() const;
   inline typed::multi_aff<Domain, Range> gist(const typed::set<Domain> &context) const;
   inline typed::union_pw_multi_aff<Domain, Range> gist(const typed::union_set<Domain> &context) const;
   inline typed::multi_aff<Domain, Range> gist(const typed::basic_set<Domain> &context) const;
   inline typed::multi_aff<Domain, Range> gist(const typed::point<Domain> &context) const;
-  inline typed::multi_aff<Domain, Range> gist_params(const typed::set<> &context) const;
-  inline typed::multi_aff<Domain, Range> gist_params(const typed::basic_set<> &context) const;
-  inline typed::multi_aff<Domain, Range> gist_params(const typed::point<> &context) const;
   inline typed::multi_aff<Domain, Range> identity() const;
   inline typed::multi_aff<Domain, Range> insert_domain(const typed::space<> &domain) const = delete;
   inline typed::pw_multi_aff<Domain, Range> intersect_domain(const typed::set<Domain> &set) const;
   inline typed::union_pw_multi_aff<Domain, Range> intersect_domain(const typed::space<Domain> &space) const;
   inline typed::union_pw_multi_aff<Domain, Range> intersect_domain(const typed::union_set<Domain> &uset) const;
-  inline typed::union_pw_multi_aff<Domain, Range> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
   inline typed::pw_multi_aff<Domain, Range> intersect_params(const typed::set<> &set) const;
   inline typed::aff_list<Domain, Anonymous> list() const;
   inline typed::aff_list<Domain, Range> get_list() const = delete;
@@ -5106,8 +4612,8 @@ struct multi_aff<Domain, Range> : public isl::multi_aff {
   inline typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::multi_pw_aff<Domain2, Range2> &multi2) const;
   template <typename Domain2, typename Range2>
   inline typed::pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::pw_multi_aff<Domain2, Range2> &pma2) const;
-  template <typename Domain2>
-  inline typed::multi_aff<pair<Domain, Domain2>, pair<Range, Anonymous>> product(const typed::aff<Domain2, Anonymous> &multi2) const;
+  template <typename Domain2, typename Range2>
+  inline typed::multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::aff<Domain2, Range2> &multi2) const;
   template <typename Domain2>
   inline typed::multi_aff<Domain2, Range> pullback(const typed::multi_aff<Domain2, Domain> &ma2) const;
   inline typed::multi_aff<Range> pullback(const typed::multi_aff<Domain> &ma2) const;
@@ -5123,7 +4629,6 @@ struct multi_aff<Domain, Range> : public isl::multi_aff {
   template <typename Domain2>
   inline typed::multi_aff<Domain2, Range> pullback(const typed::aff<Domain2, Domain> &ma2) const;
   inline typed::multi_aff<Range> pullback(const typed::aff<Domain> &ma2) const;
-  inline typed::pw_multi_aff_list<Domain, Range> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<Domain, Range> range_factor_domain() const = delete;
   inline typed::pw_multi_aff<Domain, Range> range_factor_range() const = delete;
   template <typename Range2>
@@ -5136,7 +4641,8 @@ struct multi_aff<Domain, Range> : public isl::multi_aff {
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> range_product(const typed::pw_multi_aff<Domain, Range2> &pma2) const;
   template <typename Range2>
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> range_product(const typed::union_pw_multi_aff<Domain, Range2> &upma2) const;
-  inline typed::multi_aff<Domain, pair<Range, Anonymous>> range_product(const typed::aff<Domain, Anonymous> &multi2) const;
+  template <typename Range2>
+  inline typed::multi_aff<Domain, pair<Range, Range2>> range_product(const typed::aff<Domain, Range2> &multi2) const;
   inline typed::id<Domain, Range> get_range_tuple_id() const = delete;
   inline typed::multi_aff<Domain, Range> scale(const typed::multi_val<Range> &mv) const;
   inline typed::multi_aff<Domain, Range> scale(const typed::val<Range> &v) const;
@@ -5192,8 +4698,6 @@ struct multi_aff<pair<Domain2, Range2>, Range> : public isl::multi_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -5215,8 +4719,6 @@ struct multi_aff<pair<Domain2, Range2>, Range> : public isl::multi_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -5282,23 +4784,16 @@ struct multi_aff<pair<Domain2, Range2>, Range> : public isl::multi_aff {
   inline typed::multi_val<Range> constant_multi_val() const;
   inline typed::multi_val<pair<Domain2, Range2>, Range> get_constant_multi_val() const = delete;
   inline typed::set<pair<Domain2, Range2>> domain() const;
-  inline typed::multi_aff<pair<Range2, Domain2>, Range> domain_reverse() const;
-  inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> drop_unused_params() const;
-  inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> extract_pw_multi_aff(const typed::space<pair<Domain2, Range2>, Range> &space) const;
   inline typed::multi_aff<pair<Domain2, Range2>, Range> floor() const;
   inline typed::multi_aff<pair<Domain2, Range2>, Range> gist(const typed::set<pair<Domain2, Range2>> &context) const;
   inline typed::union_pw_multi_aff<pair<Domain2, Range2>, Range> gist(const typed::union_set<pair<Domain2, Range2>> &context) const;
   inline typed::multi_aff<pair<Domain2, Range2>, Range> gist(const typed::basic_set<pair<Domain2, Range2>> &context) const;
   inline typed::multi_aff<pair<Domain2, Range2>, Range> gist(const typed::point<pair<Domain2, Range2>> &context) const;
-  inline typed::multi_aff<pair<Domain2, Range2>, Range> gist_params(const typed::set<> &context) const;
-  inline typed::multi_aff<pair<Domain2, Range2>, Range> gist_params(const typed::basic_set<> &context) const;
-  inline typed::multi_aff<pair<Domain2, Range2>, Range> gist_params(const typed::point<> &context) const;
   inline typed::multi_aff<pair<Domain2, Range2>, Range> identity() const;
   inline typed::multi_aff<pair<Domain2, Range2>, Range> insert_domain(const typed::space<> &domain) const = delete;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> intersect_domain(const typed::set<pair<Domain2, Range2>> &set) const;
   inline typed::union_pw_multi_aff<pair<Domain2, Range2>, Range> intersect_domain(const typed::space<pair<Domain2, Range2>> &space) const;
   inline typed::union_pw_multi_aff<pair<Domain2, Range2>, Range> intersect_domain(const typed::union_set<pair<Domain2, Range2>> &uset) const;
-  inline typed::union_pw_multi_aff<pair<Domain2, Range2>, Range> intersect_domain_wrapped_domain(const typed::union_set<Domain2> &uset) const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> intersect_params(const typed::set<> &set) const;
   inline typed::aff_list<pair<Domain2, Range2>, Anonymous> list() const;
   inline typed::aff_list<pair<Domain2, Range2>, Range> get_list() const = delete;
@@ -5317,8 +4812,8 @@ struct multi_aff<pair<Domain2, Range2>, Range> : public isl::multi_aff {
   inline typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> product(const typed::multi_pw_aff<Arg2, Arg3> &multi2) const;
   template <typename Arg2, typename Arg3>
   inline typed::pw_multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> product(const typed::pw_multi_aff<Arg2, Arg3> &pma2) const;
-  template <typename Arg2>
-  inline typed::multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Anonymous>> product(const typed::aff<Arg2, Anonymous> &multi2) const;
+  template <typename Arg2, typename Arg3>
+  inline typed::multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> product(const typed::aff<Arg2, Arg3> &multi2) const;
   template <typename Arg2>
   inline typed::multi_aff<Arg2, Range> pullback(const typed::multi_aff<Arg2, pair<Domain2, Range2>> &ma2) const;
   inline typed::multi_aff<Range> pullback(const typed::multi_aff<pair<Domain2, Range2>> &ma2) const;
@@ -5334,7 +4829,6 @@ struct multi_aff<pair<Domain2, Range2>, Range> : public isl::multi_aff {
   template <typename Arg2>
   inline typed::multi_aff<Arg2, Range> pullback(const typed::aff<Arg2, pair<Domain2, Range2>> &ma2) const;
   inline typed::multi_aff<Range> pullback(const typed::aff<pair<Domain2, Range2>> &ma2) const;
-  inline typed::pw_multi_aff_list<pair<Domain2, Range2>, Range> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> range_factor_domain() const = delete;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> range_factor_range() const = delete;
   template <typename Arg2>
@@ -5347,7 +4841,8 @@ struct multi_aff<pair<Domain2, Range2>, Range> : public isl::multi_aff {
   inline typed::pw_multi_aff<pair<Domain2, Range2>, pair<Range, Arg2>> range_product(const typed::pw_multi_aff<pair<Domain2, Range2>, Arg2> &pma2) const;
   template <typename Arg2>
   inline typed::union_pw_multi_aff<pair<Domain2, Range2>, pair<Range, Arg2>> range_product(const typed::union_pw_multi_aff<pair<Domain2, Range2>, Arg2> &upma2) const;
-  inline typed::multi_aff<pair<Domain2, Range2>, pair<Range, Anonymous>> range_product(const typed::aff<pair<Domain2, Range2>, Anonymous> &multi2) const;
+  template <typename Arg2>
+  inline typed::multi_aff<pair<Domain2, Range2>, pair<Range, Arg2>> range_product(const typed::aff<pair<Domain2, Range2>, Arg2> &multi2) const;
   inline typed::id<pair<Domain2, Range2>, Range> get_range_tuple_id() const = delete;
   inline typed::multi_aff<pair<Domain2, Range2>, Range> scale(const typed::multi_val<Range> &mv) const;
   inline typed::multi_aff<pair<Domain2, Range2>, Range> scale(const typed::val<Range> &v) const;
@@ -5403,8 +4898,6 @@ struct multi_aff<Domain, pair<Range, Range2>> : public isl::multi_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -5426,8 +4919,6 @@ struct multi_aff<Domain, pair<Range, Range2>> : public isl::multi_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -5493,23 +4984,16 @@ struct multi_aff<Domain, pair<Range, Range2>> : public isl::multi_aff {
   inline typed::multi_val<pair<Range, Range2>> constant_multi_val() const;
   inline typed::multi_val<Domain, pair<Range, Range2>> get_constant_multi_val() const = delete;
   inline typed::set<Domain> domain() const;
-  inline typed::multi_aff<Domain, pair<Range, Range2>> domain_reverse() const = delete;
-  inline typed::pw_multi_aff<Domain, pair<Range, Range2>> drop_unused_params() const;
-  inline typed::pw_multi_aff<Domain, pair<Range, Range2>> extract_pw_multi_aff(const typed::space<Domain, pair<Range, Range2>> &space) const;
   inline typed::multi_aff<Domain, pair<Range, Range2>> floor() const;
   inline typed::multi_aff<Domain, pair<Range, Range2>> gist(const typed::set<Domain> &context) const;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> gist(const typed::union_set<Domain> &context) const;
   inline typed::multi_aff<Domain, pair<Range, Range2>> gist(const typed::basic_set<Domain> &context) const;
   inline typed::multi_aff<Domain, pair<Range, Range2>> gist(const typed::point<Domain> &context) const;
-  inline typed::multi_aff<Domain, pair<Range, Range2>> gist_params(const typed::set<> &context) const;
-  inline typed::multi_aff<Domain, pair<Range, Range2>> gist_params(const typed::basic_set<> &context) const;
-  inline typed::multi_aff<Domain, pair<Range, Range2>> gist_params(const typed::point<> &context) const;
   inline typed::multi_aff<Domain, pair<Range, Range2>> identity() const;
   inline typed::multi_aff<Domain, pair<Range, Range2>> insert_domain(const typed::space<> &domain) const = delete;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain(const typed::set<Domain> &set) const;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain(const typed::space<Domain> &space) const;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain(const typed::union_set<Domain> &uset) const;
-  inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> intersect_params(const typed::set<> &set) const;
   inline typed::aff_list<Domain, Anonymous> list() const;
   inline typed::aff_list<Domain, pair<Range, Range2>> get_list() const = delete;
@@ -5526,8 +5010,8 @@ struct multi_aff<Domain, pair<Range, Range2>> : public isl::multi_aff {
   inline typed::multi_pw_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>> product(const typed::multi_pw_aff<Domain2, Arg3> &multi2) const;
   template <typename Domain2, typename Arg3>
   inline typed::pw_multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>> product(const typed::pw_multi_aff<Domain2, Arg3> &pma2) const;
-  template <typename Domain2>
-  inline typed::multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Anonymous>> product(const typed::aff<Domain2, Anonymous> &multi2) const;
+  template <typename Domain2, typename Arg3>
+  inline typed::multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>> product(const typed::aff<Domain2, Arg3> &multi2) const;
   template <typename Domain2>
   inline typed::multi_aff<Domain2, pair<Range, Range2>> pullback(const typed::multi_aff<Domain2, Domain> &ma2) const;
   inline typed::multi_aff<pair<Range, Range2>> pullback(const typed::multi_aff<Domain> &ma2) const;
@@ -5543,7 +5027,6 @@ struct multi_aff<Domain, pair<Range, Range2>> : public isl::multi_aff {
   template <typename Domain2>
   inline typed::multi_aff<Domain2, pair<Range, Range2>> pullback(const typed::aff<Domain2, Domain> &ma2) const;
   inline typed::multi_aff<pair<Range, Range2>> pullback(const typed::aff<Domain> &ma2) const;
-  inline typed::pw_multi_aff_list<Domain, pair<Range, Range2>> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<Domain, Range> range_factor_domain() const;
   inline typed::pw_multi_aff<Domain, Range2> range_factor_range() const;
   template <typename Arg3>
@@ -5556,7 +5039,8 @@ struct multi_aff<Domain, pair<Range, Range2>> : public isl::multi_aff {
   inline typed::pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> range_product(const typed::pw_multi_aff<Domain, Arg3> &pma2) const;
   template <typename Arg3>
   inline typed::union_pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> range_product(const typed::union_pw_multi_aff<Domain, Arg3> &upma2) const;
-  inline typed::multi_aff<Domain, pair<pair<Range, Range2>, Anonymous>> range_product(const typed::aff<Domain, Anonymous> &multi2) const;
+  template <typename Arg3>
+  inline typed::multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> range_product(const typed::aff<Domain, Arg3> &multi2) const;
   inline typed::id<Domain, pair<Range, Range2>> get_range_tuple_id() const = delete;
   inline typed::multi_aff<Domain, pair<Range, Range2>> scale(const typed::multi_val<pair<Range, Range2>> &mv) const;
   inline typed::multi_aff<Domain, pair<Range, Range2>> scale(const typed::val<pair<Range, Range2>> &v) const;
@@ -5610,8 +5094,6 @@ struct multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::multi_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -5633,8 +5115,6 @@ struct multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::multi_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -5701,23 +5181,16 @@ struct multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::multi_aff {
   inline typed::multi_val<pair<Range, Range2>> constant_multi_val() const;
   inline typed::multi_val<pair<T1, T2>, pair<Range, Range2>> get_constant_multi_val() const = delete;
   inline typed::set<pair<T1, T2>> domain() const;
-  inline typed::multi_aff<pair<T2, T1>, pair<Range, Range2>> domain_reverse() const;
-  inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> drop_unused_params() const;
-  inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> extract_pw_multi_aff(const typed::space<pair<T1, T2>, pair<Range, Range2>> &space) const;
   inline typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> floor() const;
   inline typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> gist(const typed::set<pair<T1, T2>> &context) const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> gist(const typed::union_set<pair<T1, T2>> &context) const;
   inline typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> gist(const typed::basic_set<pair<T1, T2>> &context) const;
   inline typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> gist(const typed::point<pair<T1, T2>> &context) const;
-  inline typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> gist_params(const typed::set<> &context) const;
-  inline typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> gist_params(const typed::basic_set<> &context) const;
-  inline typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> gist_params(const typed::point<> &context) const;
   inline typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> identity() const;
   inline typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> insert_domain(const typed::space<> &domain) const = delete;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::set<pair<T1, T2>> &set) const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::space<pair<T1, T2>> &space) const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::union_set<pair<T1, T2>> &uset) const;
-  inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::union_set<T1> &uset) const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_params(const typed::set<> &set) const;
   inline typed::aff_list<pair<T1, T2>, Anonymous> list() const;
   inline typed::aff_list<pair<T1, T2>, pair<Range, Range2>> get_list() const = delete;
@@ -5736,8 +5209,8 @@ struct multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::multi_aff {
   inline typed::multi_pw_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>> product(const typed::multi_pw_aff<Domain2, Arg2> &multi2) const;
   template <typename Domain2, typename Arg2>
   inline typed::pw_multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>> product(const typed::pw_multi_aff<Domain2, Arg2> &pma2) const;
-  template <typename Domain2>
-  inline typed::multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Anonymous>> product(const typed::aff<Domain2, Anonymous> &multi2) const;
+  template <typename Domain2, typename Arg2>
+  inline typed::multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>> product(const typed::aff<Domain2, Arg2> &multi2) const;
   template <typename Domain2>
   inline typed::multi_aff<Domain2, pair<Range, Range2>> pullback(const typed::multi_aff<Domain2, pair<T1, T2>> &ma2) const;
   inline typed::multi_aff<pair<Range, Range2>> pullback(const typed::multi_aff<pair<T1, T2>> &ma2) const;
@@ -5753,7 +5226,6 @@ struct multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::multi_aff {
   template <typename Domain2>
   inline typed::multi_aff<Domain2, pair<Range, Range2>> pullback(const typed::aff<Domain2, pair<T1, T2>> &ma2) const;
   inline typed::multi_aff<pair<Range, Range2>> pullback(const typed::aff<pair<T1, T2>> &ma2) const;
-  inline typed::pw_multi_aff_list<pair<T1, T2>, pair<Range, Range2>> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<pair<T1, T2>, Range> range_factor_domain() const;
   inline typed::pw_multi_aff<pair<T1, T2>, Range2> range_factor_range() const;
   template <typename Arg2>
@@ -5766,7 +5238,8 @@ struct multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::multi_aff {
   inline typed::pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> range_product(const typed::pw_multi_aff<pair<T1, T2>, Arg2> &pma2) const;
   template <typename Arg2>
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> range_product(const typed::union_pw_multi_aff<pair<T1, T2>, Arg2> &upma2) const;
-  inline typed::multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Anonymous>> range_product(const typed::aff<pair<T1, T2>, Anonymous> &multi2) const;
+  template <typename Arg2>
+  inline typed::multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> range_product(const typed::aff<pair<T1, T2>, Arg2> &multi2) const;
   inline typed::id<pair<T1, T2>, pair<Range, Range2>> get_range_tuple_id() const = delete;
   inline typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> scale(const typed::multi_val<pair<Range, Range2>> &mv) const;
   inline typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> scale(const typed::val<pair<Range, Range2>> &v) const;
@@ -5820,8 +5293,6 @@ struct multi_id<Domain> : public isl::multi_id {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -5843,8 +5314,6 @@ struct multi_id<Domain> : public isl::multi_id {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -5911,8 +5380,6 @@ struct multi_pw_aff<Domain> : public isl::multi_pw_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -5934,8 +5401,6 @@ struct multi_pw_aff<Domain> : public isl::multi_pw_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -5986,7 +5451,6 @@ struct multi_pw_aff<Domain> : public isl::multi_pw_aff {
   inline typed::multi_pw_aff<Domain> add_constant(const typed::val<Domain> &v) const;
   inline typed::multi_pw_aff<Domain> add_constant(long v) const;
   inline typed::map<Domain> as_map() const = delete;
-  inline typed::multi_aff<Domain> as_multi_aff() const;
   inline typed::set<Domain> as_set() const;
   inline typed::pw_aff<Anonymous> at(int pos) const;
   inline typed::pw_aff<Domain> get_at(int pos) const = delete;
@@ -5995,14 +5459,10 @@ struct multi_pw_aff<Domain> : public isl::multi_pw_aff {
   inline typed::multi_pw_aff<Domain> bind_domain_wrapped_domain(const typed::multi_id<> &tuple) const = delete;
   inline typed::multi_pw_aff<Domain> coalesce() const;
   inline typed::set<> domain() const;
-  inline typed::multi_pw_aff<Domain> domain_reverse() const = delete;
   inline typed::multi_pw_aff<Domain> gist(const typed::set<> &set) const;
   inline typed::multi_union_pw_aff<Domain> gist(const typed::union_set<> &context) const;
   inline typed::multi_pw_aff<Domain> gist(const typed::basic_set<> &set) const;
   inline typed::multi_pw_aff<Domain> gist(const typed::point<> &set) const;
-  inline typed::multi_pw_aff<Domain> gist_params(const typed::set<> &set) const;
-  inline typed::multi_pw_aff<Domain> gist_params(const typed::basic_set<> &set) const;
-  inline typed::multi_pw_aff<Domain> gist_params(const typed::point<> &set) const;
   inline typed::multi_pw_aff<Domain, Domain> identity() const;
   template <typename Arg1>
   inline typed::multi_pw_aff<Arg1, Domain> insert_domain(const typed::space<Arg1> &domain) const;
@@ -6030,10 +5490,12 @@ struct multi_pw_aff<Domain> : public isl::multi_pw_aff {
   inline typed::multi_pw_aff<Domain> neg() const;
   template <typename Range>
   inline typed::multi_pw_aff<pair<Domain, Range>> product(const typed::multi_pw_aff<Range> &multi2) const;
-  inline typed::multi_pw_aff<pair<Domain, Anonymous>> product(const typed::aff<Anonymous> &multi2) const;
+  template <typename Range>
+  inline typed::multi_pw_aff<pair<Domain, Range>> product(const typed::aff<Range> &multi2) const;
   template <typename Range>
   inline typed::multi_pw_aff<pair<Domain, Range>> product(const typed::multi_aff<Range> &multi2) const;
-  inline typed::multi_pw_aff<pair<Domain, Anonymous>> product(const typed::pw_aff<Anonymous> &multi2) const;
+  template <typename Range>
+  inline typed::multi_pw_aff<pair<Domain, Range>> product(const typed::pw_aff<Range> &multi2) const;
   template <typename Range>
   inline typed::multi_pw_aff<pair<Domain, Range>> product(const typed::pw_multi_aff<Range> &multi2) const;
   inline typed::multi_pw_aff<Domain> pullback(const typed::multi_aff<> &ma) const = delete;
@@ -6096,8 +5558,6 @@ struct multi_pw_aff<Domain, Range> : public isl::multi_pw_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -6119,8 +5579,6 @@ struct multi_pw_aff<Domain, Range> : public isl::multi_pw_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -6172,7 +5630,6 @@ struct multi_pw_aff<Domain, Range> : public isl::multi_pw_aff {
   inline typed::multi_pw_aff<Domain, Range> add_constant(const typed::val<Range> &v) const;
   inline typed::multi_pw_aff<Domain, Range> add_constant(long v) const;
   inline typed::map<Domain, Range> as_map() const;
-  inline typed::multi_aff<Domain, Range> as_multi_aff() const;
   inline typed::set<Domain, Range> as_set() const = delete;
   inline typed::pw_aff<Domain, Anonymous> at(int pos) const;
   inline typed::pw_aff<Domain, Range> get_at(int pos) const = delete;
@@ -6181,14 +5638,10 @@ struct multi_pw_aff<Domain, Range> : public isl::multi_pw_aff {
   inline typed::multi_pw_aff<Domain, Range> bind_domain_wrapped_domain(const typed::multi_id<> &tuple) const = delete;
   inline typed::multi_pw_aff<Domain, Range> coalesce() const;
   inline typed::set<Domain> domain() const;
-  inline typed::multi_pw_aff<Domain, Range> domain_reverse() const = delete;
   inline typed::multi_pw_aff<Domain, Range> gist(const typed::set<Domain> &set) const;
   inline typed::multi_union_pw_aff<Domain, Range> gist(const typed::union_set<Domain> &context) const;
   inline typed::multi_pw_aff<Domain, Range> gist(const typed::basic_set<Domain> &set) const;
   inline typed::multi_pw_aff<Domain, Range> gist(const typed::point<Domain> &set) const;
-  inline typed::multi_pw_aff<Domain, Range> gist_params(const typed::set<> &set) const;
-  inline typed::multi_pw_aff<Domain, Range> gist_params(const typed::basic_set<> &set) const;
-  inline typed::multi_pw_aff<Domain, Range> gist_params(const typed::point<> &set) const;
   inline typed::multi_pw_aff<Domain, Range> identity() const;
   inline typed::multi_pw_aff<Domain, Range> insert_domain(const typed::space<> &domain) const = delete;
   inline typed::multi_pw_aff<Domain, Range> intersect_domain(const typed::set<Domain> &domain) const;
@@ -6215,12 +5668,12 @@ struct multi_pw_aff<Domain, Range> : public isl::multi_pw_aff {
   inline typed::multi_pw_aff<Domain, Range> neg() const;
   template <typename Domain2, typename Range2>
   inline typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::multi_pw_aff<Domain2, Range2> &multi2) const;
-  template <typename Domain2>
-  inline typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Anonymous>> product(const typed::aff<Domain2, Anonymous> &multi2) const;
+  template <typename Domain2, typename Range2>
+  inline typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::aff<Domain2, Range2> &multi2) const;
   template <typename Domain2, typename Range2>
   inline typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::multi_aff<Domain2, Range2> &multi2) const;
-  template <typename Domain2>
-  inline typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Anonymous>> product(const typed::pw_aff<Domain2, Anonymous> &multi2) const;
+  template <typename Domain2, typename Range2>
+  inline typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::pw_aff<Domain2, Range2> &multi2) const;
   template <typename Domain2, typename Range2>
   inline typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::pw_multi_aff<Domain2, Range2> &multi2) const;
   template <typename Domain2>
@@ -6239,10 +5692,12 @@ struct multi_pw_aff<Domain, Range> : public isl::multi_pw_aff {
   inline typed::multi_pw_aff<Domain, pair<Range, Range2>> range_product(const typed::multi_pw_aff<Domain, Range2> &multi2) const;
   template <typename Range2>
   inline typed::multi_union_pw_aff<Domain, pair<Range, Range2>> range_product(const typed::multi_union_pw_aff<Domain, Range2> &multi2) const;
-  inline typed::multi_pw_aff<Domain, pair<Range, Anonymous>> range_product(const typed::aff<Domain, Anonymous> &multi2) const;
+  template <typename Range2>
+  inline typed::multi_pw_aff<Domain, pair<Range, Range2>> range_product(const typed::aff<Domain, Range2> &multi2) const;
   template <typename Range2>
   inline typed::multi_pw_aff<Domain, pair<Range, Range2>> range_product(const typed::multi_aff<Domain, Range2> &multi2) const;
-  inline typed::multi_pw_aff<Domain, pair<Range, Anonymous>> range_product(const typed::pw_aff<Domain, Anonymous> &multi2) const;
+  template <typename Range2>
+  inline typed::multi_pw_aff<Domain, pair<Range, Range2>> range_product(const typed::pw_aff<Domain, Range2> &multi2) const;
   template <typename Range2>
   inline typed::multi_pw_aff<Domain, pair<Range, Range2>> range_product(const typed::pw_multi_aff<Domain, Range2> &multi2) const;
   inline typed::id<Domain, Range> get_range_tuple_id() const = delete;
@@ -6294,8 +5749,6 @@ struct multi_pw_aff<pair<Domain2, Range2>, Range> : public isl::multi_pw_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -6317,8 +5770,6 @@ struct multi_pw_aff<pair<Domain2, Range2>, Range> : public isl::multi_pw_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -6371,7 +5822,6 @@ struct multi_pw_aff<pair<Domain2, Range2>, Range> : public isl::multi_pw_aff {
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> add_constant(const typed::val<Range> &v) const;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> add_constant(long v) const;
   inline typed::map<pair<Domain2, Range2>, Range> as_map() const;
-  inline typed::multi_aff<pair<Domain2, Range2>, Range> as_multi_aff() const;
   inline typed::set<pair<Domain2, Range2>, Range> as_set() const = delete;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> at(int pos) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Range> get_at(int pos) const = delete;
@@ -6380,14 +5830,10 @@ struct multi_pw_aff<pair<Domain2, Range2>, Range> : public isl::multi_pw_aff {
   inline typed::multi_pw_aff<Range2, Range> bind_domain_wrapped_domain(const typed::multi_id<Domain2> &tuple) const;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> coalesce() const;
   inline typed::set<pair<Domain2, Range2>> domain() const;
-  inline typed::multi_pw_aff<pair<Range2, Domain2>, Range> domain_reverse() const;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> gist(const typed::set<pair<Domain2, Range2>> &set) const;
   inline typed::multi_union_pw_aff<pair<Domain2, Range2>, Range> gist(const typed::union_set<pair<Domain2, Range2>> &context) const;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> gist(const typed::basic_set<pair<Domain2, Range2>> &set) const;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> gist(const typed::point<pair<Domain2, Range2>> &set) const;
-  inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> gist_params(const typed::set<> &set) const;
-  inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> gist_params(const typed::basic_set<> &set) const;
-  inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> gist_params(const typed::point<> &set) const;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> identity() const;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> insert_domain(const typed::space<> &domain) const = delete;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> intersect_domain(const typed::set<pair<Domain2, Range2>> &domain) const;
@@ -6414,12 +5860,12 @@ struct multi_pw_aff<pair<Domain2, Range2>, Range> : public isl::multi_pw_aff {
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> neg() const;
   template <typename Arg2, typename Arg3>
   inline typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> product(const typed::multi_pw_aff<Arg2, Arg3> &multi2) const;
-  template <typename Arg2>
-  inline typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Anonymous>> product(const typed::aff<Arg2, Anonymous> &multi2) const;
+  template <typename Arg2, typename Arg3>
+  inline typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> product(const typed::aff<Arg2, Arg3> &multi2) const;
   template <typename Arg2, typename Arg3>
   inline typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> product(const typed::multi_aff<Arg2, Arg3> &multi2) const;
-  template <typename Arg2>
-  inline typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Anonymous>> product(const typed::pw_aff<Arg2, Anonymous> &multi2) const;
+  template <typename Arg2, typename Arg3>
+  inline typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> product(const typed::pw_aff<Arg2, Arg3> &multi2) const;
   template <typename Arg2, typename Arg3>
   inline typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> product(const typed::pw_multi_aff<Arg2, Arg3> &multi2) const;
   template <typename Arg2>
@@ -6438,10 +5884,12 @@ struct multi_pw_aff<pair<Domain2, Range2>, Range> : public isl::multi_pw_aff {
   inline typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Arg2>> range_product(const typed::multi_pw_aff<pair<Domain2, Range2>, Arg2> &multi2) const;
   template <typename Arg2>
   inline typed::multi_union_pw_aff<pair<Domain2, Range2>, pair<Range, Arg2>> range_product(const typed::multi_union_pw_aff<pair<Domain2, Range2>, Arg2> &multi2) const;
-  inline typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Anonymous>> range_product(const typed::aff<pair<Domain2, Range2>, Anonymous> &multi2) const;
+  template <typename Arg2>
+  inline typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Arg2>> range_product(const typed::aff<pair<Domain2, Range2>, Arg2> &multi2) const;
   template <typename Arg2>
   inline typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Arg2>> range_product(const typed::multi_aff<pair<Domain2, Range2>, Arg2> &multi2) const;
-  inline typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Anonymous>> range_product(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &multi2) const;
+  template <typename Arg2>
+  inline typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Arg2>> range_product(const typed::pw_aff<pair<Domain2, Range2>, Arg2> &multi2) const;
   template <typename Arg2>
   inline typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Arg2>> range_product(const typed::pw_multi_aff<pair<Domain2, Range2>, Arg2> &multi2) const;
   inline typed::id<pair<Domain2, Range2>, Range> get_range_tuple_id() const = delete;
@@ -6493,8 +5941,6 @@ struct multi_union_pw_aff<Domain> : public isl::multi_union_pw_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -6516,8 +5962,6 @@ struct multi_union_pw_aff<Domain> : public isl::multi_union_pw_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -6568,9 +6012,6 @@ struct multi_union_pw_aff<Domain> : public isl::multi_union_pw_aff {
   inline typed::multi_union_pw_aff<Domain> gist(const typed::basic_set<> &context) const;
   inline typed::multi_union_pw_aff<Domain> gist(const typed::point<> &context) const;
   inline typed::multi_union_pw_aff<Domain> gist(const typed::set<> &context) const;
-  inline typed::multi_union_pw_aff<Domain> gist_params(const typed::set<> &context) const;
-  inline typed::multi_union_pw_aff<Domain> gist_params(const typed::basic_set<> &context) const;
-  inline typed::multi_union_pw_aff<Domain> gist_params(const typed::point<> &context) const;
   inline typed::multi_union_pw_aff<Domain> intersect_domain(const typed::union_set<> &uset) const = delete;
   inline typed::multi_union_pw_aff<Domain> intersect_domain(const typed::basic_set<> &uset) const = delete;
   inline typed::multi_union_pw_aff<Domain> intersect_domain(const typed::point<> &uset) const = delete;
@@ -6629,8 +6070,6 @@ struct multi_union_pw_aff<Domain, Range> : public isl::multi_union_pw_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -6652,8 +6091,6 @@ struct multi_union_pw_aff<Domain, Range> : public isl::multi_union_pw_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -6705,9 +6142,6 @@ struct multi_union_pw_aff<Domain, Range> : public isl::multi_union_pw_aff {
   inline typed::multi_union_pw_aff<Domain, Range> gist(const typed::basic_set<Domain> &context) const;
   inline typed::multi_union_pw_aff<Domain, Range> gist(const typed::point<Domain> &context) const;
   inline typed::multi_union_pw_aff<Domain, Range> gist(const typed::set<Domain> &context) const;
-  inline typed::multi_union_pw_aff<Domain, Range> gist_params(const typed::set<> &context) const;
-  inline typed::multi_union_pw_aff<Domain, Range> gist_params(const typed::basic_set<> &context) const;
-  inline typed::multi_union_pw_aff<Domain, Range> gist_params(const typed::point<> &context) const;
   inline typed::multi_union_pw_aff<Domain, Range> intersect_domain(const typed::union_set<Domain> &uset) const;
   inline typed::multi_union_pw_aff<Domain, Range> intersect_domain(const typed::basic_set<Domain> &uset) const;
   inline typed::multi_union_pw_aff<Domain, Range> intersect_domain(const typed::point<Domain> &uset) const;
@@ -6734,7 +6168,8 @@ struct multi_union_pw_aff<Domain, Range> : public isl::multi_union_pw_aff {
   inline typed::multi_union_pw_aff<Domain, pair<Range, Range2>> range_product(const typed::multi_union_pw_aff<Domain, Range2> &multi2) const;
   template <typename Range2>
   inline typed::multi_union_pw_aff<Domain, pair<Range, Range2>> range_product(const typed::multi_pw_aff<Domain, Range2> &multi2) const;
-  inline typed::multi_union_pw_aff<Domain, pair<Range, Anonymous>> range_product(const typed::union_pw_aff<Domain, Anonymous> &multi2) const;
+  template <typename Range2>
+  inline typed::multi_union_pw_aff<Domain, pair<Range, Range2>> range_product(const typed::union_pw_aff<Domain, Range2> &multi2) const;
   inline typed::id<Domain, Range> get_range_tuple_id() const = delete;
   inline typed::multi_union_pw_aff<Domain, Range> scale(const typed::multi_val<Range> &mv) const;
   inline typed::multi_union_pw_aff<Domain, Range> scale(const typed::val<Range> &v) const;
@@ -6776,8 +6211,6 @@ struct multi_val<Domain> : public isl::multi_val {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -6799,8 +6232,6 @@ struct multi_val<Domain> : public isl::multi_val {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -6887,8 +6318,6 @@ struct point<> : public isl::point {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -6910,8 +6339,6 @@ struct point<> : public isl::point {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -6949,25 +6376,20 @@ struct point<> : public isl::point {
   inline typed::set<> bind(const typed::multi_id<> &tuple) const = delete;
   inline typed::set<> coalesce() const;
   inline typed::basic_set<> detect_equalities() const;
-  inline typed::set<> drop_unused_params() const;
   inline bool every_set(const std::function<bool(typed::set<>)> &test) const;
-  inline typed::set<> extract_set(const typed::space<> &space) const;
   inline void foreach_basic_set(const std::function<void(typed::basic_set<>)> &fn) const;
   inline void foreach_point(const std::function<void(typed::point<>)> &fn) const;
   inline void foreach_set(const std::function<void(typed::set<>)> &fn) const;
   inline typed::basic_set<> gist(const typed::basic_set<> &context) const;
   inline typed::set<> gist(const typed::set<> &context) const;
   inline typed::union_set<> gist(const typed::union_set<> &context) const;
-  inline typed::set<> gist_params(const typed::set<> &context) const = delete;
   inline typed::map<> identity() const = delete;
-  inline typed::pw_aff<Anonymous> indicator_function() const;
   inline typed::map<> insert_domain(const typed::space<> &domain) const = delete;
   inline typed::basic_set<> intersect(const typed::basic_set<> &bset2) const;
   inline typed::set<> intersect(const typed::set<> &set2) const;
   inline typed::union_set<> intersect(const typed::union_set<> &uset2) const;
   inline typed::basic_set<> intersect_params(const typed::basic_set<> &bset2) const = delete;
   inline typed::set<> intersect_params(const typed::set<> &params) const = delete;
-  inline typed::fixed_box<> lattice_tile() const = delete;
   inline typed::set<> lexmax() const = delete;
   inline typed::pw_multi_aff<> lexmax_pw_multi_aff() const = delete;
   inline typed::set<> lexmin() const = delete;
@@ -6980,8 +6402,6 @@ struct point<> : public isl::point {
   inline typed::val<> min_val(const typed::aff<> &obj) const = delete;
   inline typed::multi_val<> multi_val() const = delete;
   inline typed::multi_val<> get_multi_val() const = delete;
-  inline typed::pw_aff<Anonymous> param_pw_aff_on_domain(const typed::id<Anonymous> &id) const;
-  inline typed::pw_aff<Anonymous> param_pw_aff_on_domain(const std::string &id) const;
   inline typed::basic_set<> params() const = delete;
   inline typed::multi_val<> plain_multi_val_if_fixed() const = delete;
   inline typed::set<> preimage(const typed::multi_aff<> &ma) const = delete;
@@ -6993,11 +6413,7 @@ struct point<> : public isl::point {
   inline typed::set<> project_out_param(const typed::id<Anonymous> &id) const;
   inline typed::set<> project_out_param(const std::string &id) const;
   inline typed::set<> project_out_param(const typed::id_list<Anonymous> &list) const;
-  inline typed::pw_aff<Anonymous> pw_aff_on_domain(const typed::val<Anonymous> &v) const;
-  inline typed::pw_aff<Anonymous> pw_aff_on_domain(long v) const;
-  template <typename Domain>
-  inline typed::pw_multi_aff<Domain> pw_multi_aff_on_domain(const typed::multi_val<Domain> &mv) const;
-  inline typed::set_list<> set_list() const;
+  inline typed::pw_multi_aff<> pw_multi_aff_on_domain(const typed::multi_val<> &mv) const = delete;
   inline typed::fixed_box<> simple_fixed_box_hull() const = delete;
   inline typed::space<> space() const;
   inline typed::set<> subtract(const typed::set<> &set2) const;
@@ -7014,7 +6430,6 @@ struct point<> : public isl::point {
   inline typed::map<> unwrap() const = delete;
   inline typed::set<> upper_bound(const typed::multi_pw_aff<> &upper) const = delete;
   inline typed::set<> upper_bound(const typed::multi_val<> &upper) const = delete;
-  inline typed::set<> wrapped_reverse() const = delete;
 };
 
 template <typename Domain>
@@ -7035,8 +6450,6 @@ struct point<Domain> : public isl::point {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -7059,8 +6472,6 @@ struct point<Domain> : public isl::point {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -7106,18 +6517,14 @@ struct point<Domain> : public isl::point {
   inline typed::set<> bind(const typed::multi_id<Domain> &tuple) const;
   inline typed::set<Domain> coalesce() const;
   inline typed::basic_set<Domain> detect_equalities() const;
-  inline typed::set<Domain> drop_unused_params() const;
   inline bool every_set(const std::function<bool(typed::set<Domain>)> &test) const;
-  inline typed::set<Domain> extract_set(const typed::space<Domain> &space) const;
   inline void foreach_basic_set(const std::function<void(typed::basic_set<Domain>)> &fn) const;
   inline void foreach_point(const std::function<void(typed::point<Domain>)> &fn) const;
   inline void foreach_set(const std::function<void(typed::set<Domain>)> &fn) const;
   inline typed::basic_set<Domain> gist(const typed::basic_set<Domain> &context) const;
   inline typed::set<Domain> gist(const typed::set<Domain> &context) const;
   inline typed::union_set<Domain> gist(const typed::union_set<Domain> &context) const;
-  inline typed::set<Domain> gist_params(const typed::set<> &context) const;
   inline typed::map<Domain, Domain> identity() const;
-  inline typed::pw_aff<Domain, Anonymous> indicator_function() const;
   template <typename Arg1>
   inline typed::map<Arg1, Domain> insert_domain(const typed::space<Arg1> &domain) const;
   inline typed::basic_set<Domain> intersect(const typed::basic_set<Domain> &bset2) const;
@@ -7125,7 +6532,6 @@ struct point<Domain> : public isl::point {
   inline typed::union_set<Domain> intersect(const typed::union_set<Domain> &uset2) const;
   inline typed::basic_set<Domain> intersect_params(const typed::basic_set<> &bset2) const;
   inline typed::set<Domain> intersect_params(const typed::set<> &params) const;
-  inline typed::fixed_box<Domain> lattice_tile() const;
   inline typed::set<Domain> lexmax() const;
   inline typed::pw_multi_aff<Domain> lexmax_pw_multi_aff() const;
   inline typed::set<Domain> lexmin() const;
@@ -7138,8 +6544,6 @@ struct point<Domain> : public isl::point {
   inline typed::val<Domain> min_val(const typed::aff<> &obj) const = delete;
   inline typed::multi_val<Domain> multi_val() const;
   inline typed::multi_val<Domain> get_multi_val() const = delete;
-  inline typed::pw_aff<Domain, Anonymous> param_pw_aff_on_domain(const typed::id<Anonymous> &id) const;
-  inline typed::pw_aff<Domain, Anonymous> param_pw_aff_on_domain(const std::string &id) const;
   inline typed::basic_set<> params() const;
   inline typed::multi_val<Domain> plain_multi_val_if_fixed() const;
   template <typename Domain2>
@@ -7156,11 +6560,8 @@ struct point<Domain> : public isl::point {
   inline typed::set<Domain> project_out_param(const typed::id<Anonymous> &id) const;
   inline typed::set<Domain> project_out_param(const std::string &id) const;
   inline typed::set<Domain> project_out_param(const typed::id_list<Anonymous> &list) const;
-  inline typed::pw_aff<Domain, Anonymous> pw_aff_on_domain(const typed::val<Anonymous> &v) const;
-  inline typed::pw_aff<Domain, Anonymous> pw_aff_on_domain(long v) const;
   template <typename Range>
   inline typed::pw_multi_aff<Domain, Range> pw_multi_aff_on_domain(const typed::multi_val<Range> &mv) const;
-  inline typed::set_list<Domain> set_list() const;
   inline typed::fixed_box<Domain> simple_fixed_box_hull() const;
   inline typed::space<Domain> space() const;
   inline typed::set<Domain> subtract(const typed::set<Domain> &set2) const;
@@ -7177,7 +6578,6 @@ struct point<Domain> : public isl::point {
   inline typed::map<Domain> unwrap() const = delete;
   inline typed::set<Domain> upper_bound(const typed::multi_pw_aff<Domain> &upper) const;
   inline typed::set<Domain> upper_bound(const typed::multi_val<Domain> &upper) const;
-  inline typed::set<Domain> wrapped_reverse() const = delete;
 };
 
 template <typename Domain, typename Range>
@@ -7198,8 +6598,6 @@ struct point<pair<Domain, Range>> : public isl::point {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -7222,8 +6620,6 @@ struct point<pair<Domain, Range>> : public isl::point {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -7270,18 +6666,14 @@ struct point<pair<Domain, Range>> : public isl::point {
   inline typed::set<> bind(const typed::multi_id<pair<Domain, Range>> &tuple) const;
   inline typed::set<pair<Domain, Range>> coalesce() const;
   inline typed::basic_set<pair<Domain, Range>> detect_equalities() const;
-  inline typed::set<pair<Domain, Range>> drop_unused_params() const;
   inline bool every_set(const std::function<bool(typed::set<pair<Domain, Range>>)> &test) const;
-  inline typed::set<pair<Domain, Range>> extract_set(const typed::space<pair<Domain, Range>> &space) const;
   inline void foreach_basic_set(const std::function<void(typed::basic_set<pair<Domain, Range>>)> &fn) const;
   inline void foreach_point(const std::function<void(typed::point<pair<Domain, Range>>)> &fn) const;
   inline void foreach_set(const std::function<void(typed::set<pair<Domain, Range>>)> &fn) const;
   inline typed::basic_set<pair<Domain, Range>> gist(const typed::basic_set<pair<Domain, Range>> &context) const;
   inline typed::set<pair<Domain, Range>> gist(const typed::set<pair<Domain, Range>> &context) const;
   inline typed::union_set<pair<Domain, Range>> gist(const typed::union_set<pair<Domain, Range>> &context) const;
-  inline typed::set<pair<Domain, Range>> gist_params(const typed::set<> &context) const;
   inline typed::map<pair<Domain, Range>, pair<Domain, Range>> identity() const;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> indicator_function() const;
   template <typename Arg2>
   inline typed::map<Arg2, pair<Domain, Range>> insert_domain(const typed::space<Arg2> &domain) const;
   inline typed::basic_set<pair<Domain, Range>> intersect(const typed::basic_set<pair<Domain, Range>> &bset2) const;
@@ -7289,7 +6681,6 @@ struct point<pair<Domain, Range>> : public isl::point {
   inline typed::union_set<pair<Domain, Range>> intersect(const typed::union_set<pair<Domain, Range>> &uset2) const;
   inline typed::basic_set<pair<Domain, Range>> intersect_params(const typed::basic_set<> &bset2) const;
   inline typed::set<pair<Domain, Range>> intersect_params(const typed::set<> &params) const;
-  inline typed::fixed_box<pair<Domain, Range>> lattice_tile() const;
   inline typed::set<pair<Domain, Range>> lexmax() const;
   inline typed::pw_multi_aff<pair<Domain, Range>> lexmax_pw_multi_aff() const;
   inline typed::set<pair<Domain, Range>> lexmin() const;
@@ -7302,8 +6693,6 @@ struct point<pair<Domain, Range>> : public isl::point {
   inline typed::val<pair<Domain, Range>> min_val(const typed::aff<> &obj) const = delete;
   inline typed::multi_val<pair<Domain, Range>> multi_val() const;
   inline typed::multi_val<pair<Domain, Range>> get_multi_val() const = delete;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> param_pw_aff_on_domain(const typed::id<Anonymous> &id) const;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> param_pw_aff_on_domain(const std::string &id) const;
   inline typed::basic_set<> params() const;
   inline typed::multi_val<pair<Domain, Range>> plain_multi_val_if_fixed() const;
   template <typename Domain2>
@@ -7320,11 +6709,8 @@ struct point<pair<Domain, Range>> : public isl::point {
   inline typed::set<pair<Domain, Range>> project_out_param(const typed::id<Anonymous> &id) const;
   inline typed::set<pair<Domain, Range>> project_out_param(const std::string &id) const;
   inline typed::set<pair<Domain, Range>> project_out_param(const typed::id_list<Anonymous> &list) const;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> pw_aff_on_domain(const typed::val<Anonymous> &v) const;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> pw_aff_on_domain(long v) const;
   template <typename Arg2>
   inline typed::pw_multi_aff<pair<Domain, Range>, Arg2> pw_multi_aff_on_domain(const typed::multi_val<Arg2> &mv) const;
-  inline typed::set_list<pair<Domain, Range>> set_list() const;
   inline typed::fixed_box<pair<Domain, Range>> simple_fixed_box_hull() const;
   inline typed::space<pair<Domain, Range>> space() const;
   inline typed::set<pair<Domain, Range>> subtract(const typed::set<pair<Domain, Range>> &set2) const;
@@ -7341,7 +6727,6 @@ struct point<pair<Domain, Range>> : public isl::point {
   inline typed::map<Domain, Range> unwrap() const;
   inline typed::set<pair<Domain, Range>> upper_bound(const typed::multi_pw_aff<pair<Domain, Range>> &upper) const;
   inline typed::set<pair<Domain, Range>> upper_bound(const typed::multi_val<pair<Domain, Range>> &upper) const;
-  inline typed::set<pair<Range, Domain>> wrapped_reverse() const;
 };
 
 template <>
@@ -7362,8 +6747,6 @@ struct pw_aff<Anonymous> : public isl::pw_aff {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -7386,8 +6769,6 @@ struct pw_aff<Anonymous> : public isl::pw_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -7439,13 +6820,8 @@ struct pw_aff<Anonymous> : public isl::pw_aff {
   inline typed::set<> bind(const std::string &id) const;
   inline typed::pw_aff<Anonymous> bind_domain(const typed::multi_id<> &tuple) const = delete;
   inline typed::pw_aff<Anonymous> bind_domain_wrapped_domain(const typed::multi_id<> &tuple) const = delete;
-  inline typed::pw_aff<Anonymous> ceil() const;
   inline typed::pw_aff<Anonymous> coalesce() const;
-  inline typed::pw_aff<Anonymous> cond(const typed::pw_aff<Anonymous> &pwaff_true, const typed::pw_aff<Anonymous> &pwaff_false) const;
   inline typed::set<> domain() const;
-  inline typed::pw_aff<Anonymous> domain_reverse() const = delete;
-  inline typed::pw_aff<Anonymous> drop_unused_params() const;
-  inline typed::pw_multi_aff<Anonymous> extract_pw_multi_aff(const typed::space<Anonymous> &space) const;
   inline typed::pw_aff<Anonymous> floor() const;
   inline typed::set<Anonymous> ge_set(const typed::pw_aff<> &pwaff2) const = delete;
   inline typed::set<Anonymous> ge_set(const typed::aff<> &pwaff2) const = delete;
@@ -7453,9 +6829,6 @@ struct pw_aff<Anonymous> : public isl::pw_aff {
   inline typed::union_pw_aff<Anonymous> gist(const typed::union_set<> &context) const;
   inline typed::pw_aff<Anonymous> gist(const typed::basic_set<> &context) const;
   inline typed::pw_aff<Anonymous> gist(const typed::point<> &context) const;
-  inline typed::pw_aff<Anonymous> gist_params(const typed::set<> &context) const;
-  inline typed::pw_aff<Anonymous> gist_params(const typed::basic_set<> &context) const;
-  inline typed::pw_aff<Anonymous> gist_params(const typed::point<> &context) const;
   inline typed::set<Anonymous> gt_set(const typed::pw_aff<> &pwaff2) const = delete;
   inline typed::set<Anonymous> gt_set(const typed::aff<> &pwaff2) const = delete;
   inline typed::multi_pw_aff<Anonymous, Anonymous> identity() const;
@@ -7466,7 +6839,6 @@ struct pw_aff<Anonymous> : public isl::pw_aff {
   inline typed::union_pw_aff<Anonymous> intersect_domain(const typed::union_set<> &uset) const = delete;
   inline typed::pw_aff<Anonymous> intersect_domain(const typed::basic_set<> &set) const = delete;
   inline typed::pw_aff<Anonymous> intersect_domain(const typed::point<> &set) const = delete;
-  inline typed::union_pw_aff<Anonymous> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
   inline typed::pw_aff<Anonymous> intersect_params(const typed::set<> &set) const;
   inline typed::pw_aff<Anonymous> intersect_params(const typed::basic_set<> &set) const;
   inline typed::pw_aff<Anonymous> intersect_params(const typed::point<> &set) const;
@@ -7479,16 +6851,13 @@ struct pw_aff<Anonymous> : public isl::pw_aff {
   inline typed::pw_aff<Anonymous> max(const typed::pw_aff<Anonymous> &pwaff2) const;
   inline typed::pw_aff<Anonymous> max(const typed::aff<Anonymous> &pwaff2) const;
   inline typed::multi_val<Anonymous> max_multi_val() const;
-  inline typed::val<Anonymous> max_val() const;
   inline typed::multi_pw_aff<Anonymous> min(const typed::multi_pw_aff<Anonymous> &multi2) const;
   inline typed::pw_aff<Anonymous> min(const typed::pw_aff<Anonymous> &pwaff2) const;
   inline typed::pw_aff<Anonymous> min(const typed::aff<Anonymous> &pwaff2) const;
   inline typed::multi_val<Anonymous> min_multi_val() const;
-  inline typed::val<Anonymous> min_val() const;
   inline typed::pw_aff<Anonymous> mod(const typed::val<Anonymous> &mod) const;
   inline typed::pw_aff<Anonymous> mod(long mod) const;
   inline typed::pw_aff<Anonymous> neg() const;
-  inline typed::set<> params() const;
   inline typed::pw_multi_aff<Anonymous> preimage_domain_wrapped_domain(const typed::pw_multi_aff<> &pma2) const = delete;
   inline typed::union_pw_multi_aff<Anonymous> preimage_domain_wrapped_domain(const typed::union_pw_multi_aff<> &upma2) const = delete;
   template <typename Range>
@@ -7499,19 +6868,18 @@ struct pw_aff<Anonymous> : public isl::pw_aff {
   inline typed::pw_aff<Anonymous> pullback(const typed::multi_pw_aff<> &mpa) const = delete;
   inline typed::pw_aff<Anonymous> pullback(const typed::pw_multi_aff<> &pma) const = delete;
   inline typed::union_pw_aff<Anonymous> pullback(const typed::union_pw_multi_aff<> &upma) const = delete;
-  inline typed::pw_multi_aff_list<Anonymous> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<Anonymous> range_factor_domain() const = delete;
   inline typed::pw_multi_aff<Anonymous> range_factor_range() const = delete;
   inline typed::multi_pw_aff<Anonymous> range_product(const typed::multi_pw_aff<> &multi2) const = delete;
   inline typed::multi_union_pw_aff<Anonymous> range_product(const typed::multi_union_pw_aff<> &multi2) const = delete;
   inline typed::pw_multi_aff<Anonymous> range_product(const typed::pw_multi_aff<> &pma2) const = delete;
   inline typed::union_pw_multi_aff<Anonymous> range_product(const typed::union_pw_multi_aff<> &upma2) const = delete;
+  inline typed::multi_pw_aff<Anonymous> scale(const typed::multi_val<Anonymous> &mv) const;
   inline typed::pw_aff<Anonymous> scale(const typed::val<Anonymous> &v) const;
   inline typed::pw_aff<Anonymous> scale(long v) const;
-  inline typed::pw_multi_aff<Anonymous> scale(const typed::multi_val<Anonymous> &mv) const;
+  inline typed::multi_pw_aff<Anonymous> scale_down(const typed::multi_val<Anonymous> &mv) const;
   inline typed::pw_aff<Anonymous> scale_down(const typed::val<Anonymous> &f) const;
   inline typed::pw_aff<Anonymous> scale_down(long f) const;
-  inline typed::pw_multi_aff<Anonymous> scale_down(const typed::multi_val<Anonymous> &mv) const;
   inline typed::multi_pw_aff<Anonymous> set_at(int pos, const typed::pw_aff<Anonymous> &el) const;
   inline typed::multi_union_pw_aff<Anonymous> set_at(int pos, const typed::union_pw_aff<Anonymous> &el) const;
   template <typename Domain2>
@@ -7519,7 +6887,6 @@ struct pw_aff<Anonymous> : public isl::pw_aff {
   template <typename Domain2>
   inline typed::pw_multi_aff<Domain2> set_range_tuple(const std::string &id) const;
   inline typed::space<Anonymous> space() const;
-  inline typed::space<Anonymous> get_space() const = delete;
   inline typed::multi_pw_aff<Anonymous> sub(const typed::multi_pw_aff<Anonymous> &multi2) const;
   inline typed::multi_union_pw_aff<Anonymous> sub(const typed::multi_union_pw_aff<Anonymous> &multi2) const;
   inline typed::pw_aff<Anonymous> sub(const typed::pw_aff<Anonymous> &pwaff2) const;
@@ -7565,8 +6932,6 @@ struct pw_aff<Domain, Anonymous> : public isl::pw_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -7588,8 +6953,6 @@ struct pw_aff<Domain, Anonymous> : public isl::pw_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -7651,13 +7014,8 @@ struct pw_aff<Domain, Anonymous> : public isl::pw_aff {
   inline typed::set<Domain> bind(const std::string &id) const;
   inline typed::pw_aff<Anonymous> bind_domain(const typed::multi_id<Domain> &tuple) const;
   inline typed::pw_aff<Domain, Anonymous> bind_domain_wrapped_domain(const typed::multi_id<> &tuple) const = delete;
-  inline typed::pw_aff<Domain, Anonymous> ceil() const;
   inline typed::pw_aff<Domain, Anonymous> coalesce() const;
-  inline typed::pw_aff<Domain, Anonymous> cond(const typed::pw_aff<Domain, Anonymous> &pwaff_true, const typed::pw_aff<Domain, Anonymous> &pwaff_false) const;
   inline typed::set<Domain> domain() const;
-  inline typed::pw_aff<Domain, Anonymous> domain_reverse() const = delete;
-  inline typed::pw_aff<Domain, Anonymous> drop_unused_params() const;
-  inline typed::pw_multi_aff<Domain, Anonymous> extract_pw_multi_aff(const typed::space<Domain, Anonymous> &space) const;
   inline typed::pw_aff<Domain, Anonymous> floor() const;
   inline typed::set<Domain> ge_set(const typed::pw_aff<Domain, Anonymous> &pwaff2) const;
   inline typed::set<Domain> ge_set(const typed::aff<Domain, Anonymous> &pwaff2) const;
@@ -7665,9 +7023,6 @@ struct pw_aff<Domain, Anonymous> : public isl::pw_aff {
   inline typed::union_pw_aff<Domain, Anonymous> gist(const typed::union_set<Domain> &context) const;
   inline typed::pw_aff<Domain, Anonymous> gist(const typed::basic_set<Domain> &context) const;
   inline typed::pw_aff<Domain, Anonymous> gist(const typed::point<Domain> &context) const;
-  inline typed::pw_aff<Domain, Anonymous> gist_params(const typed::set<> &context) const;
-  inline typed::pw_aff<Domain, Anonymous> gist_params(const typed::basic_set<> &context) const;
-  inline typed::pw_aff<Domain, Anonymous> gist_params(const typed::point<> &context) const;
   inline typed::set<Domain> gt_set(const typed::pw_aff<Domain, Anonymous> &pwaff2) const;
   inline typed::set<Domain> gt_set(const typed::aff<Domain, Anonymous> &pwaff2) const;
   inline typed::multi_pw_aff<Domain, Anonymous> identity() const;
@@ -7677,7 +7032,6 @@ struct pw_aff<Domain, Anonymous> : public isl::pw_aff {
   inline typed::union_pw_aff<Domain, Anonymous> intersect_domain(const typed::union_set<Domain> &uset) const;
   inline typed::pw_aff<Domain, Anonymous> intersect_domain(const typed::basic_set<Domain> &set) const;
   inline typed::pw_aff<Domain, Anonymous> intersect_domain(const typed::point<Domain> &set) const;
-  inline typed::union_pw_aff<Domain, Anonymous> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
   inline typed::pw_aff<Domain, Anonymous> intersect_params(const typed::set<> &set) const;
   inline typed::pw_aff<Domain, Anonymous> intersect_params(const typed::basic_set<> &set) const;
   inline typed::pw_aff<Domain, Anonymous> intersect_params(const typed::point<> &set) const;
@@ -7690,16 +7044,13 @@ struct pw_aff<Domain, Anonymous> : public isl::pw_aff {
   inline typed::pw_aff<Domain, Anonymous> max(const typed::pw_aff<Domain, Anonymous> &pwaff2) const;
   inline typed::pw_aff<Domain, Anonymous> max(const typed::aff<Domain, Anonymous> &pwaff2) const;
   inline typed::multi_val<Anonymous> max_multi_val() const;
-  inline typed::val<Anonymous> max_val() const;
   inline typed::multi_pw_aff<Domain, Anonymous> min(const typed::multi_pw_aff<Domain, Anonymous> &multi2) const;
   inline typed::pw_aff<Domain, Anonymous> min(const typed::pw_aff<Domain, Anonymous> &pwaff2) const;
   inline typed::pw_aff<Domain, Anonymous> min(const typed::aff<Domain, Anonymous> &pwaff2) const;
   inline typed::multi_val<Anonymous> min_multi_val() const;
-  inline typed::val<Anonymous> min_val() const;
   inline typed::pw_aff<Domain, Anonymous> mod(const typed::val<Anonymous> &mod) const;
   inline typed::pw_aff<Domain, Anonymous> mod(long mod) const;
   inline typed::pw_aff<Domain, Anonymous> neg() const;
-  inline typed::set<> params() const;
   inline typed::pw_multi_aff<Domain, Anonymous> preimage_domain_wrapped_domain(const typed::pw_multi_aff<> &pma2) const = delete;
   inline typed::union_pw_multi_aff<Domain, Anonymous> preimage_domain_wrapped_domain(const typed::union_pw_multi_aff<> &upma2) const = delete;
   template <typename Domain2, typename Range2>
@@ -7718,7 +7069,6 @@ struct pw_aff<Domain, Anonymous> : public isl::pw_aff {
   template <typename Domain2>
   inline typed::union_pw_aff<Domain2, Anonymous> pullback(const typed::union_pw_multi_aff<Domain2, Domain> &upma) const;
   inline typed::union_pw_aff<Anonymous> pullback(const typed::union_pw_multi_aff<Domain> &upma) const;
-  inline typed::pw_multi_aff_list<Domain, Anonymous> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<Domain, Anonymous> range_factor_domain() const = delete;
   inline typed::pw_multi_aff<Domain, Anonymous> range_factor_range() const = delete;
   template <typename Range2>
@@ -7729,12 +7079,12 @@ struct pw_aff<Domain, Anonymous> : public isl::pw_aff {
   inline typed::pw_multi_aff<Domain, pair<Anonymous, Range2>> range_product(const typed::pw_multi_aff<Domain, Range2> &pma2) const;
   template <typename Range2>
   inline typed::union_pw_multi_aff<Domain, pair<Anonymous, Range2>> range_product(const typed::union_pw_multi_aff<Domain, Range2> &upma2) const;
+  inline typed::multi_pw_aff<Domain, Anonymous> scale(const typed::multi_val<Anonymous> &mv) const;
   inline typed::pw_aff<Domain, Anonymous> scale(const typed::val<Anonymous> &v) const;
   inline typed::pw_aff<Domain, Anonymous> scale(long v) const;
-  inline typed::pw_multi_aff<Domain, Anonymous> scale(const typed::multi_val<Anonymous> &mv) const;
+  inline typed::multi_pw_aff<Domain, Anonymous> scale_down(const typed::multi_val<Anonymous> &mv) const;
   inline typed::pw_aff<Domain, Anonymous> scale_down(const typed::val<Anonymous> &f) const;
   inline typed::pw_aff<Domain, Anonymous> scale_down(long f) const;
-  inline typed::pw_multi_aff<Domain, Anonymous> scale_down(const typed::multi_val<Anonymous> &mv) const;
   inline typed::multi_pw_aff<Domain, Anonymous> set_at(int pos, const typed::pw_aff<Domain, Anonymous> &el) const;
   inline typed::multi_union_pw_aff<Domain, Anonymous> set_at(int pos, const typed::union_pw_aff<Domain, Anonymous> &el) const;
   template <typename Range2>
@@ -7742,7 +7092,6 @@ struct pw_aff<Domain, Anonymous> : public isl::pw_aff {
   template <typename Range2>
   inline typed::pw_multi_aff<Domain, Range2> set_range_tuple(const std::string &id) const;
   inline typed::space<Domain, Anonymous> space() const;
-  inline typed::space<Domain, Anonymous> get_space() const = delete;
   inline typed::multi_pw_aff<Domain, Anonymous> sub(const typed::multi_pw_aff<Domain, Anonymous> &multi2) const;
   inline typed::multi_union_pw_aff<Domain, Anonymous> sub(const typed::multi_union_pw_aff<Domain, Anonymous> &multi2) const;
   inline typed::pw_aff<Domain, Anonymous> sub(const typed::pw_aff<Domain, Anonymous> &pwaff2) const;
@@ -7787,8 +7136,6 @@ struct pw_aff<pair<Domain2, Range2>, Anonymous> : public isl::pw_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -7810,8 +7157,6 @@ struct pw_aff<pair<Domain2, Range2>, Anonymous> : public isl::pw_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -7874,13 +7219,8 @@ struct pw_aff<pair<Domain2, Range2>, Anonymous> : public isl::pw_aff {
   inline typed::set<pair<Domain2, Range2>> bind(const std::string &id) const;
   inline typed::pw_aff<Anonymous> bind_domain(const typed::multi_id<pair<Domain2, Range2>> &tuple) const;
   inline typed::pw_aff<Range2, Anonymous> bind_domain_wrapped_domain(const typed::multi_id<Domain2> &tuple) const;
-  inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> ceil() const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> coalesce() const;
-  inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> cond(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff_true, const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff_false) const;
   inline typed::set<pair<Domain2, Range2>> domain() const;
-  inline typed::pw_aff<pair<Range2, Domain2>, Anonymous> domain_reverse() const;
-  inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> drop_unused_params() const;
-  inline typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous> extract_pw_multi_aff(const typed::space<pair<Domain2, Range2>, Anonymous> &space) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> floor() const;
   inline typed::set<pair<Domain2, Range2>> ge_set(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff2) const;
   inline typed::set<pair<Domain2, Range2>> ge_set(const typed::aff<pair<Domain2, Range2>, Anonymous> &pwaff2) const;
@@ -7888,9 +7228,6 @@ struct pw_aff<pair<Domain2, Range2>, Anonymous> : public isl::pw_aff {
   inline typed::union_pw_aff<pair<Domain2, Range2>, Anonymous> gist(const typed::union_set<pair<Domain2, Range2>> &context) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> gist(const typed::basic_set<pair<Domain2, Range2>> &context) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> gist(const typed::point<pair<Domain2, Range2>> &context) const;
-  inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> gist_params(const typed::set<> &context) const;
-  inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> gist_params(const typed::basic_set<> &context) const;
-  inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> gist_params(const typed::point<> &context) const;
   inline typed::set<pair<Domain2, Range2>> gt_set(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff2) const;
   inline typed::set<pair<Domain2, Range2>> gt_set(const typed::aff<pair<Domain2, Range2>, Anonymous> &pwaff2) const;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> identity() const;
@@ -7900,7 +7237,6 @@ struct pw_aff<pair<Domain2, Range2>, Anonymous> : public isl::pw_aff {
   inline typed::union_pw_aff<pair<Domain2, Range2>, Anonymous> intersect_domain(const typed::union_set<pair<Domain2, Range2>> &uset) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> intersect_domain(const typed::basic_set<pair<Domain2, Range2>> &set) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> intersect_domain(const typed::point<pair<Domain2, Range2>> &set) const;
-  inline typed::union_pw_aff<pair<Domain2, Range2>, Anonymous> intersect_domain_wrapped_domain(const typed::union_set<Domain2> &uset) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> intersect_params(const typed::set<> &set) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> intersect_params(const typed::basic_set<> &set) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> intersect_params(const typed::point<> &set) const;
@@ -7913,16 +7249,13 @@ struct pw_aff<pair<Domain2, Range2>, Anonymous> : public isl::pw_aff {
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> max(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff2) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> max(const typed::aff<pair<Domain2, Range2>, Anonymous> &pwaff2) const;
   inline typed::multi_val<Anonymous> max_multi_val() const;
-  inline typed::val<Anonymous> max_val() const;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> min(const typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> &multi2) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> min(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff2) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> min(const typed::aff<pair<Domain2, Range2>, Anonymous> &pwaff2) const;
   inline typed::multi_val<Anonymous> min_multi_val() const;
-  inline typed::val<Anonymous> min_val() const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> mod(const typed::val<Anonymous> &mod) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> mod(long mod) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> neg() const;
-  inline typed::set<> params() const;
   template <typename Domain3>
   inline typed::pw_multi_aff<pair<Domain3, Range2>, Anonymous> preimage_domain_wrapped_domain(const typed::pw_multi_aff<Domain3, Domain2> &pma2) const;
   template <typename Domain3>
@@ -7943,7 +7276,6 @@ struct pw_aff<pair<Domain2, Range2>, Anonymous> : public isl::pw_aff {
   template <typename Arg1>
   inline typed::union_pw_aff<Arg1, Anonymous> pullback(const typed::union_pw_multi_aff<Arg1, pair<Domain2, Range2>> &upma) const;
   inline typed::union_pw_aff<Anonymous> pullback(const typed::union_pw_multi_aff<pair<Domain2, Range2>> &upma) const;
-  inline typed::pw_multi_aff_list<pair<Domain2, Range2>, Anonymous> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous> range_factor_domain() const = delete;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous> range_factor_range() const = delete;
   template <typename Arg1>
@@ -7954,12 +7286,12 @@ struct pw_aff<pair<Domain2, Range2>, Anonymous> : public isl::pw_aff {
   inline typed::pw_multi_aff<pair<Domain2, Range2>, pair<Anonymous, Arg1>> range_product(const typed::pw_multi_aff<pair<Domain2, Range2>, Arg1> &pma2) const;
   template <typename Arg1>
   inline typed::union_pw_multi_aff<pair<Domain2, Range2>, pair<Anonymous, Arg1>> range_product(const typed::union_pw_multi_aff<pair<Domain2, Range2>, Arg1> &upma2) const;
+  inline typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> scale(const typed::multi_val<Anonymous> &mv) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> scale(const typed::val<Anonymous> &v) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> scale(long v) const;
-  inline typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous> scale(const typed::multi_val<Anonymous> &mv) const;
+  inline typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> scale_down(const typed::multi_val<Anonymous> &mv) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> scale_down(const typed::val<Anonymous> &f) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> scale_down(long f) const;
-  inline typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous> scale_down(const typed::multi_val<Anonymous> &mv) const;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> set_at(int pos, const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &el) const;
   inline typed::multi_union_pw_aff<pair<Domain2, Range2>, Anonymous> set_at(int pos, const typed::union_pw_aff<pair<Domain2, Range2>, Anonymous> &el) const;
   template <typename Arg1>
@@ -7967,7 +7299,6 @@ struct pw_aff<pair<Domain2, Range2>, Anonymous> : public isl::pw_aff {
   template <typename Arg1>
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Arg1> set_range_tuple(const std::string &id) const;
   inline typed::space<pair<Domain2, Range2>, Anonymous> space() const;
-  inline typed::space<pair<Domain2, Range2>, Anonymous> get_space() const = delete;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> sub(const typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> &multi2) const;
   inline typed::multi_union_pw_aff<pair<Domain2, Range2>, Anonymous> sub(const typed::multi_union_pw_aff<pair<Domain2, Range2>, Anonymous> &multi2) const;
   inline typed::pw_aff<pair<Domain2, Range2>, Anonymous> sub(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff2) const;
@@ -8012,8 +7343,6 @@ struct pw_aff_list<Anonymous> : public isl::pw_aff_list {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -8035,8 +7364,6 @@ struct pw_aff_list<Anonymous> : public isl::pw_aff_list {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -8063,15 +7390,12 @@ struct pw_aff_list<Anonymous> : public isl::pw_aff_list {
   }
   inline explicit pw_aff_list(const isl::ctx &ctx, int n);
   inline explicit pw_aff_list(const typed::pw_aff<Anonymous> &el);
-  inline explicit pw_aff_list(const isl::ctx &ctx, const std::string &str);
   inline typed::pw_aff_list<Anonymous> add(const typed::pw_aff<Anonymous> &el) const;
   inline typed::pw_aff_list<Anonymous> add(const typed::aff<Anonymous> &el) const;
   inline typed::pw_aff<Anonymous> at(int index) const;
   inline typed::pw_aff<Anonymous> get_at(int index) const = delete;
   inline typed::pw_aff_list<Anonymous> drop(unsigned int first, unsigned int n) const;
   inline void foreach(const std::function<void(typed::pw_aff<Anonymous>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::pw_aff<Anonymous>, typed::pw_aff<Anonymous>)> &follows, const std::function<void(typed::pw_aff_list<Anonymous>)> &fn) const;
-  inline typed::pw_aff_list<Anonymous> set_at(int index, const typed::pw_aff<Anonymous> &el) const;
 };
 
 template <typename Domain>
@@ -8092,8 +7416,6 @@ struct pw_aff_list<Domain, Anonymous> : public isl::pw_aff_list {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -8116,8 +7438,6 @@ struct pw_aff_list<Domain, Anonymous> : public isl::pw_aff_list {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -8154,15 +7474,12 @@ struct pw_aff_list<Domain, Anonymous> : public isl::pw_aff_list {
   }
   inline explicit pw_aff_list(const isl::ctx &ctx, int n);
   inline explicit pw_aff_list(const typed::pw_aff<Domain, Anonymous> &el);
-  inline explicit pw_aff_list(const isl::ctx &ctx, const std::string &str);
   inline typed::pw_aff_list<Domain, Anonymous> add(const typed::pw_aff<Domain, Anonymous> &el) const;
   inline typed::pw_aff_list<Domain, Anonymous> add(const typed::aff<Domain, Anonymous> &el) const;
   inline typed::pw_aff<Domain, Anonymous> at(int index) const;
   inline typed::pw_aff<Domain, Anonymous> get_at(int index) const = delete;
   inline typed::pw_aff_list<Domain, Anonymous> drop(unsigned int first, unsigned int n) const;
   inline void foreach(const std::function<void(typed::pw_aff<Domain, Anonymous>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::pw_aff<Domain, Anonymous>, typed::pw_aff<Domain, Anonymous>)> &follows, const std::function<void(typed::pw_aff_list<Domain, Anonymous>)> &fn) const;
-  inline typed::pw_aff_list<Domain, Anonymous> set_at(int index, const typed::pw_aff<Domain, Anonymous> &el) const;
 };
 
 template <typename Domain>
@@ -8183,8 +7500,6 @@ struct pw_multi_aff<Domain> : public isl::pw_multi_aff {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -8207,8 +7522,6 @@ struct pw_multi_aff<Domain> : public isl::pw_multi_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -8270,16 +7583,10 @@ struct pw_multi_aff<Domain> : public isl::pw_multi_aff {
   inline typed::pw_multi_aff<Domain> bind_domain_wrapped_domain(const typed::multi_id<> &tuple) const = delete;
   inline typed::pw_multi_aff<Domain> coalesce() const;
   inline typed::set<> domain() const;
-  inline typed::pw_multi_aff<Domain> domain_reverse() const = delete;
-  inline typed::pw_multi_aff<Domain> drop_unused_params() const;
-  inline typed::pw_multi_aff<Domain> extract_pw_multi_aff(const typed::space<Domain> &space) const;
   inline typed::pw_multi_aff<Domain> gist(const typed::set<> &set) const;
   inline typed::union_pw_multi_aff<Domain> gist(const typed::union_set<> &context) const;
   inline typed::pw_multi_aff<Domain> gist(const typed::basic_set<> &set) const;
   inline typed::pw_multi_aff<Domain> gist(const typed::point<> &set) const;
-  inline typed::pw_multi_aff<Domain> gist_params(const typed::set<> &set) const;
-  inline typed::pw_multi_aff<Domain> gist_params(const typed::basic_set<> &set) const;
-  inline typed::pw_multi_aff<Domain> gist_params(const typed::point<> &set) const;
   inline typed::multi_pw_aff<Domain, Domain> identity() const;
   template <typename Arg1>
   inline typed::pw_multi_aff<Arg1, Domain> insert_domain(const typed::space<Arg1> &domain) const;
@@ -8288,7 +7595,6 @@ struct pw_multi_aff<Domain> : public isl::pw_multi_aff {
   inline typed::union_pw_multi_aff<Domain> intersect_domain(const typed::union_set<> &uset) const = delete;
   inline typed::pw_multi_aff<Domain> intersect_domain(const typed::basic_set<> &set) const = delete;
   inline typed::pw_multi_aff<Domain> intersect_domain(const typed::point<> &set) const = delete;
-  inline typed::union_pw_multi_aff<Domain> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
   inline typed::pw_multi_aff<Domain> intersect_params(const typed::set<> &set) const;
   inline typed::pw_multi_aff<Domain> intersect_params(const typed::basic_set<> &set) const;
   inline typed::pw_multi_aff<Domain> intersect_params(const typed::point<> &set) const;
@@ -8308,12 +7614,12 @@ struct pw_multi_aff<Domain> : public isl::pw_multi_aff {
   inline typed::pw_multi_aff<pair<Domain, Range>> product(const typed::pw_multi_aff<Range> &pma2) const;
   template <typename Range>
   inline typed::pw_multi_aff<pair<Domain, Range>> product(const typed::multi_aff<Range> &pma2) const;
-  inline typed::pw_multi_aff<pair<Domain, Anonymous>> product(const typed::pw_aff<Anonymous> &pma2) const;
+  template <typename Range>
+  inline typed::pw_multi_aff<pair<Domain, Range>> product(const typed::pw_aff<Range> &pma2) const;
   inline typed::multi_pw_aff<Domain> pullback(const typed::multi_pw_aff<> &mpa2) const = delete;
   inline typed::pw_multi_aff<Domain> pullback(const typed::multi_aff<> &ma) const = delete;
   inline typed::pw_multi_aff<Domain> pullback(const typed::pw_multi_aff<> &pma2) const = delete;
   inline typed::union_pw_multi_aff<Domain> pullback(const typed::union_pw_multi_aff<> &upma2) const = delete;
-  inline typed::pw_multi_aff_list<Domain> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<Domain> range_factor_domain() const = delete;
   inline typed::pw_multi_aff<Domain> range_factor_range() const = delete;
   inline typed::multi_pw_aff<Domain> range_product(const typed::multi_pw_aff<> &multi2) const = delete;
@@ -8323,10 +7629,10 @@ struct pw_multi_aff<Domain> : public isl::pw_multi_aff {
   inline typed::pw_multi_aff<Domain> range_product(const typed::multi_aff<> &pma2) const = delete;
   inline typed::pw_multi_aff<Domain> range_product(const typed::pw_aff<> &pma2) const = delete;
   inline typed::id<Domain> get_range_tuple_id() const = delete;
-  inline typed::pw_multi_aff<Domain> scale(const typed::multi_val<Domain> &mv) const;
+  inline typed::multi_pw_aff<Domain> scale(const typed::multi_val<Domain> &mv) const;
   inline typed::pw_multi_aff<Domain> scale(const typed::val<Domain> &v) const;
   inline typed::pw_multi_aff<Domain> scale(long v) const;
-  inline typed::pw_multi_aff<Domain> scale_down(const typed::multi_val<Domain> &mv) const;
+  inline typed::multi_pw_aff<Domain> scale_down(const typed::multi_val<Domain> &mv) const;
   inline typed::pw_multi_aff<Domain> scale_down(const typed::val<Domain> &v) const;
   inline typed::pw_multi_aff<Domain> scale_down(long v) const;
   inline typed::multi_pw_aff<Domain> set_at(int pos, const typed::pw_aff<Anonymous> &el) const;
@@ -8379,8 +7685,6 @@ struct pw_multi_aff<Domain, Range> : public isl::pw_multi_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -8402,8 +7706,6 @@ struct pw_multi_aff<Domain, Range> : public isl::pw_multi_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -8466,16 +7768,10 @@ struct pw_multi_aff<Domain, Range> : public isl::pw_multi_aff {
   inline typed::pw_multi_aff<Domain, Range> bind_domain_wrapped_domain(const typed::multi_id<> &tuple) const = delete;
   inline typed::pw_multi_aff<Domain, Range> coalesce() const;
   inline typed::set<Domain> domain() const;
-  inline typed::pw_multi_aff<Domain, Range> domain_reverse() const = delete;
-  inline typed::pw_multi_aff<Domain, Range> drop_unused_params() const;
-  inline typed::pw_multi_aff<Domain, Range> extract_pw_multi_aff(const typed::space<Domain, Range> &space) const;
   inline typed::pw_multi_aff<Domain, Range> gist(const typed::set<Domain> &set) const;
   inline typed::union_pw_multi_aff<Domain, Range> gist(const typed::union_set<Domain> &context) const;
   inline typed::pw_multi_aff<Domain, Range> gist(const typed::basic_set<Domain> &set) const;
   inline typed::pw_multi_aff<Domain, Range> gist(const typed::point<Domain> &set) const;
-  inline typed::pw_multi_aff<Domain, Range> gist_params(const typed::set<> &set) const;
-  inline typed::pw_multi_aff<Domain, Range> gist_params(const typed::basic_set<> &set) const;
-  inline typed::pw_multi_aff<Domain, Range> gist_params(const typed::point<> &set) const;
   inline typed::multi_pw_aff<Domain, Range> identity() const;
   inline typed::pw_multi_aff<Domain, Range> insert_domain(const typed::space<> &domain) const = delete;
   inline typed::pw_multi_aff<Domain, Range> intersect_domain(const typed::set<Domain> &set) const;
@@ -8483,7 +7779,6 @@ struct pw_multi_aff<Domain, Range> : public isl::pw_multi_aff {
   inline typed::union_pw_multi_aff<Domain, Range> intersect_domain(const typed::union_set<Domain> &uset) const;
   inline typed::pw_multi_aff<Domain, Range> intersect_domain(const typed::basic_set<Domain> &set) const;
   inline typed::pw_multi_aff<Domain, Range> intersect_domain(const typed::point<Domain> &set) const;
-  inline typed::union_pw_multi_aff<Domain, Range> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
   inline typed::pw_multi_aff<Domain, Range> intersect_params(const typed::set<> &set) const;
   inline typed::pw_multi_aff<Domain, Range> intersect_params(const typed::basic_set<> &set) const;
   inline typed::pw_multi_aff<Domain, Range> intersect_params(const typed::point<> &set) const;
@@ -8503,8 +7798,8 @@ struct pw_multi_aff<Domain, Range> : public isl::pw_multi_aff {
   inline typed::pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::pw_multi_aff<Domain2, Range2> &pma2) const;
   template <typename Domain2, typename Range2>
   inline typed::pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::multi_aff<Domain2, Range2> &pma2) const;
-  template <typename Domain2>
-  inline typed::pw_multi_aff<pair<Domain, Domain2>, pair<Range, Anonymous>> product(const typed::pw_aff<Domain2, Anonymous> &pma2) const;
+  template <typename Domain2, typename Range2>
+  inline typed::pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::pw_aff<Domain2, Range2> &pma2) const;
   template <typename Domain2>
   inline typed::multi_pw_aff<Domain2, Range> pullback(const typed::multi_pw_aff<Domain2, Domain> &mpa2) const;
   inline typed::multi_pw_aff<Range> pullback(const typed::multi_pw_aff<Domain> &mpa2) const;
@@ -8517,7 +7812,6 @@ struct pw_multi_aff<Domain, Range> : public isl::pw_multi_aff {
   template <typename Domain2>
   inline typed::union_pw_multi_aff<Domain2, Range> pullback(const typed::union_pw_multi_aff<Domain2, Domain> &upma2) const;
   inline typed::union_pw_multi_aff<Range> pullback(const typed::union_pw_multi_aff<Domain> &upma2) const;
-  inline typed::pw_multi_aff_list<Domain, Range> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<Domain, Range> range_factor_domain() const = delete;
   inline typed::pw_multi_aff<Domain, Range> range_factor_range() const = delete;
   template <typename Range2>
@@ -8530,12 +7824,13 @@ struct pw_multi_aff<Domain, Range> : public isl::pw_multi_aff {
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> range_product(const typed::union_pw_multi_aff<Domain, Range2> &upma2) const;
   template <typename Range2>
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> range_product(const typed::multi_aff<Domain, Range2> &pma2) const;
-  inline typed::pw_multi_aff<Domain, pair<Range, Anonymous>> range_product(const typed::pw_aff<Domain, Anonymous> &pma2) const;
+  template <typename Range2>
+  inline typed::pw_multi_aff<Domain, pair<Range, Range2>> range_product(const typed::pw_aff<Domain, Range2> &pma2) const;
   inline typed::id<Domain, Range> get_range_tuple_id() const = delete;
-  inline typed::pw_multi_aff<Domain, Range> scale(const typed::multi_val<Range> &mv) const;
+  inline typed::multi_pw_aff<Domain, Range> scale(const typed::multi_val<Range> &mv) const;
   inline typed::pw_multi_aff<Domain, Range> scale(const typed::val<Range> &v) const;
   inline typed::pw_multi_aff<Domain, Range> scale(long v) const;
-  inline typed::pw_multi_aff<Domain, Range> scale_down(const typed::multi_val<Range> &mv) const;
+  inline typed::multi_pw_aff<Domain, Range> scale_down(const typed::multi_val<Range> &mv) const;
   inline typed::pw_multi_aff<Domain, Range> scale_down(const typed::val<Range> &v) const;
   inline typed::pw_multi_aff<Domain, Range> scale_down(long v) const;
   inline typed::multi_pw_aff<Domain, Range> set_at(int pos, const typed::pw_aff<Domain, Anonymous> &el) const;
@@ -8587,8 +7882,6 @@ struct pw_multi_aff<pair<Domain2, Range2>, Range> : public isl::pw_multi_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -8610,8 +7903,6 @@ struct pw_multi_aff<pair<Domain2, Range2>, Range> : public isl::pw_multi_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -8675,16 +7966,10 @@ struct pw_multi_aff<pair<Domain2, Range2>, Range> : public isl::pw_multi_aff {
   inline typed::pw_multi_aff<Range2, Range> bind_domain_wrapped_domain(const typed::multi_id<Domain2> &tuple) const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> coalesce() const;
   inline typed::set<pair<Domain2, Range2>> domain() const;
-  inline typed::pw_multi_aff<pair<Range2, Domain2>, Range> domain_reverse() const;
-  inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> drop_unused_params() const;
-  inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> extract_pw_multi_aff(const typed::space<pair<Domain2, Range2>, Range> &space) const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> gist(const typed::set<pair<Domain2, Range2>> &set) const;
   inline typed::union_pw_multi_aff<pair<Domain2, Range2>, Range> gist(const typed::union_set<pair<Domain2, Range2>> &context) const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> gist(const typed::basic_set<pair<Domain2, Range2>> &set) const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> gist(const typed::point<pair<Domain2, Range2>> &set) const;
-  inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> gist_params(const typed::set<> &set) const;
-  inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> gist_params(const typed::basic_set<> &set) const;
-  inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> gist_params(const typed::point<> &set) const;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> identity() const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> insert_domain(const typed::space<> &domain) const = delete;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> intersect_domain(const typed::set<pair<Domain2, Range2>> &set) const;
@@ -8692,7 +7977,6 @@ struct pw_multi_aff<pair<Domain2, Range2>, Range> : public isl::pw_multi_aff {
   inline typed::union_pw_multi_aff<pair<Domain2, Range2>, Range> intersect_domain(const typed::union_set<pair<Domain2, Range2>> &uset) const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> intersect_domain(const typed::basic_set<pair<Domain2, Range2>> &set) const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> intersect_domain(const typed::point<pair<Domain2, Range2>> &set) const;
-  inline typed::union_pw_multi_aff<pair<Domain2, Range2>, Range> intersect_domain_wrapped_domain(const typed::union_set<Domain2> &uset) const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> intersect_params(const typed::set<> &set) const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> intersect_params(const typed::basic_set<> &set) const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> intersect_params(const typed::point<> &set) const;
@@ -8716,8 +8000,8 @@ struct pw_multi_aff<pair<Domain2, Range2>, Range> : public isl::pw_multi_aff {
   inline typed::pw_multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> product(const typed::pw_multi_aff<Arg2, Arg3> &pma2) const;
   template <typename Arg2, typename Arg3>
   inline typed::pw_multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> product(const typed::multi_aff<Arg2, Arg3> &pma2) const;
-  template <typename Arg2>
-  inline typed::pw_multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Anonymous>> product(const typed::pw_aff<Arg2, Anonymous> &pma2) const;
+  template <typename Arg2, typename Arg3>
+  inline typed::pw_multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> product(const typed::pw_aff<Arg2, Arg3> &pma2) const;
   template <typename Arg2>
   inline typed::multi_pw_aff<Arg2, Range> pullback(const typed::multi_pw_aff<Arg2, pair<Domain2, Range2>> &mpa2) const;
   inline typed::multi_pw_aff<Range> pullback(const typed::multi_pw_aff<pair<Domain2, Range2>> &mpa2) const;
@@ -8730,7 +8014,6 @@ struct pw_multi_aff<pair<Domain2, Range2>, Range> : public isl::pw_multi_aff {
   template <typename Arg2>
   inline typed::union_pw_multi_aff<Arg2, Range> pullback(const typed::union_pw_multi_aff<Arg2, pair<Domain2, Range2>> &upma2) const;
   inline typed::union_pw_multi_aff<Range> pullback(const typed::union_pw_multi_aff<pair<Domain2, Range2>> &upma2) const;
-  inline typed::pw_multi_aff_list<pair<Domain2, Range2>, Range> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> range_factor_domain() const = delete;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> range_factor_range() const = delete;
   template <typename Arg2>
@@ -8743,12 +8026,13 @@ struct pw_multi_aff<pair<Domain2, Range2>, Range> : public isl::pw_multi_aff {
   inline typed::union_pw_multi_aff<pair<Domain2, Range2>, pair<Range, Arg2>> range_product(const typed::union_pw_multi_aff<pair<Domain2, Range2>, Arg2> &upma2) const;
   template <typename Arg2>
   inline typed::pw_multi_aff<pair<Domain2, Range2>, pair<Range, Arg2>> range_product(const typed::multi_aff<pair<Domain2, Range2>, Arg2> &pma2) const;
-  inline typed::pw_multi_aff<pair<Domain2, Range2>, pair<Range, Anonymous>> range_product(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pma2) const;
+  template <typename Arg2>
+  inline typed::pw_multi_aff<pair<Domain2, Range2>, pair<Range, Arg2>> range_product(const typed::pw_aff<pair<Domain2, Range2>, Arg2> &pma2) const;
   inline typed::id<pair<Domain2, Range2>, Range> get_range_tuple_id() const = delete;
-  inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> scale(const typed::multi_val<Range> &mv) const;
+  inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> scale(const typed::multi_val<Range> &mv) const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> scale(const typed::val<Range> &v) const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> scale(long v) const;
-  inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> scale_down(const typed::multi_val<Range> &mv) const;
+  inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> scale_down(const typed::multi_val<Range> &mv) const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> scale_down(const typed::val<Range> &v) const;
   inline typed::pw_multi_aff<pair<Domain2, Range2>, Range> scale_down(long v) const;
   inline typed::multi_pw_aff<pair<Domain2, Range2>, Range> set_at(int pos, const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &el) const;
@@ -8800,8 +8084,6 @@ struct pw_multi_aff<Domain, pair<Range, Range2>> : public isl::pw_multi_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -8823,8 +8105,6 @@ struct pw_multi_aff<Domain, pair<Range, Range2>> : public isl::pw_multi_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -8888,16 +8168,10 @@ struct pw_multi_aff<Domain, pair<Range, Range2>> : public isl::pw_multi_aff {
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> bind_domain_wrapped_domain(const typed::multi_id<> &tuple) const = delete;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> coalesce() const;
   inline typed::set<Domain> domain() const;
-  inline typed::pw_multi_aff<Domain, pair<Range, Range2>> domain_reverse() const = delete;
-  inline typed::pw_multi_aff<Domain, pair<Range, Range2>> drop_unused_params() const;
-  inline typed::pw_multi_aff<Domain, pair<Range, Range2>> extract_pw_multi_aff(const typed::space<Domain, pair<Range, Range2>> &space) const;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> gist(const typed::set<Domain> &set) const;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> gist(const typed::union_set<Domain> &context) const;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> gist(const typed::basic_set<Domain> &set) const;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> gist(const typed::point<Domain> &set) const;
-  inline typed::pw_multi_aff<Domain, pair<Range, Range2>> gist_params(const typed::set<> &set) const;
-  inline typed::pw_multi_aff<Domain, pair<Range, Range2>> gist_params(const typed::basic_set<> &set) const;
-  inline typed::pw_multi_aff<Domain, pair<Range, Range2>> gist_params(const typed::point<> &set) const;
   inline typed::multi_pw_aff<Domain, pair<Range, Range2>> identity() const;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> insert_domain(const typed::space<> &domain) const = delete;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain(const typed::set<Domain> &set) const;
@@ -8905,7 +8179,6 @@ struct pw_multi_aff<Domain, pair<Range, Range2>> : public isl::pw_multi_aff {
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain(const typed::union_set<Domain> &uset) const;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain(const typed::basic_set<Domain> &set) const;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain(const typed::point<Domain> &set) const;
-  inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> intersect_params(const typed::set<> &set) const;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> intersect_params(const typed::basic_set<> &set) const;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> intersect_params(const typed::point<> &set) const;
@@ -8925,8 +8198,8 @@ struct pw_multi_aff<Domain, pair<Range, Range2>> : public isl::pw_multi_aff {
   inline typed::pw_multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>> product(const typed::pw_multi_aff<Domain2, Arg3> &pma2) const;
   template <typename Domain2, typename Arg3>
   inline typed::pw_multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>> product(const typed::multi_aff<Domain2, Arg3> &pma2) const;
-  template <typename Domain2>
-  inline typed::pw_multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Anonymous>> product(const typed::pw_aff<Domain2, Anonymous> &pma2) const;
+  template <typename Domain2, typename Arg3>
+  inline typed::pw_multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>> product(const typed::pw_aff<Domain2, Arg3> &pma2) const;
   template <typename Domain2>
   inline typed::multi_pw_aff<Domain2, pair<Range, Range2>> pullback(const typed::multi_pw_aff<Domain2, Domain> &mpa2) const;
   inline typed::multi_pw_aff<pair<Range, Range2>> pullback(const typed::multi_pw_aff<Domain> &mpa2) const;
@@ -8939,7 +8212,6 @@ struct pw_multi_aff<Domain, pair<Range, Range2>> : public isl::pw_multi_aff {
   template <typename Domain2>
   inline typed::union_pw_multi_aff<Domain2, pair<Range, Range2>> pullback(const typed::union_pw_multi_aff<Domain2, Domain> &upma2) const;
   inline typed::union_pw_multi_aff<pair<Range, Range2>> pullback(const typed::union_pw_multi_aff<Domain> &upma2) const;
-  inline typed::pw_multi_aff_list<Domain, pair<Range, Range2>> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<Domain, Range> range_factor_domain() const;
   inline typed::pw_multi_aff<Domain, Range2> range_factor_range() const;
   template <typename Arg3>
@@ -8952,12 +8224,13 @@ struct pw_multi_aff<Domain, pair<Range, Range2>> : public isl::pw_multi_aff {
   inline typed::union_pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> range_product(const typed::union_pw_multi_aff<Domain, Arg3> &upma2) const;
   template <typename Arg3>
   inline typed::pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> range_product(const typed::multi_aff<Domain, Arg3> &pma2) const;
-  inline typed::pw_multi_aff<Domain, pair<pair<Range, Range2>, Anonymous>> range_product(const typed::pw_aff<Domain, Anonymous> &pma2) const;
+  template <typename Arg3>
+  inline typed::pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> range_product(const typed::pw_aff<Domain, Arg3> &pma2) const;
   inline typed::id<Domain, pair<Range, Range2>> get_range_tuple_id() const = delete;
-  inline typed::pw_multi_aff<Domain, pair<Range, Range2>> scale(const typed::multi_val<pair<Range, Range2>> &mv) const;
+  inline typed::multi_pw_aff<Domain, pair<Range, Range2>> scale(const typed::multi_val<pair<Range, Range2>> &mv) const;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> scale(const typed::val<pair<Range, Range2>> &v) const;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> scale(long v) const;
-  inline typed::pw_multi_aff<Domain, pair<Range, Range2>> scale_down(const typed::multi_val<pair<Range, Range2>> &mv) const;
+  inline typed::multi_pw_aff<Domain, pair<Range, Range2>> scale_down(const typed::multi_val<pair<Range, Range2>> &mv) const;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> scale_down(const typed::val<pair<Range, Range2>> &v) const;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> scale_down(long v) const;
   inline typed::multi_pw_aff<Domain, pair<Range, Range2>> set_at(int pos, const typed::pw_aff<Domain, Anonymous> &el) const;
@@ -9007,8 +8280,6 @@ struct pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::pw_multi_af
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -9030,8 +8301,6 @@ struct pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::pw_multi_af
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -9096,16 +8365,10 @@ struct pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::pw_multi_af
   inline typed::pw_multi_aff<T2, pair<Range, Range2>> bind_domain_wrapped_domain(const typed::multi_id<T1> &tuple) const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> coalesce() const;
   inline typed::set<pair<T1, T2>> domain() const;
-  inline typed::pw_multi_aff<pair<T2, T1>, pair<Range, Range2>> domain_reverse() const;
-  inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> drop_unused_params() const;
-  inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> extract_pw_multi_aff(const typed::space<pair<T1, T2>, pair<Range, Range2>> &space) const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> gist(const typed::set<pair<T1, T2>> &set) const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> gist(const typed::union_set<pair<T1, T2>> &context) const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> gist(const typed::basic_set<pair<T1, T2>> &set) const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> gist(const typed::point<pair<T1, T2>> &set) const;
-  inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> gist_params(const typed::set<> &set) const;
-  inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> gist_params(const typed::basic_set<> &set) const;
-  inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> gist_params(const typed::point<> &set) const;
   inline typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> identity() const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> insert_domain(const typed::space<> &domain) const = delete;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::set<pair<T1, T2>> &set) const;
@@ -9113,7 +8376,6 @@ struct pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::pw_multi_af
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::union_set<pair<T1, T2>> &uset) const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::basic_set<pair<T1, T2>> &set) const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::point<pair<T1, T2>> &set) const;
-  inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::union_set<T1> &uset) const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_params(const typed::set<> &set) const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_params(const typed::basic_set<> &set) const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_params(const typed::point<> &set) const;
@@ -9137,8 +8399,8 @@ struct pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::pw_multi_af
   inline typed::pw_multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>> product(const typed::pw_multi_aff<Domain2, Arg2> &pma2) const;
   template <typename Domain2, typename Arg2>
   inline typed::pw_multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>> product(const typed::multi_aff<Domain2, Arg2> &pma2) const;
-  template <typename Domain2>
-  inline typed::pw_multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Anonymous>> product(const typed::pw_aff<Domain2, Anonymous> &pma2) const;
+  template <typename Domain2, typename Arg2>
+  inline typed::pw_multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>> product(const typed::pw_aff<Domain2, Arg2> &pma2) const;
   template <typename Domain2>
   inline typed::multi_pw_aff<Domain2, pair<Range, Range2>> pullback(const typed::multi_pw_aff<Domain2, pair<T1, T2>> &mpa2) const;
   inline typed::multi_pw_aff<pair<Range, Range2>> pullback(const typed::multi_pw_aff<pair<T1, T2>> &mpa2) const;
@@ -9151,7 +8413,6 @@ struct pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::pw_multi_af
   template <typename Domain2>
   inline typed::union_pw_multi_aff<Domain2, pair<Range, Range2>> pullback(const typed::union_pw_multi_aff<Domain2, pair<T1, T2>> &upma2) const;
   inline typed::union_pw_multi_aff<pair<Range, Range2>> pullback(const typed::union_pw_multi_aff<pair<T1, T2>> &upma2) const;
-  inline typed::pw_multi_aff_list<pair<T1, T2>, pair<Range, Range2>> pw_multi_aff_list() const;
   inline typed::pw_multi_aff<pair<T1, T2>, Range> range_factor_domain() const;
   inline typed::pw_multi_aff<pair<T1, T2>, Range2> range_factor_range() const;
   template <typename Arg2>
@@ -9164,12 +8425,13 @@ struct pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::pw_multi_af
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> range_product(const typed::union_pw_multi_aff<pair<T1, T2>, Arg2> &upma2) const;
   template <typename Arg2>
   inline typed::pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> range_product(const typed::multi_aff<pair<T1, T2>, Arg2> &pma2) const;
-  inline typed::pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Anonymous>> range_product(const typed::pw_aff<pair<T1, T2>, Anonymous> &pma2) const;
+  template <typename Arg2>
+  inline typed::pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> range_product(const typed::pw_aff<pair<T1, T2>, Arg2> &pma2) const;
   inline typed::id<pair<T1, T2>, pair<Range, Range2>> get_range_tuple_id() const = delete;
-  inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> scale(const typed::multi_val<pair<Range, Range2>> &mv) const;
+  inline typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> scale(const typed::multi_val<pair<Range, Range2>> &mv) const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> scale(const typed::val<pair<Range, Range2>> &v) const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> scale(long v) const;
-  inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> scale_down(const typed::multi_val<pair<Range, Range2>> &mv) const;
+  inline typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> scale_down(const typed::multi_val<pair<Range, Range2>> &mv) const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> scale_down(const typed::val<pair<Range, Range2>> &v) const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> scale_down(long v) const;
   inline typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> set_at(int pos, const typed::pw_aff<pair<T1, T2>, Anonymous> &el) const;
@@ -9219,8 +8481,6 @@ struct pw_multi_aff_list<Domain> : public isl::pw_multi_aff_list {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -9242,8 +8502,6 @@ struct pw_multi_aff_list<Domain> : public isl::pw_multi_aff_list {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -9280,7 +8538,6 @@ struct pw_multi_aff_list<Domain> : public isl::pw_multi_aff_list {
   }
   inline explicit pw_multi_aff_list(const isl::ctx &ctx, int n);
   inline explicit pw_multi_aff_list(const typed::pw_multi_aff<Domain> &el);
-  inline explicit pw_multi_aff_list(const isl::ctx &ctx, const std::string &str);
   inline typed::pw_multi_aff_list<Domain> add(const typed::pw_multi_aff<Domain> &el) const;
   inline typed::pw_multi_aff_list<Domain> add(const typed::multi_aff<Domain> &el) const;
   inline typed::pw_multi_aff_list<Domain> add(const typed::pw_aff<Domain> &el) const;
@@ -9288,8 +8545,6 @@ struct pw_multi_aff_list<Domain> : public isl::pw_multi_aff_list {
   inline typed::pw_multi_aff<Domain> get_at(int index) const = delete;
   inline typed::pw_multi_aff_list<Domain> drop(unsigned int first, unsigned int n) const;
   inline void foreach(const std::function<void(typed::pw_multi_aff<Domain>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::pw_multi_aff<Domain>, typed::pw_multi_aff<Domain>)> &follows, const std::function<void(typed::pw_multi_aff_list<Domain>)> &fn) const;
-  inline typed::pw_multi_aff_list<Domain> set_at(int index, const typed::pw_multi_aff<Anonymous> &el) const;
 };
 
 template <typename Domain, typename Range>
@@ -9310,8 +8565,6 @@ struct pw_multi_aff_list<Domain, Range> : public isl::pw_multi_aff_list {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -9334,8 +8587,6 @@ struct pw_multi_aff_list<Domain, Range> : public isl::pw_multi_aff_list {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -9373,7 +8624,6 @@ struct pw_multi_aff_list<Domain, Range> : public isl::pw_multi_aff_list {
   }
   inline explicit pw_multi_aff_list(const isl::ctx &ctx, int n);
   inline explicit pw_multi_aff_list(const typed::pw_multi_aff<Domain, Range> &el);
-  inline explicit pw_multi_aff_list(const isl::ctx &ctx, const std::string &str);
   inline typed::pw_multi_aff_list<Domain, Range> add(const typed::pw_multi_aff<Domain, Range> &el) const;
   inline typed::pw_multi_aff_list<Domain, Range> add(const typed::multi_aff<Domain, Range> &el) const;
   inline typed::pw_multi_aff_list<Domain, Range> add(const typed::pw_aff<Domain, Range> &el) const;
@@ -9381,8 +8631,6 @@ struct pw_multi_aff_list<Domain, Range> : public isl::pw_multi_aff_list {
   inline typed::pw_multi_aff<Domain, Range> get_at(int index) const = delete;
   inline typed::pw_multi_aff_list<Domain, Range> drop(unsigned int first, unsigned int n) const;
   inline void foreach(const std::function<void(typed::pw_multi_aff<Domain, Range>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::pw_multi_aff<Domain, Range>, typed::pw_multi_aff<Domain, Range>)> &follows, const std::function<void(typed::pw_multi_aff_list<Domain, Range>)> &fn) const;
-  inline typed::pw_multi_aff_list<Domain, Range> set_at(int index, const typed::pw_multi_aff<Domain, Anonymous> &el) const;
 };
 
 template <>
@@ -9403,8 +8651,6 @@ struct set<> : public isl::set {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -9427,8 +8673,6 @@ struct set<> : public isl::set {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -9469,9 +8713,7 @@ struct set<> : public isl::set {
   inline typed::set<> bind(const typed::multi_id<> &tuple) const = delete;
   inline typed::set<> coalesce() const;
   inline typed::set<> detect_equalities() const;
-  inline typed::set<> drop_unused_params() const;
   inline bool every_set(const std::function<bool(typed::set<>)> &test) const;
-  inline typed::set<> extract_set(const typed::space<> &space) const;
   inline void foreach_basic_set(const std::function<void(typed::basic_set<>)> &fn) const;
   inline void foreach_point(const std::function<void(typed::point<>)> &fn) const;
   inline void foreach_set(const std::function<void(typed::set<>)> &fn) const;
@@ -9479,11 +8721,7 @@ struct set<> : public isl::set {
   inline typed::union_set<> gist(const typed::union_set<> &context) const;
   inline typed::set<> gist(const typed::basic_set<> &context) const;
   inline typed::set<> gist(const typed::point<> &context) const;
-  inline typed::set<> gist_params(const typed::set<> &context) const = delete;
-  inline typed::set<> gist_params(const typed::basic_set<> &context) const = delete;
-  inline typed::set<> gist_params(const typed::point<> &context) const = delete;
   inline typed::map<> identity() const = delete;
-  inline typed::pw_aff<Anonymous> indicator_function() const;
   inline typed::map<> insert_domain(const typed::space<> &domain) const = delete;
   inline typed::set<> intersect(const typed::set<> &set2) const;
   inline typed::union_set<> intersect(const typed::union_set<> &uset2) const;
@@ -9492,8 +8730,6 @@ struct set<> : public isl::set {
   inline typed::set<> intersect_params(const typed::set<> &params) const = delete;
   inline typed::set<> intersect_params(const typed::basic_set<> &params) const = delete;
   inline typed::set<> intersect_params(const typed::point<> &params) const = delete;
-  inline typed::fixed_box<> lattice_tile() const = delete;
-  inline typed::fixed_box<> get_lattice_tile() const = delete;
   inline typed::set<> lexmax() const = delete;
   inline typed::pw_multi_aff<> lexmax_pw_multi_aff() const = delete;
   inline typed::set<> lexmin() const = delete;
@@ -9504,8 +8740,6 @@ struct set<> : public isl::set {
   inline typed::val<> max_val(const typed::aff<> &obj) const = delete;
   inline typed::multi_pw_aff<> min_multi_pw_aff() const = delete;
   inline typed::val<> min_val(const typed::aff<> &obj) const = delete;
-  inline typed::pw_aff<Anonymous> param_pw_aff_on_domain(const typed::id<Anonymous> &id) const;
-  inline typed::pw_aff<Anonymous> param_pw_aff_on_domain(const std::string &id) const;
   inline typed::set<> params() const = delete;
   inline typed::multi_val<> plain_multi_val_if_fixed() const = delete;
   inline typed::multi_val<> get_plain_multi_val_if_fixed() const = delete;
@@ -9520,11 +8754,7 @@ struct set<> : public isl::set {
   inline typed::set<> project_out_param(const typed::id<Anonymous> &id) const;
   inline typed::set<> project_out_param(const std::string &id) const;
   inline typed::set<> project_out_param(const typed::id_list<Anonymous> &list) const;
-  inline typed::pw_aff<Anonymous> pw_aff_on_domain(const typed::val<Anonymous> &v) const;
-  inline typed::pw_aff<Anonymous> pw_aff_on_domain(long v) const;
-  template <typename Domain>
-  inline typed::pw_multi_aff<Domain> pw_multi_aff_on_domain(const typed::multi_val<Domain> &mv) const;
-  inline typed::set_list<> set_list() const;
+  inline typed::pw_multi_aff<> pw_multi_aff_on_domain(const typed::multi_val<> &mv) const = delete;
   inline typed::fixed_box<> simple_fixed_box_hull() const = delete;
   inline typed::fixed_box<> get_simple_fixed_box_hull() const = delete;
   inline typed::space<> space() const;
@@ -9547,7 +8777,6 @@ struct set<> : public isl::set {
   inline typed::map<> unwrap() const = delete;
   inline typed::set<> upper_bound(const typed::multi_pw_aff<> &upper) const = delete;
   inline typed::set<> upper_bound(const typed::multi_val<> &upper) const = delete;
-  inline typed::set<> wrapped_reverse() const = delete;
 };
 
 template <typename Domain>
@@ -9568,8 +8797,6 @@ struct set<Domain> : public isl::set {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -9592,8 +8819,6 @@ struct set<Domain> : public isl::set {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -9642,9 +8867,7 @@ struct set<Domain> : public isl::set {
   inline typed::set<> bind(const typed::multi_id<Domain> &tuple) const;
   inline typed::set<Domain> coalesce() const;
   inline typed::set<Domain> detect_equalities() const;
-  inline typed::set<Domain> drop_unused_params() const;
   inline bool every_set(const std::function<bool(typed::set<Domain>)> &test) const;
-  inline typed::set<Domain> extract_set(const typed::space<Domain> &space) const;
   inline void foreach_basic_set(const std::function<void(typed::basic_set<Domain>)> &fn) const;
   inline void foreach_point(const std::function<void(typed::point<Domain>)> &fn) const;
   inline void foreach_set(const std::function<void(typed::set<Domain>)> &fn) const;
@@ -9652,11 +8875,7 @@ struct set<Domain> : public isl::set {
   inline typed::union_set<Domain> gist(const typed::union_set<Domain> &context) const;
   inline typed::set<Domain> gist(const typed::basic_set<Domain> &context) const;
   inline typed::set<Domain> gist(const typed::point<Domain> &context) const;
-  inline typed::set<Domain> gist_params(const typed::set<> &context) const;
-  inline typed::set<Domain> gist_params(const typed::basic_set<> &context) const;
-  inline typed::set<Domain> gist_params(const typed::point<> &context) const;
   inline typed::map<Domain, Domain> identity() const;
-  inline typed::pw_aff<Domain, Anonymous> indicator_function() const;
   template <typename Arg1>
   inline typed::map<Arg1, Domain> insert_domain(const typed::space<Arg1> &domain) const;
   inline typed::set<Domain> intersect(const typed::set<Domain> &set2) const;
@@ -9666,8 +8885,6 @@ struct set<Domain> : public isl::set {
   inline typed::set<Domain> intersect_params(const typed::set<> &params) const;
   inline typed::set<Domain> intersect_params(const typed::basic_set<> &params) const;
   inline typed::set<Domain> intersect_params(const typed::point<> &params) const;
-  inline typed::fixed_box<Domain> lattice_tile() const;
-  inline typed::fixed_box<Domain> get_lattice_tile() const = delete;
   inline typed::set<Domain> lexmax() const;
   inline typed::pw_multi_aff<Domain> lexmax_pw_multi_aff() const;
   inline typed::set<Domain> lexmin() const;
@@ -9678,8 +8895,6 @@ struct set<Domain> : public isl::set {
   inline typed::val<Domain> max_val(const typed::aff<> &obj) const = delete;
   inline typed::multi_pw_aff<Domain> min_multi_pw_aff() const;
   inline typed::val<Domain> min_val(const typed::aff<> &obj) const = delete;
-  inline typed::pw_aff<Domain, Anonymous> param_pw_aff_on_domain(const typed::id<Anonymous> &id) const;
-  inline typed::pw_aff<Domain, Anonymous> param_pw_aff_on_domain(const std::string &id) const;
   inline typed::set<> params() const;
   inline typed::multi_val<Domain> plain_multi_val_if_fixed() const;
   inline typed::multi_val<Domain> get_plain_multi_val_if_fixed() const = delete;
@@ -9701,11 +8916,8 @@ struct set<Domain> : public isl::set {
   inline typed::set<Domain> project_out_param(const typed::id<Anonymous> &id) const;
   inline typed::set<Domain> project_out_param(const std::string &id) const;
   inline typed::set<Domain> project_out_param(const typed::id_list<Anonymous> &list) const;
-  inline typed::pw_aff<Domain, Anonymous> pw_aff_on_domain(const typed::val<Anonymous> &v) const;
-  inline typed::pw_aff<Domain, Anonymous> pw_aff_on_domain(long v) const;
   template <typename Range>
   inline typed::pw_multi_aff<Domain, Range> pw_multi_aff_on_domain(const typed::multi_val<Range> &mv) const;
-  inline typed::set_list<Domain> set_list() const;
   inline typed::fixed_box<Domain> simple_fixed_box_hull() const;
   inline typed::fixed_box<Domain> get_simple_fixed_box_hull() const = delete;
   inline typed::space<Domain> space() const;
@@ -9728,7 +8940,6 @@ struct set<Domain> : public isl::set {
   inline typed::map<Domain> unwrap() const = delete;
   inline typed::set<Domain> upper_bound(const typed::multi_pw_aff<Domain> &upper) const;
   inline typed::set<Domain> upper_bound(const typed::multi_val<Domain> &upper) const;
-  inline typed::set<Domain> wrapped_reverse() const = delete;
 };
 
 template <typename Domain, typename Range>
@@ -9749,8 +8960,6 @@ struct set<pair<Domain, Range>> : public isl::set {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -9773,8 +8982,6 @@ struct set<pair<Domain, Range>> : public isl::set {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -9824,9 +9031,7 @@ struct set<pair<Domain, Range>> : public isl::set {
   inline typed::set<> bind(const typed::multi_id<pair<Domain, Range>> &tuple) const;
   inline typed::set<pair<Domain, Range>> coalesce() const;
   inline typed::set<pair<Domain, Range>> detect_equalities() const;
-  inline typed::set<pair<Domain, Range>> drop_unused_params() const;
   inline bool every_set(const std::function<bool(typed::set<pair<Domain, Range>>)> &test) const;
-  inline typed::set<pair<Domain, Range>> extract_set(const typed::space<pair<Domain, Range>> &space) const;
   inline void foreach_basic_set(const std::function<void(typed::basic_set<pair<Domain, Range>>)> &fn) const;
   inline void foreach_point(const std::function<void(typed::point<pair<Domain, Range>>)> &fn) const;
   inline void foreach_set(const std::function<void(typed::set<pair<Domain, Range>>)> &fn) const;
@@ -9834,11 +9039,7 @@ struct set<pair<Domain, Range>> : public isl::set {
   inline typed::union_set<pair<Domain, Range>> gist(const typed::union_set<pair<Domain, Range>> &context) const;
   inline typed::set<pair<Domain, Range>> gist(const typed::basic_set<pair<Domain, Range>> &context) const;
   inline typed::set<pair<Domain, Range>> gist(const typed::point<pair<Domain, Range>> &context) const;
-  inline typed::set<pair<Domain, Range>> gist_params(const typed::set<> &context) const;
-  inline typed::set<pair<Domain, Range>> gist_params(const typed::basic_set<> &context) const;
-  inline typed::set<pair<Domain, Range>> gist_params(const typed::point<> &context) const;
   inline typed::map<pair<Domain, Range>, pair<Domain, Range>> identity() const;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> indicator_function() const;
   template <typename Arg2>
   inline typed::map<Arg2, pair<Domain, Range>> insert_domain(const typed::space<Arg2> &domain) const;
   inline typed::set<pair<Domain, Range>> intersect(const typed::set<pair<Domain, Range>> &set2) const;
@@ -9848,8 +9049,6 @@ struct set<pair<Domain, Range>> : public isl::set {
   inline typed::set<pair<Domain, Range>> intersect_params(const typed::set<> &params) const;
   inline typed::set<pair<Domain, Range>> intersect_params(const typed::basic_set<> &params) const;
   inline typed::set<pair<Domain, Range>> intersect_params(const typed::point<> &params) const;
-  inline typed::fixed_box<pair<Domain, Range>> lattice_tile() const;
-  inline typed::fixed_box<pair<Domain, Range>> get_lattice_tile() const = delete;
   inline typed::set<pair<Domain, Range>> lexmax() const;
   inline typed::pw_multi_aff<pair<Domain, Range>> lexmax_pw_multi_aff() const;
   inline typed::set<pair<Domain, Range>> lexmin() const;
@@ -9860,8 +9059,6 @@ struct set<pair<Domain, Range>> : public isl::set {
   inline typed::val<pair<Domain, Range>> max_val(const typed::aff<> &obj) const = delete;
   inline typed::multi_pw_aff<pair<Domain, Range>> min_multi_pw_aff() const;
   inline typed::val<pair<Domain, Range>> min_val(const typed::aff<> &obj) const = delete;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> param_pw_aff_on_domain(const typed::id<Anonymous> &id) const;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> param_pw_aff_on_domain(const std::string &id) const;
   inline typed::set<> params() const;
   inline typed::multi_val<pair<Domain, Range>> plain_multi_val_if_fixed() const;
   inline typed::multi_val<pair<Domain, Range>> get_plain_multi_val_if_fixed() const = delete;
@@ -9883,11 +9080,8 @@ struct set<pair<Domain, Range>> : public isl::set {
   inline typed::set<pair<Domain, Range>> project_out_param(const typed::id<Anonymous> &id) const;
   inline typed::set<pair<Domain, Range>> project_out_param(const std::string &id) const;
   inline typed::set<pair<Domain, Range>> project_out_param(const typed::id_list<Anonymous> &list) const;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> pw_aff_on_domain(const typed::val<Anonymous> &v) const;
-  inline typed::pw_aff<pair<Domain, Range>, Anonymous> pw_aff_on_domain(long v) const;
   template <typename Arg2>
   inline typed::pw_multi_aff<pair<Domain, Range>, Arg2> pw_multi_aff_on_domain(const typed::multi_val<Arg2> &mv) const;
-  inline typed::set_list<pair<Domain, Range>> set_list() const;
   inline typed::fixed_box<pair<Domain, Range>> simple_fixed_box_hull() const;
   inline typed::fixed_box<pair<Domain, Range>> get_simple_fixed_box_hull() const = delete;
   inline typed::space<pair<Domain, Range>> space() const;
@@ -9910,186 +9104,6 @@ struct set<pair<Domain, Range>> : public isl::set {
   inline typed::map<Domain, Range> unwrap() const;
   inline typed::set<pair<Domain, Range>> upper_bound(const typed::multi_pw_aff<pair<Domain, Range>> &upper) const;
   inline typed::set<pair<Domain, Range>> upper_bound(const typed::multi_val<pair<Domain, Range>> &upper) const;
-  inline typed::set<pair<Range, Domain>> wrapped_reverse() const;
-};
-
-template <>
-struct set_list<> : public isl::set_list {
-  template <typename...>
-  friend struct aff;
-  template <typename...>
-  friend struct aff_list;
-  template <typename...>
-  friend struct basic_map;
-  template <typename...>
-  friend struct basic_set;
-  template <typename...>
-  friend struct fixed_box;
-  template <typename...>
-  friend struct id;
-  template <typename...>
-  friend struct id_list;
-  template <typename...>
-  friend struct map;
-  template <typename...>
-  friend struct map_list;
-  template <typename...>
-  friend struct multi_aff;
-  template <typename...>
-  friend struct multi_id;
-  template <typename...>
-  friend struct multi_pw_aff;
-  template <typename...>
-  friend struct multi_union_pw_aff;
-  template <typename...>
-  friend struct multi_val;
-  template <typename...>
-  friend struct point;
-  template <typename...>
-  friend struct pw_aff;
-  template <typename...>
-  friend struct pw_aff_list;
-  template <typename...>
-  friend struct pw_multi_aff;
-  template <typename...>
-  friend struct pw_multi_aff_list;
-  template <typename...>
-  friend struct set;
-  template <typename...>
-  friend struct set_list;
-  template <typename...>
-  friend struct space;
-  template <typename...>
-  friend struct union_map;
-  template <typename...>
-  friend struct union_pw_aff;
-  template <typename...>
-  friend struct union_pw_aff_list;
-  template <typename...>
-  friend struct union_pw_multi_aff;
-  template <typename...>
-  friend struct union_set;
-  template <typename...>
-  friend struct union_set_list;
-  template <typename...>
-  friend struct val;
-  template <typename...>
-  friend struct val_list;
-
-  set_list() = default;
- private:
-  template <typename base,
-            typename std::enable_if<
-              std::is_same<base, isl::set_list>{}, bool>::type = true>
-  set_list(const base &obj) : isl::set_list(obj) {}
- public:
-  static set_list from(const isl::set_list &obj) {
-    return set_list(obj);
-  }
-  inline explicit set_list(const isl::ctx &ctx, int n);
-  inline explicit set_list(const typed::set<> &el);
-  inline explicit set_list(const isl::ctx &ctx, const std::string &str);
-  inline typed::set_list<> add(const typed::set<> &el) const;
-  inline typed::set_list<> add(const typed::basic_set<> &el) const;
-  inline typed::set_list<> add(const typed::point<> &el) const;
-  inline typed::set<> at(int index) const = delete;
-  inline typed::set<> get_at(int index) const = delete;
-  inline typed::set_list<> drop(unsigned int first, unsigned int n) const;
-  inline void foreach(const std::function<void(typed::set<>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::set<>, typed::set<>)> &follows, const std::function<void(typed::set_list<>)> &fn) const;
-  inline typed::set_list<> set_at(int index, const typed::set<> &el) const = delete;
-};
-
-template <typename Domain>
-struct set_list<Domain> : public isl::set_list {
-  template <typename...>
-  friend struct aff;
-  template <typename...>
-  friend struct aff_list;
-  template <typename...>
-  friend struct basic_map;
-  template <typename...>
-  friend struct basic_set;
-  template <typename...>
-  friend struct fixed_box;
-  template <typename...>
-  friend struct id;
-  template <typename...>
-  friend struct id_list;
-  template <typename...>
-  friend struct map;
-  template <typename...>
-  friend struct map_list;
-  template <typename...>
-  friend struct multi_aff;
-  template <typename...>
-  friend struct multi_id;
-  template <typename...>
-  friend struct multi_pw_aff;
-  template <typename...>
-  friend struct multi_union_pw_aff;
-  template <typename...>
-  friend struct multi_val;
-  template <typename...>
-  friend struct point;
-  template <typename...>
-  friend struct pw_aff;
-  template <typename...>
-  friend struct pw_aff_list;
-  template <typename...>
-  friend struct pw_multi_aff;
-  template <typename...>
-  friend struct pw_multi_aff_list;
-  template <typename...>
-  friend struct set;
-  template <typename...>
-  friend struct set_list;
-  template <typename...>
-  friend struct space;
-  template <typename...>
-  friend struct union_map;
-  template <typename...>
-  friend struct union_pw_aff;
-  template <typename...>
-  friend struct union_pw_aff_list;
-  template <typename...>
-  friend struct union_pw_multi_aff;
-  template <typename...>
-  friend struct union_set;
-  template <typename...>
-  friend struct union_set_list;
-  template <typename...>
-  friend struct val;
-  template <typename...>
-  friend struct val_list;
-
-  set_list() = default;
-  template <typename Arg1,
-            typename std::enable_if<
-              std::is_base_of<Domain, Arg1>{},
-            bool>::type = true>
-  set_list(const set_list<Arg1> &obj) : isl::set_list(obj) {}
- private:
-  template <typename base,
-            typename std::enable_if<
-              std::is_same<base, isl::set_list>{}, bool>::type = true>
-  set_list(const base &obj) : isl::set_list(obj) {}
- public:
-  static set_list from(const isl::set_list &obj) {
-    return set_list(obj);
-  }
-  inline explicit set_list(const isl::ctx &ctx, int n);
-  inline explicit set_list(const typed::set<Domain> &el);
-  inline explicit set_list(const isl::ctx &ctx, const std::string &str);
-  inline typed::set_list<Domain> add(const typed::set<Domain> &el) const;
-  inline typed::set_list<Domain> add(const typed::basic_set<Domain> &el) const;
-  inline typed::set_list<Domain> add(const typed::point<Domain> &el) const;
-  inline typed::set<Domain> at(int index) const;
-  inline typed::set<Domain> get_at(int index) const = delete;
-  inline typed::set_list<Domain> drop(unsigned int first, unsigned int n) const;
-  inline void foreach(const std::function<void(typed::set<Domain>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::set<Domain>, typed::set<Domain>)> &follows, const std::function<void(typed::set_list<Domain>)> &fn) const;
-  inline typed::set_list<Domain> set_at(int index, const typed::set<Anonymous> &el) const;
 };
 
 template <>
@@ -10111,8 +9125,6 @@ struct space<> : public isl::space {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -10134,8 +9146,6 @@ struct space<> : public isl::space {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -10165,22 +9175,17 @@ struct space<> : public isl::space {
   static space from(const isl::space &obj) {
     return space(obj);
   }
-  inline explicit space(const isl::ctx &ctx, const std::string &str);
   template <typename Domain>
   inline typed::space<Domain> add_named_tuple(const typed::id<Anonymous> &tuple_id, unsigned int dim) const;
   template <typename Domain>
   inline typed::space<Domain> add_named_tuple(const std::string &tuple_id, unsigned int dim) const;
-  inline typed::space<> add_param(const typed::id<Anonymous> &id) const;
-  inline typed::space<> add_param(const std::string &id) const;
   template <typename Domain>
   inline typed::space<Domain> add_unnamed_tuple(unsigned int dim) const;
   inline typed::space<> curry() const = delete;
   inline typed::space<> domain() const = delete;
   inline typed::multi_aff<> domain_map_multi_aff() const = delete;
   inline typed::pw_multi_aff<> domain_map_pw_multi_aff() const = delete;
-  inline typed::space<> domain_reverse() const = delete;
   inline typed::id<> get_domain_tuple_id() const = delete;
-  inline typed::space<> drop_all_params() const;
   inline typed::space<> flatten_domain() const = delete;
   inline typed::space<> flatten_range() const = delete;
   inline typed::multi_aff<> identity_multi_aff_on_domain() const = delete;
@@ -10188,14 +9193,11 @@ struct space<> : public isl::space {
   inline typed::pw_multi_aff<> identity_pw_multi_aff_on_domain() const = delete;
   inline typed::space<> map_from_set() const = delete;
   inline typed::multi_aff<> multi_aff(const typed::aff_list<> &list) const = delete;
-  template <typename Domain>
-  inline typed::multi_aff<Domain> multi_aff_on_domain(const typed::multi_val<Domain> &mv) const;
+  inline typed::multi_aff<> multi_aff_on_domain(const typed::multi_val<> &mv) const = delete;
   inline typed::multi_id<> multi_id(const typed::id_list<> &list) const = delete;
   inline typed::multi_pw_aff<> multi_pw_aff(const typed::pw_aff_list<> &list) const = delete;
   inline typed::multi_union_pw_aff<> multi_union_pw_aff(const typed::union_pw_aff_list<> &list) const = delete;
   inline typed::multi_val<> multi_val(const typed::val_list<> &list) const = delete;
-  inline typed::aff<Anonymous> param_aff_on_domain(const typed::id<Anonymous> &id) const;
-  inline typed::aff<Anonymous> param_aff_on_domain(const std::string &id) const;
   inline typed::space<> params() const = delete;
   inline typed::space<> product(const typed::space<> &right) const = delete;
   inline typed::space<> range() const = delete;
@@ -10214,7 +9216,6 @@ struct space<> : public isl::space {
   inline typed::set<> universe_set() const;
   inline typed::space<> unwrap() const = delete;
   inline typed::space<> wrap() const = delete;
-  inline typed::space<> wrapped_reverse() const = delete;
   inline typed::aff<> zero_aff_on_domain() const = delete;
   inline typed::multi_aff<> zero_multi_aff() const = delete;
   inline typed::multi_pw_aff<> zero_multi_pw_aff() const = delete;
@@ -10241,8 +9242,6 @@ struct space<Domain> : public isl::space {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -10264,8 +9263,6 @@ struct space<Domain> : public isl::space {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -10300,22 +9297,17 @@ struct space<Domain> : public isl::space {
   static space from(const isl::space &obj) {
     return space(obj);
   }
-  inline explicit space(const isl::ctx &ctx, const std::string &str);
   template <typename Range>
   inline typed::space<Domain, Range> add_named_tuple(const typed::id<Anonymous> &tuple_id, unsigned int dim) const;
   template <typename Range>
   inline typed::space<Domain, Range> add_named_tuple(const std::string &tuple_id, unsigned int dim) const;
-  inline typed::space<Domain> add_param(const typed::id<Anonymous> &id) const;
-  inline typed::space<Domain> add_param(const std::string &id) const;
   template <typename Range>
   inline typed::space<Domain, Range> add_unnamed_tuple(unsigned int dim) const;
   inline typed::space<Domain> curry() const = delete;
   inline typed::space<> domain() const;
   inline typed::multi_aff<Domain> domain_map_multi_aff() const = delete;
   inline typed::pw_multi_aff<Domain> domain_map_pw_multi_aff() const = delete;
-  inline typed::space<Domain> domain_reverse() const = delete;
   inline typed::id<Domain> get_domain_tuple_id() const = delete;
-  inline typed::space<Domain> drop_all_params() const;
   inline typed::space<Domain> flatten_domain() const = delete;
   inline typed::space<Domain> flatten_range() const = delete;
   inline typed::multi_aff<Domain, Domain> identity_multi_aff_on_domain() const;
@@ -10328,11 +9320,7 @@ struct space<Domain> : public isl::space {
   inline typed::multi_id<Domain> multi_id(const typed::id_list<Anonymous> &list) const;
   inline typed::multi_pw_aff<Domain> multi_pw_aff(const typed::pw_aff_list<Anonymous> &list) const;
   inline typed::multi_union_pw_aff<Domain> multi_union_pw_aff(const typed::union_pw_aff_list<Anonymous> &list) const;
-  template <typename Arg1>
-  inline typed::multi_union_pw_aff<Arg1, Domain> multi_union_pw_aff(const typed::union_pw_aff_list<Arg1, Anonymous> &list) const;
   inline typed::multi_val<Domain> multi_val(const typed::val_list<Anonymous> &list) const;
-  inline typed::aff<Domain, Anonymous> param_aff_on_domain(const typed::id<Anonymous> &id) const;
-  inline typed::aff<Domain, Anonymous> param_aff_on_domain(const std::string &id) const;
   inline typed::space<> params() const;
   template <typename Range>
   inline typed::space<pair<Domain, Range>> product(const typed::space<Range> &right) const;
@@ -10354,7 +9342,6 @@ struct space<Domain> : public isl::space {
   inline typed::set<Domain> universe_set() const;
   inline typed::space<Domain> unwrap() const = delete;
   inline typed::space<Domain> wrap() const = delete;
-  inline typed::space<Domain> wrapped_reverse() const = delete;
   inline typed::aff<Domain, Anonymous> zero_aff_on_domain() const;
   inline typed::multi_aff<Domain> zero_multi_aff() const;
   inline typed::multi_pw_aff<Domain> zero_multi_pw_aff() const;
@@ -10381,8 +9368,6 @@ struct space<Domain, Range> : public isl::space {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -10404,8 +9389,6 @@ struct space<Domain, Range> : public isl::space {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -10441,19 +9424,14 @@ struct space<Domain, Range> : public isl::space {
   static space from(const isl::space &obj) {
     return space(obj);
   }
-  inline explicit space(const isl::ctx &ctx, const std::string &str);
   inline typed::space<Domain, Range> add_named_tuple(const typed::id<> &tuple_id, unsigned int dim) const = delete;
   inline typed::space<Domain, Range> add_named_tuple(const std::string &tuple_id, unsigned int dim) const = delete;
-  inline typed::space<Domain, Range> add_param(const typed::id<Anonymous> &id) const;
-  inline typed::space<Domain, Range> add_param(const std::string &id) const;
   inline typed::space<Domain, Range> add_unnamed_tuple(unsigned int dim) const = delete;
   inline typed::space<Domain, Range> curry() const = delete;
   inline typed::space<Domain> domain() const;
   inline typed::multi_aff<pair<Domain, Range>, Domain> domain_map_multi_aff() const;
   inline typed::pw_multi_aff<pair<Domain, Range>, Domain> domain_map_pw_multi_aff() const;
-  inline typed::space<Domain, Range> domain_reverse() const = delete;
   inline typed::id<Domain, Range> get_domain_tuple_id() const = delete;
-  inline typed::space<Domain, Range> drop_all_params() const;
   inline typed::space<Domain, Range> flatten_domain() const = delete;
   inline typed::space<Domain, Range> flatten_range() const = delete;
   inline typed::multi_aff<Domain, Range> identity_multi_aff_on_domain() const = delete;
@@ -10464,10 +9442,8 @@ struct space<Domain, Range> : public isl::space {
   inline typed::multi_aff<Domain, Range> multi_aff_on_domain(const typed::multi_val<> &mv) const = delete;
   inline typed::multi_id<Domain, Range> multi_id(const typed::id_list<> &list) const = delete;
   inline typed::multi_pw_aff<Domain, Range> multi_pw_aff(const typed::pw_aff_list<Domain, Anonymous> &list) const;
-  inline typed::multi_union_pw_aff<Domain, Range> multi_union_pw_aff(const typed::union_pw_aff_list<> &list) const = delete;
+  inline typed::multi_union_pw_aff<Domain, Range> multi_union_pw_aff(const typed::union_pw_aff_list<Domain, Anonymous> &list) const;
   inline typed::multi_val<Domain, Range> multi_val(const typed::val_list<> &list) const = delete;
-  inline typed::aff<Domain, Range> param_aff_on_domain(const typed::id<> &id) const = delete;
-  inline typed::aff<Domain, Range> param_aff_on_domain(const std::string &id) const = delete;
   inline typed::space<> params() const;
   template <typename Domain2, typename Range2>
   inline typed::space<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::space<Domain2, Range2> &right) const;
@@ -10491,7 +9467,6 @@ struct space<Domain, Range> : public isl::space {
   inline typed::set<Domain, Range> universe_set() const = delete;
   inline typed::space<Domain, Range> unwrap() const = delete;
   inline typed::space<pair<Domain, Range>> wrap() const;
-  inline typed::space<Domain, Range> wrapped_reverse() const = delete;
   inline typed::aff<Domain, Range> zero_aff_on_domain() const = delete;
   inline typed::multi_aff<Domain, Range> zero_multi_aff() const;
   inline typed::multi_pw_aff<Domain, Range> zero_multi_pw_aff() const;
@@ -10518,8 +9493,6 @@ struct space<pair<Domain, Range>> : public isl::space {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -10541,8 +9514,6 @@ struct space<pair<Domain, Range>> : public isl::space {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -10578,22 +9549,17 @@ struct space<pair<Domain, Range>> : public isl::space {
   static space from(const isl::space &obj) {
     return space(obj);
   }
-  inline explicit space(const isl::ctx &ctx, const std::string &str);
   template <typename Arg2>
   inline typed::space<pair<Domain, Range>, Arg2> add_named_tuple(const typed::id<Anonymous> &tuple_id, unsigned int dim) const;
   template <typename Arg2>
   inline typed::space<pair<Domain, Range>, Arg2> add_named_tuple(const std::string &tuple_id, unsigned int dim) const;
-  inline typed::space<pair<Domain, Range>> add_param(const typed::id<Anonymous> &id) const;
-  inline typed::space<pair<Domain, Range>> add_param(const std::string &id) const;
   template <typename Arg2>
   inline typed::space<pair<Domain, Range>, Arg2> add_unnamed_tuple(unsigned int dim) const;
   inline typed::space<pair<Domain, Range>> curry() const = delete;
   inline typed::space<> domain() const;
   inline typed::multi_aff<pair<Domain, Range>> domain_map_multi_aff() const = delete;
   inline typed::pw_multi_aff<pair<Domain, Range>> domain_map_pw_multi_aff() const = delete;
-  inline typed::space<pair<Domain, Range>> domain_reverse() const = delete;
   inline typed::id<pair<Domain, Range>> get_domain_tuple_id() const = delete;
-  inline typed::space<pair<Domain, Range>> drop_all_params() const;
   inline typed::space<pair<Domain, Range>> flatten_domain() const = delete;
   inline typed::space<pair<Domain, Range>> flatten_range() const = delete;
   inline typed::multi_aff<pair<Domain, Range>, pair<Domain, Range>> identity_multi_aff_on_domain() const;
@@ -10606,11 +9572,7 @@ struct space<pair<Domain, Range>> : public isl::space {
   inline typed::multi_id<pair<Domain, Range>> multi_id(const typed::id_list<Anonymous> &list) const;
   inline typed::multi_pw_aff<pair<Domain, Range>> multi_pw_aff(const typed::pw_aff_list<Anonymous> &list) const;
   inline typed::multi_union_pw_aff<pair<Domain, Range>> multi_union_pw_aff(const typed::union_pw_aff_list<Anonymous> &list) const;
-  template <typename Arg2>
-  inline typed::multi_union_pw_aff<Arg2, pair<Domain, Range>> multi_union_pw_aff(const typed::union_pw_aff_list<Arg2, Anonymous> &list) const;
   inline typed::multi_val<pair<Domain, Range>> multi_val(const typed::val_list<Anonymous> &list) const;
-  inline typed::aff<pair<Domain, Range>, Anonymous> param_aff_on_domain(const typed::id<Anonymous> &id) const;
-  inline typed::aff<pair<Domain, Range>, Anonymous> param_aff_on_domain(const std::string &id) const;
   inline typed::space<> params() const;
   template <typename Arg2>
   inline typed::space<pair<pair<Domain, Range>, Arg2>> product(const typed::space<Arg2> &right) const;
@@ -10630,7 +9592,6 @@ struct space<pair<Domain, Range>> : public isl::space {
   inline typed::set<pair<Domain, Range>> universe_set() const;
   inline typed::space<Domain, Range> unwrap() const;
   inline typed::space<pair<Domain, Range>> wrap() const = delete;
-  inline typed::space<pair<Range, Domain>> wrapped_reverse() const;
   inline typed::aff<pair<Domain, Range>, Anonymous> zero_aff_on_domain() const;
   inline typed::multi_aff<pair<Domain, Range>> zero_multi_aff() const;
   inline typed::multi_pw_aff<pair<Domain, Range>> zero_multi_pw_aff() const;
@@ -10657,8 +9618,6 @@ struct space<pair<Domain, Range>, Range2> : public isl::space {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -10680,8 +9639,6 @@ struct space<pair<Domain, Range>, Range2> : public isl::space {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -10718,19 +9675,14 @@ struct space<pair<Domain, Range>, Range2> : public isl::space {
   static space from(const isl::space &obj) {
     return space(obj);
   }
-  inline explicit space(const isl::ctx &ctx, const std::string &str);
   inline typed::space<pair<Domain, Range>, Range2> add_named_tuple(const typed::id<> &tuple_id, unsigned int dim) const = delete;
   inline typed::space<pair<Domain, Range>, Range2> add_named_tuple(const std::string &tuple_id, unsigned int dim) const = delete;
-  inline typed::space<pair<Domain, Range>, Range2> add_param(const typed::id<Anonymous> &id) const;
-  inline typed::space<pair<Domain, Range>, Range2> add_param(const std::string &id) const;
   inline typed::space<pair<Domain, Range>, Range2> add_unnamed_tuple(unsigned int dim) const = delete;
   inline typed::space<Domain, pair<Range, Range2>> curry() const;
   inline typed::space<pair<Domain, Range>> domain() const;
   inline typed::multi_aff<pair<pair<Domain, Range>, Range2>, pair<Domain, Range>> domain_map_multi_aff() const;
   inline typed::pw_multi_aff<pair<pair<Domain, Range>, Range2>, pair<Domain, Range>> domain_map_pw_multi_aff() const;
-  inline typed::space<pair<Range, Domain>, Range2> domain_reverse() const;
   inline typed::id<pair<Domain, Range>, Range2> get_domain_tuple_id() const = delete;
-  inline typed::space<pair<Domain, Range>, Range2> drop_all_params() const;
   inline typed::space<Anonymous, Range2> flatten_domain() const;
   inline typed::space<pair<Domain, Range>, Range2> flatten_range() const = delete;
   inline typed::multi_aff<pair<Domain, Range>, Range2> identity_multi_aff_on_domain() const = delete;
@@ -10741,10 +9693,8 @@ struct space<pair<Domain, Range>, Range2> : public isl::space {
   inline typed::multi_aff<pair<Domain, Range>, Range2> multi_aff_on_domain(const typed::multi_val<> &mv) const = delete;
   inline typed::multi_id<pair<Domain, Range>, Range2> multi_id(const typed::id_list<> &list) const = delete;
   inline typed::multi_pw_aff<pair<Domain, Range>, Range2> multi_pw_aff(const typed::pw_aff_list<pair<Domain, Range>, Anonymous> &list) const;
-  inline typed::multi_union_pw_aff<pair<Domain, Range>, Range2> multi_union_pw_aff(const typed::union_pw_aff_list<> &list) const = delete;
+  inline typed::multi_union_pw_aff<pair<Domain, Range>, Range2> multi_union_pw_aff(const typed::union_pw_aff_list<pair<Domain, Range>, Anonymous> &list) const;
   inline typed::multi_val<pair<Domain, Range>, Range2> multi_val(const typed::val_list<> &list) const = delete;
-  inline typed::aff<pair<Domain, Range>, Range2> param_aff_on_domain(const typed::id<> &id) const = delete;
-  inline typed::aff<pair<Domain, Range>, Range2> param_aff_on_domain(const std::string &id) const = delete;
   inline typed::space<> params() const;
   template <typename Domain2, typename Arg3>
   inline typed::space<pair<pair<Domain, Range>, Domain2>, pair<Range2, Arg3>> product(const typed::space<Domain2, Arg3> &right) const;
@@ -10766,7 +9716,6 @@ struct space<pair<Domain, Range>, Range2> : public isl::space {
   inline typed::set<pair<Domain, Range>, Range2> universe_set() const = delete;
   inline typed::space<pair<Domain, Range>, Range2> unwrap() const = delete;
   inline typed::space<pair<pair<Domain, Range>, Range2>> wrap() const;
-  inline typed::space<pair<Domain, Range>, Range2> wrapped_reverse() const = delete;
   inline typed::aff<pair<Domain, Range>, Range2> zero_aff_on_domain() const = delete;
   inline typed::multi_aff<pair<Domain, Range>, Range2> zero_multi_aff() const;
   inline typed::multi_pw_aff<pair<Domain, Range>, Range2> zero_multi_pw_aff() const;
@@ -10793,8 +9742,6 @@ struct space<Domain, pair<Range, Range2>> : public isl::space {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -10816,8 +9763,6 @@ struct space<Domain, pair<Range, Range2>> : public isl::space {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -10854,19 +9799,14 @@ struct space<Domain, pair<Range, Range2>> : public isl::space {
   static space from(const isl::space &obj) {
     return space(obj);
   }
-  inline explicit space(const isl::ctx &ctx, const std::string &str);
   inline typed::space<Domain, pair<Range, Range2>> add_named_tuple(const typed::id<> &tuple_id, unsigned int dim) const = delete;
   inline typed::space<Domain, pair<Range, Range2>> add_named_tuple(const std::string &tuple_id, unsigned int dim) const = delete;
-  inline typed::space<Domain, pair<Range, Range2>> add_param(const typed::id<Anonymous> &id) const;
-  inline typed::space<Domain, pair<Range, Range2>> add_param(const std::string &id) const;
   inline typed::space<Domain, pair<Range, Range2>> add_unnamed_tuple(unsigned int dim) const = delete;
   inline typed::space<Domain, pair<Range, Range2>> curry() const = delete;
   inline typed::space<Domain> domain() const;
   inline typed::multi_aff<pair<Domain, pair<Range, Range2>>, Domain> domain_map_multi_aff() const;
   inline typed::pw_multi_aff<pair<Domain, pair<Range, Range2>>, Domain> domain_map_pw_multi_aff() const;
-  inline typed::space<Domain, pair<Range, Range2>> domain_reverse() const = delete;
   inline typed::id<Domain, pair<Range, Range2>> get_domain_tuple_id() const = delete;
-  inline typed::space<Domain, pair<Range, Range2>> drop_all_params() const;
   inline typed::space<Domain, pair<Range, Range2>> flatten_domain() const = delete;
   inline typed::space<Domain, Anonymous> flatten_range() const;
   inline typed::multi_aff<Domain, pair<Range, Range2>> identity_multi_aff_on_domain() const = delete;
@@ -10877,10 +9817,8 @@ struct space<Domain, pair<Range, Range2>> : public isl::space {
   inline typed::multi_aff<Domain, pair<Range, Range2>> multi_aff_on_domain(const typed::multi_val<> &mv) const = delete;
   inline typed::multi_id<Domain, pair<Range, Range2>> multi_id(const typed::id_list<> &list) const = delete;
   inline typed::multi_pw_aff<Domain, pair<Range, Range2>> multi_pw_aff(const typed::pw_aff_list<Domain, Anonymous> &list) const;
-  inline typed::multi_union_pw_aff<Domain, pair<Range, Range2>> multi_union_pw_aff(const typed::union_pw_aff_list<> &list) const = delete;
+  inline typed::multi_union_pw_aff<Domain, pair<Range, Range2>> multi_union_pw_aff(const typed::union_pw_aff_list<Domain, Anonymous> &list) const;
   inline typed::multi_val<Domain, pair<Range, Range2>> multi_val(const typed::val_list<> &list) const = delete;
-  inline typed::aff<Domain, pair<Range, Range2>> param_aff_on_domain(const typed::id<> &id) const = delete;
-  inline typed::aff<Domain, pair<Range, Range2>> param_aff_on_domain(const std::string &id) const = delete;
   inline typed::space<> params() const;
   template <typename Domain2, typename Arg3>
   inline typed::space<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>> product(const typed::space<Domain2, Arg3> &right) const;
@@ -10902,7 +9840,6 @@ struct space<Domain, pair<Range, Range2>> : public isl::space {
   inline typed::set<Domain, pair<Range, Range2>> universe_set() const = delete;
   inline typed::space<Domain, pair<Range, Range2>> unwrap() const = delete;
   inline typed::space<pair<Domain, pair<Range, Range2>>> wrap() const;
-  inline typed::space<Domain, pair<Range, Range2>> wrapped_reverse() const = delete;
   inline typed::aff<Domain, pair<Range, Range2>> zero_aff_on_domain() const = delete;
   inline typed::multi_aff<Domain, pair<Range, Range2>> zero_multi_aff() const;
   inline typed::multi_pw_aff<Domain, pair<Range, Range2>> zero_multi_pw_aff() const;
@@ -10929,8 +9866,6 @@ struct space<pair<T1, T2>, pair<Range, Range2>> : public isl::space {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -10952,8 +9887,6 @@ struct space<pair<T1, T2>, pair<Range, Range2>> : public isl::space {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -10991,19 +9924,14 @@ struct space<pair<T1, T2>, pair<Range, Range2>> : public isl::space {
   static space from(const isl::space &obj) {
     return space(obj);
   }
-  inline explicit space(const isl::ctx &ctx, const std::string &str);
   inline typed::space<pair<T1, T2>, pair<Range, Range2>> add_named_tuple(const typed::id<> &tuple_id, unsigned int dim) const = delete;
   inline typed::space<pair<T1, T2>, pair<Range, Range2>> add_named_tuple(const std::string &tuple_id, unsigned int dim) const = delete;
-  inline typed::space<pair<T1, T2>, pair<Range, Range2>> add_param(const typed::id<Anonymous> &id) const;
-  inline typed::space<pair<T1, T2>, pair<Range, Range2>> add_param(const std::string &id) const;
   inline typed::space<pair<T1, T2>, pair<Range, Range2>> add_unnamed_tuple(unsigned int dim) const = delete;
   inline typed::space<T1, pair<T2, pair<Range, Range2>>> curry() const;
   inline typed::space<pair<T1, T2>> domain() const;
   inline typed::multi_aff<pair<pair<T1, T2>, pair<Range, Range2>>, pair<T1, T2>> domain_map_multi_aff() const;
   inline typed::pw_multi_aff<pair<pair<T1, T2>, pair<Range, Range2>>, pair<T1, T2>> domain_map_pw_multi_aff() const;
-  inline typed::space<pair<T2, T1>, pair<Range, Range2>> domain_reverse() const;
   inline typed::id<pair<T1, T2>, pair<Range, Range2>> get_domain_tuple_id() const = delete;
-  inline typed::space<pair<T1, T2>, pair<Range, Range2>> drop_all_params() const;
   inline typed::space<Anonymous, pair<Range, Range2>> flatten_domain() const;
   inline typed::space<pair<T1, T2>, Anonymous> flatten_range() const;
   inline typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> identity_multi_aff_on_domain() const = delete;
@@ -11014,10 +9942,8 @@ struct space<pair<T1, T2>, pair<Range, Range2>> : public isl::space {
   inline typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> multi_aff_on_domain(const typed::multi_val<> &mv) const = delete;
   inline typed::multi_id<pair<T1, T2>, pair<Range, Range2>> multi_id(const typed::id_list<> &list) const = delete;
   inline typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> multi_pw_aff(const typed::pw_aff_list<pair<T1, T2>, Anonymous> &list) const;
-  inline typed::multi_union_pw_aff<pair<T1, T2>, pair<Range, Range2>> multi_union_pw_aff(const typed::union_pw_aff_list<> &list) const = delete;
+  inline typed::multi_union_pw_aff<pair<T1, T2>, pair<Range, Range2>> multi_union_pw_aff(const typed::union_pw_aff_list<pair<T1, T2>, Anonymous> &list) const;
   inline typed::multi_val<pair<T1, T2>, pair<Range, Range2>> multi_val(const typed::val_list<> &list) const = delete;
-  inline typed::aff<pair<T1, T2>, pair<Range, Range2>> param_aff_on_domain(const typed::id<> &id) const = delete;
-  inline typed::aff<pair<T1, T2>, pair<Range, Range2>> param_aff_on_domain(const std::string &id) const = delete;
   inline typed::space<> params() const;
   template <typename Domain2, typename Arg2>
   inline typed::space<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>> product(const typed::space<Domain2, Arg2> &right) const;
@@ -11037,7 +9963,6 @@ struct space<pair<T1, T2>, pair<Range, Range2>> : public isl::space {
   inline typed::set<pair<T1, T2>, pair<Range, Range2>> universe_set() const = delete;
   inline typed::space<pair<T1, T2>, pair<Range, Range2>> unwrap() const = delete;
   inline typed::space<pair<pair<T1, T2>, pair<Range, Range2>>> wrap() const;
-  inline typed::space<pair<T1, T2>, pair<Range, Range2>> wrapped_reverse() const = delete;
   inline typed::aff<pair<T1, T2>, pair<Range, Range2>> zero_aff_on_domain() const = delete;
   inline typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> zero_multi_aff() const;
   inline typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> zero_multi_pw_aff() const;
@@ -11064,8 +9989,6 @@ struct union_map<Domain, Range> : public isl::union_map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -11087,8 +10010,6 @@ struct union_map<Domain, Range> : public isl::union_map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -11158,14 +10079,11 @@ struct union_map<Domain, Range> : public isl::union_map {
   inline typed::union_map<pair<Domain, Domain2>, Range> domain_product(const typed::basic_map<Domain2, Range> &umap2) const;
   template <typename Domain2>
   inline typed::union_map<pair<Domain, Domain2>, Range> domain_product(const typed::map<Domain2, Range> &umap2) const;
-  inline typed::union_map<Domain, Range> domain_reverse() const = delete;
-  inline typed::union_map<Domain, Range> drop_unused_params() const;
   static inline typed::union_map<Domain, Range> empty(const isl::ctx &ctx);
   inline typed::union_map<Domain, Range> eq_at(const typed::multi_union_pw_aff<> &mupa) const = delete;
   inline typed::union_map<Domain, Range> eq_at(const typed::multi_pw_aff<> &mupa) const = delete;
   inline typed::union_map<Domain, Range> eq_at(const typed::union_pw_aff<> &mupa) const = delete;
   inline bool every_map(const std::function<bool(typed::map<Domain, Range>)> &test) const;
-  inline typed::map<Domain, Range> extract_map(const typed::space<Domain, Range> &space) const;
   inline void foreach_map(const std::function<void(typed::map<Domain, Range>)> &fn) const;
   inline typed::union_map<Domain, Range> gist(const typed::union_map<Domain, Range> &context) const;
   inline typed::union_map<Domain, Range> gist(const typed::basic_map<Domain, Range> &context) const;
@@ -11174,32 +10092,18 @@ struct union_map<Domain, Range> : public isl::union_map {
   inline typed::union_map<Domain, Range> gist_domain(const typed::basic_set<Domain> &uset) const;
   inline typed::union_map<Domain, Range> gist_domain(const typed::point<Domain> &uset) const;
   inline typed::union_map<Domain, Range> gist_domain(const typed::set<Domain> &uset) const;
-  inline typed::union_map<Domain, Range> gist_params(const typed::set<> &set) const;
-  inline typed::union_map<Domain, Range> gist_params(const typed::basic_set<> &set) const;
-  inline typed::union_map<Domain, Range> gist_params(const typed::point<> &set) const;
   inline typed::union_map<Domain, Range> intersect(const typed::union_map<Domain, Range> &umap2) const;
   inline typed::union_map<Domain, Range> intersect(const typed::basic_map<Domain, Range> &umap2) const;
   inline typed::union_map<Domain, Range> intersect(const typed::map<Domain, Range> &umap2) const;
   inline typed::union_map<Domain, Range> intersect_domain(const typed::space<Domain> &space) const;
   inline typed::union_map<Domain, Range> intersect_domain(const typed::union_set<Domain> &uset) const;
-  inline typed::union_map<Domain, Range> intersect_domain_wrapped_domain(const typed::union_set<> &domain) const = delete;
-  inline typed::union_map<Domain, Range> intersect_domain_wrapped_domain(const typed::basic_set<> &domain) const = delete;
-  inline typed::union_map<Domain, Range> intersect_domain_wrapped_domain(const typed::point<> &domain) const = delete;
-  inline typed::union_map<Domain, Range> intersect_domain_wrapped_domain(const typed::set<> &domain) const = delete;
   inline typed::union_map<Domain, Range> intersect_params(const typed::set<> &set) const;
   inline typed::union_map<Domain, Range> intersect_params(const typed::basic_set<> &set) const;
   inline typed::union_map<Domain, Range> intersect_params(const typed::point<> &set) const;
   inline typed::union_map<Domain, Range> intersect_range(const typed::space<Range> &space) const;
   inline typed::union_map<Domain, Range> intersect_range(const typed::union_set<Range> &uset) const;
-  inline typed::union_map<Domain, Range> intersect_range_wrapped_domain(const typed::union_set<> &domain) const = delete;
-  inline typed::union_map<Domain, Range> intersect_range_wrapped_domain(const typed::basic_set<> &domain) const = delete;
-  inline typed::union_map<Domain, Range> intersect_range_wrapped_domain(const typed::point<> &domain) const = delete;
-  inline typed::union_map<Domain, Range> intersect_range_wrapped_domain(const typed::set<> &domain) const = delete;
   inline typed::union_map<Domain, Range> lexmax() const;
   inline typed::union_map<Domain, Range> lexmin() const;
-  inline typed::map_list<Domain, Range> map_list() const;
-  inline typed::map_list<Domain, Range> get_map_list() const = delete;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::union_map<Domain2, Range> preimage_domain(const typed::multi_aff<Domain2, Domain> &ma) const;
   template <typename Domain2>
@@ -11221,9 +10125,6 @@ struct union_map<Domain, Range> : public isl::union_map {
   template <typename Domain2, typename Range2>
   inline typed::union_map<pair<Domain, Domain2>, pair<Range, Range2>> product(const typed::map<Domain2, Range2> &umap2) const;
   inline typed::union_map<Domain, Range> project_out_all_params() const;
-  inline typed::union_map<Domain, Range> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::union_map<Domain, Range> project_out_param(const std::string &id) const;
-  inline typed::union_map<Domain, Range> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::union_set<Range> range() const;
   inline typed::union_map<Domain, Range> range_factor_domain() const = delete;
   inline typed::union_map<Domain, Range> range_factor_range() const = delete;
@@ -11276,8 +10177,6 @@ struct union_map<pair<Domain, Range>, Range2> : public isl::union_map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -11299,8 +10198,6 @@ struct union_map<pair<Domain, Range>, Range2> : public isl::union_map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -11371,14 +10268,11 @@ struct union_map<pair<Domain, Range>, Range2> : public isl::union_map {
   inline typed::union_map<pair<pair<Domain, Range>, Domain2>, Range2> domain_product(const typed::basic_map<Domain2, Range2> &umap2) const;
   template <typename Domain2>
   inline typed::union_map<pair<pair<Domain, Range>, Domain2>, Range2> domain_product(const typed::map<Domain2, Range2> &umap2) const;
-  inline typed::union_map<pair<Range, Domain>, Range2> domain_reverse() const;
-  inline typed::union_map<pair<Domain, Range>, Range2> drop_unused_params() const;
   static inline typed::union_map<pair<Domain, Range>, Range2> empty(const isl::ctx &ctx);
   inline typed::union_map<pair<Domain, Range>, Range2> eq_at(const typed::multi_union_pw_aff<> &mupa) const = delete;
   inline typed::union_map<pair<Domain, Range>, Range2> eq_at(const typed::multi_pw_aff<> &mupa) const = delete;
   inline typed::union_map<pair<Domain, Range>, Range2> eq_at(const typed::union_pw_aff<> &mupa) const = delete;
   inline bool every_map(const std::function<bool(typed::map<pair<Domain, Range>, Range2>)> &test) const;
-  inline typed::map<pair<Domain, Range>, Range2> extract_map(const typed::space<pair<Domain, Range>, Range2> &space) const;
   inline void foreach_map(const std::function<void(typed::map<pair<Domain, Range>, Range2>)> &fn) const;
   inline typed::union_map<pair<Domain, Range>, Range2> gist(const typed::union_map<pair<Domain, Range>, Range2> &context) const;
   inline typed::union_map<pair<Domain, Range>, Range2> gist(const typed::basic_map<pair<Domain, Range>, Range2> &context) const;
@@ -11387,32 +10281,18 @@ struct union_map<pair<Domain, Range>, Range2> : public isl::union_map {
   inline typed::union_map<pair<Domain, Range>, Range2> gist_domain(const typed::basic_set<pair<Domain, Range>> &uset) const;
   inline typed::union_map<pair<Domain, Range>, Range2> gist_domain(const typed::point<pair<Domain, Range>> &uset) const;
   inline typed::union_map<pair<Domain, Range>, Range2> gist_domain(const typed::set<pair<Domain, Range>> &uset) const;
-  inline typed::union_map<pair<Domain, Range>, Range2> gist_params(const typed::set<> &set) const;
-  inline typed::union_map<pair<Domain, Range>, Range2> gist_params(const typed::basic_set<> &set) const;
-  inline typed::union_map<pair<Domain, Range>, Range2> gist_params(const typed::point<> &set) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect(const typed::union_map<pair<Domain, Range>, Range2> &umap2) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect(const typed::basic_map<pair<Domain, Range>, Range2> &umap2) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect(const typed::map<pair<Domain, Range>, Range2> &umap2) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect_domain(const typed::space<pair<Domain, Range>> &space) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect_domain(const typed::union_set<pair<Domain, Range>> &uset) const;
-  inline typed::union_map<pair<Domain, Range>, Range2> intersect_domain_wrapped_domain(const typed::union_set<Domain> &domain) const;
-  inline typed::union_map<pair<Domain, Range>, Range2> intersect_domain_wrapped_domain(const typed::basic_set<Domain> &domain) const;
-  inline typed::union_map<pair<Domain, Range>, Range2> intersect_domain_wrapped_domain(const typed::point<Domain> &domain) const;
-  inline typed::union_map<pair<Domain, Range>, Range2> intersect_domain_wrapped_domain(const typed::set<Domain> &domain) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect_params(const typed::set<> &set) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect_params(const typed::basic_set<> &set) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect_params(const typed::point<> &set) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect_range(const typed::space<Range2> &space) const;
   inline typed::union_map<pair<Domain, Range>, Range2> intersect_range(const typed::union_set<Range2> &uset) const;
-  inline typed::union_map<pair<Domain, Range>, Range2> intersect_range_wrapped_domain(const typed::union_set<> &domain) const = delete;
-  inline typed::union_map<pair<Domain, Range>, Range2> intersect_range_wrapped_domain(const typed::basic_set<> &domain) const = delete;
-  inline typed::union_map<pair<Domain, Range>, Range2> intersect_range_wrapped_domain(const typed::point<> &domain) const = delete;
-  inline typed::union_map<pair<Domain, Range>, Range2> intersect_range_wrapped_domain(const typed::set<> &domain) const = delete;
   inline typed::union_map<pair<Domain, Range>, Range2> lexmax() const;
   inline typed::union_map<pair<Domain, Range>, Range2> lexmin() const;
-  inline typed::map_list<pair<Domain, Range>, Range2> map_list() const;
-  inline typed::map_list<pair<Domain, Range>, Range2> get_map_list() const = delete;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::union_map<Domain2, Range2> preimage_domain(const typed::multi_aff<Domain2, pair<Domain, Range>> &ma) const;
   template <typename Domain2>
@@ -11434,9 +10314,6 @@ struct union_map<pair<Domain, Range>, Range2> : public isl::union_map {
   template <typename Domain2, typename Arg3>
   inline typed::union_map<pair<pair<Domain, Range>, Domain2>, pair<Range2, Arg3>> product(const typed::map<Domain2, Arg3> &umap2) const;
   inline typed::union_map<pair<Domain, Range>, Range2> project_out_all_params() const;
-  inline typed::union_map<pair<Domain, Range>, Range2> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::union_map<pair<Domain, Range>, Range2> project_out_param(const std::string &id) const;
-  inline typed::union_map<pair<Domain, Range>, Range2> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::union_set<Range2> range() const;
   inline typed::union_map<pair<Domain, Range>, Range2> range_factor_domain() const = delete;
   inline typed::union_map<pair<Domain, Range>, Range2> range_factor_range() const = delete;
@@ -11489,8 +10366,6 @@ struct union_map<Domain, Domain> : public isl::union_map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -11512,8 +10387,6 @@ struct union_map<Domain, Domain> : public isl::union_map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -11582,16 +10455,14 @@ struct union_map<Domain, Domain> : public isl::union_map {
   inline typed::union_map<pair<Domain, Domain2>, Domain> domain_product(const typed::basic_map<Domain2, Domain> &umap2) const;
   template <typename Domain2>
   inline typed::union_map<pair<Domain, Domain2>, Domain> domain_product(const typed::map<Domain2, Domain> &umap2) const;
-  inline typed::union_map<Domain, Domain> domain_reverse() const = delete;
-  inline typed::union_map<Domain, Domain> drop_unused_params() const;
   static inline typed::union_map<Domain, Domain> empty(const isl::ctx &ctx);
   template <typename Range>
   inline typed::union_map<Domain, Domain> eq_at(const typed::multi_union_pw_aff<Domain, Range> &mupa) const;
   template <typename Range>
   inline typed::union_map<Domain, Domain> eq_at(const typed::multi_pw_aff<Domain, Range> &mupa) const;
-  inline typed::union_map<Domain, Domain> eq_at(const typed::union_pw_aff<Domain, Anonymous> &mupa) const;
+  template <typename Range>
+  inline typed::union_map<Domain, Domain> eq_at(const typed::union_pw_aff<Domain, Range> &mupa) const;
   inline bool every_map(const std::function<bool(typed::map<Domain, Domain>)> &test) const;
-  inline typed::map<Domain, Domain> extract_map(const typed::space<Domain, Domain> &space) const;
   inline void foreach_map(const std::function<void(typed::map<Domain, Domain>)> &fn) const;
   inline typed::union_map<Domain, Domain> gist(const typed::union_map<Domain, Domain> &context) const;
   inline typed::union_map<Domain, Domain> gist(const typed::basic_map<Domain, Domain> &context) const;
@@ -11600,32 +10471,18 @@ struct union_map<Domain, Domain> : public isl::union_map {
   inline typed::union_map<Domain, Domain> gist_domain(const typed::basic_set<Domain> &uset) const;
   inline typed::union_map<Domain, Domain> gist_domain(const typed::point<Domain> &uset) const;
   inline typed::union_map<Domain, Domain> gist_domain(const typed::set<Domain> &uset) const;
-  inline typed::union_map<Domain, Domain> gist_params(const typed::set<> &set) const;
-  inline typed::union_map<Domain, Domain> gist_params(const typed::basic_set<> &set) const;
-  inline typed::union_map<Domain, Domain> gist_params(const typed::point<> &set) const;
   inline typed::union_map<Domain, Domain> intersect(const typed::union_map<Domain, Domain> &umap2) const;
   inline typed::union_map<Domain, Domain> intersect(const typed::basic_map<Domain, Domain> &umap2) const;
   inline typed::union_map<Domain, Domain> intersect(const typed::map<Domain, Domain> &umap2) const;
   inline typed::union_map<Domain, Domain> intersect_domain(const typed::space<Domain> &space) const;
   inline typed::union_map<Domain, Domain> intersect_domain(const typed::union_set<Domain> &uset) const;
-  inline typed::union_map<Domain, Domain> intersect_domain_wrapped_domain(const typed::union_set<> &domain) const = delete;
-  inline typed::union_map<Domain, Domain> intersect_domain_wrapped_domain(const typed::basic_set<> &domain) const = delete;
-  inline typed::union_map<Domain, Domain> intersect_domain_wrapped_domain(const typed::point<> &domain) const = delete;
-  inline typed::union_map<Domain, Domain> intersect_domain_wrapped_domain(const typed::set<> &domain) const = delete;
   inline typed::union_map<Domain, Domain> intersect_params(const typed::set<> &set) const;
   inline typed::union_map<Domain, Domain> intersect_params(const typed::basic_set<> &set) const;
   inline typed::union_map<Domain, Domain> intersect_params(const typed::point<> &set) const;
   inline typed::union_map<Domain, Domain> intersect_range(const typed::space<Domain> &space) const;
   inline typed::union_map<Domain, Domain> intersect_range(const typed::union_set<Domain> &uset) const;
-  inline typed::union_map<Domain, Domain> intersect_range_wrapped_domain(const typed::union_set<> &domain) const = delete;
-  inline typed::union_map<Domain, Domain> intersect_range_wrapped_domain(const typed::basic_set<> &domain) const = delete;
-  inline typed::union_map<Domain, Domain> intersect_range_wrapped_domain(const typed::point<> &domain) const = delete;
-  inline typed::union_map<Domain, Domain> intersect_range_wrapped_domain(const typed::set<> &domain) const = delete;
   inline typed::union_map<Domain, Domain> lexmax() const;
   inline typed::union_map<Domain, Domain> lexmin() const;
-  inline typed::map_list<Domain, Domain> map_list() const;
-  inline typed::map_list<Domain, Domain> get_map_list() const = delete;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::union_map<Domain2, Domain> preimage_domain(const typed::multi_aff<Domain2, Domain> &ma) const;
   template <typename Domain2>
@@ -11647,9 +10504,6 @@ struct union_map<Domain, Domain> : public isl::union_map {
   template <typename Domain2, typename Range2>
   inline typed::union_map<pair<Domain, Domain2>, pair<Domain, Range2>> product(const typed::map<Domain2, Range2> &umap2) const;
   inline typed::union_map<Domain, Domain> project_out_all_params() const;
-  inline typed::union_map<Domain, Domain> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::union_map<Domain, Domain> project_out_param(const std::string &id) const;
-  inline typed::union_map<Domain, Domain> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::union_set<Domain> range() const;
   inline typed::union_map<Domain, Domain> range_factor_domain() const = delete;
   inline typed::union_map<Domain, Domain> range_factor_range() const = delete;
@@ -11702,8 +10556,6 @@ struct union_map<Domain, pair<Range, Range2>> : public isl::union_map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -11725,8 +10577,6 @@ struct union_map<Domain, pair<Range, Range2>> : public isl::union_map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -11797,14 +10647,11 @@ struct union_map<Domain, pair<Range, Range2>> : public isl::union_map {
   inline typed::union_map<pair<Domain, Domain2>, pair<Range, Range2>> domain_product(const typed::basic_map<Domain2, pair<Range, Range2>> &umap2) const;
   template <typename Domain2>
   inline typed::union_map<pair<Domain, Domain2>, pair<Range, Range2>> domain_product(const typed::map<Domain2, pair<Range, Range2>> &umap2) const;
-  inline typed::union_map<Domain, pair<Range, Range2>> domain_reverse() const = delete;
-  inline typed::union_map<Domain, pair<Range, Range2>> drop_unused_params() const;
   static inline typed::union_map<Domain, pair<Range, Range2>> empty(const isl::ctx &ctx);
   inline typed::union_map<Domain, pair<Range, Range2>> eq_at(const typed::multi_union_pw_aff<> &mupa) const = delete;
   inline typed::union_map<Domain, pair<Range, Range2>> eq_at(const typed::multi_pw_aff<> &mupa) const = delete;
   inline typed::union_map<Domain, pair<Range, Range2>> eq_at(const typed::union_pw_aff<> &mupa) const = delete;
   inline bool every_map(const std::function<bool(typed::map<Domain, pair<Range, Range2>>)> &test) const;
-  inline typed::map<Domain, pair<Range, Range2>> extract_map(const typed::space<Domain, pair<Range, Range2>> &space) const;
   inline void foreach_map(const std::function<void(typed::map<Domain, pair<Range, Range2>>)> &fn) const;
   inline typed::union_map<Domain, pair<Range, Range2>> gist(const typed::union_map<Domain, pair<Range, Range2>> &context) const;
   inline typed::union_map<Domain, pair<Range, Range2>> gist(const typed::basic_map<Domain, pair<Range, Range2>> &context) const;
@@ -11813,32 +10660,18 @@ struct union_map<Domain, pair<Range, Range2>> : public isl::union_map {
   inline typed::union_map<Domain, pair<Range, Range2>> gist_domain(const typed::basic_set<Domain> &uset) const;
   inline typed::union_map<Domain, pair<Range, Range2>> gist_domain(const typed::point<Domain> &uset) const;
   inline typed::union_map<Domain, pair<Range, Range2>> gist_domain(const typed::set<Domain> &uset) const;
-  inline typed::union_map<Domain, pair<Range, Range2>> gist_params(const typed::set<> &set) const;
-  inline typed::union_map<Domain, pair<Range, Range2>> gist_params(const typed::basic_set<> &set) const;
-  inline typed::union_map<Domain, pair<Range, Range2>> gist_params(const typed::point<> &set) const;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect(const typed::union_map<Domain, pair<Range, Range2>> &umap2) const;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect(const typed::basic_map<Domain, pair<Range, Range2>> &umap2) const;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect(const typed::map<Domain, pair<Range, Range2>> &umap2) const;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect_domain(const typed::space<Domain> &space) const;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect_domain(const typed::union_set<Domain> &uset) const;
-  inline typed::union_map<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::union_set<> &domain) const = delete;
-  inline typed::union_map<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::basic_set<> &domain) const = delete;
-  inline typed::union_map<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::point<> &domain) const = delete;
-  inline typed::union_map<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::set<> &domain) const = delete;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect_params(const typed::set<> &set) const;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect_params(const typed::basic_set<> &set) const;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect_params(const typed::point<> &set) const;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect_range(const typed::space<pair<Range, Range2>> &space) const;
   inline typed::union_map<Domain, pair<Range, Range2>> intersect_range(const typed::union_set<pair<Range, Range2>> &uset) const;
-  inline typed::union_map<Domain, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::union_set<Range> &domain) const;
-  inline typed::union_map<Domain, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::basic_set<Range> &domain) const;
-  inline typed::union_map<Domain, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::point<Range> &domain) const;
-  inline typed::union_map<Domain, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::set<Range> &domain) const;
   inline typed::union_map<Domain, pair<Range, Range2>> lexmax() const;
   inline typed::union_map<Domain, pair<Range, Range2>> lexmin() const;
-  inline typed::map_list<Domain, pair<Range, Range2>> map_list() const;
-  inline typed::map_list<Domain, pair<Range, Range2>> get_map_list() const = delete;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::union_map<Domain2, pair<Range, Range2>> preimage_domain(const typed::multi_aff<Domain2, Domain> &ma) const;
   template <typename Domain2>
@@ -11860,9 +10693,6 @@ struct union_map<Domain, pair<Range, Range2>> : public isl::union_map {
   template <typename Domain2, typename Arg3>
   inline typed::union_map<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>> product(const typed::map<Domain2, Arg3> &umap2) const;
   inline typed::union_map<Domain, pair<Range, Range2>> project_out_all_params() const;
-  inline typed::union_map<Domain, pair<Range, Range2>> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::union_map<Domain, pair<Range, Range2>> project_out_param(const std::string &id) const;
-  inline typed::union_map<Domain, pair<Range, Range2>> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::union_set<pair<Range, Range2>> range() const;
   inline typed::union_map<Domain, Range> range_factor_domain() const;
   inline typed::union_map<Domain, Range2> range_factor_range() const;
@@ -11915,8 +10745,6 @@ struct union_map<pair<T1, T2>, pair<T1, T2>> : public isl::union_map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -11938,8 +10766,6 @@ struct union_map<pair<T1, T2>, pair<T1, T2>> : public isl::union_map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -12009,16 +10835,14 @@ struct union_map<pair<T1, T2>, pair<T1, T2>> : public isl::union_map {
   inline typed::union_map<pair<pair<T1, T2>, Domain2>, pair<T1, T2>> domain_product(const typed::basic_map<Domain2, pair<T1, T2>> &umap2) const;
   template <typename Domain2>
   inline typed::union_map<pair<pair<T1, T2>, Domain2>, pair<T1, T2>> domain_product(const typed::map<Domain2, pair<T1, T2>> &umap2) const;
-  inline typed::union_map<pair<T2, T1>, pair<T1, T2>> domain_reverse() const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> drop_unused_params() const;
   static inline typed::union_map<pair<T1, T2>, pair<T1, T2>> empty(const isl::ctx &ctx);
   template <typename Range>
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> eq_at(const typed::multi_union_pw_aff<pair<T1, T2>, Range> &mupa) const;
   template <typename Range>
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> eq_at(const typed::multi_pw_aff<pair<T1, T2>, Range> &mupa) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> eq_at(const typed::union_pw_aff<pair<T1, T2>, Anonymous> &mupa) const;
+  template <typename Range>
+  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> eq_at(const typed::union_pw_aff<pair<T1, T2>, Range> &mupa) const;
   inline bool every_map(const std::function<bool(typed::map<pair<T1, T2>, pair<T1, T2>>)> &test) const;
-  inline typed::map<pair<T1, T2>, pair<T1, T2>> extract_map(const typed::space<pair<T1, T2>, pair<T1, T2>> &space) const;
   inline void foreach_map(const std::function<void(typed::map<pair<T1, T2>, pair<T1, T2>>)> &fn) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> gist(const typed::union_map<pair<T1, T2>, pair<T1, T2>> &context) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> gist(const typed::basic_map<pair<T1, T2>, pair<T1, T2>> &context) const;
@@ -12027,32 +10851,18 @@ struct union_map<pair<T1, T2>, pair<T1, T2>> : public isl::union_map {
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> gist_domain(const typed::basic_set<pair<T1, T2>> &uset) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> gist_domain(const typed::point<pair<T1, T2>> &uset) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> gist_domain(const typed::set<pair<T1, T2>> &uset) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> gist_params(const typed::set<> &set) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> gist_params(const typed::basic_set<> &set) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> gist_params(const typed::point<> &set) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect(const typed::union_map<pair<T1, T2>, pair<T1, T2>> &umap2) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect(const typed::basic_map<pair<T1, T2>, pair<T1, T2>> &umap2) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect(const typed::map<pair<T1, T2>, pair<T1, T2>> &umap2) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_domain(const typed::space<pair<T1, T2>> &space) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_domain(const typed::union_set<pair<T1, T2>> &uset) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_domain_wrapped_domain(const typed::union_set<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_domain_wrapped_domain(const typed::basic_set<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_domain_wrapped_domain(const typed::point<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_domain_wrapped_domain(const typed::set<T1> &domain) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_params(const typed::set<> &set) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_params(const typed::basic_set<> &set) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_params(const typed::point<> &set) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_range(const typed::space<pair<T1, T2>> &space) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_range(const typed::union_set<pair<T1, T2>> &uset) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_range_wrapped_domain(const typed::union_set<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_range_wrapped_domain(const typed::basic_set<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_range_wrapped_domain(const typed::point<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> intersect_range_wrapped_domain(const typed::set<T1> &domain) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> lexmax() const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> lexmin() const;
-  inline typed::map_list<pair<T1, T2>, pair<T1, T2>> map_list() const;
-  inline typed::map_list<pair<T1, T2>, pair<T1, T2>> get_map_list() const = delete;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::union_map<Domain2, pair<T1, T2>> preimage_domain(const typed::multi_aff<Domain2, pair<T1, T2>> &ma) const;
   template <typename Domain2>
@@ -12074,9 +10884,6 @@ struct union_map<pair<T1, T2>, pair<T1, T2>> : public isl::union_map {
   template <typename Domain2, typename Range2>
   inline typed::union_map<pair<pair<T1, T2>, Domain2>, pair<pair<T1, T2>, Range2>> product(const typed::map<Domain2, Range2> &umap2) const;
   inline typed::union_map<pair<T1, T2>, pair<T1, T2>> project_out_all_params() const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> project_out_param(const std::string &id) const;
-  inline typed::union_map<pair<T1, T2>, pair<T1, T2>> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::union_set<pair<T1, T2>> range() const;
   inline typed::union_map<pair<T1, T2>, T1> range_factor_domain() const;
   inline typed::union_map<pair<T1, T2>, T2> range_factor_range() const;
@@ -12129,8 +10936,6 @@ struct union_map<pair<T1, T2>, pair<Range, Range2>> : public isl::union_map {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -12152,8 +10957,6 @@ struct union_map<pair<T1, T2>, pair<Range, Range2>> : public isl::union_map {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -12225,14 +11028,11 @@ struct union_map<pair<T1, T2>, pair<Range, Range2>> : public isl::union_map {
   inline typed::union_map<pair<pair<T1, T2>, Domain2>, pair<Range, Range2>> domain_product(const typed::basic_map<Domain2, pair<Range, Range2>> &umap2) const;
   template <typename Domain2>
   inline typed::union_map<pair<pair<T1, T2>, Domain2>, pair<Range, Range2>> domain_product(const typed::map<Domain2, pair<Range, Range2>> &umap2) const;
-  inline typed::union_map<pair<T2, T1>, pair<Range, Range2>> domain_reverse() const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> drop_unused_params() const;
   static inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> empty(const isl::ctx &ctx);
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> eq_at(const typed::multi_union_pw_aff<> &mupa) const = delete;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> eq_at(const typed::multi_pw_aff<> &mupa) const = delete;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> eq_at(const typed::union_pw_aff<> &mupa) const = delete;
   inline bool every_map(const std::function<bool(typed::map<pair<T1, T2>, pair<Range, Range2>>)> &test) const;
-  inline typed::map<pair<T1, T2>, pair<Range, Range2>> extract_map(const typed::space<pair<T1, T2>, pair<Range, Range2>> &space) const;
   inline void foreach_map(const std::function<void(typed::map<pair<T1, T2>, pair<Range, Range2>>)> &fn) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> gist(const typed::union_map<pair<T1, T2>, pair<Range, Range2>> &context) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> gist(const typed::basic_map<pair<T1, T2>, pair<Range, Range2>> &context) const;
@@ -12241,32 +11041,18 @@ struct union_map<pair<T1, T2>, pair<Range, Range2>> : public isl::union_map {
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> gist_domain(const typed::basic_set<pair<T1, T2>> &uset) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> gist_domain(const typed::point<pair<T1, T2>> &uset) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> gist_domain(const typed::set<pair<T1, T2>> &uset) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> gist_params(const typed::set<> &set) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> gist_params(const typed::basic_set<> &set) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> gist_params(const typed::point<> &set) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect(const typed::union_map<pair<T1, T2>, pair<Range, Range2>> &umap2) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect(const typed::basic_map<pair<T1, T2>, pair<Range, Range2>> &umap2) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect(const typed::map<pair<T1, T2>, pair<Range, Range2>> &umap2) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::space<pair<T1, T2>> &space) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::union_set<pair<T1, T2>> &uset) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::union_set<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::basic_set<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::point<T1> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::set<T1> &domain) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_params(const typed::set<> &set) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_params(const typed::basic_set<> &set) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_params(const typed::point<> &set) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_range(const typed::space<pair<Range, Range2>> &space) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_range(const typed::union_set<pair<Range, Range2>> &uset) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::union_set<Range> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::basic_set<Range> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::point<Range> &domain) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> intersect_range_wrapped_domain(const typed::set<Range> &domain) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> lexmax() const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> lexmin() const;
-  inline typed::map_list<pair<T1, T2>, pair<Range, Range2>> map_list() const;
-  inline typed::map_list<pair<T1, T2>, pair<Range, Range2>> get_map_list() const = delete;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::union_map<Domain2, pair<Range, Range2>> preimage_domain(const typed::multi_aff<Domain2, pair<T1, T2>> &ma) const;
   template <typename Domain2>
@@ -12288,9 +11074,6 @@ struct union_map<pair<T1, T2>, pair<Range, Range2>> : public isl::union_map {
   template <typename Domain2, typename Arg2>
   inline typed::union_map<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>> product(const typed::map<Domain2, Arg2> &umap2) const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> project_out_all_params() const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> project_out_param(const typed::id<Anonymous> &id) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> project_out_param(const std::string &id) const;
-  inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> project_out_param(const typed::id_list<Anonymous> &list) const;
   inline typed::union_set<pair<Range, Range2>> range() const;
   inline typed::union_map<pair<T1, T2>, Range> range_factor_domain() const;
   inline typed::union_map<pair<T1, T2>, Range2> range_factor_range() const;
@@ -12343,8 +11126,6 @@ struct union_pw_aff<Anonymous> : public isl::union_pw_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -12366,8 +11147,6 @@ struct union_pw_aff<Anonymous> : public isl::union_pw_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -12411,19 +11190,12 @@ struct union_pw_aff<Anonymous> : public isl::union_pw_aff {
   inline typed::union_set<> bind(const std::string &id) const;
   inline typed::union_pw_aff<Anonymous> coalesce() const;
   inline typed::union_set<> domain() const;
-  inline typed::union_pw_aff<Anonymous> drop_unused_params() const;
-  inline typed::pw_multi_aff<Anonymous> extract_pw_multi_aff(const typed::space<Anonymous> &space) const;
   inline typed::union_pw_aff<Anonymous> gist(const typed::union_set<> &context) const;
   inline typed::union_pw_aff<Anonymous> gist(const typed::basic_set<> &context) const;
   inline typed::union_pw_aff<Anonymous> gist(const typed::point<> &context) const;
   inline typed::union_pw_aff<Anonymous> gist(const typed::set<> &context) const;
-  inline typed::multi_union_pw_aff<Anonymous> gist_params(const typed::set<> &context) const;
   inline typed::union_pw_aff<Anonymous> intersect_domain(const typed::space<> &space) const = delete;
   inline typed::union_pw_aff<Anonymous> intersect_domain(const typed::union_set<> &uset) const = delete;
-  inline typed::union_pw_aff<Anonymous> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
-  inline typed::union_pw_aff<Anonymous> intersect_domain_wrapped_domain(const typed::basic_set<> &uset) const = delete;
-  inline typed::union_pw_aff<Anonymous> intersect_domain_wrapped_domain(const typed::point<> &uset) const = delete;
-  inline typed::union_pw_aff<Anonymous> intersect_domain_wrapped_domain(const typed::set<> &uset) const = delete;
   inline typed::union_pw_aff<Anonymous> intersect_params(const typed::set<> &set) const;
   inline typed::union_pw_aff<Anonymous> intersect_params(const typed::basic_set<> &set) const;
   inline typed::union_pw_aff<Anonymous> intersect_params(const typed::point<> &set) const;
@@ -12434,7 +11206,6 @@ struct union_pw_aff<Anonymous> : public isl::union_pw_aff {
   inline typed::union_pw_aff<Anonymous> pullback(const typed::multi_aff<> &upma) const = delete;
   inline typed::union_pw_aff<Anonymous> pullback(const typed::pw_multi_aff<> &upma) const = delete;
   inline typed::union_pw_aff<Anonymous> pullback(const typed::union_pw_aff<> &upma) const = delete;
-  inline typed::pw_multi_aff_list<Anonymous> pw_multi_aff_list() const;
   inline typed::union_pw_multi_aff<Anonymous> range_factor_domain() const = delete;
   inline typed::union_pw_multi_aff<Anonymous> range_factor_range() const = delete;
   inline typed::multi_union_pw_aff<Anonymous> range_product(const typed::multi_union_pw_aff<> &multi2) const = delete;
@@ -12485,8 +11256,6 @@ struct union_pw_aff<Domain, Anonymous> : public isl::union_pw_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -12508,8 +11277,6 @@ struct union_pw_aff<Domain, Anonymous> : public isl::union_pw_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -12563,19 +11330,12 @@ struct union_pw_aff<Domain, Anonymous> : public isl::union_pw_aff {
   inline typed::union_set<Domain> bind(const std::string &id) const;
   inline typed::union_pw_aff<Domain, Anonymous> coalesce() const;
   inline typed::union_set<Domain> domain() const;
-  inline typed::union_pw_aff<Domain, Anonymous> drop_unused_params() const;
-  inline typed::pw_multi_aff<Domain, Anonymous> extract_pw_multi_aff(const typed::space<Domain, Anonymous> &space) const;
   inline typed::union_pw_aff<Domain, Anonymous> gist(const typed::union_set<Domain> &context) const;
   inline typed::union_pw_aff<Domain, Anonymous> gist(const typed::basic_set<Domain> &context) const;
   inline typed::union_pw_aff<Domain, Anonymous> gist(const typed::point<Domain> &context) const;
   inline typed::union_pw_aff<Domain, Anonymous> gist(const typed::set<Domain> &context) const;
-  inline typed::multi_union_pw_aff<Domain, Anonymous> gist_params(const typed::set<> &context) const;
   inline typed::union_pw_aff<Domain, Anonymous> intersect_domain(const typed::space<Domain> &space) const;
   inline typed::union_pw_aff<Domain, Anonymous> intersect_domain(const typed::union_set<Domain> &uset) const;
-  inline typed::union_pw_aff<Domain, Anonymous> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
-  inline typed::union_pw_aff<Domain, Anonymous> intersect_domain_wrapped_domain(const typed::basic_set<> &uset) const = delete;
-  inline typed::union_pw_aff<Domain, Anonymous> intersect_domain_wrapped_domain(const typed::point<> &uset) const = delete;
-  inline typed::union_pw_aff<Domain, Anonymous> intersect_domain_wrapped_domain(const typed::set<> &uset) const = delete;
   inline typed::union_pw_aff<Domain, Anonymous> intersect_params(const typed::set<> &set) const;
   inline typed::union_pw_aff<Domain, Anonymous> intersect_params(const typed::basic_set<> &set) const;
   inline typed::union_pw_aff<Domain, Anonymous> intersect_params(const typed::point<> &set) const;
@@ -12594,7 +11354,6 @@ struct union_pw_aff<Domain, Anonymous> : public isl::union_pw_aff {
   template <typename Domain2>
   inline typed::union_pw_aff<Domain2, Anonymous> pullback(const typed::union_pw_aff<Domain2, Domain> &upma) const;
   inline typed::union_pw_aff<Anonymous> pullback(const typed::union_pw_aff<Domain> &upma) const;
-  inline typed::pw_multi_aff_list<Domain, Anonymous> pw_multi_aff_list() const;
   inline typed::union_pw_multi_aff<Domain, Anonymous> range_factor_domain() const = delete;
   inline typed::union_pw_multi_aff<Domain, Anonymous> range_factor_range() const = delete;
   template <typename Range2>
@@ -12647,8 +11406,6 @@ struct union_pw_aff<pair<Domain, Domain2>, Anonymous> : public isl::union_pw_aff
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -12670,8 +11427,6 @@ struct union_pw_aff<pair<Domain, Domain2>, Anonymous> : public isl::union_pw_aff
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -12726,19 +11481,12 @@ struct union_pw_aff<pair<Domain, Domain2>, Anonymous> : public isl::union_pw_aff
   inline typed::union_set<pair<Domain, Domain2>> bind(const std::string &id) const;
   inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> coalesce() const;
   inline typed::union_set<pair<Domain, Domain2>> domain() const;
-  inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> drop_unused_params() const;
-  inline typed::pw_multi_aff<pair<Domain, Domain2>, Anonymous> extract_pw_multi_aff(const typed::space<pair<Domain, Domain2>, Anonymous> &space) const;
   inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> gist(const typed::union_set<pair<Domain, Domain2>> &context) const;
   inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> gist(const typed::basic_set<pair<Domain, Domain2>> &context) const;
   inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> gist(const typed::point<pair<Domain, Domain2>> &context) const;
   inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> gist(const typed::set<pair<Domain, Domain2>> &context) const;
-  inline typed::multi_union_pw_aff<pair<Domain, Domain2>, Anonymous> gist_params(const typed::set<> &context) const;
   inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> intersect_domain(const typed::space<pair<Domain, Domain2>> &space) const;
   inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> intersect_domain(const typed::union_set<pair<Domain, Domain2>> &uset) const;
-  inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> intersect_domain_wrapped_domain(const typed::union_set<Domain> &uset) const;
-  inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> intersect_domain_wrapped_domain(const typed::basic_set<Domain> &uset) const;
-  inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> intersect_domain_wrapped_domain(const typed::point<Domain> &uset) const;
-  inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> intersect_domain_wrapped_domain(const typed::set<Domain> &uset) const;
   inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> intersect_params(const typed::set<> &set) const;
   inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> intersect_params(const typed::basic_set<> &set) const;
   inline typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> intersect_params(const typed::point<> &set) const;
@@ -12758,7 +11506,6 @@ struct union_pw_aff<pair<Domain, Domain2>, Anonymous> : public isl::union_pw_aff
   template <typename Arg2>
   inline typed::union_pw_aff<Arg2, Anonymous> pullback(const typed::union_pw_aff<Arg2, pair<Domain, Domain2>> &upma) const;
   inline typed::union_pw_aff<Anonymous> pullback(const typed::union_pw_aff<pair<Domain, Domain2>> &upma) const;
-  inline typed::pw_multi_aff_list<pair<Domain, Domain2>, Anonymous> pw_multi_aff_list() const;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Anonymous> range_factor_domain() const = delete;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Anonymous> range_factor_range() const = delete;
   template <typename Range2>
@@ -12811,8 +11558,6 @@ struct union_pw_aff_list<Anonymous> : public isl::union_pw_aff_list {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -12834,8 +11579,6 @@ struct union_pw_aff_list<Anonymous> : public isl::union_pw_aff_list {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -12862,7 +11605,6 @@ struct union_pw_aff_list<Anonymous> : public isl::union_pw_aff_list {
   }
   inline explicit union_pw_aff_list(const isl::ctx &ctx, int n);
   inline explicit union_pw_aff_list(const typed::union_pw_aff<Anonymous> &el);
-  inline explicit union_pw_aff_list(const isl::ctx &ctx, const std::string &str);
   inline typed::union_pw_aff_list<Anonymous> add(const typed::union_pw_aff<Anonymous> &el) const;
   inline typed::union_pw_aff_list<Anonymous> add(const typed::aff<Anonymous> &el) const;
   inline typed::union_pw_aff_list<Anonymous> add(const typed::pw_aff<Anonymous> &el) const;
@@ -12870,8 +11612,6 @@ struct union_pw_aff_list<Anonymous> : public isl::union_pw_aff_list {
   inline typed::union_pw_aff<Anonymous> get_at(int index) const = delete;
   inline typed::union_pw_aff_list<Anonymous> drop(unsigned int first, unsigned int n) const;
   inline void foreach(const std::function<void(typed::union_pw_aff<Anonymous>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::union_pw_aff<Anonymous>, typed::union_pw_aff<Anonymous>)> &follows, const std::function<void(typed::union_pw_aff_list<Anonymous>)> &fn) const;
-  inline typed::union_pw_aff_list<Anonymous> set_at(int index, const typed::union_pw_aff<Anonymous> &el) const;
 };
 
 template <typename Domain>
@@ -12892,8 +11632,6 @@ struct union_pw_aff_list<Domain, Anonymous> : public isl::union_pw_aff_list {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -12916,8 +11654,6 @@ struct union_pw_aff_list<Domain, Anonymous> : public isl::union_pw_aff_list {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -12954,7 +11690,6 @@ struct union_pw_aff_list<Domain, Anonymous> : public isl::union_pw_aff_list {
   }
   inline explicit union_pw_aff_list(const isl::ctx &ctx, int n);
   inline explicit union_pw_aff_list(const typed::union_pw_aff<Domain, Anonymous> &el);
-  inline explicit union_pw_aff_list(const isl::ctx &ctx, const std::string &str);
   inline typed::union_pw_aff_list<Domain, Anonymous> add(const typed::union_pw_aff<Domain, Anonymous> &el) const;
   inline typed::union_pw_aff_list<Domain, Anonymous> add(const typed::aff<Domain, Anonymous> &el) const;
   inline typed::union_pw_aff_list<Domain, Anonymous> add(const typed::pw_aff<Domain, Anonymous> &el) const;
@@ -12962,8 +11697,6 @@ struct union_pw_aff_list<Domain, Anonymous> : public isl::union_pw_aff_list {
   inline typed::union_pw_aff<Domain, Anonymous> get_at(int index) const = delete;
   inline typed::union_pw_aff_list<Domain, Anonymous> drop(unsigned int first, unsigned int n) const;
   inline void foreach(const std::function<void(typed::union_pw_aff<Domain, Anonymous>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::union_pw_aff<Domain, Anonymous>, typed::union_pw_aff<Domain, Anonymous>)> &follows, const std::function<void(typed::union_pw_aff_list<Domain, Anonymous>)> &fn) const;
-  inline typed::union_pw_aff_list<Domain, Anonymous> set_at(int index, const typed::union_pw_aff<Domain, Anonymous> &el) const;
 };
 
 template <typename Domain>
@@ -12984,8 +11717,6 @@ struct union_pw_multi_aff<Domain> : public isl::union_pw_multi_aff {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -13008,8 +11739,6 @@ struct union_pw_multi_aff<Domain> : public isl::union_pw_multi_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -13058,25 +11787,20 @@ struct union_pw_multi_aff<Domain> : public isl::union_pw_multi_aff {
   inline typed::union_pw_multi_aff<Range> apply(const typed::multi_aff<Domain, Range> &upma2) const;
   template <typename Range>
   inline typed::union_pw_multi_aff<Range> apply(const typed::pw_multi_aff<Domain, Range> &upma2) const;
-  inline typed::union_pw_multi_aff<Anonymous> apply(const typed::union_pw_aff<Domain, Anonymous> &upma2) const;
+  template <typename Range>
+  inline typed::union_pw_multi_aff<Range> apply(const typed::union_pw_aff<Domain, Range> &upma2) const;
   inline typed::multi_union_pw_aff<Domain> as_multi_union_pw_aff() const;
   inline typed::pw_multi_aff<Domain> as_pw_multi_aff() const;
   inline typed::union_map<Domain> as_union_map() const = delete;
   inline typed::union_pw_multi_aff<Domain> coalesce() const;
   inline typed::union_set<> domain() const;
-  inline typed::union_pw_multi_aff<Domain> drop_unused_params() const;
   static inline typed::union_pw_multi_aff<Domain> empty(const isl::ctx &ctx);
-  inline typed::pw_multi_aff<Domain> extract_pw_multi_aff(const typed::space<Domain> &space) const;
   inline typed::union_pw_multi_aff<Domain> gist(const typed::union_set<> &context) const;
   inline typed::union_pw_multi_aff<Domain> gist(const typed::basic_set<> &context) const;
   inline typed::union_pw_multi_aff<Domain> gist(const typed::point<> &context) const;
   inline typed::union_pw_multi_aff<Domain> gist(const typed::set<> &context) const;
   inline typed::union_pw_multi_aff<Domain> intersect_domain(const typed::space<> &space) const = delete;
   inline typed::union_pw_multi_aff<Domain> intersect_domain(const typed::union_set<> &uset) const = delete;
-  inline typed::union_pw_multi_aff<Domain> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
-  inline typed::union_pw_multi_aff<Domain> intersect_domain_wrapped_domain(const typed::basic_set<> &uset) const = delete;
-  inline typed::union_pw_multi_aff<Domain> intersect_domain_wrapped_domain(const typed::point<> &uset) const = delete;
-  inline typed::union_pw_multi_aff<Domain> intersect_domain_wrapped_domain(const typed::set<> &uset) const = delete;
   inline typed::union_pw_multi_aff<Domain> intersect_params(const typed::set<> &set) const;
   inline typed::union_pw_multi_aff<Domain> intersect_params(const typed::basic_set<> &set) const;
   inline typed::union_pw_multi_aff<Domain> intersect_params(const typed::point<> &set) const;
@@ -13088,8 +11812,6 @@ struct union_pw_multi_aff<Domain> : public isl::union_pw_multi_aff {
   inline typed::union_pw_multi_aff<Domain> pullback(const typed::multi_aff<> &upma2) const = delete;
   inline typed::union_pw_multi_aff<Domain> pullback(const typed::pw_multi_aff<> &upma2) const = delete;
   inline typed::union_pw_multi_aff<Domain> pullback(const typed::union_pw_aff<> &upma2) const = delete;
-  inline typed::pw_multi_aff_list<Domain> pw_multi_aff_list() const;
-  inline typed::pw_multi_aff_list<Domain> get_pw_multi_aff_list() const = delete;
   inline typed::union_pw_multi_aff<Domain> range_factor_domain() const = delete;
   inline typed::union_pw_multi_aff<Domain> range_factor_range() const = delete;
   inline typed::union_pw_multi_aff<Domain> range_product(const typed::union_pw_multi_aff<> &upma2) const = delete;
@@ -13129,8 +11851,6 @@ struct union_pw_multi_aff<Domain, Range> : public isl::union_pw_multi_aff {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -13152,8 +11872,6 @@ struct union_pw_multi_aff<Domain, Range> : public isl::union_pw_multi_aff {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -13203,25 +11921,20 @@ struct union_pw_multi_aff<Domain, Range> : public isl::union_pw_multi_aff {
   inline typed::union_pw_multi_aff<Domain, Range2> apply(const typed::multi_aff<Range, Range2> &upma2) const;
   template <typename Range2>
   inline typed::union_pw_multi_aff<Domain, Range2> apply(const typed::pw_multi_aff<Range, Range2> &upma2) const;
-  inline typed::union_pw_multi_aff<Domain, Anonymous> apply(const typed::union_pw_aff<Range, Anonymous> &upma2) const;
+  template <typename Range2>
+  inline typed::union_pw_multi_aff<Domain, Range2> apply(const typed::union_pw_aff<Range, Range2> &upma2) const;
   inline typed::multi_union_pw_aff<Domain, Range> as_multi_union_pw_aff() const;
   inline typed::pw_multi_aff<Domain, Range> as_pw_multi_aff() const;
   inline typed::union_map<Domain, Range> as_union_map() const;
   inline typed::union_pw_multi_aff<Domain, Range> coalesce() const;
   inline typed::union_set<Domain> domain() const;
-  inline typed::union_pw_multi_aff<Domain, Range> drop_unused_params() const;
   static inline typed::union_pw_multi_aff<Domain, Range> empty(const isl::ctx &ctx);
-  inline typed::pw_multi_aff<Domain, Range> extract_pw_multi_aff(const typed::space<Domain, Range> &space) const;
   inline typed::union_pw_multi_aff<Domain, Range> gist(const typed::union_set<Domain> &context) const;
   inline typed::union_pw_multi_aff<Domain, Range> gist(const typed::basic_set<Domain> &context) const;
   inline typed::union_pw_multi_aff<Domain, Range> gist(const typed::point<Domain> &context) const;
   inline typed::union_pw_multi_aff<Domain, Range> gist(const typed::set<Domain> &context) const;
   inline typed::union_pw_multi_aff<Domain, Range> intersect_domain(const typed::space<Domain> &space) const;
   inline typed::union_pw_multi_aff<Domain, Range> intersect_domain(const typed::union_set<Domain> &uset) const;
-  inline typed::union_pw_multi_aff<Domain, Range> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
-  inline typed::union_pw_multi_aff<Domain, Range> intersect_domain_wrapped_domain(const typed::basic_set<> &uset) const = delete;
-  inline typed::union_pw_multi_aff<Domain, Range> intersect_domain_wrapped_domain(const typed::point<> &uset) const = delete;
-  inline typed::union_pw_multi_aff<Domain, Range> intersect_domain_wrapped_domain(const typed::set<> &uset) const = delete;
   inline typed::union_pw_multi_aff<Domain, Range> intersect_params(const typed::set<> &set) const;
   inline typed::union_pw_multi_aff<Domain, Range> intersect_params(const typed::basic_set<> &set) const;
   inline typed::union_pw_multi_aff<Domain, Range> intersect_params(const typed::point<> &set) const;
@@ -13241,8 +11954,6 @@ struct union_pw_multi_aff<Domain, Range> : public isl::union_pw_multi_aff {
   template <typename Domain2>
   inline typed::union_pw_multi_aff<Domain2, Range> pullback(const typed::union_pw_aff<Domain2, Domain> &upma2) const;
   inline typed::union_pw_multi_aff<Range> pullback(const typed::union_pw_aff<Domain> &upma2) const;
-  inline typed::pw_multi_aff_list<Domain, Range> pw_multi_aff_list() const;
-  inline typed::pw_multi_aff_list<Domain, Range> get_pw_multi_aff_list() const = delete;
   inline typed::union_pw_multi_aff<Domain, Range> range_factor_domain() const = delete;
   inline typed::union_pw_multi_aff<Domain, Range> range_factor_range() const = delete;
   template <typename Range2>
@@ -13251,7 +11962,8 @@ struct union_pw_multi_aff<Domain, Range> : public isl::union_pw_multi_aff {
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> range_product(const typed::multi_aff<Domain, Range2> &upma2) const;
   template <typename Range2>
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> range_product(const typed::pw_multi_aff<Domain, Range2> &upma2) const;
-  inline typed::union_pw_multi_aff<Domain, pair<Range, Anonymous>> range_product(const typed::union_pw_aff<Domain, Anonymous> &upma2) const;
+  template <typename Range2>
+  inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> range_product(const typed::union_pw_aff<Domain, Range2> &upma2) const;
   inline typed::space<> space() const;
   inline typed::space<Domain, Range> get_space() const = delete;
   inline typed::union_pw_multi_aff<Domain, Range> sub(const typed::union_pw_multi_aff<Domain, Range> &upma2) const;
@@ -13285,8 +11997,6 @@ struct union_pw_multi_aff<pair<Domain, Domain2>, Range> : public isl::union_pw_m
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -13308,8 +12018,6 @@ struct union_pw_multi_aff<pair<Domain, Domain2>, Range> : public isl::union_pw_m
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -13360,25 +12068,20 @@ struct union_pw_multi_aff<pair<Domain, Domain2>, Range> : public isl::union_pw_m
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range2> apply(const typed::multi_aff<Range, Range2> &upma2) const;
   template <typename Range2>
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range2> apply(const typed::pw_multi_aff<Range, Range2> &upma2) const;
-  inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Anonymous> apply(const typed::union_pw_aff<Range, Anonymous> &upma2) const;
+  template <typename Range2>
+  inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range2> apply(const typed::union_pw_aff<Range, Range2> &upma2) const;
   inline typed::multi_union_pw_aff<pair<Domain, Domain2>, Range> as_multi_union_pw_aff() const;
   inline typed::pw_multi_aff<pair<Domain, Domain2>, Range> as_pw_multi_aff() const;
   inline typed::union_map<pair<Domain, Domain2>, Range> as_union_map() const;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> coalesce() const;
   inline typed::union_set<pair<Domain, Domain2>> domain() const;
-  inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> drop_unused_params() const;
   static inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> empty(const isl::ctx &ctx);
-  inline typed::pw_multi_aff<pair<Domain, Domain2>, Range> extract_pw_multi_aff(const typed::space<pair<Domain, Domain2>, Range> &space) const;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> gist(const typed::union_set<pair<Domain, Domain2>> &context) const;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> gist(const typed::basic_set<pair<Domain, Domain2>> &context) const;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> gist(const typed::point<pair<Domain, Domain2>> &context) const;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> gist(const typed::set<pair<Domain, Domain2>> &context) const;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> intersect_domain(const typed::space<pair<Domain, Domain2>> &space) const;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> intersect_domain(const typed::union_set<pair<Domain, Domain2>> &uset) const;
-  inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> intersect_domain_wrapped_domain(const typed::union_set<Domain> &uset) const;
-  inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> intersect_domain_wrapped_domain(const typed::basic_set<Domain> &uset) const;
-  inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> intersect_domain_wrapped_domain(const typed::point<Domain> &uset) const;
-  inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> intersect_domain_wrapped_domain(const typed::set<Domain> &uset) const;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> intersect_params(const typed::set<> &set) const;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> intersect_params(const typed::basic_set<> &set) const;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> intersect_params(const typed::point<> &set) const;
@@ -13402,8 +12105,6 @@ struct union_pw_multi_aff<pair<Domain, Domain2>, Range> : public isl::union_pw_m
   template <typename Arg3>
   inline typed::union_pw_multi_aff<Arg3, Range> pullback(const typed::union_pw_aff<Arg3, pair<Domain, Domain2>> &upma2) const;
   inline typed::union_pw_multi_aff<Range> pullback(const typed::union_pw_aff<pair<Domain, Domain2>> &upma2) const;
-  inline typed::pw_multi_aff_list<pair<Domain, Domain2>, Range> pw_multi_aff_list() const;
-  inline typed::pw_multi_aff_list<pair<Domain, Domain2>, Range> get_pw_multi_aff_list() const = delete;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> range_factor_domain() const = delete;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> range_factor_range() const = delete;
   template <typename Range2>
@@ -13412,7 +12113,8 @@ struct union_pw_multi_aff<pair<Domain, Domain2>, Range> : public isl::union_pw_m
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> range_product(const typed::multi_aff<pair<Domain, Domain2>, Range2> &upma2) const;
   template <typename Range2>
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> range_product(const typed::pw_multi_aff<pair<Domain, Domain2>, Range2> &upma2) const;
-  inline typed::union_pw_multi_aff<pair<Domain, Domain2>, pair<Range, Anonymous>> range_product(const typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> &upma2) const;
+  template <typename Range2>
+  inline typed::union_pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> range_product(const typed::union_pw_aff<pair<Domain, Domain2>, Range2> &upma2) const;
   inline typed::space<> space() const;
   inline typed::space<pair<Domain, Domain2>, Range> get_space() const = delete;
   inline typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> sub(const typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> &upma2) const;
@@ -13446,8 +12148,6 @@ struct union_pw_multi_aff<Domain, pair<Range, Range2>> : public isl::union_pw_mu
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -13469,8 +12169,6 @@ struct union_pw_multi_aff<Domain, pair<Range, Range2>> : public isl::union_pw_mu
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -13521,25 +12219,20 @@ struct union_pw_multi_aff<Domain, pair<Range, Range2>> : public isl::union_pw_mu
   inline typed::union_pw_multi_aff<Domain, Arg3> apply(const typed::multi_aff<pair<Range, Range2>, Arg3> &upma2) const;
   template <typename Arg3>
   inline typed::union_pw_multi_aff<Domain, Arg3> apply(const typed::pw_multi_aff<pair<Range, Range2>, Arg3> &upma2) const;
-  inline typed::union_pw_multi_aff<Domain, Anonymous> apply(const typed::union_pw_aff<pair<Range, Range2>, Anonymous> &upma2) const;
+  template <typename Arg3>
+  inline typed::union_pw_multi_aff<Domain, Arg3> apply(const typed::union_pw_aff<pair<Range, Range2>, Arg3> &upma2) const;
   inline typed::multi_union_pw_aff<Domain, pair<Range, Range2>> as_multi_union_pw_aff() const;
   inline typed::pw_multi_aff<Domain, pair<Range, Range2>> as_pw_multi_aff() const;
   inline typed::union_map<Domain, pair<Range, Range2>> as_union_map() const;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> coalesce() const;
   inline typed::union_set<Domain> domain() const;
-  inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> drop_unused_params() const;
   static inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> empty(const isl::ctx &ctx);
-  inline typed::pw_multi_aff<Domain, pair<Range, Range2>> extract_pw_multi_aff(const typed::space<Domain, pair<Range, Range2>> &space) const;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> gist(const typed::union_set<Domain> &context) const;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> gist(const typed::basic_set<Domain> &context) const;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> gist(const typed::point<Domain> &context) const;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> gist(const typed::set<Domain> &context) const;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain(const typed::space<Domain> &space) const;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain(const typed::union_set<Domain> &uset) const;
-  inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::union_set<> &uset) const = delete;
-  inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::basic_set<> &uset) const = delete;
-  inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::point<> &uset) const = delete;
-  inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::set<> &uset) const = delete;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> intersect_params(const typed::set<> &set) const;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> intersect_params(const typed::basic_set<> &set) const;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> intersect_params(const typed::point<> &set) const;
@@ -13559,8 +12252,6 @@ struct union_pw_multi_aff<Domain, pair<Range, Range2>> : public isl::union_pw_mu
   template <typename Domain2>
   inline typed::union_pw_multi_aff<Domain2, pair<Range, Range2>> pullback(const typed::union_pw_aff<Domain2, Domain> &upma2) const;
   inline typed::union_pw_multi_aff<pair<Range, Range2>> pullback(const typed::union_pw_aff<Domain> &upma2) const;
-  inline typed::pw_multi_aff_list<Domain, pair<Range, Range2>> pw_multi_aff_list() const;
-  inline typed::pw_multi_aff_list<Domain, pair<Range, Range2>> get_pw_multi_aff_list() const = delete;
   inline typed::union_pw_multi_aff<Domain, Range> range_factor_domain() const;
   inline typed::union_pw_multi_aff<Domain, Range2> range_factor_range() const;
   template <typename Arg3>
@@ -13569,7 +12260,8 @@ struct union_pw_multi_aff<Domain, pair<Range, Range2>> : public isl::union_pw_mu
   inline typed::union_pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> range_product(const typed::multi_aff<Domain, Arg3> &upma2) const;
   template <typename Arg3>
   inline typed::union_pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> range_product(const typed::pw_multi_aff<Domain, Arg3> &upma2) const;
-  inline typed::union_pw_multi_aff<Domain, pair<pair<Range, Range2>, Anonymous>> range_product(const typed::union_pw_aff<Domain, Anonymous> &upma2) const;
+  template <typename Arg3>
+  inline typed::union_pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> range_product(const typed::union_pw_aff<Domain, Arg3> &upma2) const;
   inline typed::space<> space() const;
   inline typed::space<Domain, pair<Range, Range2>> get_space() const = delete;
   inline typed::union_pw_multi_aff<Domain, pair<Range, Range2>> sub(const typed::union_pw_multi_aff<Domain, pair<Range, Range2>> &upma2) const;
@@ -13603,8 +12295,6 @@ struct union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::union
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -13626,8 +12316,6 @@ struct union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::union
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -13679,25 +12367,20 @@ struct union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::union
   inline typed::union_pw_multi_aff<pair<T1, T2>, Arg2> apply(const typed::multi_aff<pair<Range, Range2>, Arg2> &upma2) const;
   template <typename Arg2>
   inline typed::union_pw_multi_aff<pair<T1, T2>, Arg2> apply(const typed::pw_multi_aff<pair<Range, Range2>, Arg2> &upma2) const;
-  inline typed::union_pw_multi_aff<pair<T1, T2>, Anonymous> apply(const typed::union_pw_aff<pair<Range, Range2>, Anonymous> &upma2) const;
+  template <typename Arg2>
+  inline typed::union_pw_multi_aff<pair<T1, T2>, Arg2> apply(const typed::union_pw_aff<pair<Range, Range2>, Arg2> &upma2) const;
   inline typed::multi_union_pw_aff<pair<T1, T2>, pair<Range, Range2>> as_multi_union_pw_aff() const;
   inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> as_pw_multi_aff() const;
   inline typed::union_map<pair<T1, T2>, pair<Range, Range2>> as_union_map() const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> coalesce() const;
   inline typed::union_set<pair<T1, T2>> domain() const;
-  inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> drop_unused_params() const;
   static inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> empty(const isl::ctx &ctx);
-  inline typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> extract_pw_multi_aff(const typed::space<pair<T1, T2>, pair<Range, Range2>> &space) const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> gist(const typed::union_set<pair<T1, T2>> &context) const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> gist(const typed::basic_set<pair<T1, T2>> &context) const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> gist(const typed::point<pair<T1, T2>> &context) const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> gist(const typed::set<pair<T1, T2>> &context) const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::space<pair<T1, T2>> &space) const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain(const typed::union_set<pair<T1, T2>> &uset) const;
-  inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::union_set<T1> &uset) const;
-  inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::basic_set<T1> &uset) const;
-  inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::point<T1> &uset) const;
-  inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_domain_wrapped_domain(const typed::set<T1> &uset) const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_params(const typed::set<> &set) const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_params(const typed::basic_set<> &set) const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> intersect_params(const typed::point<> &set) const;
@@ -13721,8 +12404,6 @@ struct union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::union
   template <typename Domain2>
   inline typed::union_pw_multi_aff<Domain2, pair<Range, Range2>> pullback(const typed::union_pw_aff<Domain2, pair<T1, T2>> &upma2) const;
   inline typed::union_pw_multi_aff<pair<Range, Range2>> pullback(const typed::union_pw_aff<pair<T1, T2>> &upma2) const;
-  inline typed::pw_multi_aff_list<pair<T1, T2>, pair<Range, Range2>> pw_multi_aff_list() const;
-  inline typed::pw_multi_aff_list<pair<T1, T2>, pair<Range, Range2>> get_pw_multi_aff_list() const = delete;
   inline typed::union_pw_multi_aff<pair<T1, T2>, Range> range_factor_domain() const;
   inline typed::union_pw_multi_aff<pair<T1, T2>, Range2> range_factor_range() const;
   template <typename Arg2>
@@ -13731,7 +12412,8 @@ struct union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> : public isl::union
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> range_product(const typed::multi_aff<pair<T1, T2>, Arg2> &upma2) const;
   template <typename Arg2>
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> range_product(const typed::pw_multi_aff<pair<T1, T2>, Arg2> &upma2) const;
-  inline typed::union_pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Anonymous>> range_product(const typed::union_pw_aff<pair<T1, T2>, Anonymous> &upma2) const;
+  template <typename Arg2>
+  inline typed::union_pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> range_product(const typed::union_pw_aff<pair<T1, T2>, Arg2> &upma2) const;
   inline typed::space<> space() const;
   inline typed::space<pair<T1, T2>, pair<Range, Range2>> get_space() const = delete;
   inline typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> sub(const typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> &upma2) const;
@@ -13765,8 +12447,6 @@ struct union_set<> : public isl::union_set {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -13788,8 +12468,6 @@ struct union_set<> : public isl::union_set {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -13829,19 +12507,14 @@ struct union_set<> : public isl::union_set {
   inline typed::set<> as_set() const = delete;
   inline typed::union_set<> coalesce() const;
   inline typed::union_set<> detect_equalities() const;
-  inline typed::union_set<> drop_unused_params() const;
   static inline typed::union_set<> empty(const isl::ctx &ctx);
   inline bool every_set(const std::function<bool(typed::set<>)> &test) const;
-  inline typed::set<> extract_set(const typed::space<> &space) const;
   inline void foreach_point(const std::function<void(typed::point<>)> &fn) const;
   inline void foreach_set(const std::function<void(typed::set<>)> &fn) const;
   inline typed::union_set<> gist(const typed::union_set<> &context) const;
   inline typed::union_set<> gist(const typed::basic_set<> &context) const;
   inline typed::union_set<> gist(const typed::point<> &context) const;
   inline typed::union_set<> gist(const typed::set<> &context) const;
-  inline typed::union_set<> gist_params(const typed::set<> &set) const = delete;
-  inline typed::union_set<> gist_params(const typed::basic_set<> &set) const = delete;
-  inline typed::union_set<> gist_params(const typed::point<> &set) const = delete;
   inline typed::union_map<> identity() const = delete;
   inline typed::union_set<> intersect(const typed::union_set<> &uset2) const;
   inline typed::union_set<> intersect(const typed::basic_set<> &uset2) const;
@@ -13852,13 +12525,9 @@ struct union_set<> : public isl::union_set {
   inline typed::union_set<> intersect_params(const typed::point<> &set) const = delete;
   inline typed::union_set<> lexmax() const = delete;
   inline typed::union_set<> lexmin() const = delete;
-  inline typed::set<> params() const = delete;
   inline typed::union_set<> preimage(const typed::multi_aff<> &ma) const = delete;
   inline typed::union_set<> preimage(const typed::pw_multi_aff<> &pma) const = delete;
   inline typed::union_set<> preimage(const typed::union_pw_multi_aff<> &upma) const = delete;
-  inline typed::union_set<> project_out_all_params() const;
-  inline typed::set_list<> set_list() const;
-  inline typed::set_list<> get_set_list() const = delete;
   inline typed::space<> space() const;
   inline typed::space<> get_space() const = delete;
   inline typed::union_set<> subtract(const typed::union_set<> &uset2) const;
@@ -13892,8 +12561,6 @@ struct union_set<Domain> : public isl::union_set {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -13915,8 +12582,6 @@ struct union_set<Domain> : public isl::union_set {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -13964,19 +12629,14 @@ struct union_set<Domain> : public isl::union_set {
   inline typed::set<Domain> as_set() const;
   inline typed::union_set<Domain> coalesce() const;
   inline typed::union_set<Domain> detect_equalities() const;
-  inline typed::union_set<Domain> drop_unused_params() const;
   static inline typed::union_set<Domain> empty(const isl::ctx &ctx);
   inline bool every_set(const std::function<bool(typed::set<Domain>)> &test) const;
-  inline typed::set<Domain> extract_set(const typed::space<Domain> &space) const;
   inline void foreach_point(const std::function<void(typed::point<Domain>)> &fn) const;
   inline void foreach_set(const std::function<void(typed::set<Domain>)> &fn) const;
   inline typed::union_set<Domain> gist(const typed::union_set<Domain> &context) const;
   inline typed::union_set<Domain> gist(const typed::basic_set<Domain> &context) const;
   inline typed::union_set<Domain> gist(const typed::point<Domain> &context) const;
   inline typed::union_set<Domain> gist(const typed::set<Domain> &context) const;
-  inline typed::union_set<Domain> gist_params(const typed::set<> &set) const;
-  inline typed::union_set<Domain> gist_params(const typed::basic_set<> &set) const;
-  inline typed::union_set<Domain> gist_params(const typed::point<> &set) const;
   inline typed::union_map<Domain, Domain> identity() const;
   inline typed::union_set<Domain> intersect(const typed::union_set<Domain> &uset2) const;
   inline typed::union_set<Domain> intersect(const typed::basic_set<Domain> &uset2) const;
@@ -13987,16 +12647,12 @@ struct union_set<Domain> : public isl::union_set {
   inline typed::union_set<Domain> intersect_params(const typed::point<> &set) const;
   inline typed::union_set<Domain> lexmax() const;
   inline typed::union_set<Domain> lexmin() const;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::union_set<Domain2> preimage(const typed::multi_aff<Domain2, Domain> &ma) const;
   template <typename Domain2>
   inline typed::union_set<Domain2> preimage(const typed::pw_multi_aff<Domain2, Domain> &pma) const;
   template <typename Domain2>
   inline typed::union_set<Domain2> preimage(const typed::union_pw_multi_aff<Domain2, Domain> &upma) const;
-  inline typed::union_set<Domain> project_out_all_params() const;
-  inline typed::set_list<Domain> set_list() const;
-  inline typed::set_list<Domain> get_set_list() const = delete;
   inline typed::space<> space() const;
   inline typed::space<Domain> get_space() const = delete;
   inline typed::union_set<Domain> subtract(const typed::union_set<Domain> &uset2) const;
@@ -14030,8 +12686,6 @@ struct union_set<pair<Domain, Range>> : public isl::union_set {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -14053,8 +12707,6 @@ struct union_set<pair<Domain, Range>> : public isl::union_set {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -14103,19 +12755,14 @@ struct union_set<pair<Domain, Range>> : public isl::union_set {
   inline typed::set<pair<Domain, Range>> as_set() const;
   inline typed::union_set<pair<Domain, Range>> coalesce() const;
   inline typed::union_set<pair<Domain, Range>> detect_equalities() const;
-  inline typed::union_set<pair<Domain, Range>> drop_unused_params() const;
   static inline typed::union_set<pair<Domain, Range>> empty(const isl::ctx &ctx);
   inline bool every_set(const std::function<bool(typed::set<pair<Domain, Range>>)> &test) const;
-  inline typed::set<pair<Domain, Range>> extract_set(const typed::space<pair<Domain, Range>> &space) const;
   inline void foreach_point(const std::function<void(typed::point<pair<Domain, Range>>)> &fn) const;
   inline void foreach_set(const std::function<void(typed::set<pair<Domain, Range>>)> &fn) const;
   inline typed::union_set<pair<Domain, Range>> gist(const typed::union_set<pair<Domain, Range>> &context) const;
   inline typed::union_set<pair<Domain, Range>> gist(const typed::basic_set<pair<Domain, Range>> &context) const;
   inline typed::union_set<pair<Domain, Range>> gist(const typed::point<pair<Domain, Range>> &context) const;
   inline typed::union_set<pair<Domain, Range>> gist(const typed::set<pair<Domain, Range>> &context) const;
-  inline typed::union_set<pair<Domain, Range>> gist_params(const typed::set<> &set) const;
-  inline typed::union_set<pair<Domain, Range>> gist_params(const typed::basic_set<> &set) const;
-  inline typed::union_set<pair<Domain, Range>> gist_params(const typed::point<> &set) const;
   inline typed::union_map<pair<Domain, Range>, pair<Domain, Range>> identity() const;
   inline typed::union_set<pair<Domain, Range>> intersect(const typed::union_set<pair<Domain, Range>> &uset2) const;
   inline typed::union_set<pair<Domain, Range>> intersect(const typed::basic_set<pair<Domain, Range>> &uset2) const;
@@ -14126,16 +12773,12 @@ struct union_set<pair<Domain, Range>> : public isl::union_set {
   inline typed::union_set<pair<Domain, Range>> intersect_params(const typed::point<> &set) const;
   inline typed::union_set<pair<Domain, Range>> lexmax() const;
   inline typed::union_set<pair<Domain, Range>> lexmin() const;
-  inline typed::set<> params() const;
   template <typename Domain2>
   inline typed::union_set<Domain2> preimage(const typed::multi_aff<Domain2, pair<Domain, Range>> &ma) const;
   template <typename Domain2>
   inline typed::union_set<Domain2> preimage(const typed::pw_multi_aff<Domain2, pair<Domain, Range>> &pma) const;
   template <typename Domain2>
   inline typed::union_set<Domain2> preimage(const typed::union_pw_multi_aff<Domain2, pair<Domain, Range>> &upma) const;
-  inline typed::union_set<pair<Domain, Range>> project_out_all_params() const;
-  inline typed::set_list<pair<Domain, Range>> set_list() const;
-  inline typed::set_list<pair<Domain, Range>> get_set_list() const = delete;
   inline typed::space<> space() const;
   inline typed::space<pair<Domain, Range>> get_space() const = delete;
   inline typed::union_set<pair<Domain, Range>> subtract(const typed::union_set<pair<Domain, Range>> &uset2) const;
@@ -14169,8 +12812,6 @@ struct union_set_list<> : public isl::union_set_list {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -14192,8 +12833,6 @@ struct union_set_list<> : public isl::union_set_list {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -14225,7 +12864,6 @@ struct union_set_list<> : public isl::union_set_list {
   }
   inline explicit union_set_list(const isl::ctx &ctx, int n);
   inline explicit union_set_list(const typed::union_set<> &el);
-  inline explicit union_set_list(const isl::ctx &ctx, const std::string &str);
   inline typed::union_set_list<> add(const typed::union_set<> &el) const;
   inline typed::union_set_list<> add(const typed::basic_set<> &el) const;
   inline typed::union_set_list<> add(const typed::point<> &el) const;
@@ -14234,8 +12872,6 @@ struct union_set_list<> : public isl::union_set_list {
   inline typed::union_set<> get_at(int index) const = delete;
   inline typed::union_set_list<> drop(unsigned int first, unsigned int n) const;
   inline void foreach(const std::function<void(typed::union_set<>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::union_set<>, typed::union_set<>)> &follows, const std::function<void(typed::union_set_list<>)> &fn) const;
-  inline typed::union_set_list<> set_at(int index, const typed::union_set<> &el) const = delete;
 };
 
 template <typename Domain>
@@ -14256,8 +12892,6 @@ struct union_set_list<Domain> : public isl::union_set_list {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -14280,8 +12914,6 @@ struct union_set_list<Domain> : public isl::union_set_list {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -14318,7 +12950,6 @@ struct union_set_list<Domain> : public isl::union_set_list {
   }
   inline explicit union_set_list(const isl::ctx &ctx, int n);
   inline explicit union_set_list(const typed::union_set<Domain> &el);
-  inline explicit union_set_list(const isl::ctx &ctx, const std::string &str);
   inline typed::union_set_list<Domain> add(const typed::union_set<Domain> &el) const;
   inline typed::union_set_list<Domain> add(const typed::basic_set<Domain> &el) const;
   inline typed::union_set_list<Domain> add(const typed::point<Domain> &el) const;
@@ -14327,8 +12958,6 @@ struct union_set_list<Domain> : public isl::union_set_list {
   inline typed::union_set<Domain> get_at(int index) const = delete;
   inline typed::union_set_list<Domain> drop(unsigned int first, unsigned int n) const;
   inline void foreach(const std::function<void(typed::union_set<Domain>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::union_set<Domain>, typed::union_set<Domain>)> &follows, const std::function<void(typed::union_set_list<Domain>)> &fn) const;
-  inline typed::union_set_list<Domain> set_at(int index, const typed::union_set<Anonymous> &el) const;
 };
 
 template <>
@@ -14349,8 +12978,6 @@ struct val<Anonymous> : public isl::val {
   friend struct id_list;
   template <typename...>
   friend struct map;
-  template <typename...>
-  friend struct map_list;
   template <typename...>
   friend struct multi_aff;
   template <typename...>
@@ -14373,8 +13000,6 @@ struct val<Anonymous> : public isl::val {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -14403,7 +13028,6 @@ struct val<Anonymous> : public isl::val {
   inline explicit val(const isl::ctx &ctx, const std::string &str);
   inline typed::val<Anonymous> add(const typed::val<Anonymous> &v2) const;
   inline typed::val<Anonymous> add(long v2) const;
-  inline typed::val<Anonymous> ceil() const;
   inline long get_den_si() const = delete;
   inline typed::val<Anonymous> floor() const;
   inline typed::val<Anonymous> max(const typed::val<Anonymous> &v2) const;
@@ -14437,8 +13061,6 @@ struct val_list<Anonymous> : public isl::val_list {
   template <typename...>
   friend struct map;
   template <typename...>
-  friend struct map_list;
-  template <typename...>
   friend struct multi_aff;
   template <typename...>
   friend struct multi_id;
@@ -14460,8 +13082,6 @@ struct val_list<Anonymous> : public isl::val_list {
   friend struct pw_multi_aff_list;
   template <typename...>
   friend struct set;
-  template <typename...>
-  friend struct set_list;
   template <typename...>
   friend struct space;
   template <typename...>
@@ -14488,16 +13108,12 @@ struct val_list<Anonymous> : public isl::val_list {
   }
   inline explicit val_list(const isl::ctx &ctx, int n);
   inline explicit val_list(const typed::val<Anonymous> &el);
-  inline explicit val_list(const isl::ctx &ctx, const std::string &str);
   inline typed::val_list<Anonymous> add(const typed::val<Anonymous> &el) const;
   inline typed::val_list<Anonymous> add(long el) const;
   inline typed::val<Anonymous> at(int index) const;
   inline typed::val<Anonymous> get_at(int index) const = delete;
   inline typed::val_list<Anonymous> drop(unsigned int first, unsigned int n) const;
   inline void foreach(const std::function<void(typed::val<Anonymous>)> &fn) const;
-  inline void foreach_scc(const std::function<bool(typed::val<Anonymous>, typed::val<Anonymous>)> &follows, const std::function<void(typed::val_list<Anonymous>)> &fn) const;
-  inline typed::val_list<Anonymous> set_at(int index, const typed::val<Anonymous> &el) const;
-  inline typed::val_list<Anonymous> set_at(int index, long el) const;
 };
 
 typed::aff<Anonymous>::aff(const isl::ctx &ctx, const std::string &str)
@@ -14632,21 +13248,9 @@ typed::basic_set<> typed::aff<Anonymous>::bind(const typed::multi_id<Anonymous> 
   return typed::basic_set<>(res);
 }
 
-typed::aff<Anonymous> typed::aff<Anonymous>::ceil() const
-{
-  auto res = isl::aff::ceil();
-  return typed::aff<Anonymous>(res);
-}
-
 typed::pw_aff<Anonymous> typed::aff<Anonymous>::coalesce() const
 {
   auto res = isl::aff::coalesce();
-  return typed::pw_aff<Anonymous>(res);
-}
-
-typed::pw_aff<Anonymous> typed::aff<Anonymous>::cond(const typed::pw_aff<Anonymous> &pwaff_true, const typed::pw_aff<Anonymous> &pwaff_false) const
-{
-  auto res = isl::aff::cond(pwaff_true, pwaff_false);
   return typed::pw_aff<Anonymous>(res);
 }
 
@@ -14656,28 +13260,10 @@ typed::multi_val<Anonymous> typed::aff<Anonymous>::constant_multi_val() const
   return typed::multi_val<Anonymous>(res);
 }
 
-typed::val<Anonymous> typed::aff<Anonymous>::constant_val() const
-{
-  auto res = isl::aff::constant_val();
-  return typed::val<Anonymous>(res);
-}
-
 typed::set<> typed::aff<Anonymous>::domain() const
 {
   auto res = isl::aff::domain();
   return typed::set<>(res);
-}
-
-typed::pw_aff<Anonymous> typed::aff<Anonymous>::drop_unused_params() const
-{
-  auto res = isl::aff::drop_unused_params();
-  return typed::pw_aff<Anonymous>(res);
-}
-
-typed::pw_multi_aff<Anonymous> typed::aff<Anonymous>::extract_pw_multi_aff(const typed::space<Anonymous> &space) const
-{
-  auto res = isl::aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Anonymous>(res);
 }
 
 typed::aff<Anonymous> typed::aff<Anonymous>::floor() const
@@ -14707,24 +13293,6 @@ typed::aff<Anonymous> typed::aff<Anonymous>::gist(const typed::basic_set<> &cont
 typed::aff<Anonymous> typed::aff<Anonymous>::gist(const typed::point<> &context) const
 {
   auto res = isl::aff::gist(context);
-  return typed::aff<Anonymous>(res);
-}
-
-typed::aff<Anonymous> typed::aff<Anonymous>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::aff::gist_params(context);
-  return typed::aff<Anonymous>(res);
-}
-
-typed::aff<Anonymous> typed::aff<Anonymous>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::aff::gist_params(context);
-  return typed::aff<Anonymous>(res);
-}
-
-typed::aff<Anonymous> typed::aff<Anonymous>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::aff::gist_params(context);
   return typed::aff<Anonymous>(res);
 }
 
@@ -14771,12 +13339,6 @@ typed::multi_val<Anonymous> typed::aff<Anonymous>::max_multi_val() const
   return typed::multi_val<Anonymous>(res);
 }
 
-typed::val<Anonymous> typed::aff<Anonymous>::max_val() const
-{
-  auto res = isl::aff::max_val();
-  return typed::val<Anonymous>(res);
-}
-
 typed::multi_pw_aff<Anonymous> typed::aff<Anonymous>::min(const typed::multi_pw_aff<Anonymous> &multi2) const
 {
   auto res = isl::aff::min(multi2);
@@ -14795,12 +13357,6 @@ typed::multi_val<Anonymous> typed::aff<Anonymous>::min_multi_val() const
   return typed::multi_val<Anonymous>(res);
 }
 
-typed::val<Anonymous> typed::aff<Anonymous>::min_val() const
-{
-  auto res = isl::aff::min_val();
-  return typed::val<Anonymous>(res);
-}
-
 typed::aff<Anonymous> typed::aff<Anonymous>::mod(const typed::val<Anonymous> &mod) const
 {
   auto res = isl::aff::mod(mod);
@@ -14817,12 +13373,6 @@ typed::aff<Anonymous> typed::aff<Anonymous>::neg() const
 {
   auto res = isl::aff::neg();
   return typed::aff<Anonymous>(res);
-}
-
-typed::set<> typed::aff<Anonymous>::params() const
-{
-  auto res = isl::aff::params();
-  return typed::set<>(res);
 }
 
 template <typename Range>
@@ -14844,12 +13394,6 @@ typed::pw_multi_aff<pair<Anonymous, Range>> typed::aff<Anonymous>::product(const
 {
   auto res = isl::aff::product(pma2);
   return typed::pw_multi_aff<pair<Anonymous, Range>>(res);
-}
-
-typed::pw_multi_aff_list<Anonymous> typed::aff<Anonymous>::pw_multi_aff_list() const
-{
-  auto res = isl::aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Anonymous>(res);
 }
 
 typed::aff<Anonymous> typed::aff<Anonymous>::scale(const typed::val<Anonymous> &v) const
@@ -15216,23 +13760,9 @@ typed::pw_aff<Anonymous> typed::aff<Domain, Anonymous>::bind_domain(const typed:
 }
 
 template <typename Domain>
-typed::aff<Domain, Anonymous> typed::aff<Domain, Anonymous>::ceil() const
-{
-  auto res = isl::aff::ceil();
-  return typed::aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
 typed::pw_aff<Domain, Anonymous> typed::aff<Domain, Anonymous>::coalesce() const
 {
   auto res = isl::aff::coalesce();
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::aff<Domain, Anonymous>::cond(const typed::pw_aff<Domain, Anonymous> &pwaff_true, const typed::pw_aff<Domain, Anonymous> &pwaff_false) const
-{
-  auto res = isl::aff::cond(pwaff_true, pwaff_false);
   return typed::pw_aff<Domain, Anonymous>(res);
 }
 
@@ -15244,31 +13774,10 @@ typed::multi_val<Anonymous> typed::aff<Domain, Anonymous>::constant_multi_val() 
 }
 
 template <typename Domain>
-typed::val<Anonymous> typed::aff<Domain, Anonymous>::constant_val() const
-{
-  auto res = isl::aff::constant_val();
-  return typed::val<Anonymous>(res);
-}
-
-template <typename Domain>
 typed::set<Domain> typed::aff<Domain, Anonymous>::domain() const
 {
   auto res = isl::aff::domain();
   return typed::set<Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::aff<Domain, Anonymous>::drop_unused_params() const
-{
-  auto res = isl::aff::drop_unused_params();
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff<Domain, Anonymous> typed::aff<Domain, Anonymous>::extract_pw_multi_aff(const typed::space<Domain, Anonymous> &space) const
-{
-  auto res = isl::aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Domain, Anonymous>(res);
 }
 
 template <typename Domain>
@@ -15317,27 +13826,6 @@ template <typename Domain>
 typed::aff<Domain, Anonymous> typed::aff<Domain, Anonymous>::gist(const typed::point<Domain> &context) const
 {
   auto res = isl::aff::gist(context);
-  return typed::aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::aff<Domain, Anonymous> typed::aff<Domain, Anonymous>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::aff::gist_params(context);
-  return typed::aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::aff<Domain, Anonymous> typed::aff<Domain, Anonymous>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::aff::gist_params(context);
-  return typed::aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::aff<Domain, Anonymous> typed::aff<Domain, Anonymous>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::aff::gist_params(context);
   return typed::aff<Domain, Anonymous>(res);
 }
 
@@ -15447,13 +13935,6 @@ typed::multi_val<Anonymous> typed::aff<Domain, Anonymous>::max_multi_val() const
 }
 
 template <typename Domain>
-typed::val<Anonymous> typed::aff<Domain, Anonymous>::max_val() const
-{
-  auto res = isl::aff::max_val();
-  return typed::val<Anonymous>(res);
-}
-
-template <typename Domain>
 typed::multi_pw_aff<Domain, Anonymous> typed::aff<Domain, Anonymous>::min(const typed::multi_pw_aff<Domain, Anonymous> &multi2) const
 {
   auto res = isl::aff::min(multi2);
@@ -15475,13 +13956,6 @@ typed::multi_val<Anonymous> typed::aff<Domain, Anonymous>::min_multi_val() const
 }
 
 template <typename Domain>
-typed::val<Anonymous> typed::aff<Domain, Anonymous>::min_val() const
-{
-  auto res = isl::aff::min_val();
-  return typed::val<Anonymous>(res);
-}
-
-template <typename Domain>
 typed::aff<Domain, Anonymous> typed::aff<Domain, Anonymous>::mod(const typed::val<Anonymous> &mod) const
 {
   auto res = isl::aff::mod(mod);
@@ -15500,13 +13974,6 @@ typed::aff<Domain, Anonymous> typed::aff<Domain, Anonymous>::neg() const
 {
   auto res = isl::aff::neg();
   return typed::aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::set<> typed::aff<Domain, Anonymous>::params() const
-{
-  auto res = isl::aff::params();
-  return typed::set<>(res);
 }
 
 template <typename Domain>
@@ -15606,13 +14073,6 @@ typed::aff<Anonymous> typed::aff<Domain, Anonymous>::pullback(const typed::aff<D
 {
   auto res = isl::aff::pullback(ma);
   return typed::aff<Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff_list<Domain, Anonymous> typed::aff<Domain, Anonymous>::pw_multi_aff_list() const
-{
-  auto res = isl::aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Domain, Anonymous>(res);
 }
 
 template <typename Domain>
@@ -16071,23 +14531,9 @@ typed::pw_aff<Range2, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::b
 }
 
 template <typename Domain2, typename Range2>
-typed::aff<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::ceil() const
-{
-  auto res = isl::aff::ceil();
-  return typed::aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
 typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::coalesce() const
 {
   auto res = isl::aff::coalesce();
-  return typed::pw_aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::cond(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff_true, const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff_false) const
-{
-  auto res = isl::aff::cond(pwaff_true, pwaff_false);
   return typed::pw_aff<pair<Domain2, Range2>, Anonymous>(res);
 }
 
@@ -16099,38 +14545,10 @@ typed::multi_val<Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::consta
 }
 
 template <typename Domain2, typename Range2>
-typed::val<Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::constant_val() const
-{
-  auto res = isl::aff::constant_val();
-  return typed::val<Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
 typed::set<pair<Domain2, Range2>> typed::aff<pair<Domain2, Range2>, Anonymous>::domain() const
 {
   auto res = isl::aff::domain();
   return typed::set<pair<Domain2, Range2>>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::aff<pair<Range2, Domain2>, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::domain_reverse() const
-{
-  auto res = isl::aff::domain_reverse();
-  return typed::aff<pair<Range2, Domain2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::drop_unused_params() const
-{
-  auto res = isl::aff::drop_unused_params();
-  return typed::pw_aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::extract_pw_multi_aff(const typed::space<pair<Domain2, Range2>, Anonymous> &space) const
-{
-  auto res = isl::aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous>(res);
 }
 
 template <typename Domain2, typename Range2>
@@ -16183,27 +14601,6 @@ typed::aff<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, A
 }
 
 template <typename Domain2, typename Range2>
-typed::aff<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::aff::gist_params(context);
-  return typed::aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::aff<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::aff::gist_params(context);
-  return typed::aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::aff<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::aff::gist_params(context);
-  return typed::aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
 typed::set<pair<Domain2, Range2>> typed::aff<pair<Domain2, Range2>, Anonymous>::gt_set(const typed::aff<pair<Domain2, Range2>, Anonymous> &aff2) const
 {
   auto res = isl::aff::gt_set(aff2);
@@ -16242,13 +14639,6 @@ template <typename Domain2, typename Range2>
 typed::union_pw_aff<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::intersect_domain(const typed::union_set<pair<Domain2, Range2>> &uset) const
 {
   auto res = isl::aff::intersect_domain(uset);
-  return typed::union_pw_aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::union_pw_aff<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::intersect_domain_wrapped_domain(const typed::union_set<Domain2> &uset) const
-{
-  auto res = isl::aff::intersect_domain_wrapped_domain(uset);
   return typed::union_pw_aff<pair<Domain2, Range2>, Anonymous>(res);
 }
 
@@ -16316,13 +14706,6 @@ typed::multi_val<Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::max_mu
 }
 
 template <typename Domain2, typename Range2>
-typed::val<Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::max_val() const
-{
-  auto res = isl::aff::max_val();
-  return typed::val<Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
 typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::min(const typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> &multi2) const
 {
   auto res = isl::aff::min(multi2);
@@ -16344,13 +14727,6 @@ typed::multi_val<Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::min_mu
 }
 
 template <typename Domain2, typename Range2>
-typed::val<Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::min_val() const
-{
-  auto res = isl::aff::min_val();
-  return typed::val<Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
 typed::aff<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::mod(const typed::val<Anonymous> &mod) const
 {
   auto res = isl::aff::mod(mod);
@@ -16369,13 +14745,6 @@ typed::aff<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, A
 {
   auto res = isl::aff::neg();
   return typed::aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::set<> typed::aff<pair<Domain2, Range2>, Anonymous>::params() const
-{
-  auto res = isl::aff::params();
-  return typed::set<>(res);
 }
 
 template <typename Domain2, typename Range2>
@@ -16491,13 +14860,6 @@ typed::aff<Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::pullback(con
 {
   auto res = isl::aff::pullback(ma);
   return typed::aff<Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::pw_multi_aff_list<pair<Domain2, Range2>, Anonymous> typed::aff<pair<Domain2, Range2>, Anonymous>::pw_multi_aff_list() const
-{
-  auto res = isl::aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<pair<Domain2, Range2>, Anonymous>(res);
 }
 
 template <typename Domain2, typename Range2>
@@ -16790,11 +15152,6 @@ typed::aff_list<Anonymous>::aff_list(const typed::aff<Anonymous> &el)
 {
 }
 
-typed::aff_list<Anonymous>::aff_list(const isl::ctx &ctx, const std::string &str)
-  : isl::aff_list(ctx, str)
-{
-}
-
 typed::aff_list<Anonymous> typed::aff_list<Anonymous>::add(const typed::aff<Anonymous> &el) const
 {
   auto res = isl::aff_list::add(el);
@@ -16815,27 +15172,10 @@ typed::aff_list<Anonymous> typed::aff_list<Anonymous>::drop(unsigned int first, 
 
 void typed::aff_list<Anonymous>::foreach(const std::function<void(typed::aff<Anonymous>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::aff arg0) {
+  auto lambda = [&] (isl::aff arg0) {
     return fn(typed::aff<Anonymous>(arg0));
   };
-  return isl::aff_list::foreach(lambda_fn);
-}
-
-void typed::aff_list<Anonymous>::foreach_scc(const std::function<bool(typed::aff<Anonymous>, typed::aff<Anonymous>)> &follows, const std::function<void(typed::aff_list<Anonymous>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::aff arg0, isl::aff arg1) {
-    return follows(typed::aff<Anonymous>(arg0), typed::aff<Anonymous>(arg1));
-  };
-  auto lambda_fn = [&] (isl::aff_list arg0) {
-    return fn(typed::aff_list<Anonymous>(arg0));
-  };
-  return isl::aff_list::foreach_scc(lambda_follows, lambda_fn);
-}
-
-typed::aff_list<Anonymous> typed::aff_list<Anonymous>::set_at(int index, const typed::aff<Anonymous> &el) const
-{
-  auto res = isl::aff_list::set_at(index, el);
-  return typed::aff_list<Anonymous>(res);
+  return isl::aff_list::foreach(lambda);
 }
 
 template <typename Domain>
@@ -16847,12 +15187,6 @@ typed::aff_list<Domain, Anonymous>::aff_list(const isl::ctx &ctx, int n)
 template <typename Domain>
 typed::aff_list<Domain, Anonymous>::aff_list(const typed::aff<Domain, Anonymous> &el)
   : isl::aff_list(el)
-{
-}
-
-template <typename Domain>
-typed::aff_list<Domain, Anonymous>::aff_list(const isl::ctx &ctx, const std::string &str)
-  : isl::aff_list(ctx, str)
 {
 }
 
@@ -16880,29 +15214,10 @@ typed::aff_list<Domain, Anonymous> typed::aff_list<Domain, Anonymous>::drop(unsi
 template <typename Domain>
 void typed::aff_list<Domain, Anonymous>::foreach(const std::function<void(typed::aff<Domain, Anonymous>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::aff arg0) {
+  auto lambda = [&] (isl::aff arg0) {
     return fn(typed::aff<Domain, Anonymous>(arg0));
   };
-  return isl::aff_list::foreach(lambda_fn);
-}
-
-template <typename Domain>
-void typed::aff_list<Domain, Anonymous>::foreach_scc(const std::function<bool(typed::aff<Domain, Anonymous>, typed::aff<Domain, Anonymous>)> &follows, const std::function<void(typed::aff_list<Domain, Anonymous>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::aff arg0, isl::aff arg1) {
-    return follows(typed::aff<Domain, Anonymous>(arg0), typed::aff<Domain, Anonymous>(arg1));
-  };
-  auto lambda_fn = [&] (isl::aff_list arg0) {
-    return fn(typed::aff_list<Domain, Anonymous>(arg0));
-  };
-  return isl::aff_list::foreach_scc(lambda_follows, lambda_fn);
-}
-
-template <typename Domain>
-typed::aff_list<Domain, Anonymous> typed::aff_list<Domain, Anonymous>::set_at(int index, const typed::aff<Domain, Anonymous> &el) const
-{
-  auto res = isl::aff_list::set_at(index, el);
-  return typed::aff_list<Domain, Anonymous>(res);
+  return isl::aff_list::foreach(lambda);
 }
 
 template <typename Domain, typename Range>
@@ -17053,44 +15368,30 @@ typed::union_map<pair<Domain, Domain2>, Range> typed::basic_map<Domain, Range>::
 }
 
 template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::basic_map<Domain, Range>::drop_unused_params() const
-{
-  auto res = isl::basic_map::drop_unused_params();
-  return typed::map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 bool typed::basic_map<Domain, Range>::every_map(const std::function<bool(typed::map<Domain, Range>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<Domain, Range>(arg0));
   };
-  return isl::basic_map::every_map(lambda_test);
-}
-
-template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::basic_map<Domain, Range>::extract_map(const typed::space<Domain, Range> &space) const
-{
-  auto res = isl::basic_map::extract_map(space);
-  return typed::map<Domain, Range>(res);
+  return isl::basic_map::every_map(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::basic_map<Domain, Range>::foreach_basic_map(const std::function<void(typed::basic_map<Domain, Range>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_map arg0) {
+  auto lambda = [&] (isl::basic_map arg0) {
     return fn(typed::basic_map<Domain, Range>(arg0));
   };
-  return isl::basic_map::foreach_basic_map(lambda_fn);
+  return isl::basic_map::foreach_basic_map(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::basic_map<Domain, Range>::foreach_map(const std::function<void(typed::map<Domain, Range>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<Domain, Range>(arg0));
   };
-  return isl::basic_map::foreach_map(lambda_fn);
+  return isl::basic_map::foreach_map(lambda);
 }
 
 template <typename Domain, typename Range>
@@ -17126,13 +15427,6 @@ typed::union_map<Domain, Range> typed::basic_map<Domain, Range>::gist_domain(con
 {
   auto res = isl::basic_map::gist_domain(uset);
   return typed::union_map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::basic_map<Domain, Range>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::basic_map::gist_params(context);
-  return typed::map<Domain, Range>(res);
 }
 
 template <typename Domain, typename Range>
@@ -17269,13 +15563,6 @@ typed::map<Domain, Range> typed::basic_map<Domain, Range>::lower_bound(const typ
 }
 
 template <typename Domain, typename Range>
-typed::map_list<Domain, Range> typed::basic_map<Domain, Range>::map_list() const
-{
-  auto res = isl::basic_map::map_list();
-  return typed::map_list<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 typed::multi_pw_aff<Domain, Range> typed::basic_map<Domain, Range>::max_multi_pw_aff() const
 {
   auto res = isl::basic_map::max_multi_pw_aff();
@@ -17287,13 +15574,6 @@ typed::multi_pw_aff<Domain, Range> typed::basic_map<Domain, Range>::min_multi_pw
 {
   auto res = isl::basic_map::min_multi_pw_aff();
   return typed::multi_pw_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::set<> typed::basic_map<Domain, Range>::params() const
-{
-  auto res = isl::basic_map::params();
-  return typed::set<>(res);
 }
 
 template <typename Domain, typename Range>
@@ -17376,38 +15656,10 @@ typed::map<Domain, Range> typed::basic_map<Domain, Range>::project_out_all_param
 }
 
 template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::basic_map<Domain, Range>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::basic_map::project_out_param(id);
-  return typed::map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::basic_map<Domain, Range>::project_out_param(const std::string &id) const
-{
-  auto res = isl::basic_map::project_out_param(id);
-  return typed::map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::basic_map<Domain, Range>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::basic_map::project_out_param(list);
-  return typed::map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 typed::set<Range> typed::basic_map<Domain, Range>::range() const
 {
   auto res = isl::basic_map::range();
   return typed::set<Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::fixed_box<Domain, Range> typed::basic_map<Domain, Range>::range_lattice_tile() const
-{
-  auto res = isl::basic_map::range_lattice_tile();
-  return typed::fixed_box<Domain, Range>(res);
 }
 
 template <typename Domain, typename Range>
@@ -17725,33 +15977,12 @@ typed::union_map<pair<pair<Domain, Range>, Domain2>, Range2> typed::basic_map<pa
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Range, Domain>, Range2> typed::basic_map<pair<Domain, Range>, Range2>::domain_reverse() const
-{
-  auto res = isl::basic_map::domain_reverse();
-  return typed::map<pair<Range, Domain>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Range>, Range2>::drop_unused_params() const
-{
-  auto res = isl::basic_map::drop_unused_params();
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 bool typed::basic_map<pair<Domain, Range>, Range2>::every_map(const std::function<bool(typed::map<pair<Domain, Range>, Range2>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<pair<Domain, Range>, Range2>(arg0));
   };
-  return isl::basic_map::every_map(lambda_test);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Range>, Range2>::extract_map(const typed::space<pair<Domain, Range>, Range2> &space) const
-{
-  auto res = isl::basic_map::extract_map(space);
-  return typed::map<pair<Domain, Range>, Range2>(res);
+  return isl::basic_map::every_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -17764,19 +15995,19 @@ typed::basic_map<Anonymous, Range2> typed::basic_map<pair<Domain, Range>, Range2
 template <typename Domain, typename Range, typename Range2>
 void typed::basic_map<pair<Domain, Range>, Range2>::foreach_basic_map(const std::function<void(typed::basic_map<pair<Domain, Range>, Range2>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_map arg0) {
+  auto lambda = [&] (isl::basic_map arg0) {
     return fn(typed::basic_map<pair<Domain, Range>, Range2>(arg0));
   };
-  return isl::basic_map::foreach_basic_map(lambda_fn);
+  return isl::basic_map::foreach_basic_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
 void typed::basic_map<pair<Domain, Range>, Range2>::foreach_map(const std::function<void(typed::map<pair<Domain, Range>, Range2>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<pair<Domain, Range>, Range2>(arg0));
   };
-  return isl::basic_map::foreach_map(lambda_fn);
+  return isl::basic_map::foreach_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -17812,13 +16043,6 @@ typed::union_map<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Rang
 {
   auto res = isl::basic_map::gist_domain(uset);
   return typed::union_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Range>, Range2>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::basic_map::gist_params(context);
-  return typed::map<pair<Domain, Range>, Range2>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -17875,20 +16099,6 @@ typed::basic_map<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Rang
 {
   auto res = isl::basic_map::intersect_domain(bset);
   return typed::basic_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Range>, Range2>::intersect_domain_wrapped_domain(const typed::set<Domain> &domain) const
-{
-  auto res = isl::basic_map::intersect_domain_wrapped_domain(domain);
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Range>, Range2>::intersect_domain_wrapped_domain(const typed::union_set<Domain> &domain) const
-{
-  auto res = isl::basic_map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<Domain, Range>, Range2>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -17969,13 +16179,6 @@ typed::map<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Range>, Ra
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::map_list<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Range>, Range2>::map_list() const
-{
-  auto res = isl::basic_map::map_list();
-  return typed::map_list<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::multi_pw_aff<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Range>, Range2>::max_multi_pw_aff() const
 {
   auto res = isl::basic_map::max_multi_pw_aff();
@@ -17987,13 +16190,6 @@ typed::multi_pw_aff<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, R
 {
   auto res = isl::basic_map::min_multi_pw_aff();
   return typed::multi_pw_aff<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::set<> typed::basic_map<pair<Domain, Range>, Range2>::params() const
-{
-  auto res = isl::basic_map::params();
-  return typed::set<>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -18076,38 +16272,10 @@ typed::map<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Range>, Ra
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Range>, Range2>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::basic_map::project_out_param(id);
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Range>, Range2>::project_out_param(const std::string &id) const
-{
-  auto res = isl::basic_map::project_out_param(id);
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Range>, Range2>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::basic_map::project_out_param(list);
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::set<Range2> typed::basic_map<pair<Domain, Range>, Range2>::range() const
 {
   auto res = isl::basic_map::range();
   return typed::set<Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::fixed_box<pair<Domain, Range>, Range2> typed::basic_map<pair<Domain, Range>, Range2>::range_lattice_tile() const
-{
-  auto res = isl::basic_map::range_lattice_tile();
-  return typed::fixed_box<pair<Domain, Range>, Range2>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -18395,13 +16563,6 @@ typed::union_map<pair<Domain, Domain2>, Domain> typed::basic_map<Domain, Domain>
 }
 
 template <typename Domain>
-typed::map<Domain, Domain> typed::basic_map<Domain, Domain>::drop_unused_params() const
-{
-  auto res = isl::basic_map::drop_unused_params();
-  return typed::map<Domain, Domain>(res);
-}
-
-template <typename Domain>
 template <typename Range>
 typed::map<Domain, Domain> typed::basic_map<Domain, Domain>::eq_at(const typed::multi_pw_aff<Domain, Range> &mpa) const
 {
@@ -18420,35 +16581,28 @@ typed::union_map<Domain, Domain> typed::basic_map<Domain, Domain>::eq_at(const t
 template <typename Domain>
 bool typed::basic_map<Domain, Domain>::every_map(const std::function<bool(typed::map<Domain, Domain>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<Domain, Domain>(arg0));
   };
-  return isl::basic_map::every_map(lambda_test);
-}
-
-template <typename Domain>
-typed::map<Domain, Domain> typed::basic_map<Domain, Domain>::extract_map(const typed::space<Domain, Domain> &space) const
-{
-  auto res = isl::basic_map::extract_map(space);
-  return typed::map<Domain, Domain>(res);
+  return isl::basic_map::every_map(lambda);
 }
 
 template <typename Domain>
 void typed::basic_map<Domain, Domain>::foreach_basic_map(const std::function<void(typed::basic_map<Domain, Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_map arg0) {
+  auto lambda = [&] (isl::basic_map arg0) {
     return fn(typed::basic_map<Domain, Domain>(arg0));
   };
-  return isl::basic_map::foreach_basic_map(lambda_fn);
+  return isl::basic_map::foreach_basic_map(lambda);
 }
 
 template <typename Domain>
 void typed::basic_map<Domain, Domain>::foreach_map(const std::function<void(typed::map<Domain, Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<Domain, Domain>(arg0));
   };
-  return isl::basic_map::foreach_map(lambda_fn);
+  return isl::basic_map::foreach_map(lambda);
 }
 
 template <typename Domain>
@@ -18484,13 +16638,6 @@ typed::union_map<Domain, Domain> typed::basic_map<Domain, Domain>::gist_domain(c
 {
   auto res = isl::basic_map::gist_domain(uset);
   return typed::union_map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::map<Domain, Domain> typed::basic_map<Domain, Domain>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::basic_map::gist_params(context);
-  return typed::map<Domain, Domain>(res);
 }
 
 template <typename Domain>
@@ -18659,13 +16806,6 @@ typed::map<Domain, Domain> typed::basic_map<Domain, Domain>::lower_bound(const t
 }
 
 template <typename Domain>
-typed::map_list<Domain, Domain> typed::basic_map<Domain, Domain>::map_list() const
-{
-  auto res = isl::basic_map::map_list();
-  return typed::map_list<Domain, Domain>(res);
-}
-
-template <typename Domain>
 typed::multi_pw_aff<Domain, Domain> typed::basic_map<Domain, Domain>::max_multi_pw_aff() const
 {
   auto res = isl::basic_map::max_multi_pw_aff();
@@ -18677,13 +16817,6 @@ typed::multi_pw_aff<Domain, Domain> typed::basic_map<Domain, Domain>::min_multi_
 {
   auto res = isl::basic_map::min_multi_pw_aff();
   return typed::multi_pw_aff<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::set<> typed::basic_map<Domain, Domain>::params() const
-{
-  auto res = isl::basic_map::params();
-  return typed::set<>(res);
 }
 
 template <typename Domain>
@@ -18766,38 +16899,10 @@ typed::map<Domain, Domain> typed::basic_map<Domain, Domain>::project_out_all_par
 }
 
 template <typename Domain>
-typed::map<Domain, Domain> typed::basic_map<Domain, Domain>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::basic_map::project_out_param(id);
-  return typed::map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::map<Domain, Domain> typed::basic_map<Domain, Domain>::project_out_param(const std::string &id) const
-{
-  auto res = isl::basic_map::project_out_param(id);
-  return typed::map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::map<Domain, Domain> typed::basic_map<Domain, Domain>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::basic_map::project_out_param(list);
-  return typed::map<Domain, Domain>(res);
-}
-
-template <typename Domain>
 typed::set<Domain> typed::basic_map<Domain, Domain>::range() const
 {
   auto res = isl::basic_map::range();
   return typed::set<Domain>(res);
-}
-
-template <typename Domain>
-typed::fixed_box<Domain, Domain> typed::basic_map<Domain, Domain>::range_lattice_tile() const
-{
-  auto res = isl::basic_map::range_lattice_tile();
-  return typed::fixed_box<Domain, Domain>(res);
 }
 
 template <typename Domain>
@@ -19094,26 +17199,12 @@ typed::union_map<pair<Domain, Domain2>, pair<Range, Range2>> typed::basic_map<Do
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Range2>>::drop_unused_params() const
-{
-  auto res = isl::basic_map::drop_unused_params();
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 bool typed::basic_map<Domain, pair<Range, Range2>>::every_map(const std::function<bool(typed::map<Domain, pair<Range, Range2>>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<Domain, pair<Range, Range2>>(arg0));
   };
-  return isl::basic_map::every_map(lambda_test);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Range2>>::extract_map(const typed::space<Domain, pair<Range, Range2>> &space) const
-{
-  auto res = isl::basic_map::extract_map(space);
-  return typed::map<Domain, pair<Range, Range2>>(res);
+  return isl::basic_map::every_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -19126,19 +17217,19 @@ typed::basic_map<Domain, Anonymous> typed::basic_map<Domain, pair<Range, Range2>
 template <typename Domain, typename Range, typename Range2>
 void typed::basic_map<Domain, pair<Range, Range2>>::foreach_basic_map(const std::function<void(typed::basic_map<Domain, pair<Range, Range2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_map arg0) {
+  auto lambda = [&] (isl::basic_map arg0) {
     return fn(typed::basic_map<Domain, pair<Range, Range2>>(arg0));
   };
-  return isl::basic_map::foreach_basic_map(lambda_fn);
+  return isl::basic_map::foreach_basic_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
 void typed::basic_map<Domain, pair<Range, Range2>>::foreach_map(const std::function<void(typed::map<Domain, pair<Range, Range2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<Domain, pair<Range, Range2>>(arg0));
   };
-  return isl::basic_map::foreach_map(lambda_fn);
+  return isl::basic_map::foreach_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -19174,13 +17265,6 @@ typed::union_map<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Rang
 {
   auto res = isl::basic_map::gist_domain(uset);
   return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Range2>>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::basic_map::gist_params(context);
-  return typed::map<Domain, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -19282,20 +17366,6 @@ typed::basic_map<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Rang
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::set<Range> &domain) const
-{
-  auto res = isl::basic_map::intersect_range_wrapped_domain(domain);
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::union_set<Range> &domain) const
-{
-  auto res = isl::basic_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::map<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Range2>>::lexmax() const
 {
   auto res = isl::basic_map::lexmax();
@@ -19331,13 +17401,6 @@ typed::map<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Ran
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::map_list<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Range2>>::map_list() const
-{
-  auto res = isl::basic_map::map_list();
-  return typed::map_list<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::multi_pw_aff<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Range2>>::max_multi_pw_aff() const
 {
   auto res = isl::basic_map::max_multi_pw_aff();
@@ -19349,13 +17412,6 @@ typed::multi_pw_aff<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<R
 {
   auto res = isl::basic_map::min_multi_pw_aff();
   return typed::multi_pw_aff<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::set<> typed::basic_map<Domain, pair<Range, Range2>>::params() const
-{
-  auto res = isl::basic_map::params();
-  return typed::set<>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -19438,27 +17494,6 @@ typed::map<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Ran
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Range2>>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::basic_map::project_out_param(id);
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Range2>>::project_out_param(const std::string &id) const
-{
-  auto res = isl::basic_map::project_out_param(id);
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Range2>>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::basic_map::project_out_param(list);
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::set<pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Range2>>::range() const
 {
   auto res = isl::basic_map::range();
@@ -19477,13 +17512,6 @@ typed::map<Domain, Range2> typed::basic_map<Domain, pair<Range, Range2>>::range_
 {
   auto res = isl::basic_map::range_factor_range();
   return typed::map<Domain, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::fixed_box<Domain, pair<Range, Range2>> typed::basic_map<Domain, pair<Range, Range2>>::range_lattice_tile() const
-{
-  auto res = isl::basic_map::range_lattice_tile();
-  return typed::fixed_box<Domain, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -19806,20 +17834,6 @@ typed::union_map<pair<pair<T1, T2>, Domain2>, pair<T1, T2>> typed::basic_map<pai
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T2, T1>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::domain_reverse() const
-{
-  auto res = isl::basic_map::domain_reverse();
-  return typed::map<pair<T2, T1>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::drop_unused_params() const
-{
-  auto res = isl::basic_map::drop_unused_params();
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
 template <typename Range>
 typed::map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::eq_at(const typed::multi_pw_aff<pair<T1, T2>, Range> &mpa) const
 {
@@ -19838,17 +17852,10 @@ typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair
 template <typename T1, typename T2>
 bool typed::basic_map<pair<T1, T2>, pair<T1, T2>>::every_map(const std::function<bool(typed::map<pair<T1, T2>, pair<T1, T2>>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<pair<T1, T2>, pair<T1, T2>>(arg0));
   };
-  return isl::basic_map::every_map(lambda_test);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::extract_map(const typed::space<pair<T1, T2>, pair<T1, T2>> &space) const
-{
-  auto res = isl::basic_map::extract_map(space);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
+  return isl::basic_map::every_map(lambda);
 }
 
 template <typename T1, typename T2>
@@ -19868,19 +17875,19 @@ typed::basic_map<pair<T1, T2>, Anonymous> typed::basic_map<pair<T1, T2>, pair<T1
 template <typename T1, typename T2>
 void typed::basic_map<pair<T1, T2>, pair<T1, T2>>::foreach_basic_map(const std::function<void(typed::basic_map<pair<T1, T2>, pair<T1, T2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_map arg0) {
+  auto lambda = [&] (isl::basic_map arg0) {
     return fn(typed::basic_map<pair<T1, T2>, pair<T1, T2>>(arg0));
   };
-  return isl::basic_map::foreach_basic_map(lambda_fn);
+  return isl::basic_map::foreach_basic_map(lambda);
 }
 
 template <typename T1, typename T2>
 void typed::basic_map<pair<T1, T2>, pair<T1, T2>>::foreach_map(const std::function<void(typed::map<pair<T1, T2>, pair<T1, T2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<pair<T1, T2>, pair<T1, T2>>(arg0));
   };
-  return isl::basic_map::foreach_map(lambda_fn);
+  return isl::basic_map::foreach_map(lambda);
 }
 
 template <typename T1, typename T2>
@@ -19916,13 +17923,6 @@ typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair
 {
   auto res = isl::basic_map::gist_domain(uset);
   return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::basic_map::gist_params(context);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
 }
 
 template <typename T1, typename T2>
@@ -19982,20 +17982,6 @@ typed::basic_map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::intersect_domain_wrapped_domain(const typed::set<T1> &domain) const
-{
-  auto res = isl::basic_map::intersect_domain_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::intersect_domain_wrapped_domain(const typed::union_set<T1> &domain) const
-{
-  auto res = isl::basic_map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
 typed::map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::intersect_params(const typed::set<> &params) const
 {
   auto res = isl::basic_map::intersect_params(params);
@@ -20035,20 +18021,6 @@ typed::basic_map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair
 {
   auto res = isl::basic_map::intersect_range(bset);
   return typed::basic_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::intersect_range_wrapped_domain(const typed::set<T1> &domain) const
-{
-  auto res = isl::basic_map::intersect_range_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::intersect_range_wrapped_domain(const typed::union_set<T1> &domain) const
-{
-  auto res = isl::basic_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
 }
 
 template <typename T1, typename T2>
@@ -20119,13 +18091,6 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T
 }
 
 template <typename T1, typename T2>
-typed::map_list<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::map_list() const
-{
-  auto res = isl::basic_map::map_list();
-  return typed::map_list<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
 typed::multi_pw_aff<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::max_multi_pw_aff() const
 {
   auto res = isl::basic_map::max_multi_pw_aff();
@@ -20137,13 +18102,6 @@ typed::multi_pw_aff<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, p
 {
   auto res = isl::basic_map::min_multi_pw_aff();
   return typed::multi_pw_aff<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::set<> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::params() const
-{
-  auto res = isl::basic_map::params();
-  return typed::set<>(res);
 }
 
 template <typename T1, typename T2>
@@ -20226,27 +18184,6 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::basic_map::project_out_param(id);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::project_out_param(const std::string &id) const
-{
-  auto res = isl::basic_map::project_out_param(id);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::basic_map::project_out_param(list);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
 typed::set<pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::range() const
 {
   auto res = isl::basic_map::range();
@@ -20265,13 +18202,6 @@ typed::map<pair<T1, T2>, T2> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::range
 {
   auto res = isl::basic_map::range_factor_range();
   return typed::map<pair<T1, T2>, T2>(res);
-}
-
-template <typename T1, typename T2>
-typed::fixed_box<pair<T1, T2>, pair<T1, T2>> typed::basic_map<pair<T1, T2>, pair<T1, T2>>::range_lattice_tile() const
-{
-  auto res = isl::basic_map::range_lattice_tile();
-  return typed::fixed_box<pair<T1, T2>, pair<T1, T2>>(res);
 }
 
 template <typename T1, typename T2>
@@ -20571,33 +18501,12 @@ typed::union_map<pair<pair<T1, T2>, Domain2>, pair<Range, Range2>> typed::basic_
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T2, T1>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::domain_reverse() const
-{
-  auto res = isl::basic_map::domain_reverse();
-  return typed::map<pair<T2, T1>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::drop_unused_params() const
-{
-  auto res = isl::basic_map::drop_unused_params();
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 bool typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::every_map(const std::function<bool(typed::map<pair<T1, T2>, pair<Range, Range2>>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<pair<T1, T2>, pair<Range, Range2>>(arg0));
   };
-  return isl::basic_map::every_map(lambda_test);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::extract_map(const typed::space<pair<T1, T2>, pair<Range, Range2>> &space) const
-{
-  auto res = isl::basic_map::extract_map(space);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
+  return isl::basic_map::every_map(lambda);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -20617,19 +18526,19 @@ typed::basic_map<pair<T1, T2>, Anonymous> typed::basic_map<pair<T1, T2>, pair<Ra
 template <typename T1, typename T2, typename Range, typename Range2>
 void typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::foreach_basic_map(const std::function<void(typed::basic_map<pair<T1, T2>, pair<Range, Range2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_map arg0) {
+  auto lambda = [&] (isl::basic_map arg0) {
     return fn(typed::basic_map<pair<T1, T2>, pair<Range, Range2>>(arg0));
   };
-  return isl::basic_map::foreach_basic_map(lambda_fn);
+  return isl::basic_map::foreach_basic_map(lambda);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
 void typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::foreach_map(const std::function<void(typed::map<pair<T1, T2>, pair<Range, Range2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<pair<T1, T2>, pair<Range, Range2>>(arg0));
   };
-  return isl::basic_map::foreach_map(lambda_fn);
+  return isl::basic_map::foreach_map(lambda);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -20665,13 +18574,6 @@ typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2
 {
   auto res = isl::basic_map::gist_domain(uset);
   return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::basic_map::gist_params(context);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -20731,20 +18633,6 @@ typed::basic_map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::set<T1> &domain) const
-{
-  auto res = isl::basic_map::intersect_domain_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::union_set<T1> &domain) const
-{
-  auto res = isl::basic_map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::intersect_params(const typed::set<> &params) const
 {
   auto res = isl::basic_map::intersect_params(params);
@@ -20787,20 +18675,6 @@ typed::basic_map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::set<Range> &domain) const
-{
-  auto res = isl::basic_map::intersect_range_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::union_set<Range> &domain) const
-{
-  auto res = isl::basic_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::lexmax() const
 {
   auto res = isl::basic_map::lexmax();
@@ -20836,13 +18710,6 @@ typed::map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pai
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::map_list<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::map_list() const
-{
-  auto res = isl::basic_map::map_list();
-  return typed::map_list<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::max_multi_pw_aff() const
 {
   auto res = isl::basic_map::max_multi_pw_aff();
@@ -20854,13 +18721,6 @@ typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1,
 {
   auto res = isl::basic_map::min_multi_pw_aff();
   return typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::set<> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::params() const
-{
-  auto res = isl::basic_map::params();
-  return typed::set<>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -20943,27 +18803,6 @@ typed::map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pai
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::basic_map::project_out_param(id);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::project_out_param(const std::string &id) const
-{
-  auto res = isl::basic_map::project_out_param(id);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::basic_map::project_out_param(list);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::set<pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::range() const
 {
   auto res = isl::basic_map::range();
@@ -20982,13 +18821,6 @@ typed::map<pair<T1, T2>, Range2> typed::basic_map<pair<T1, T2>, pair<Range, Rang
 {
   auto res = isl::basic_map::range_factor_range();
   return typed::map<pair<T1, T2>, Range2>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::fixed_box<pair<T1, T2>, pair<Range, Range2>> typed::basic_map<pair<T1, T2>, pair<Range, Range2>>::range_lattice_tile() const
-{
-  auto res = isl::basic_map::range_lattice_tile();
-  return typed::fixed_box<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -21141,48 +18973,36 @@ typed::basic_set<> typed::basic_set<>::detect_equalities() const
   return typed::basic_set<>(res);
 }
 
-typed::set<> typed::basic_set<>::drop_unused_params() const
-{
-  auto res = isl::basic_set::drop_unused_params();
-  return typed::set<>(res);
-}
-
 bool typed::basic_set<>::every_set(const std::function<bool(typed::set<>)> &test) const
 {
-  auto lambda_test = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return test(typed::set<>(arg0));
   };
-  return isl::basic_set::every_set(lambda_test);
-}
-
-typed::set<> typed::basic_set<>::extract_set(const typed::space<> &space) const
-{
-  auto res = isl::basic_set::extract_set(space);
-  return typed::set<>(res);
+  return isl::basic_set::every_set(lambda);
 }
 
 void typed::basic_set<>::foreach_basic_set(const std::function<void(typed::basic_set<>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_set arg0) {
+  auto lambda = [&] (isl::basic_set arg0) {
     return fn(typed::basic_set<>(arg0));
   };
-  return isl::basic_set::foreach_basic_set(lambda_fn);
+  return isl::basic_set::foreach_basic_set(lambda);
 }
 
 void typed::basic_set<>::foreach_point(const std::function<void(typed::point<>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::point arg0) {
+  auto lambda = [&] (isl::point arg0) {
     return fn(typed::point<>(arg0));
   };
-  return isl::basic_set::foreach_point(lambda_fn);
+  return isl::basic_set::foreach_point(lambda);
 }
 
 void typed::basic_set<>::foreach_set(const std::function<void(typed::set<>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return fn(typed::set<>(arg0));
   };
-  return isl::basic_set::foreach_set(lambda_fn);
+  return isl::basic_set::foreach_set(lambda);
 }
 
 typed::basic_set<> typed::basic_set<>::gist(const typed::basic_set<> &context) const
@@ -21209,12 +19029,6 @@ typed::basic_set<> typed::basic_set<>::gist(const typed::point<> &context) const
   return typed::basic_set<>(res);
 }
 
-typed::pw_aff<Anonymous> typed::basic_set<>::indicator_function() const
-{
-  auto res = isl::basic_set::indicator_function();
-  return typed::pw_aff<Anonymous>(res);
-}
-
 typed::basic_set<> typed::basic_set<>::intersect(const typed::basic_set<> &bset2) const
 {
   auto res = isl::basic_set::intersect(bset2);
@@ -21239,18 +19053,6 @@ typed::basic_set<> typed::basic_set<>::intersect(const typed::point<> &bset2) co
   return typed::basic_set<>(res);
 }
 
-typed::pw_aff<Anonymous> typed::basic_set<>::param_pw_aff_on_domain(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::basic_set::param_pw_aff_on_domain(id);
-  return typed::pw_aff<Anonymous>(res);
-}
-
-typed::pw_aff<Anonymous> typed::basic_set<>::param_pw_aff_on_domain(const std::string &id) const
-{
-  auto res = isl::basic_set::param_pw_aff_on_domain(id);
-  return typed::pw_aff<Anonymous>(res);
-}
-
 typed::set<> typed::basic_set<>::project_out_all_params() const
 {
   auto res = isl::basic_set::project_out_all_params();
@@ -21273,31 +19075,6 @@ typed::set<> typed::basic_set<>::project_out_param(const typed::id_list<Anonymou
 {
   auto res = isl::basic_set::project_out_param(list);
   return typed::set<>(res);
-}
-
-typed::pw_aff<Anonymous> typed::basic_set<>::pw_aff_on_domain(const typed::val<Anonymous> &v) const
-{
-  auto res = isl::basic_set::pw_aff_on_domain(v);
-  return typed::pw_aff<Anonymous>(res);
-}
-
-typed::pw_aff<Anonymous> typed::basic_set<>::pw_aff_on_domain(long v) const
-{
-  auto res = isl::basic_set::pw_aff_on_domain(v);
-  return typed::pw_aff<Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff<Domain> typed::basic_set<>::pw_multi_aff_on_domain(const typed::multi_val<Domain> &mv) const
-{
-  auto res = isl::basic_set::pw_multi_aff_on_domain(mv);
-  return typed::pw_multi_aff<Domain>(res);
-}
-
-typed::set_list<> typed::basic_set<>::set_list() const
-{
-  auto res = isl::basic_set::set_list();
-  return typed::set_list<>(res);
 }
 
 typed::space<> typed::basic_set<>::space() const
@@ -21433,53 +19210,39 @@ typed::basic_set<Domain> typed::basic_set<Domain>::detect_equalities() const
 }
 
 template <typename Domain>
-typed::set<Domain> typed::basic_set<Domain>::drop_unused_params() const
-{
-  auto res = isl::basic_set::drop_unused_params();
-  return typed::set<Domain>(res);
-}
-
-template <typename Domain>
 bool typed::basic_set<Domain>::every_set(const std::function<bool(typed::set<Domain>)> &test) const
 {
-  auto lambda_test = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return test(typed::set<Domain>(arg0));
   };
-  return isl::basic_set::every_set(lambda_test);
-}
-
-template <typename Domain>
-typed::set<Domain> typed::basic_set<Domain>::extract_set(const typed::space<Domain> &space) const
-{
-  auto res = isl::basic_set::extract_set(space);
-  return typed::set<Domain>(res);
+  return isl::basic_set::every_set(lambda);
 }
 
 template <typename Domain>
 void typed::basic_set<Domain>::foreach_basic_set(const std::function<void(typed::basic_set<Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_set arg0) {
+  auto lambda = [&] (isl::basic_set arg0) {
     return fn(typed::basic_set<Domain>(arg0));
   };
-  return isl::basic_set::foreach_basic_set(lambda_fn);
+  return isl::basic_set::foreach_basic_set(lambda);
 }
 
 template <typename Domain>
 void typed::basic_set<Domain>::foreach_point(const std::function<void(typed::point<Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::point arg0) {
+  auto lambda = [&] (isl::point arg0) {
     return fn(typed::point<Domain>(arg0));
   };
-  return isl::basic_set::foreach_point(lambda_fn);
+  return isl::basic_set::foreach_point(lambda);
 }
 
 template <typename Domain>
 void typed::basic_set<Domain>::foreach_set(const std::function<void(typed::set<Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return fn(typed::set<Domain>(arg0));
   };
-  return isl::basic_set::foreach_set(lambda_fn);
+  return isl::basic_set::foreach_set(lambda);
 }
 
 template <typename Domain>
@@ -21511,24 +19274,10 @@ typed::basic_set<Domain> typed::basic_set<Domain>::gist(const typed::point<Domai
 }
 
 template <typename Domain>
-typed::set<Domain> typed::basic_set<Domain>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::basic_set::gist_params(context);
-  return typed::set<Domain>(res);
-}
-
-template <typename Domain>
 typed::map<Domain, Domain> typed::basic_set<Domain>::identity() const
 {
   auto res = isl::basic_set::identity();
   return typed::map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::basic_set<Domain>::indicator_function() const
-{
-  auto res = isl::basic_set::indicator_function();
-  return typed::pw_aff<Domain, Anonymous>(res);
 }
 
 template <typename Domain>
@@ -21589,13 +19338,6 @@ typed::basic_set<Domain> typed::basic_set<Domain>::intersect_params(const typed:
 }
 
 template <typename Domain>
-typed::fixed_box<Domain> typed::basic_set<Domain>::lattice_tile() const
-{
-  auto res = isl::basic_set::lattice_tile();
-  return typed::fixed_box<Domain>(res);
-}
-
-template <typename Domain>
 typed::set<Domain> typed::basic_set<Domain>::lexmax() const
 {
   auto res = isl::basic_set::lexmax();
@@ -21649,20 +19391,6 @@ typed::multi_pw_aff<Domain> typed::basic_set<Domain>::min_multi_pw_aff() const
 {
   auto res = isl::basic_set::min_multi_pw_aff();
   return typed::multi_pw_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::basic_set<Domain>::param_pw_aff_on_domain(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::basic_set::param_pw_aff_on_domain(id);
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::basic_set<Domain>::param_pw_aff_on_domain(const std::string &id) const
-{
-  auto res = isl::basic_set::param_pw_aff_on_domain(id);
-  return typed::pw_aff<Domain, Anonymous>(res);
 }
 
 template <typename Domain>
@@ -21748,32 +19476,11 @@ typed::set<Domain> typed::basic_set<Domain>::project_out_param(const typed::id_l
 }
 
 template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::basic_set<Domain>::pw_aff_on_domain(const typed::val<Anonymous> &v) const
-{
-  auto res = isl::basic_set::pw_aff_on_domain(v);
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::basic_set<Domain>::pw_aff_on_domain(long v) const
-{
-  auto res = isl::basic_set::pw_aff_on_domain(v);
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
 template <typename Range>
 typed::pw_multi_aff<Domain, Range> typed::basic_set<Domain>::pw_multi_aff_on_domain(const typed::multi_val<Range> &mv) const
 {
   auto res = isl::basic_set::pw_multi_aff_on_domain(mv);
   return typed::pw_multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain>
-typed::set_list<Domain> typed::basic_set<Domain>::set_list() const
-{
-  auto res = isl::basic_set::set_list();
-  return typed::set_list<Domain>(res);
 }
 
 template <typename Domain>
@@ -21947,53 +19654,39 @@ typed::basic_set<pair<Domain, Range>> typed::basic_set<pair<Domain, Range>>::det
 }
 
 template <typename Domain, typename Range>
-typed::set<pair<Domain, Range>> typed::basic_set<pair<Domain, Range>>::drop_unused_params() const
-{
-  auto res = isl::basic_set::drop_unused_params();
-  return typed::set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
 bool typed::basic_set<pair<Domain, Range>>::every_set(const std::function<bool(typed::set<pair<Domain, Range>>)> &test) const
 {
-  auto lambda_test = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return test(typed::set<pair<Domain, Range>>(arg0));
   };
-  return isl::basic_set::every_set(lambda_test);
-}
-
-template <typename Domain, typename Range>
-typed::set<pair<Domain, Range>> typed::basic_set<pair<Domain, Range>>::extract_set(const typed::space<pair<Domain, Range>> &space) const
-{
-  auto res = isl::basic_set::extract_set(space);
-  return typed::set<pair<Domain, Range>>(res);
+  return isl::basic_set::every_set(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::basic_set<pair<Domain, Range>>::foreach_basic_set(const std::function<void(typed::basic_set<pair<Domain, Range>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_set arg0) {
+  auto lambda = [&] (isl::basic_set arg0) {
     return fn(typed::basic_set<pair<Domain, Range>>(arg0));
   };
-  return isl::basic_set::foreach_basic_set(lambda_fn);
+  return isl::basic_set::foreach_basic_set(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::basic_set<pair<Domain, Range>>::foreach_point(const std::function<void(typed::point<pair<Domain, Range>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::point arg0) {
+  auto lambda = [&] (isl::point arg0) {
     return fn(typed::point<pair<Domain, Range>>(arg0));
   };
-  return isl::basic_set::foreach_point(lambda_fn);
+  return isl::basic_set::foreach_point(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::basic_set<pair<Domain, Range>>::foreach_set(const std::function<void(typed::set<pair<Domain, Range>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return fn(typed::set<pair<Domain, Range>>(arg0));
   };
-  return isl::basic_set::foreach_set(lambda_fn);
+  return isl::basic_set::foreach_set(lambda);
 }
 
 template <typename Domain, typename Range>
@@ -22025,24 +19718,10 @@ typed::basic_set<pair<Domain, Range>> typed::basic_set<pair<Domain, Range>>::gis
 }
 
 template <typename Domain, typename Range>
-typed::set<pair<Domain, Range>> typed::basic_set<pair<Domain, Range>>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::basic_set::gist_params(context);
-  return typed::set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
 typed::map<pair<Domain, Range>, pair<Domain, Range>> typed::basic_set<pair<Domain, Range>>::identity() const
 {
   auto res = isl::basic_set::identity();
   return typed::map<pair<Domain, Range>, pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::basic_set<pair<Domain, Range>>::indicator_function() const
-{
-  auto res = isl::basic_set::indicator_function();
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
 }
 
 template <typename Domain, typename Range>
@@ -22103,13 +19782,6 @@ typed::basic_set<pair<Domain, Range>> typed::basic_set<pair<Domain, Range>>::int
 }
 
 template <typename Domain, typename Range>
-typed::fixed_box<pair<Domain, Range>> typed::basic_set<pair<Domain, Range>>::lattice_tile() const
-{
-  auto res = isl::basic_set::lattice_tile();
-  return typed::fixed_box<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
 typed::set<pair<Domain, Range>> typed::basic_set<pair<Domain, Range>>::lexmax() const
 {
   auto res = isl::basic_set::lexmax();
@@ -22163,20 +19835,6 @@ typed::multi_pw_aff<pair<Domain, Range>> typed::basic_set<pair<Domain, Range>>::
 {
   auto res = isl::basic_set::min_multi_pw_aff();
   return typed::multi_pw_aff<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::basic_set<pair<Domain, Range>>::param_pw_aff_on_domain(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::basic_set::param_pw_aff_on_domain(id);
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::basic_set<pair<Domain, Range>>::param_pw_aff_on_domain(const std::string &id) const
-{
-  auto res = isl::basic_set::param_pw_aff_on_domain(id);
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
 }
 
 template <typename Domain, typename Range>
@@ -22262,32 +19920,11 @@ typed::set<pair<Domain, Range>> typed::basic_set<pair<Domain, Range>>::project_o
 }
 
 template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::basic_set<pair<Domain, Range>>::pw_aff_on_domain(const typed::val<Anonymous> &v) const
-{
-  auto res = isl::basic_set::pw_aff_on_domain(v);
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::basic_set<pair<Domain, Range>>::pw_aff_on_domain(long v) const
-{
-  auto res = isl::basic_set::pw_aff_on_domain(v);
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
-}
-
-template <typename Domain, typename Range>
 template <typename Arg2>
 typed::pw_multi_aff<pair<Domain, Range>, Arg2> typed::basic_set<pair<Domain, Range>>::pw_multi_aff_on_domain(const typed::multi_val<Arg2> &mv) const
 {
   auto res = isl::basic_set::pw_multi_aff_on_domain(mv);
   return typed::pw_multi_aff<pair<Domain, Range>, Arg2>(res);
-}
-
-template <typename Domain, typename Range>
-typed::set_list<pair<Domain, Range>> typed::basic_set<pair<Domain, Range>>::set_list() const
-{
-  auto res = isl::basic_set::set_list();
-  return typed::set_list<pair<Domain, Range>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -22396,19 +20033,6 @@ typed::set<pair<Domain, Range>> typed::basic_set<pair<Domain, Range>>::upper_bou
   return typed::set<pair<Domain, Range>>(res);
 }
 
-template <typename Domain, typename Range>
-typed::set<pair<Range, Domain>> typed::basic_set<pair<Domain, Range>>::wrapped_reverse() const
-{
-  auto res = isl::basic_set::wrapped_reverse();
-  return typed::set<pair<Range, Domain>>(res);
-}
-
-template <typename Domain>
-typed::fixed_box<Domain>::fixed_box(const isl::ctx &ctx, const std::string &str)
-  : isl::fixed_box(ctx, str)
-{
-}
-
 template <typename Domain>
 typed::multi_aff<Domain> typed::fixed_box<Domain>::offset() const
 {
@@ -22428,12 +20052,6 @@ typed::space<Domain> typed::fixed_box<Domain>::space() const
 {
   auto res = isl::fixed_box::space();
   return typed::space<Domain>(res);
-}
-
-template <typename Domain, typename Range>
-typed::fixed_box<Domain, Range>::fixed_box(const isl::ctx &ctx, const std::string &str)
-  : isl::fixed_box(ctx, str)
-{
 }
 
 template <typename Domain, typename Range>
@@ -22472,11 +20090,6 @@ typed::id_list<Anonymous>::id_list(const typed::id<Anonymous> &el)
 {
 }
 
-typed::id_list<Anonymous>::id_list(const isl::ctx &ctx, const std::string &str)
-  : isl::id_list(ctx, str)
-{
-}
-
 typed::id_list<Anonymous> typed::id_list<Anonymous>::add(const typed::id<Anonymous> &el) const
 {
   auto res = isl::id_list::add(el);
@@ -22503,33 +20116,10 @@ typed::id_list<Anonymous> typed::id_list<Anonymous>::drop(unsigned int first, un
 
 void typed::id_list<Anonymous>::foreach(const std::function<void(typed::id<Anonymous>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::id arg0) {
+  auto lambda = [&] (isl::id arg0) {
     return fn(typed::id<Anonymous>(arg0));
   };
-  return isl::id_list::foreach(lambda_fn);
-}
-
-void typed::id_list<Anonymous>::foreach_scc(const std::function<bool(typed::id<Anonymous>, typed::id<Anonymous>)> &follows, const std::function<void(typed::id_list<Anonymous>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::id arg0, isl::id arg1) {
-    return follows(typed::id<Anonymous>(arg0), typed::id<Anonymous>(arg1));
-  };
-  auto lambda_fn = [&] (isl::id_list arg0) {
-    return fn(typed::id_list<Anonymous>(arg0));
-  };
-  return isl::id_list::foreach_scc(lambda_follows, lambda_fn);
-}
-
-typed::id_list<Anonymous> typed::id_list<Anonymous>::set_at(int index, const typed::id<Anonymous> &el) const
-{
-  auto res = isl::id_list::set_at(index, el);
-  return typed::id_list<Anonymous>(res);
-}
-
-typed::id_list<Anonymous> typed::id_list<Anonymous>::set_at(int index, const std::string &el) const
-{
-  auto res = isl::id_list::set_at(index, el);
-  return typed::id_list<Anonymous>(res);
+  return isl::id_list::foreach(lambda);
 }
 
 template <typename Domain, typename Range>
@@ -22694,44 +20284,30 @@ typed::map<pair<Domain, Domain2>, Range> typed::map<Domain, Range>::domain_produ
 }
 
 template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::map<Domain, Range>::drop_unused_params() const
-{
-  auto res = isl::map::drop_unused_params();
-  return typed::map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 bool typed::map<Domain, Range>::every_map(const std::function<bool(typed::map<Domain, Range>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<Domain, Range>(arg0));
   };
-  return isl::map::every_map(lambda_test);
-}
-
-template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::map<Domain, Range>::extract_map(const typed::space<Domain, Range> &space) const
-{
-  auto res = isl::map::extract_map(space);
-  return typed::map<Domain, Range>(res);
+  return isl::map::every_map(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::map<Domain, Range>::foreach_basic_map(const std::function<void(typed::basic_map<Domain, Range>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_map arg0) {
+  auto lambda = [&] (isl::basic_map arg0) {
     return fn(typed::basic_map<Domain, Range>(arg0));
   };
-  return isl::map::foreach_basic_map(lambda_fn);
+  return isl::map::foreach_basic_map(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::map<Domain, Range>::foreach_map(const std::function<void(typed::map<Domain, Range>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<Domain, Range>(arg0));
   };
-  return isl::map::foreach_map(lambda_fn);
+  return isl::map::foreach_map(lambda);
 }
 
 template <typename Domain, typename Range>
@@ -22780,27 +20356,6 @@ template <typename Domain, typename Range>
 typed::map<Domain, Range> typed::map<Domain, Range>::gist_domain(const typed::point<Domain> &context) const
 {
   auto res = isl::map::gist_domain(context);
-  return typed::map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::map<Domain, Range>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::map::gist_params(context);
-  return typed::map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::map<Domain, Range>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::map::gist_params(context);
-  return typed::map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::map<Domain, Range>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::map::gist_params(context);
   return typed::map<Domain, Range>(res);
 }
 
@@ -22980,13 +20535,6 @@ typed::map<Domain, Range> typed::map<Domain, Range>::lower_bound(const typed::pw
 }
 
 template <typename Domain, typename Range>
-typed::map_list<Domain, Range> typed::map<Domain, Range>::map_list() const
-{
-  auto res = isl::map::map_list();
-  return typed::map_list<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 typed::multi_pw_aff<Domain, Range> typed::map<Domain, Range>::max_multi_pw_aff() const
 {
   auto res = isl::map::max_multi_pw_aff();
@@ -22998,13 +20546,6 @@ typed::multi_pw_aff<Domain, Range> typed::map<Domain, Range>::min_multi_pw_aff()
 {
   auto res = isl::map::min_multi_pw_aff();
   return typed::multi_pw_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::set<> typed::map<Domain, Range>::params() const
-{
-  auto res = isl::map::params();
-  return typed::set<>(res);
 }
 
 template <typename Domain, typename Range>
@@ -23095,38 +20636,10 @@ typed::map<Domain, Range> typed::map<Domain, Range>::project_out_all_params() co
 }
 
 template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::map<Domain, Range>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::map::project_out_param(id);
-  return typed::map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::map<Domain, Range>::project_out_param(const std::string &id) const
-{
-  auto res = isl::map::project_out_param(id);
-  return typed::map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::map<Domain, Range>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::map::project_out_param(list);
-  return typed::map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 typed::set<Range> typed::map<Domain, Range>::range() const
 {
   auto res = isl::map::range();
   return typed::set<Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::fixed_box<Domain, Range> typed::map<Domain, Range>::range_lattice_tile() const
-{
-  auto res = isl::map::range_lattice_tile();
-  return typed::fixed_box<Domain, Range>(res);
 }
 
 template <typename Domain, typename Range>
@@ -23508,33 +21021,12 @@ typed::map<pair<pair<Domain, Range>, Domain2>, Range2> typed::map<pair<Domain, R
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Range, Domain>, Range2> typed::map<pair<Domain, Range>, Range2>::domain_reverse() const
-{
-  auto res = isl::map::domain_reverse();
-  return typed::map<pair<Range, Domain>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::drop_unused_params() const
-{
-  auto res = isl::map::drop_unused_params();
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 bool typed::map<pair<Domain, Range>, Range2>::every_map(const std::function<bool(typed::map<pair<Domain, Range>, Range2>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<pair<Domain, Range>, Range2>(arg0));
   };
-  return isl::map::every_map(lambda_test);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::extract_map(const typed::space<pair<Domain, Range>, Range2> &space) const
-{
-  auto res = isl::map::extract_map(space);
-  return typed::map<pair<Domain, Range>, Range2>(res);
+  return isl::map::every_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -23547,19 +21039,19 @@ typed::map<Anonymous, Range2> typed::map<pair<Domain, Range>, Range2>::flatten_d
 template <typename Domain, typename Range, typename Range2>
 void typed::map<pair<Domain, Range>, Range2>::foreach_basic_map(const std::function<void(typed::basic_map<pair<Domain, Range>, Range2>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_map arg0) {
+  auto lambda = [&] (isl::basic_map arg0) {
     return fn(typed::basic_map<pair<Domain, Range>, Range2>(arg0));
   };
-  return isl::map::foreach_basic_map(lambda_fn);
+  return isl::map::foreach_basic_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
 void typed::map<pair<Domain, Range>, Range2>::foreach_map(const std::function<void(typed::map<pair<Domain, Range>, Range2>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<pair<Domain, Range>, Range2>(arg0));
   };
-  return isl::map::foreach_map(lambda_fn);
+  return isl::map::foreach_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -23608,27 +21100,6 @@ template <typename Domain, typename Range, typename Range2>
 typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::gist_domain(const typed::point<pair<Domain, Range>> &context) const
 {
   auto res = isl::map::gist_domain(context);
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::map::gist_params(context);
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::map::gist_params(context);
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::map::gist_params(context);
   return typed::map<pair<Domain, Range>, Range2>(res);
 }
 
@@ -23685,34 +21156,6 @@ template <typename Domain, typename Range, typename Range2>
 typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::intersect_domain(const typed::point<pair<Domain, Range>> &set) const
 {
   auto res = isl::map::intersect_domain(set);
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::intersect_domain_wrapped_domain(const typed::set<Domain> &domain) const
-{
-  auto res = isl::map::intersect_domain_wrapped_domain(domain);
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::intersect_domain_wrapped_domain(const typed::union_set<Domain> &domain) const
-{
-  auto res = isl::map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::intersect_domain_wrapped_domain(const typed::basic_set<Domain> &domain) const
-{
-  auto res = isl::map::intersect_domain_wrapped_domain(domain);
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::intersect_domain_wrapped_domain(const typed::point<Domain> &domain) const
-{
-  auto res = isl::map::intersect_domain_wrapped_domain(domain);
   return typed::map<pair<Domain, Range>, Range2>(res);
 }
 
@@ -23836,13 +21279,6 @@ typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>:
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::map_list<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::map_list() const
-{
-  auto res = isl::map::map_list();
-  return typed::map_list<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::multi_pw_aff<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::max_multi_pw_aff() const
 {
   auto res = isl::map::max_multi_pw_aff();
@@ -23854,13 +21290,6 @@ typed::multi_pw_aff<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>,
 {
   auto res = isl::map::min_multi_pw_aff();
   return typed::multi_pw_aff<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::set<> typed::map<pair<Domain, Range>, Range2>::params() const
-{
-  auto res = isl::map::params();
-  return typed::set<>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -23951,38 +21380,10 @@ typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>:
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::map::project_out_param(id);
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::project_out_param(const std::string &id) const
-{
-  auto res = isl::map::project_out_param(id);
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::map::project_out_param(list);
-  return typed::map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::set<Range2> typed::map<pair<Domain, Range>, Range2>::range() const
 {
   auto res = isl::map::range();
   return typed::set<Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::fixed_box<pair<Domain, Range>, Range2> typed::map<pair<Domain, Range>, Range2>::range_lattice_tile() const
-{
-  auto res = isl::map::range_lattice_tile();
-  return typed::fixed_box<pair<Domain, Range>, Range2>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -24334,13 +21735,6 @@ typed::map<pair<Domain, Domain2>, Domain> typed::map<Domain, Domain>::domain_pro
 }
 
 template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::drop_unused_params() const
-{
-  auto res = isl::map::drop_unused_params();
-  return typed::map<Domain, Domain>(res);
-}
-
-template <typename Domain>
 template <typename Range>
 typed::map<Domain, Domain> typed::map<Domain, Domain>::eq_at(const typed::multi_pw_aff<Domain, Range> &mpa) const
 {
@@ -24357,7 +21751,8 @@ typed::union_map<Domain, Domain> typed::map<Domain, Domain>::eq_at(const typed::
 }
 
 template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::eq_at(const typed::aff<Domain, Anonymous> &mpa) const
+template <typename Range>
+typed::map<Domain, Domain> typed::map<Domain, Domain>::eq_at(const typed::aff<Domain, Range> &mpa) const
 {
   auto res = isl::map::eq_at(mpa);
   return typed::map<Domain, Domain>(res);
@@ -24372,7 +21767,8 @@ typed::map<Domain, Domain> typed::map<Domain, Domain>::eq_at(const typed::multi_
 }
 
 template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::eq_at(const typed::pw_aff<Domain, Anonymous> &mpa) const
+template <typename Range>
+typed::map<Domain, Domain> typed::map<Domain, Domain>::eq_at(const typed::pw_aff<Domain, Range> &mpa) const
 {
   auto res = isl::map::eq_at(mpa);
   return typed::map<Domain, Domain>(res);
@@ -24389,35 +21785,28 @@ typed::map<Domain, Domain> typed::map<Domain, Domain>::eq_at(const typed::pw_mul
 template <typename Domain>
 bool typed::map<Domain, Domain>::every_map(const std::function<bool(typed::map<Domain, Domain>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<Domain, Domain>(arg0));
   };
-  return isl::map::every_map(lambda_test);
-}
-
-template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::extract_map(const typed::space<Domain, Domain> &space) const
-{
-  auto res = isl::map::extract_map(space);
-  return typed::map<Domain, Domain>(res);
+  return isl::map::every_map(lambda);
 }
 
 template <typename Domain>
 void typed::map<Domain, Domain>::foreach_basic_map(const std::function<void(typed::basic_map<Domain, Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_map arg0) {
+  auto lambda = [&] (isl::basic_map arg0) {
     return fn(typed::basic_map<Domain, Domain>(arg0));
   };
-  return isl::map::foreach_basic_map(lambda_fn);
+  return isl::map::foreach_basic_map(lambda);
 }
 
 template <typename Domain>
 void typed::map<Domain, Domain>::foreach_map(const std::function<void(typed::map<Domain, Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<Domain, Domain>(arg0));
   };
-  return isl::map::foreach_map(lambda_fn);
+  return isl::map::foreach_map(lambda);
 }
 
 template <typename Domain>
@@ -24466,27 +21855,6 @@ template <typename Domain>
 typed::map<Domain, Domain> typed::map<Domain, Domain>::gist_domain(const typed::point<Domain> &context) const
 {
   auto res = isl::map::gist_domain(context);
-  return typed::map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::map::gist_params(context);
-  return typed::map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::map::gist_params(context);
-  return typed::map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::map::gist_params(context);
   return typed::map<Domain, Domain>(res);
 }
 
@@ -24611,7 +21979,8 @@ typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_ge_at(const typed::mu
 }
 
 template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_ge_at(const typed::aff<Domain, Anonymous> &mpa) const
+template <typename Range>
+typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_ge_at(const typed::aff<Domain, Range> &mpa) const
 {
   auto res = isl::map::lex_ge_at(mpa);
   return typed::map<Domain, Domain>(res);
@@ -24626,7 +21995,8 @@ typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_ge_at(const typed::mu
 }
 
 template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_ge_at(const typed::pw_aff<Domain, Anonymous> &mpa) const
+template <typename Range>
+typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_ge_at(const typed::pw_aff<Domain, Range> &mpa) const
 {
   auto res = isl::map::lex_ge_at(mpa);
   return typed::map<Domain, Domain>(res);
@@ -24649,7 +22019,8 @@ typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_gt_at(const typed::mu
 }
 
 template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_gt_at(const typed::aff<Domain, Anonymous> &mpa) const
+template <typename Range>
+typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_gt_at(const typed::aff<Domain, Range> &mpa) const
 {
   auto res = isl::map::lex_gt_at(mpa);
   return typed::map<Domain, Domain>(res);
@@ -24664,7 +22035,8 @@ typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_gt_at(const typed::mu
 }
 
 template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_gt_at(const typed::pw_aff<Domain, Anonymous> &mpa) const
+template <typename Range>
+typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_gt_at(const typed::pw_aff<Domain, Range> &mpa) const
 {
   auto res = isl::map::lex_gt_at(mpa);
   return typed::map<Domain, Domain>(res);
@@ -24687,7 +22059,8 @@ typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_le_at(const typed::mu
 }
 
 template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_le_at(const typed::aff<Domain, Anonymous> &mpa) const
+template <typename Range>
+typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_le_at(const typed::aff<Domain, Range> &mpa) const
 {
   auto res = isl::map::lex_le_at(mpa);
   return typed::map<Domain, Domain>(res);
@@ -24702,7 +22075,8 @@ typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_le_at(const typed::mu
 }
 
 template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_le_at(const typed::pw_aff<Domain, Anonymous> &mpa) const
+template <typename Range>
+typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_le_at(const typed::pw_aff<Domain, Range> &mpa) const
 {
   auto res = isl::map::lex_le_at(mpa);
   return typed::map<Domain, Domain>(res);
@@ -24725,7 +22099,8 @@ typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_lt_at(const typed::mu
 }
 
 template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_lt_at(const typed::aff<Domain, Anonymous> &mpa) const
+template <typename Range>
+typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_lt_at(const typed::aff<Domain, Range> &mpa) const
 {
   auto res = isl::map::lex_lt_at(mpa);
   return typed::map<Domain, Domain>(res);
@@ -24740,7 +22115,8 @@ typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_lt_at(const typed::mu
 }
 
 template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_lt_at(const typed::pw_aff<Domain, Anonymous> &mpa) const
+template <typename Range>
+typed::map<Domain, Domain> typed::map<Domain, Domain>::lex_lt_at(const typed::pw_aff<Domain, Range> &mpa) const
 {
   auto res = isl::map::lex_lt_at(mpa);
   return typed::map<Domain, Domain>(res);
@@ -24818,13 +22194,6 @@ typed::map<Domain, Domain> typed::map<Domain, Domain>::lower_bound(const typed::
 }
 
 template <typename Domain>
-typed::map_list<Domain, Domain> typed::map<Domain, Domain>::map_list() const
-{
-  auto res = isl::map::map_list();
-  return typed::map_list<Domain, Domain>(res);
-}
-
-template <typename Domain>
 typed::multi_pw_aff<Domain, Domain> typed::map<Domain, Domain>::max_multi_pw_aff() const
 {
   auto res = isl::map::max_multi_pw_aff();
@@ -24836,13 +22205,6 @@ typed::multi_pw_aff<Domain, Domain> typed::map<Domain, Domain>::min_multi_pw_aff
 {
   auto res = isl::map::min_multi_pw_aff();
   return typed::multi_pw_aff<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::set<> typed::map<Domain, Domain>::params() const
-{
-  auto res = isl::map::params();
-  return typed::set<>(res);
 }
 
 template <typename Domain>
@@ -24933,38 +22295,10 @@ typed::map<Domain, Domain> typed::map<Domain, Domain>::project_out_all_params() 
 }
 
 template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::map::project_out_param(id);
-  return typed::map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::project_out_param(const std::string &id) const
-{
-  auto res = isl::map::project_out_param(id);
-  return typed::map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::map<Domain, Domain> typed::map<Domain, Domain>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::map::project_out_param(list);
-  return typed::map<Domain, Domain>(res);
-}
-
-template <typename Domain>
 typed::set<Domain> typed::map<Domain, Domain>::range() const
 {
   auto res = isl::map::range();
   return typed::set<Domain>(res);
-}
-
-template <typename Domain>
-typed::fixed_box<Domain, Domain> typed::map<Domain, Domain>::range_lattice_tile() const
-{
-  auto res = isl::map::range_lattice_tile();
-  return typed::fixed_box<Domain, Domain>(res);
 }
 
 template <typename Domain>
@@ -25325,26 +22659,12 @@ typed::map<pair<Domain, Domain2>, pair<Range, Range2>> typed::map<Domain, pair<R
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::drop_unused_params() const
-{
-  auto res = isl::map::drop_unused_params();
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 bool typed::map<Domain, pair<Range, Range2>>::every_map(const std::function<bool(typed::map<Domain, pair<Range, Range2>>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<Domain, pair<Range, Range2>>(arg0));
   };
-  return isl::map::every_map(lambda_test);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::extract_map(const typed::space<Domain, pair<Range, Range2>> &space) const
-{
-  auto res = isl::map::extract_map(space);
-  return typed::map<Domain, pair<Range, Range2>>(res);
+  return isl::map::every_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -25357,19 +22677,19 @@ typed::map<Domain, Anonymous> typed::map<Domain, pair<Range, Range2>>::flatten_r
 template <typename Domain, typename Range, typename Range2>
 void typed::map<Domain, pair<Range, Range2>>::foreach_basic_map(const std::function<void(typed::basic_map<Domain, pair<Range, Range2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_map arg0) {
+  auto lambda = [&] (isl::basic_map arg0) {
     return fn(typed::basic_map<Domain, pair<Range, Range2>>(arg0));
   };
-  return isl::map::foreach_basic_map(lambda_fn);
+  return isl::map::foreach_basic_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
 void typed::map<Domain, pair<Range, Range2>>::foreach_map(const std::function<void(typed::map<Domain, pair<Range, Range2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<Domain, pair<Range, Range2>>(arg0));
   };
-  return isl::map::foreach_map(lambda_fn);
+  return isl::map::foreach_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -25418,27 +22738,6 @@ template <typename Domain, typename Range, typename Range2>
 typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::gist_domain(const typed::point<Domain> &context) const
 {
   auto res = isl::map::gist_domain(context);
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::map::gist_params(context);
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::map::gist_params(context);
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::map::gist_params(context);
   return typed::map<Domain, pair<Range, Range2>>(res);
 }
 
@@ -25555,34 +22854,6 @@ typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>:
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::set<Range> &domain) const
-{
-  auto res = isl::map::intersect_range_wrapped_domain(domain);
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::union_set<Range> &domain) const
-{
-  auto res = isl::map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::basic_set<Range> &domain) const
-{
-  auto res = isl::map::intersect_range_wrapped_domain(domain);
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::point<Range> &domain) const
-{
-  auto res = isl::map::intersect_range_wrapped_domain(domain);
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::lexmax() const
 {
   auto res = isl::map::lexmax();
@@ -25646,13 +22917,6 @@ typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>:
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::map_list<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::map_list() const
-{
-  auto res = isl::map::map_list();
-  return typed::map_list<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::multi_pw_aff<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::max_multi_pw_aff() const
 {
   auto res = isl::map::max_multi_pw_aff();
@@ -25664,13 +22928,6 @@ typed::multi_pw_aff<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, 
 {
   auto res = isl::map::min_multi_pw_aff();
   return typed::multi_pw_aff<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::set<> typed::map<Domain, pair<Range, Range2>>::params() const
-{
-  auto res = isl::map::params();
-  return typed::set<>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -25761,27 +23018,6 @@ typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>:
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::map::project_out_param(id);
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::project_out_param(const std::string &id) const
-{
-  auto res = isl::map::project_out_param(id);
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::map::project_out_param(list);
-  return typed::map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::set<pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::range() const
 {
   auto res = isl::map::range();
@@ -25800,13 +23036,6 @@ typed::map<Domain, Range2> typed::map<Domain, pair<Range, Range2>>::range_factor
 {
   auto res = isl::map::range_factor_range();
   return typed::map<Domain, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::fixed_box<Domain, pair<Range, Range2>> typed::map<Domain, pair<Range, Range2>>::range_lattice_tile() const
-{
-  auto res = isl::map::range_lattice_tile();
-  return typed::fixed_box<Domain, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -26193,20 +23422,6 @@ typed::map<pair<pair<T1, T2>, Domain2>, pair<T1, T2>> typed::map<pair<T1, T2>, p
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T2, T1>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::domain_reverse() const
-{
-  auto res = isl::map::domain_reverse();
-  return typed::map<pair<T2, T1>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::drop_unused_params() const
-{
-  auto res = isl::map::drop_unused_params();
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
 template <typename Range>
 typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::eq_at(const typed::multi_pw_aff<pair<T1, T2>, Range> &mpa) const
 {
@@ -26223,7 +23438,8 @@ typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::eq_at(const typed::aff<pair<T1, T2>, Anonymous> &mpa) const
+template <typename Range>
+typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::eq_at(const typed::aff<pair<T1, T2>, Range> &mpa) const
 {
   auto res = isl::map::eq_at(mpa);
   return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
@@ -26238,7 +23454,8 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::e
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::eq_at(const typed::pw_aff<pair<T1, T2>, Anonymous> &mpa) const
+template <typename Range>
+typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::eq_at(const typed::pw_aff<pair<T1, T2>, Range> &mpa) const
 {
   auto res = isl::map::eq_at(mpa);
   return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
@@ -26255,17 +23472,10 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::e
 template <typename T1, typename T2>
 bool typed::map<pair<T1, T2>, pair<T1, T2>>::every_map(const std::function<bool(typed::map<pair<T1, T2>, pair<T1, T2>>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<pair<T1, T2>, pair<T1, T2>>(arg0));
   };
-  return isl::map::every_map(lambda_test);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::extract_map(const typed::space<pair<T1, T2>, pair<T1, T2>> &space) const
-{
-  auto res = isl::map::extract_map(space);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
+  return isl::map::every_map(lambda);
 }
 
 template <typename T1, typename T2>
@@ -26285,19 +23495,19 @@ typed::map<pair<T1, T2>, Anonymous> typed::map<pair<T1, T2>, pair<T1, T2>>::flat
 template <typename T1, typename T2>
 void typed::map<pair<T1, T2>, pair<T1, T2>>::foreach_basic_map(const std::function<void(typed::basic_map<pair<T1, T2>, pair<T1, T2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_map arg0) {
+  auto lambda = [&] (isl::basic_map arg0) {
     return fn(typed::basic_map<pair<T1, T2>, pair<T1, T2>>(arg0));
   };
-  return isl::map::foreach_basic_map(lambda_fn);
+  return isl::map::foreach_basic_map(lambda);
 }
 
 template <typename T1, typename T2>
 void typed::map<pair<T1, T2>, pair<T1, T2>>::foreach_map(const std::function<void(typed::map<pair<T1, T2>, pair<T1, T2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<pair<T1, T2>, pair<T1, T2>>(arg0));
   };
-  return isl::map::foreach_map(lambda_fn);
+  return isl::map::foreach_map(lambda);
 }
 
 template <typename T1, typename T2>
@@ -26346,27 +23556,6 @@ template <typename T1, typename T2>
 typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::gist_domain(const typed::point<pair<T1, T2>> &context) const
 {
   auto res = isl::map::gist_domain(context);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::map::gist_params(context);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::map::gist_params(context);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::map::gist_params(context);
   return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
 }
 
@@ -26427,34 +23616,6 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::i
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::intersect_domain_wrapped_domain(const typed::set<T1> &domain) const
-{
-  auto res = isl::map::intersect_domain_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::intersect_domain_wrapped_domain(const typed::union_set<T1> &domain) const
-{
-  auto res = isl::map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::intersect_domain_wrapped_domain(const typed::basic_set<T1> &domain) const
-{
-  auto res = isl::map::intersect_domain_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::intersect_domain_wrapped_domain(const typed::point<T1> &domain) const
-{
-  auto res = isl::map::intersect_domain_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
 typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::intersect_params(const typed::set<> &params) const
 {
   auto res = isl::map::intersect_params(params);
@@ -26511,34 +23672,6 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::i
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::intersect_range_wrapped_domain(const typed::set<T1> &domain) const
-{
-  auto res = isl::map::intersect_range_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::intersect_range_wrapped_domain(const typed::union_set<T1> &domain) const
-{
-  auto res = isl::map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::intersect_range_wrapped_domain(const typed::basic_set<T1> &domain) const
-{
-  auto res = isl::map::intersect_range_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::intersect_range_wrapped_domain(const typed::point<T1> &domain) const
-{
-  auto res = isl::map::intersect_range_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
 template <typename Range>
 typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_ge_at(const typed::multi_pw_aff<pair<T1, T2>, Range> &mpa) const
 {
@@ -26547,7 +23680,8 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::l
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_ge_at(const typed::aff<pair<T1, T2>, Anonymous> &mpa) const
+template <typename Range>
+typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_ge_at(const typed::aff<pair<T1, T2>, Range> &mpa) const
 {
   auto res = isl::map::lex_ge_at(mpa);
   return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
@@ -26562,7 +23696,8 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::l
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_ge_at(const typed::pw_aff<pair<T1, T2>, Anonymous> &mpa) const
+template <typename Range>
+typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_ge_at(const typed::pw_aff<pair<T1, T2>, Range> &mpa) const
 {
   auto res = isl::map::lex_ge_at(mpa);
   return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
@@ -26585,7 +23720,8 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::l
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_gt_at(const typed::aff<pair<T1, T2>, Anonymous> &mpa) const
+template <typename Range>
+typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_gt_at(const typed::aff<pair<T1, T2>, Range> &mpa) const
 {
   auto res = isl::map::lex_gt_at(mpa);
   return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
@@ -26600,7 +23736,8 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::l
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_gt_at(const typed::pw_aff<pair<T1, T2>, Anonymous> &mpa) const
+template <typename Range>
+typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_gt_at(const typed::pw_aff<pair<T1, T2>, Range> &mpa) const
 {
   auto res = isl::map::lex_gt_at(mpa);
   return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
@@ -26623,7 +23760,8 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::l
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_le_at(const typed::aff<pair<T1, T2>, Anonymous> &mpa) const
+template <typename Range>
+typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_le_at(const typed::aff<pair<T1, T2>, Range> &mpa) const
 {
   auto res = isl::map::lex_le_at(mpa);
   return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
@@ -26638,7 +23776,8 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::l
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_le_at(const typed::pw_aff<pair<T1, T2>, Anonymous> &mpa) const
+template <typename Range>
+typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_le_at(const typed::pw_aff<pair<T1, T2>, Range> &mpa) const
 {
   auto res = isl::map::lex_le_at(mpa);
   return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
@@ -26661,7 +23800,8 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::l
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_lt_at(const typed::aff<pair<T1, T2>, Anonymous> &mpa) const
+template <typename Range>
+typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_lt_at(const typed::aff<pair<T1, T2>, Range> &mpa) const
 {
   auto res = isl::map::lex_lt_at(mpa);
   return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
@@ -26676,7 +23816,8 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::l
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_lt_at(const typed::pw_aff<pair<T1, T2>, Anonymous> &mpa) const
+template <typename Range>
+typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::lex_lt_at(const typed::pw_aff<pair<T1, T2>, Range> &mpa) const
 {
   auto res = isl::map::lex_lt_at(mpa);
   return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
@@ -26754,13 +23895,6 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::l
 }
 
 template <typename T1, typename T2>
-typed::map_list<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::map_list() const
-{
-  auto res = isl::map::map_list();
-  return typed::map_list<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
 typed::multi_pw_aff<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::max_multi_pw_aff() const
 {
   auto res = isl::map::max_multi_pw_aff();
@@ -26772,13 +23906,6 @@ typed::multi_pw_aff<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1
 {
   auto res = isl::map::min_multi_pw_aff();
   return typed::multi_pw_aff<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::set<> typed::map<pair<T1, T2>, pair<T1, T2>>::params() const
-{
-  auto res = isl::map::params();
-  return typed::set<>(res);
 }
 
 template <typename T1, typename T2>
@@ -26869,27 +23996,6 @@ typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::p
 }
 
 template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::map::project_out_param(id);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::project_out_param(const std::string &id) const
-{
-  auto res = isl::map::project_out_param(id);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::map::project_out_param(list);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
 typed::set<pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::range() const
 {
   auto res = isl::map::range();
@@ -26908,13 +24014,6 @@ typed::map<pair<T1, T2>, T2> typed::map<pair<T1, T2>, pair<T1, T2>>::range_facto
 {
   auto res = isl::map::range_factor_range();
   return typed::map<pair<T1, T2>, T2>(res);
-}
-
-template <typename T1, typename T2>
-typed::fixed_box<pair<T1, T2>, pair<T1, T2>> typed::map<pair<T1, T2>, pair<T1, T2>>::range_lattice_tile() const
-{
-  auto res = isl::map::range_lattice_tile();
-  return typed::fixed_box<pair<T1, T2>, pair<T1, T2>>(res);
 }
 
 template <typename T1, typename T2>
@@ -27278,33 +24377,12 @@ typed::map<pair<pair<T1, T2>, Domain2>, pair<Range, Range2>> typed::map<pair<T1,
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T2, T1>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::domain_reverse() const
-{
-  auto res = isl::map::domain_reverse();
-  return typed::map<pair<T2, T1>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::drop_unused_params() const
-{
-  auto res = isl::map::drop_unused_params();
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 bool typed::map<pair<T1, T2>, pair<Range, Range2>>::every_map(const std::function<bool(typed::map<pair<T1, T2>, pair<Range, Range2>>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<pair<T1, T2>, pair<Range, Range2>>(arg0));
   };
-  return isl::map::every_map(lambda_test);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::extract_map(const typed::space<pair<T1, T2>, pair<Range, Range2>> &space) const
-{
-  auto res = isl::map::extract_map(space);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
+  return isl::map::every_map(lambda);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -27324,19 +24402,19 @@ typed::map<pair<T1, T2>, Anonymous> typed::map<pair<T1, T2>, pair<Range, Range2>
 template <typename T1, typename T2, typename Range, typename Range2>
 void typed::map<pair<T1, T2>, pair<Range, Range2>>::foreach_basic_map(const std::function<void(typed::basic_map<pair<T1, T2>, pair<Range, Range2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_map arg0) {
+  auto lambda = [&] (isl::basic_map arg0) {
     return fn(typed::basic_map<pair<T1, T2>, pair<Range, Range2>>(arg0));
   };
-  return isl::map::foreach_basic_map(lambda_fn);
+  return isl::map::foreach_basic_map(lambda);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
 void typed::map<pair<T1, T2>, pair<Range, Range2>>::foreach_map(const std::function<void(typed::map<pair<T1, T2>, pair<Range, Range2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<pair<T1, T2>, pair<Range, Range2>>(arg0));
   };
-  return isl::map::foreach_map(lambda_fn);
+  return isl::map::foreach_map(lambda);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -27385,27 +24463,6 @@ template <typename T1, typename T2, typename Range, typename Range2>
 typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::gist_domain(const typed::point<pair<T1, T2>> &context) const
 {
   auto res = isl::map::gist_domain(context);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::map::gist_params(context);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::map::gist_params(context);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::map::gist_params(context);
   return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
@@ -27466,34 +24523,6 @@ typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Rang
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::set<T1> &domain) const
-{
-  auto res = isl::map::intersect_domain_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::union_set<T1> &domain) const
-{
-  auto res = isl::map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::basic_set<T1> &domain) const
-{
-  auto res = isl::map::intersect_domain_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::point<T1> &domain) const
-{
-  auto res = isl::map::intersect_domain_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::intersect_params(const typed::set<> &params) const
 {
   auto res = isl::map::intersect_params(params);
@@ -27546,34 +24575,6 @@ template <typename T1, typename T2, typename Range, typename Range2>
 typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::intersect_range(const typed::point<pair<Range, Range2>> &set) const
 {
   auto res = isl::map::intersect_range(set);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::set<Range> &domain) const
-{
-  auto res = isl::map::intersect_range_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::union_set<Range> &domain) const
-{
-  auto res = isl::map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::basic_set<Range> &domain) const
-{
-  auto res = isl::map::intersect_range_wrapped_domain(domain);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::point<Range> &domain) const
-{
-  auto res = isl::map::intersect_range_wrapped_domain(domain);
   return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
@@ -27641,13 +24642,6 @@ typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Rang
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::map_list<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::map_list() const
-{
-  auto res = isl::map::map_list();
-  return typed::map_list<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::max_multi_pw_aff() const
 {
   auto res = isl::map::max_multi_pw_aff();
@@ -27659,13 +24653,6 @@ typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, 
 {
   auto res = isl::map::min_multi_pw_aff();
   return typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::set<> typed::map<pair<T1, T2>, pair<Range, Range2>>::params() const
-{
-  auto res = isl::map::params();
-  return typed::set<>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -27756,27 +24743,6 @@ typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Rang
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::map::project_out_param(id);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::project_out_param(const std::string &id) const
-{
-  auto res = isl::map::project_out_param(id);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::map::project_out_param(list);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::set<pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::range() const
 {
   auto res = isl::map::range();
@@ -27795,13 +24761,6 @@ typed::map<pair<T1, T2>, Range2> typed::map<pair<T1, T2>, pair<Range, Range2>>::
 {
   auto res = isl::map::range_factor_range();
   return typed::map<pair<T1, T2>, Range2>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::fixed_box<pair<T1, T2>, pair<Range, Range2>> typed::map<pair<T1, T2>, pair<Range, Range2>>::range_lattice_tile() const
-{
-  auto res = isl::map::range_lattice_tile();
-  return typed::fixed_box<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -27982,80 +24941,6 @@ typed::set<pair<pair<T1, T2>, pair<Range, Range2>>> typed::map<pair<T1, T2>, pai
   return typed::set<pair<pair<T1, T2>, pair<Range, Range2>>>(res);
 }
 
-template <typename Domain, typename Range>
-typed::map_list<Domain, Range>::map_list(const isl::ctx &ctx, int n)
-  : isl::map_list(ctx, n)
-{
-}
-
-template <typename Domain, typename Range>
-typed::map_list<Domain, Range>::map_list(const typed::map<Domain, Range> &el)
-  : isl::map_list(el)
-{
-}
-
-template <typename Domain, typename Range>
-typed::map_list<Domain, Range>::map_list(const isl::ctx &ctx, const std::string &str)
-  : isl::map_list(ctx, str)
-{
-}
-
-template <typename Domain, typename Range>
-typed::map_list<Domain, Range> typed::map_list<Domain, Range>::add(const typed::map<Domain, Range> &el) const
-{
-  auto res = isl::map_list::add(el);
-  return typed::map_list<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::map_list<Domain, Range> typed::map_list<Domain, Range>::add(const typed::basic_map<Domain, Range> &el) const
-{
-  auto res = isl::map_list::add(el);
-  return typed::map_list<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::map_list<Domain, Range>::at(int index) const
-{
-  auto res = isl::map_list::at(index);
-  return typed::map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::map_list<Domain, Range> typed::map_list<Domain, Range>::drop(unsigned int first, unsigned int n) const
-{
-  auto res = isl::map_list::drop(first, n);
-  return typed::map_list<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-void typed::map_list<Domain, Range>::foreach(const std::function<void(typed::map<Domain, Range>)> &fn) const
-{
-  auto lambda_fn = [&] (isl::map arg0) {
-    return fn(typed::map<Domain, Range>(arg0));
-  };
-  return isl::map_list::foreach(lambda_fn);
-}
-
-template <typename Domain, typename Range>
-void typed::map_list<Domain, Range>::foreach_scc(const std::function<bool(typed::map<Domain, Range>, typed::map<Domain, Range>)> &follows, const std::function<void(typed::map_list<Domain, Range>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::map arg0, isl::map arg1) {
-    return follows(typed::map<Domain, Range>(arg0), typed::map<Domain, Range>(arg1));
-  };
-  auto lambda_fn = [&] (isl::map_list arg0) {
-    return fn(typed::map_list<Domain, Range>(arg0));
-  };
-  return isl::map_list::foreach_scc(lambda_follows, lambda_fn);
-}
-
-template <typename Domain, typename Range>
-typed::map_list<Domain, Range> typed::map_list<Domain, Range>::set_at(int index, const typed::map<Domain, Anonymous> &el) const
-{
-  auto res = isl::map_list::set_at(index, el);
-  return typed::map_list<Domain, Range>(res);
-}
-
 template <typename Domain>
 typed::multi_aff<Domain>::multi_aff(const typed::aff<Domain> &aff)
   : isl::multi_aff(aff)
@@ -28209,20 +25094,6 @@ typed::set<> typed::multi_aff<Domain>::domain() const
 }
 
 template <typename Domain>
-typed::pw_multi_aff<Domain> typed::multi_aff<Domain>::drop_unused_params() const
-{
-  auto res = isl::multi_aff::drop_unused_params();
-  return typed::pw_multi_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff<Domain> typed::multi_aff<Domain>::extract_pw_multi_aff(const typed::space<Domain> &space) const
-{
-  auto res = isl::multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Domain>(res);
-}
-
-template <typename Domain>
 typed::multi_aff<Domain> typed::multi_aff<Domain>::floor() const
 {
   auto res = isl::multi_aff::floor();
@@ -28254,27 +25125,6 @@ template <typename Domain>
 typed::multi_aff<Domain> typed::multi_aff<Domain>::gist(const typed::point<> &context) const
 {
   auto res = isl::multi_aff::gist(context);
-  return typed::multi_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::multi_aff<Domain> typed::multi_aff<Domain>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
-  return typed::multi_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::multi_aff<Domain> typed::multi_aff<Domain>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
-  return typed::multi_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::multi_aff<Domain> typed::multi_aff<Domain>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
   return typed::multi_aff<Domain>(res);
 }
 
@@ -28367,17 +25217,11 @@ typed::pw_multi_aff<pair<Domain, Range>> typed::multi_aff<Domain>::product(const
 }
 
 template <typename Domain>
-typed::multi_aff<pair<Domain, Anonymous>> typed::multi_aff<Domain>::product(const typed::aff<Anonymous> &multi2) const
+template <typename Range>
+typed::multi_aff<pair<Domain, Range>> typed::multi_aff<Domain>::product(const typed::aff<Range> &multi2) const
 {
   auto res = isl::multi_aff::product(multi2);
-  return typed::multi_aff<pair<Domain, Anonymous>>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff_list<Domain> typed::multi_aff<Domain>::pw_multi_aff_list() const
-{
-  auto res = isl::multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Domain>(res);
+  return typed::multi_aff<pair<Domain, Range>>(res);
 }
 
 template <typename Domain>
@@ -28739,20 +25583,6 @@ typed::set<Domain> typed::multi_aff<Domain, Range>::domain() const
 }
 
 template <typename Domain, typename Range>
-typed::pw_multi_aff<Domain, Range> typed::multi_aff<Domain, Range>::drop_unused_params() const
-{
-  auto res = isl::multi_aff::drop_unused_params();
-  return typed::pw_multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_multi_aff<Domain, Range> typed::multi_aff<Domain, Range>::extract_pw_multi_aff(const typed::space<Domain, Range> &space) const
-{
-  auto res = isl::multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 typed::multi_aff<Domain, Range> typed::multi_aff<Domain, Range>::floor() const
 {
   auto res = isl::multi_aff::floor();
@@ -28784,27 +25614,6 @@ template <typename Domain, typename Range>
 typed::multi_aff<Domain, Range> typed::multi_aff<Domain, Range>::gist(const typed::point<Domain> &context) const
 {
   auto res = isl::multi_aff::gist(context);
-  return typed::multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::multi_aff<Domain, Range> typed::multi_aff<Domain, Range>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
-  return typed::multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::multi_aff<Domain, Range> typed::multi_aff<Domain, Range>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
-  return typed::multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::multi_aff<Domain, Range> typed::multi_aff<Domain, Range>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
   return typed::multi_aff<Domain, Range>(res);
 }
 
@@ -28910,11 +25719,11 @@ typed::pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> typed::multi_aff
 }
 
 template <typename Domain, typename Range>
-template <typename Domain2>
-typed::multi_aff<pair<Domain, Domain2>, pair<Range, Anonymous>> typed::multi_aff<Domain, Range>::product(const typed::aff<Domain2, Anonymous> &multi2) const
+template <typename Domain2, typename Range2>
+typed::multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> typed::multi_aff<Domain, Range>::product(const typed::aff<Domain2, Range2> &multi2) const
 {
   auto res = isl::multi_aff::product(multi2);
-  return typed::multi_aff<pair<Domain, Domain2>, pair<Range, Anonymous>>(res);
+  return typed::multi_aff<pair<Domain, Domain2>, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -28993,13 +25802,6 @@ typed::multi_aff<Range> typed::multi_aff<Domain, Range>::pullback(const typed::a
 }
 
 template <typename Domain, typename Range>
-typed::pw_multi_aff_list<Domain, Range> typed::multi_aff<Domain, Range>::pw_multi_aff_list() const
-{
-  auto res = isl::multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 template <typename Range2>
 typed::multi_aff<Domain, pair<Range, Range2>> typed::multi_aff<Domain, Range>::range_product(const typed::multi_aff<Domain, Range2> &multi2) const
 {
@@ -29040,10 +25842,11 @@ typed::union_pw_multi_aff<Domain, pair<Range, Range2>> typed::multi_aff<Domain, 
 }
 
 template <typename Domain, typename Range>
-typed::multi_aff<Domain, pair<Range, Anonymous>> typed::multi_aff<Domain, Range>::range_product(const typed::aff<Domain, Anonymous> &multi2) const
+template <typename Range2>
+typed::multi_aff<Domain, pair<Range, Range2>> typed::multi_aff<Domain, Range>::range_product(const typed::aff<Domain, Range2> &multi2) const
 {
   auto res = isl::multi_aff::range_product(multi2);
-  return typed::multi_aff<Domain, pair<Range, Anonymous>>(res);
+  return typed::multi_aff<Domain, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -29425,27 +26228,6 @@ typed::set<pair<Domain2, Range2>> typed::multi_aff<pair<Domain2, Range2>, Range>
 }
 
 template <typename Domain2, typename Range2, typename Range>
-typed::multi_aff<pair<Range2, Domain2>, Range> typed::multi_aff<pair<Domain2, Range2>, Range>::domain_reverse() const
-{
-  auto res = isl::multi_aff::domain_reverse();
-  return typed::multi_aff<pair<Range2, Domain2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
-typed::pw_multi_aff<pair<Domain2, Range2>, Range> typed::multi_aff<pair<Domain2, Range2>, Range>::drop_unused_params() const
-{
-  auto res = isl::multi_aff::drop_unused_params();
-  return typed::pw_multi_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
-typed::pw_multi_aff<pair<Domain2, Range2>, Range> typed::multi_aff<pair<Domain2, Range2>, Range>::extract_pw_multi_aff(const typed::space<pair<Domain2, Range2>, Range> &space) const
-{
-  auto res = isl::multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
 typed::multi_aff<pair<Domain2, Range2>, Range> typed::multi_aff<pair<Domain2, Range2>, Range>::floor() const
 {
   auto res = isl::multi_aff::floor();
@@ -29481,27 +26263,6 @@ typed::multi_aff<pair<Domain2, Range2>, Range> typed::multi_aff<pair<Domain2, Ra
 }
 
 template <typename Domain2, typename Range2, typename Range>
-typed::multi_aff<pair<Domain2, Range2>, Range> typed::multi_aff<pair<Domain2, Range2>, Range>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
-  return typed::multi_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
-typed::multi_aff<pair<Domain2, Range2>, Range> typed::multi_aff<pair<Domain2, Range2>, Range>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
-  return typed::multi_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
-typed::multi_aff<pair<Domain2, Range2>, Range> typed::multi_aff<pair<Domain2, Range2>, Range>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
-  return typed::multi_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
 typed::multi_aff<pair<Domain2, Range2>, Range> typed::multi_aff<pair<Domain2, Range2>, Range>::identity() const
 {
   auto res = isl::multi_aff::identity();
@@ -29526,13 +26287,6 @@ template <typename Domain2, typename Range2, typename Range>
 typed::union_pw_multi_aff<pair<Domain2, Range2>, Range> typed::multi_aff<pair<Domain2, Range2>, Range>::intersect_domain(const typed::union_set<pair<Domain2, Range2>> &uset) const
 {
   auto res = isl::multi_aff::intersect_domain(uset);
-  return typed::union_pw_multi_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
-typed::union_pw_multi_aff<pair<Domain2, Range2>, Range> typed::multi_aff<pair<Domain2, Range2>, Range>::intersect_domain_wrapped_domain(const typed::union_set<Domain2> &uset) const
-{
-  auto res = isl::multi_aff::intersect_domain_wrapped_domain(uset);
   return typed::union_pw_multi_aff<pair<Domain2, Range2>, Range>(res);
 }
 
@@ -29626,11 +26380,11 @@ typed::pw_multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> typed:
 }
 
 template <typename Domain2, typename Range2, typename Range>
-template <typename Arg2>
-typed::multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Anonymous>> typed::multi_aff<pair<Domain2, Range2>, Range>::product(const typed::aff<Arg2, Anonymous> &multi2) const
+template <typename Arg2, typename Arg3>
+typed::multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> typed::multi_aff<pair<Domain2, Range2>, Range>::product(const typed::aff<Arg2, Arg3> &multi2) const
 {
   auto res = isl::multi_aff::product(multi2);
-  return typed::multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Anonymous>>(res);
+  return typed::multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>>(res);
 }
 
 template <typename Domain2, typename Range2, typename Range>
@@ -29709,13 +26463,6 @@ typed::multi_aff<Range> typed::multi_aff<pair<Domain2, Range2>, Range>::pullback
 }
 
 template <typename Domain2, typename Range2, typename Range>
-typed::pw_multi_aff_list<pair<Domain2, Range2>, Range> typed::multi_aff<pair<Domain2, Range2>, Range>::pw_multi_aff_list() const
-{
-  auto res = isl::multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
 template <typename Arg2>
 typed::multi_aff<pair<Domain2, Range2>, pair<Range, Arg2>> typed::multi_aff<pair<Domain2, Range2>, Range>::range_product(const typed::multi_aff<pair<Domain2, Range2>, Arg2> &multi2) const
 {
@@ -29756,10 +26503,11 @@ typed::union_pw_multi_aff<pair<Domain2, Range2>, pair<Range, Arg2>> typed::multi
 }
 
 template <typename Domain2, typename Range2, typename Range>
-typed::multi_aff<pair<Domain2, Range2>, pair<Range, Anonymous>> typed::multi_aff<pair<Domain2, Range2>, Range>::range_product(const typed::aff<pair<Domain2, Range2>, Anonymous> &multi2) const
+template <typename Arg2>
+typed::multi_aff<pair<Domain2, Range2>, pair<Range, Arg2>> typed::multi_aff<pair<Domain2, Range2>, Range>::range_product(const typed::aff<pair<Domain2, Range2>, Arg2> &multi2) const
 {
   auto res = isl::multi_aff::range_product(multi2);
-  return typed::multi_aff<pair<Domain2, Range2>, pair<Range, Anonymous>>(res);
+  return typed::multi_aff<pair<Domain2, Range2>, pair<Range, Arg2>>(res);
 }
 
 template <typename Domain2, typename Range2, typename Range>
@@ -30134,20 +26882,6 @@ typed::set<Domain> typed::multi_aff<Domain, pair<Range, Range2>>::domain() const
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::multi_aff<Domain, pair<Range, Range2>>::drop_unused_params() const
-{
-  auto res = isl::multi_aff::drop_unused_params();
-  return typed::pw_multi_aff<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::multi_aff<Domain, pair<Range, Range2>>::extract_pw_multi_aff(const typed::space<Domain, pair<Range, Range2>> &space) const
-{
-  auto res = isl::multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::multi_aff<Domain, pair<Range, Range2>> typed::multi_aff<Domain, pair<Range, Range2>>::floor() const
 {
   auto res = isl::multi_aff::floor();
@@ -30179,27 +26913,6 @@ template <typename Domain, typename Range, typename Range2>
 typed::multi_aff<Domain, pair<Range, Range2>> typed::multi_aff<Domain, pair<Range, Range2>>::gist(const typed::point<Domain> &context) const
 {
   auto res = isl::multi_aff::gist(context);
-  return typed::multi_aff<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::multi_aff<Domain, pair<Range, Range2>> typed::multi_aff<Domain, pair<Range, Range2>>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
-  return typed::multi_aff<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::multi_aff<Domain, pair<Range, Range2>> typed::multi_aff<Domain, pair<Range, Range2>>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
-  return typed::multi_aff<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::multi_aff<Domain, pair<Range, Range2>> typed::multi_aff<Domain, pair<Range, Range2>>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
   return typed::multi_aff<Domain, pair<Range, Range2>>(res);
 }
 
@@ -30305,11 +27018,11 @@ typed::pw_multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>> type
 }
 
 template <typename Domain, typename Range, typename Range2>
-template <typename Domain2>
-typed::multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Anonymous>> typed::multi_aff<Domain, pair<Range, Range2>>::product(const typed::aff<Domain2, Anonymous> &multi2) const
+template <typename Domain2, typename Arg3>
+typed::multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>> typed::multi_aff<Domain, pair<Range, Range2>>::product(const typed::aff<Domain2, Arg3> &multi2) const
 {
   auto res = isl::multi_aff::product(multi2);
-  return typed::multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Anonymous>>(res);
+  return typed::multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -30388,13 +27101,6 @@ typed::multi_aff<pair<Range, Range2>> typed::multi_aff<Domain, pair<Range, Range
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::pw_multi_aff_list<Domain, pair<Range, Range2>> typed::multi_aff<Domain, pair<Range, Range2>>::pw_multi_aff_list() const
-{
-  auto res = isl::multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::pw_multi_aff<Domain, Range> typed::multi_aff<Domain, pair<Range, Range2>>::range_factor_domain() const
 {
   auto res = isl::multi_aff::range_factor_domain();
@@ -30449,10 +27155,11 @@ typed::union_pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> typed::multi_
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::multi_aff<Domain, pair<pair<Range, Range2>, Anonymous>> typed::multi_aff<Domain, pair<Range, Range2>>::range_product(const typed::aff<Domain, Anonymous> &multi2) const
+template <typename Arg3>
+typed::multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> typed::multi_aff<Domain, pair<Range, Range2>>::range_product(const typed::aff<Domain, Arg3> &multi2) const
 {
   auto res = isl::multi_aff::range_product(multi2);
-  return typed::multi_aff<Domain, pair<pair<Range, Range2>, Anonymous>>(res);
+  return typed::multi_aff<Domain, pair<pair<Range, Range2>, Arg3>>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -30818,27 +27525,6 @@ typed::set<pair<T1, T2>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::do
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::multi_aff<pair<T2, T1>, pair<Range, Range2>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::domain_reverse() const
-{
-  auto res = isl::multi_aff::domain_reverse();
-  return typed::multi_aff<pair<T2, T1>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::drop_unused_params() const
-{
-  auto res = isl::multi_aff::drop_unused_params();
-  return typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::extract_pw_multi_aff(const typed::space<pair<T1, T2>, pair<Range, Range2>> &space) const
-{
-  auto res = isl::multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::floor() const
 {
   auto res = isl::multi_aff::floor();
@@ -30874,27 +27560,6 @@ typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::multi_aff<pair<T1, T2
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
-  return typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
-  return typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::multi_aff::gist_params(context);
-  return typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::identity() const
 {
   auto res = isl::multi_aff::identity();
@@ -30919,13 +27584,6 @@ template <typename T1, typename T2, typename Range, typename Range2>
 typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::intersect_domain(const typed::union_set<pair<T1, T2>> &uset) const
 {
   auto res = isl::multi_aff::intersect_domain(uset);
-  return typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::union_set<T1> &uset) const
-{
-  auto res = isl::multi_aff::intersect_domain_wrapped_domain(uset);
   return typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
@@ -31019,11 +27677,11 @@ typed::pw_multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-template <typename Domain2>
-typed::multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Anonymous>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::product(const typed::aff<Domain2, Anonymous> &multi2) const
+template <typename Domain2, typename Arg2>
+typed::multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::product(const typed::aff<Domain2, Arg2> &multi2) const
 {
   auto res = isl::multi_aff::product(multi2);
-  return typed::multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Anonymous>>(res);
+  return typed::multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -31102,13 +27760,6 @@ typed::multi_aff<pair<Range, Range2>> typed::multi_aff<pair<T1, T2>, pair<Range,
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff_list<pair<T1, T2>, pair<Range, Range2>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::pw_multi_aff_list() const
-{
-  auto res = isl::multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::pw_multi_aff<pair<T1, T2>, Range> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::range_factor_domain() const
 {
   auto res = isl::multi_aff::range_factor_domain();
@@ -31163,10 +27814,11 @@ typed::union_pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> typed::
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Anonymous>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::range_product(const typed::aff<pair<T1, T2>, Anonymous> &multi2) const
+template <typename Arg2>
+typed::multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> typed::multi_aff<pair<T1, T2>, pair<Range, Range2>>::range_product(const typed::aff<pair<T1, T2>, Arg2> &multi2) const
 {
   auto res = isl::multi_aff::range_product(multi2);
-  return typed::multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Anonymous>>(res);
+  return typed::multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -31505,13 +28157,6 @@ typed::multi_pw_aff<Domain> typed::multi_pw_aff<Domain>::add_constant(long v) co
 }
 
 template <typename Domain>
-typed::multi_aff<Domain> typed::multi_pw_aff<Domain>::as_multi_aff() const
-{
-  auto res = isl::multi_pw_aff::as_multi_aff();
-  return typed::multi_aff<Domain>(res);
-}
-
-template <typename Domain>
 typed::set<Domain> typed::multi_pw_aff<Domain>::as_set() const
 {
   auto res = isl::multi_pw_aff::as_set();
@@ -31571,27 +28216,6 @@ template <typename Domain>
 typed::multi_pw_aff<Domain> typed::multi_pw_aff<Domain>::gist(const typed::point<> &set) const
 {
   auto res = isl::multi_pw_aff::gist(set);
-  return typed::multi_pw_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::multi_pw_aff<Domain> typed::multi_pw_aff<Domain>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::multi_pw_aff::gist_params(set);
-  return typed::multi_pw_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::multi_pw_aff<Domain> typed::multi_pw_aff<Domain>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::multi_pw_aff::gist_params(set);
-  return typed::multi_pw_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::multi_pw_aff<Domain> typed::multi_pw_aff<Domain>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::multi_pw_aff::gist_params(set);
   return typed::multi_pw_aff<Domain>(res);
 }
 
@@ -31738,10 +28362,11 @@ typed::multi_pw_aff<pair<Domain, Range>> typed::multi_pw_aff<Domain>::product(co
 }
 
 template <typename Domain>
-typed::multi_pw_aff<pair<Domain, Anonymous>> typed::multi_pw_aff<Domain>::product(const typed::aff<Anonymous> &multi2) const
+template <typename Range>
+typed::multi_pw_aff<pair<Domain, Range>> typed::multi_pw_aff<Domain>::product(const typed::aff<Range> &multi2) const
 {
   auto res = isl::multi_pw_aff::product(multi2);
-  return typed::multi_pw_aff<pair<Domain, Anonymous>>(res);
+  return typed::multi_pw_aff<pair<Domain, Range>>(res);
 }
 
 template <typename Domain>
@@ -31753,10 +28378,11 @@ typed::multi_pw_aff<pair<Domain, Range>> typed::multi_pw_aff<Domain>::product(co
 }
 
 template <typename Domain>
-typed::multi_pw_aff<pair<Domain, Anonymous>> typed::multi_pw_aff<Domain>::product(const typed::pw_aff<Anonymous> &multi2) const
+template <typename Range>
+typed::multi_pw_aff<pair<Domain, Range>> typed::multi_pw_aff<Domain>::product(const typed::pw_aff<Range> &multi2) const
 {
   auto res = isl::multi_pw_aff::product(multi2);
-  return typed::multi_pw_aff<pair<Domain, Anonymous>>(res);
+  return typed::multi_pw_aff<pair<Domain, Range>>(res);
 }
 
 template <typename Domain>
@@ -32045,13 +28671,6 @@ typed::map<Domain, Range> typed::multi_pw_aff<Domain, Range>::as_map() const
 }
 
 template <typename Domain, typename Range>
-typed::multi_aff<Domain, Range> typed::multi_pw_aff<Domain, Range>::as_multi_aff() const
-{
-  auto res = isl::multi_pw_aff::as_multi_aff();
-  return typed::multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 typed::pw_aff<Domain, Anonymous> typed::multi_pw_aff<Domain, Range>::at(int pos) const
 {
   auto res = isl::multi_pw_aff::at(pos);
@@ -32111,27 +28730,6 @@ template <typename Domain, typename Range>
 typed::multi_pw_aff<Domain, Range> typed::multi_pw_aff<Domain, Range>::gist(const typed::point<Domain> &set) const
 {
   auto res = isl::multi_pw_aff::gist(set);
-  return typed::multi_pw_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::multi_pw_aff<Domain, Range> typed::multi_pw_aff<Domain, Range>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::multi_pw_aff::gist_params(set);
-  return typed::multi_pw_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::multi_pw_aff<Domain, Range> typed::multi_pw_aff<Domain, Range>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::multi_pw_aff::gist_params(set);
-  return typed::multi_pw_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::multi_pw_aff<Domain, Range> typed::multi_pw_aff<Domain, Range>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::multi_pw_aff::gist_params(set);
   return typed::multi_pw_aff<Domain, Range>(res);
 }
 
@@ -32298,11 +28896,11 @@ typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Range2>> typed::multi_pw_
 }
 
 template <typename Domain, typename Range>
-template <typename Domain2>
-typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Anonymous>> typed::multi_pw_aff<Domain, Range>::product(const typed::aff<Domain2, Anonymous> &multi2) const
+template <typename Domain2, typename Range2>
+typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Range2>> typed::multi_pw_aff<Domain, Range>::product(const typed::aff<Domain2, Range2> &multi2) const
 {
   auto res = isl::multi_pw_aff::product(multi2);
-  return typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Anonymous>>(res);
+  return typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -32314,11 +28912,11 @@ typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Range2>> typed::multi_pw_
 }
 
 template <typename Domain, typename Range>
-template <typename Domain2>
-typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Anonymous>> typed::multi_pw_aff<Domain, Range>::product(const typed::pw_aff<Domain2, Anonymous> &multi2) const
+template <typename Domain2, typename Range2>
+typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Range2>> typed::multi_pw_aff<Domain, Range>::product(const typed::pw_aff<Domain2, Range2> &multi2) const
 {
   auto res = isl::multi_pw_aff::product(multi2);
-  return typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Anonymous>>(res);
+  return typed::multi_pw_aff<pair<Domain, Domain2>, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -32406,10 +29004,11 @@ typed::multi_union_pw_aff<Domain, pair<Range, Range2>> typed::multi_pw_aff<Domai
 }
 
 template <typename Domain, typename Range>
-typed::multi_pw_aff<Domain, pair<Range, Anonymous>> typed::multi_pw_aff<Domain, Range>::range_product(const typed::aff<Domain, Anonymous> &multi2) const
+template <typename Range2>
+typed::multi_pw_aff<Domain, pair<Range, Range2>> typed::multi_pw_aff<Domain, Range>::range_product(const typed::aff<Domain, Range2> &multi2) const
 {
   auto res = isl::multi_pw_aff::range_product(multi2);
-  return typed::multi_pw_aff<Domain, pair<Range, Anonymous>>(res);
+  return typed::multi_pw_aff<Domain, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -32421,10 +29020,11 @@ typed::multi_pw_aff<Domain, pair<Range, Range2>> typed::multi_pw_aff<Domain, Ran
 }
 
 template <typename Domain, typename Range>
-typed::multi_pw_aff<Domain, pair<Range, Anonymous>> typed::multi_pw_aff<Domain, Range>::range_product(const typed::pw_aff<Domain, Anonymous> &multi2) const
+template <typename Range2>
+typed::multi_pw_aff<Domain, pair<Range, Range2>> typed::multi_pw_aff<Domain, Range>::range_product(const typed::pw_aff<Domain, Range2> &multi2) const
 {
   auto res = isl::multi_pw_aff::range_product(multi2);
-  return typed::multi_pw_aff<Domain, pair<Range, Anonymous>>(res);
+  return typed::multi_pw_aff<Domain, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -32705,13 +29305,6 @@ typed::map<pair<Domain2, Range2>, Range> typed::multi_pw_aff<pair<Domain2, Range
 }
 
 template <typename Domain2, typename Range2, typename Range>
-typed::multi_aff<pair<Domain2, Range2>, Range> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::as_multi_aff() const
-{
-  auto res = isl::multi_pw_aff::as_multi_aff();
-  return typed::multi_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
 typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::at(int pos) const
 {
   auto res = isl::multi_pw_aff::at(pos);
@@ -32754,13 +29347,6 @@ typed::set<pair<Domain2, Range2>> typed::multi_pw_aff<pair<Domain2, Range2>, Ran
 }
 
 template <typename Domain2, typename Range2, typename Range>
-typed::multi_pw_aff<pair<Range2, Domain2>, Range> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::domain_reverse() const
-{
-  auto res = isl::multi_pw_aff::domain_reverse();
-  return typed::multi_pw_aff<pair<Range2, Domain2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
 typed::multi_pw_aff<pair<Domain2, Range2>, Range> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::gist(const typed::set<pair<Domain2, Range2>> &set) const
 {
   auto res = isl::multi_pw_aff::gist(set);
@@ -32785,27 +29371,6 @@ template <typename Domain2, typename Range2, typename Range>
 typed::multi_pw_aff<pair<Domain2, Range2>, Range> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::gist(const typed::point<pair<Domain2, Range2>> &set) const
 {
   auto res = isl::multi_pw_aff::gist(set);
-  return typed::multi_pw_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
-typed::multi_pw_aff<pair<Domain2, Range2>, Range> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::multi_pw_aff::gist_params(set);
-  return typed::multi_pw_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
-typed::multi_pw_aff<pair<Domain2, Range2>, Range> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::multi_pw_aff::gist_params(set);
-  return typed::multi_pw_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
-typed::multi_pw_aff<pair<Domain2, Range2>, Range> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::multi_pw_aff::gist_params(set);
   return typed::multi_pw_aff<pair<Domain2, Range2>, Range>(res);
 }
 
@@ -32972,11 +29537,11 @@ typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> typed:
 }
 
 template <typename Domain2, typename Range2, typename Range>
-template <typename Arg2>
-typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Anonymous>> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::product(const typed::aff<Arg2, Anonymous> &multi2) const
+template <typename Arg2, typename Arg3>
+typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::product(const typed::aff<Arg2, Arg3> &multi2) const
 {
   auto res = isl::multi_pw_aff::product(multi2);
-  return typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Anonymous>>(res);
+  return typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>>(res);
 }
 
 template <typename Domain2, typename Range2, typename Range>
@@ -32988,11 +29553,11 @@ typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> typed:
 }
 
 template <typename Domain2, typename Range2, typename Range>
-template <typename Arg2>
-typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Anonymous>> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::product(const typed::pw_aff<Arg2, Anonymous> &multi2) const
+template <typename Arg2, typename Arg3>
+typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::product(const typed::pw_aff<Arg2, Arg3> &multi2) const
 {
   auto res = isl::multi_pw_aff::product(multi2);
-  return typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Anonymous>>(res);
+  return typed::multi_pw_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>>(res);
 }
 
 template <typename Domain2, typename Range2, typename Range>
@@ -33080,10 +29645,11 @@ typed::multi_union_pw_aff<pair<Domain2, Range2>, pair<Range, Arg2>> typed::multi
 }
 
 template <typename Domain2, typename Range2, typename Range>
-typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Anonymous>> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::range_product(const typed::aff<pair<Domain2, Range2>, Anonymous> &multi2) const
+template <typename Arg2>
+typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Arg2>> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::range_product(const typed::aff<pair<Domain2, Range2>, Arg2> &multi2) const
 {
   auto res = isl::multi_pw_aff::range_product(multi2);
-  return typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Anonymous>>(res);
+  return typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Arg2>>(res);
 }
 
 template <typename Domain2, typename Range2, typename Range>
@@ -33095,10 +29661,11 @@ typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Arg2>> typed::multi_pw_af
 }
 
 template <typename Domain2, typename Range2, typename Range>
-typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Anonymous>> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::range_product(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &multi2) const
+template <typename Arg2>
+typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Arg2>> typed::multi_pw_aff<pair<Domain2, Range2>, Range>::range_product(const typed::pw_aff<pair<Domain2, Range2>, Arg2> &multi2) const
 {
   auto res = isl::multi_pw_aff::range_product(multi2);
-  return typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Anonymous>>(res);
+  return typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Arg2>>(res);
 }
 
 template <typename Domain2, typename Range2, typename Range>
@@ -33374,27 +29941,6 @@ typed::multi_union_pw_aff<Domain> typed::multi_union_pw_aff<Domain>::gist(const 
 }
 
 template <typename Domain>
-typed::multi_union_pw_aff<Domain> typed::multi_union_pw_aff<Domain>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::multi_union_pw_aff::gist_params(context);
-  return typed::multi_union_pw_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::multi_union_pw_aff<Domain> typed::multi_union_pw_aff<Domain>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::multi_union_pw_aff::gist_params(context);
-  return typed::multi_union_pw_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::multi_union_pw_aff<Domain> typed::multi_union_pw_aff<Domain>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::multi_union_pw_aff::gist_params(context);
-  return typed::multi_union_pw_aff<Domain>(res);
-}
-
-template <typename Domain>
 typed::multi_union_pw_aff<Domain> typed::multi_union_pw_aff<Domain>::intersect_params(const typed::set<> &params) const
 {
   auto res = isl::multi_union_pw_aff::intersect_params(params);
@@ -33645,27 +30191,6 @@ typed::multi_union_pw_aff<Domain, Range> typed::multi_union_pw_aff<Domain, Range
 }
 
 template <typename Domain, typename Range>
-typed::multi_union_pw_aff<Domain, Range> typed::multi_union_pw_aff<Domain, Range>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::multi_union_pw_aff::gist_params(context);
-  return typed::multi_union_pw_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::multi_union_pw_aff<Domain, Range> typed::multi_union_pw_aff<Domain, Range>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::multi_union_pw_aff::gist_params(context);
-  return typed::multi_union_pw_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::multi_union_pw_aff<Domain, Range> typed::multi_union_pw_aff<Domain, Range>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::multi_union_pw_aff::gist_params(context);
-  return typed::multi_union_pw_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 typed::multi_union_pw_aff<Domain, Range> typed::multi_union_pw_aff<Domain, Range>::intersect_domain(const typed::union_set<Domain> &uset) const
 {
   auto res = isl::multi_union_pw_aff::intersect_domain(uset);
@@ -33805,10 +30330,11 @@ typed::multi_union_pw_aff<Domain, pair<Range, Range2>> typed::multi_union_pw_aff
 }
 
 template <typename Domain, typename Range>
-typed::multi_union_pw_aff<Domain, pair<Range, Anonymous>> typed::multi_union_pw_aff<Domain, Range>::range_product(const typed::union_pw_aff<Domain, Anonymous> &multi2) const
+template <typename Range2>
+typed::multi_union_pw_aff<Domain, pair<Range, Range2>> typed::multi_union_pw_aff<Domain, Range>::range_product(const typed::union_pw_aff<Domain, Range2> &multi2) const
 {
   auto res = isl::multi_union_pw_aff::range_product(multi2);
-  return typed::multi_union_pw_aff<Domain, pair<Range, Anonymous>>(res);
+  return typed::multi_union_pw_aff<Domain, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -34099,48 +30625,36 @@ typed::basic_set<> typed::point<>::detect_equalities() const
   return typed::basic_set<>(res);
 }
 
-typed::set<> typed::point<>::drop_unused_params() const
-{
-  auto res = isl::point::drop_unused_params();
-  return typed::set<>(res);
-}
-
 bool typed::point<>::every_set(const std::function<bool(typed::set<>)> &test) const
 {
-  auto lambda_test = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return test(typed::set<>(arg0));
   };
-  return isl::point::every_set(lambda_test);
-}
-
-typed::set<> typed::point<>::extract_set(const typed::space<> &space) const
-{
-  auto res = isl::point::extract_set(space);
-  return typed::set<>(res);
+  return isl::point::every_set(lambda);
 }
 
 void typed::point<>::foreach_basic_set(const std::function<void(typed::basic_set<>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_set arg0) {
+  auto lambda = [&] (isl::basic_set arg0) {
     return fn(typed::basic_set<>(arg0));
   };
-  return isl::point::foreach_basic_set(lambda_fn);
+  return isl::point::foreach_basic_set(lambda);
 }
 
 void typed::point<>::foreach_point(const std::function<void(typed::point<>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::point arg0) {
+  auto lambda = [&] (isl::point arg0) {
     return fn(typed::point<>(arg0));
   };
-  return isl::point::foreach_point(lambda_fn);
+  return isl::point::foreach_point(lambda);
 }
 
 void typed::point<>::foreach_set(const std::function<void(typed::set<>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return fn(typed::set<>(arg0));
   };
-  return isl::point::foreach_set(lambda_fn);
+  return isl::point::foreach_set(lambda);
 }
 
 typed::basic_set<> typed::point<>::gist(const typed::basic_set<> &context) const
@@ -34161,12 +30675,6 @@ typed::union_set<> typed::point<>::gist(const typed::union_set<> &context) const
   return typed::union_set<>(res);
 }
 
-typed::pw_aff<Anonymous> typed::point<>::indicator_function() const
-{
-  auto res = isl::point::indicator_function();
-  return typed::pw_aff<Anonymous>(res);
-}
-
 typed::basic_set<> typed::point<>::intersect(const typed::basic_set<> &bset2) const
 {
   auto res = isl::point::intersect(bset2);
@@ -34183,18 +30691,6 @@ typed::union_set<> typed::point<>::intersect(const typed::union_set<> &uset2) co
 {
   auto res = isl::point::intersect(uset2);
   return typed::union_set<>(res);
-}
-
-typed::pw_aff<Anonymous> typed::point<>::param_pw_aff_on_domain(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::point::param_pw_aff_on_domain(id);
-  return typed::pw_aff<Anonymous>(res);
-}
-
-typed::pw_aff<Anonymous> typed::point<>::param_pw_aff_on_domain(const std::string &id) const
-{
-  auto res = isl::point::param_pw_aff_on_domain(id);
-  return typed::pw_aff<Anonymous>(res);
 }
 
 typed::set<> typed::point<>::project_out_all_params() const
@@ -34219,31 +30715,6 @@ typed::set<> typed::point<>::project_out_param(const typed::id_list<Anonymous> &
 {
   auto res = isl::point::project_out_param(list);
   return typed::set<>(res);
-}
-
-typed::pw_aff<Anonymous> typed::point<>::pw_aff_on_domain(const typed::val<Anonymous> &v) const
-{
-  auto res = isl::point::pw_aff_on_domain(v);
-  return typed::pw_aff<Anonymous>(res);
-}
-
-typed::pw_aff<Anonymous> typed::point<>::pw_aff_on_domain(long v) const
-{
-  auto res = isl::point::pw_aff_on_domain(v);
-  return typed::pw_aff<Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff<Domain> typed::point<>::pw_multi_aff_on_domain(const typed::multi_val<Domain> &mv) const
-{
-  auto res = isl::point::pw_multi_aff_on_domain(mv);
-  return typed::pw_multi_aff<Domain>(res);
-}
-
-typed::set_list<> typed::point<>::set_list() const
-{
-  auto res = isl::point::set_list();
-  return typed::set_list<>(res);
 }
 
 typed::space<> typed::point<>::space() const
@@ -34361,53 +30832,39 @@ typed::basic_set<Domain> typed::point<Domain>::detect_equalities() const
 }
 
 template <typename Domain>
-typed::set<Domain> typed::point<Domain>::drop_unused_params() const
-{
-  auto res = isl::point::drop_unused_params();
-  return typed::set<Domain>(res);
-}
-
-template <typename Domain>
 bool typed::point<Domain>::every_set(const std::function<bool(typed::set<Domain>)> &test) const
 {
-  auto lambda_test = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return test(typed::set<Domain>(arg0));
   };
-  return isl::point::every_set(lambda_test);
-}
-
-template <typename Domain>
-typed::set<Domain> typed::point<Domain>::extract_set(const typed::space<Domain> &space) const
-{
-  auto res = isl::point::extract_set(space);
-  return typed::set<Domain>(res);
+  return isl::point::every_set(lambda);
 }
 
 template <typename Domain>
 void typed::point<Domain>::foreach_basic_set(const std::function<void(typed::basic_set<Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_set arg0) {
+  auto lambda = [&] (isl::basic_set arg0) {
     return fn(typed::basic_set<Domain>(arg0));
   };
-  return isl::point::foreach_basic_set(lambda_fn);
+  return isl::point::foreach_basic_set(lambda);
 }
 
 template <typename Domain>
 void typed::point<Domain>::foreach_point(const std::function<void(typed::point<Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::point arg0) {
+  auto lambda = [&] (isl::point arg0) {
     return fn(typed::point<Domain>(arg0));
   };
-  return isl::point::foreach_point(lambda_fn);
+  return isl::point::foreach_point(lambda);
 }
 
 template <typename Domain>
 void typed::point<Domain>::foreach_set(const std::function<void(typed::set<Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return fn(typed::set<Domain>(arg0));
   };
-  return isl::point::foreach_set(lambda_fn);
+  return isl::point::foreach_set(lambda);
 }
 
 template <typename Domain>
@@ -34432,24 +30889,10 @@ typed::union_set<Domain> typed::point<Domain>::gist(const typed::union_set<Domai
 }
 
 template <typename Domain>
-typed::set<Domain> typed::point<Domain>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::point::gist_params(context);
-  return typed::set<Domain>(res);
-}
-
-template <typename Domain>
 typed::map<Domain, Domain> typed::point<Domain>::identity() const
 {
   auto res = isl::point::identity();
   return typed::map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::point<Domain>::indicator_function() const
-{
-  auto res = isl::point::indicator_function();
-  return typed::pw_aff<Domain, Anonymous>(res);
 }
 
 template <typename Domain>
@@ -34493,13 +30936,6 @@ typed::set<Domain> typed::point<Domain>::intersect_params(const typed::set<> &pa
 {
   auto res = isl::point::intersect_params(params);
   return typed::set<Domain>(res);
-}
-
-template <typename Domain>
-typed::fixed_box<Domain> typed::point<Domain>::lattice_tile() const
-{
-  auto res = isl::point::lattice_tile();
-  return typed::fixed_box<Domain>(res);
 }
 
 template <typename Domain>
@@ -34563,20 +30999,6 @@ typed::multi_val<Domain> typed::point<Domain>::multi_val() const
 {
   auto res = isl::point::multi_val();
   return typed::multi_val<Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::point<Domain>::param_pw_aff_on_domain(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::point::param_pw_aff_on_domain(id);
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::point<Domain>::param_pw_aff_on_domain(const std::string &id) const
-{
-  auto res = isl::point::param_pw_aff_on_domain(id);
-  return typed::pw_aff<Domain, Anonymous>(res);
 }
 
 template <typename Domain>
@@ -34662,32 +31084,11 @@ typed::set<Domain> typed::point<Domain>::project_out_param(const typed::id_list<
 }
 
 template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::point<Domain>::pw_aff_on_domain(const typed::val<Anonymous> &v) const
-{
-  auto res = isl::point::pw_aff_on_domain(v);
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::point<Domain>::pw_aff_on_domain(long v) const
-{
-  auto res = isl::point::pw_aff_on_domain(v);
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
 template <typename Range>
 typed::pw_multi_aff<Domain, Range> typed::point<Domain>::pw_multi_aff_on_domain(const typed::multi_val<Range> &mv) const
 {
   auto res = isl::point::pw_multi_aff_on_domain(mv);
   return typed::pw_multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain>
-typed::set_list<Domain> typed::point<Domain>::set_list() const
-{
-  auto res = isl::point::set_list();
-  return typed::set_list<Domain>(res);
 }
 
 template <typename Domain>
@@ -34842,53 +31243,39 @@ typed::basic_set<pair<Domain, Range>> typed::point<pair<Domain, Range>>::detect_
 }
 
 template <typename Domain, typename Range>
-typed::set<pair<Domain, Range>> typed::point<pair<Domain, Range>>::drop_unused_params() const
-{
-  auto res = isl::point::drop_unused_params();
-  return typed::set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
 bool typed::point<pair<Domain, Range>>::every_set(const std::function<bool(typed::set<pair<Domain, Range>>)> &test) const
 {
-  auto lambda_test = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return test(typed::set<pair<Domain, Range>>(arg0));
   };
-  return isl::point::every_set(lambda_test);
-}
-
-template <typename Domain, typename Range>
-typed::set<pair<Domain, Range>> typed::point<pair<Domain, Range>>::extract_set(const typed::space<pair<Domain, Range>> &space) const
-{
-  auto res = isl::point::extract_set(space);
-  return typed::set<pair<Domain, Range>>(res);
+  return isl::point::every_set(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::point<pair<Domain, Range>>::foreach_basic_set(const std::function<void(typed::basic_set<pair<Domain, Range>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_set arg0) {
+  auto lambda = [&] (isl::basic_set arg0) {
     return fn(typed::basic_set<pair<Domain, Range>>(arg0));
   };
-  return isl::point::foreach_basic_set(lambda_fn);
+  return isl::point::foreach_basic_set(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::point<pair<Domain, Range>>::foreach_point(const std::function<void(typed::point<pair<Domain, Range>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::point arg0) {
+  auto lambda = [&] (isl::point arg0) {
     return fn(typed::point<pair<Domain, Range>>(arg0));
   };
-  return isl::point::foreach_point(lambda_fn);
+  return isl::point::foreach_point(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::point<pair<Domain, Range>>::foreach_set(const std::function<void(typed::set<pair<Domain, Range>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return fn(typed::set<pair<Domain, Range>>(arg0));
   };
-  return isl::point::foreach_set(lambda_fn);
+  return isl::point::foreach_set(lambda);
 }
 
 template <typename Domain, typename Range>
@@ -34913,24 +31300,10 @@ typed::union_set<pair<Domain, Range>> typed::point<pair<Domain, Range>>::gist(co
 }
 
 template <typename Domain, typename Range>
-typed::set<pair<Domain, Range>> typed::point<pair<Domain, Range>>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::point::gist_params(context);
-  return typed::set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
 typed::map<pair<Domain, Range>, pair<Domain, Range>> typed::point<pair<Domain, Range>>::identity() const
 {
   auto res = isl::point::identity();
   return typed::map<pair<Domain, Range>, pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::point<pair<Domain, Range>>::indicator_function() const
-{
-  auto res = isl::point::indicator_function();
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
 }
 
 template <typename Domain, typename Range>
@@ -34974,13 +31347,6 @@ typed::set<pair<Domain, Range>> typed::point<pair<Domain, Range>>::intersect_par
 {
   auto res = isl::point::intersect_params(params);
   return typed::set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::fixed_box<pair<Domain, Range>> typed::point<pair<Domain, Range>>::lattice_tile() const
-{
-  auto res = isl::point::lattice_tile();
-  return typed::fixed_box<pair<Domain, Range>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -35044,20 +31410,6 @@ typed::multi_val<pair<Domain, Range>> typed::point<pair<Domain, Range>>::multi_v
 {
   auto res = isl::point::multi_val();
   return typed::multi_val<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::point<pair<Domain, Range>>::param_pw_aff_on_domain(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::point::param_pw_aff_on_domain(id);
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::point<pair<Domain, Range>>::param_pw_aff_on_domain(const std::string &id) const
-{
-  auto res = isl::point::param_pw_aff_on_domain(id);
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
 }
 
 template <typename Domain, typename Range>
@@ -35143,32 +31495,11 @@ typed::set<pair<Domain, Range>> typed::point<pair<Domain, Range>>::project_out_p
 }
 
 template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::point<pair<Domain, Range>>::pw_aff_on_domain(const typed::val<Anonymous> &v) const
-{
-  auto res = isl::point::pw_aff_on_domain(v);
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::point<pair<Domain, Range>>::pw_aff_on_domain(long v) const
-{
-  auto res = isl::point::pw_aff_on_domain(v);
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
-}
-
-template <typename Domain, typename Range>
 template <typename Arg2>
 typed::pw_multi_aff<pair<Domain, Range>, Arg2> typed::point<pair<Domain, Range>>::pw_multi_aff_on_domain(const typed::multi_val<Arg2> &mv) const
 {
   auto res = isl::point::pw_multi_aff_on_domain(mv);
   return typed::pw_multi_aff<pair<Domain, Range>, Arg2>(res);
-}
-
-template <typename Domain, typename Range>
-typed::set_list<pair<Domain, Range>> typed::point<pair<Domain, Range>>::set_list() const
-{
-  auto res = isl::point::set_list();
-  return typed::set_list<pair<Domain, Range>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -35268,13 +31599,6 @@ typed::set<pair<Domain, Range>> typed::point<pair<Domain, Range>>::upper_bound(c
 {
   auto res = isl::point::upper_bound(upper);
   return typed::set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::set<pair<Range, Domain>> typed::point<pair<Domain, Range>>::wrapped_reverse() const
-{
-  auto res = isl::point::wrapped_reverse();
-  return typed::set<pair<Range, Domain>>(res);
 }
 
 typed::pw_aff<Anonymous>::pw_aff(const typed::aff<Anonymous> &aff)
@@ -35408,21 +31732,9 @@ typed::set<> typed::pw_aff<Anonymous>::bind(const std::string &id) const
   return typed::set<>(res);
 }
 
-typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::ceil() const
-{
-  auto res = isl::pw_aff::ceil();
-  return typed::pw_aff<Anonymous>(res);
-}
-
 typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::coalesce() const
 {
   auto res = isl::pw_aff::coalesce();
-  return typed::pw_aff<Anonymous>(res);
-}
-
-typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::cond(const typed::pw_aff<Anonymous> &pwaff_true, const typed::pw_aff<Anonymous> &pwaff_false) const
-{
-  auto res = isl::pw_aff::cond(pwaff_true, pwaff_false);
   return typed::pw_aff<Anonymous>(res);
 }
 
@@ -35430,18 +31742,6 @@ typed::set<> typed::pw_aff<Anonymous>::domain() const
 {
   auto res = isl::pw_aff::domain();
   return typed::set<>(res);
-}
-
-typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::drop_unused_params() const
-{
-  auto res = isl::pw_aff::drop_unused_params();
-  return typed::pw_aff<Anonymous>(res);
-}
-
-typed::pw_multi_aff<Anonymous> typed::pw_aff<Anonymous>::extract_pw_multi_aff(const typed::space<Anonymous> &space) const
-{
-  auto res = isl::pw_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Anonymous>(res);
 }
 
 typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::floor() const
@@ -35471,24 +31771,6 @@ typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::gist(const typed::basic_set<>
 typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::gist(const typed::point<> &context) const
 {
   auto res = isl::pw_aff::gist(context);
-  return typed::pw_aff<Anonymous>(res);
-}
-
-typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::pw_aff::gist_params(context);
-  return typed::pw_aff<Anonymous>(res);
-}
-
-typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::pw_aff::gist_params(context);
-  return typed::pw_aff<Anonymous>(res);
-}
-
-typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::pw_aff::gist_params(context);
   return typed::pw_aff<Anonymous>(res);
 }
 
@@ -35553,12 +31835,6 @@ typed::multi_val<Anonymous> typed::pw_aff<Anonymous>::max_multi_val() const
   return typed::multi_val<Anonymous>(res);
 }
 
-typed::val<Anonymous> typed::pw_aff<Anonymous>::max_val() const
-{
-  auto res = isl::pw_aff::max_val();
-  return typed::val<Anonymous>(res);
-}
-
 typed::multi_pw_aff<Anonymous> typed::pw_aff<Anonymous>::min(const typed::multi_pw_aff<Anonymous> &multi2) const
 {
   auto res = isl::pw_aff::min(multi2);
@@ -35583,12 +31859,6 @@ typed::multi_val<Anonymous> typed::pw_aff<Anonymous>::min_multi_val() const
   return typed::multi_val<Anonymous>(res);
 }
 
-typed::val<Anonymous> typed::pw_aff<Anonymous>::min_val() const
-{
-  auto res = isl::pw_aff::min_val();
-  return typed::val<Anonymous>(res);
-}
-
 typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::mod(const typed::val<Anonymous> &mod) const
 {
   auto res = isl::pw_aff::mod(mod);
@@ -35607,12 +31877,6 @@ typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::neg() const
   return typed::pw_aff<Anonymous>(res);
 }
 
-typed::set<> typed::pw_aff<Anonymous>::params() const
-{
-  auto res = isl::pw_aff::params();
-  return typed::set<>(res);
-}
-
 template <typename Range>
 typed::multi_pw_aff<pair<Anonymous, Range>> typed::pw_aff<Anonymous>::product(const typed::multi_pw_aff<Range> &multi2) const
 {
@@ -35627,10 +31891,10 @@ typed::pw_multi_aff<pair<Anonymous, Range>> typed::pw_aff<Anonymous>::product(co
   return typed::pw_multi_aff<pair<Anonymous, Range>>(res);
 }
 
-typed::pw_multi_aff_list<Anonymous> typed::pw_aff<Anonymous>::pw_multi_aff_list() const
+typed::multi_pw_aff<Anonymous> typed::pw_aff<Anonymous>::scale(const typed::multi_val<Anonymous> &mv) const
 {
-  auto res = isl::pw_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Anonymous>(res);
+  auto res = isl::pw_aff::scale(mv);
+  return typed::multi_pw_aff<Anonymous>(res);
 }
 
 typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::scale(const typed::val<Anonymous> &v) const
@@ -35645,10 +31909,10 @@ typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::scale(long v) const
   return typed::pw_aff<Anonymous>(res);
 }
 
-typed::pw_multi_aff<Anonymous> typed::pw_aff<Anonymous>::scale(const typed::multi_val<Anonymous> &mv) const
+typed::multi_pw_aff<Anonymous> typed::pw_aff<Anonymous>::scale_down(const typed::multi_val<Anonymous> &mv) const
 {
-  auto res = isl::pw_aff::scale(mv);
-  return typed::pw_multi_aff<Anonymous>(res);
+  auto res = isl::pw_aff::scale_down(mv);
+  return typed::multi_pw_aff<Anonymous>(res);
 }
 
 typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::scale_down(const typed::val<Anonymous> &f) const
@@ -35661,12 +31925,6 @@ typed::pw_aff<Anonymous> typed::pw_aff<Anonymous>::scale_down(long f) const
 {
   auto res = isl::pw_aff::scale_down(f);
   return typed::pw_aff<Anonymous>(res);
-}
-
-typed::pw_multi_aff<Anonymous> typed::pw_aff<Anonymous>::scale_down(const typed::multi_val<Anonymous> &mv) const
-{
-  auto res = isl::pw_aff::scale_down(mv);
-  return typed::pw_multi_aff<Anonymous>(res);
 }
 
 typed::multi_pw_aff<Anonymous> typed::pw_aff<Anonymous>::set_at(int pos, const typed::pw_aff<Anonymous> &el) const
@@ -35978,23 +32236,9 @@ typed::pw_aff<Anonymous> typed::pw_aff<Domain, Anonymous>::bind_domain(const typ
 }
 
 template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::ceil() const
-{
-  auto res = isl::pw_aff::ceil();
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
 typed::pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::coalesce() const
 {
   auto res = isl::pw_aff::coalesce();
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::cond(const typed::pw_aff<Domain, Anonymous> &pwaff_true, const typed::pw_aff<Domain, Anonymous> &pwaff_false) const
-{
-  auto res = isl::pw_aff::cond(pwaff_true, pwaff_false);
   return typed::pw_aff<Domain, Anonymous>(res);
 }
 
@@ -36003,20 +32247,6 @@ typed::set<Domain> typed::pw_aff<Domain, Anonymous>::domain() const
 {
   auto res = isl::pw_aff::domain();
   return typed::set<Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::drop_unused_params() const
-{
-  auto res = isl::pw_aff::drop_unused_params();
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::extract_pw_multi_aff(const typed::space<Domain, Anonymous> &space) const
-{
-  auto res = isl::pw_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Domain, Anonymous>(res);
 }
 
 template <typename Domain>
@@ -36065,27 +32295,6 @@ template <typename Domain>
 typed::pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::gist(const typed::point<Domain> &context) const
 {
   auto res = isl::pw_aff::gist(context);
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::pw_aff::gist_params(context);
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::pw_aff::gist_params(context);
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::pw_aff::gist_params(context);
   return typed::pw_aff<Domain, Anonymous>(res);
 }
 
@@ -36230,13 +32439,6 @@ typed::multi_val<Anonymous> typed::pw_aff<Domain, Anonymous>::max_multi_val() co
 }
 
 template <typename Domain>
-typed::val<Anonymous> typed::pw_aff<Domain, Anonymous>::max_val() const
-{
-  auto res = isl::pw_aff::max_val();
-  return typed::val<Anonymous>(res);
-}
-
-template <typename Domain>
 typed::multi_pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::min(const typed::multi_pw_aff<Domain, Anonymous> &multi2) const
 {
   auto res = isl::pw_aff::min(multi2);
@@ -36265,13 +32467,6 @@ typed::multi_val<Anonymous> typed::pw_aff<Domain, Anonymous>::min_multi_val() co
 }
 
 template <typename Domain>
-typed::val<Anonymous> typed::pw_aff<Domain, Anonymous>::min_val() const
-{
-  auto res = isl::pw_aff::min_val();
-  return typed::val<Anonymous>(res);
-}
-
-template <typename Domain>
 typed::pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::mod(const typed::val<Anonymous> &mod) const
 {
   auto res = isl::pw_aff::mod(mod);
@@ -36290,13 +32485,6 @@ typed::pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::neg() const
 {
   auto res = isl::pw_aff::neg();
   return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::set<> typed::pw_aff<Domain, Anonymous>::params() const
-{
-  auto res = isl::pw_aff::params();
-  return typed::set<>(res);
 }
 
 template <typename Domain>
@@ -36376,13 +32564,6 @@ typed::union_pw_aff<Anonymous> typed::pw_aff<Domain, Anonymous>::pullback(const 
 }
 
 template <typename Domain>
-typed::pw_multi_aff_list<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::pw_multi_aff_list() const
-{
-  auto res = isl::pw_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
 template <typename Range2>
 typed::multi_pw_aff<Domain, pair<Anonymous, Range2>> typed::pw_aff<Domain, Anonymous>::range_product(const typed::multi_pw_aff<Domain, Range2> &multi2) const
 {
@@ -36415,6 +32596,13 @@ typed::union_pw_multi_aff<Domain, pair<Anonymous, Range2>> typed::pw_aff<Domain,
 }
 
 template <typename Domain>
+typed::multi_pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::scale(const typed::multi_val<Anonymous> &mv) const
+{
+  auto res = isl::pw_aff::scale(mv);
+  return typed::multi_pw_aff<Domain, Anonymous>(res);
+}
+
+template <typename Domain>
 typed::pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::scale(const typed::val<Anonymous> &v) const
 {
   auto res = isl::pw_aff::scale(v);
@@ -36429,10 +32617,10 @@ typed::pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::scale(long v)
 }
 
 template <typename Domain>
-typed::pw_multi_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::scale(const typed::multi_val<Anonymous> &mv) const
+typed::multi_pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::scale_down(const typed::multi_val<Anonymous> &mv) const
 {
-  auto res = isl::pw_aff::scale(mv);
-  return typed::pw_multi_aff<Domain, Anonymous>(res);
+  auto res = isl::pw_aff::scale_down(mv);
+  return typed::multi_pw_aff<Domain, Anonymous>(res);
 }
 
 template <typename Domain>
@@ -36447,13 +32635,6 @@ typed::pw_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::scale_down(lo
 {
   auto res = isl::pw_aff::scale_down(f);
   return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff<Domain, Anonymous> typed::pw_aff<Domain, Anonymous>::scale_down(const typed::multi_val<Anonymous> &mv) const
-{
-  auto res = isl::pw_aff::scale_down(mv);
-  return typed::pw_multi_aff<Domain, Anonymous>(res);
 }
 
 template <typename Domain>
@@ -36822,23 +33003,9 @@ typed::pw_aff<Range2, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>
 }
 
 template <typename Domain2, typename Range2>
-typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::ceil() const
-{
-  auto res = isl::pw_aff::ceil();
-  return typed::pw_aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
 typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::coalesce() const
 {
   auto res = isl::pw_aff::coalesce();
-  return typed::pw_aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::cond(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff_true, const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pwaff_false) const
-{
-  auto res = isl::pw_aff::cond(pwaff_true, pwaff_false);
   return typed::pw_aff<pair<Domain2, Range2>, Anonymous>(res);
 }
 
@@ -36847,27 +33014,6 @@ typed::set<pair<Domain2, Range2>> typed::pw_aff<pair<Domain2, Range2>, Anonymous
 {
   auto res = isl::pw_aff::domain();
   return typed::set<pair<Domain2, Range2>>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::pw_aff<pair<Range2, Domain2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::domain_reverse() const
-{
-  auto res = isl::pw_aff::domain_reverse();
-  return typed::pw_aff<pair<Range2, Domain2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::drop_unused_params() const
-{
-  auto res = isl::pw_aff::drop_unused_params();
-  return typed::pw_aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::extract_pw_multi_aff(const typed::space<pair<Domain2, Range2>, Anonymous> &space) const
-{
-  auto res = isl::pw_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous>(res);
 }
 
 template <typename Domain2, typename Range2>
@@ -36916,27 +33062,6 @@ template <typename Domain2, typename Range2>
 typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::gist(const typed::point<pair<Domain2, Range2>> &context) const
 {
   auto res = isl::pw_aff::gist(context);
-  return typed::pw_aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::pw_aff::gist_params(context);
-  return typed::pw_aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::pw_aff::gist_params(context);
-  return typed::pw_aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::pw_aff::gist_params(context);
   return typed::pw_aff<pair<Domain2, Range2>, Anonymous>(res);
 }
 
@@ -36994,13 +33119,6 @@ typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Rang
 {
   auto res = isl::pw_aff::intersect_domain(set);
   return typed::pw_aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::union_pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::intersect_domain_wrapped_domain(const typed::union_set<Domain2> &uset) const
-{
-  auto res = isl::pw_aff::intersect_domain_wrapped_domain(uset);
-  return typed::union_pw_aff<pair<Domain2, Range2>, Anonymous>(res);
 }
 
 template <typename Domain2, typename Range2>
@@ -37088,13 +33206,6 @@ typed::multi_val<Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::max
 }
 
 template <typename Domain2, typename Range2>
-typed::val<Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::max_val() const
-{
-  auto res = isl::pw_aff::max_val();
-  return typed::val<Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
 typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::min(const typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> &multi2) const
 {
   auto res = isl::pw_aff::min(multi2);
@@ -37123,13 +33234,6 @@ typed::multi_val<Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::min
 }
 
 template <typename Domain2, typename Range2>
-typed::val<Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::min_val() const
-{
-  auto res = isl::pw_aff::min_val();
-  return typed::val<Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
 typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::mod(const typed::val<Anonymous> &mod) const
 {
   auto res = isl::pw_aff::mod(mod);
@@ -37148,13 +33252,6 @@ typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Rang
 {
   auto res = isl::pw_aff::neg();
   return typed::pw_aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::set<> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::params() const
-{
-  auto res = isl::pw_aff::params();
-  return typed::set<>(res);
 }
 
 template <typename Domain2, typename Range2>
@@ -37250,13 +33347,6 @@ typed::union_pw_aff<Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::
 }
 
 template <typename Domain2, typename Range2>
-typed::pw_multi_aff_list<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::pw_multi_aff_list() const
-{
-  auto res = isl::pw_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
 template <typename Arg1>
 typed::multi_pw_aff<pair<Domain2, Range2>, pair<Anonymous, Arg1>> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::range_product(const typed::multi_pw_aff<pair<Domain2, Range2>, Arg1> &multi2) const
 {
@@ -37289,6 +33379,13 @@ typed::union_pw_multi_aff<pair<Domain2, Range2>, pair<Anonymous, Arg1>> typed::p
 }
 
 template <typename Domain2, typename Range2>
+typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::scale(const typed::multi_val<Anonymous> &mv) const
+{
+  auto res = isl::pw_aff::scale(mv);
+  return typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous>(res);
+}
+
+template <typename Domain2, typename Range2>
 typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::scale(const typed::val<Anonymous> &v) const
 {
   auto res = isl::pw_aff::scale(v);
@@ -37303,10 +33400,10 @@ typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Rang
 }
 
 template <typename Domain2, typename Range2>
-typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::scale(const typed::multi_val<Anonymous> &mv) const
+typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::scale_down(const typed::multi_val<Anonymous> &mv) const
 {
-  auto res = isl::pw_aff::scale(mv);
-  return typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous>(res);
+  auto res = isl::pw_aff::scale_down(mv);
+  return typed::multi_pw_aff<pair<Domain2, Range2>, Anonymous>(res);
 }
 
 template <typename Domain2, typename Range2>
@@ -37321,13 +33418,6 @@ typed::pw_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Rang
 {
   auto res = isl::pw_aff::scale_down(f);
   return typed::pw_aff<pair<Domain2, Range2>, Anonymous>(res);
-}
-
-template <typename Domain2, typename Range2>
-typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous> typed::pw_aff<pair<Domain2, Range2>, Anonymous>::scale_down(const typed::multi_val<Anonymous> &mv) const
-{
-  auto res = isl::pw_aff::scale_down(mv);
-  return typed::pw_multi_aff<pair<Domain2, Range2>, Anonymous>(res);
 }
 
 template <typename Domain2, typename Range2>
@@ -37531,11 +33621,6 @@ typed::pw_aff_list<Anonymous>::pw_aff_list(const typed::pw_aff<Anonymous> &el)
 {
 }
 
-typed::pw_aff_list<Anonymous>::pw_aff_list(const isl::ctx &ctx, const std::string &str)
-  : isl::pw_aff_list(ctx, str)
-{
-}
-
 typed::pw_aff_list<Anonymous> typed::pw_aff_list<Anonymous>::add(const typed::pw_aff<Anonymous> &el) const
 {
   auto res = isl::pw_aff_list::add(el);
@@ -37562,27 +33647,10 @@ typed::pw_aff_list<Anonymous> typed::pw_aff_list<Anonymous>::drop(unsigned int f
 
 void typed::pw_aff_list<Anonymous>::foreach(const std::function<void(typed::pw_aff<Anonymous>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::pw_aff arg0) {
+  auto lambda = [&] (isl::pw_aff arg0) {
     return fn(typed::pw_aff<Anonymous>(arg0));
   };
-  return isl::pw_aff_list::foreach(lambda_fn);
-}
-
-void typed::pw_aff_list<Anonymous>::foreach_scc(const std::function<bool(typed::pw_aff<Anonymous>, typed::pw_aff<Anonymous>)> &follows, const std::function<void(typed::pw_aff_list<Anonymous>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::pw_aff arg0, isl::pw_aff arg1) {
-    return follows(typed::pw_aff<Anonymous>(arg0), typed::pw_aff<Anonymous>(arg1));
-  };
-  auto lambda_fn = [&] (isl::pw_aff_list arg0) {
-    return fn(typed::pw_aff_list<Anonymous>(arg0));
-  };
-  return isl::pw_aff_list::foreach_scc(lambda_follows, lambda_fn);
-}
-
-typed::pw_aff_list<Anonymous> typed::pw_aff_list<Anonymous>::set_at(int index, const typed::pw_aff<Anonymous> &el) const
-{
-  auto res = isl::pw_aff_list::set_at(index, el);
-  return typed::pw_aff_list<Anonymous>(res);
+  return isl::pw_aff_list::foreach(lambda);
 }
 
 template <typename Domain>
@@ -37594,12 +33662,6 @@ typed::pw_aff_list<Domain, Anonymous>::pw_aff_list(const isl::ctx &ctx, int n)
 template <typename Domain>
 typed::pw_aff_list<Domain, Anonymous>::pw_aff_list(const typed::pw_aff<Domain, Anonymous> &el)
   : isl::pw_aff_list(el)
-{
-}
-
-template <typename Domain>
-typed::pw_aff_list<Domain, Anonymous>::pw_aff_list(const isl::ctx &ctx, const std::string &str)
-  : isl::pw_aff_list(ctx, str)
 {
 }
 
@@ -37634,29 +33696,10 @@ typed::pw_aff_list<Domain, Anonymous> typed::pw_aff_list<Domain, Anonymous>::dro
 template <typename Domain>
 void typed::pw_aff_list<Domain, Anonymous>::foreach(const std::function<void(typed::pw_aff<Domain, Anonymous>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::pw_aff arg0) {
+  auto lambda = [&] (isl::pw_aff arg0) {
     return fn(typed::pw_aff<Domain, Anonymous>(arg0));
   };
-  return isl::pw_aff_list::foreach(lambda_fn);
-}
-
-template <typename Domain>
-void typed::pw_aff_list<Domain, Anonymous>::foreach_scc(const std::function<bool(typed::pw_aff<Domain, Anonymous>, typed::pw_aff<Domain, Anonymous>)> &follows, const std::function<void(typed::pw_aff_list<Domain, Anonymous>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::pw_aff arg0, isl::pw_aff arg1) {
-    return follows(typed::pw_aff<Domain, Anonymous>(arg0), typed::pw_aff<Domain, Anonymous>(arg1));
-  };
-  auto lambda_fn = [&] (isl::pw_aff_list arg0) {
-    return fn(typed::pw_aff_list<Domain, Anonymous>(arg0));
-  };
-  return isl::pw_aff_list::foreach_scc(lambda_follows, lambda_fn);
-}
-
-template <typename Domain>
-typed::pw_aff_list<Domain, Anonymous> typed::pw_aff_list<Domain, Anonymous>::set_at(int index, const typed::pw_aff<Domain, Anonymous> &el) const
-{
-  auto res = isl::pw_aff_list::set_at(index, el);
-  return typed::pw_aff_list<Domain, Anonymous>(res);
+  return isl::pw_aff_list::foreach(lambda);
 }
 
 template <typename Domain>
@@ -37805,20 +33848,6 @@ typed::set<> typed::pw_multi_aff<Domain>::domain() const
 }
 
 template <typename Domain>
-typed::pw_multi_aff<Domain> typed::pw_multi_aff<Domain>::drop_unused_params() const
-{
-  auto res = isl::pw_multi_aff::drop_unused_params();
-  return typed::pw_multi_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff<Domain> typed::pw_multi_aff<Domain>::extract_pw_multi_aff(const typed::space<Domain> &space) const
-{
-  auto res = isl::pw_multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Domain>(res);
-}
-
-template <typename Domain>
 typed::pw_multi_aff<Domain> typed::pw_multi_aff<Domain>::gist(const typed::set<> &set) const
 {
   auto res = isl::pw_multi_aff::gist(set);
@@ -37843,27 +33872,6 @@ template <typename Domain>
 typed::pw_multi_aff<Domain> typed::pw_multi_aff<Domain>::gist(const typed::point<> &set) const
 {
   auto res = isl::pw_multi_aff::gist(set);
-  return typed::pw_multi_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff<Domain> typed::pw_multi_aff<Domain>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
-  return typed::pw_multi_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff<Domain> typed::pw_multi_aff<Domain>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
-  return typed::pw_multi_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff<Domain> typed::pw_multi_aff<Domain>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
   return typed::pw_multi_aff<Domain>(res);
 }
 
@@ -37970,24 +33978,18 @@ typed::pw_multi_aff<pair<Domain, Range>> typed::pw_multi_aff<Domain>::product(co
 }
 
 template <typename Domain>
-typed::pw_multi_aff<pair<Domain, Anonymous>> typed::pw_multi_aff<Domain>::product(const typed::pw_aff<Anonymous> &pma2) const
+template <typename Range>
+typed::pw_multi_aff<pair<Domain, Range>> typed::pw_multi_aff<Domain>::product(const typed::pw_aff<Range> &pma2) const
 {
   auto res = isl::pw_multi_aff::product(pma2);
-  return typed::pw_multi_aff<pair<Domain, Anonymous>>(res);
+  return typed::pw_multi_aff<pair<Domain, Range>>(res);
 }
 
 template <typename Domain>
-typed::pw_multi_aff_list<Domain> typed::pw_multi_aff<Domain>::pw_multi_aff_list() const
-{
-  auto res = isl::pw_multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff<Domain> typed::pw_multi_aff<Domain>::scale(const typed::multi_val<Domain> &mv) const
+typed::multi_pw_aff<Domain> typed::pw_multi_aff<Domain>::scale(const typed::multi_val<Domain> &mv) const
 {
   auto res = isl::pw_multi_aff::scale(mv);
-  return typed::pw_multi_aff<Domain>(res);
+  return typed::multi_pw_aff<Domain>(res);
 }
 
 template <typename Domain>
@@ -38005,10 +34007,10 @@ typed::pw_multi_aff<Domain> typed::pw_multi_aff<Domain>::scale(long v) const
 }
 
 template <typename Domain>
-typed::pw_multi_aff<Domain> typed::pw_multi_aff<Domain>::scale_down(const typed::multi_val<Domain> &mv) const
+typed::multi_pw_aff<Domain> typed::pw_multi_aff<Domain>::scale_down(const typed::multi_val<Domain> &mv) const
 {
   auto res = isl::pw_multi_aff::scale_down(mv);
-  return typed::pw_multi_aff<Domain>(res);
+  return typed::multi_pw_aff<Domain>(res);
 }
 
 template <typename Domain>
@@ -38328,20 +34330,6 @@ typed::set<Domain> typed::pw_multi_aff<Domain, Range>::domain() const
 }
 
 template <typename Domain, typename Range>
-typed::pw_multi_aff<Domain, Range> typed::pw_multi_aff<Domain, Range>::drop_unused_params() const
-{
-  auto res = isl::pw_multi_aff::drop_unused_params();
-  return typed::pw_multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_multi_aff<Domain, Range> typed::pw_multi_aff<Domain, Range>::extract_pw_multi_aff(const typed::space<Domain, Range> &space) const
-{
-  auto res = isl::pw_multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 typed::pw_multi_aff<Domain, Range> typed::pw_multi_aff<Domain, Range>::gist(const typed::set<Domain> &set) const
 {
   auto res = isl::pw_multi_aff::gist(set);
@@ -38366,27 +34354,6 @@ template <typename Domain, typename Range>
 typed::pw_multi_aff<Domain, Range> typed::pw_multi_aff<Domain, Range>::gist(const typed::point<Domain> &set) const
 {
   auto res = isl::pw_multi_aff::gist(set);
-  return typed::pw_multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_multi_aff<Domain, Range> typed::pw_multi_aff<Domain, Range>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
-  return typed::pw_multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_multi_aff<Domain, Range> typed::pw_multi_aff<Domain, Range>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
-  return typed::pw_multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_multi_aff<Domain, Range> typed::pw_multi_aff<Domain, Range>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
   return typed::pw_multi_aff<Domain, Range>(res);
 }
 
@@ -38520,11 +34487,11 @@ typed::pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> typed::pw_multi_
 }
 
 template <typename Domain, typename Range>
-template <typename Domain2>
-typed::pw_multi_aff<pair<Domain, Domain2>, pair<Range, Anonymous>> typed::pw_multi_aff<Domain, Range>::product(const typed::pw_aff<Domain2, Anonymous> &pma2) const
+template <typename Domain2, typename Range2>
+typed::pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> typed::pw_multi_aff<Domain, Range>::product(const typed::pw_aff<Domain2, Range2> &pma2) const
 {
   auto res = isl::pw_multi_aff::product(pma2);
-  return typed::pw_multi_aff<pair<Domain, Domain2>, pair<Range, Anonymous>>(res);
+  return typed::pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -38588,13 +34555,6 @@ typed::union_pw_multi_aff<Range> typed::pw_multi_aff<Domain, Range>::pullback(co
 }
 
 template <typename Domain, typename Range>
-typed::pw_multi_aff_list<Domain, Range> typed::pw_multi_aff<Domain, Range>::pw_multi_aff_list() const
-{
-  auto res = isl::pw_multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 template <typename Range2>
 typed::multi_pw_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, Range>::range_product(const typed::multi_pw_aff<Domain, Range2> &multi2) const
 {
@@ -38635,17 +34595,18 @@ typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, Ran
 }
 
 template <typename Domain, typename Range>
-typed::pw_multi_aff<Domain, pair<Range, Anonymous>> typed::pw_multi_aff<Domain, Range>::range_product(const typed::pw_aff<Domain, Anonymous> &pma2) const
+template <typename Range2>
+typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, Range>::range_product(const typed::pw_aff<Domain, Range2> &pma2) const
 {
   auto res = isl::pw_multi_aff::range_product(pma2);
-  return typed::pw_multi_aff<Domain, pair<Range, Anonymous>>(res);
+  return typed::pw_multi_aff<Domain, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range>
-typed::pw_multi_aff<Domain, Range> typed::pw_multi_aff<Domain, Range>::scale(const typed::multi_val<Range> &mv) const
+typed::multi_pw_aff<Domain, Range> typed::pw_multi_aff<Domain, Range>::scale(const typed::multi_val<Range> &mv) const
 {
   auto res = isl::pw_multi_aff::scale(mv);
-  return typed::pw_multi_aff<Domain, Range>(res);
+  return typed::multi_pw_aff<Domain, Range>(res);
 }
 
 template <typename Domain, typename Range>
@@ -38663,10 +34624,10 @@ typed::pw_multi_aff<Domain, Range> typed::pw_multi_aff<Domain, Range>::scale(lon
 }
 
 template <typename Domain, typename Range>
-typed::pw_multi_aff<Domain, Range> typed::pw_multi_aff<Domain, Range>::scale_down(const typed::multi_val<Range> &mv) const
+typed::multi_pw_aff<Domain, Range> typed::pw_multi_aff<Domain, Range>::scale_down(const typed::multi_val<Range> &mv) const
 {
   auto res = isl::pw_multi_aff::scale_down(mv);
-  return typed::pw_multi_aff<Domain, Range>(res);
+  return typed::multi_pw_aff<Domain, Range>(res);
 }
 
 template <typename Domain, typename Range>
@@ -39020,27 +34981,6 @@ typed::set<pair<Domain2, Range2>> typed::pw_multi_aff<pair<Domain2, Range2>, Ran
 }
 
 template <typename Domain2, typename Range2, typename Range>
-typed::pw_multi_aff<pair<Range2, Domain2>, Range> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::domain_reverse() const
-{
-  auto res = isl::pw_multi_aff::domain_reverse();
-  return typed::pw_multi_aff<pair<Range2, Domain2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
-typed::pw_multi_aff<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::drop_unused_params() const
-{
-  auto res = isl::pw_multi_aff::drop_unused_params();
-  return typed::pw_multi_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
-typed::pw_multi_aff<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::extract_pw_multi_aff(const typed::space<pair<Domain2, Range2>, Range> &space) const
-{
-  auto res = isl::pw_multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
 typed::pw_multi_aff<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::gist(const typed::set<pair<Domain2, Range2>> &set) const
 {
   auto res = isl::pw_multi_aff::gist(set);
@@ -39065,27 +35005,6 @@ template <typename Domain2, typename Range2, typename Range>
 typed::pw_multi_aff<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::gist(const typed::point<pair<Domain2, Range2>> &set) const
 {
   auto res = isl::pw_multi_aff::gist(set);
-  return typed::pw_multi_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
-typed::pw_multi_aff<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
-  return typed::pw_multi_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
-typed::pw_multi_aff<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
-  return typed::pw_multi_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
-typed::pw_multi_aff<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
   return typed::pw_multi_aff<pair<Domain2, Range2>, Range>(res);
 }
 
@@ -39129,13 +35048,6 @@ typed::pw_multi_aff<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domai
 {
   auto res = isl::pw_multi_aff::intersect_domain(set);
   return typed::pw_multi_aff<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
-typed::union_pw_multi_aff<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::intersect_domain_wrapped_domain(const typed::union_set<Domain2> &uset) const
-{
-  auto res = isl::pw_multi_aff::intersect_domain_wrapped_domain(uset);
-  return typed::union_pw_multi_aff<pair<Domain2, Range2>, Range>(res);
 }
 
 template <typename Domain2, typename Range2, typename Range>
@@ -39258,11 +35170,11 @@ typed::pw_multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> typed:
 }
 
 template <typename Domain2, typename Range2, typename Range>
-template <typename Arg2>
-typed::pw_multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Anonymous>> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::product(const typed::pw_aff<Arg2, Anonymous> &pma2) const
+template <typename Arg2, typename Arg3>
+typed::pw_multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::product(const typed::pw_aff<Arg2, Arg3> &pma2) const
 {
   auto res = isl::pw_multi_aff::product(pma2);
-  return typed::pw_multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Anonymous>>(res);
+  return typed::pw_multi_aff<pair<pair<Domain2, Range2>, Arg2>, pair<Range, Arg3>>(res);
 }
 
 template <typename Domain2, typename Range2, typename Range>
@@ -39326,13 +35238,6 @@ typed::union_pw_multi_aff<Range> typed::pw_multi_aff<pair<Domain2, Range2>, Rang
 }
 
 template <typename Domain2, typename Range2, typename Range>
-typed::pw_multi_aff_list<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::pw_multi_aff_list() const
-{
-  auto res = isl::pw_multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<pair<Domain2, Range2>, Range>(res);
-}
-
-template <typename Domain2, typename Range2, typename Range>
 template <typename Arg2>
 typed::multi_pw_aff<pair<Domain2, Range2>, pair<Range, Arg2>> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::range_product(const typed::multi_pw_aff<pair<Domain2, Range2>, Arg2> &multi2) const
 {
@@ -39373,17 +35278,18 @@ typed::pw_multi_aff<pair<Domain2, Range2>, pair<Range, Arg2>> typed::pw_multi_af
 }
 
 template <typename Domain2, typename Range2, typename Range>
-typed::pw_multi_aff<pair<Domain2, Range2>, pair<Range, Anonymous>> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::range_product(const typed::pw_aff<pair<Domain2, Range2>, Anonymous> &pma2) const
+template <typename Arg2>
+typed::pw_multi_aff<pair<Domain2, Range2>, pair<Range, Arg2>> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::range_product(const typed::pw_aff<pair<Domain2, Range2>, Arg2> &pma2) const
 {
   auto res = isl::pw_multi_aff::range_product(pma2);
-  return typed::pw_multi_aff<pair<Domain2, Range2>, pair<Range, Anonymous>>(res);
+  return typed::pw_multi_aff<pair<Domain2, Range2>, pair<Range, Arg2>>(res);
 }
 
 template <typename Domain2, typename Range2, typename Range>
-typed::pw_multi_aff<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::scale(const typed::multi_val<Range> &mv) const
+typed::multi_pw_aff<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::scale(const typed::multi_val<Range> &mv) const
 {
   auto res = isl::pw_multi_aff::scale(mv);
-  return typed::pw_multi_aff<pair<Domain2, Range2>, Range>(res);
+  return typed::multi_pw_aff<pair<Domain2, Range2>, Range>(res);
 }
 
 template <typename Domain2, typename Range2, typename Range>
@@ -39401,10 +35307,10 @@ typed::pw_multi_aff<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domai
 }
 
 template <typename Domain2, typename Range2, typename Range>
-typed::pw_multi_aff<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::scale_down(const typed::multi_val<Range> &mv) const
+typed::multi_pw_aff<pair<Domain2, Range2>, Range> typed::pw_multi_aff<pair<Domain2, Range2>, Range>::scale_down(const typed::multi_val<Range> &mv) const
 {
   auto res = isl::pw_multi_aff::scale_down(mv);
-  return typed::pw_multi_aff<pair<Domain2, Range2>, Range>(res);
+  return typed::multi_pw_aff<pair<Domain2, Range2>, Range>(res);
 }
 
 template <typename Domain2, typename Range2, typename Range>
@@ -39751,20 +35657,6 @@ typed::set<Domain> typed::pw_multi_aff<Domain, pair<Range, Range2>>::domain() co
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::drop_unused_params() const
-{
-  auto res = isl::pw_multi_aff::drop_unused_params();
-  return typed::pw_multi_aff<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::extract_pw_multi_aff(const typed::space<Domain, pair<Range, Range2>> &space) const
-{
-  auto res = isl::pw_multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::gist(const typed::set<Domain> &set) const
 {
   auto res = isl::pw_multi_aff::gist(set);
@@ -39789,27 +35681,6 @@ template <typename Domain, typename Range, typename Range2>
 typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::gist(const typed::point<Domain> &set) const
 {
   auto res = isl::pw_multi_aff::gist(set);
-  return typed::pw_multi_aff<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
-  return typed::pw_multi_aff<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
-  return typed::pw_multi_aff<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
   return typed::pw_multi_aff<Domain, pair<Range, Range2>>(res);
 }
 
@@ -39943,11 +35814,11 @@ typed::pw_multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>> type
 }
 
 template <typename Domain, typename Range, typename Range2>
-template <typename Domain2>
-typed::pw_multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Anonymous>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::product(const typed::pw_aff<Domain2, Anonymous> &pma2) const
+template <typename Domain2, typename Arg3>
+typed::pw_multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::product(const typed::pw_aff<Domain2, Arg3> &pma2) const
 {
   auto res = isl::pw_multi_aff::product(pma2);
-  return typed::pw_multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Anonymous>>(res);
+  return typed::pw_multi_aff<pair<Domain, Domain2>, pair<pair<Range, Range2>, Arg3>>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -40011,13 +35882,6 @@ typed::union_pw_multi_aff<pair<Range, Range2>> typed::pw_multi_aff<Domain, pair<
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::pw_multi_aff_list<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::pw_multi_aff_list() const
-{
-  auto res = isl::pw_multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::pw_multi_aff<Domain, Range> typed::pw_multi_aff<Domain, pair<Range, Range2>>::range_factor_domain() const
 {
   auto res = isl::pw_multi_aff::range_factor_domain();
@@ -40072,17 +35936,18 @@ typed::pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> typed::pw_multi_aff
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::pw_multi_aff<Domain, pair<pair<Range, Range2>, Anonymous>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::range_product(const typed::pw_aff<Domain, Anonymous> &pma2) const
+template <typename Arg3>
+typed::pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::range_product(const typed::pw_aff<Domain, Arg3> &pma2) const
 {
   auto res = isl::pw_multi_aff::range_product(pma2);
-  return typed::pw_multi_aff<Domain, pair<pair<Range, Range2>, Anonymous>>(res);
+  return typed::pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::scale(const typed::multi_val<pair<Range, Range2>> &mv) const
+typed::multi_pw_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::scale(const typed::multi_val<pair<Range, Range2>> &mv) const
 {
   auto res = isl::pw_multi_aff::scale(mv);
-  return typed::pw_multi_aff<Domain, pair<Range, Range2>>(res);
+  return typed::multi_pw_aff<Domain, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -40100,10 +35965,10 @@ typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, pai
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::scale_down(const typed::multi_val<pair<Range, Range2>> &mv) const
+typed::multi_pw_aff<Domain, pair<Range, Range2>> typed::pw_multi_aff<Domain, pair<Range, Range2>>::scale_down(const typed::multi_val<pair<Range, Range2>> &mv) const
 {
   auto res = isl::pw_multi_aff::scale_down(mv);
-  return typed::pw_multi_aff<Domain, pair<Range, Range2>>(res);
+  return typed::multi_pw_aff<Domain, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -40441,27 +36306,6 @@ typed::set<pair<T1, T2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>:
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff<pair<T2, T1>, pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::domain_reverse() const
-{
-  auto res = isl::pw_multi_aff::domain_reverse();
-  return typed::pw_multi_aff<pair<T2, T1>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::drop_unused_params() const
-{
-  auto res = isl::pw_multi_aff::drop_unused_params();
-  return typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::extract_pw_multi_aff(const typed::space<pair<T1, T2>, pair<Range, Range2>> &space) const
-{
-  auto res = isl::pw_multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::gist(const typed::set<pair<T1, T2>> &set) const
 {
   auto res = isl::pw_multi_aff::gist(set);
@@ -40486,27 +36330,6 @@ template <typename T1, typename T2, typename Range, typename Range2>
 typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::gist(const typed::point<pair<T1, T2>> &set) const
 {
   auto res = isl::pw_multi_aff::gist(set);
-  return typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
-  return typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
-  return typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::pw_multi_aff::gist_params(set);
   return typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
@@ -40550,13 +36373,6 @@ typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<
 {
   auto res = isl::pw_multi_aff::intersect_domain(set);
   return typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::union_set<T1> &uset) const
-{
-  auto res = isl::pw_multi_aff::intersect_domain_wrapped_domain(uset);
-  return typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -40679,11 +36495,11 @@ typed::pw_multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-template <typename Domain2>
-typed::pw_multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Anonymous>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::product(const typed::pw_aff<Domain2, Anonymous> &pma2) const
+template <typename Domain2, typename Arg2>
+typed::pw_multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::product(const typed::pw_aff<Domain2, Arg2> &pma2) const
 {
   auto res = isl::pw_multi_aff::product(pma2);
-  return typed::pw_multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Anonymous>>(res);
+  return typed::pw_multi_aff<pair<pair<T1, T2>, Domain2>, pair<pair<Range, Range2>, Arg2>>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -40747,13 +36563,6 @@ typed::union_pw_multi_aff<pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>,
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff_list<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::pw_multi_aff_list() const
-{
-  auto res = isl::pw_multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::pw_multi_aff<pair<T1, T2>, Range> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::range_factor_domain() const
 {
   auto res = isl::pw_multi_aff::range_factor_domain();
@@ -40808,17 +36617,18 @@ typed::pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> typed::pw_mul
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Anonymous>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::range_product(const typed::pw_aff<pair<T1, T2>, Anonymous> &pma2) const
+template <typename Arg2>
+typed::pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::range_product(const typed::pw_aff<pair<T1, T2>, Arg2> &pma2) const
 {
   auto res = isl::pw_multi_aff::range_product(pma2);
-  return typed::pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Anonymous>>(res);
+  return typed::pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::scale(const typed::multi_val<pair<Range, Range2>> &mv) const
+typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::scale(const typed::multi_val<pair<Range, Range2>> &mv) const
 {
   auto res = isl::pw_multi_aff::scale(mv);
-  return typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
+  return typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -40836,10 +36646,10 @@ typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::scale_down(const typed::multi_val<pair<Range, Range2>> &mv) const
+typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::scale_down(const typed::multi_val<pair<Range, Range2>> &mv) const
 {
   auto res = isl::pw_multi_aff::scale_down(mv);
-  return typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
+  return typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -41023,12 +36833,6 @@ typed::pw_multi_aff_list<Domain>::pw_multi_aff_list(const typed::pw_multi_aff<Do
 }
 
 template <typename Domain>
-typed::pw_multi_aff_list<Domain>::pw_multi_aff_list(const isl::ctx &ctx, const std::string &str)
-  : isl::pw_multi_aff_list(ctx, str)
-{
-}
-
-template <typename Domain>
 typed::pw_multi_aff_list<Domain> typed::pw_multi_aff_list<Domain>::add(const typed::pw_multi_aff<Domain> &el) const
 {
   auto res = isl::pw_multi_aff_list::add(el);
@@ -41066,29 +36870,10 @@ typed::pw_multi_aff_list<Domain> typed::pw_multi_aff_list<Domain>::drop(unsigned
 template <typename Domain>
 void typed::pw_multi_aff_list<Domain>::foreach(const std::function<void(typed::pw_multi_aff<Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::pw_multi_aff arg0) {
+  auto lambda = [&] (isl::pw_multi_aff arg0) {
     return fn(typed::pw_multi_aff<Domain>(arg0));
   };
-  return isl::pw_multi_aff_list::foreach(lambda_fn);
-}
-
-template <typename Domain>
-void typed::pw_multi_aff_list<Domain>::foreach_scc(const std::function<bool(typed::pw_multi_aff<Domain>, typed::pw_multi_aff<Domain>)> &follows, const std::function<void(typed::pw_multi_aff_list<Domain>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::pw_multi_aff arg0, isl::pw_multi_aff arg1) {
-    return follows(typed::pw_multi_aff<Domain>(arg0), typed::pw_multi_aff<Domain>(arg1));
-  };
-  auto lambda_fn = [&] (isl::pw_multi_aff_list arg0) {
-    return fn(typed::pw_multi_aff_list<Domain>(arg0));
-  };
-  return isl::pw_multi_aff_list::foreach_scc(lambda_follows, lambda_fn);
-}
-
-template <typename Domain>
-typed::pw_multi_aff_list<Domain> typed::pw_multi_aff_list<Domain>::set_at(int index, const typed::pw_multi_aff<Anonymous> &el) const
-{
-  auto res = isl::pw_multi_aff_list::set_at(index, el);
-  return typed::pw_multi_aff_list<Domain>(res);
+  return isl::pw_multi_aff_list::foreach(lambda);
 }
 
 template <typename Domain, typename Range>
@@ -41100,12 +36885,6 @@ typed::pw_multi_aff_list<Domain, Range>::pw_multi_aff_list(const isl::ctx &ctx, 
 template <typename Domain, typename Range>
 typed::pw_multi_aff_list<Domain, Range>::pw_multi_aff_list(const typed::pw_multi_aff<Domain, Range> &el)
   : isl::pw_multi_aff_list(el)
-{
-}
-
-template <typename Domain, typename Range>
-typed::pw_multi_aff_list<Domain, Range>::pw_multi_aff_list(const isl::ctx &ctx, const std::string &str)
-  : isl::pw_multi_aff_list(ctx, str)
 {
 }
 
@@ -41147,29 +36926,10 @@ typed::pw_multi_aff_list<Domain, Range> typed::pw_multi_aff_list<Domain, Range>:
 template <typename Domain, typename Range>
 void typed::pw_multi_aff_list<Domain, Range>::foreach(const std::function<void(typed::pw_multi_aff<Domain, Range>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::pw_multi_aff arg0) {
+  auto lambda = [&] (isl::pw_multi_aff arg0) {
     return fn(typed::pw_multi_aff<Domain, Range>(arg0));
   };
-  return isl::pw_multi_aff_list::foreach(lambda_fn);
-}
-
-template <typename Domain, typename Range>
-void typed::pw_multi_aff_list<Domain, Range>::foreach_scc(const std::function<bool(typed::pw_multi_aff<Domain, Range>, typed::pw_multi_aff<Domain, Range>)> &follows, const std::function<void(typed::pw_multi_aff_list<Domain, Range>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::pw_multi_aff arg0, isl::pw_multi_aff arg1) {
-    return follows(typed::pw_multi_aff<Domain, Range>(arg0), typed::pw_multi_aff<Domain, Range>(arg1));
-  };
-  auto lambda_fn = [&] (isl::pw_multi_aff_list arg0) {
-    return fn(typed::pw_multi_aff_list<Domain, Range>(arg0));
-  };
-  return isl::pw_multi_aff_list::foreach_scc(lambda_follows, lambda_fn);
-}
-
-template <typename Domain, typename Range>
-typed::pw_multi_aff_list<Domain, Range> typed::pw_multi_aff_list<Domain, Range>::set_at(int index, const typed::pw_multi_aff<Domain, Anonymous> &el) const
-{
-  auto res = isl::pw_multi_aff_list::set_at(index, el);
-  return typed::pw_multi_aff_list<Domain, Range>(res);
+  return isl::pw_multi_aff_list::foreach(lambda);
 }
 
 typed::set<>::set(const typed::basic_set<> &bset)
@@ -41199,48 +36959,36 @@ typed::set<> typed::set<>::detect_equalities() const
   return typed::set<>(res);
 }
 
-typed::set<> typed::set<>::drop_unused_params() const
-{
-  auto res = isl::set::drop_unused_params();
-  return typed::set<>(res);
-}
-
 bool typed::set<>::every_set(const std::function<bool(typed::set<>)> &test) const
 {
-  auto lambda_test = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return test(typed::set<>(arg0));
   };
-  return isl::set::every_set(lambda_test);
-}
-
-typed::set<> typed::set<>::extract_set(const typed::space<> &space) const
-{
-  auto res = isl::set::extract_set(space);
-  return typed::set<>(res);
+  return isl::set::every_set(lambda);
 }
 
 void typed::set<>::foreach_basic_set(const std::function<void(typed::basic_set<>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_set arg0) {
+  auto lambda = [&] (isl::basic_set arg0) {
     return fn(typed::basic_set<>(arg0));
   };
-  return isl::set::foreach_basic_set(lambda_fn);
+  return isl::set::foreach_basic_set(lambda);
 }
 
 void typed::set<>::foreach_point(const std::function<void(typed::point<>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::point arg0) {
+  auto lambda = [&] (isl::point arg0) {
     return fn(typed::point<>(arg0));
   };
-  return isl::set::foreach_point(lambda_fn);
+  return isl::set::foreach_point(lambda);
 }
 
 void typed::set<>::foreach_set(const std::function<void(typed::set<>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return fn(typed::set<>(arg0));
   };
-  return isl::set::foreach_set(lambda_fn);
+  return isl::set::foreach_set(lambda);
 }
 
 typed::set<> typed::set<>::gist(const typed::set<> &context) const
@@ -41267,12 +37015,6 @@ typed::set<> typed::set<>::gist(const typed::point<> &context) const
   return typed::set<>(res);
 }
 
-typed::pw_aff<Anonymous> typed::set<>::indicator_function() const
-{
-  auto res = isl::set::indicator_function();
-  return typed::pw_aff<Anonymous>(res);
-}
-
 typed::set<> typed::set<>::intersect(const typed::set<> &set2) const
 {
   auto res = isl::set::intersect(set2);
@@ -41297,18 +37039,6 @@ typed::set<> typed::set<>::intersect(const typed::point<> &set2) const
   return typed::set<>(res);
 }
 
-typed::pw_aff<Anonymous> typed::set<>::param_pw_aff_on_domain(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::set::param_pw_aff_on_domain(id);
-  return typed::pw_aff<Anonymous>(res);
-}
-
-typed::pw_aff<Anonymous> typed::set<>::param_pw_aff_on_domain(const std::string &id) const
-{
-  auto res = isl::set::param_pw_aff_on_domain(id);
-  return typed::pw_aff<Anonymous>(res);
-}
-
 typed::set<> typed::set<>::project_out_all_params() const
 {
   auto res = isl::set::project_out_all_params();
@@ -41331,31 +37061,6 @@ typed::set<> typed::set<>::project_out_param(const typed::id_list<Anonymous> &li
 {
   auto res = isl::set::project_out_param(list);
   return typed::set<>(res);
-}
-
-typed::pw_aff<Anonymous> typed::set<>::pw_aff_on_domain(const typed::val<Anonymous> &v) const
-{
-  auto res = isl::set::pw_aff_on_domain(v);
-  return typed::pw_aff<Anonymous>(res);
-}
-
-typed::pw_aff<Anonymous> typed::set<>::pw_aff_on_domain(long v) const
-{
-  auto res = isl::set::pw_aff_on_domain(v);
-  return typed::pw_aff<Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff<Domain> typed::set<>::pw_multi_aff_on_domain(const typed::multi_val<Domain> &mv) const
-{
-  auto res = isl::set::pw_multi_aff_on_domain(mv);
-  return typed::pw_multi_aff<Domain>(res);
-}
-
-typed::set_list<> typed::set<>::set_list() const
-{
-  auto res = isl::set::set_list();
-  return typed::set_list<>(res);
 }
 
 typed::space<> typed::set<>::space() const
@@ -41509,53 +37214,39 @@ typed::set<Domain> typed::set<Domain>::detect_equalities() const
 }
 
 template <typename Domain>
-typed::set<Domain> typed::set<Domain>::drop_unused_params() const
-{
-  auto res = isl::set::drop_unused_params();
-  return typed::set<Domain>(res);
-}
-
-template <typename Domain>
 bool typed::set<Domain>::every_set(const std::function<bool(typed::set<Domain>)> &test) const
 {
-  auto lambda_test = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return test(typed::set<Domain>(arg0));
   };
-  return isl::set::every_set(lambda_test);
-}
-
-template <typename Domain>
-typed::set<Domain> typed::set<Domain>::extract_set(const typed::space<Domain> &space) const
-{
-  auto res = isl::set::extract_set(space);
-  return typed::set<Domain>(res);
+  return isl::set::every_set(lambda);
 }
 
 template <typename Domain>
 void typed::set<Domain>::foreach_basic_set(const std::function<void(typed::basic_set<Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_set arg0) {
+  auto lambda = [&] (isl::basic_set arg0) {
     return fn(typed::basic_set<Domain>(arg0));
   };
-  return isl::set::foreach_basic_set(lambda_fn);
+  return isl::set::foreach_basic_set(lambda);
 }
 
 template <typename Domain>
 void typed::set<Domain>::foreach_point(const std::function<void(typed::point<Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::point arg0) {
+  auto lambda = [&] (isl::point arg0) {
     return fn(typed::point<Domain>(arg0));
   };
-  return isl::set::foreach_point(lambda_fn);
+  return isl::set::foreach_point(lambda);
 }
 
 template <typename Domain>
 void typed::set<Domain>::foreach_set(const std::function<void(typed::set<Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return fn(typed::set<Domain>(arg0));
   };
-  return isl::set::foreach_set(lambda_fn);
+  return isl::set::foreach_set(lambda);
 }
 
 template <typename Domain>
@@ -41587,38 +37278,10 @@ typed::set<Domain> typed::set<Domain>::gist(const typed::point<Domain> &context)
 }
 
 template <typename Domain>
-typed::set<Domain> typed::set<Domain>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::set::gist_params(context);
-  return typed::set<Domain>(res);
-}
-
-template <typename Domain>
-typed::set<Domain> typed::set<Domain>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::set::gist_params(context);
-  return typed::set<Domain>(res);
-}
-
-template <typename Domain>
-typed::set<Domain> typed::set<Domain>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::set::gist_params(context);
-  return typed::set<Domain>(res);
-}
-
-template <typename Domain>
 typed::map<Domain, Domain> typed::set<Domain>::identity() const
 {
   auto res = isl::set::identity();
   return typed::map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::set<Domain>::indicator_function() const
-{
-  auto res = isl::set::indicator_function();
-  return typed::pw_aff<Domain, Anonymous>(res);
 }
 
 template <typename Domain>
@@ -41679,13 +37342,6 @@ typed::set<Domain> typed::set<Domain>::intersect_params(const typed::point<> &pa
 }
 
 template <typename Domain>
-typed::fixed_box<Domain> typed::set<Domain>::lattice_tile() const
-{
-  auto res = isl::set::lattice_tile();
-  return typed::fixed_box<Domain>(res);
-}
-
-template <typename Domain>
 typed::set<Domain> typed::set<Domain>::lexmax() const
 {
   auto res = isl::set::lexmax();
@@ -41739,20 +37395,6 @@ typed::multi_pw_aff<Domain> typed::set<Domain>::min_multi_pw_aff() const
 {
   auto res = isl::set::min_multi_pw_aff();
   return typed::multi_pw_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::set<Domain>::param_pw_aff_on_domain(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::set::param_pw_aff_on_domain(id);
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::set<Domain>::param_pw_aff_on_domain(const std::string &id) const
-{
-  auto res = isl::set::param_pw_aff_on_domain(id);
-  return typed::pw_aff<Domain, Anonymous>(res);
 }
 
 template <typename Domain>
@@ -41854,32 +37496,11 @@ typed::set<Domain> typed::set<Domain>::project_out_param(const typed::id_list<An
 }
 
 template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::set<Domain>::pw_aff_on_domain(const typed::val<Anonymous> &v) const
-{
-  auto res = isl::set::pw_aff_on_domain(v);
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_aff<Domain, Anonymous> typed::set<Domain>::pw_aff_on_domain(long v) const
-{
-  auto res = isl::set::pw_aff_on_domain(v);
-  return typed::pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
 template <typename Range>
 typed::pw_multi_aff<Domain, Range> typed::set<Domain>::pw_multi_aff_on_domain(const typed::multi_val<Range> &mv) const
 {
   auto res = isl::set::pw_multi_aff_on_domain(mv);
   return typed::pw_multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain>
-typed::set_list<Domain> typed::set<Domain>::set_list() const
-{
-  auto res = isl::set::set_list();
-  return typed::set_list<Domain>(res);
 }
 
 template <typename Domain>
@@ -42073,53 +37694,39 @@ typed::set<pair<Domain, Range>> typed::set<pair<Domain, Range>>::detect_equaliti
 }
 
 template <typename Domain, typename Range>
-typed::set<pair<Domain, Range>> typed::set<pair<Domain, Range>>::drop_unused_params() const
-{
-  auto res = isl::set::drop_unused_params();
-  return typed::set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
 bool typed::set<pair<Domain, Range>>::every_set(const std::function<bool(typed::set<pair<Domain, Range>>)> &test) const
 {
-  auto lambda_test = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return test(typed::set<pair<Domain, Range>>(arg0));
   };
-  return isl::set::every_set(lambda_test);
-}
-
-template <typename Domain, typename Range>
-typed::set<pair<Domain, Range>> typed::set<pair<Domain, Range>>::extract_set(const typed::space<pair<Domain, Range>> &space) const
-{
-  auto res = isl::set::extract_set(space);
-  return typed::set<pair<Domain, Range>>(res);
+  return isl::set::every_set(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::set<pair<Domain, Range>>::foreach_basic_set(const std::function<void(typed::basic_set<pair<Domain, Range>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::basic_set arg0) {
+  auto lambda = [&] (isl::basic_set arg0) {
     return fn(typed::basic_set<pair<Domain, Range>>(arg0));
   };
-  return isl::set::foreach_basic_set(lambda_fn);
+  return isl::set::foreach_basic_set(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::set<pair<Domain, Range>>::foreach_point(const std::function<void(typed::point<pair<Domain, Range>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::point arg0) {
+  auto lambda = [&] (isl::point arg0) {
     return fn(typed::point<pair<Domain, Range>>(arg0));
   };
-  return isl::set::foreach_point(lambda_fn);
+  return isl::set::foreach_point(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::set<pair<Domain, Range>>::foreach_set(const std::function<void(typed::set<pair<Domain, Range>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return fn(typed::set<pair<Domain, Range>>(arg0));
   };
-  return isl::set::foreach_set(lambda_fn);
+  return isl::set::foreach_set(lambda);
 }
 
 template <typename Domain, typename Range>
@@ -42151,38 +37758,10 @@ typed::set<pair<Domain, Range>> typed::set<pair<Domain, Range>>::gist(const type
 }
 
 template <typename Domain, typename Range>
-typed::set<pair<Domain, Range>> typed::set<pair<Domain, Range>>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::set::gist_params(context);
-  return typed::set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::set<pair<Domain, Range>> typed::set<pair<Domain, Range>>::gist_params(const typed::basic_set<> &context) const
-{
-  auto res = isl::set::gist_params(context);
-  return typed::set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::set<pair<Domain, Range>> typed::set<pair<Domain, Range>>::gist_params(const typed::point<> &context) const
-{
-  auto res = isl::set::gist_params(context);
-  return typed::set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
 typed::map<pair<Domain, Range>, pair<Domain, Range>> typed::set<pair<Domain, Range>>::identity() const
 {
   auto res = isl::set::identity();
   return typed::map<pair<Domain, Range>, pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::set<pair<Domain, Range>>::indicator_function() const
-{
-  auto res = isl::set::indicator_function();
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
 }
 
 template <typename Domain, typename Range>
@@ -42243,13 +37822,6 @@ typed::set<pair<Domain, Range>> typed::set<pair<Domain, Range>>::intersect_param
 }
 
 template <typename Domain, typename Range>
-typed::fixed_box<pair<Domain, Range>> typed::set<pair<Domain, Range>>::lattice_tile() const
-{
-  auto res = isl::set::lattice_tile();
-  return typed::fixed_box<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
 typed::set<pair<Domain, Range>> typed::set<pair<Domain, Range>>::lexmax() const
 {
   auto res = isl::set::lexmax();
@@ -42303,20 +37875,6 @@ typed::multi_pw_aff<pair<Domain, Range>> typed::set<pair<Domain, Range>>::min_mu
 {
   auto res = isl::set::min_multi_pw_aff();
   return typed::multi_pw_aff<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::set<pair<Domain, Range>>::param_pw_aff_on_domain(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::set::param_pw_aff_on_domain(id);
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::set<pair<Domain, Range>>::param_pw_aff_on_domain(const std::string &id) const
-{
-  auto res = isl::set::param_pw_aff_on_domain(id);
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
 }
 
 template <typename Domain, typename Range>
@@ -42418,32 +37976,11 @@ typed::set<pair<Domain, Range>> typed::set<pair<Domain, Range>>::project_out_par
 }
 
 template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::set<pair<Domain, Range>>::pw_aff_on_domain(const typed::val<Anonymous> &v) const
-{
-  auto res = isl::set::pw_aff_on_domain(v);
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_aff<pair<Domain, Range>, Anonymous> typed::set<pair<Domain, Range>>::pw_aff_on_domain(long v) const
-{
-  auto res = isl::set::pw_aff_on_domain(v);
-  return typed::pw_aff<pair<Domain, Range>, Anonymous>(res);
-}
-
-template <typename Domain, typename Range>
 template <typename Arg2>
 typed::pw_multi_aff<pair<Domain, Range>, Arg2> typed::set<pair<Domain, Range>>::pw_multi_aff_on_domain(const typed::multi_val<Arg2> &mv) const
 {
   auto res = isl::set::pw_multi_aff_on_domain(mv);
   return typed::pw_multi_aff<pair<Domain, Range>, Arg2>(res);
-}
-
-template <typename Domain, typename Range>
-typed::set_list<pair<Domain, Range>> typed::set<pair<Domain, Range>>::set_list() const
-{
-  auto res = isl::set::set_list();
-  return typed::set_list<pair<Domain, Range>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -42566,157 +38103,6 @@ typed::set<pair<Domain, Range>> typed::set<pair<Domain, Range>>::upper_bound(con
   return typed::set<pair<Domain, Range>>(res);
 }
 
-template <typename Domain, typename Range>
-typed::set<pair<Range, Domain>> typed::set<pair<Domain, Range>>::wrapped_reverse() const
-{
-  auto res = isl::set::wrapped_reverse();
-  return typed::set<pair<Range, Domain>>(res);
-}
-
-typed::set_list<>::set_list(const isl::ctx &ctx, int n)
-  : isl::set_list(ctx, n)
-{
-}
-
-typed::set_list<>::set_list(const typed::set<> &el)
-  : isl::set_list(el)
-{
-}
-
-typed::set_list<>::set_list(const isl::ctx &ctx, const std::string &str)
-  : isl::set_list(ctx, str)
-{
-}
-
-typed::set_list<> typed::set_list<>::add(const typed::set<> &el) const
-{
-  auto res = isl::set_list::add(el);
-  return typed::set_list<>(res);
-}
-
-typed::set_list<> typed::set_list<>::add(const typed::basic_set<> &el) const
-{
-  auto res = isl::set_list::add(el);
-  return typed::set_list<>(res);
-}
-
-typed::set_list<> typed::set_list<>::add(const typed::point<> &el) const
-{
-  auto res = isl::set_list::add(el);
-  return typed::set_list<>(res);
-}
-
-typed::set_list<> typed::set_list<>::drop(unsigned int first, unsigned int n) const
-{
-  auto res = isl::set_list::drop(first, n);
-  return typed::set_list<>(res);
-}
-
-void typed::set_list<>::foreach(const std::function<void(typed::set<>)> &fn) const
-{
-  auto lambda_fn = [&] (isl::set arg0) {
-    return fn(typed::set<>(arg0));
-  };
-  return isl::set_list::foreach(lambda_fn);
-}
-
-void typed::set_list<>::foreach_scc(const std::function<bool(typed::set<>, typed::set<>)> &follows, const std::function<void(typed::set_list<>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::set arg0, isl::set arg1) {
-    return follows(typed::set<>(arg0), typed::set<>(arg1));
-  };
-  auto lambda_fn = [&] (isl::set_list arg0) {
-    return fn(typed::set_list<>(arg0));
-  };
-  return isl::set_list::foreach_scc(lambda_follows, lambda_fn);
-}
-
-template <typename Domain>
-typed::set_list<Domain>::set_list(const isl::ctx &ctx, int n)
-  : isl::set_list(ctx, n)
-{
-}
-
-template <typename Domain>
-typed::set_list<Domain>::set_list(const typed::set<Domain> &el)
-  : isl::set_list(el)
-{
-}
-
-template <typename Domain>
-typed::set_list<Domain>::set_list(const isl::ctx &ctx, const std::string &str)
-  : isl::set_list(ctx, str)
-{
-}
-
-template <typename Domain>
-typed::set_list<Domain> typed::set_list<Domain>::add(const typed::set<Domain> &el) const
-{
-  auto res = isl::set_list::add(el);
-  return typed::set_list<Domain>(res);
-}
-
-template <typename Domain>
-typed::set_list<Domain> typed::set_list<Domain>::add(const typed::basic_set<Domain> &el) const
-{
-  auto res = isl::set_list::add(el);
-  return typed::set_list<Domain>(res);
-}
-
-template <typename Domain>
-typed::set_list<Domain> typed::set_list<Domain>::add(const typed::point<Domain> &el) const
-{
-  auto res = isl::set_list::add(el);
-  return typed::set_list<Domain>(res);
-}
-
-template <typename Domain>
-typed::set<Domain> typed::set_list<Domain>::at(int index) const
-{
-  auto res = isl::set_list::at(index);
-  return typed::set<Domain>(res);
-}
-
-template <typename Domain>
-typed::set_list<Domain> typed::set_list<Domain>::drop(unsigned int first, unsigned int n) const
-{
-  auto res = isl::set_list::drop(first, n);
-  return typed::set_list<Domain>(res);
-}
-
-template <typename Domain>
-void typed::set_list<Domain>::foreach(const std::function<void(typed::set<Domain>)> &fn) const
-{
-  auto lambda_fn = [&] (isl::set arg0) {
-    return fn(typed::set<Domain>(arg0));
-  };
-  return isl::set_list::foreach(lambda_fn);
-}
-
-template <typename Domain>
-void typed::set_list<Domain>::foreach_scc(const std::function<bool(typed::set<Domain>, typed::set<Domain>)> &follows, const std::function<void(typed::set_list<Domain>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::set arg0, isl::set arg1) {
-    return follows(typed::set<Domain>(arg0), typed::set<Domain>(arg1));
-  };
-  auto lambda_fn = [&] (isl::set_list arg0) {
-    return fn(typed::set_list<Domain>(arg0));
-  };
-  return isl::set_list::foreach_scc(lambda_follows, lambda_fn);
-}
-
-template <typename Domain>
-typed::set_list<Domain> typed::set_list<Domain>::set_at(int index, const typed::set<Anonymous> &el) const
-{
-  auto res = isl::set_list::set_at(index, el);
-  return typed::set_list<Domain>(res);
-}
-
-typed::space<>::space(const isl::ctx &ctx, const std::string &str)
-  : isl::space(ctx, str)
-{
-}
-
 template <typename Domain>
 typed::space<Domain> typed::space<>::add_named_tuple(const typed::id<Anonymous> &tuple_id, unsigned int dim) const
 {
@@ -42731,48 +38117,11 @@ typed::space<Domain> typed::space<>::add_named_tuple(const std::string &tuple_id
   return typed::space<Domain>(res);
 }
 
-typed::space<> typed::space<>::add_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::space::add_param(id);
-  return typed::space<>(res);
-}
-
-typed::space<> typed::space<>::add_param(const std::string &id) const
-{
-  auto res = isl::space::add_param(id);
-  return typed::space<>(res);
-}
-
 template <typename Domain>
 typed::space<Domain> typed::space<>::add_unnamed_tuple(unsigned int dim) const
 {
   auto res = isl::space::add_unnamed_tuple(dim);
   return typed::space<Domain>(res);
-}
-
-typed::space<> typed::space<>::drop_all_params() const
-{
-  auto res = isl::space::drop_all_params();
-  return typed::space<>(res);
-}
-
-template <typename Domain>
-typed::multi_aff<Domain> typed::space<>::multi_aff_on_domain(const typed::multi_val<Domain> &mv) const
-{
-  auto res = isl::space::multi_aff_on_domain(mv);
-  return typed::multi_aff<Domain>(res);
-}
-
-typed::aff<Anonymous> typed::space<>::param_aff_on_domain(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::space::param_aff_on_domain(id);
-  return typed::aff<Anonymous>(res);
-}
-
-typed::aff<Anonymous> typed::space<>::param_aff_on_domain(const std::string &id) const
-{
-  auto res = isl::space::param_aff_on_domain(id);
-  return typed::aff<Anonymous>(res);
 }
 
 typed::space<> typed::space<>::unit(const isl::ctx &ctx)
@@ -42785,12 +38134,6 @@ typed::set<> typed::space<>::universe_set() const
 {
   auto res = isl::space::universe_set();
   return typed::set<>(res);
-}
-
-template <typename Domain>
-typed::space<Domain>::space(const isl::ctx &ctx, const std::string &str)
-  : isl::space(ctx, str)
-{
 }
 
 template <typename Domain>
@@ -42810,20 +38153,6 @@ typed::space<Domain, Range> typed::space<Domain>::add_named_tuple(const std::str
 }
 
 template <typename Domain>
-typed::space<Domain> typed::space<Domain>::add_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::space::add_param(id);
-  return typed::space<Domain>(res);
-}
-
-template <typename Domain>
-typed::space<Domain> typed::space<Domain>::add_param(const std::string &id) const
-{
-  auto res = isl::space::add_param(id);
-  return typed::space<Domain>(res);
-}
-
-template <typename Domain>
 template <typename Range>
 typed::space<Domain, Range> typed::space<Domain>::add_unnamed_tuple(unsigned int dim) const
 {
@@ -42836,13 +38165,6 @@ typed::space<> typed::space<Domain>::domain() const
 {
   auto res = isl::space::domain();
   return typed::space<>(res);
-}
-
-template <typename Domain>
-typed::space<Domain> typed::space<Domain>::drop_all_params() const
-{
-  auto res = isl::space::drop_all_params();
-  return typed::space<Domain>(res);
 }
 
 template <typename Domain>
@@ -42910,32 +38232,10 @@ typed::multi_union_pw_aff<Domain> typed::space<Domain>::multi_union_pw_aff(const
 }
 
 template <typename Domain>
-template <typename Arg1>
-typed::multi_union_pw_aff<Arg1, Domain> typed::space<Domain>::multi_union_pw_aff(const typed::union_pw_aff_list<Arg1, Anonymous> &list) const
-{
-  auto res = isl::space::multi_union_pw_aff(list);
-  return typed::multi_union_pw_aff<Arg1, Domain>(res);
-}
-
-template <typename Domain>
 typed::multi_val<Domain> typed::space<Domain>::multi_val(const typed::val_list<Anonymous> &list) const
 {
   auto res = isl::space::multi_val(list);
   return typed::multi_val<Domain>(res);
-}
-
-template <typename Domain>
-typed::aff<Domain, Anonymous> typed::space<Domain>::param_aff_on_domain(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::space::param_aff_on_domain(id);
-  return typed::aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::aff<Domain, Anonymous> typed::space<Domain>::param_aff_on_domain(const std::string &id) const
-{
-  auto res = isl::space::param_aff_on_domain(id);
-  return typed::aff<Domain, Anonymous>(res);
 }
 
 template <typename Domain>
@@ -43012,26 +38312,6 @@ typed::multi_val<Domain> typed::space<Domain>::zero_multi_val() const
 }
 
 template <typename Domain, typename Range>
-typed::space<Domain, Range>::space(const isl::ctx &ctx, const std::string &str)
-  : isl::space(ctx, str)
-{
-}
-
-template <typename Domain, typename Range>
-typed::space<Domain, Range> typed::space<Domain, Range>::add_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::space::add_param(id);
-  return typed::space<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::space<Domain, Range> typed::space<Domain, Range>::add_param(const std::string &id) const
-{
-  auto res = isl::space::add_param(id);
-  return typed::space<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 typed::space<Domain> typed::space<Domain, Range>::domain() const
 {
   auto res = isl::space::domain();
@@ -43053,13 +38333,6 @@ typed::pw_multi_aff<pair<Domain, Range>, Domain> typed::space<Domain, Range>::do
 }
 
 template <typename Domain, typename Range>
-typed::space<Domain, Range> typed::space<Domain, Range>::drop_all_params() const
-{
-  auto res = isl::space::drop_all_params();
-  return typed::space<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 typed::multi_aff<Domain, Range> typed::space<Domain, Range>::multi_aff(const typed::aff_list<Domain, Anonymous> &list) const
 {
   auto res = isl::space::multi_aff(list);
@@ -43071,6 +38344,13 @@ typed::multi_pw_aff<Domain, Range> typed::space<Domain, Range>::multi_pw_aff(con
 {
   auto res = isl::space::multi_pw_aff(list);
   return typed::multi_pw_aff<Domain, Range>(res);
+}
+
+template <typename Domain, typename Range>
+typed::multi_union_pw_aff<Domain, Range> typed::space<Domain, Range>::multi_union_pw_aff(const typed::union_pw_aff_list<Domain, Anonymous> &list) const
+{
+  auto res = isl::space::multi_union_pw_aff(list);
+  return typed::multi_union_pw_aff<Domain, Range>(res);
 }
 
 template <typename Domain, typename Range>
@@ -43184,12 +38464,6 @@ typed::multi_union_pw_aff<Domain, Range> typed::space<Domain, Range>::zero_multi
 }
 
 template <typename Domain, typename Range>
-typed::space<pair<Domain, Range>>::space(const isl::ctx &ctx, const std::string &str)
-  : isl::space(ctx, str)
-{
-}
-
-template <typename Domain, typename Range>
 template <typename Arg2>
 typed::space<pair<Domain, Range>, Arg2> typed::space<pair<Domain, Range>>::add_named_tuple(const typed::id<Anonymous> &tuple_id, unsigned int dim) const
 {
@@ -43206,20 +38480,6 @@ typed::space<pair<Domain, Range>, Arg2> typed::space<pair<Domain, Range>>::add_n
 }
 
 template <typename Domain, typename Range>
-typed::space<pair<Domain, Range>> typed::space<pair<Domain, Range>>::add_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::space::add_param(id);
-  return typed::space<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::space<pair<Domain, Range>> typed::space<pair<Domain, Range>>::add_param(const std::string &id) const
-{
-  auto res = isl::space::add_param(id);
-  return typed::space<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
 template <typename Arg2>
 typed::space<pair<Domain, Range>, Arg2> typed::space<pair<Domain, Range>>::add_unnamed_tuple(unsigned int dim) const
 {
@@ -43232,13 +38492,6 @@ typed::space<> typed::space<pair<Domain, Range>>::domain() const
 {
   auto res = isl::space::domain();
   return typed::space<>(res);
-}
-
-template <typename Domain, typename Range>
-typed::space<pair<Domain, Range>> typed::space<pair<Domain, Range>>::drop_all_params() const
-{
-  auto res = isl::space::drop_all_params();
-  return typed::space<pair<Domain, Range>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -43306,32 +38559,10 @@ typed::multi_union_pw_aff<pair<Domain, Range>> typed::space<pair<Domain, Range>>
 }
 
 template <typename Domain, typename Range>
-template <typename Arg2>
-typed::multi_union_pw_aff<Arg2, pair<Domain, Range>> typed::space<pair<Domain, Range>>::multi_union_pw_aff(const typed::union_pw_aff_list<Arg2, Anonymous> &list) const
-{
-  auto res = isl::space::multi_union_pw_aff(list);
-  return typed::multi_union_pw_aff<Arg2, pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
 typed::multi_val<pair<Domain, Range>> typed::space<pair<Domain, Range>>::multi_val(const typed::val_list<Anonymous> &list) const
 {
   auto res = isl::space::multi_val(list);
   return typed::multi_val<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::aff<pair<Domain, Range>, Anonymous> typed::space<pair<Domain, Range>>::param_aff_on_domain(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::space::param_aff_on_domain(id);
-  return typed::aff<pair<Domain, Range>, Anonymous>(res);
-}
-
-template <typename Domain, typename Range>
-typed::aff<pair<Domain, Range>, Anonymous> typed::space<pair<Domain, Range>>::param_aff_on_domain(const std::string &id) const
-{
-  auto res = isl::space::param_aff_on_domain(id);
-  return typed::aff<pair<Domain, Range>, Anonymous>(res);
 }
 
 template <typename Domain, typename Range>
@@ -43361,13 +38592,6 @@ typed::space<Domain, Range> typed::space<pair<Domain, Range>>::unwrap() const
 {
   auto res = isl::space::unwrap();
   return typed::space<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::space<pair<Range, Domain>> typed::space<pair<Domain, Range>>::wrapped_reverse() const
-{
-  auto res = isl::space::wrapped_reverse();
-  return typed::space<pair<Range, Domain>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -43406,26 +38630,6 @@ typed::multi_val<pair<Domain, Range>> typed::space<pair<Domain, Range>>::zero_mu
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::space<pair<Domain, Range>, Range2>::space(const isl::ctx &ctx, const std::string &str)
-  : isl::space(ctx, str)
-{
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::space<pair<Domain, Range>, Range2> typed::space<pair<Domain, Range>, Range2>::add_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::space::add_param(id);
-  return typed::space<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::space<pair<Domain, Range>, Range2> typed::space<pair<Domain, Range>, Range2>::add_param(const std::string &id) const
-{
-  auto res = isl::space::add_param(id);
-  return typed::space<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::space<Domain, pair<Range, Range2>> typed::space<pair<Domain, Range>, Range2>::curry() const
 {
   auto res = isl::space::curry();
@@ -43454,20 +38658,6 @@ typed::pw_multi_aff<pair<pair<Domain, Range>, Range2>, pair<Domain, Range>> type
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::space<pair<Range, Domain>, Range2> typed::space<pair<Domain, Range>, Range2>::domain_reverse() const
-{
-  auto res = isl::space::domain_reverse();
-  return typed::space<pair<Range, Domain>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::space<pair<Domain, Range>, Range2> typed::space<pair<Domain, Range>, Range2>::drop_all_params() const
-{
-  auto res = isl::space::drop_all_params();
-  return typed::space<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::space<Anonymous, Range2> typed::space<pair<Domain, Range>, Range2>::flatten_domain() const
 {
   auto res = isl::space::flatten_domain();
@@ -43486,6 +38676,13 @@ typed::multi_pw_aff<pair<Domain, Range>, Range2> typed::space<pair<Domain, Range
 {
   auto res = isl::space::multi_pw_aff(list);
   return typed::multi_pw_aff<pair<Domain, Range>, Range2>(res);
+}
+
+template <typename Domain, typename Range, typename Range2>
+typed::multi_union_pw_aff<pair<Domain, Range>, Range2> typed::space<pair<Domain, Range>, Range2>::multi_union_pw_aff(const typed::union_pw_aff_list<pair<Domain, Range>, Anonymous> &list) const
+{
+  auto res = isl::space::multi_union_pw_aff(list);
+  return typed::multi_union_pw_aff<pair<Domain, Range>, Range2>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -43583,26 +38780,6 @@ typed::multi_union_pw_aff<pair<Domain, Range>, Range2> typed::space<pair<Domain,
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::space<Domain, pair<Range, Range2>>::space(const isl::ctx &ctx, const std::string &str)
-  : isl::space(ctx, str)
-{
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::space<Domain, pair<Range, Range2>> typed::space<Domain, pair<Range, Range2>>::add_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::space::add_param(id);
-  return typed::space<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::space<Domain, pair<Range, Range2>> typed::space<Domain, pair<Range, Range2>>::add_param(const std::string &id) const
-{
-  auto res = isl::space::add_param(id);
-  return typed::space<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::space<Domain> typed::space<Domain, pair<Range, Range2>>::domain() const
 {
   auto res = isl::space::domain();
@@ -43624,13 +38801,6 @@ typed::pw_multi_aff<pair<Domain, pair<Range, Range2>>, Domain> typed::space<Doma
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::space<Domain, pair<Range, Range2>> typed::space<Domain, pair<Range, Range2>>::drop_all_params() const
-{
-  auto res = isl::space::drop_all_params();
-  return typed::space<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::space<Domain, Anonymous> typed::space<Domain, pair<Range, Range2>>::flatten_range() const
 {
   auto res = isl::space::flatten_range();
@@ -43649,6 +38819,13 @@ typed::multi_pw_aff<Domain, pair<Range, Range2>> typed::space<Domain, pair<Range
 {
   auto res = isl::space::multi_pw_aff(list);
   return typed::multi_pw_aff<Domain, pair<Range, Range2>>(res);
+}
+
+template <typename Domain, typename Range, typename Range2>
+typed::multi_union_pw_aff<Domain, pair<Range, Range2>> typed::space<Domain, pair<Range, Range2>>::multi_union_pw_aff(const typed::union_pw_aff_list<Domain, Anonymous> &list) const
+{
+  auto res = isl::space::multi_union_pw_aff(list);
+  return typed::multi_union_pw_aff<Domain, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -43760,26 +38937,6 @@ typed::multi_union_pw_aff<Domain, pair<Range, Range2>> typed::space<Domain, pair
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::space<pair<T1, T2>, pair<Range, Range2>>::space(const isl::ctx &ctx, const std::string &str)
-  : isl::space(ctx, str)
-{
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::space<pair<T1, T2>, pair<Range, Range2>> typed::space<pair<T1, T2>, pair<Range, Range2>>::add_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::space::add_param(id);
-  return typed::space<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::space<pair<T1, T2>, pair<Range, Range2>> typed::space<pair<T1, T2>, pair<Range, Range2>>::add_param(const std::string &id) const
-{
-  auto res = isl::space::add_param(id);
-  return typed::space<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::space<T1, pair<T2, pair<Range, Range2>>> typed::space<pair<T1, T2>, pair<Range, Range2>>::curry() const
 {
   auto res = isl::space::curry();
@@ -43808,20 +38965,6 @@ typed::pw_multi_aff<pair<pair<T1, T2>, pair<Range, Range2>>, pair<T1, T2>> typed
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::space<pair<T2, T1>, pair<Range, Range2>> typed::space<pair<T1, T2>, pair<Range, Range2>>::domain_reverse() const
-{
-  auto res = isl::space::domain_reverse();
-  return typed::space<pair<T2, T1>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::space<pair<T1, T2>, pair<Range, Range2>> typed::space<pair<T1, T2>, pair<Range, Range2>>::drop_all_params() const
-{
-  auto res = isl::space::drop_all_params();
-  return typed::space<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::space<Anonymous, pair<Range, Range2>> typed::space<pair<T1, T2>, pair<Range, Range2>>::flatten_domain() const
 {
   auto res = isl::space::flatten_domain();
@@ -43847,6 +38990,13 @@ typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>> typed::space<pair<T1, T2>
 {
   auto res = isl::space::multi_pw_aff(list);
   return typed::multi_pw_aff<pair<T1, T2>, pair<Range, Range2>>(res);
+}
+
+template <typename T1, typename T2, typename Range, typename Range2>
+typed::multi_union_pw_aff<pair<T1, T2>, pair<Range, Range2>> typed::space<pair<T1, T2>, pair<Range, Range2>>::multi_union_pw_aff(const typed::union_pw_aff_list<pair<T1, T2>, Anonymous> &list) const
+{
+  auto res = isl::space::multi_union_pw_aff(list);
+  return typed::multi_union_pw_aff<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -44095,13 +39245,6 @@ typed::union_map<pair<Domain, Domain2>, Range> typed::union_map<Domain, Range>::
 }
 
 template <typename Domain, typename Range>
-typed::union_map<Domain, Range> typed::union_map<Domain, Range>::drop_unused_params() const
-{
-  auto res = isl::union_map::drop_unused_params();
-  return typed::union_map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 typed::union_map<Domain, Range> typed::union_map<Domain, Range>::empty(const isl::ctx &ctx)
 {
   auto res = isl::union_map::empty(ctx);
@@ -44111,26 +39254,19 @@ typed::union_map<Domain, Range> typed::union_map<Domain, Range>::empty(const isl
 template <typename Domain, typename Range>
 bool typed::union_map<Domain, Range>::every_map(const std::function<bool(typed::map<Domain, Range>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<Domain, Range>(arg0));
   };
-  return isl::union_map::every_map(lambda_test);
-}
-
-template <typename Domain, typename Range>
-typed::map<Domain, Range> typed::union_map<Domain, Range>::extract_map(const typed::space<Domain, Range> &space) const
-{
-  auto res = isl::union_map::extract_map(space);
-  return typed::map<Domain, Range>(res);
+  return isl::union_map::every_map(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::union_map<Domain, Range>::foreach_map(const std::function<void(typed::map<Domain, Range>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<Domain, Range>(arg0));
   };
-  return isl::union_map::foreach_map(lambda_fn);
+  return isl::union_map::foreach_map(lambda);
 }
 
 template <typename Domain, typename Range>
@@ -44179,27 +39315,6 @@ template <typename Domain, typename Range>
 typed::union_map<Domain, Range> typed::union_map<Domain, Range>::gist_domain(const typed::set<Domain> &uset) const
 {
   auto res = isl::union_map::gist_domain(uset);
-  return typed::union_map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::union_map<Domain, Range> typed::union_map<Domain, Range>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::union_map<Domain, Range> typed::union_map<Domain, Range>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::union_map<Domain, Range> typed::union_map<Domain, Range>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
   return typed::union_map<Domain, Range>(res);
 }
 
@@ -44288,20 +39403,6 @@ typed::union_map<Domain, Range> typed::union_map<Domain, Range>::lexmin() const
 }
 
 template <typename Domain, typename Range>
-typed::map_list<Domain, Range> typed::union_map<Domain, Range>::map_list() const
-{
-  auto res = isl::union_map::map_list();
-  return typed::map_list<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::set<> typed::union_map<Domain, Range>::params() const
-{
-  auto res = isl::union_map::params();
-  return typed::set<>(res);
-}
-
-template <typename Domain, typename Range>
 template <typename Domain2>
 typed::union_map<Domain2, Range> typed::union_map<Domain, Range>::preimage_domain(const typed::multi_aff<Domain2, Domain> &ma) const
 {
@@ -44385,27 +39486,6 @@ template <typename Domain, typename Range>
 typed::union_map<Domain, Range> typed::union_map<Domain, Range>::project_out_all_params() const
 {
   auto res = isl::union_map::project_out_all_params();
-  return typed::union_map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::union_map<Domain, Range> typed::union_map<Domain, Range>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::union_map::project_out_param(id);
-  return typed::union_map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::union_map<Domain, Range> typed::union_map<Domain, Range>::project_out_param(const std::string &id) const
-{
-  auto res = isl::union_map::project_out_param(id);
-  return typed::union_map<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::union_map<Domain, Range> typed::union_map<Domain, Range>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::union_map::project_out_param(list);
   return typed::union_map<Domain, Range>(res);
 }
 
@@ -44748,20 +39828,6 @@ typed::union_map<pair<pair<Domain, Range>, Domain2>, Range2> typed::union_map<pa
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::union_map<pair<Range, Domain>, Range2> typed::union_map<pair<Domain, Range>, Range2>::domain_reverse() const
-{
-  auto res = isl::union_map::domain_reverse();
-  return typed::union_map<pair<Range, Domain>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::drop_unused_params() const
-{
-  auto res = isl::union_map::drop_unused_params();
-  return typed::union_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::empty(const isl::ctx &ctx)
 {
   auto res = isl::union_map::empty(ctx);
@@ -44771,26 +39837,19 @@ typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Rang
 template <typename Domain, typename Range, typename Range2>
 bool typed::union_map<pair<Domain, Range>, Range2>::every_map(const std::function<bool(typed::map<pair<Domain, Range>, Range2>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<pair<Domain, Range>, Range2>(arg0));
   };
-  return isl::union_map::every_map(lambda_test);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::extract_map(const typed::space<pair<Domain, Range>, Range2> &space) const
-{
-  auto res = isl::union_map::extract_map(space);
-  return typed::map<pair<Domain, Range>, Range2>(res);
+  return isl::union_map::every_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
 void typed::union_map<pair<Domain, Range>, Range2>::foreach_map(const std::function<void(typed::map<pair<Domain, Range>, Range2>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<pair<Domain, Range>, Range2>(arg0));
   };
-  return isl::union_map::foreach_map(lambda_fn);
+  return isl::union_map::foreach_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -44843,27 +39902,6 @@ typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Rang
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::intersect(const typed::union_map<pair<Domain, Range>, Range2> &umap2) const
 {
   auto res = isl::union_map::intersect(umap2);
@@ -44895,34 +39933,6 @@ template <typename Domain, typename Range, typename Range2>
 typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::intersect_domain(const typed::union_set<pair<Domain, Range>> &uset) const
 {
   auto res = isl::union_map::intersect_domain(uset);
-  return typed::union_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::intersect_domain_wrapped_domain(const typed::union_set<Domain> &domain) const
-{
-  auto res = isl::union_map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::intersect_domain_wrapped_domain(const typed::basic_set<Domain> &domain) const
-{
-  auto res = isl::union_map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::intersect_domain_wrapped_domain(const typed::point<Domain> &domain) const
-{
-  auto res = isl::union_map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::intersect_domain_wrapped_domain(const typed::set<Domain> &domain) const
-{
-  auto res = isl::union_map::intersect_domain_wrapped_domain(domain);
   return typed::union_map<pair<Domain, Range>, Range2>(res);
 }
 
@@ -44973,20 +39983,6 @@ typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Rang
 {
   auto res = isl::union_map::lexmin();
   return typed::union_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map_list<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::map_list() const
-{
-  auto res = isl::union_map::map_list();
-  return typed::map_list<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::set<> typed::union_map<pair<Domain, Range>, Range2>::params() const
-{
-  auto res = isl::union_map::params();
-  return typed::set<>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -45073,27 +40069,6 @@ template <typename Domain, typename Range, typename Range2>
 typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::project_out_all_params() const
 {
   auto res = isl::union_map::project_out_all_params();
-  return typed::union_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::union_map::project_out_param(id);
-  return typed::union_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::project_out_param(const std::string &id) const
-{
-  auto res = isl::union_map::project_out_param(id);
-  return typed::union_map<pair<Domain, Range>, Range2>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<pair<Domain, Range>, Range2> typed::union_map<pair<Domain, Range>, Range2>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::union_map::project_out_param(list);
   return typed::union_map<pair<Domain, Range>, Range2>(res);
 }
 
@@ -45422,13 +40397,6 @@ typed::union_map<pair<Domain, Domain2>, Domain> typed::union_map<Domain, Domain>
 }
 
 template <typename Domain>
-typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::drop_unused_params() const
-{
-  auto res = isl::union_map::drop_unused_params();
-  return typed::union_map<Domain, Domain>(res);
-}
-
-template <typename Domain>
 typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::empty(const isl::ctx &ctx)
 {
   auto res = isl::union_map::empty(ctx);
@@ -45452,7 +40420,8 @@ typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::eq_at(const t
 }
 
 template <typename Domain>
-typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::eq_at(const typed::union_pw_aff<Domain, Anonymous> &mupa) const
+template <typename Range>
+typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::eq_at(const typed::union_pw_aff<Domain, Range> &mupa) const
 {
   auto res = isl::union_map::eq_at(mupa);
   return typed::union_map<Domain, Domain>(res);
@@ -45461,26 +40430,19 @@ typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::eq_at(const t
 template <typename Domain>
 bool typed::union_map<Domain, Domain>::every_map(const std::function<bool(typed::map<Domain, Domain>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<Domain, Domain>(arg0));
   };
-  return isl::union_map::every_map(lambda_test);
-}
-
-template <typename Domain>
-typed::map<Domain, Domain> typed::union_map<Domain, Domain>::extract_map(const typed::space<Domain, Domain> &space) const
-{
-  auto res = isl::union_map::extract_map(space);
-  return typed::map<Domain, Domain>(res);
+  return isl::union_map::every_map(lambda);
 }
 
 template <typename Domain>
 void typed::union_map<Domain, Domain>::foreach_map(const std::function<void(typed::map<Domain, Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<Domain, Domain>(arg0));
   };
-  return isl::union_map::foreach_map(lambda_fn);
+  return isl::union_map::foreach_map(lambda);
 }
 
 template <typename Domain>
@@ -45529,27 +40491,6 @@ template <typename Domain>
 typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::gist_domain(const typed::set<Domain> &uset) const
 {
   auto res = isl::union_map::gist_domain(uset);
-  return typed::union_map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
   return typed::union_map<Domain, Domain>(res);
 }
 
@@ -45638,20 +40579,6 @@ typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::lexmin() cons
 }
 
 template <typename Domain>
-typed::map_list<Domain, Domain> typed::union_map<Domain, Domain>::map_list() const
-{
-  auto res = isl::union_map::map_list();
-  return typed::map_list<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::set<> typed::union_map<Domain, Domain>::params() const
-{
-  auto res = isl::union_map::params();
-  return typed::set<>(res);
-}
-
-template <typename Domain>
 template <typename Domain2>
 typed::union_map<Domain2, Domain> typed::union_map<Domain, Domain>::preimage_domain(const typed::multi_aff<Domain2, Domain> &ma) const
 {
@@ -45735,27 +40662,6 @@ template <typename Domain>
 typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::project_out_all_params() const
 {
   auto res = isl::union_map::project_out_all_params();
-  return typed::union_map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::union_map::project_out_param(id);
-  return typed::union_map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::project_out_param(const std::string &id) const
-{
-  auto res = isl::union_map::project_out_param(id);
-  return typed::union_map<Domain, Domain>(res);
-}
-
-template <typename Domain>
-typed::union_map<Domain, Domain> typed::union_map<Domain, Domain>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::union_map::project_out_param(list);
   return typed::union_map<Domain, Domain>(res);
 }
 
@@ -46077,13 +40983,6 @@ typed::union_map<pair<Domain, Domain2>, pair<Range, Range2>> typed::union_map<Do
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::drop_unused_params() const
-{
-  auto res = isl::union_map::drop_unused_params();
-  return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::empty(const isl::ctx &ctx)
 {
   auto res = isl::union_map::empty(ctx);
@@ -46093,26 +40992,19 @@ typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Rang
 template <typename Domain, typename Range, typename Range2>
 bool typed::union_map<Domain, pair<Range, Range2>>::every_map(const std::function<bool(typed::map<Domain, pair<Range, Range2>>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<Domain, pair<Range, Range2>>(arg0));
   };
-  return isl::union_map::every_map(lambda_test);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::extract_map(const typed::space<Domain, pair<Range, Range2>> &space) const
-{
-  auto res = isl::union_map::extract_map(space);
-  return typed::map<Domain, pair<Range, Range2>>(res);
+  return isl::union_map::every_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
 void typed::union_map<Domain, pair<Range, Range2>>::foreach_map(const std::function<void(typed::map<Domain, pair<Range, Range2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<Domain, pair<Range, Range2>>(arg0));
   };
-  return isl::union_map::foreach_map(lambda_fn);
+  return isl::union_map::foreach_map(lambda);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -46161,27 +41053,6 @@ template <typename Domain, typename Range, typename Range2>
 typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::gist_domain(const typed::set<Domain> &uset) const
 {
   auto res = isl::union_map::gist_domain(uset);
-  return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
   return typed::union_map<Domain, pair<Range, Range2>>(res);
 }
 
@@ -46256,34 +41127,6 @@ typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Rang
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::union_set<Range> &domain) const
-{
-  auto res = isl::union_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::basic_set<Range> &domain) const
-{
-  auto res = isl::union_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::point<Range> &domain) const
-{
-  auto res = isl::union_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::set<Range> &domain) const
-{
-  auto res = isl::union_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::lexmax() const
 {
   auto res = isl::union_map::lexmax();
@@ -46295,20 +41138,6 @@ typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Rang
 {
   auto res = isl::union_map::lexmin();
   return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::map_list<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::map_list() const
-{
-  auto res = isl::union_map::map_list();
-  return typed::map_list<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::set<> typed::union_map<Domain, pair<Range, Range2>>::params() const
-{
-  auto res = isl::union_map::params();
-  return typed::set<>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -46395,27 +41224,6 @@ template <typename Domain, typename Range, typename Range2>
 typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::project_out_all_params() const
 {
   auto res = isl::union_map::project_out_all_params();
-  return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::union_map::project_out_param(id);
-  return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::project_out_param(const std::string &id) const
-{
-  auto res = isl::union_map::project_out_param(id);
-  return typed::union_map<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::union_map<Domain, pair<Range, Range2>> typed::union_map<Domain, pair<Range, Range2>>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::union_map::project_out_param(list);
   return typed::union_map<Domain, pair<Range, Range2>>(res);
 }
 
@@ -46793,20 +41601,6 @@ typed::union_map<pair<pair<T1, T2>, Domain2>, pair<T1, T2>> typed::union_map<pai
 }
 
 template <typename T1, typename T2>
-typed::union_map<pair<T2, T1>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::domain_reverse() const
-{
-  auto res = isl::union_map::domain_reverse();
-  return typed::union_map<pair<T2, T1>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::drop_unused_params() const
-{
-  auto res = isl::union_map::drop_unused_params();
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
 typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::empty(const isl::ctx &ctx)
 {
   auto res = isl::union_map::empty(ctx);
@@ -46830,7 +41624,8 @@ typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair
 }
 
 template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::eq_at(const typed::union_pw_aff<pair<T1, T2>, Anonymous> &mupa) const
+template <typename Range>
+typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::eq_at(const typed::union_pw_aff<pair<T1, T2>, Range> &mupa) const
 {
   auto res = isl::union_map::eq_at(mupa);
   return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
@@ -46839,26 +41634,19 @@ typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair
 template <typename T1, typename T2>
 bool typed::union_map<pair<T1, T2>, pair<T1, T2>>::every_map(const std::function<bool(typed::map<pair<T1, T2>, pair<T1, T2>>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<pair<T1, T2>, pair<T1, T2>>(arg0));
   };
-  return isl::union_map::every_map(lambda_test);
-}
-
-template <typename T1, typename T2>
-typed::map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::extract_map(const typed::space<pair<T1, T2>, pair<T1, T2>> &space) const
-{
-  auto res = isl::union_map::extract_map(space);
-  return typed::map<pair<T1, T2>, pair<T1, T2>>(res);
+  return isl::union_map::every_map(lambda);
 }
 
 template <typename T1, typename T2>
 void typed::union_map<pair<T1, T2>, pair<T1, T2>>::foreach_map(const std::function<void(typed::map<pair<T1, T2>, pair<T1, T2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<pair<T1, T2>, pair<T1, T2>>(arg0));
   };
-  return isl::union_map::foreach_map(lambda_fn);
+  return isl::union_map::foreach_map(lambda);
 }
 
 template <typename T1, typename T2>
@@ -46911,27 +41699,6 @@ typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair
 }
 
 template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
 typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::intersect(const typed::union_map<pair<T1, T2>, pair<T1, T2>> &umap2) const
 {
   auto res = isl::union_map::intersect(umap2);
@@ -46963,34 +41730,6 @@ template <typename T1, typename T2>
 typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::intersect_domain(const typed::union_set<pair<T1, T2>> &uset) const
 {
   auto res = isl::union_map::intersect_domain(uset);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::intersect_domain_wrapped_domain(const typed::union_set<T1> &domain) const
-{
-  auto res = isl::union_map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::intersect_domain_wrapped_domain(const typed::basic_set<T1> &domain) const
-{
-  auto res = isl::union_map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::intersect_domain_wrapped_domain(const typed::point<T1> &domain) const
-{
-  auto res = isl::union_map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::intersect_domain_wrapped_domain(const typed::set<T1> &domain) const
-{
-  auto res = isl::union_map::intersect_domain_wrapped_domain(domain);
   return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
 }
 
@@ -47030,34 +41769,6 @@ typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair
 }
 
 template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::intersect_range_wrapped_domain(const typed::union_set<T1> &domain) const
-{
-  auto res = isl::union_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::intersect_range_wrapped_domain(const typed::basic_set<T1> &domain) const
-{
-  auto res = isl::union_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::intersect_range_wrapped_domain(const typed::point<T1> &domain) const
-{
-  auto res = isl::union_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::intersect_range_wrapped_domain(const typed::set<T1> &domain) const
-{
-  auto res = isl::union_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
 typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::lexmax() const
 {
   auto res = isl::union_map::lexmax();
@@ -47069,20 +41780,6 @@ typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair
 {
   auto res = isl::union_map::lexmin();
   return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::map_list<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::map_list() const
-{
-  auto res = isl::union_map::map_list();
-  return typed::map_list<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::set<> typed::union_map<pair<T1, T2>, pair<T1, T2>>::params() const
-{
-  auto res = isl::union_map::params();
-  return typed::set<>(res);
 }
 
 template <typename T1, typename T2>
@@ -47169,27 +41866,6 @@ template <typename T1, typename T2>
 typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::project_out_all_params() const
 {
   auto res = isl::union_map::project_out_all_params();
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::union_map::project_out_param(id);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::project_out_param(const std::string &id) const
-{
-  auto res = isl::union_map::project_out_param(id);
-  return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
-}
-
-template <typename T1, typename T2>
-typed::union_map<pair<T1, T2>, pair<T1, T2>> typed::union_map<pair<T1, T2>, pair<T1, T2>>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::union_map::project_out_param(list);
   return typed::union_map<pair<T1, T2>, pair<T1, T2>>(res);
 }
 
@@ -47560,20 +42236,6 @@ typed::union_map<pair<pair<T1, T2>, Domain2>, pair<Range, Range2>> typed::union_
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T2, T1>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::domain_reverse() const
-{
-  auto res = isl::union_map::domain_reverse();
-  return typed::union_map<pair<T2, T1>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::drop_unused_params() const
-{
-  auto res = isl::union_map::drop_unused_params();
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::empty(const isl::ctx &ctx)
 {
   auto res = isl::union_map::empty(ctx);
@@ -47583,26 +42245,19 @@ typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2
 template <typename T1, typename T2, typename Range, typename Range2>
 bool typed::union_map<pair<T1, T2>, pair<Range, Range2>>::every_map(const std::function<bool(typed::map<pair<T1, T2>, pair<Range, Range2>>)> &test) const
 {
-  auto lambda_test = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return test(typed::map<pair<T1, T2>, pair<Range, Range2>>(arg0));
   };
-  return isl::union_map::every_map(lambda_test);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::extract_map(const typed::space<pair<T1, T2>, pair<Range, Range2>> &space) const
-{
-  auto res = isl::union_map::extract_map(space);
-  return typed::map<pair<T1, T2>, pair<Range, Range2>>(res);
+  return isl::union_map::every_map(lambda);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
 void typed::union_map<pair<T1, T2>, pair<Range, Range2>>::foreach_map(const std::function<void(typed::map<pair<T1, T2>, pair<Range, Range2>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::map arg0) {
+  auto lambda = [&] (isl::map arg0) {
     return fn(typed::map<pair<T1, T2>, pair<Range, Range2>>(arg0));
   };
-  return isl::union_map::foreach_map(lambda_fn);
+  return isl::union_map::foreach_map(lambda);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -47655,27 +42310,6 @@ typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::union_map::gist_params(set);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::intersect(const typed::union_map<pair<T1, T2>, pair<Range, Range2>> &umap2) const
 {
   auto res = isl::union_map::intersect(umap2);
@@ -47707,34 +42341,6 @@ template <typename T1, typename T2, typename Range, typename Range2>
 typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::intersect_domain(const typed::union_set<pair<T1, T2>> &uset) const
 {
   auto res = isl::union_map::intersect_domain(uset);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::union_set<T1> &domain) const
-{
-  auto res = isl::union_map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::basic_set<T1> &domain) const
-{
-  auto res = isl::union_map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::point<T1> &domain) const
-{
-  auto res = isl::union_map::intersect_domain_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::set<T1> &domain) const
-{
-  auto res = isl::union_map::intersect_domain_wrapped_domain(domain);
   return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
@@ -47774,34 +42380,6 @@ typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::union_set<Range> &domain) const
-{
-  auto res = isl::union_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::basic_set<Range> &domain) const
-{
-  auto res = isl::union_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::point<Range> &domain) const
-{
-  auto res = isl::union_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::intersect_range_wrapped_domain(const typed::set<Range> &domain) const
-{
-  auto res = isl::union_map::intersect_range_wrapped_domain(domain);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::lexmax() const
 {
   auto res = isl::union_map::lexmax();
@@ -47813,20 +42391,6 @@ typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2
 {
   auto res = isl::union_map::lexmin();
   return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::map_list<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::map_list() const
-{
-  auto res = isl::union_map::map_list();
-  return typed::map_list<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::set<> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::params() const
-{
-  auto res = isl::union_map::params();
-  return typed::set<>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -47913,27 +42477,6 @@ template <typename T1, typename T2, typename Range, typename Range2>
 typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::project_out_all_params() const
 {
   auto res = isl::union_map::project_out_all_params();
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::project_out_param(const typed::id<Anonymous> &id) const
-{
-  auto res = isl::union_map::project_out_param(id);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::project_out_param(const std::string &id) const
-{
-  auto res = isl::union_map::project_out_param(id);
-  return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_map<pair<T1, T2>, pair<Range, Range2>> typed::union_map<pair<T1, T2>, pair<Range, Range2>>::project_out_param(const typed::id_list<Anonymous> &list) const
-{
-  auto res = isl::union_map::project_out_param(list);
   return typed::union_map<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
@@ -48229,18 +42772,6 @@ typed::union_set<> typed::union_pw_aff<Anonymous>::domain() const
   return typed::union_set<>(res);
 }
 
-typed::union_pw_aff<Anonymous> typed::union_pw_aff<Anonymous>::drop_unused_params() const
-{
-  auto res = isl::union_pw_aff::drop_unused_params();
-  return typed::union_pw_aff<Anonymous>(res);
-}
-
-typed::pw_multi_aff<Anonymous> typed::union_pw_aff<Anonymous>::extract_pw_multi_aff(const typed::space<Anonymous> &space) const
-{
-  auto res = isl::union_pw_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Anonymous>(res);
-}
-
 typed::union_pw_aff<Anonymous> typed::union_pw_aff<Anonymous>::gist(const typed::union_set<> &context) const
 {
   auto res = isl::union_pw_aff::gist(context);
@@ -48263,12 +42794,6 @@ typed::union_pw_aff<Anonymous> typed::union_pw_aff<Anonymous>::gist(const typed:
 {
   auto res = isl::union_pw_aff::gist(context);
   return typed::union_pw_aff<Anonymous>(res);
-}
-
-typed::multi_union_pw_aff<Anonymous> typed::union_pw_aff<Anonymous>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::union_pw_aff::gist_params(context);
-  return typed::multi_union_pw_aff<Anonymous>(res);
 }
 
 typed::union_pw_aff<Anonymous> typed::union_pw_aff<Anonymous>::intersect_params(const typed::set<> &set) const
@@ -48299,12 +42824,6 @@ typed::multi_union_pw_aff<Anonymous> typed::union_pw_aff<Anonymous>::neg() const
 {
   auto res = isl::union_pw_aff::neg();
   return typed::multi_union_pw_aff<Anonymous>(res);
-}
-
-typed::pw_multi_aff_list<Anonymous> typed::union_pw_aff<Anonymous>::pw_multi_aff_list() const
-{
-  auto res = isl::union_pw_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Anonymous>(res);
 }
 
 typed::multi_union_pw_aff<Anonymous> typed::union_pw_aff<Anonymous>::scale(const typed::multi_val<Anonymous> &mv) const
@@ -48554,20 +43073,6 @@ typed::union_set<Domain> typed::union_pw_aff<Domain, Anonymous>::domain() const
 }
 
 template <typename Domain>
-typed::union_pw_aff<Domain, Anonymous> typed::union_pw_aff<Domain, Anonymous>::drop_unused_params() const
-{
-  auto res = isl::union_pw_aff::drop_unused_params();
-  return typed::union_pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff<Domain, Anonymous> typed::union_pw_aff<Domain, Anonymous>::extract_pw_multi_aff(const typed::space<Domain, Anonymous> &space) const
-{
-  auto res = isl::union_pw_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
 typed::union_pw_aff<Domain, Anonymous> typed::union_pw_aff<Domain, Anonymous>::gist(const typed::union_set<Domain> &context) const
 {
   auto res = isl::union_pw_aff::gist(context);
@@ -48593,13 +43098,6 @@ typed::union_pw_aff<Domain, Anonymous> typed::union_pw_aff<Domain, Anonymous>::g
 {
   auto res = isl::union_pw_aff::gist(context);
   return typed::union_pw_aff<Domain, Anonymous>(res);
-}
-
-template <typename Domain>
-typed::multi_union_pw_aff<Domain, Anonymous> typed::union_pw_aff<Domain, Anonymous>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::union_pw_aff::gist_params(context);
-  return typed::multi_union_pw_aff<Domain, Anonymous>(res);
 }
 
 template <typename Domain>
@@ -48709,13 +43207,6 @@ typed::union_pw_aff<Anonymous> typed::union_pw_aff<Domain, Anonymous>::pullback(
 {
   auto res = isl::union_pw_aff::pullback(upma);
   return typed::union_pw_aff<Anonymous>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff_list<Domain, Anonymous> typed::union_pw_aff<Domain, Anonymous>::pw_multi_aff_list() const
-{
-  auto res = isl::union_pw_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Domain, Anonymous>(res);
 }
 
 template <typename Domain>
@@ -49015,20 +43506,6 @@ typed::union_set<pair<Domain, Domain2>> typed::union_pw_aff<pair<Domain, Domain2
 }
 
 template <typename Domain, typename Domain2>
-typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>::drop_unused_params() const
-{
-  auto res = isl::union_pw_aff::drop_unused_params();
-  return typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>(res);
-}
-
-template <typename Domain, typename Domain2>
-typed::pw_multi_aff<pair<Domain, Domain2>, Anonymous> typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>::extract_pw_multi_aff(const typed::space<pair<Domain, Domain2>, Anonymous> &space) const
-{
-  auto res = isl::union_pw_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<pair<Domain, Domain2>, Anonymous>(res);
-}
-
-template <typename Domain, typename Domain2>
 typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>::gist(const typed::union_set<pair<Domain, Domain2>> &context) const
 {
   auto res = isl::union_pw_aff::gist(context);
@@ -49057,13 +43534,6 @@ typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> typed::union_pw_aff<pair<D
 }
 
 template <typename Domain, typename Domain2>
-typed::multi_union_pw_aff<pair<Domain, Domain2>, Anonymous> typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>::gist_params(const typed::set<> &context) const
-{
-  auto res = isl::union_pw_aff::gist_params(context);
-  return typed::multi_union_pw_aff<pair<Domain, Domain2>, Anonymous>(res);
-}
-
-template <typename Domain, typename Domain2>
 typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>::intersect_domain(const typed::space<pair<Domain, Domain2>> &space) const
 {
   auto res = isl::union_pw_aff::intersect_domain(space);
@@ -49074,34 +43544,6 @@ template <typename Domain, typename Domain2>
 typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>::intersect_domain(const typed::union_set<pair<Domain, Domain2>> &uset) const
 {
   auto res = isl::union_pw_aff::intersect_domain(uset);
-  return typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>(res);
-}
-
-template <typename Domain, typename Domain2>
-typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>::intersect_domain_wrapped_domain(const typed::union_set<Domain> &uset) const
-{
-  auto res = isl::union_pw_aff::intersect_domain_wrapped_domain(uset);
-  return typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>(res);
-}
-
-template <typename Domain, typename Domain2>
-typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>::intersect_domain_wrapped_domain(const typed::basic_set<Domain> &uset) const
-{
-  auto res = isl::union_pw_aff::intersect_domain_wrapped_domain(uset);
-  return typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>(res);
-}
-
-template <typename Domain, typename Domain2>
-typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>::intersect_domain_wrapped_domain(const typed::point<Domain> &uset) const
-{
-  auto res = isl::union_pw_aff::intersect_domain_wrapped_domain(uset);
-  return typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>(res);
-}
-
-template <typename Domain, typename Domain2>
-typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>::intersect_domain_wrapped_domain(const typed::set<Domain> &uset) const
-{
-  auto res = isl::union_pw_aff::intersect_domain_wrapped_domain(uset);
   return typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>(res);
 }
 
@@ -49206,13 +43648,6 @@ typed::union_pw_aff<Anonymous> typed::union_pw_aff<pair<Domain, Domain2>, Anonym
 {
   auto res = isl::union_pw_aff::pullback(upma);
   return typed::union_pw_aff<Anonymous>(res);
-}
-
-template <typename Domain, typename Domain2>
-typed::pw_multi_aff_list<pair<Domain, Domain2>, Anonymous> typed::union_pw_aff<pair<Domain, Domain2>, Anonymous>::pw_multi_aff_list() const
-{
-  auto res = isl::union_pw_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<pair<Domain, Domain2>, Anonymous>(res);
 }
 
 template <typename Domain, typename Domain2>
@@ -49397,11 +43832,6 @@ typed::union_pw_aff_list<Anonymous>::union_pw_aff_list(const typed::union_pw_aff
 {
 }
 
-typed::union_pw_aff_list<Anonymous>::union_pw_aff_list(const isl::ctx &ctx, const std::string &str)
-  : isl::union_pw_aff_list(ctx, str)
-{
-}
-
 typed::union_pw_aff_list<Anonymous> typed::union_pw_aff_list<Anonymous>::add(const typed::union_pw_aff<Anonymous> &el) const
 {
   auto res = isl::union_pw_aff_list::add(el);
@@ -49434,27 +43864,10 @@ typed::union_pw_aff_list<Anonymous> typed::union_pw_aff_list<Anonymous>::drop(un
 
 void typed::union_pw_aff_list<Anonymous>::foreach(const std::function<void(typed::union_pw_aff<Anonymous>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::union_pw_aff arg0) {
+  auto lambda = [&] (isl::union_pw_aff arg0) {
     return fn(typed::union_pw_aff<Anonymous>(arg0));
   };
-  return isl::union_pw_aff_list::foreach(lambda_fn);
-}
-
-void typed::union_pw_aff_list<Anonymous>::foreach_scc(const std::function<bool(typed::union_pw_aff<Anonymous>, typed::union_pw_aff<Anonymous>)> &follows, const std::function<void(typed::union_pw_aff_list<Anonymous>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::union_pw_aff arg0, isl::union_pw_aff arg1) {
-    return follows(typed::union_pw_aff<Anonymous>(arg0), typed::union_pw_aff<Anonymous>(arg1));
-  };
-  auto lambda_fn = [&] (isl::union_pw_aff_list arg0) {
-    return fn(typed::union_pw_aff_list<Anonymous>(arg0));
-  };
-  return isl::union_pw_aff_list::foreach_scc(lambda_follows, lambda_fn);
-}
-
-typed::union_pw_aff_list<Anonymous> typed::union_pw_aff_list<Anonymous>::set_at(int index, const typed::union_pw_aff<Anonymous> &el) const
-{
-  auto res = isl::union_pw_aff_list::set_at(index, el);
-  return typed::union_pw_aff_list<Anonymous>(res);
+  return isl::union_pw_aff_list::foreach(lambda);
 }
 
 template <typename Domain>
@@ -49466,12 +43879,6 @@ typed::union_pw_aff_list<Domain, Anonymous>::union_pw_aff_list(const isl::ctx &c
 template <typename Domain>
 typed::union_pw_aff_list<Domain, Anonymous>::union_pw_aff_list(const typed::union_pw_aff<Domain, Anonymous> &el)
   : isl::union_pw_aff_list(el)
-{
-}
-
-template <typename Domain>
-typed::union_pw_aff_list<Domain, Anonymous>::union_pw_aff_list(const isl::ctx &ctx, const std::string &str)
-  : isl::union_pw_aff_list(ctx, str)
 {
 }
 
@@ -49513,29 +43920,10 @@ typed::union_pw_aff_list<Domain, Anonymous> typed::union_pw_aff_list<Domain, Ano
 template <typename Domain>
 void typed::union_pw_aff_list<Domain, Anonymous>::foreach(const std::function<void(typed::union_pw_aff<Domain, Anonymous>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::union_pw_aff arg0) {
+  auto lambda = [&] (isl::union_pw_aff arg0) {
     return fn(typed::union_pw_aff<Domain, Anonymous>(arg0));
   };
-  return isl::union_pw_aff_list::foreach(lambda_fn);
-}
-
-template <typename Domain>
-void typed::union_pw_aff_list<Domain, Anonymous>::foreach_scc(const std::function<bool(typed::union_pw_aff<Domain, Anonymous>, typed::union_pw_aff<Domain, Anonymous>)> &follows, const std::function<void(typed::union_pw_aff_list<Domain, Anonymous>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::union_pw_aff arg0, isl::union_pw_aff arg1) {
-    return follows(typed::union_pw_aff<Domain, Anonymous>(arg0), typed::union_pw_aff<Domain, Anonymous>(arg1));
-  };
-  auto lambda_fn = [&] (isl::union_pw_aff_list arg0) {
-    return fn(typed::union_pw_aff_list<Domain, Anonymous>(arg0));
-  };
-  return isl::union_pw_aff_list::foreach_scc(lambda_follows, lambda_fn);
-}
-
-template <typename Domain>
-typed::union_pw_aff_list<Domain, Anonymous> typed::union_pw_aff_list<Domain, Anonymous>::set_at(int index, const typed::union_pw_aff<Domain, Anonymous> &el) const
-{
-  auto res = isl::union_pw_aff_list::set_at(index, el);
-  return typed::union_pw_aff_list<Domain, Anonymous>(res);
+  return isl::union_pw_aff_list::foreach(lambda);
 }
 
 template <typename Domain>
@@ -49615,10 +44003,11 @@ typed::union_pw_multi_aff<Range> typed::union_pw_multi_aff<Domain>::apply(const 
 }
 
 template <typename Domain>
-typed::union_pw_multi_aff<Anonymous> typed::union_pw_multi_aff<Domain>::apply(const typed::union_pw_aff<Domain, Anonymous> &upma2) const
+template <typename Range>
+typed::union_pw_multi_aff<Range> typed::union_pw_multi_aff<Domain>::apply(const typed::union_pw_aff<Domain, Range> &upma2) const
 {
   auto res = isl::union_pw_multi_aff::apply(upma2);
-  return typed::union_pw_multi_aff<Anonymous>(res);
+  return typed::union_pw_multi_aff<Range>(res);
 }
 
 template <typename Domain>
@@ -49650,24 +44039,10 @@ typed::union_set<> typed::union_pw_multi_aff<Domain>::domain() const
 }
 
 template <typename Domain>
-typed::union_pw_multi_aff<Domain> typed::union_pw_multi_aff<Domain>::drop_unused_params() const
-{
-  auto res = isl::union_pw_multi_aff::drop_unused_params();
-  return typed::union_pw_multi_aff<Domain>(res);
-}
-
-template <typename Domain>
 typed::union_pw_multi_aff<Domain> typed::union_pw_multi_aff<Domain>::empty(const isl::ctx &ctx)
 {
   auto res = isl::union_pw_multi_aff::empty(ctx);
   return typed::union_pw_multi_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff<Domain> typed::union_pw_multi_aff<Domain>::extract_pw_multi_aff(const typed::space<Domain> &space) const
-{
-  auto res = isl::union_pw_multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Domain>(res);
 }
 
 template <typename Domain>
@@ -49717,13 +44092,6 @@ typed::union_pw_multi_aff<Domain> typed::union_pw_multi_aff<Domain>::intersect_p
 {
   auto res = isl::union_pw_multi_aff::intersect_params(set);
   return typed::union_pw_multi_aff<Domain>(res);
-}
-
-template <typename Domain>
-typed::pw_multi_aff_list<Domain> typed::union_pw_multi_aff<Domain>::pw_multi_aff_list() const
-{
-  auto res = isl::union_pw_multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Domain>(res);
 }
 
 template <typename Domain>
@@ -49866,10 +44234,11 @@ typed::union_pw_multi_aff<Domain, Range2> typed::union_pw_multi_aff<Domain, Rang
 }
 
 template <typename Domain, typename Range>
-typed::union_pw_multi_aff<Domain, Anonymous> typed::union_pw_multi_aff<Domain, Range>::apply(const typed::union_pw_aff<Range, Anonymous> &upma2) const
+template <typename Range2>
+typed::union_pw_multi_aff<Domain, Range2> typed::union_pw_multi_aff<Domain, Range>::apply(const typed::union_pw_aff<Range, Range2> &upma2) const
 {
   auto res = isl::union_pw_multi_aff::apply(upma2);
-  return typed::union_pw_multi_aff<Domain, Anonymous>(res);
+  return typed::union_pw_multi_aff<Domain, Range2>(res);
 }
 
 template <typename Domain, typename Range>
@@ -49908,24 +44277,10 @@ typed::union_set<Domain> typed::union_pw_multi_aff<Domain, Range>::domain() cons
 }
 
 template <typename Domain, typename Range>
-typed::union_pw_multi_aff<Domain, Range> typed::union_pw_multi_aff<Domain, Range>::drop_unused_params() const
-{
-  auto res = isl::union_pw_multi_aff::drop_unused_params();
-  return typed::union_pw_multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 typed::union_pw_multi_aff<Domain, Range> typed::union_pw_multi_aff<Domain, Range>::empty(const isl::ctx &ctx)
 {
   auto res = isl::union_pw_multi_aff::empty(ctx);
   return typed::union_pw_multi_aff<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
-typed::pw_multi_aff<Domain, Range> typed::union_pw_multi_aff<Domain, Range>::extract_pw_multi_aff(const typed::space<Domain, Range> &space) const
-{
-  auto res = isl::union_pw_multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Domain, Range>(res);
 }
 
 template <typename Domain, typename Range>
@@ -50052,13 +44407,6 @@ typed::union_pw_multi_aff<Range> typed::union_pw_multi_aff<Domain, Range>::pullb
 }
 
 template <typename Domain, typename Range>
-typed::pw_multi_aff_list<Domain, Range> typed::union_pw_multi_aff<Domain, Range>::pw_multi_aff_list() const
-{
-  auto res = isl::union_pw_multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Domain, Range>(res);
-}
-
-template <typename Domain, typename Range>
 template <typename Range2>
 typed::union_pw_multi_aff<Domain, pair<Range, Range2>> typed::union_pw_multi_aff<Domain, Range>::range_product(const typed::union_pw_multi_aff<Domain, Range2> &upma2) const
 {
@@ -50083,10 +44431,11 @@ typed::union_pw_multi_aff<Domain, pair<Range, Range2>> typed::union_pw_multi_aff
 }
 
 template <typename Domain, typename Range>
-typed::union_pw_multi_aff<Domain, pair<Range, Anonymous>> typed::union_pw_multi_aff<Domain, Range>::range_product(const typed::union_pw_aff<Domain, Anonymous> &upma2) const
+template <typename Range2>
+typed::union_pw_multi_aff<Domain, pair<Range, Range2>> typed::union_pw_multi_aff<Domain, Range>::range_product(const typed::union_pw_aff<Domain, Range2> &upma2) const
 {
   auto res = isl::union_pw_multi_aff::range_product(upma2);
-  return typed::union_pw_multi_aff<Domain, pair<Range, Anonymous>>(res);
+  return typed::union_pw_multi_aff<Domain, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -50243,10 +44592,11 @@ typed::union_pw_multi_aff<pair<Domain, Domain2>, Range2> typed::union_pw_multi_a
 }
 
 template <typename Domain, typename Domain2, typename Range>
-typed::union_pw_multi_aff<pair<Domain, Domain2>, Anonymous> typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>::apply(const typed::union_pw_aff<Range, Anonymous> &upma2) const
+template <typename Range2>
+typed::union_pw_multi_aff<pair<Domain, Domain2>, Range2> typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>::apply(const typed::union_pw_aff<Range, Range2> &upma2) const
 {
   auto res = isl::union_pw_multi_aff::apply(upma2);
-  return typed::union_pw_multi_aff<pair<Domain, Domain2>, Anonymous>(res);
+  return typed::union_pw_multi_aff<pair<Domain, Domain2>, Range2>(res);
 }
 
 template <typename Domain, typename Domain2, typename Range>
@@ -50285,24 +44635,10 @@ typed::union_set<pair<Domain, Domain2>> typed::union_pw_multi_aff<pair<Domain, D
 }
 
 template <typename Domain, typename Domain2, typename Range>
-typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>::drop_unused_params() const
-{
-  auto res = isl::union_pw_multi_aff::drop_unused_params();
-  return typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>(res);
-}
-
-template <typename Domain, typename Domain2, typename Range>
 typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>::empty(const isl::ctx &ctx)
 {
   auto res = isl::union_pw_multi_aff::empty(ctx);
   return typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>(res);
-}
-
-template <typename Domain, typename Domain2, typename Range>
-typed::pw_multi_aff<pair<Domain, Domain2>, Range> typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>::extract_pw_multi_aff(const typed::space<pair<Domain, Domain2>, Range> &space) const
-{
-  auto res = isl::union_pw_multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<pair<Domain, Domain2>, Range>(res);
 }
 
 template <typename Domain, typename Domain2, typename Range>
@@ -50344,34 +44680,6 @@ template <typename Domain, typename Domain2, typename Range>
 typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>::intersect_domain(const typed::union_set<pair<Domain, Domain2>> &uset) const
 {
   auto res = isl::union_pw_multi_aff::intersect_domain(uset);
-  return typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>(res);
-}
-
-template <typename Domain, typename Domain2, typename Range>
-typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>::intersect_domain_wrapped_domain(const typed::union_set<Domain> &uset) const
-{
-  auto res = isl::union_pw_multi_aff::intersect_domain_wrapped_domain(uset);
-  return typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>(res);
-}
-
-template <typename Domain, typename Domain2, typename Range>
-typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>::intersect_domain_wrapped_domain(const typed::basic_set<Domain> &uset) const
-{
-  auto res = isl::union_pw_multi_aff::intersect_domain_wrapped_domain(uset);
-  return typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>(res);
-}
-
-template <typename Domain, typename Domain2, typename Range>
-typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>::intersect_domain_wrapped_domain(const typed::point<Domain> &uset) const
-{
-  auto res = isl::union_pw_multi_aff::intersect_domain_wrapped_domain(uset);
-  return typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>(res);
-}
-
-template <typename Domain, typename Domain2, typename Range>
-typed::union_pw_multi_aff<pair<Domain, Domain2>, Range> typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>::intersect_domain_wrapped_domain(const typed::set<Domain> &uset) const
-{
-  auto res = isl::union_pw_multi_aff::intersect_domain_wrapped_domain(uset);
   return typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>(res);
 }
 
@@ -50489,13 +44797,6 @@ typed::union_pw_multi_aff<Range> typed::union_pw_multi_aff<pair<Domain, Domain2>
 }
 
 template <typename Domain, typename Domain2, typename Range>
-typed::pw_multi_aff_list<pair<Domain, Domain2>, Range> typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>::pw_multi_aff_list() const
-{
-  auto res = isl::union_pw_multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<pair<Domain, Domain2>, Range>(res);
-}
-
-template <typename Domain, typename Domain2, typename Range>
 template <typename Range2>
 typed::union_pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>::range_product(const typed::union_pw_multi_aff<pair<Domain, Domain2>, Range2> &upma2) const
 {
@@ -50520,10 +44821,11 @@ typed::union_pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> typed::uni
 }
 
 template <typename Domain, typename Domain2, typename Range>
-typed::union_pw_multi_aff<pair<Domain, Domain2>, pair<Range, Anonymous>> typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>::range_product(const typed::union_pw_aff<pair<Domain, Domain2>, Anonymous> &upma2) const
+template <typename Range2>
+typed::union_pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>> typed::union_pw_multi_aff<pair<Domain, Domain2>, Range>::range_product(const typed::union_pw_aff<pair<Domain, Domain2>, Range2> &upma2) const
 {
   auto res = isl::union_pw_multi_aff::range_product(upma2);
-  return typed::union_pw_multi_aff<pair<Domain, Domain2>, pair<Range, Anonymous>>(res);
+  return typed::union_pw_multi_aff<pair<Domain, Domain2>, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Domain2, typename Range>
@@ -50680,10 +44982,11 @@ typed::union_pw_multi_aff<Domain, Arg3> typed::union_pw_multi_aff<Domain, pair<R
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::union_pw_multi_aff<Domain, Anonymous> typed::union_pw_multi_aff<Domain, pair<Range, Range2>>::apply(const typed::union_pw_aff<pair<Range, Range2>, Anonymous> &upma2) const
+template <typename Arg3>
+typed::union_pw_multi_aff<Domain, Arg3> typed::union_pw_multi_aff<Domain, pair<Range, Range2>>::apply(const typed::union_pw_aff<pair<Range, Range2>, Arg3> &upma2) const
 {
   auto res = isl::union_pw_multi_aff::apply(upma2);
-  return typed::union_pw_multi_aff<Domain, Anonymous>(res);
+  return typed::union_pw_multi_aff<Domain, Arg3>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -50722,24 +45025,10 @@ typed::union_set<Domain> typed::union_pw_multi_aff<Domain, pair<Range, Range2>>:
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::union_pw_multi_aff<Domain, pair<Range, Range2>> typed::union_pw_multi_aff<Domain, pair<Range, Range2>>::drop_unused_params() const
-{
-  auto res = isl::union_pw_multi_aff::drop_unused_params();
-  return typed::union_pw_multi_aff<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::union_pw_multi_aff<Domain, pair<Range, Range2>> typed::union_pw_multi_aff<Domain, pair<Range, Range2>>::empty(const isl::ctx &ctx)
 {
   auto res = isl::union_pw_multi_aff::empty(ctx);
   return typed::union_pw_multi_aff<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
-typed::pw_multi_aff<Domain, pair<Range, Range2>> typed::union_pw_multi_aff<Domain, pair<Range, Range2>>::extract_pw_multi_aff(const typed::space<Domain, pair<Range, Range2>> &space) const
-{
-  auto res = isl::union_pw_multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<Domain, pair<Range, Range2>>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -50866,13 +45155,6 @@ typed::union_pw_multi_aff<pair<Range, Range2>> typed::union_pw_multi_aff<Domain,
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::pw_multi_aff_list<Domain, pair<Range, Range2>> typed::union_pw_multi_aff<Domain, pair<Range, Range2>>::pw_multi_aff_list() const
-{
-  auto res = isl::union_pw_multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<Domain, pair<Range, Range2>>(res);
-}
-
-template <typename Domain, typename Range, typename Range2>
 typed::union_pw_multi_aff<Domain, Range> typed::union_pw_multi_aff<Domain, pair<Range, Range2>>::range_factor_domain() const
 {
   auto res = isl::union_pw_multi_aff::range_factor_domain();
@@ -50911,10 +45193,11 @@ typed::union_pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> typed::union_
 }
 
 template <typename Domain, typename Range, typename Range2>
-typed::union_pw_multi_aff<Domain, pair<pair<Range, Range2>, Anonymous>> typed::union_pw_multi_aff<Domain, pair<Range, Range2>>::range_product(const typed::union_pw_aff<Domain, Anonymous> &upma2) const
+template <typename Arg3>
+typed::union_pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>> typed::union_pw_multi_aff<Domain, pair<Range, Range2>>::range_product(const typed::union_pw_aff<Domain, Arg3> &upma2) const
 {
   auto res = isl::union_pw_multi_aff::range_product(upma2);
-  return typed::union_pw_multi_aff<Domain, pair<pair<Range, Range2>, Anonymous>>(res);
+  return typed::union_pw_multi_aff<Domain, pair<pair<Range, Range2>, Arg3>>(res);
 }
 
 template <typename Domain, typename Range, typename Range2>
@@ -51071,10 +45354,11 @@ typed::union_pw_multi_aff<pair<T1, T2>, Arg2> typed::union_pw_multi_aff<pair<T1,
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_pw_multi_aff<pair<T1, T2>, Anonymous> typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::apply(const typed::union_pw_aff<pair<Range, Range2>, Anonymous> &upma2) const
+template <typename Arg2>
+typed::union_pw_multi_aff<pair<T1, T2>, Arg2> typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::apply(const typed::union_pw_aff<pair<Range, Range2>, Arg2> &upma2) const
 {
   auto res = isl::union_pw_multi_aff::apply(upma2);
-  return typed::union_pw_multi_aff<pair<T1, T2>, Anonymous>(res);
+  return typed::union_pw_multi_aff<pair<T1, T2>, Arg2>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -51113,24 +45397,10 @@ typed::union_set<pair<T1, T2>> typed::union_pw_multi_aff<pair<T1, T2>, pair<Rang
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::drop_unused_params() const
-{
-  auto res = isl::union_pw_multi_aff::drop_unused_params();
-  return typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::empty(const isl::ctx &ctx)
 {
   auto res = isl::union_pw_multi_aff::empty(ctx);
   return typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::extract_pw_multi_aff(const typed::space<pair<T1, T2>, pair<Range, Range2>> &space) const
-{
-  auto res = isl::union_pw_multi_aff::extract_pw_multi_aff(space);
-  return typed::pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -51172,34 +45442,6 @@ template <typename T1, typename T2, typename Range, typename Range2>
 typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::intersect_domain(const typed::union_set<pair<T1, T2>> &uset) const
 {
   auto res = isl::union_pw_multi_aff::intersect_domain(uset);
-  return typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::union_set<T1> &uset) const
-{
-  auto res = isl::union_pw_multi_aff::intersect_domain_wrapped_domain(uset);
-  return typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::basic_set<T1> &uset) const
-{
-  auto res = isl::union_pw_multi_aff::intersect_domain_wrapped_domain(uset);
-  return typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::point<T1> &uset) const
-{
-  auto res = isl::union_pw_multi_aff::intersect_domain_wrapped_domain(uset);
-  return typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>> typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::intersect_domain_wrapped_domain(const typed::set<T1> &uset) const
-{
-  auto res = isl::union_pw_multi_aff::intersect_domain_wrapped_domain(uset);
   return typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>(res);
 }
 
@@ -51317,13 +45559,6 @@ typed::union_pw_multi_aff<pair<Range, Range2>> typed::union_pw_multi_aff<pair<T1
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::pw_multi_aff_list<pair<T1, T2>, pair<Range, Range2>> typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::pw_multi_aff_list() const
-{
-  auto res = isl::union_pw_multi_aff::pw_multi_aff_list();
-  return typed::pw_multi_aff_list<pair<T1, T2>, pair<Range, Range2>>(res);
-}
-
-template <typename T1, typename T2, typename Range, typename Range2>
 typed::union_pw_multi_aff<pair<T1, T2>, Range> typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::range_factor_domain() const
 {
   auto res = isl::union_pw_multi_aff::range_factor_domain();
@@ -51362,10 +45597,11 @@ typed::union_pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> typed::
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
-typed::union_pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Anonymous>> typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::range_product(const typed::union_pw_aff<pair<T1, T2>, Anonymous> &upma2) const
+template <typename Arg2>
+typed::union_pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>> typed::union_pw_multi_aff<pair<T1, T2>, pair<Range, Range2>>::range_product(const typed::union_pw_aff<pair<T1, T2>, Arg2> &upma2) const
 {
   auto res = isl::union_pw_multi_aff::range_product(upma2);
-  return typed::union_pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Anonymous>>(res);
+  return typed::union_pw_multi_aff<pair<T1, T2>, pair<pair<Range, Range2>, Arg2>>(res);
 }
 
 template <typename T1, typename T2, typename Range, typename Range2>
@@ -51477,12 +45713,6 @@ typed::union_set<> typed::union_set<>::detect_equalities() const
   return typed::union_set<>(res);
 }
 
-typed::union_set<> typed::union_set<>::drop_unused_params() const
-{
-  auto res = isl::union_set::drop_unused_params();
-  return typed::union_set<>(res);
-}
-
 typed::union_set<> typed::union_set<>::empty(const isl::ctx &ctx)
 {
   auto res = isl::union_set::empty(ctx);
@@ -51491,32 +45721,26 @@ typed::union_set<> typed::union_set<>::empty(const isl::ctx &ctx)
 
 bool typed::union_set<>::every_set(const std::function<bool(typed::set<>)> &test) const
 {
-  auto lambda_test = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return test(typed::set<>(arg0));
   };
-  return isl::union_set::every_set(lambda_test);
-}
-
-typed::set<> typed::union_set<>::extract_set(const typed::space<> &space) const
-{
-  auto res = isl::union_set::extract_set(space);
-  return typed::set<>(res);
+  return isl::union_set::every_set(lambda);
 }
 
 void typed::union_set<>::foreach_point(const std::function<void(typed::point<>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::point arg0) {
+  auto lambda = [&] (isl::point arg0) {
     return fn(typed::point<>(arg0));
   };
-  return isl::union_set::foreach_point(lambda_fn);
+  return isl::union_set::foreach_point(lambda);
 }
 
 void typed::union_set<>::foreach_set(const std::function<void(typed::set<>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return fn(typed::set<>(arg0));
   };
-  return isl::union_set::foreach_set(lambda_fn);
+  return isl::union_set::foreach_set(lambda);
 }
 
 typed::union_set<> typed::union_set<>::gist(const typed::union_set<> &context) const
@@ -51565,18 +45789,6 @@ typed::union_set<> typed::union_set<>::intersect(const typed::set<> &uset2) cons
 {
   auto res = isl::union_set::intersect(uset2);
   return typed::union_set<>(res);
-}
-
-typed::union_set<> typed::union_set<>::project_out_all_params() const
-{
-  auto res = isl::union_set::project_out_all_params();
-  return typed::union_set<>(res);
-}
-
-typed::set_list<> typed::union_set<>::set_list() const
-{
-  auto res = isl::union_set::set_list();
-  return typed::set_list<>(res);
 }
 
 typed::space<> typed::union_set<>::space() const
@@ -51709,13 +45921,6 @@ typed::union_set<Domain> typed::union_set<Domain>::detect_equalities() const
 }
 
 template <typename Domain>
-typed::union_set<Domain> typed::union_set<Domain>::drop_unused_params() const
-{
-  auto res = isl::union_set::drop_unused_params();
-  return typed::union_set<Domain>(res);
-}
-
-template <typename Domain>
 typed::union_set<Domain> typed::union_set<Domain>::empty(const isl::ctx &ctx)
 {
   auto res = isl::union_set::empty(ctx);
@@ -51725,35 +45930,28 @@ typed::union_set<Domain> typed::union_set<Domain>::empty(const isl::ctx &ctx)
 template <typename Domain>
 bool typed::union_set<Domain>::every_set(const std::function<bool(typed::set<Domain>)> &test) const
 {
-  auto lambda_test = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return test(typed::set<Domain>(arg0));
   };
-  return isl::union_set::every_set(lambda_test);
-}
-
-template <typename Domain>
-typed::set<Domain> typed::union_set<Domain>::extract_set(const typed::space<Domain> &space) const
-{
-  auto res = isl::union_set::extract_set(space);
-  return typed::set<Domain>(res);
+  return isl::union_set::every_set(lambda);
 }
 
 template <typename Domain>
 void typed::union_set<Domain>::foreach_point(const std::function<void(typed::point<Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::point arg0) {
+  auto lambda = [&] (isl::point arg0) {
     return fn(typed::point<Domain>(arg0));
   };
-  return isl::union_set::foreach_point(lambda_fn);
+  return isl::union_set::foreach_point(lambda);
 }
 
 template <typename Domain>
 void typed::union_set<Domain>::foreach_set(const std::function<void(typed::set<Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return fn(typed::set<Domain>(arg0));
   };
-  return isl::union_set::foreach_set(lambda_fn);
+  return isl::union_set::foreach_set(lambda);
 }
 
 template <typename Domain>
@@ -51781,27 +45979,6 @@ template <typename Domain>
 typed::union_set<Domain> typed::union_set<Domain>::gist(const typed::set<Domain> &context) const
 {
   auto res = isl::union_set::gist(context);
-  return typed::union_set<Domain>(res);
-}
-
-template <typename Domain>
-typed::union_set<Domain> typed::union_set<Domain>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::union_set::gist_params(set);
-  return typed::union_set<Domain>(res);
-}
-
-template <typename Domain>
-typed::union_set<Domain> typed::union_set<Domain>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::union_set::gist_params(set);
-  return typed::union_set<Domain>(res);
-}
-
-template <typename Domain>
-typed::union_set<Domain> typed::union_set<Domain>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::union_set::gist_params(set);
   return typed::union_set<Domain>(res);
 }
 
@@ -51876,13 +46053,6 @@ typed::union_set<Domain> typed::union_set<Domain>::lexmin() const
 }
 
 template <typename Domain>
-typed::set<> typed::union_set<Domain>::params() const
-{
-  auto res = isl::union_set::params();
-  return typed::set<>(res);
-}
-
-template <typename Domain>
 template <typename Domain2>
 typed::union_set<Domain2> typed::union_set<Domain>::preimage(const typed::multi_aff<Domain2, Domain> &ma) const
 {
@@ -51904,20 +46074,6 @@ typed::union_set<Domain2> typed::union_set<Domain>::preimage(const typed::union_
 {
   auto res = isl::union_set::preimage(upma);
   return typed::union_set<Domain2>(res);
-}
-
-template <typename Domain>
-typed::union_set<Domain> typed::union_set<Domain>::project_out_all_params() const
-{
-  auto res = isl::union_set::project_out_all_params();
-  return typed::union_set<Domain>(res);
-}
-
-template <typename Domain>
-typed::set_list<Domain> typed::union_set<Domain>::set_list() const
-{
-  auto res = isl::union_set::set_list();
-  return typed::set_list<Domain>(res);
 }
 
 template <typename Domain>
@@ -52060,13 +46216,6 @@ typed::union_set<pair<Domain, Range>> typed::union_set<pair<Domain, Range>>::det
 }
 
 template <typename Domain, typename Range>
-typed::union_set<pair<Domain, Range>> typed::union_set<pair<Domain, Range>>::drop_unused_params() const
-{
-  auto res = isl::union_set::drop_unused_params();
-  return typed::union_set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
 typed::union_set<pair<Domain, Range>> typed::union_set<pair<Domain, Range>>::empty(const isl::ctx &ctx)
 {
   auto res = isl::union_set::empty(ctx);
@@ -52076,35 +46225,28 @@ typed::union_set<pair<Domain, Range>> typed::union_set<pair<Domain, Range>>::emp
 template <typename Domain, typename Range>
 bool typed::union_set<pair<Domain, Range>>::every_set(const std::function<bool(typed::set<pair<Domain, Range>>)> &test) const
 {
-  auto lambda_test = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return test(typed::set<pair<Domain, Range>>(arg0));
   };
-  return isl::union_set::every_set(lambda_test);
-}
-
-template <typename Domain, typename Range>
-typed::set<pair<Domain, Range>> typed::union_set<pair<Domain, Range>>::extract_set(const typed::space<pair<Domain, Range>> &space) const
-{
-  auto res = isl::union_set::extract_set(space);
-  return typed::set<pair<Domain, Range>>(res);
+  return isl::union_set::every_set(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::union_set<pair<Domain, Range>>::foreach_point(const std::function<void(typed::point<pair<Domain, Range>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::point arg0) {
+  auto lambda = [&] (isl::point arg0) {
     return fn(typed::point<pair<Domain, Range>>(arg0));
   };
-  return isl::union_set::foreach_point(lambda_fn);
+  return isl::union_set::foreach_point(lambda);
 }
 
 template <typename Domain, typename Range>
 void typed::union_set<pair<Domain, Range>>::foreach_set(const std::function<void(typed::set<pair<Domain, Range>>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::set arg0) {
+  auto lambda = [&] (isl::set arg0) {
     return fn(typed::set<pair<Domain, Range>>(arg0));
   };
-  return isl::union_set::foreach_set(lambda_fn);
+  return isl::union_set::foreach_set(lambda);
 }
 
 template <typename Domain, typename Range>
@@ -52132,27 +46274,6 @@ template <typename Domain, typename Range>
 typed::union_set<pair<Domain, Range>> typed::union_set<pair<Domain, Range>>::gist(const typed::set<pair<Domain, Range>> &context) const
 {
   auto res = isl::union_set::gist(context);
-  return typed::union_set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::union_set<pair<Domain, Range>> typed::union_set<pair<Domain, Range>>::gist_params(const typed::set<> &set) const
-{
-  auto res = isl::union_set::gist_params(set);
-  return typed::union_set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::union_set<pair<Domain, Range>> typed::union_set<pair<Domain, Range>>::gist_params(const typed::basic_set<> &set) const
-{
-  auto res = isl::union_set::gist_params(set);
-  return typed::union_set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::union_set<pair<Domain, Range>> typed::union_set<pair<Domain, Range>>::gist_params(const typed::point<> &set) const
-{
-  auto res = isl::union_set::gist_params(set);
   return typed::union_set<pair<Domain, Range>>(res);
 }
 
@@ -52227,13 +46348,6 @@ typed::union_set<pair<Domain, Range>> typed::union_set<pair<Domain, Range>>::lex
 }
 
 template <typename Domain, typename Range>
-typed::set<> typed::union_set<pair<Domain, Range>>::params() const
-{
-  auto res = isl::union_set::params();
-  return typed::set<>(res);
-}
-
-template <typename Domain, typename Range>
 template <typename Domain2>
 typed::union_set<Domain2> typed::union_set<pair<Domain, Range>>::preimage(const typed::multi_aff<Domain2, pair<Domain, Range>> &ma) const
 {
@@ -52255,20 +46369,6 @@ typed::union_set<Domain2> typed::union_set<pair<Domain, Range>>::preimage(const 
 {
   auto res = isl::union_set::preimage(upma);
   return typed::union_set<Domain2>(res);
-}
-
-template <typename Domain, typename Range>
-typed::union_set<pair<Domain, Range>> typed::union_set<pair<Domain, Range>>::project_out_all_params() const
-{
-  auto res = isl::union_set::project_out_all_params();
-  return typed::union_set<pair<Domain, Range>>(res);
-}
-
-template <typename Domain, typename Range>
-typed::set_list<pair<Domain, Range>> typed::union_set<pair<Domain, Range>>::set_list() const
-{
-  auto res = isl::union_set::set_list();
-  return typed::set_list<pair<Domain, Range>>(res);
 }
 
 template <typename Domain, typename Range>
@@ -52358,11 +46458,6 @@ typed::union_set_list<>::union_set_list(const typed::union_set<> &el)
 {
 }
 
-typed::union_set_list<>::union_set_list(const isl::ctx &ctx, const std::string &str)
-  : isl::union_set_list(ctx, str)
-{
-}
-
 typed::union_set_list<> typed::union_set_list<>::add(const typed::union_set<> &el) const
 {
   auto res = isl::union_set_list::add(el);
@@ -52395,21 +46490,10 @@ typed::union_set_list<> typed::union_set_list<>::drop(unsigned int first, unsign
 
 void typed::union_set_list<>::foreach(const std::function<void(typed::union_set<>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::union_set arg0) {
+  auto lambda = [&] (isl::union_set arg0) {
     return fn(typed::union_set<>(arg0));
   };
-  return isl::union_set_list::foreach(lambda_fn);
-}
-
-void typed::union_set_list<>::foreach_scc(const std::function<bool(typed::union_set<>, typed::union_set<>)> &follows, const std::function<void(typed::union_set_list<>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::union_set arg0, isl::union_set arg1) {
-    return follows(typed::union_set<>(arg0), typed::union_set<>(arg1));
-  };
-  auto lambda_fn = [&] (isl::union_set_list arg0) {
-    return fn(typed::union_set_list<>(arg0));
-  };
-  return isl::union_set_list::foreach_scc(lambda_follows, lambda_fn);
+  return isl::union_set_list::foreach(lambda);
 }
 
 template <typename Domain>
@@ -52421,12 +46505,6 @@ typed::union_set_list<Domain>::union_set_list(const isl::ctx &ctx, int n)
 template <typename Domain>
 typed::union_set_list<Domain>::union_set_list(const typed::union_set<Domain> &el)
   : isl::union_set_list(el)
-{
-}
-
-template <typename Domain>
-typed::union_set_list<Domain>::union_set_list(const isl::ctx &ctx, const std::string &str)
-  : isl::union_set_list(ctx, str)
 {
 }
 
@@ -52475,29 +46553,10 @@ typed::union_set_list<Domain> typed::union_set_list<Domain>::drop(unsigned int f
 template <typename Domain>
 void typed::union_set_list<Domain>::foreach(const std::function<void(typed::union_set<Domain>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::union_set arg0) {
+  auto lambda = [&] (isl::union_set arg0) {
     return fn(typed::union_set<Domain>(arg0));
   };
-  return isl::union_set_list::foreach(lambda_fn);
-}
-
-template <typename Domain>
-void typed::union_set_list<Domain>::foreach_scc(const std::function<bool(typed::union_set<Domain>, typed::union_set<Domain>)> &follows, const std::function<void(typed::union_set_list<Domain>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::union_set arg0, isl::union_set arg1) {
-    return follows(typed::union_set<Domain>(arg0), typed::union_set<Domain>(arg1));
-  };
-  auto lambda_fn = [&] (isl::union_set_list arg0) {
-    return fn(typed::union_set_list<Domain>(arg0));
-  };
-  return isl::union_set_list::foreach_scc(lambda_follows, lambda_fn);
-}
-
-template <typename Domain>
-typed::union_set_list<Domain> typed::union_set_list<Domain>::set_at(int index, const typed::union_set<Anonymous> &el) const
-{
-  auto res = isl::union_set_list::set_at(index, el);
-  return typed::union_set_list<Domain>(res);
+  return isl::union_set_list::foreach(lambda);
 }
 
 typed::val<Anonymous>::val(const isl::ctx &ctx, long i)
@@ -52519,12 +46578,6 @@ typed::val<Anonymous> typed::val<Anonymous>::add(const typed::val<Anonymous> &v2
 typed::val<Anonymous> typed::val<Anonymous>::add(long v2) const
 {
   auto res = isl::val::add(v2);
-  return typed::val<Anonymous>(res);
-}
-
-typed::val<Anonymous> typed::val<Anonymous>::ceil() const
-{
-  auto res = isl::val::ceil();
   return typed::val<Anonymous>(res);
 }
 
@@ -52598,11 +46651,6 @@ typed::val_list<Anonymous>::val_list(const typed::val<Anonymous> &el)
 {
 }
 
-typed::val_list<Anonymous>::val_list(const isl::ctx &ctx, const std::string &str)
-  : isl::val_list(ctx, str)
-{
-}
-
 typed::val_list<Anonymous> typed::val_list<Anonymous>::add(const typed::val<Anonymous> &el) const
 {
   auto res = isl::val_list::add(el);
@@ -52629,33 +46677,10 @@ typed::val_list<Anonymous> typed::val_list<Anonymous>::drop(unsigned int first, 
 
 void typed::val_list<Anonymous>::foreach(const std::function<void(typed::val<Anonymous>)> &fn) const
 {
-  auto lambda_fn = [&] (isl::val arg0) {
+  auto lambda = [&] (isl::val arg0) {
     return fn(typed::val<Anonymous>(arg0));
   };
-  return isl::val_list::foreach(lambda_fn);
-}
-
-void typed::val_list<Anonymous>::foreach_scc(const std::function<bool(typed::val<Anonymous>, typed::val<Anonymous>)> &follows, const std::function<void(typed::val_list<Anonymous>)> &fn) const
-{
-  auto lambda_follows = [&] (isl::val arg0, isl::val arg1) {
-    return follows(typed::val<Anonymous>(arg0), typed::val<Anonymous>(arg1));
-  };
-  auto lambda_fn = [&] (isl::val_list arg0) {
-    return fn(typed::val_list<Anonymous>(arg0));
-  };
-  return isl::val_list::foreach_scc(lambda_follows, lambda_fn);
-}
-
-typed::val_list<Anonymous> typed::val_list<Anonymous>::set_at(int index, const typed::val<Anonymous> &el) const
-{
-  auto res = isl::val_list::set_at(index, el);
-  return typed::val_list<Anonymous>(res);
-}
-
-typed::val_list<Anonymous> typed::val_list<Anonymous>::set_at(int index, long el) const
-{
-  auto res = isl::val_list::set_at(index, el);
-  return typed::val_list<Anonymous>(res);
+  return isl::val_list::foreach(lambda);
 }
 
 } // namespace typed

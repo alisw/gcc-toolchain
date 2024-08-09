@@ -1,5 +1,6 @@
 # Check 64bit APX NDD instructions with optimized encoding
 
+	.allow_index_reg
 	.text
 _start:
 add    %r31,%r8,%r8
@@ -111,15 +112,36 @@ cmovl  0x90909090(%eax),%edx,%edx
 cmovge 0x90909090(%eax),%edx,%edx
 cmovle 0x90909090(%eax),%edx,%edx
 cmovg  0x90909090(%eax),%edx,%edx
+cmovo  %edx,%ecx,%edx
+cmovno %edx,%ecx,%edx
+cmovc  %edx,%ecx,%edx
+cmovnc %edx,%ecx,%edx
+cmovz  %edx,%ecx,%edx
+cmovnz %edx,%ecx,%edx
+cmovna %edx,%ecx,%edx
+cmovnbe %edx,%ecx,%edx
+cmovs  %edx,%ecx,%edx
+cmovns %edx,%ecx,%edx
+cmovpe %edx,%ecx,%edx
+cmovpo %edx,%ecx,%edx
+cmovnge %edx,%ecx,%edx
+cmovnl %edx,%ecx,%edx
+cmovng %edx,%ecx,%edx
+cmovnle %edx,%ecx,%edx
+movbe  %ax,%ax
+movbe  %r8,%r8
+movbe  %r16,%r16
 adcx   %ebx,%eax,%eax
 adcx   %eax,%ebx,%eax
 adcx   %rbx,%rax,%rax
 adcx   %eax,%r8d,%r8d
 adcx   %r15d,%eax,%eax
 adcx   (%edx,%ecx,1),%eax,%eax
+adcx   (%rdx,%riz,1),%eax,%eax
 adox   %ebx,%eax,%eax
 adox   %eax,%ebx,%eax
 adox   %rbx,%rax,%rax
 adox   %eax,%r8d,%r8d
 adox   %r15d,%eax,%eax
 adox   (%edx,%ecx,1),%eax,%eax
+adox   sym(%rip),%eax,%eax

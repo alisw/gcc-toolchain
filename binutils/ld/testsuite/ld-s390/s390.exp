@@ -54,6 +54,11 @@ set s390tests {
      "-m31" {gotreloc-1.s}
      {{objdump -dzrj.text gotreloc_31-1.dd}}
      "gotreloc_31-1"}
+    {"GOT: no-pie symbol address load from got to larl"
+     "-shared -melf_s390 --no-pie --hash-style=sysv --version-script=gotreloc-1.ver" ""
+     "-m31" {gotreloc-1.s}
+     {{objdump -dzrj.text gotreloc_31-no-pie-1.dd}}
+     "gotreloc_31-1"}
 }
 
 set s390xtests {
@@ -80,11 +85,22 @@ set s390xtests {
      "-m64" {gotreloc-1.s}
      {{objdump -dzrj.text gotreloc_64-relro-1.dd}}
      "gotreloc_64-1"}
+    {"GOT: no-pie symbol address load from got to larl"
+     "-shared -melf64_s390 --no-pie --hash-style=sysv --version-script=gotreloc-1.ver" ""
+     "-m64" {gotreloc-1.s}
+     {{objdump -dzrj.text gotreloc_64-no-pie-1.dd}}
+     "gotreloc_64-1"}
     {"PLT: offset test"
      "-shared -m elf64_s390 -dT pltoffset-1.ld --no-error-rwx-segments" ""
      "-m64" {pltoffset-1.s}
      {{objdump "-dzrj.text --stop-address=16" pltoffset-1.dd}}
      "pltoffset-1"}
+    {"WEAKUNDEF1: overflow test (PC32DBL)"
+     "-m elf64_s390 -dT 8GB.ld --no-error-rwx-segments" "" "-m64" {weakundef-1.s}
+     {{objdump "-dzrj.text" weakundef-1.dd}} "weakundef-1"}
+    {"WEAKUNDEF2: overflow test (PLT32DBL)"
+     "-m elf64_s390 -dT 8GB.ld --no-error-rwx-segments -no-pie" "" "-m64" {weakundef-2.s}
+     {{objdump "-dzrj.text" weakundef-2.dd}} "weakundef-2"}
 }
 
 if [istarget "s390-*-*"] {

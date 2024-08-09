@@ -12,6 +12,23 @@
 
 __isl_give PW *FN(PW,neg)(__isl_take PW *pw)
 {
-	S(PW,un_op_control) control = { .fn_base = &FN(EL,neg) };
-	return FN(PW,un_op)(pw, &control);
+	int i;
+
+	if (!pw)
+		return NULL;
+
+	if (FN(PW,IS_ZERO)(pw))
+		return pw;
+
+	pw = FN(PW,cow)(pw);
+	if (!pw)
+		return NULL;
+
+	for (i = 0; i < pw->n; ++i) {
+		pw->p[i].FIELD = FN(EL,neg)(pw->p[i].FIELD);
+		if (!pw->p[i].FIELD)
+			return FN(PW,free)(pw);
+	}
+
+	return pw;
 }

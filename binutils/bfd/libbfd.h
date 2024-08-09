@@ -1,7 +1,7 @@
 /* DO NOT EDIT!  -*- buffer-read-only: t -*-  This file is automatically
    generated from "libbfd-in.h", "libbfd.c", "bfd.c", "bfdio.c",
-   "archive.c", "archures.c", "bfdwin.c", "cache.c", "hash.c", "linker.c",
-   "opncls.c", "reloc.c", "section.c", "stabs.c" and "targets.c".
+   "archive.c", "archures.c", "cache.c", "hash.c", "linker.c", "opncls.c",
+   "reloc.c", "section.c", "stabs.c" and "targets.c".
    Run "make headers" in your build bfd/ to regenerate.  */
 
 /* libbfd.h -- Declarations used by bfd library *implementation*.
@@ -268,8 +268,6 @@ extern bool _bfd_generic_new_section_hook
   (bfd *, asection *) ATTRIBUTE_HIDDEN;
 extern bool _bfd_generic_get_section_contents
   (bfd *, asection *, void *, file_ptr, bfd_size_type) ATTRIBUTE_HIDDEN;
-extern bool _bfd_generic_get_section_contents_in_window
-  (bfd *, asection *, bfd_window *, file_ptr, bfd_size_type) ATTRIBUTE_HIDDEN;
 
 /* Generic routines to use for BFD_JUMP_TABLE_COPY.  Use
    BFD_JUMP_TABLE_COPY (_bfd_generic).  */
@@ -851,10 +849,14 @@ extern bfd_vma _bfd_safe_read_leb128
 extern bfd_byte * _bfd_write_unsigned_leb128
   (bfd_byte *, bfd_byte *, bfd_vma) ATTRIBUTE_HIDDEN;
 
-extern struct bfd_link_info *_bfd_get_link_info (bfd *);
-
-extern bool _bfd_link_keep_memory (struct bfd_link_info *)
+extern struct bfd_link_info *_bfd_get_link_info (bfd *)
   ATTRIBUTE_HIDDEN;
+
+#ifdef HAVE_MMAP
+extern uintptr_t _bfd_pagesize ATTRIBUTE_HIDDEN;
+extern uintptr_t _bfd_pagesize_m1 ATTRIBUTE_HIDDEN;
+extern uintptr_t _bfd_minimum_mmap_size ATTRIBUTE_HIDDEN;
+#endif
 
 #if GCC_VERSION >= 7000
 #define _bfd_mul_overflow(a, b, res) __builtin_mul_overflow (a, b, res)
@@ -893,6 +895,22 @@ _bfd_alloc_and_read (bfd *abfd, bfd_size_type asize, bfd_size_type rsize)
   return NULL;
 }
 
+#ifdef USE_MMAP
+extern void *_bfd_mmap_readonly_persistent
+  (bfd *, size_t) ATTRIBUTE_HIDDEN;
+extern void *_bfd_mmap_readonly_temporary
+  (bfd *, size_t, void **, size_t *) ATTRIBUTE_HIDDEN;
+extern void _bfd_munmap_readonly_temporary
+  (void *, size_t) ATTRIBUTE_HIDDEN;
+#else
+#define _bfd_mmap_readonly_persistent(abfd, rsize) \
+  _bfd_alloc_and_read (abfd, rsize, rsize)
+#define _bfd_munmap_readonly_temporary(ptr, rsize) free (ptr)
+#endif
+
+extern bool _bfd_mmap_read_temporary
+  (void **, size_t *, void **, bfd *, bool) ATTRIBUTE_HIDDEN;
+
 static inline void *
 _bfd_malloc_and_read (bfd *abfd, bfd_size_type asize, bfd_size_type rsize)
 {
@@ -915,6 +933,18 @@ _bfd_malloc_and_read (bfd *abfd, bfd_size_type asize, bfd_size_type rsize)
     }
   return NULL;
 }
+
+#ifndef USE_MMAP
+static inline void *
+_bfd_mmap_readonly_temporary (bfd *abfd, size_t rsize, void **map_addr,
+			      size_t *map_size)
+{
+  void *mem = _bfd_malloc_and_read (abfd, rsize, rsize);
+  *map_addr = mem;
+  *map_size = rsize;
+  return mem;
+}
+#endif
 /* Extracted from libbfd.c.  */
 void *bfd_malloc (bfd_size_type /*size*/) ATTRIBUTE_HIDDEN;
 
@@ -933,7 +963,29 @@ void _bfd_clear_error_data (void) ATTRIBUTE_HIDDEN;
 
 char *bfd_asprintf (const char *fmt, ...) ATTRIBUTE_HIDDEN;
 
-bfd_error_handler_type _bfd_set_error_handler_caching (bfd *) ATTRIBUTE_HIDDEN;
+/* Cached _bfd_check_format messages are put in this.  */
+struct per_xvec_message
+{
+  struct per_xvec_message *next;
+  char message[];
+};
+
+/* A list of per_xvec_message objects.  The targ field indicates
+   which xvec this list holds; PER_XVEC_NO_TARGET is only set for the
+   root of the list and indicates that the entry isn't yet used.  The
+   abfd field is only needed in the root entry of the list.  */
+struct per_xvec_messages
+{
+  bfd *abfd;
+  const bfd_target *targ;
+  struct per_xvec_message *messages;
+  struct per_xvec_messages *next;
+};
+
+#define PER_XVEC_NO_TARGET ((const bfd_target *) -1)
+struct per_xvec_messages *_bfd_set_error_handler_caching (struct per_xvec_messages *) ATTRIBUTE_HIDDEN;
+
+void _bfd_restore_error_handler_caching (struct per_xvec_messages *) ATTRIBUTE_HIDDEN;
 
 const char *_bfd_get_error_program_name (void) ATTRIBUTE_HIDDEN;
 
@@ -968,9 +1020,9 @@ struct bfd_iovec
      Also write in MAP_ADDR the address of the page aligned buffer and in
      MAP_LEN the size mapped (a page multiple).  Use unmap with MAP_ADDR and
      MAP_LEN to unmap.  */
-  void *(*bmmap) (struct bfd *abfd, void *addr, bfd_size_type len,
+  void *(*bmmap) (struct bfd *abfd, void *addr, size_t len,
 		  int prot, int flags, file_ptr offset,
-		  void **map_addr, bfd_size_type *map_len);
+		  void **map_addr, size_t *map_len);
 };
 extern const struct bfd_iovec _bfd_memory_iovec;
 
@@ -1000,19 +1052,10 @@ void *bfd_arch_default_fill (bfd_size_type count,
     bool is_bigendian,
     bool code) ATTRIBUTE_HIDDEN;
 
-/* Extracted from bfdwin.c.  */
-typedef struct _bfd_window_internal
-{
-  struct _bfd_window_internal *next;
-  void *data;
-  bfd_size_type size;
-  int refcount : 31;           /* should be enough...  */
-  unsigned mapped : 1;         /* 1 = mmap, 0 = malloc */
-}
-bfd_window_internal;
-
 /* Extracted from cache.c.  */
 bool bfd_cache_init (bfd *abfd) ATTRIBUTE_HIDDEN;
+
+bool bfd_cache_set_uncloseable (bfd *abfd, bool value, bool *old) ATTRIBUTE_HIDDEN;
 
 FILE* bfd_open_file (bfd *abfd) ATTRIBUTE_HIDDEN;
 
@@ -1463,6 +1506,12 @@ static const char *const bfd_reloc_code_real_names[] = { "@@uninitialized@@",
   "BFD_RELOC_X86_64_CODE_4_GOTPCRELX",
   "BFD_RELOC_X86_64_CODE_4_GOTTPOFF",
   "BFD_RELOC_X86_64_CODE_4_GOTPC32_TLSDESC",
+  "BFD_RELOC_X86_64_CODE_5_GOTPCRELX",
+  "BFD_RELOC_X86_64_CODE_5_GOTTPOFF",
+  "BFD_RELOC_X86_64_CODE_5_GOTPC32_TLSDESC",
+  "BFD_RELOC_X86_64_CODE_6_GOTPCRELX",
+  "BFD_RELOC_X86_64_CODE_6_GOTTPOFF",
+  "BFD_RELOC_X86_64_CODE_6_GOTPC32_TLSDESC",
   "BFD_RELOC_NS32K_IMM_8",
   "BFD_RELOC_NS32K_IMM_16",
   "BFD_RELOC_NS32K_IMM_32",
@@ -2403,6 +2452,10 @@ static const char *const bfd_reloc_code_real_names[] = { "@@uninitialized@@",
   "BFD_RELOC_RISCV_TLS_DTPREL64",
   "BFD_RELOC_RISCV_TLS_TPREL32",
   "BFD_RELOC_RISCV_TLS_TPREL64",
+  "BFD_RELOC_RISCV_TLSDESC_HI20",
+  "BFD_RELOC_RISCV_TLSDESC_LOAD_LO12",
+  "BFD_RELOC_RISCV_TLSDESC_ADD_LO12",
+  "BFD_RELOC_RISCV_TLSDESC_CALL",
   "BFD_RELOC_RISCV_ALIGN",
   "BFD_RELOC_RISCV_RVC_BRANCH",
   "BFD_RELOC_RISCV_RVC_JUMP",
@@ -3663,8 +3716,6 @@ bool _bfd_unrecognized_reloc
     unsigned int r_type) ATTRIBUTE_HIDDEN;
 
 /* Extracted from section.c.  */
-bool _bfd_section_size_insane (bfd *abfd, asection *sec) ATTRIBUTE_HIDDEN;
-
 /* Extracted from stabs.c.  */
 bool _bfd_link_section_stabs
    (bfd *, struct stab_info *, asection *, asection *, void **,
@@ -3681,15 +3732,6 @@ bool _bfd_write_stab_strings (bfd *, struct stab_info *) ATTRIBUTE_HIDDEN;
 bfd_vma _bfd_stab_section_offset (asection *, void *, bfd_vma) ATTRIBUTE_HIDDEN;
 
 /* Extracted from targets.c.  */
-/* Cached _bfd_check_format messages are put in this.  */
-struct per_xvec_message
-{
-  struct per_xvec_message *next;
-  char message[];
-};
-
-struct per_xvec_message **_bfd_per_xvec_warn (const bfd_target *, size_t) ATTRIBUTE_HIDDEN;
-
 #ifdef __cplusplus
 }
 #endif

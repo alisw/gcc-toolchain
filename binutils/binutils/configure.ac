@@ -19,7 +19,7 @@ dnl
 
 m4_include([../bfd/version.m4])
 m4_include([../config/debuginfod.m4])
-AC_INIT([binutils], BFD_VERSION)
+AC_INIT([binutils], [BFD_VERSION])
 AC_CONFIG_SRCDIR(ar.c)
 
 AC_CANONICAL_TARGET
@@ -28,8 +28,9 @@ AM_INIT_AUTOMAKE
 AM_SILENT_RULES([yes])
 
 AC_PROG_CC
-AC_GNU_SOURCE
 AC_USE_SYSTEM_EXTENSIONS
+
+AC_C_BIGENDIAN
 
 LT_INIT
 ACX_LARGEFILE
@@ -197,7 +198,7 @@ AC_SUBST(DEMANGLER_NAME)
 AC_CHECK_HEADERS(fcntl.h inttypes.h stdint.h sys/file.h \
 		 sys/stat.h sys/time.h sys/types.h unistd.h)
 AC_HEADER_SYS_WAIT
-AC_FUNC_MMAP
+GCC_AC_FUNC_MMAP
 AC_CHECK_FUNCS(fseeko fseeko64 getc_unlocked mkdtemp mkstemp utimensat utimes)
 
 AC_MSG_CHECKING([for mbstate_t])
@@ -290,7 +291,7 @@ BFD_BINARY_FOPEN
 
 # Support for the msgpack C library.
 AC_ARG_WITH([msgpack],
-	    AC_HELP_STRING([--with-msgpack], [Enable msgpack support (auto/yes/no)]),
+	    AS_HELP_STRING([--with-msgpack], [Enable msgpack support (auto/yes/no)]),
 	    [],
 	    [with_msgpack=auto])
 

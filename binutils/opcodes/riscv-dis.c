@@ -32,6 +32,11 @@
 #include <stdint.h>
 #include <ctype.h>
 
+/* The RISC-V disassembler produces styled output using
+   disassemble_info::fprintf_styled_func.  This define prevents use of
+   disassemble_info::fprintf_func which is for unstyled output.  */
+#define fprintf_func please_use_fprintf_styled_func_instead
+
 /* Current XLEN for the disassembler.  */
 static unsigned xlen = 0;
 
@@ -213,6 +218,71 @@ maybe_print_address (struct riscv_private_data *pd, int base_reg, int offset,
   /* Fit into a 32-bit value on RV32.  */
   if (xlen == 32)
     pd->print_addr = (bfd_vma)(uint32_t)pd->print_addr;
+}
+
+/* Get Zcmp reg_list field.  */
+
+static void
+print_reg_list (disassemble_info *info, insn_t l)
+{
+  bool numeric = riscv_gpr_names == riscv_gpr_names_numeric;
+  unsigned reg_list = (int)EXTRACT_OPERAND (REG_LIST, l);
+  unsigned r_start = numeric ? X_S2 : X_S0;
+  info->fprintf_styled_func (info->stream, dis_style_register,
+			     "%s", riscv_gpr_names[X_RA]);
+
+  if (reg_list == 5)
+    {
+      info->fprintf_styled_func (info->stream, dis_style_text, ",");
+      info->fprintf_styled_func (info->stream, dis_style_register,
+				 "%s", riscv_gpr_names[X_S0]);
+    }
+  else if (reg_list == 6 || (numeric && reg_list > 6))
+    {
+      info->fprintf_styled_func (info->stream, dis_style_text, ",");
+      info->fprintf_styled_func (info->stream, dis_style_register,
+				 "%s", riscv_gpr_names[X_S0]);
+      info->fprintf_styled_func (info->stream, dis_style_text, "-");
+      info->fprintf_styled_func (info->stream, dis_style_register,
+				 "%s", riscv_gpr_names[X_S1]);
+    }
+
+  if (reg_list == 15)
+    {
+      info->fprintf_styled_func (info->stream, dis_style_text, ",");
+      info->fprintf_styled_func (info->stream, dis_style_register,
+				 "%s", riscv_gpr_names[r_start]);
+      info->fprintf_styled_func (info->stream, dis_style_text, "-");
+      info->fprintf_styled_func (info->stream, dis_style_register,
+				 "%s", riscv_gpr_names[X_S11]);
+    }
+  else if (reg_list == 7 && numeric)
+    {
+      info->fprintf_styled_func (info->stream, dis_style_text, ",");
+      info->fprintf_styled_func (info->stream, dis_style_register,
+				 "%s", riscv_gpr_names[X_S2]);
+    }
+  else if (reg_list > 6)
+    {
+      info->fprintf_styled_func (info->stream, dis_style_text, ",");
+      info->fprintf_styled_func (info->stream, dis_style_register,
+				 "%s", riscv_gpr_names[r_start]);
+      info->fprintf_styled_func (info->stream, dis_style_text, "-");
+      info->fprintf_styled_func (info->stream, dis_style_register,
+				 "%s", riscv_gpr_names[reg_list + 11]);
+    }
+}
+
+/* Get Zcmp sp adjustment immediate.  */
+
+static int
+riscv_get_spimm (insn_t l)
+{
+  int spimm = riscv_get_sp_base(l, *riscv_rps_dis.xlen);
+  spimm += EXTRACT_ZCMP_SPIMM (l);
+  if (((l ^ MATCH_CM_PUSH) & MASK_CM_PUSH) == 0)
+    spimm *= -1;
+  return spimm;
 }
 
 /* Print insn arguments for 32/64-bit code.  */
@@ -420,6 +490,8 @@ print_insn_args (const char *oparg, insn_t l, bfd_vma pc, disassemble_info *info
 	case ')':
 	case '[':
 	case ']':
+	case '{':
+	case '}':
 	  print (info->stream, dis_style_text, "%c", *oparg);
 	  break;
 
@@ -634,6 +706,13 @@ print_insn_args (const char *oparg, insn_t l, bfd_vma pc, disassemble_info *info
 		  print (info->stream, dis_style_immediate, "%d",
 			 (int)EXTRACT_ZCB_HALFWORD_UIMM (l));
 		  break;
+		case 'r':
+		  print_reg_list (info, l);
+		  break;
+		case 'p':
+		  print (info->stream, dis_style_immediate, "%d",
+			 riscv_get_spimm (l));
+		  break;
 		default:
 		  goto undefined_modifier;
 		}
@@ -719,6 +798,10 @@ print_insn_args (const char *oparg, insn_t l, bfd_vma pc, disassemble_info *info
 		  case '3':
 		    print (info->stream, dis_style_immediate, "%d",
 			((int) EXTRACT_CV_IS3_UIMM5 (l)));
+		    break;
+		  case '4':
+		    print (info->stream, dis_style_immediate, "%d",
+			   ((int) EXTRACT_CV_BI_IMM5 (l)));
 		    break;
 		  default:
 		    goto undefined_modifier;
@@ -1025,11 +1108,9 @@ riscv_search_mapping_symbol (bfd_vma memaddr,
   from_last_map_symbol = (last_map_symbol >= 0
 			  && info->stop_offset == last_stop_offset);
 
-  /* Start scanning at the start of the function, or wherever
-     we finished last time.  */
-  n = info->symtab_pos + 1;
-  if (from_last_map_symbol && n >= last_map_symbol)
-    n = last_map_symbol;
+  /* Start scanning from wherever we finished last time, or the start
+     of the function.  */
+  n = from_last_map_symbol ? last_map_symbol : info->symtab_pos + 1;
 
   /* Find the suitable mapping symbol to dump.  */
   for (; n < info->symtab_size; n++)
@@ -1054,9 +1135,7 @@ riscv_search_mapping_symbol (bfd_vma memaddr,
      can pick up a text mapping symbol of a preceeding section.  */
   if (!found)
     {
-      n = info->symtab_pos;
-      if (from_last_map_symbol && n >= last_map_symbol)
-	n = last_map_symbol;
+      n = from_last_map_symbol ? last_map_symbol : info->symtab_pos;
 
       for (; n >= 0; n--)
 	{

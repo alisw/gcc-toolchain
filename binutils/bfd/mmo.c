@@ -3323,8 +3323,6 @@ mmo_write_object_contents (bfd *abfd)
 #define mmo_read_minisymbols _bfd_generic_read_minisymbols
 #define mmo_minisymbol_to_symbol _bfd_generic_minisymbol_to_symbol
 
-#define mmo_get_section_contents_in_window \
-  _bfd_generic_get_section_contents_in_window
 #define mmo_bfd_get_relocated_section_contents \
   bfd_generic_get_relocated_section_contents
 #define mmo_bfd_gc_sections bfd_generic_gc_sections
@@ -3360,6 +3358,7 @@ mmo_write_object_contents (bfd *abfd)
 #define mmo_bfd_copy_private_header_data _bfd_generic_bfd_copy_private_header_data
 #define mmo_bfd_set_private_flags _bfd_generic_bfd_set_private_flags
 #define mmo_bfd_print_private_bfd_data _bfd_generic_bfd_print_private_bfd_data
+#define mmo_init_private_section_data _bfd_generic_init_private_section_data
 
 const bfd_target mmix_mmo_vec =
 {

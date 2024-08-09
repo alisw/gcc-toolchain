@@ -12,35 +12,38 @@ __isl_give PW *FN(PW,insert_dims)(__isl_take PW *pw, enum isl_dim_type type,
 	unsigned first, unsigned n)
 {
 	int i;
-	isl_size n_piece;
 	enum isl_dim_type set_type;
-	isl_space *space;
 
-	n_piece = FN(PW,n_piece)(pw);
-	if (n_piece < 0)
-		return FN(PW,free)(pw);
+	if (!pw)
+		return NULL;
 	if (n == 0 && !isl_space_is_named_or_nested(pw->dim, type))
 		return pw;
 
 	set_type = type == isl_dim_in ? isl_dim_set : type;
 
-	space = FN(PW,take_space)(pw);
-	space = isl_space_insert_dims(space, type, first, n);
-	pw = FN(PW,restore_space)(pw, space);
+	pw = FN(PW,cow)(pw);
+	if (!pw)
+		return NULL;
 
-	for (i = 0; i < n_piece; ++i) {
-		isl_set *domain;
-		EL *el;
+	pw->dim = isl_space_insert_dims(pw->dim, type, first, n);
+	if (!pw->dim)
+		goto error;
 
-		domain = FN(PW,take_domain_at)(pw, i);
-		domain = isl_set_insert_dims(domain, set_type, first, n);
-		pw = FN(PW,restore_domain_at)(pw, i, domain);
-		el = FN(PW,take_base_at)(pw, i);
-		el = FN(EL,insert_dims)(el, type, first, n);
-		pw = FN(PW,restore_base_at)(pw, i, el);
+	for (i = 0; i < pw->n; ++i) {
+		pw->p[i].set = isl_set_insert_dims(pw->p[i].set,
+							    set_type, first, n);
+		if (!pw->p[i].set)
+			goto error;
+		pw->p[i].FIELD = FN(EL,insert_dims)(pw->p[i].FIELD,
+								type, first, n);
+		if (!pw->p[i].FIELD)
+			goto error;
 	}
 
 	return pw;
+error:
+	FN(PW,free)(pw);
+	return NULL;
 }
 
 __isl_give PW *FN(PW,add_dims)(__isl_take PW *pw, enum isl_dim_type type,

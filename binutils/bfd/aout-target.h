@@ -432,9 +432,6 @@ MY_bfd_final_link (bfd *abfd, struct bfd_link_info *info)
 #ifndef MY_get_section_contents
 #define MY_get_section_contents NAME (aout, get_section_contents)
 #endif
-#ifndef MY_get_section_contents_in_window
-#define MY_get_section_contents_in_window _bfd_generic_get_section_contents_in_window
-#endif
 #ifndef MY_new_section_hook
 #define MY_new_section_hook NAME (aout, new_section_hook)
 #endif
@@ -568,6 +565,9 @@ MY_bfd_final_link (bfd *abfd, struct bfd_link_info *info)
 #ifndef MY_bfd_merge_private_bfd_data
 #define MY_bfd_merge_private_bfd_data _bfd_generic_bfd_merge_private_bfd_data
 #endif
+
+#define MY_init_private_section_data \
+  _bfd_generic_init_private_section_data
 
 #ifndef MY_bfd_copy_private_symbol_data
 #define MY_bfd_copy_private_symbol_data _bfd_generic_bfd_copy_private_symbol_data

@@ -6110,20 +6110,23 @@ static void
 evax_bfd_print_emh (FILE *file, unsigned char *rec, unsigned int rec_len)
 {
   struct vms_emh_common *emh = (struct vms_emh_common *)rec;
-  unsigned int subtype;
+  int subtype = -1;
   int extra;
 
-  subtype = (unsigned) bfd_getl16 (emh->subtyp);
+  if (rec_len >= sizeof (*emh))
+    subtype = bfd_getl16 (emh->subtyp);
 
   /* xgettext:c-format */
-  fprintf (file, _("  EMH %u (len=%u): "), subtype, rec_len);
+  fprintf (file, _("  EMH %d (len=%u): "), subtype, rec_len);
 
   /* PR 21618: Check for invalid lengths.  */
-  if (rec_len < sizeof (* emh))
+  if (rec_len < sizeof (*emh))
     {
-      fprintf (file, _("   Error: The length is less than the length of an EMH record\n"));
+      fprintf (file, _("   Error: %s min length is %u\n"),
+	       "EMH", (unsigned) sizeof (*emh));
       return;
     }
+
   extra = rec_len - sizeof (struct vms_emh_common);
 
   switch (subtype)
@@ -6138,7 +6141,8 @@ evax_bfd_print_emh (FILE *file, unsigned char *rec, unsigned int rec_len)
 	/* PR 21840: Check for invalid lengths.  */
 	if (rec_len < sizeof (* mhd))
 	  {
-	    fprintf (file, _("   Error: The record length is less than the size of an EMH_MHD record\n"));
+	    fprintf (file, _("   Error: %s min length is %u\n"),
+		     "EMH_MHD", (unsigned) sizeof (*mhd));
 	    return;
 	  }
 	fprintf (file, _("Module header\n"));
@@ -6214,9 +6218,10 @@ evax_bfd_print_eeom (FILE *file, unsigned char *rec, unsigned int rec_len)
   fprintf (file, _("  EEOM (len=%u):\n"), rec_len);
 
   /* PR 21618: Check for invalid lengths.  */
-  if (rec_len < sizeof (* eeom))
+  if (rec_len < 10)
     {
-      fprintf (file, _("   Error: The length is less than the length of an EEOM record\n"));
+      fprintf (file, _("   Error: %s min length is %u\n"),
+	       "EEOM", 10);
       return;
     }
 
@@ -6224,7 +6229,8 @@ evax_bfd_print_eeom (FILE *file, unsigned char *rec, unsigned int rec_len)
 	   (unsigned)bfd_getl32 (eeom->total_lps));
   fprintf (file, _("   completion code: %u\n"),
 	   (unsigned)bfd_getl16 (eeom->comcod));
-  if (rec_len > 10)
+
+  if (rec_len >= sizeof (*eeom))
     {
       fprintf (file, _("   transfer addr flags: 0x%02x\n"), eeom->tfrflg);
       fprintf (file, _("   transfer addr psect: %u\n"),
@@ -7505,6 +7511,8 @@ evax_bfd_print_dst (struct bfd *abfd, unsigned int dst_size, FILE *file)
       /* xgettext:c-format */
       fprintf (file, _(" type: %3u, len: %3u (at 0x%08x): "),
 	       type, len, off);
+      if (len > dst_size)
+	len = dst_size;
       if (len < sizeof (dsth))
 	{
 	  fputc ('\n', file);
@@ -7713,16 +7721,19 @@ evax_bfd_print_dst (struct bfd *abfd, unsigned int dst_size, FILE *file)
 	case DST__K_RECBEG:
 	  {
 	    struct vms_dst_recbeg *recbeg = (void *)buf;
-	    unsigned char *name = buf + sizeof (*recbeg);
 
 	    if (len > sizeof (*recbeg))
 	      {
+		unsigned char *name = buf + sizeof (*recbeg);
 		int nlen = len - sizeof (*recbeg) - 1;
+
 		if (name[0] < nlen)
 		  nlen = name[0];
 		fprintf (file, _("recbeg: name: %.*s\n"), nlen, name + 1);
+
 		evax_bfd_print_valspec (buf, len, 4, file);
-		len -= 1 + nlen;
+
+		len -= sizeof (*recbeg) + 1 + nlen;
 		if (len >= 4)
 		  fprintf (file, _("    len: %u bits\n"),
 			   (unsigned) bfd_getl32 (name + 1 + nlen));
@@ -9834,12 +9845,15 @@ alpha_vms_get_section_contents (bfd *abfd, asection *section,
 				void *buf, file_ptr offset,
 				bfd_size_type count)
 {
-  asection *sec;
-
-  /* Image are easy.  */
-  if (bfd_get_file_flags (abfd) & (EXEC_P | DYNAMIC))
+  /* Handle image sections.  */
+  if (section->filepos != 0
+      || (section->flags & SEC_HAS_CONTENTS) == 0)
     return _bfd_generic_get_section_contents (abfd, section,
 					      buf, offset, count);
+
+  /* A section with a zero filepos implies the section has no direct
+     file backing.  Its contents must be calculated by processing ETIR
+     records.  */
 
   /* Safety check.  */
   if (offset + count < count
@@ -9849,33 +9863,32 @@ alpha_vms_get_section_contents (bfd *abfd, asection *section,
       return false;
     }
 
-  /* If the section is already in memory, just copy it.  */
-  if (section->flags & SEC_IN_MEMORY)
-    {
-      BFD_ASSERT (section->contents != NULL);
-      memcpy (buf, section->contents + offset, count);
-      return true;
-    }
   if (section->size == 0)
     return true;
 
-  /* Alloc in memory and read ETIRs.  */
-  for (sec = abfd->sections; sec; sec = sec->next)
+  /* If we haven't yet read ETIR/EDBG/ETBT records, do so.  */
+  if ((section->flags & SEC_IN_MEMORY) == 0)
     {
-      BFD_ASSERT (sec->contents == NULL);
-
-      if (sec->size != 0 && (sec->flags & SEC_HAS_CONTENTS))
+      /* Alloc memory and read ETIRs.  */
+      for (asection *sec = abfd->sections; sec; sec = sec->next)
 	{
-	  sec->contents = bfd_alloc (abfd, sec->size);
-	  if (sec->contents == NULL)
-	    return false;
+	  if (sec->size != 0
+	      && sec->filepos == 0
+	      && (sec->flags & SEC_HAS_CONTENTS) != 0)
+	    {
+	      BFD_ASSERT (sec->contents == NULL);
+
+	      sec->contents = bfd_zalloc (abfd, sec->size);
+	      sec->flags |= SEC_IN_MEMORY;
+	      if (sec->contents == NULL)
+		return false;
+	    }
 	}
+      if (!alpha_vms_read_sections_content (abfd, NULL))
+	return false;
     }
-  if (!alpha_vms_read_sections_content (abfd, NULL))
-    return false;
-  for (sec = abfd->sections; sec; sec = sec->next)
-    if (sec->contents)
-      sec->flags |= SEC_IN_MEMORY;
+
+  BFD_ASSERT (section->contents != NULL);
   memcpy (buf, section->contents + offset, count);
   return true;
 }
@@ -10129,6 +10142,7 @@ bfd_vms_get_data (bfd *abfd)
 
 #define vms_bfd_copy_private_bfd_data	  _bfd_generic_bfd_copy_private_bfd_data
 #define vms_bfd_merge_private_bfd_data	  _bfd_generic_bfd_merge_private_bfd_data
+#define vms_init_private_section_data	  _bfd_generic_init_private_section_data
 #define vms_bfd_copy_private_section_data _bfd_generic_bfd_copy_private_section_data
 #define vms_bfd_copy_private_symbol_data  _bfd_generic_bfd_copy_private_symbol_data
 #define vms_bfd_copy_private_header_data  _bfd_generic_bfd_copy_private_header_data
@@ -10158,7 +10172,6 @@ bfd_vms_get_data (bfd *abfd)
 #define alpha_vms_bfd_free_cached_info	   _bfd_bool_bfd_true
 #define alpha_vms_new_section_hook	   vms_new_section_hook
 #define alpha_vms_set_section_contents	   _bfd_vms_set_section_contents
-#define alpha_vms_get_section_contents_in_window _bfd_generic_get_section_contents_in_window
 
 #define alpha_vms_bfd_get_relocated_section_contents \
   bfd_generic_get_relocated_section_contents

@@ -163,6 +163,18 @@ _bfd_new_bfd_contained_in (bfd *obfd)
 static void
 _bfd_delete_bfd (bfd *abfd)
 {
+#ifdef USE_MMAP
+  if (abfd->xvec
+      && abfd->xvec->flavour == bfd_target_elf_flavour)
+    {
+      asection *sec;
+      for (sec = abfd->sections; sec != NULL; sec = sec->next)
+	if (sec->mmapped_p)
+	  munmap (elf_section_data (sec)->contents_addr,
+		  elf_section_data (sec)->contents_size);
+    }
+#endif
+
   /* Give the target _bfd_free_cached_info a chance to free memory.  */
   if (abfd->memory && abfd->xvec)
     bfd_free_cached_info (abfd);
@@ -175,6 +187,18 @@ _bfd_delete_bfd (bfd *abfd)
     }
   else
     free ((char *) bfd_get_filename (abfd));
+
+#ifdef USE_MMAP
+  struct bfd_mmapped *mmapped, *next;
+  for (mmapped = abfd->mmapped; mmapped != NULL; mmapped = next)
+    {
+      struct bfd_mmapped_entry *entries = mmapped->entries;
+      next = mmapped->next;
+      for (unsigned int i = 0; i < mmapped->next_entry; i++)
+	munmap (entries[i].addr, entries[i].size);
+      munmap (mmapped, _bfd_pagesize);
+    }
+#endif
 
   free (abfd->arelt_data);
   free (abfd);
@@ -668,14 +692,14 @@ opncls_bstat (struct bfd *abfd, struct stat *sb)
 static void *
 opncls_bmmap (struct bfd *abfd ATTRIBUTE_UNUSED,
 	      void *addr ATTRIBUTE_UNUSED,
-	      bfd_size_type len ATTRIBUTE_UNUSED,
+	      size_t len ATTRIBUTE_UNUSED,
 	      int prot ATTRIBUTE_UNUSED,
 	      int flags ATTRIBUTE_UNUSED,
 	      file_ptr offset ATTRIBUTE_UNUSED,
 	      void **map_addr ATTRIBUTE_UNUSED,
-	      bfd_size_type *map_len ATTRIBUTE_UNUSED)
+	      size_t *map_len ATTRIBUTE_UNUSED)
 {
-  return (void *) -1;
+  return MAP_FAILED;
 }
 
 static const struct bfd_iovec opncls_iovec =

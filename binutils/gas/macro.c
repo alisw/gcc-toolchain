@@ -56,7 +56,7 @@ int macro_defined;
 
 /* Number of macro expansions that have been done.  */
 
-static int macro_number;
+static unsigned int macro_number;
 
 static void free_macro (macro_entry *);
 
@@ -668,6 +668,7 @@ define_macro (sb *in, sb *label, size_t (*get_line) (sb *))
   macro->formal_count = 0;
   macro->formals = 0;
   macro->formal_hash = str_htab_create ();
+  macro->count = 0;
 
   idx = sb_skip_white (0, in);
   if (! buffer_and_nest ("MACRO", "ENDM", &macro->sub, get_line))
@@ -797,7 +798,8 @@ sub_actual (size_t start, sb *in, sb *t, struct htab *formal_hash,
 
 static const char *
 macro_expand_body (sb *in, sb *out, formal_entry *formals,
-		   struct htab *formal_hash, const macro_entry *macro)
+		   struct htab *formal_hash, const macro_entry *macro,
+		   unsigned int instance)
 {
   sb t;
   size_t src = 0;
@@ -846,11 +848,20 @@ macro_expand_body (sb *in, sb *out, formal_entry *formals,
 	    }
 	  else if (src < in->len && in->ptr[src] == '@')
 	    {
-	      /* Sub in the macro invocation number.  */
+	      /* Sub in the total macro invocation number.  */
 
 	      char buffer[12];
 	      src++;
-	      sprintf (buffer, "%d", macro_number);
+	      sprintf (buffer, "%u", macro_number);
+	      sb_add_string (out, buffer);
+	    }
+	  else if (src < in->len && in->ptr[src] == '+')
+	    {
+	      /* Sub in the current macro invocation number.  */
+
+	      char buffer[12];
+	      src++;
+	      sprintf (buffer, "%d", instance);
 	      sb_add_string (out, buffer);
 	    }
 	  else if (src < in->len && in->ptr[src] == '&')
@@ -1203,7 +1214,8 @@ macro_expand (size_t idx, sb *in, macro_entry *m, sb *out)
 	    }
 	}
 
-      err = macro_expand_body (&m->sub, out, m->formals, m->formal_hash, m);
+      err = macro_expand_body (&m->sub, out, m->formals, m->formal_hash, m,
+			       m->count);
     }
 
   /* Discard any unnamed formal arguments.  */
@@ -1227,7 +1239,10 @@ macro_expand (size_t idx, sb *in, macro_entry *m, sb *out)
 
   sb_kill (&t);
   if (!err)
-    macro_number++;
+    {
+      macro_number++;
+      m->count++;
+    }
 
   return err;
 }
@@ -1350,17 +1365,12 @@ expand_irp (int irpc, size_t idx, sb *in, sb *out, size_t (*get_line) (sb *))
   if (idx >= in->len)
     {
       /* Expand once with a null string.  */
-      err = macro_expand_body (&sub, out, &f, h, 0);
+      err = macro_expand_body (&sub, out, &f, h, NULL, 0);
     }
   else
     {
       bool in_quotes = false;
-
-      if (irpc && in->ptr[idx] == '"')
-	{
-	  in_quotes = true;
-	  ++idx;
-	}
+      unsigned int instance = 0;
 
       while (idx < in->len)
 	{
@@ -1370,16 +1380,14 @@ expand_irp (int irpc, size_t idx, sb *in, sb *out, size_t (*get_line) (sb *))
 	    {
 	      if (in->ptr[idx] == '"')
 		{
-		  size_t nxt;
+		  in_quotes = ! in_quotes;
+		  ++idx;
 
-		  if (irpc)
-		    in_quotes = ! in_quotes;
-
-		  nxt = sb_skip_white (idx + 1, in);
-		  if (nxt >= in->len)
+		  if (! in_quotes)
 		    {
-		      idx = nxt;
-		      break;
+		      idx = sb_skip_white (idx, in);
+		      if (idx >= in->len)
+			break;
 		    }
 		}
 	      sb_reset (&f.actual);
@@ -1387,7 +1395,8 @@ expand_irp (int irpc, size_t idx, sb *in, sb *out, size_t (*get_line) (sb *))
 	      ++idx;
 	    }
 
-	  err = macro_expand_body (&sub, out, &f, h, 0);
+	  err = macro_expand_body (&sub, out, &f, h, NULL, instance);
+	  ++instance;
 	  if (err != NULL)
 	    break;
 	  if (!irpc)

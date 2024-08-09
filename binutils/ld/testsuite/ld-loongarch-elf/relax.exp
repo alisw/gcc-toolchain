@@ -19,9 +19,50 @@
 # MA 02110-1301, USA.
 #
 
-if [istarget loongarch64-*-*] {
+proc run_partial_linking_align_test {} {
+  global as
+  global ld
+  global srcdir
+  global subdir
+  global runtests
 
+  set testname "partial-link-align"
+  if ![runtest_file_p $runtests $testname] then {
+    return
+  }
+
+  if { ![ld_assemble $as "$srcdir/$subdir/$testname-a.s" tmpdir/a.o]
+      || ![ld_assemble $as "$srcdir/$subdir/$testname-b.s" tmpdir/b.o]
+      || ![ld_link $ld tmpdir/$testname.os "tmpdir/a.o tmpdir/b.o -r"]
+      || ![ld_link $ld tmpdir/$testname "tmpdir/$testname.os -e0 -Ttext 0x1000"] } {
+    fail $testname
+  } else {
+    set objdump_output [run_host_cmd "objdump" "-d -M no-aliases tmpdir/$testname"]
+    if { [ regexp ".*1010:\\s*4c000020\\s*jirl.*" $objdump_output ] } {
+      pass $testname
+    } else {
+      fail $testname
+    }
+  }
+}
+
+if [istarget loongarch64-*-*] {
   if [isbuild loongarch64-*-*] {
+    run_dump_test "relax-align-ignore-start"
+    run_partial_linking_align_test
+
+    run_ld_link_tests \
+	[list \
+	    [list \
+		"loongarch relax ttext" \
+		"" "" \
+		"" \
+		{relax-ttext.s} \
+		{} \
+		"relax-ttext" \
+	    ] \
+	]
+
     set testname "loongarch relax .exe build"
     set pre_builds [list \
       [list \
@@ -137,7 +178,7 @@ if [istarget loongarch64-*-*] {
 	[list \
 	    [list \
 		"loongarch old tls le .exe build" \
-		"" "" \
+		"--no-relax" "" \
 		"" \
 		{old-tls-le.s} \
 		{} \
@@ -158,7 +199,7 @@ if [istarget loongarch64-*-*] {
 	[list \
 	    [list \
 		"loongarch tls le realx compatible .exe build" \
-		"" "" \
+		"--no-relax" "" \
 		"" \
 		{tls-relax-compatible-check-new.s tls-relax-compatible-check-old.s} \
 		{} \
@@ -201,7 +242,7 @@ if [istarget loongarch64-*-*] {
 	[list \
 	    [list \
 		"loongarch tls le realx bound-check .exe build" \
-		"" "" \
+		"--no-relax" "" \
 		"" \
 		{relax-bound-check-tls-le.s} \
 		{} \
@@ -279,6 +320,21 @@ if [istarget loongarch64-*-*] {
 		"relax-section-align-overflow" \
 	    ] \
 	]
+
+    # # loongarch*-elf target do not support -z separate-code
+    if [check_shared_lib_support] {
+      run_ld_link_tests \
+	  [list \
+	      [list \
+		  "loongarch relax separate code overflow" \
+		  "-e0 -z separate-code" "" \
+		  "" \
+		  {relax-separate-code-overflow.s} \
+		  {} \
+		  "relax-separate-code-overflow" \
+	      ] \
+	  ]
+    }
   }
 
   if [check_shared_lib_support] {
@@ -295,6 +351,18 @@ if [istarget loongarch64-*-*] {
 		"relax-align" \
 	    ] \
 	]
+
+    run_ld_link_tests \
+      [list \
+	[list \
+	  "loongarch relax align discard" \
+	  "-e 0x0 -T relax-align-discard.lds -r" "" \
+	  "" \
+	  {relax-align-discard.s} \
+	  {} \
+	  "relax-align-discard" \
+	] \
+      ]
   }
 
   set objdump_flags "-s -j .data"

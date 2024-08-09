@@ -531,6 +531,22 @@ set lto_link_elf_tests [list \
    "pr29086" \
   ] \
   [list \
+   "PR ld/31956 (a)" \
+   "-Wl,--wrap=parse_line" \
+   "-O2 -flto" \
+   {pr31956a.c pr31956b.c} \
+   {} \
+   "pr31956a" \
+  ] \
+  [list \
+   "PR ld/31956 (b)" \
+   "-Wl,--wrap=parse_line" \
+   "-O2 -flto" \
+   {pr31956b.c pr31956a.c} \
+   {} \
+   "pr31956b" \
+  ] \
+  [list \
    "Build pr30281.so" \
    "-shared -Wl,--version-script,pr30281.t \
     -O2 -fPIC -flto-partition=max -flto=2" \
@@ -538,6 +554,62 @@ set lto_link_elf_tests [list \
    {pr30281.c} \
    "" \
    "pr30281.so" \
+  ] \
+  [list \
+   "Build pr31482b.a" \
+   "" \
+   "" \
+   {pr31482b.c} \
+   "" \
+   "pr31482b.a" \
+  ] \
+  [list \
+   "Build pr31482c.so" \
+   "-shared" \
+   "-fPIC" \
+   {pr31482c.c} \
+   "" \
+   "pr31482c.so" \
+  ] \
+  [list \
+   "Build pr31615b.so" \
+   "-shared -Wl,--version-script=pr31615.ver" \
+   "-fPIC" \
+   {pr31615b.c} \
+   "" \
+   "pr31615b.so" \
+  ] \
+  [list \
+   "Build pr31615c.so" \
+   "-shared -Wl,--version-script=pr31615.ver" \
+   "-fPIC" \
+   {pr31615c.c} \
+   "" \
+   "pr31615c.so" \
+  ] \
+  [list \
+   "Build pr31615d.so" \
+   "-shared -Wl,--version-script=pr31615.ver" \
+   "-fPIC" \
+   {pr31615d.c} \
+   "" \
+   "pr31615d.so" \
+  ] \
+  [list \
+   "Build pr31644b.a" \
+   "" \
+   "" \
+   {pr31644b.c} \
+   "" \
+   "pr31644b.a" \
+  ] \
+  [list \
+   "Build pr31644c.so" \
+   "-shared" \
+   "-fPIC" \
+   {pr31644c.c} \
+   "" \
+   "pr31644c.so" \
   ] \
 ]
 
@@ -722,6 +794,40 @@ set lto_run_elf_shared_tests [list \
    {-Wl,--as-needed,-R,tmpdir} {} \
    {lto-19c.c} {lto-19.exe} {pass.out} {-flto -O2} {c} {} \
    {tmpdir/liblto-19.so tmpdir/liblto-19.a}] \
+  [list {pr31482a} \
+   {-Wl,--no-as-needed,-R,tmpdir} {} \
+   {pr31482a.c} {pr31482a.exe} {pass.out} {-flto} {c} {} \
+   {tmpdir/pr31482b.a tmpdir/pr31482c.so}] \
+  [list {pr31482b} \
+   {-Wl,--no-as-needed,-R,tmpdir} {} \
+   {pr31482a.c} {pr31482b.exe} {pass1.out} {-flto} {c} {} \
+   {tmpdir/pr31482c.so tmpdir/pr31482b.a}] \
+  [list {pr31489a} \
+   {-Wl,--as-needed,-R,tmpdir} {} \
+   {pr31482a.c} {pr31489a.exe} {pass.out} {-flto} {c} {} \
+   {tmpdir/pr31482b.a tmpdir/pr31482c.so}] \
+  [list {pr31489b} \
+   {-Wl,--as-needed,-R,tmpdir} {} \
+   {pr31482a.c} {pr31489b.exe} {pass1.out} {-flto} {c} {} \
+   {tmpdir/pr31482c.so tmpdir/pr31482b.a}] \
+  [list {pr31615a} \
+   {-Wl,-R,tmpdir} {} \
+   {pr31615a.c} {pr31615a.exe} {pass.out} {-O3 -flto} {c} {} \
+   {-Wl,--as-needed tmpdir/pr31615b.so -Wl,--no-as-needed \
+    tmpdir/pr31615d.so}] \
+  [list {pr31615b} \
+   {-Wl,-R,tmpdir} {} \
+   {pr31615a.c} {pr31615b.exe} {pass.out} {-O3 -flto} {c} {} \
+   {-Wl,--as-needed tmpdir/pr31615c.so -Wl,--no-as-needed \
+    tmpdir/pr31615d.so}] \
+  [list {pr31644a} \
+   {-Wl,-R,tmpdir} {} \
+   {pr31644a.c} {pr31644a.exe} {pass.out} {-flto} {c} {} \
+   {-Wl,--no-as-needed tmpdir/pr31644b.a tmpdir/pr31644c.so}] \
+  [list {pr31644b} \
+   {-Wl,-R,tmpdir} {} \
+   {pr31644a.c} {pr31644b.exe} {pass.out} {-flto} {c} {} \
+   {-Wl,--as-needed tmpdir/pr31644b.a tmpdir/pr31644c.so}] \
 ]
 
 # LTO run-time tests for ELF
@@ -964,10 +1070,20 @@ proc pr20103 {cflags libs} {
 
     set testname "PR ld/20103 ($cflags $libs)"
     set exec_output [run_host_cmd "$CC_FOR_TARGET" "$cflags $libs"]
-    if { [ regexp "undefined reference to `\\.?dead'" $exec_output ] } {
-        pass "$testname (1)"
+    # NB: Starting from GCC 4.9, -flto is optional for final link.
+    if { [ regexp "fatpr20103" "$libs" ] \
+	 && ([regexp " -flto" "$cflags"] \
+	     || [at_least_gcc_version 4 9]) } {
+	set result1good "fail"
+	set result1bad "pass"
     } {
-        fail "$testname (1)"
+	set result1good "pass"
+	set result1bad "fail"
+    }
+    if { [ regexp "undefined reference to `\\.?dead'" $exec_output ] } {
+	$result1good "$testname (1)"
+    } {
+	$result1bad "$testname (1)"
     }
     if { [ regexp "plugin needed to handle lto object" $exec_output ] } {
         fail "$testname (2)"
@@ -1025,6 +1141,27 @@ if { [check_lto_fat_available] } {
 	    "-O2 -Wl,--start-group tmpdir/fatpr20103a.a tmpdir/fatpr20103b.a tmpdir/fatpr20103c.a -Wl,--end-group" \
 	    "-O2" \
 	    {dummy.c} {} "pr20103c" \
+	] \
+	[list "Build fatpr23935.a" \
+	    "$plug_opt" \
+	    "-flto -fno-builtin -ffat-lto-objects" \
+	    {pr23935a.c} \
+	    "" \
+	    "fatpr23935.a" \
+	] \
+	[list "Build pr23935b.o" \
+	    "$plug_opt" \
+	    "-flto -fno-fat-lto-objects" \
+	    {pr23935b.c} \
+	] \
+	[list \
+	    "Build pr23935" \
+	    "-static -flto -Wl,-emain -nostdlib tmpdir/pr23935b.o \
+	     tmpdir/fatpr23935.a" \
+	    "-flto -fno-fat-lto-objects" \
+	    {dummy.c} \
+	    "" \
+	    "pr23935" \
 	] \
     ]
     pr20103 "-O2 -flto" "tmpdir/thinpr20103a.a tmpdir/thinpr20103b.a tmpdir/thinpr20103c.a"

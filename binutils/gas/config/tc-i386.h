@@ -183,6 +183,16 @@ extern int tc_i386_fix_adjustable (struct fix *);
    || (FIX)->fx_r_type == BFD_RELOC_X86_64_REX_GOTPCRELX	\
    || (FIX)->fx_r_type == BFD_RELOC_X86_64_CODE_4_GOTPCRELX)
 
+extern void i386_start_line (void);
+#define md_start_line_hook i386_start_line
+
+extern bool i386_check_label (void);
+#define TC_START_LABEL(STR, NUL_CHAR, NEXT_CHAR) \
+  (NEXT_CHAR == ':' && i386_check_label ())
+
+extern int i386_unrecognized_line (int);
+#define tc_unrecognized_line i386_unrecognized_line
+
 extern int i386_parse_name (char *, expressionS *, char *);
 #define md_parse_name(s, e, m, c) i386_parse_name (s, e, c)
 
@@ -396,6 +406,11 @@ extern void tc_x86_parse_to_dw2regnum (expressionS *);
 #define tc_cfi_frame_initial_instructions tc_x86_frame_initial_instructions
 extern void tc_x86_frame_initial_instructions (void);
 
+/* DWARF register number of the frame-pointer register in 64-bit mode.  */
+#define REG_FP 6
+/* DWARF register number of the stack-pointer register in 64-bit mode.  */
+#define REG_SP 7
+
 #define md_elf_section_type(str,len) i386_elf_section_type (str, len)
 extern int i386_elf_section_type (const char *, size_t);
 
@@ -425,10 +440,6 @@ extern void x86_cleanup (void);
    R15 (15).  Use SCFI_CALLEE_SAVED_REG_P to identify which registers
    are callee-saved from this set.  */
 #define SCFI_MAX_REG_ID 15
-/* Identify the DWARF register number of the frame-pointer register.  */
-#define REG_FP 6
-/* Identify the DWARF register number of the stack-pointer register.  */
-#define REG_SP 7
 /* Some ABIs, like AMD64, use stack for call instruction.  For such an ABI,
    identify the initial (CFA) offset from RSP at the entry of function.  */
 #define SCFI_INIT_CFA_OFFSET 8
@@ -440,20 +451,20 @@ extern bool x86_scfi_callee_saved_p (uint32_t dw2reg_num);
 extern bool x86_support_sframe_p (void);
 #define support_sframe_p x86_support_sframe_p
 
-/* The stack-pointer register number for SFrame stack trace info.  */
+/* The stack pointer DWARF register number for SFrame CFA tracking.  */
 extern unsigned int x86_sframe_cfa_sp_reg;
 #define SFRAME_CFA_SP_REG x86_sframe_cfa_sp_reg
 
-/* The frame-pointer register number for SFrame stack trace info.  */
+/* The frame pointer DWARF register number for SFrame CFA and FP tracking.  */
 extern unsigned int x86_sframe_cfa_fp_reg;
 #define SFRAME_CFA_FP_REG x86_sframe_cfa_fp_reg
 
-/* Specify if RA tracking is needed.  */
+/* Whether SFrame return address tracking is needed.  */
 extern bool x86_sframe_ra_tracking_p (void);
 #define sframe_ra_tracking_p x86_sframe_ra_tracking_p
 
-/* Specify the fixed offset to recover RA from CFA.
-   (useful only when RA tracking is not needed).  */
+/* The fixed offset from CFA for SFrame to recover the return address.
+   (useful only when SFrame RA tracking is not needed).  */
 extern offsetT x86_sframe_cfa_ra_offset (void);
 #define sframe_cfa_ra_offset x86_sframe_cfa_ra_offset
 

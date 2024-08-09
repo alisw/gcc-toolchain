@@ -47,12 +47,26 @@ __isl_give MULTI(BASE) *FN(MULTI(BASE),set_dim_name)(
 	__isl_take MULTI(BASE) *multi,
 	enum isl_dim_type type, unsigned pos, const char *s)
 {
-	isl_space *space;
+	int i;
 
-	space = FN(MULTI(BASE),get_space)(multi);
-	space = isl_space_set_dim_name(space, type, pos, s);
+	multi = FN(MULTI(BASE),cow)(multi);
+	if (!multi)
+		return NULL;
 
-	return FN(MULTI(BASE),reset_space)(multi, space);
+	multi->space = isl_space_set_dim_name(multi->space, type, pos, s);
+	if (!multi->space)
+		return FN(MULTI(BASE),free)(multi);
+
+	if (type == isl_dim_out)
+		return multi;
+	for (i = 0; i < multi->n; ++i) {
+		multi->u.p[i] = FN(EL,set_dim_name)(multi->u.p[i],
+							type, pos, s);
+		if (!multi->u.p[i])
+			return FN(MULTI(BASE),free)(multi);
+	}
+
+	return multi;
 }
 
 /* Set the id of the given dimension of "multi" to "id".
@@ -63,8 +77,16 @@ __isl_give MULTI(BASE) *FN(MULTI(BASE),set_dim_id)(
 {
 	isl_space *space;
 
+	multi = FN(MULTI(BASE),cow)(multi);
+	if (!multi || !id)
+		goto error;
+
 	space = FN(MULTI(BASE),get_space)(multi);
 	space = isl_space_set_dim_id(space, type, pos, id);
 
 	return FN(MULTI(BASE),reset_space)(multi, space);
+error:
+	isl_id_free(id);
+	FN(MULTI(BASE),free)(multi);
+	return NULL;
 }

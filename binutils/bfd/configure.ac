@@ -18,7 +18,7 @@ dnl <http://www.gnu.org/licenses/>.
 dnl
 
 m4_include([version.m4])
-AC_INIT([bfd], BFD_VERSION)
+AC_INIT([bfd], [BFD_VERSION])
 AC_CONFIG_SRCDIR([libbfd.c])
 
 AC_CANONICAL_TARGET
@@ -36,7 +36,6 @@ dnl configure option --enable-shared.
 AC_DISABLE_SHARED
 
 AC_PROG_CC
-AC_GNU_SOURCE
 AC_USE_SYSTEM_EXTENSIONS
 
 LT_INIT([dlopen])
@@ -113,7 +112,7 @@ AC_ARG_WITH(mmap,
   yes)  want_mmap=true ;;
   no)   want_mmap=false ;;
   *)    AC_MSG_ERROR(bad value ${withval} for BFD with-mmap option) ;;
-esac],[want_mmap=false])dnl
+esac],[want_mmap=true])dnl
 
 AC_ARG_ENABLE(secureplt,
 [  --enable-secureplt      Default to creating read-only plt entries],
@@ -1029,7 +1028,7 @@ AC_MSG_RESULT($bfd_file_ptr)
 AC_SUBST(bfd_file_ptr)
 AC_SUBST(bfd_ufile_ptr)
 
-AC_FUNC_MMAP
+GCC_AC_FUNC_MMAP
 AC_CHECK_FUNCS(madvise mprotect)
 case ${want_mmap}+${ac_cv_func_mmap_fixed_mapped} in
   true+yes )  AC_DEFINE(USE_MMAP, 1, [Use mmap if it's available?]) ;;

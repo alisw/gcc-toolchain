@@ -1,9 +1,9 @@
 #!/bin/sh
 # py-compile - Compile a Python program
 
-scriptversion=2021-02-27.01; # UTC
+scriptversion=2018-03-07.03; # UTC
 
-# Copyright (C) 2000-2021 Free Software Foundation, Inc.
+# Copyright (C) 2000-2018 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ scriptversion=2021-02-27.01; # UTC
 # bugs to <bug-automake@gnu.org> or send patches to
 # <automake-patches@gnu.org>.
 
-if test -z "$PYTHON"; then
+if [ -z "$PYTHON" ]; then
   PYTHON=python
 fi
 
@@ -96,46 +96,27 @@ done
 
 files=$*
 if test -z "$files"; then
-  usage_error "no files given"
+    usage_error "no files given"
 fi
 
 # if basedir was given, then it should be prepended to filenames before
 # byte compilation.
-if test -z "$basedir"; then
-  pathtrans="path = file"
+if [ -z "$basedir" ]; then
+    pathtrans="path = file"
 else
-  pathtrans="path = os.path.join('$basedir', file)"
+    pathtrans="path = os.path.join('$basedir', file)"
 fi
 
 # if destdir was given, then it needs to be prepended to the filename to
 # byte compile but not go into the compiled file.
-if test -z "$destdir"; then
-  filetrans="filepath = path"
+if [ -z "$destdir" ]; then
+    filetrans="filepath = path"
 else
-  filetrans="filepath = os.path.normpath('$destdir' + os.sep + path)"
-fi
-
-python_major=`$PYTHON -V 2>&1 | sed -e 's/.* //;s/\..*$//;1q'`
-if test -z "$python_major"; then
-  echo "$me: could not determine $PYTHON major version, guessing 3" >&2
-  python_major=3
-fi
-
-# The old way to import libraries was deprecated.
-if test "$python_major" -le 2; then
-  import_lib=imp
-  import_test="hasattr(imp, 'get_tag')"
-  import_call=imp.cache_from_source
-  import_arg2=', False' # needed in one call and not the other
-else
-  import_lib=importlib
-  import_test="hasattr(sys.implementation, 'cache_tag')"
-  import_call=importlib.util.cache_from_source
-  import_arg2=
+    filetrans="filepath = os.path.normpath('$destdir' + os.sep + path)"
 fi
 
 $PYTHON -c "
-import sys, os, py_compile, $import_lib
+import sys, os, py_compile, imp
 
 files = '''$files'''
 
@@ -148,15 +129,15 @@ for file in files.split():
 	    continue
     sys.stdout.write(file)
     sys.stdout.flush()
-    if $import_test:
-        py_compile.compile(filepath, $import_call(filepath), path)
+    if hasattr(imp, 'get_tag'):
+        py_compile.compile(filepath, imp.cache_from_source(filepath), path)
     else:
         py_compile.compile(filepath, filepath + 'c', path)
 sys.stdout.write('\n')" || exit $?
 
 # this will fail for python < 1.5, but that doesn't matter ...
 $PYTHON -O -c "
-import sys, os, py_compile, $import_lib
+import sys, os, py_compile, imp
 
 # pypy does not use .pyo optimization
 if hasattr(sys, 'pypy_translation_info'):
@@ -172,11 +153,11 @@ for file in files.split():
 	    continue
     sys.stdout.write(file)
     sys.stdout.flush()
-    if $import_test:
-        py_compile.compile(filepath, $import_call(filepath$import_arg2), path)
+    if hasattr(imp, 'get_tag'):
+        py_compile.compile(filepath, imp.cache_from_source(filepath, False), path)
     else:
         py_compile.compile(filepath, filepath + 'o', path)
-sys.stdout.write('\n')" 2>/dev/null || exit $?
+sys.stdout.write('\n')" 2>/dev/null || :
 
 # Local Variables:
 # mode: shell-script

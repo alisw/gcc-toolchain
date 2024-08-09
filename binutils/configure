@@ -2335,6 +2335,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 progname=$0
 # if PWD already has a value, it is probably wrong.
 if test -n "$PWD" ; then PWD=`${PWDCMD-pwd}`; fi
@@ -2530,7 +2531,6 @@ test -n "$target_alias" &&
   test "$program_prefix$program_suffix$program_transform_name" = \
     NONENONEs,x,x, &&
   program_prefix=${target_alias}-
-
 test "$program_prefix" != NONE &&
   program_transform_name="s&^&$program_prefix&;$program_transform_name"
 # Use a double $ so make ignores it.
@@ -3146,7 +3146,7 @@ fi
 
 if test "$enable_gprofng" = "yes"; then
   case "${target}" in
-    x86_64-*-linux* | i?86-*-linux* | aarch64-*-linux*)
+    x86_64-*-linux* | i?86-*-linux* | aarch64-*-linux* | riscv64-*-linux*)
     configdirs="$configdirs gprofng"
     ;;
   esac
@@ -10313,7 +10313,8 @@ hbaseargs="$hbaseargs --disable-option-checking"
 tbaseargs="$tbaseargs --disable-option-checking"
 
 if test "$enable_year2038" = no; then
-  baseargs="$baseargs --disable-year2038"
+  bbaseargs="$bbaseargs --disable-year2038"
+  hbaseargs="$hbaseargs --disable-year2038"
   tbaseargs="$tbaseargs --disable-year2038"
 fi
 

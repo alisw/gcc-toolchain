@@ -2734,18 +2734,16 @@ core_pcbe_init (void)
 {
   switch (cpuid_getvendor ())
     {
-    case X86_VENDOR_AMD:
-      snprintf (core_impl_name, sizeof (core_impl_name), "%s", X86_VENDORSTR_AMD);
-      events_table = events_generic;
-      num_gpc = 4;
-      num_ffc = 0;
-      total_pmc = num_gpc + num_ffc;
-      return 0;
     case ARM_CPU_IMP_ARM:
     case ARM_CPU_IMP_BRCM:
     case ARM_CPU_IMP_CAVIUM:
     case ARM_CPU_IMP_APM:
     case ARM_CPU_IMP_QCOM:
+    case ARM_CPU_IMP_FUJITSU:
+    case ARM_CPU_IMP_NVIDIA:
+    case ARM_CPU_IMP_HISI:
+    case ARM_CPU_IMP_APPLE:
+    case ARM_CPU_IMP_AMPERE:
       snprintf (core_impl_name, sizeof (core_impl_name), "%s", AARCH64_VENDORSTR_ARM);
       events_table = events_generic;
       num_gpc = 4;  // MEZ: a real implementation is needed
@@ -2754,6 +2752,9 @@ core_pcbe_init (void)
       return 0;
     case X86_VENDOR_Intel:
       break;
+    case ANDES_VENDOR_ID:
+    case SIFIVE_VENDOR_ID:
+    case THEAD_VENDOR_ID:
     default:
       return -1;
     }
@@ -2915,7 +2916,7 @@ core_pcbe_impl_name (void)
 static const char *
 core_pcbe_cpuref (void)
 {
-#if defined(__aarch64__)
+#if defined(__aarch64__) || defined(__riscv)
   return "";
 #elif defined(__i386__) || defined(__x86_64)
   switch (cpuid_getmodel ())
@@ -2943,7 +2944,7 @@ core_pcbe_cpuref (void)
 }
 
 static int
-core_pcbe_get_events (hwcf_hwc_cb_t *hwc_cb)
+core_pcbe_get_events (hwcf_hwc_cb_t *hwc_cb, Hwcentry *raw_hwc_tbl)
 {
   int count = 0;
   const struct events_table_t *pevent;
@@ -2961,6 +2962,14 @@ core_pcbe_get_events (hwcf_hwc_cb_t *hwc_cb)
       count++;
     }
   /* add generic events here */
+  if (raw_hwc_tbl)
+    for (Hwcentry *h = raw_hwc_tbl; h->name; h++)
+      if (h->use_perf_event_type)
+	for (int jj = 0; jj < num_gpc; jj++)
+	  {
+	    hwc_cb (jj, h->name);
+	    count++;
+	  }
   return count;
 }
 
@@ -3011,8 +3020,7 @@ core_pcbe_get_eventnum (const char *eventname, uint_t pmc, eventsel_t *eventnum,
 	  return 0;
 	}
     }
-  *eventnum = (eventsel_t) - 1;
-  return -1;
+  return 0;
 }
 
 static hdrv_pcbe_api_t hdrv_pcbe_core_api = {

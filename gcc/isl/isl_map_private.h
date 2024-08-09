@@ -500,7 +500,7 @@ isl_bool isl_map_align_params_map_map_and_test(__isl_keep isl_map *map1,
 	isl_bool (*fn)(__isl_keep isl_map *map1, __isl_keep isl_map *map2));
 
 __isl_give isl_set *isl_set_substitute(__isl_take isl_set *set,
-	unsigned pos, __isl_keep isl_aff *subs);
+	enum isl_dim_type type, unsigned pos, __isl_keep isl_aff *subs);
 
 __isl_give isl_set *isl_set_gist_params_basic_set(__isl_take isl_set *set,
 	__isl_take isl_basic_set *context);
@@ -582,12 +582,6 @@ isl_stat isl_map_check_equal_space(__isl_keep isl_map *map1,
 
 isl_bool isl_basic_map_applies_range(__isl_keep isl_basic_map *bmap1,
 	__isl_keep isl_basic_map *bmap2);
-
-__isl_give isl_vec *isl_basic_map_inequality_extract_output_upper_bound(
-	__isl_keep isl_basic_map *bmap, int ineq, int pos);
-
-isl_size isl_basic_map_find_output_upper_div_constraint(
-	__isl_keep isl_basic_map *bmap, int pos);
 
 __isl_give isl_mat *isl_basic_set_extract_equalities(
 	__isl_keep isl_basic_set *bset);

@@ -41,8 +41,10 @@ Disassembly of section .text:
   38:	28c00084 	ld.d        	\$a0, \$a0, 0
   3c:	14000004 	lu12i.w     	\$a0, 0
 			3c: R_LARCH_TLS_LE_HI20	TLS1
+			3c: R_LARCH_RELAX	\*ABS\*
   40:	03800084 	ori         	\$a0, \$a0, 0x0
 			40: R_LARCH_TLS_LE_LO12	TLS1
+			40: R_LARCH_RELAX	\*ABS\*
   44:	14000004 	lu12i.w     	\$a0, 0
 			44: R_LARCH_TLS_IE_HI20	TLS1
   48:	03800084 	ori         	\$a0, \$a0, 0x0

@@ -570,17 +570,21 @@ enum
      It implicitly denotes the register group of {x,y,z}mmN - {x,y,z}mm(N + 3).
    */
 #define IMPLICIT_QUAD_GROUP 5
-  /* Two source operands are swapped.  */
-#define SWAP_SOURCES 6
   /* Default mask isn't allowed.  */
-#define NO_DEFAULT_MASK 7
+#define NO_DEFAULT_MASK 6
   /* Address prefix changes register operand */
-#define ADDR_PREFIX_OP_REG 8
+#define ADDR_PREFIX_OP_REG 7
   /* Instrucion requires that destination must be distinct from source
      registers.  */
-#define DISTINCT_DEST 9
+#define DISTINCT_DEST 8
   /* Instruction updates stack pointer implicitly.  */
-#define IMPLICIT_STACK_OP 10
+#define IMPLICIT_STACK_OP 9
+  /* Instruction zeroes upper part of register.  */
+#define ZERO_UPPER 10
+  /* Instruction support SCC.  */
+#define SCC 11
+  /* Instruction requires EVEX.NF to be 1.  */
+#define EVEX_NF 12
   OperandConstraint,
   /* instruction ignores operand size prefix and in Intel mode ignores
      mnemonic size suffix check.  */
@@ -639,11 +643,14 @@ enum
 #define VEXScalar	3
   Vex,
   /* How to encode VEX.vvvv:
-     0: VEX.vvvv must be 1111b.
-     1: VEX.vvvv encodes one of the src register operands.
-     2: VEX.vvvv encodes the dest register operand.
+     1: VEX.vvvv encodes the src1 register operand.
+     2: VEX.vvvv encodes the src2 register operand.
+     3: VEX.vvvv encodes the dest register operand.
    */
-#define VexVVVV_DST   2
+#define VexVVVV_SRC1   1
+#define VexVVVV_SRC2   2
+#define VexVVVV_DST    3
+
   VexVVVV,
   /* How the VEX.W bit is used:
      0: Set by the REX.W bit.
@@ -732,6 +739,9 @@ enum
 #define ATT_MNEMONIC 3
   Dialect,
 
+  /* Mnemonic suffix permitted in Intel syntax.  */
+  IntelSuffix,
+
   /* ISA64: Don't change the order without other code adjustments.
 	0: Common to AMD64 and Intel64.
 	1: AMD64.
@@ -796,6 +806,7 @@ typedef struct i386_opcode_modifier
   unsigned int disp8memshift:3;
   unsigned int optimize:1;
   unsigned int dialect:2;
+  unsigned int intelsuffix:1;
   unsigned int isa64:2;
   unsigned int noegpr:1;
   unsigned int nf:1;
@@ -1018,6 +1029,7 @@ typedef struct insn_template
 #define Prefix_REX		8	/* {rex} */
 #define Prefix_REX2		9	/* {rex2} */
 #define Prefix_NoOptimize	10	/* {nooptimize} */
+#define Prefix_NF		11	/* {nf} */
 
   /* the bits in opcode_modifier are used to generate the final opcode from
      the base_opcode.  These bits also are used to detect alternate forms of
@@ -1051,7 +1063,7 @@ typedef struct
 #define RegIZ	(RegIP - 1)
 /* FLAT is a fake segment register (Intel mode).  */
 #define RegFlat     ((unsigned char) ~0)
-  signed char dw2_regnum[2];
-#define Dw2Inval (-1)
+  unsigned char dw2_regnum[2];
+#define Dw2Inval 0xff
 }
 reg_entry;

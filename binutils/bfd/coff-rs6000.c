@@ -4467,10 +4467,10 @@ const struct xcoff_dwsect_name xcoff_dwsect_names[] = {
 #define _bfd_xcoff_bfd_free_cached_info coff_bfd_free_cached_info
 #define _bfd_xcoff_new_section_hook coff_new_section_hook
 #define _bfd_xcoff_get_section_contents _bfd_generic_get_section_contents
-#define _bfd_xcoff_get_section_contents_in_window \
-  _bfd_generic_get_section_contents_in_window
 
 /* For copy private data entry points.  */
+#define _bfd_xcoff_init_private_section_data \
+  _bfd_generic_init_private_section_data
 #define _bfd_xcoff_bfd_copy_private_bfd_data \
   _bfd_xcoff_copy_private_bfd_data
 #define _bfd_xcoff_bfd_merge_private_bfd_data \

@@ -1195,6 +1195,7 @@ elf_checksum_contents (bfd *abfd,
       Elf_Internal_Shdr i_shdr;
       Elf_External_Shdr x_shdr;
       bfd_byte *contents, *free_contents;
+      asection *sec = NULL;
 
       i_shdr = *i_shdrp[count];
       i_shdr.sh_offset = 0;
@@ -1210,8 +1211,6 @@ elf_checksum_contents (bfd *abfd,
       contents = i_shdr.contents;
       if (contents == NULL)
 	{
-	  asection *sec;
-
 	  sec = bfd_section_from_elf_index (abfd, count);
 	  if (sec != NULL)
 	    {
@@ -1220,7 +1219,7 @@ elf_checksum_contents (bfd *abfd,
 		{
 		  /* Force rereading from file.  */
 		  sec->flags &= ~SEC_IN_MEMORY;
-		  if (!bfd_malloc_and_get_section (abfd, sec, &free_contents))
+		  if (!_bfd_elf_mmap_section_contents (abfd, sec, &free_contents))
 		    continue;
 		  contents = free_contents;
 		}
@@ -1229,7 +1228,7 @@ elf_checksum_contents (bfd *abfd,
       if (contents != NULL)
 	{
 	  (*process) (contents, i_shdr.sh_size, arg);
-	  free (free_contents);
+	  _bfd_elf_munmap_section_contents (sec, free_contents);
 	}
     }
 
@@ -1615,11 +1614,11 @@ elf_slurp_reloc_table_from_section (bfd *abfd,
 
       relent->addend = rela.r_addend;
 
-      if ((entsize == sizeof (Elf_External_Rela)
-	   && ebd->elf_info_to_howto != NULL)
-	  || ebd->elf_info_to_howto_rel == NULL)
+      res = false;
+      if (entsize == sizeof (Elf_External_Rela)
+	  && ebd->elf_info_to_howto != NULL)
 	res = ebd->elf_info_to_howto (abfd, relent, &rela);
-      else
+      else if (ebd->elf_info_to_howto_rel != NULL)
 	res = ebd->elf_info_to_howto_rel (abfd, relent, &rela);
 
       if (! res || relent->howto == NULL)

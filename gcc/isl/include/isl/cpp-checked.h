@@ -17,11 +17,6 @@
 #include <string>
 #include <type_traits>
 
-#if __cplusplus >= 201703L
-#include <any>
-#include <optional>
-#endif
-
 namespace isl {
 namespace checked {
 
@@ -100,23 +95,18 @@ inline boolean manage(isl_bool val) {
 }
 
 class ctx {
-	isl_ctx *ptr;
+  isl_ctx *ptr;
 public:
-	/* implicit */ ctx(isl_ctx *ctx) : ptr(ctx) {}
-	isl_ctx *release() {
-		auto tmp = ptr;
-		ptr = nullptr;
-		return tmp;
-	}
-	isl_ctx *get() {
-		return ptr;
-	}
-#if __cplusplus >= 201703L
-	static void free_user(void *user) {
-		std::any *p = static_cast<std::any *>(user);
-		delete p;
-	}
-#endif
+  /* implicit */ ctx(isl_ctx *ctx)
+      : ptr(ctx) {}
+  isl_ctx *release() {
+    auto tmp = ptr;
+    ptr = nullptr;
+    return tmp;
+  }
+  isl_ctx *get() {
+    return ptr;
+  }
 };
 
 /* Class encapsulating an isl_stat value.
@@ -199,7 +189,6 @@ inline size manage(isl_size val)
 } // namespace isl
 
 #include <isl/id.h>
-#include <isl/id_to_id.h>
 #include <isl/space.h>
 #include <isl/val.h>
 #include <isl/aff.h>
@@ -264,10 +253,7 @@ class basic_set;
 class fixed_box;
 class id;
 class id_list;
-class id_to_ast_expr;
-class id_to_id;
 class map;
-class map_list;
 class multi_aff;
 class multi_id;
 class multi_pw_aff;
@@ -293,7 +279,6 @@ class schedule_node_mark;
 class schedule_node_sequence;
 class schedule_node_set;
 class set;
-class set_list;
 class space;
 class union_access_info;
 class union_flow;
@@ -366,8 +351,6 @@ public:
   inline isl::checked::aff div(isl::checked::aff aff2) const;
   inline isl::checked::pw_aff div(const isl::checked::pw_aff &pa2) const;
   inline isl::checked::set domain() const;
-  inline isl::checked::aff domain_reverse() const;
-  inline isl::checked::pw_aff drop_unused_params() const;
   inline isl::checked::set eq_set(isl::checked::aff aff2) const;
   inline isl::checked::set eq_set(const isl::checked::pw_aff &pwaff2) const;
   inline isl::checked::val eval(isl::checked::point pnt) const;
@@ -385,7 +368,6 @@ public:
   inline isl::checked::union_pw_aff gist(const isl::checked::union_set &context) const;
   inline isl::checked::aff gist(const isl::checked::basic_set &context) const;
   inline isl::checked::aff gist(const isl::checked::point &context) const;
-  inline isl::checked::aff gist_params(isl::checked::set context) const;
   inline isl::checked::set gt_set(isl::checked::aff aff2) const;
   inline isl::checked::set gt_set(const isl::checked::pw_aff &pwaff2) const;
   inline boolean has_range_tuple_id() const;
@@ -414,11 +396,9 @@ public:
   inline isl::checked::multi_pw_aff max(const isl::checked::multi_pw_aff &multi2) const;
   inline isl::checked::pw_aff max(const isl::checked::pw_aff &pwaff2) const;
   inline isl::checked::multi_val max_multi_val() const;
-  inline isl::checked::val max_val() const;
   inline isl::checked::multi_pw_aff min(const isl::checked::multi_pw_aff &multi2) const;
   inline isl::checked::pw_aff min(const isl::checked::pw_aff &pwaff2) const;
   inline isl::checked::multi_val min_multi_val() const;
-  inline isl::checked::val min_val() const;
   inline isl::checked::aff mod(isl::checked::val mod) const;
   inline isl::checked::aff mod(long mod) const;
   inline isl::checked::aff mul(isl::checked::aff aff2) const;
@@ -427,16 +407,10 @@ public:
   inline isl::checked::set ne_set(isl::checked::aff aff2) const;
   inline isl::checked::set ne_set(const isl::checked::pw_aff &pwaff2) const;
   inline isl::checked::aff neg() const;
-  inline isl::checked::set params() const;
   inline boolean plain_is_empty() const;
-  inline boolean plain_is_equal(const isl::checked::aff &aff2) const;
   inline boolean plain_is_equal(const isl::checked::multi_aff &multi2) const;
   inline boolean plain_is_equal(const isl::checked::multi_pw_aff &multi2) const;
   inline boolean plain_is_equal(const isl::checked::multi_union_pw_aff &multi2) const;
-  inline boolean plain_is_equal(const isl::checked::pw_aff &pwaff2) const;
-  inline boolean plain_is_equal(const isl::checked::pw_multi_aff &pma2) const;
-  inline boolean plain_is_equal(const isl::checked::union_pw_aff &upa2) const;
-  inline boolean plain_is_equal(const isl::checked::union_pw_multi_aff &upma2) const;
   inline isl::checked::pw_multi_aff preimage_domain_wrapped_domain(const isl::checked::pw_multi_aff &pma2) const;
   inline isl::checked::union_pw_multi_aff preimage_domain_wrapped_domain(const isl::checked::union_pw_multi_aff &upma2) const;
   inline isl::checked::multi_aff product(const isl::checked::multi_aff &multi2) const;
@@ -447,7 +421,6 @@ public:
   inline isl::checked::pw_aff pullback(const isl::checked::pw_multi_aff &pma) const;
   inline isl::checked::union_pw_aff pullback(const isl::checked::union_pw_multi_aff &upma) const;
   inline isl::checked::aff pullback(const isl::checked::aff &ma) const;
-  inline isl::checked::pw_multi_aff_list pw_multi_aff_list() const;
   inline isl::checked::pw_multi_aff range_factor_domain() const;
   inline isl::checked::pw_multi_aff range_factor_range() const;
   inline isl::checked::multi_aff range_product(const isl::checked::multi_aff &multi2) const;
@@ -517,7 +490,6 @@ public:
   inline /* implicit */ aff_list(const aff_list &obj);
   inline explicit aff_list(isl::checked::ctx ctx, int n);
   inline explicit aff_list(isl::checked::aff el);
-  inline explicit aff_list(isl::checked::ctx ctx, const std::string &str);
   inline aff_list &operator=(aff_list obj);
   inline ~aff_list();
   inline __isl_give isl_aff_list *copy() const &;
@@ -534,9 +506,7 @@ public:
   inline isl::checked::aff_list concat(isl::checked::aff_list list2) const;
   inline isl::checked::aff_list drop(unsigned int first, unsigned int n) const;
   inline stat foreach(const std::function<stat(isl::checked::aff)> &fn) const;
-  inline stat foreach_scc(const std::function<boolean(isl::checked::aff, isl::checked::aff)> &follows, const std::function<stat(isl::checked::aff_list)> &fn) const;
   inline isl::checked::aff_list insert(unsigned int pos, isl::checked::aff el) const;
-  inline isl::checked::aff_list set_at(int index, isl::checked::aff el) const;
   inline class size size() const;
 };
 
@@ -1228,7 +1198,6 @@ public:
   template <class T> inline T as() const;
   inline isl::checked::ctx ctx() const;
 
-  inline isl::checked::ast_node map_descendant_bottom_up(const std::function<isl::checked::ast_node(isl::checked::ast_node)> &fn) const;
   inline std::string to_C_str() const;
   inline isl::checked::ast_node_list to_list() const;
 };
@@ -1247,7 +1216,6 @@ protected:
 public:
   inline /* implicit */ ast_node_block();
   inline /* implicit */ ast_node_block(const ast_node_block &obj);
-  inline explicit ast_node_block(isl::checked::ast_node_list list);
   inline ast_node_block &operator=(ast_node_block obj);
   inline isl::checked::ctx ctx() const;
 
@@ -1345,9 +1313,7 @@ public:
   inline isl::checked::ast_node_list concat(isl::checked::ast_node_list list2) const;
   inline isl::checked::ast_node_list drop(unsigned int first, unsigned int n) const;
   inline stat foreach(const std::function<stat(isl::checked::ast_node)> &fn) const;
-  inline stat foreach_scc(const std::function<boolean(isl::checked::ast_node, isl::checked::ast_node)> &follows, const std::function<stat(isl::checked::ast_node_list)> &fn) const;
   inline isl::checked::ast_node_list insert(unsigned int pos, isl::checked::ast_node el) const;
-  inline isl::checked::ast_node_list set_at(int index, isl::checked::ast_node el) const;
   inline class size size() const;
 };
 
@@ -1388,7 +1354,6 @@ protected:
 public:
   inline /* implicit */ ast_node_user();
   inline /* implicit */ ast_node_user(const ast_node_user &obj);
-  inline explicit ast_node_user(isl::checked::ast_expr expr);
   inline ast_node_user &operator=(ast_node_user obj);
   inline isl::checked::ctx ctx() const;
 
@@ -1448,18 +1413,15 @@ public:
   inline isl::checked::union_pw_multi_aff domain_map_union_pw_multi_aff() const;
   inline isl::checked::map domain_product(const isl::checked::map &map2) const;
   inline isl::checked::union_map domain_product(const isl::checked::union_map &umap2) const;
-  inline isl::checked::map domain_reverse() const;
-  inline class size domain_tuple_dim() const;
   inline isl::checked::id domain_tuple_id() const;
-  inline isl::checked::map drop_unused_params() const;
   inline isl::checked::map eq_at(const isl::checked::multi_pw_aff &mpa) const;
   inline isl::checked::union_map eq_at(const isl::checked::multi_union_pw_aff &mupa) const;
   inline boolean every_map(const std::function<boolean(isl::checked::map)> &test) const;
   inline isl::checked::map extract_map(const isl::checked::space &space) const;
   inline isl::checked::map factor_domain() const;
   inline isl::checked::map factor_range() const;
-  inline isl::checked::map fixed_power(const isl::checked::val &exp) const;
-  inline isl::checked::map fixed_power(long exp) const;
+  inline isl::checked::union_map fixed_power(const isl::checked::val &exp) const;
+  inline isl::checked::union_map fixed_power(long exp) const;
   inline isl::checked::basic_map flatten() const;
   inline isl::checked::basic_map flatten_domain() const;
   inline isl::checked::basic_map flatten_range() const;
@@ -1470,7 +1432,7 @@ public:
   inline isl::checked::union_map gist(const isl::checked::union_map &context) const;
   inline isl::checked::map gist_domain(const isl::checked::set &context) const;
   inline isl::checked::union_map gist_domain(const isl::checked::union_set &uset) const;
-  inline isl::checked::map gist_params(const isl::checked::set &context) const;
+  inline isl::checked::union_map gist_params(const isl::checked::set &set) const;
   inline isl::checked::union_map gist_range(const isl::checked::union_set &uset) const;
   inline boolean has_domain_tuple_id() const;
   inline boolean has_range_tuple_id() const;
@@ -1486,8 +1448,6 @@ public:
   inline isl::checked::union_map intersect_domain_factor_domain(const isl::checked::union_map &factor) const;
   inline isl::checked::map intersect_domain_factor_range(const isl::checked::map &factor) const;
   inline isl::checked::union_map intersect_domain_factor_range(const isl::checked::union_map &factor) const;
-  inline isl::checked::map intersect_domain_wrapped_domain(const isl::checked::set &domain) const;
-  inline isl::checked::union_map intersect_domain_wrapped_domain(const isl::checked::union_set &domain) const;
   inline isl::checked::map intersect_params(const isl::checked::set &params) const;
   inline isl::checked::basic_map intersect_range(isl::checked::basic_set bset) const;
   inline isl::checked::map intersect_range(const isl::checked::set &set) const;
@@ -1498,8 +1458,6 @@ public:
   inline isl::checked::union_map intersect_range_factor_domain(const isl::checked::union_map &factor) const;
   inline isl::checked::map intersect_range_factor_range(const isl::checked::map &factor) const;
   inline isl::checked::union_map intersect_range_factor_range(const isl::checked::union_map &factor) const;
-  inline isl::checked::map intersect_range_wrapped_domain(const isl::checked::set &domain) const;
-  inline isl::checked::union_map intersect_range_wrapped_domain(const isl::checked::union_set &domain) const;
   inline boolean is_bijective() const;
   inline boolean is_disjoint(const isl::checked::map &map2) const;
   inline boolean is_disjoint(const isl::checked::union_map &umap2) const;
@@ -1524,11 +1482,8 @@ public:
   inline isl::checked::map lexmin() const;
   inline isl::checked::pw_multi_aff lexmin_pw_multi_aff() const;
   inline isl::checked::map lower_bound(const isl::checked::multi_pw_aff &lower) const;
-  inline isl::checked::map_list map_list() const;
   inline isl::checked::multi_pw_aff max_multi_pw_aff() const;
   inline isl::checked::multi_pw_aff min_multi_pw_aff() const;
-  inline class size n_basic_map() const;
-  inline isl::checked::set params() const;
   inline isl::checked::basic_map polyhedral_hull() const;
   inline isl::checked::map preimage_domain(const isl::checked::multi_aff &ma) const;
   inline isl::checked::map preimage_domain(const isl::checked::multi_pw_aff &mpa) const;
@@ -1540,19 +1495,14 @@ public:
   inline isl::checked::map product(const isl::checked::map &map2) const;
   inline isl::checked::union_map product(const isl::checked::union_map &umap2) const;
   inline isl::checked::map project_out_all_params() const;
-  inline isl::checked::map project_out_param(const isl::checked::id &id) const;
-  inline isl::checked::map project_out_param(const std::string &id) const;
-  inline isl::checked::map project_out_param(const isl::checked::id_list &list) const;
   inline isl::checked::set range() const;
   inline isl::checked::map range_factor_domain() const;
   inline isl::checked::map range_factor_range() const;
-  inline isl::checked::fixed_box range_lattice_tile() const;
   inline isl::checked::union_map range_map() const;
   inline isl::checked::map range_product(const isl::checked::map &map2) const;
   inline isl::checked::union_map range_product(const isl::checked::union_map &umap2) const;
   inline isl::checked::map range_reverse() const;
   inline isl::checked::fixed_box range_simple_fixed_box_hull() const;
-  inline class size range_tuple_dim() const;
   inline isl::checked::id range_tuple_id() const;
   inline isl::checked::basic_map reverse() const;
   inline isl::checked::basic_map sample() const;
@@ -1565,7 +1515,6 @@ public:
   inline isl::checked::union_map subtract(const isl::checked::union_map &umap2) const;
   inline isl::checked::union_map subtract_domain(const isl::checked::union_set &dom) const;
   inline isl::checked::union_map subtract_range(const isl::checked::union_set &dom) const;
-  inline isl::checked::map_list to_list() const;
   inline isl::checked::union_map to_union_map() const;
   inline isl::checked::map uncurry() const;
   inline isl::checked::map unite(isl::checked::basic_map bmap2) const;
@@ -1617,7 +1566,6 @@ public:
   inline isl::checked::basic_set detect_equalities() const;
   inline isl::checked::val dim_max_val(int pos) const;
   inline isl::checked::val dim_min_val(int pos) const;
-  inline isl::checked::set drop_unused_params() const;
   inline boolean every_set(const std::function<boolean(isl::checked::set)> &test) const;
   inline isl::checked::set extract_set(const isl::checked::space &space) const;
   inline isl::checked::basic_set flatten() const;
@@ -1628,7 +1576,7 @@ public:
   inline isl::checked::set gist(const isl::checked::set &context) const;
   inline isl::checked::union_set gist(const isl::checked::union_set &context) const;
   inline isl::checked::basic_set gist(const isl::checked::point &context) const;
-  inline isl::checked::set gist_params(const isl::checked::set &context) const;
+  inline isl::checked::union_set gist_params(const isl::checked::set &set) const;
   inline isl::checked::map identity() const;
   inline isl::checked::pw_aff indicator_function() const;
   inline isl::checked::map insert_domain(const isl::checked::space &domain) const;
@@ -1656,7 +1604,6 @@ public:
   inline boolean is_subset(const isl::checked::point &bset2) const;
   inline boolean is_wrapping() const;
   inline boolean isa_set() const;
-  inline isl::checked::fixed_box lattice_tile() const;
   inline isl::checked::set lexmax() const;
   inline isl::checked::pw_multi_aff lexmax_pw_multi_aff() const;
   inline isl::checked::set lexmin() const;
@@ -1667,9 +1614,6 @@ public:
   inline isl::checked::val max_val(const isl::checked::aff &obj) const;
   inline isl::checked::multi_pw_aff min_multi_pw_aff() const;
   inline isl::checked::val min_val(const isl::checked::aff &obj) const;
-  inline class size n_basic_set() const;
-  inline isl::checked::pw_aff param_pw_aff_on_domain(const isl::checked::id &id) const;
-  inline isl::checked::pw_aff param_pw_aff_on_domain(const std::string &id) const;
   inline isl::checked::basic_set params() const;
   inline isl::checked::multi_val plain_multi_val_if_fixed() const;
   inline isl::checked::basic_set polyhedral_hull() const;
@@ -1682,22 +1626,18 @@ public:
   inline isl::checked::set project_out_param(const isl::checked::id &id) const;
   inline isl::checked::set project_out_param(const std::string &id) const;
   inline isl::checked::set project_out_param(const isl::checked::id_list &list) const;
-  inline isl::checked::pw_aff pw_aff_on_domain(const isl::checked::val &v) const;
-  inline isl::checked::pw_aff pw_aff_on_domain(long v) const;
   inline isl::checked::pw_multi_aff pw_multi_aff_on_domain(const isl::checked::multi_val &mv) const;
   inline isl::checked::basic_set sample() const;
   inline isl::checked::point sample_point() const;
-  inline isl::checked::set_list set_list() const;
   inline isl::checked::fixed_box simple_fixed_box_hull() const;
   inline isl::checked::space space() const;
   inline isl::checked::val stride(int pos) const;
   inline isl::checked::set subtract(const isl::checked::set &set2) const;
   inline isl::checked::union_set subtract(const isl::checked::union_set &uset2) const;
-  inline isl::checked::set_list to_list() const;
+  inline isl::checked::union_set_list to_list() const;
   inline isl::checked::set to_set() const;
   inline isl::checked::union_set to_union_set() const;
   inline isl::checked::map translation() const;
-  inline class size tuple_dim() const;
   inline isl::checked::set unbind_params(const isl::checked::multi_id &tuple) const;
   inline isl::checked::map unbind_params_insert_domain(const isl::checked::multi_id &domain) const;
   inline isl::checked::set unite(isl::checked::basic_set bset2) const;
@@ -1708,7 +1648,6 @@ public:
   inline isl::checked::map unwrap() const;
   inline isl::checked::set upper_bound(const isl::checked::multi_pw_aff &upper) const;
   inline isl::checked::set upper_bound(const isl::checked::multi_val &upper) const;
-  inline isl::checked::set wrapped_reverse() const;
 };
 
 // declarations for isl::fixed_box
@@ -1727,7 +1666,6 @@ protected:
 public:
   inline /* implicit */ fixed_box();
   inline /* implicit */ fixed_box(const fixed_box &obj);
-  inline explicit fixed_box(isl::checked::ctx ctx, const std::string &str);
   inline fixed_box &operator=(fixed_box obj);
   inline ~fixed_box();
   inline __isl_give isl_fixed_box *copy() const &;
@@ -1775,14 +1713,6 @@ public:
   inline std::string name() const;
   inline std::string get_name() const;
   inline isl::checked::id_list to_list() const;
-
-#if __cplusplus >= 201703L
-  inline explicit id(isl::checked::ctx ctx, const std::string &str, const std::any &any);
-  template <class T>
-  std::optional<T> try_user() const;
-  template <class T>
-  T user() const;
-#endif
 };
 
 // declarations for isl::id_list
@@ -1803,7 +1733,6 @@ public:
   inline /* implicit */ id_list(const id_list &obj);
   inline explicit id_list(isl::checked::ctx ctx, int n);
   inline explicit id_list(isl::checked::id el);
-  inline explicit id_list(isl::checked::ctx ctx, const std::string &str);
   inline id_list &operator=(id_list obj);
   inline ~id_list();
   inline __isl_give isl_id_list *copy() const &;
@@ -1821,78 +1750,9 @@ public:
   inline isl::checked::id_list concat(isl::checked::id_list list2) const;
   inline isl::checked::id_list drop(unsigned int first, unsigned int n) const;
   inline stat foreach(const std::function<stat(isl::checked::id)> &fn) const;
-  inline stat foreach_scc(const std::function<boolean(isl::checked::id, isl::checked::id)> &follows, const std::function<stat(isl::checked::id_list)> &fn) const;
   inline isl::checked::id_list insert(unsigned int pos, isl::checked::id el) const;
   inline isl::checked::id_list insert(unsigned int pos, const std::string &el) const;
-  inline isl::checked::id_list set_at(int index, isl::checked::id el) const;
-  inline isl::checked::id_list set_at(int index, const std::string &el) const;
   inline class size size() const;
-};
-
-// declarations for isl::id_to_ast_expr
-inline id_to_ast_expr manage(__isl_take isl_id_to_ast_expr *ptr);
-inline id_to_ast_expr manage_copy(__isl_keep isl_id_to_ast_expr *ptr);
-
-class id_to_ast_expr {
-  friend inline id_to_ast_expr manage(__isl_take isl_id_to_ast_expr *ptr);
-  friend inline id_to_ast_expr manage_copy(__isl_keep isl_id_to_ast_expr *ptr);
-
-protected:
-  isl_id_to_ast_expr *ptr = nullptr;
-
-  inline explicit id_to_ast_expr(__isl_take isl_id_to_ast_expr *ptr);
-
-public:
-  inline /* implicit */ id_to_ast_expr();
-  inline /* implicit */ id_to_ast_expr(const id_to_ast_expr &obj);
-  inline explicit id_to_ast_expr(isl::checked::ctx ctx, int min_size);
-  inline explicit id_to_ast_expr(isl::checked::ctx ctx, const std::string &str);
-  inline id_to_ast_expr &operator=(id_to_ast_expr obj);
-  inline ~id_to_ast_expr();
-  inline __isl_give isl_id_to_ast_expr *copy() const &;
-  inline __isl_give isl_id_to_ast_expr *copy() && = delete;
-  inline __isl_keep isl_id_to_ast_expr *get() const;
-  inline __isl_give isl_id_to_ast_expr *release();
-  inline bool is_null() const;
-  inline isl::checked::ctx ctx() const;
-
-  inline boolean is_equal(const isl::checked::id_to_ast_expr &hmap2) const;
-  inline isl::checked::id_to_ast_expr set(isl::checked::id key, isl::checked::ast_expr val) const;
-  inline isl::checked::id_to_ast_expr set(const std::string &key, const isl::checked::ast_expr &val) const;
-};
-
-// declarations for isl::id_to_id
-inline id_to_id manage(__isl_take isl_id_to_id *ptr);
-inline id_to_id manage_copy(__isl_keep isl_id_to_id *ptr);
-
-class id_to_id {
-  friend inline id_to_id manage(__isl_take isl_id_to_id *ptr);
-  friend inline id_to_id manage_copy(__isl_keep isl_id_to_id *ptr);
-
-protected:
-  isl_id_to_id *ptr = nullptr;
-
-  inline explicit id_to_id(__isl_take isl_id_to_id *ptr);
-
-public:
-  inline /* implicit */ id_to_id();
-  inline /* implicit */ id_to_id(const id_to_id &obj);
-  inline explicit id_to_id(isl::checked::ctx ctx, int min_size);
-  inline explicit id_to_id(isl::checked::ctx ctx, const std::string &str);
-  inline id_to_id &operator=(id_to_id obj);
-  inline ~id_to_id();
-  inline __isl_give isl_id_to_id *copy() const &;
-  inline __isl_give isl_id_to_id *copy() && = delete;
-  inline __isl_keep isl_id_to_id *get() const;
-  inline __isl_give isl_id_to_id *release();
-  inline bool is_null() const;
-  inline isl::checked::ctx ctx() const;
-
-  inline boolean is_equal(const isl::checked::id_to_id &hmap2) const;
-  inline isl::checked::id_to_id set(isl::checked::id key, isl::checked::id val) const;
-  inline isl::checked::id_to_id set(const isl::checked::id &key, const std::string &val) const;
-  inline isl::checked::id_to_id set(const std::string &key, const isl::checked::id &val) const;
-  inline isl::checked::id_to_id set(const std::string &key, const std::string &val) const;
 };
 
 // declarations for isl::map
@@ -1949,11 +1809,8 @@ public:
   inline isl::checked::map domain_product(isl::checked::map map2) const;
   inline isl::checked::union_map domain_product(const isl::checked::union_map &umap2) const;
   inline isl::checked::map domain_product(const isl::checked::basic_map &map2) const;
-  inline isl::checked::map domain_reverse() const;
-  inline class size domain_tuple_dim() const;
   inline isl::checked::id domain_tuple_id() const;
   inline isl::checked::id get_domain_tuple_id() const;
-  inline isl::checked::map drop_unused_params() const;
   static inline isl::checked::map empty(isl::checked::space space);
   inline isl::checked::map eq_at(isl::checked::multi_pw_aff mpa) const;
   inline isl::checked::union_map eq_at(const isl::checked::multi_union_pw_aff &mupa) const;
@@ -1965,8 +1822,8 @@ public:
   inline isl::checked::map extract_map(const isl::checked::space &space) const;
   inline isl::checked::map factor_domain() const;
   inline isl::checked::map factor_range() const;
-  inline isl::checked::map fixed_power(isl::checked::val exp) const;
-  inline isl::checked::map fixed_power(long exp) const;
+  inline isl::checked::union_map fixed_power(const isl::checked::val &exp) const;
+  inline isl::checked::union_map fixed_power(long exp) const;
   inline isl::checked::map flatten() const;
   inline isl::checked::map flatten_domain() const;
   inline isl::checked::map flatten_range() const;
@@ -1979,7 +1836,7 @@ public:
   inline isl::checked::union_map gist_domain(const isl::checked::union_set &uset) const;
   inline isl::checked::map gist_domain(const isl::checked::basic_set &context) const;
   inline isl::checked::map gist_domain(const isl::checked::point &context) const;
-  inline isl::checked::map gist_params(isl::checked::set context) const;
+  inline isl::checked::union_map gist_params(const isl::checked::set &set) const;
   inline isl::checked::union_map gist_range(const isl::checked::union_set &uset) const;
   inline boolean has_domain_tuple_id() const;
   inline boolean has_range_tuple_id() const;
@@ -1997,10 +1854,6 @@ public:
   inline isl::checked::map intersect_domain_factor_range(isl::checked::map factor) const;
   inline isl::checked::union_map intersect_domain_factor_range(const isl::checked::union_map &factor) const;
   inline isl::checked::map intersect_domain_factor_range(const isl::checked::basic_map &factor) const;
-  inline isl::checked::map intersect_domain_wrapped_domain(isl::checked::set domain) const;
-  inline isl::checked::union_map intersect_domain_wrapped_domain(const isl::checked::union_set &domain) const;
-  inline isl::checked::map intersect_domain_wrapped_domain(const isl::checked::basic_set &domain) const;
-  inline isl::checked::map intersect_domain_wrapped_domain(const isl::checked::point &domain) const;
   inline isl::checked::map intersect_params(isl::checked::set params) const;
   inline isl::checked::map intersect_range(isl::checked::set set) const;
   inline isl::checked::union_map intersect_range(const isl::checked::space &space) const;
@@ -2013,10 +1866,6 @@ public:
   inline isl::checked::map intersect_range_factor_range(isl::checked::map factor) const;
   inline isl::checked::union_map intersect_range_factor_range(const isl::checked::union_map &factor) const;
   inline isl::checked::map intersect_range_factor_range(const isl::checked::basic_map &factor) const;
-  inline isl::checked::map intersect_range_wrapped_domain(isl::checked::set domain) const;
-  inline isl::checked::union_map intersect_range_wrapped_domain(const isl::checked::union_set &domain) const;
-  inline isl::checked::map intersect_range_wrapped_domain(const isl::checked::basic_set &domain) const;
-  inline isl::checked::map intersect_range_wrapped_domain(const isl::checked::point &domain) const;
   inline boolean is_bijective() const;
   inline boolean is_disjoint(const isl::checked::map &map2) const;
   inline boolean is_disjoint(const isl::checked::union_map &umap2) const;
@@ -2043,11 +1892,8 @@ public:
   inline isl::checked::map lexmin() const;
   inline isl::checked::pw_multi_aff lexmin_pw_multi_aff() const;
   inline isl::checked::map lower_bound(isl::checked::multi_pw_aff lower) const;
-  inline isl::checked::map_list map_list() const;
   inline isl::checked::multi_pw_aff max_multi_pw_aff() const;
   inline isl::checked::multi_pw_aff min_multi_pw_aff() const;
-  inline class size n_basic_map() const;
-  inline isl::checked::set params() const;
   inline isl::checked::basic_map polyhedral_hull() const;
   inline isl::checked::map preimage_domain(isl::checked::multi_aff ma) const;
   inline isl::checked::map preimage_domain(isl::checked::multi_pw_aff mpa) const;
@@ -2060,14 +1906,9 @@ public:
   inline isl::checked::union_map product(const isl::checked::union_map &umap2) const;
   inline isl::checked::map product(const isl::checked::basic_map &map2) const;
   inline isl::checked::map project_out_all_params() const;
-  inline isl::checked::map project_out_param(isl::checked::id id) const;
-  inline isl::checked::map project_out_param(const std::string &id) const;
-  inline isl::checked::map project_out_param(isl::checked::id_list list) const;
   inline isl::checked::set range() const;
   inline isl::checked::map range_factor_domain() const;
   inline isl::checked::map range_factor_range() const;
-  inline isl::checked::fixed_box range_lattice_tile() const;
-  inline isl::checked::fixed_box get_range_lattice_tile() const;
   inline isl::checked::union_map range_map() const;
   inline isl::checked::map range_product(isl::checked::map map2) const;
   inline isl::checked::union_map range_product(const isl::checked::union_map &umap2) const;
@@ -2075,7 +1916,6 @@ public:
   inline isl::checked::map range_reverse() const;
   inline isl::checked::fixed_box range_simple_fixed_box_hull() const;
   inline isl::checked::fixed_box get_range_simple_fixed_box_hull() const;
-  inline class size range_tuple_dim() const;
   inline isl::checked::id range_tuple_id() const;
   inline isl::checked::id get_range_tuple_id() const;
   inline isl::checked::map reverse() const;
@@ -2091,7 +1931,6 @@ public:
   inline isl::checked::map subtract(const isl::checked::basic_map &map2) const;
   inline isl::checked::union_map subtract_domain(const isl::checked::union_set &dom) const;
   inline isl::checked::union_map subtract_range(const isl::checked::union_set &dom) const;
-  inline isl::checked::map_list to_list() const;
   inline isl::checked::union_map to_union_map() const;
   inline isl::checked::map uncurry() const;
   inline isl::checked::map unite(isl::checked::map map2) const;
@@ -2102,47 +1941,6 @@ public:
   inline isl::checked::map upper_bound(isl::checked::multi_pw_aff upper) const;
   inline isl::checked::set wrap() const;
   inline isl::checked::map zip() const;
-};
-
-// declarations for isl::map_list
-inline map_list manage(__isl_take isl_map_list *ptr);
-inline map_list manage_copy(__isl_keep isl_map_list *ptr);
-
-class map_list {
-  friend inline map_list manage(__isl_take isl_map_list *ptr);
-  friend inline map_list manage_copy(__isl_keep isl_map_list *ptr);
-
-protected:
-  isl_map_list *ptr = nullptr;
-
-  inline explicit map_list(__isl_take isl_map_list *ptr);
-
-public:
-  inline /* implicit */ map_list();
-  inline /* implicit */ map_list(const map_list &obj);
-  inline explicit map_list(isl::checked::ctx ctx, int n);
-  inline explicit map_list(isl::checked::map el);
-  inline explicit map_list(isl::checked::ctx ctx, const std::string &str);
-  inline map_list &operator=(map_list obj);
-  inline ~map_list();
-  inline __isl_give isl_map_list *copy() const &;
-  inline __isl_give isl_map_list *copy() && = delete;
-  inline __isl_keep isl_map_list *get() const;
-  inline __isl_give isl_map_list *release();
-  inline bool is_null() const;
-  inline isl::checked::ctx ctx() const;
-
-  inline isl::checked::map_list add(isl::checked::map el) const;
-  inline isl::checked::map at(int index) const;
-  inline isl::checked::map get_at(int index) const;
-  inline isl::checked::map_list clear() const;
-  inline isl::checked::map_list concat(isl::checked::map_list list2) const;
-  inline isl::checked::map_list drop(unsigned int first, unsigned int n) const;
-  inline stat foreach(const std::function<stat(isl::checked::map)> &fn) const;
-  inline stat foreach_scc(const std::function<boolean(isl::checked::map, isl::checked::map)> &follows, const std::function<stat(isl::checked::map_list)> &fn) const;
-  inline isl::checked::map_list insert(unsigned int pos, isl::checked::map el) const;
-  inline isl::checked::map_list set_at(int index, isl::checked::map el) const;
-  inline class size size() const;
 };
 
 // declarations for isl::multi_aff
@@ -2199,8 +1997,6 @@ public:
   inline isl::checked::multi_val get_constant_multi_val() const;
   inline isl::checked::set domain() const;
   static inline isl::checked::multi_aff domain_map(isl::checked::space space);
-  inline isl::checked::multi_aff domain_reverse() const;
-  inline isl::checked::pw_multi_aff drop_unused_params() const;
   inline isl::checked::pw_multi_aff extract_pw_multi_aff(const isl::checked::space &space) const;
   inline isl::checked::multi_aff flat_range_product(isl::checked::multi_aff multi2) const;
   inline isl::checked::multi_pw_aff flat_range_product(const isl::checked::multi_pw_aff &multi2) const;
@@ -2214,7 +2010,6 @@ public:
   inline isl::checked::union_pw_multi_aff gist(const isl::checked::union_set &context) const;
   inline isl::checked::multi_aff gist(const isl::checked::basic_set &context) const;
   inline isl::checked::multi_aff gist(const isl::checked::point &context) const;
-  inline isl::checked::multi_aff gist_params(isl::checked::set context) const;
   inline boolean has_range_tuple_id() const;
   inline isl::checked::multi_aff identity() const;
   static inline isl::checked::multi_aff identity_on_domain(isl::checked::space space);
@@ -2245,8 +2040,6 @@ public:
   inline boolean plain_is_equal(const isl::checked::multi_aff &multi2) const;
   inline boolean plain_is_equal(const isl::checked::multi_pw_aff &multi2) const;
   inline boolean plain_is_equal(const isl::checked::multi_union_pw_aff &multi2) const;
-  inline boolean plain_is_equal(const isl::checked::pw_multi_aff &pma2) const;
-  inline boolean plain_is_equal(const isl::checked::union_pw_multi_aff &upma2) const;
   inline boolean plain_is_equal(const isl::checked::aff &multi2) const;
   inline isl::checked::pw_multi_aff preimage_domain_wrapped_domain(const isl::checked::pw_multi_aff &pma2) const;
   inline isl::checked::union_pw_multi_aff preimage_domain_wrapped_domain(const isl::checked::union_pw_multi_aff &upma2) const;
@@ -2259,7 +2052,6 @@ public:
   inline isl::checked::pw_multi_aff pullback(const isl::checked::pw_multi_aff &pma2) const;
   inline isl::checked::union_pw_multi_aff pullback(const isl::checked::union_pw_multi_aff &upma2) const;
   inline isl::checked::multi_aff pullback(const isl::checked::aff &ma2) const;
-  inline isl::checked::pw_multi_aff_list pw_multi_aff_list() const;
   inline isl::checked::pw_multi_aff range_factor_domain() const;
   inline isl::checked::pw_multi_aff range_factor_range() const;
   static inline isl::checked::multi_aff range_map(isl::checked::space space);
@@ -2390,7 +2182,6 @@ public:
   inline isl::checked::multi_pw_aff add_constant(isl::checked::val v) const;
   inline isl::checked::multi_pw_aff add_constant(long v) const;
   inline isl::checked::map as_map() const;
-  inline isl::checked::multi_aff as_multi_aff() const;
   inline isl::checked::set as_set() const;
   inline isl::checked::pw_aff at(int pos) const;
   inline isl::checked::pw_aff get_at(int pos) const;
@@ -2399,7 +2190,6 @@ public:
   inline isl::checked::multi_pw_aff bind_domain_wrapped_domain(isl::checked::multi_id tuple) const;
   inline isl::checked::multi_pw_aff coalesce() const;
   inline isl::checked::set domain() const;
-  inline isl::checked::multi_pw_aff domain_reverse() const;
   inline isl::checked::multi_pw_aff flat_range_product(isl::checked::multi_pw_aff multi2) const;
   inline isl::checked::multi_union_pw_aff flat_range_product(const isl::checked::multi_union_pw_aff &multi2) const;
   inline isl::checked::multi_pw_aff flat_range_product(const isl::checked::aff &multi2) const;
@@ -2410,7 +2200,6 @@ public:
   inline isl::checked::multi_union_pw_aff gist(const isl::checked::union_set &context) const;
   inline isl::checked::multi_pw_aff gist(const isl::checked::basic_set &set) const;
   inline isl::checked::multi_pw_aff gist(const isl::checked::point &set) const;
-  inline isl::checked::multi_pw_aff gist_params(isl::checked::set set) const;
   inline boolean has_range_tuple_id() const;
   inline isl::checked::multi_pw_aff identity() const;
   static inline isl::checked::multi_pw_aff identity_on_domain(isl::checked::space space);
@@ -2424,7 +2213,6 @@ public:
   inline boolean involves_param(const isl::checked::id &id) const;
   inline boolean involves_param(const std::string &id) const;
   inline boolean involves_param(const isl::checked::id_list &list) const;
-  inline boolean isa_multi_aff() const;
   inline isl::checked::pw_aff_list list() const;
   inline isl::checked::pw_aff_list get_list() const;
   inline isl::checked::multi_pw_aff max(isl::checked::multi_pw_aff multi2) const;
@@ -2518,7 +2306,6 @@ public:
   inline isl::checked::union_set domain() const;
   inline isl::checked::multi_union_pw_aff flat_range_product(isl::checked::multi_union_pw_aff multi2) const;
   inline isl::checked::multi_union_pw_aff gist(isl::checked::union_set context) const;
-  inline isl::checked::multi_union_pw_aff gist_params(isl::checked::set context) const;
   inline boolean has_range_tuple_id() const;
   inline isl::checked::multi_union_pw_aff intersect_domain(isl::checked::union_set uset) const;
   inline isl::checked::multi_union_pw_aff intersect_params(isl::checked::set params) const;
@@ -2650,7 +2437,6 @@ public:
   inline isl::checked::basic_set detect_equalities() const;
   inline isl::checked::val dim_max_val(int pos) const;
   inline isl::checked::val dim_min_val(int pos) const;
-  inline isl::checked::set drop_unused_params() const;
   inline boolean every_set(const std::function<boolean(isl::checked::set)> &test) const;
   inline isl::checked::set extract_set(const isl::checked::space &space) const;
   inline isl::checked::basic_set flatten() const;
@@ -2660,7 +2446,7 @@ public:
   inline isl::checked::basic_set gist(const isl::checked::basic_set &context) const;
   inline isl::checked::set gist(const isl::checked::set &context) const;
   inline isl::checked::union_set gist(const isl::checked::union_set &context) const;
-  inline isl::checked::set gist_params(const isl::checked::set &context) const;
+  inline isl::checked::union_set gist_params(const isl::checked::set &set) const;
   inline isl::checked::map identity() const;
   inline isl::checked::pw_aff indicator_function() const;
   inline isl::checked::map insert_domain(const isl::checked::space &domain) const;
@@ -2684,7 +2470,6 @@ public:
   inline boolean is_subset(const isl::checked::union_set &uset2) const;
   inline boolean is_wrapping() const;
   inline boolean isa_set() const;
-  inline isl::checked::fixed_box lattice_tile() const;
   inline isl::checked::set lexmax() const;
   inline isl::checked::pw_multi_aff lexmax_pw_multi_aff() const;
   inline isl::checked::set lexmin() const;
@@ -2697,9 +2482,6 @@ public:
   inline isl::checked::val min_val(const isl::checked::aff &obj) const;
   inline isl::checked::multi_val multi_val() const;
   inline isl::checked::multi_val get_multi_val() const;
-  inline class size n_basic_set() const;
-  inline isl::checked::pw_aff param_pw_aff_on_domain(const isl::checked::id &id) const;
-  inline isl::checked::pw_aff param_pw_aff_on_domain(const std::string &id) const;
   inline isl::checked::basic_set params() const;
   inline isl::checked::multi_val plain_multi_val_if_fixed() const;
   inline isl::checked::basic_set polyhedral_hull() const;
@@ -2712,22 +2494,18 @@ public:
   inline isl::checked::set project_out_param(const isl::checked::id &id) const;
   inline isl::checked::set project_out_param(const std::string &id) const;
   inline isl::checked::set project_out_param(const isl::checked::id_list &list) const;
-  inline isl::checked::pw_aff pw_aff_on_domain(const isl::checked::val &v) const;
-  inline isl::checked::pw_aff pw_aff_on_domain(long v) const;
   inline isl::checked::pw_multi_aff pw_multi_aff_on_domain(const isl::checked::multi_val &mv) const;
   inline isl::checked::basic_set sample() const;
   inline isl::checked::point sample_point() const;
-  inline isl::checked::set_list set_list() const;
   inline isl::checked::fixed_box simple_fixed_box_hull() const;
   inline isl::checked::space space() const;
   inline isl::checked::val stride(int pos) const;
   inline isl::checked::set subtract(const isl::checked::set &set2) const;
   inline isl::checked::union_set subtract(const isl::checked::union_set &uset2) const;
-  inline isl::checked::set_list to_list() const;
+  inline isl::checked::union_set_list to_list() const;
   inline isl::checked::set to_set() const;
   inline isl::checked::union_set to_union_set() const;
   inline isl::checked::map translation() const;
-  inline class size tuple_dim() const;
   inline isl::checked::set unbind_params(const isl::checked::multi_id &tuple) const;
   inline isl::checked::map unbind_params_insert_domain(const isl::checked::multi_id &domain) const;
   inline isl::checked::set unite(const isl::checked::basic_set &bset2) const;
@@ -2737,7 +2515,6 @@ public:
   inline isl::checked::map unwrap() const;
   inline isl::checked::set upper_bound(const isl::checked::multi_pw_aff &upper) const;
   inline isl::checked::set upper_bound(const isl::checked::multi_val &upper) const;
-  inline isl::checked::set wrapped_reverse() const;
 };
 
 // declarations for isl::pw_aff
@@ -2796,8 +2573,6 @@ public:
   inline isl::checked::pw_aff cond(isl::checked::pw_aff pwaff_true, isl::checked::pw_aff pwaff_false) const;
   inline isl::checked::pw_aff div(isl::checked::pw_aff pa2) const;
   inline isl::checked::set domain() const;
-  inline isl::checked::pw_aff domain_reverse() const;
-  inline isl::checked::pw_aff drop_unused_params() const;
   inline isl::checked::set eq_set(isl::checked::pw_aff pwaff2) const;
   inline isl::checked::val eval(isl::checked::point pnt) const;
   inline isl::checked::pw_multi_aff extract_pw_multi_aff(const isl::checked::space &space) const;
@@ -2812,7 +2587,6 @@ public:
   inline isl::checked::union_pw_aff gist(const isl::checked::union_set &context) const;
   inline isl::checked::pw_aff gist(const isl::checked::basic_set &context) const;
   inline isl::checked::pw_aff gist(const isl::checked::point &context) const;
-  inline isl::checked::pw_aff gist_params(isl::checked::set context) const;
   inline isl::checked::set gt_set(isl::checked::pw_aff pwaff2) const;
   inline boolean has_range_tuple_id() const;
   inline isl::checked::multi_pw_aff identity() const;
@@ -2840,12 +2614,10 @@ public:
   inline isl::checked::pw_aff max(isl::checked::pw_aff pwaff2) const;
   inline isl::checked::pw_aff max(const isl::checked::aff &pwaff2) const;
   inline isl::checked::multi_val max_multi_val() const;
-  inline isl::checked::val max_val() const;
   inline isl::checked::multi_pw_aff min(const isl::checked::multi_pw_aff &multi2) const;
   inline isl::checked::pw_aff min(isl::checked::pw_aff pwaff2) const;
   inline isl::checked::pw_aff min(const isl::checked::aff &pwaff2) const;
   inline isl::checked::multi_val min_multi_val() const;
-  inline isl::checked::val min_val() const;
   inline isl::checked::pw_aff mod(isl::checked::val mod) const;
   inline isl::checked::pw_aff mod(long mod) const;
   inline isl::checked::pw_aff mul(isl::checked::pw_aff pwaff2) const;
@@ -2853,15 +2625,9 @@ public:
   inline isl::checked::set ne_set(isl::checked::pw_aff pwaff2) const;
   inline isl::checked::pw_aff neg() const;
   static inline isl::checked::pw_aff param_on_domain(isl::checked::set domain, isl::checked::id id);
-  inline isl::checked::set params() const;
   inline boolean plain_is_empty() const;
   inline boolean plain_is_equal(const isl::checked::multi_pw_aff &multi2) const;
   inline boolean plain_is_equal(const isl::checked::multi_union_pw_aff &multi2) const;
-  inline boolean plain_is_equal(const isl::checked::pw_aff &pwaff2) const;
-  inline boolean plain_is_equal(const isl::checked::pw_multi_aff &pma2) const;
-  inline boolean plain_is_equal(const isl::checked::union_pw_aff &upa2) const;
-  inline boolean plain_is_equal(const isl::checked::union_pw_multi_aff &upma2) const;
-  inline boolean plain_is_equal(const isl::checked::aff &pwaff2) const;
   inline isl::checked::pw_multi_aff preimage_domain_wrapped_domain(const isl::checked::pw_multi_aff &pma2) const;
   inline isl::checked::union_pw_multi_aff preimage_domain_wrapped_domain(const isl::checked::union_pw_multi_aff &upma2) const;
   inline isl::checked::multi_pw_aff product(const isl::checked::multi_pw_aff &multi2) const;
@@ -2870,7 +2636,6 @@ public:
   inline isl::checked::pw_aff pullback(isl::checked::multi_pw_aff mpa) const;
   inline isl::checked::pw_aff pullback(isl::checked::pw_multi_aff pma) const;
   inline isl::checked::union_pw_aff pullback(const isl::checked::union_pw_multi_aff &upma) const;
-  inline isl::checked::pw_multi_aff_list pw_multi_aff_list() const;
   inline isl::checked::pw_multi_aff range_factor_domain() const;
   inline isl::checked::pw_multi_aff range_factor_range() const;
   inline isl::checked::multi_pw_aff range_product(const isl::checked::multi_pw_aff &multi2) const;
@@ -2879,19 +2644,18 @@ public:
   inline isl::checked::union_pw_multi_aff range_product(const isl::checked::union_pw_multi_aff &upma2) const;
   inline isl::checked::id range_tuple_id() const;
   inline isl::checked::multi_pw_aff reset_range_tuple_id() const;
+  inline isl::checked::multi_pw_aff scale(const isl::checked::multi_val &mv) const;
   inline isl::checked::pw_aff scale(isl::checked::val v) const;
   inline isl::checked::pw_aff scale(long v) const;
-  inline isl::checked::pw_multi_aff scale(const isl::checked::multi_val &mv) const;
+  inline isl::checked::multi_pw_aff scale_down(const isl::checked::multi_val &mv) const;
   inline isl::checked::pw_aff scale_down(isl::checked::val f) const;
   inline isl::checked::pw_aff scale_down(long f) const;
-  inline isl::checked::pw_multi_aff scale_down(const isl::checked::multi_val &mv) const;
   inline isl::checked::multi_pw_aff set_at(int pos, const isl::checked::pw_aff &el) const;
   inline isl::checked::multi_union_pw_aff set_at(int pos, const isl::checked::union_pw_aff &el) const;
   inline isl::checked::pw_multi_aff set_range_tuple(const isl::checked::id &id) const;
   inline isl::checked::pw_multi_aff set_range_tuple(const std::string &id) const;
   inline class size size() const;
   inline isl::checked::space space() const;
-  inline isl::checked::space get_space() const;
   inline isl::checked::multi_pw_aff sub(const isl::checked::multi_pw_aff &multi2) const;
   inline isl::checked::multi_union_pw_aff sub(const isl::checked::multi_union_pw_aff &multi2) const;
   inline isl::checked::pw_aff sub(isl::checked::pw_aff pwaff2) const;
@@ -2938,7 +2702,6 @@ public:
   inline /* implicit */ pw_aff_list(const pw_aff_list &obj);
   inline explicit pw_aff_list(isl::checked::ctx ctx, int n);
   inline explicit pw_aff_list(isl::checked::pw_aff el);
-  inline explicit pw_aff_list(isl::checked::ctx ctx, const std::string &str);
   inline pw_aff_list &operator=(pw_aff_list obj);
   inline ~pw_aff_list();
   inline __isl_give isl_pw_aff_list *copy() const &;
@@ -2955,9 +2718,7 @@ public:
   inline isl::checked::pw_aff_list concat(isl::checked::pw_aff_list list2) const;
   inline isl::checked::pw_aff_list drop(unsigned int first, unsigned int n) const;
   inline stat foreach(const std::function<stat(isl::checked::pw_aff)> &fn) const;
-  inline stat foreach_scc(const std::function<boolean(isl::checked::pw_aff, isl::checked::pw_aff)> &follows, const std::function<stat(isl::checked::pw_aff_list)> &fn) const;
   inline isl::checked::pw_aff_list insert(unsigned int pos, isl::checked::pw_aff el) const;
-  inline isl::checked::pw_aff_list set_at(int index, isl::checked::pw_aff el) const;
   inline class size size() const;
 };
 
@@ -3013,8 +2774,6 @@ public:
   inline isl::checked::pw_multi_aff coalesce() const;
   inline isl::checked::set domain() const;
   static inline isl::checked::pw_multi_aff domain_map(isl::checked::space space);
-  inline isl::checked::pw_multi_aff domain_reverse() const;
-  inline isl::checked::pw_multi_aff drop_unused_params() const;
   inline isl::checked::pw_multi_aff extract_pw_multi_aff(const isl::checked::space &space) const;
   inline isl::checked::multi_pw_aff flat_range_product(const isl::checked::multi_pw_aff &multi2) const;
   inline isl::checked::multi_union_pw_aff flat_range_product(const isl::checked::multi_union_pw_aff &multi2) const;
@@ -3027,7 +2786,6 @@ public:
   inline isl::checked::union_pw_multi_aff gist(const isl::checked::union_set &context) const;
   inline isl::checked::pw_multi_aff gist(const isl::checked::basic_set &set) const;
   inline isl::checked::pw_multi_aff gist(const isl::checked::point &set) const;
-  inline isl::checked::pw_multi_aff gist_params(isl::checked::set set) const;
   inline boolean has_range_tuple_id() const;
   inline isl::checked::multi_pw_aff identity() const;
   static inline isl::checked::pw_multi_aff identity_on_domain(isl::checked::space space);
@@ -3058,10 +2816,6 @@ public:
   inline boolean plain_is_empty() const;
   inline boolean plain_is_equal(const isl::checked::multi_pw_aff &multi2) const;
   inline boolean plain_is_equal(const isl::checked::multi_union_pw_aff &multi2) const;
-  inline boolean plain_is_equal(const isl::checked::pw_multi_aff &pma2) const;
-  inline boolean plain_is_equal(const isl::checked::union_pw_multi_aff &upma2) const;
-  inline boolean plain_is_equal(const isl::checked::multi_aff &pma2) const;
-  inline boolean plain_is_equal(const isl::checked::pw_aff &pma2) const;
   inline isl::checked::pw_multi_aff preimage_domain_wrapped_domain(isl::checked::pw_multi_aff pma2) const;
   inline isl::checked::union_pw_multi_aff preimage_domain_wrapped_domain(const isl::checked::union_pw_multi_aff &upma2) const;
   inline isl::checked::pw_multi_aff preimage_domain_wrapped_domain(const isl::checked::multi_aff &pma2) const;
@@ -3074,7 +2828,6 @@ public:
   inline isl::checked::pw_multi_aff pullback(isl::checked::multi_aff ma) const;
   inline isl::checked::pw_multi_aff pullback(isl::checked::pw_multi_aff pma2) const;
   inline isl::checked::union_pw_multi_aff pullback(const isl::checked::union_pw_multi_aff &upma2) const;
-  inline isl::checked::pw_multi_aff_list pw_multi_aff_list() const;
   inline isl::checked::pw_multi_aff range_factor_domain() const;
   inline isl::checked::pw_multi_aff range_factor_range() const;
   static inline isl::checked::pw_multi_aff range_map(isl::checked::space space);
@@ -3087,10 +2840,10 @@ public:
   inline isl::checked::id range_tuple_id() const;
   inline isl::checked::id get_range_tuple_id() const;
   inline isl::checked::multi_pw_aff reset_range_tuple_id() const;
-  inline isl::checked::pw_multi_aff scale(isl::checked::multi_val mv) const;
+  inline isl::checked::multi_pw_aff scale(const isl::checked::multi_val &mv) const;
   inline isl::checked::pw_multi_aff scale(isl::checked::val v) const;
   inline isl::checked::pw_multi_aff scale(long v) const;
-  inline isl::checked::pw_multi_aff scale_down(isl::checked::multi_val mv) const;
+  inline isl::checked::multi_pw_aff scale_down(const isl::checked::multi_val &mv) const;
   inline isl::checked::pw_multi_aff scale_down(isl::checked::val v) const;
   inline isl::checked::pw_multi_aff scale_down(long v) const;
   inline isl::checked::multi_pw_aff set_at(int pos, const isl::checked::pw_aff &el) const;
@@ -3142,7 +2895,6 @@ public:
   inline /* implicit */ pw_multi_aff_list(const pw_multi_aff_list &obj);
   inline explicit pw_multi_aff_list(isl::checked::ctx ctx, int n);
   inline explicit pw_multi_aff_list(isl::checked::pw_multi_aff el);
-  inline explicit pw_multi_aff_list(isl::checked::ctx ctx, const std::string &str);
   inline pw_multi_aff_list &operator=(pw_multi_aff_list obj);
   inline ~pw_multi_aff_list();
   inline __isl_give isl_pw_multi_aff_list *copy() const &;
@@ -3159,9 +2911,7 @@ public:
   inline isl::checked::pw_multi_aff_list concat(isl::checked::pw_multi_aff_list list2) const;
   inline isl::checked::pw_multi_aff_list drop(unsigned int first, unsigned int n) const;
   inline stat foreach(const std::function<stat(isl::checked::pw_multi_aff)> &fn) const;
-  inline stat foreach_scc(const std::function<boolean(isl::checked::pw_multi_aff, isl::checked::pw_multi_aff)> &follows, const std::function<stat(isl::checked::pw_multi_aff_list)> &fn) const;
   inline isl::checked::pw_multi_aff_list insert(unsigned int pos, isl::checked::pw_multi_aff el) const;
-  inline isl::checked::pw_multi_aff_list set_at(int index, isl::checked::pw_multi_aff el) const;
   inline class size size() const;
 };
 
@@ -3621,7 +3371,6 @@ public:
   inline isl::checked::set detect_equalities() const;
   inline isl::checked::val dim_max_val(int pos) const;
   inline isl::checked::val dim_min_val(int pos) const;
-  inline isl::checked::set drop_unused_params() const;
   static inline isl::checked::set empty(isl::checked::space space);
   inline boolean every_set(const std::function<boolean(isl::checked::set)> &test) const;
   inline isl::checked::set extract_set(const isl::checked::space &space) const;
@@ -3633,7 +3382,7 @@ public:
   inline isl::checked::union_set gist(const isl::checked::union_set &context) const;
   inline isl::checked::set gist(const isl::checked::basic_set &context) const;
   inline isl::checked::set gist(const isl::checked::point &context) const;
-  inline isl::checked::set gist_params(isl::checked::set context) const;
+  inline isl::checked::union_set gist_params(const isl::checked::set &set) const;
   inline isl::checked::map identity() const;
   inline isl::checked::pw_aff indicator_function() const;
   inline isl::checked::map insert_domain(isl::checked::space domain) const;
@@ -3663,8 +3412,6 @@ public:
   inline boolean is_subset(const isl::checked::point &set2) const;
   inline boolean is_wrapping() const;
   inline boolean isa_set() const;
-  inline isl::checked::fixed_box lattice_tile() const;
-  inline isl::checked::fixed_box get_lattice_tile() const;
   inline isl::checked::set lexmax() const;
   inline isl::checked::pw_multi_aff lexmax_pw_multi_aff() const;
   inline isl::checked::set lexmin() const;
@@ -3675,9 +3422,6 @@ public:
   inline isl::checked::val max_val(const isl::checked::aff &obj) const;
   inline isl::checked::multi_pw_aff min_multi_pw_aff() const;
   inline isl::checked::val min_val(const isl::checked::aff &obj) const;
-  inline class size n_basic_set() const;
-  inline isl::checked::pw_aff param_pw_aff_on_domain(isl::checked::id id) const;
-  inline isl::checked::pw_aff param_pw_aff_on_domain(const std::string &id) const;
   inline isl::checked::set params() const;
   inline isl::checked::multi_val plain_multi_val_if_fixed() const;
   inline isl::checked::multi_val get_plain_multi_val_if_fixed() const;
@@ -3691,12 +3435,9 @@ public:
   inline isl::checked::set project_out_param(isl::checked::id id) const;
   inline isl::checked::set project_out_param(const std::string &id) const;
   inline isl::checked::set project_out_param(isl::checked::id_list list) const;
-  inline isl::checked::pw_aff pw_aff_on_domain(isl::checked::val v) const;
-  inline isl::checked::pw_aff pw_aff_on_domain(long v) const;
   inline isl::checked::pw_multi_aff pw_multi_aff_on_domain(isl::checked::multi_val mv) const;
   inline isl::checked::basic_set sample() const;
   inline isl::checked::point sample_point() const;
-  inline isl::checked::set_list set_list() const;
   inline isl::checked::fixed_box simple_fixed_box_hull() const;
   inline isl::checked::fixed_box get_simple_fixed_box_hull() const;
   inline isl::checked::space space() const;
@@ -3707,10 +3448,9 @@ public:
   inline isl::checked::union_set subtract(const isl::checked::union_set &uset2) const;
   inline isl::checked::set subtract(const isl::checked::basic_set &set2) const;
   inline isl::checked::set subtract(const isl::checked::point &set2) const;
-  inline isl::checked::set_list to_list() const;
+  inline isl::checked::union_set_list to_list() const;
   inline isl::checked::union_set to_union_set() const;
   inline isl::checked::map translation() const;
-  inline class size tuple_dim() const;
   inline isl::checked::set unbind_params(isl::checked::multi_id tuple) const;
   inline isl::checked::map unbind_params_insert_domain(isl::checked::multi_id domain) const;
   inline isl::checked::set unite(isl::checked::set set2) const;
@@ -3722,48 +3462,6 @@ public:
   inline isl::checked::map unwrap() const;
   inline isl::checked::set upper_bound(isl::checked::multi_pw_aff upper) const;
   inline isl::checked::set upper_bound(isl::checked::multi_val upper) const;
-  inline isl::checked::set wrapped_reverse() const;
-};
-
-// declarations for isl::set_list
-inline set_list manage(__isl_take isl_set_list *ptr);
-inline set_list manage_copy(__isl_keep isl_set_list *ptr);
-
-class set_list {
-  friend inline set_list manage(__isl_take isl_set_list *ptr);
-  friend inline set_list manage_copy(__isl_keep isl_set_list *ptr);
-
-protected:
-  isl_set_list *ptr = nullptr;
-
-  inline explicit set_list(__isl_take isl_set_list *ptr);
-
-public:
-  inline /* implicit */ set_list();
-  inline /* implicit */ set_list(const set_list &obj);
-  inline explicit set_list(isl::checked::ctx ctx, int n);
-  inline explicit set_list(isl::checked::set el);
-  inline explicit set_list(isl::checked::ctx ctx, const std::string &str);
-  inline set_list &operator=(set_list obj);
-  inline ~set_list();
-  inline __isl_give isl_set_list *copy() const &;
-  inline __isl_give isl_set_list *copy() && = delete;
-  inline __isl_keep isl_set_list *get() const;
-  inline __isl_give isl_set_list *release();
-  inline bool is_null() const;
-  inline isl::checked::ctx ctx() const;
-
-  inline isl::checked::set_list add(isl::checked::set el) const;
-  inline isl::checked::set at(int index) const;
-  inline isl::checked::set get_at(int index) const;
-  inline isl::checked::set_list clear() const;
-  inline isl::checked::set_list concat(isl::checked::set_list list2) const;
-  inline isl::checked::set_list drop(unsigned int first, unsigned int n) const;
-  inline stat foreach(const std::function<stat(isl::checked::set)> &fn) const;
-  inline stat foreach_scc(const std::function<boolean(isl::checked::set, isl::checked::set)> &follows, const std::function<stat(isl::checked::set_list)> &fn) const;
-  inline isl::checked::set_list insert(unsigned int pos, isl::checked::set el) const;
-  inline isl::checked::set_list set_at(int index, isl::checked::set el) const;
-  inline class size size() const;
 };
 
 // declarations for isl::space
@@ -3782,7 +3480,6 @@ protected:
 public:
   inline /* implicit */ space();
   inline /* implicit */ space(const space &obj);
-  inline explicit space(isl::checked::ctx ctx, const std::string &str);
   inline space &operator=(space obj);
   inline ~space();
   inline __isl_give isl_space *copy() const &;
@@ -3794,17 +3491,13 @@ public:
 
   inline isl::checked::space add_named_tuple(isl::checked::id tuple_id, unsigned int dim) const;
   inline isl::checked::space add_named_tuple(const std::string &tuple_id, unsigned int dim) const;
-  inline isl::checked::space add_param(isl::checked::id id) const;
-  inline isl::checked::space add_param(const std::string &id) const;
   inline isl::checked::space add_unnamed_tuple(unsigned int dim) const;
   inline isl::checked::space curry() const;
   inline isl::checked::space domain() const;
   inline isl::checked::multi_aff domain_map_multi_aff() const;
   inline isl::checked::pw_multi_aff domain_map_pw_multi_aff() const;
-  inline isl::checked::space domain_reverse() const;
   inline isl::checked::id domain_tuple_id() const;
   inline isl::checked::id get_domain_tuple_id() const;
-  inline isl::checked::space drop_all_params() const;
   inline isl::checked::space flatten_domain() const;
   inline isl::checked::space flatten_range() const;
   inline boolean has_domain_tuple_id() const;
@@ -3821,8 +3514,6 @@ public:
   inline isl::checked::multi_pw_aff multi_pw_aff(isl::checked::pw_aff_list list) const;
   inline isl::checked::multi_union_pw_aff multi_union_pw_aff(isl::checked::union_pw_aff_list list) const;
   inline isl::checked::multi_val multi_val(isl::checked::val_list list) const;
-  inline isl::checked::aff param_aff_on_domain(isl::checked::id id) const;
-  inline isl::checked::aff param_aff_on_domain(const std::string &id) const;
   inline isl::checked::space params() const;
   inline isl::checked::space product(isl::checked::space right) const;
   inline isl::checked::space range() const;
@@ -3842,7 +3533,6 @@ public:
   inline isl::checked::set universe_set() const;
   inline isl::checked::space unwrap() const;
   inline isl::checked::space wrap() const;
-  inline isl::checked::space wrapped_reverse() const;
   inline isl::checked::aff zero_aff_on_domain() const;
   inline isl::checked::multi_aff zero_multi_aff() const;
   inline isl::checked::multi_pw_aff zero_multi_pw_aff() const;
@@ -3969,8 +3659,6 @@ public:
   inline isl::checked::union_map domain_map() const;
   inline isl::checked::union_pw_multi_aff domain_map_union_pw_multi_aff() const;
   inline isl::checked::union_map domain_product(isl::checked::union_map umap2) const;
-  inline isl::checked::union_map domain_reverse() const;
-  inline isl::checked::union_map drop_unused_params() const;
   static inline isl::checked::union_map empty(isl::checked::ctx ctx);
   inline isl::checked::union_map eq_at(isl::checked::multi_union_pw_aff mupa) const;
   inline boolean every_map(const std::function<boolean(isl::checked::map)> &test) const;
@@ -3994,13 +3682,11 @@ public:
   inline isl::checked::union_map intersect_domain(isl::checked::union_set uset) const;
   inline isl::checked::union_map intersect_domain_factor_domain(isl::checked::union_map factor) const;
   inline isl::checked::union_map intersect_domain_factor_range(isl::checked::union_map factor) const;
-  inline isl::checked::union_map intersect_domain_wrapped_domain(isl::checked::union_set domain) const;
   inline isl::checked::union_map intersect_params(isl::checked::set set) const;
   inline isl::checked::union_map intersect_range(isl::checked::space space) const;
   inline isl::checked::union_map intersect_range(isl::checked::union_set uset) const;
   inline isl::checked::union_map intersect_range_factor_domain(isl::checked::union_map factor) const;
   inline isl::checked::union_map intersect_range_factor_range(isl::checked::union_map factor) const;
-  inline isl::checked::union_map intersect_range_wrapped_domain(isl::checked::union_set domain) const;
   inline boolean is_bijective() const;
   inline boolean is_disjoint(const isl::checked::union_map &umap2) const;
   inline boolean is_empty() const;
@@ -4012,9 +3698,6 @@ public:
   inline boolean isa_map() const;
   inline isl::checked::union_map lexmax() const;
   inline isl::checked::union_map lexmin() const;
-  inline isl::checked::map_list map_list() const;
-  inline isl::checked::map_list get_map_list() const;
-  inline isl::checked::set params() const;
   inline isl::checked::union_map polyhedral_hull() const;
   inline isl::checked::union_map preimage_domain(isl::checked::multi_aff ma) const;
   inline isl::checked::union_map preimage_domain(isl::checked::multi_pw_aff mpa) const;
@@ -4025,9 +3708,6 @@ public:
   inline isl::checked::union_map preimage_range(isl::checked::union_pw_multi_aff upma) const;
   inline isl::checked::union_map product(isl::checked::union_map umap2) const;
   inline isl::checked::union_map project_out_all_params() const;
-  inline isl::checked::union_map project_out_param(isl::checked::id id) const;
-  inline isl::checked::union_map project_out_param(const std::string &id) const;
-  inline isl::checked::union_map project_out_param(isl::checked::id_list list) const;
   inline isl::checked::union_set range() const;
   inline isl::checked::union_map range_factor_domain() const;
   inline isl::checked::union_map range_factor_range() const;
@@ -4090,12 +3770,10 @@ public:
   inline isl::checked::union_set bind(const std::string &id) const;
   inline isl::checked::union_pw_aff coalesce() const;
   inline isl::checked::union_set domain() const;
-  inline isl::checked::union_pw_aff drop_unused_params() const;
   inline isl::checked::pw_multi_aff extract_pw_multi_aff(const isl::checked::space &space) const;
   inline isl::checked::multi_union_pw_aff flat_range_product(const isl::checked::multi_union_pw_aff &multi2) const;
   inline isl::checked::union_pw_multi_aff flat_range_product(const isl::checked::union_pw_multi_aff &upma2) const;
   inline isl::checked::union_pw_aff gist(isl::checked::union_set context) const;
-  inline isl::checked::multi_union_pw_aff gist_params(const isl::checked::set &context) const;
   inline boolean has_range_tuple_id() const;
   inline isl::checked::union_pw_aff intersect_domain(isl::checked::space space) const;
   inline isl::checked::union_pw_aff intersect_domain(isl::checked::union_set uset) const;
@@ -4109,13 +3787,8 @@ public:
   inline isl::checked::multi_union_pw_aff neg() const;
   inline boolean plain_is_empty() const;
   inline boolean plain_is_equal(const isl::checked::multi_union_pw_aff &multi2) const;
-  inline boolean plain_is_equal(const isl::checked::union_pw_aff &upa2) const;
-  inline boolean plain_is_equal(const isl::checked::union_pw_multi_aff &upma2) const;
-  inline boolean plain_is_equal(const isl::checked::aff &upa2) const;
-  inline boolean plain_is_equal(const isl::checked::pw_aff &upa2) const;
   inline isl::checked::union_pw_multi_aff preimage_domain_wrapped_domain(const isl::checked::union_pw_multi_aff &upma2) const;
   inline isl::checked::union_pw_aff pullback(isl::checked::union_pw_multi_aff upma) const;
-  inline isl::checked::pw_multi_aff_list pw_multi_aff_list() const;
   inline isl::checked::union_pw_multi_aff range_factor_domain() const;
   inline isl::checked::union_pw_multi_aff range_factor_range() const;
   inline isl::checked::multi_union_pw_aff range_product(const isl::checked::multi_union_pw_aff &multi2) const;
@@ -4167,7 +3840,6 @@ public:
   inline /* implicit */ union_pw_aff_list(const union_pw_aff_list &obj);
   inline explicit union_pw_aff_list(isl::checked::ctx ctx, int n);
   inline explicit union_pw_aff_list(isl::checked::union_pw_aff el);
-  inline explicit union_pw_aff_list(isl::checked::ctx ctx, const std::string &str);
   inline union_pw_aff_list &operator=(union_pw_aff_list obj);
   inline ~union_pw_aff_list();
   inline __isl_give isl_union_pw_aff_list *copy() const &;
@@ -4184,9 +3856,7 @@ public:
   inline isl::checked::union_pw_aff_list concat(isl::checked::union_pw_aff_list list2) const;
   inline isl::checked::union_pw_aff_list drop(unsigned int first, unsigned int n) const;
   inline stat foreach(const std::function<stat(isl::checked::union_pw_aff)> &fn) const;
-  inline stat foreach_scc(const std::function<boolean(isl::checked::union_pw_aff, isl::checked::union_pw_aff)> &follows, const std::function<stat(isl::checked::union_pw_aff_list)> &fn) const;
   inline isl::checked::union_pw_aff_list insert(unsigned int pos, isl::checked::union_pw_aff el) const;
-  inline isl::checked::union_pw_aff_list set_at(int index, isl::checked::union_pw_aff el) const;
   inline class size size() const;
 };
 
@@ -4226,7 +3896,6 @@ public:
   inline isl::checked::union_map as_union_map() const;
   inline isl::checked::union_pw_multi_aff coalesce() const;
   inline isl::checked::union_set domain() const;
-  inline isl::checked::union_pw_multi_aff drop_unused_params() const;
   static inline isl::checked::union_pw_multi_aff empty(isl::checked::ctx ctx);
   inline isl::checked::pw_multi_aff extract_pw_multi_aff(isl::checked::space space) const;
   inline isl::checked::union_pw_multi_aff flat_range_product(isl::checked::union_pw_multi_aff upma2) const;
@@ -4239,11 +3908,8 @@ public:
   inline boolean involves_locals() const;
   inline boolean isa_pw_multi_aff() const;
   inline boolean plain_is_empty() const;
-  inline boolean plain_is_equal(const isl::checked::union_pw_multi_aff &upma2) const;
   inline isl::checked::union_pw_multi_aff preimage_domain_wrapped_domain(isl::checked::union_pw_multi_aff upma2) const;
   inline isl::checked::union_pw_multi_aff pullback(isl::checked::union_pw_multi_aff upma2) const;
-  inline isl::checked::pw_multi_aff_list pw_multi_aff_list() const;
-  inline isl::checked::pw_multi_aff_list get_pw_multi_aff_list() const;
   inline isl::checked::union_pw_multi_aff range_factor_domain() const;
   inline isl::checked::union_pw_multi_aff range_factor_range() const;
   inline isl::checked::union_pw_multi_aff range_product(isl::checked::union_pw_multi_aff upma2) const;
@@ -4290,7 +3956,6 @@ public:
   inline isl::checked::union_set coalesce() const;
   inline isl::checked::union_set compute_divs() const;
   inline isl::checked::union_set detect_equalities() const;
-  inline isl::checked::union_set drop_unused_params() const;
   static inline isl::checked::union_set empty(isl::checked::ctx ctx);
   inline boolean every_set(const std::function<boolean(isl::checked::set)> &test) const;
   inline isl::checked::set extract_set(isl::checked::space space) const;
@@ -4309,15 +3974,11 @@ public:
   inline boolean isa_set() const;
   inline isl::checked::union_set lexmax() const;
   inline isl::checked::union_set lexmin() const;
-  inline isl::checked::set params() const;
   inline isl::checked::union_set polyhedral_hull() const;
   inline isl::checked::union_set preimage(isl::checked::multi_aff ma) const;
   inline isl::checked::union_set preimage(isl::checked::pw_multi_aff pma) const;
   inline isl::checked::union_set preimage(isl::checked::union_pw_multi_aff upma) const;
-  inline isl::checked::union_set project_out_all_params() const;
   inline isl::checked::point sample_point() const;
-  inline isl::checked::set_list set_list() const;
-  inline isl::checked::set_list get_set_list() const;
   inline isl::checked::space space() const;
   inline isl::checked::space get_space() const;
   inline isl::checked::union_set subtract(isl::checked::union_set uset2) const;
@@ -4345,7 +4006,6 @@ public:
   inline /* implicit */ union_set_list(const union_set_list &obj);
   inline explicit union_set_list(isl::checked::ctx ctx, int n);
   inline explicit union_set_list(isl::checked::union_set el);
-  inline explicit union_set_list(isl::checked::ctx ctx, const std::string &str);
   inline union_set_list &operator=(union_set_list obj);
   inline ~union_set_list();
   inline __isl_give isl_union_set_list *copy() const &;
@@ -4362,9 +4022,7 @@ public:
   inline isl::checked::union_set_list concat(isl::checked::union_set_list list2) const;
   inline isl::checked::union_set_list drop(unsigned int first, unsigned int n) const;
   inline stat foreach(const std::function<stat(isl::checked::union_set)> &fn) const;
-  inline stat foreach_scc(const std::function<boolean(isl::checked::union_set, isl::checked::union_set)> &follows, const std::function<stat(isl::checked::union_set_list)> &fn) const;
   inline isl::checked::union_set_list insert(unsigned int pos, isl::checked::union_set el) const;
-  inline isl::checked::union_set_list set_at(int index, isl::checked::union_set el) const;
   inline class size size() const;
 };
 
@@ -4479,7 +4137,6 @@ public:
   inline /* implicit */ val_list(const val_list &obj);
   inline explicit val_list(isl::checked::ctx ctx, int n);
   inline explicit val_list(isl::checked::val el);
-  inline explicit val_list(isl::checked::ctx ctx, const std::string &str);
   inline val_list &operator=(val_list obj);
   inline ~val_list();
   inline __isl_give isl_val_list *copy() const &;
@@ -4497,11 +4154,8 @@ public:
   inline isl::checked::val_list concat(isl::checked::val_list list2) const;
   inline isl::checked::val_list drop(unsigned int first, unsigned int n) const;
   inline stat foreach(const std::function<stat(isl::checked::val)> &fn) const;
-  inline stat foreach_scc(const std::function<boolean(isl::checked::val, isl::checked::val)> &follows, const std::function<stat(isl::checked::val_list)> &fn) const;
   inline isl::checked::val_list insert(unsigned int pos, isl::checked::val el) const;
   inline isl::checked::val_list insert(unsigned int pos, long el) const;
-  inline isl::checked::val_list set_at(int index, isl::checked::val el) const;
-  inline isl::checked::val_list set_at(int index, long el) const;
   inline class size size() const;
 };
 
@@ -4514,9 +4168,6 @@ aff manage_copy(__isl_keep isl_aff *ptr) {
   return aff(ptr);
 }
 
-aff::aff(__isl_take isl_aff *ptr)
-    : ptr(ptr) {}
-
 aff::aff()
     : ptr(nullptr) {}
 
@@ -4525,6 +4176,9 @@ aff::aff(const aff &obj)
 {
   ptr = obj.copy();
 }
+
+aff::aff(__isl_take isl_aff *ptr)
+    : ptr(ptr) {}
 
 aff::aff(isl::checked::ctx ctx, const std::string &str)
 {
@@ -4740,17 +4394,6 @@ isl::checked::set aff::domain() const
   return isl::checked::pw_aff(*this).domain();
 }
 
-isl::checked::aff aff::domain_reverse() const
-{
-  auto res = isl_aff_domain_reverse(copy());
-  return manage(res);
-}
-
-isl::checked::pw_aff aff::drop_unused_params() const
-{
-  return isl::checked::pw_aff(*this).drop_unused_params();
-}
-
 isl::checked::set aff::eq_set(isl::checked::aff aff2) const
 {
   auto res = isl_aff_eq_set(copy(), aff2.release());
@@ -4839,12 +4482,6 @@ isl::checked::aff aff::gist(const isl::checked::basic_set &context) const
 isl::checked::aff aff::gist(const isl::checked::point &context) const
 {
   return this->gist(isl::checked::set(context));
-}
-
-isl::checked::aff aff::gist_params(isl::checked::set context) const
-{
-  auto res = isl_aff_gist_params(copy(), context.release());
-  return manage(res);
 }
 
 isl::checked::set aff::gt_set(isl::checked::aff aff2) const
@@ -4991,11 +4628,6 @@ isl::checked::multi_val aff::max_multi_val() const
   return isl::checked::pw_aff(*this).max_multi_val();
 }
 
-isl::checked::val aff::max_val() const
-{
-  return isl::checked::pw_aff(*this).max_val();
-}
-
 isl::checked::multi_pw_aff aff::min(const isl::checked::multi_pw_aff &multi2) const
 {
   return isl::checked::pw_aff(*this).min(multi2);
@@ -5009,11 +4641,6 @@ isl::checked::pw_aff aff::min(const isl::checked::pw_aff &pwaff2) const
 isl::checked::multi_val aff::min_multi_val() const
 {
   return isl::checked::pw_aff(*this).min_multi_val();
-}
-
-isl::checked::val aff::min_val() const
-{
-  return isl::checked::pw_aff(*this).min_val();
 }
 
 isl::checked::aff aff::mod(isl::checked::val mod) const
@@ -5060,20 +4687,9 @@ isl::checked::aff aff::neg() const
   return manage(res);
 }
 
-isl::checked::set aff::params() const
-{
-  return isl::checked::pw_aff(*this).params();
-}
-
 boolean aff::plain_is_empty() const
 {
   return isl::checked::pw_aff(*this).plain_is_empty();
-}
-
-boolean aff::plain_is_equal(const isl::checked::aff &aff2) const
-{
-  auto res = isl_aff_plain_is_equal(get(), aff2.get());
-  return manage(res);
 }
 
 boolean aff::plain_is_equal(const isl::checked::multi_aff &multi2) const
@@ -5089,26 +4705,6 @@ boolean aff::plain_is_equal(const isl::checked::multi_pw_aff &multi2) const
 boolean aff::plain_is_equal(const isl::checked::multi_union_pw_aff &multi2) const
 {
   return isl::checked::pw_aff(*this).plain_is_equal(multi2);
-}
-
-boolean aff::plain_is_equal(const isl::checked::pw_aff &pwaff2) const
-{
-  return isl::checked::pw_aff(*this).plain_is_equal(pwaff2);
-}
-
-boolean aff::plain_is_equal(const isl::checked::pw_multi_aff &pma2) const
-{
-  return isl::checked::pw_aff(*this).plain_is_equal(pma2);
-}
-
-boolean aff::plain_is_equal(const isl::checked::union_pw_aff &upa2) const
-{
-  return isl::checked::pw_aff(*this).plain_is_equal(upa2);
-}
-
-boolean aff::plain_is_equal(const isl::checked::union_pw_multi_aff &upma2) const
-{
-  return isl::checked::pw_aff(*this).plain_is_equal(upma2);
 }
 
 isl::checked::pw_multi_aff aff::preimage_domain_wrapped_domain(const isl::checked::pw_multi_aff &pma2) const
@@ -5160,11 +4756,6 @@ isl::checked::union_pw_aff aff::pullback(const isl::checked::union_pw_multi_aff 
 isl::checked::aff aff::pullback(const isl::checked::aff &ma) const
 {
   return this->pullback(isl::checked::multi_aff(ma));
-}
-
-isl::checked::pw_multi_aff_list aff::pw_multi_aff_list() const
-{
-  return isl::checked::pw_aff(*this).pw_multi_aff_list();
 }
 
 isl::checked::pw_multi_aff aff::range_factor_domain() const
@@ -5276,7 +4867,7 @@ class size aff::size() const
 
 isl::checked::space aff::space() const
 {
-  return isl::checked::pw_aff(*this).space();
+  return isl::checked::multi_aff(*this).space();
 }
 
 isl::checked::aff aff::sub(isl::checked::aff aff2) const
@@ -5439,9 +5030,6 @@ aff_list manage_copy(__isl_keep isl_aff_list *ptr) {
   return aff_list(ptr);
 }
 
-aff_list::aff_list(__isl_take isl_aff_list *ptr)
-    : ptr(ptr) {}
-
 aff_list::aff_list()
     : ptr(nullptr) {}
 
@@ -5450,6 +5038,9 @@ aff_list::aff_list(const aff_list &obj)
 {
   ptr = obj.copy();
 }
+
+aff_list::aff_list(__isl_take isl_aff_list *ptr)
+    : ptr(ptr) {}
 
 aff_list::aff_list(isl::checked::ctx ctx, int n)
 {
@@ -5460,12 +5051,6 @@ aff_list::aff_list(isl::checked::ctx ctx, int n)
 aff_list::aff_list(isl::checked::aff el)
 {
   auto res = isl_aff_list_from_aff(el.release());
-  ptr = res;
-}
-
-aff_list::aff_list(isl::checked::ctx ctx, const std::string &str)
-{
-  auto res = isl_aff_list_read_from_str(ctx.release(), str.c_str());
   ptr = res;
 }
 
@@ -5550,37 +5135,9 @@ stat aff_list::foreach(const std::function<stat(isl::checked::aff)> &fn) const
   return manage(res);
 }
 
-stat aff_list::foreach_scc(const std::function<boolean(isl::checked::aff, isl::checked::aff)> &follows, const std::function<stat(isl::checked::aff_list)> &fn) const
-{
-  struct follows_data {
-    std::function<boolean(isl::checked::aff, isl::checked::aff)> func;
-  } follows_data = { follows };
-  auto follows_lambda = [](isl_aff *arg_0, isl_aff *arg_1, void *arg_2) -> isl_bool {
-    auto *data = static_cast<struct follows_data *>(arg_2);
-    auto ret = (data->func)(manage_copy(arg_0), manage_copy(arg_1));
-    return ret.release();
-  };
-  struct fn_data {
-    std::function<stat(isl::checked::aff_list)> func;
-  } fn_data = { fn };
-  auto fn_lambda = [](isl_aff_list *arg_0, void *arg_1) -> isl_stat {
-    auto *data = static_cast<struct fn_data *>(arg_1);
-    auto ret = (data->func)(manage(arg_0));
-    return ret.release();
-  };
-  auto res = isl_aff_list_foreach_scc(get(), follows_lambda, &follows_data, fn_lambda, &fn_data);
-  return manage(res);
-}
-
 isl::checked::aff_list aff_list::insert(unsigned int pos, isl::checked::aff el) const
 {
   auto res = isl_aff_list_insert(copy(), pos, el.release());
-  return manage(res);
-}
-
-isl::checked::aff_list aff_list::set_at(int index, isl::checked::aff el) const
-{
-  auto res = isl_aff_list_set_at(copy(), index, el.release());
   return manage(res);
 }
 
@@ -5611,9 +5168,6 @@ ast_build manage_copy(__isl_keep isl_ast_build *ptr) {
   return ast_build(ptr);
 }
 
-ast_build::ast_build(__isl_take isl_ast_build *ptr)
-    : ptr(ptr) {}
-
 ast_build::ast_build()
     : ptr(nullptr) {}
 
@@ -5623,6 +5177,9 @@ ast_build::ast_build(const ast_build &obj)
   ptr = obj.copy();
   copy_callbacks(obj);
 }
+
+ast_build::ast_build(__isl_take isl_ast_build *ptr)
+    : ptr(ptr) {}
 
 ast_build::ast_build(isl::checked::ctx ctx)
 {
@@ -5766,9 +5323,6 @@ ast_expr manage_copy(__isl_keep isl_ast_expr *ptr) {
   return ast_expr(ptr);
 }
 
-ast_expr::ast_expr(__isl_take isl_ast_expr *ptr)
-    : ptr(ptr) {}
-
 ast_expr::ast_expr()
     : ptr(nullptr) {}
 
@@ -5777,6 +5331,9 @@ ast_expr::ast_expr(const ast_expr &obj)
 {
   ptr = obj.copy();
 }
+
+ast_expr::ast_expr(__isl_take isl_ast_expr *ptr)
+    : ptr(ptr) {}
 
 ast_expr &ast_expr::operator=(ast_expr obj) {
   std::swap(this->ptr, obj.ptr);
@@ -5851,9 +5408,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr &obj)
 }
 
 // implementations for isl::ast_expr_id
-ast_expr_id::ast_expr_id(__isl_take isl_ast_expr *ptr)
-    : ast_expr(ptr) {}
-
 ast_expr_id::ast_expr_id()
     : ast_expr() {}
 
@@ -5861,6 +5415,9 @@ ast_expr_id::ast_expr_id(const ast_expr_id &obj)
     : ast_expr(obj)
 {
 }
+
+ast_expr_id::ast_expr_id(__isl_take isl_ast_expr *ptr)
+    : ast_expr(ptr) {}
 
 ast_expr_id &ast_expr_id::operator=(ast_expr_id obj) {
   std::swap(this->ptr, obj.ptr);
@@ -5895,9 +5452,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_id &obj)
 }
 
 // implementations for isl::ast_expr_int
-ast_expr_int::ast_expr_int(__isl_take isl_ast_expr *ptr)
-    : ast_expr(ptr) {}
-
 ast_expr_int::ast_expr_int()
     : ast_expr() {}
 
@@ -5905,6 +5459,9 @@ ast_expr_int::ast_expr_int(const ast_expr_int &obj)
     : ast_expr(obj)
 {
 }
+
+ast_expr_int::ast_expr_int(__isl_take isl_ast_expr *ptr)
+    : ast_expr(ptr) {}
 
 ast_expr_int &ast_expr_int::operator=(ast_expr_int obj) {
   std::swap(this->ptr, obj.ptr);
@@ -5939,9 +5496,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_int &obj)
 }
 
 // implementations for isl::ast_expr_op
-ast_expr_op::ast_expr_op(__isl_take isl_ast_expr *ptr)
-    : ast_expr(ptr) {}
-
 ast_expr_op::ast_expr_op()
     : ast_expr() {}
 
@@ -5949,6 +5503,9 @@ ast_expr_op::ast_expr_op(const ast_expr_op &obj)
     : ast_expr(obj)
 {
 }
+
+ast_expr_op::ast_expr_op(__isl_take isl_ast_expr *ptr)
+    : ast_expr(ptr) {}
 
 ast_expr_op &ast_expr_op::operator=(ast_expr_op obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6014,9 +5571,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op &obj)
 }
 
 // implementations for isl::ast_expr_op_access
-ast_expr_op_access::ast_expr_op_access(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_access::ast_expr_op_access()
     : ast_expr_op() {}
 
@@ -6024,6 +5578,9 @@ ast_expr_op_access::ast_expr_op_access(const ast_expr_op_access &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_access::ast_expr_op_access(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_access &ast_expr_op_access::operator=(ast_expr_op_access obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6047,9 +5604,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_access &obj)
 }
 
 // implementations for isl::ast_expr_op_add
-ast_expr_op_add::ast_expr_op_add(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_add::ast_expr_op_add()
     : ast_expr_op() {}
 
@@ -6057,6 +5611,9 @@ ast_expr_op_add::ast_expr_op_add(const ast_expr_op_add &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_add::ast_expr_op_add(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_add &ast_expr_op_add::operator=(ast_expr_op_add obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6080,9 +5637,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_add &obj)
 }
 
 // implementations for isl::ast_expr_op_address_of
-ast_expr_op_address_of::ast_expr_op_address_of(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_address_of::ast_expr_op_address_of()
     : ast_expr_op() {}
 
@@ -6090,6 +5644,9 @@ ast_expr_op_address_of::ast_expr_op_address_of(const ast_expr_op_address_of &obj
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_address_of::ast_expr_op_address_of(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_address_of &ast_expr_op_address_of::operator=(ast_expr_op_address_of obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6113,9 +5670,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_address_of &
 }
 
 // implementations for isl::ast_expr_op_and
-ast_expr_op_and::ast_expr_op_and(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_and::ast_expr_op_and()
     : ast_expr_op() {}
 
@@ -6123,6 +5677,9 @@ ast_expr_op_and::ast_expr_op_and(const ast_expr_op_and &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_and::ast_expr_op_and(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_and &ast_expr_op_and::operator=(ast_expr_op_and obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6146,9 +5703,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_and &obj)
 }
 
 // implementations for isl::ast_expr_op_and_then
-ast_expr_op_and_then::ast_expr_op_and_then(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_and_then::ast_expr_op_and_then()
     : ast_expr_op() {}
 
@@ -6156,6 +5710,9 @@ ast_expr_op_and_then::ast_expr_op_and_then(const ast_expr_op_and_then &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_and_then::ast_expr_op_and_then(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_and_then &ast_expr_op_and_then::operator=(ast_expr_op_and_then obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6179,9 +5736,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_and_then &ob
 }
 
 // implementations for isl::ast_expr_op_call
-ast_expr_op_call::ast_expr_op_call(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_call::ast_expr_op_call()
     : ast_expr_op() {}
 
@@ -6189,6 +5743,9 @@ ast_expr_op_call::ast_expr_op_call(const ast_expr_op_call &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_call::ast_expr_op_call(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_call &ast_expr_op_call::operator=(ast_expr_op_call obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6212,9 +5769,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_call &obj)
 }
 
 // implementations for isl::ast_expr_op_cond
-ast_expr_op_cond::ast_expr_op_cond(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_cond::ast_expr_op_cond()
     : ast_expr_op() {}
 
@@ -6222,6 +5776,9 @@ ast_expr_op_cond::ast_expr_op_cond(const ast_expr_op_cond &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_cond::ast_expr_op_cond(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_cond &ast_expr_op_cond::operator=(ast_expr_op_cond obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6245,9 +5802,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_cond &obj)
 }
 
 // implementations for isl::ast_expr_op_div
-ast_expr_op_div::ast_expr_op_div(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_div::ast_expr_op_div()
     : ast_expr_op() {}
 
@@ -6255,6 +5809,9 @@ ast_expr_op_div::ast_expr_op_div(const ast_expr_op_div &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_div::ast_expr_op_div(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_div &ast_expr_op_div::operator=(ast_expr_op_div obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6278,9 +5835,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_div &obj)
 }
 
 // implementations for isl::ast_expr_op_eq
-ast_expr_op_eq::ast_expr_op_eq(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_eq::ast_expr_op_eq()
     : ast_expr_op() {}
 
@@ -6288,6 +5842,9 @@ ast_expr_op_eq::ast_expr_op_eq(const ast_expr_op_eq &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_eq::ast_expr_op_eq(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_eq &ast_expr_op_eq::operator=(ast_expr_op_eq obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6311,9 +5868,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_eq &obj)
 }
 
 // implementations for isl::ast_expr_op_fdiv_q
-ast_expr_op_fdiv_q::ast_expr_op_fdiv_q(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_fdiv_q::ast_expr_op_fdiv_q()
     : ast_expr_op() {}
 
@@ -6321,6 +5875,9 @@ ast_expr_op_fdiv_q::ast_expr_op_fdiv_q(const ast_expr_op_fdiv_q &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_fdiv_q::ast_expr_op_fdiv_q(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_fdiv_q &ast_expr_op_fdiv_q::operator=(ast_expr_op_fdiv_q obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6344,9 +5901,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_fdiv_q &obj)
 }
 
 // implementations for isl::ast_expr_op_ge
-ast_expr_op_ge::ast_expr_op_ge(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_ge::ast_expr_op_ge()
     : ast_expr_op() {}
 
@@ -6354,6 +5908,9 @@ ast_expr_op_ge::ast_expr_op_ge(const ast_expr_op_ge &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_ge::ast_expr_op_ge(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_ge &ast_expr_op_ge::operator=(ast_expr_op_ge obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6377,9 +5934,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_ge &obj)
 }
 
 // implementations for isl::ast_expr_op_gt
-ast_expr_op_gt::ast_expr_op_gt(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_gt::ast_expr_op_gt()
     : ast_expr_op() {}
 
@@ -6387,6 +5941,9 @@ ast_expr_op_gt::ast_expr_op_gt(const ast_expr_op_gt &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_gt::ast_expr_op_gt(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_gt &ast_expr_op_gt::operator=(ast_expr_op_gt obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6410,9 +5967,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_gt &obj)
 }
 
 // implementations for isl::ast_expr_op_le
-ast_expr_op_le::ast_expr_op_le(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_le::ast_expr_op_le()
     : ast_expr_op() {}
 
@@ -6420,6 +5974,9 @@ ast_expr_op_le::ast_expr_op_le(const ast_expr_op_le &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_le::ast_expr_op_le(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_le &ast_expr_op_le::operator=(ast_expr_op_le obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6443,9 +6000,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_le &obj)
 }
 
 // implementations for isl::ast_expr_op_lt
-ast_expr_op_lt::ast_expr_op_lt(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_lt::ast_expr_op_lt()
     : ast_expr_op() {}
 
@@ -6453,6 +6007,9 @@ ast_expr_op_lt::ast_expr_op_lt(const ast_expr_op_lt &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_lt::ast_expr_op_lt(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_lt &ast_expr_op_lt::operator=(ast_expr_op_lt obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6476,9 +6033,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_lt &obj)
 }
 
 // implementations for isl::ast_expr_op_max
-ast_expr_op_max::ast_expr_op_max(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_max::ast_expr_op_max()
     : ast_expr_op() {}
 
@@ -6486,6 +6040,9 @@ ast_expr_op_max::ast_expr_op_max(const ast_expr_op_max &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_max::ast_expr_op_max(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_max &ast_expr_op_max::operator=(ast_expr_op_max obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6509,9 +6066,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_max &obj)
 }
 
 // implementations for isl::ast_expr_op_member
-ast_expr_op_member::ast_expr_op_member(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_member::ast_expr_op_member()
     : ast_expr_op() {}
 
@@ -6519,6 +6073,9 @@ ast_expr_op_member::ast_expr_op_member(const ast_expr_op_member &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_member::ast_expr_op_member(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_member &ast_expr_op_member::operator=(ast_expr_op_member obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6542,9 +6099,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_member &obj)
 }
 
 // implementations for isl::ast_expr_op_min
-ast_expr_op_min::ast_expr_op_min(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_min::ast_expr_op_min()
     : ast_expr_op() {}
 
@@ -6552,6 +6106,9 @@ ast_expr_op_min::ast_expr_op_min(const ast_expr_op_min &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_min::ast_expr_op_min(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_min &ast_expr_op_min::operator=(ast_expr_op_min obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6575,9 +6132,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_min &obj)
 }
 
 // implementations for isl::ast_expr_op_minus
-ast_expr_op_minus::ast_expr_op_minus(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_minus::ast_expr_op_minus()
     : ast_expr_op() {}
 
@@ -6585,6 +6139,9 @@ ast_expr_op_minus::ast_expr_op_minus(const ast_expr_op_minus &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_minus::ast_expr_op_minus(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_minus &ast_expr_op_minus::operator=(ast_expr_op_minus obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6608,9 +6165,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_minus &obj)
 }
 
 // implementations for isl::ast_expr_op_mul
-ast_expr_op_mul::ast_expr_op_mul(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_mul::ast_expr_op_mul()
     : ast_expr_op() {}
 
@@ -6618,6 +6172,9 @@ ast_expr_op_mul::ast_expr_op_mul(const ast_expr_op_mul &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_mul::ast_expr_op_mul(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_mul &ast_expr_op_mul::operator=(ast_expr_op_mul obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6641,9 +6198,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_mul &obj)
 }
 
 // implementations for isl::ast_expr_op_or
-ast_expr_op_or::ast_expr_op_or(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_or::ast_expr_op_or()
     : ast_expr_op() {}
 
@@ -6651,6 +6205,9 @@ ast_expr_op_or::ast_expr_op_or(const ast_expr_op_or &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_or::ast_expr_op_or(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_or &ast_expr_op_or::operator=(ast_expr_op_or obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6674,9 +6231,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_or &obj)
 }
 
 // implementations for isl::ast_expr_op_or_else
-ast_expr_op_or_else::ast_expr_op_or_else(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_or_else::ast_expr_op_or_else()
     : ast_expr_op() {}
 
@@ -6684,6 +6238,9 @@ ast_expr_op_or_else::ast_expr_op_or_else(const ast_expr_op_or_else &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_or_else::ast_expr_op_or_else(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_or_else &ast_expr_op_or_else::operator=(ast_expr_op_or_else obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6707,9 +6264,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_or_else &obj
 }
 
 // implementations for isl::ast_expr_op_pdiv_q
-ast_expr_op_pdiv_q::ast_expr_op_pdiv_q(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_pdiv_q::ast_expr_op_pdiv_q()
     : ast_expr_op() {}
 
@@ -6717,6 +6271,9 @@ ast_expr_op_pdiv_q::ast_expr_op_pdiv_q(const ast_expr_op_pdiv_q &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_pdiv_q::ast_expr_op_pdiv_q(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_pdiv_q &ast_expr_op_pdiv_q::operator=(ast_expr_op_pdiv_q obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6740,9 +6297,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_pdiv_q &obj)
 }
 
 // implementations for isl::ast_expr_op_pdiv_r
-ast_expr_op_pdiv_r::ast_expr_op_pdiv_r(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_pdiv_r::ast_expr_op_pdiv_r()
     : ast_expr_op() {}
 
@@ -6750,6 +6304,9 @@ ast_expr_op_pdiv_r::ast_expr_op_pdiv_r(const ast_expr_op_pdiv_r &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_pdiv_r::ast_expr_op_pdiv_r(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_pdiv_r &ast_expr_op_pdiv_r::operator=(ast_expr_op_pdiv_r obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6773,9 +6330,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_pdiv_r &obj)
 }
 
 // implementations for isl::ast_expr_op_select
-ast_expr_op_select::ast_expr_op_select(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_select::ast_expr_op_select()
     : ast_expr_op() {}
 
@@ -6783,6 +6337,9 @@ ast_expr_op_select::ast_expr_op_select(const ast_expr_op_select &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_select::ast_expr_op_select(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_select &ast_expr_op_select::operator=(ast_expr_op_select obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6806,9 +6363,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_select &obj)
 }
 
 // implementations for isl::ast_expr_op_sub
-ast_expr_op_sub::ast_expr_op_sub(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_sub::ast_expr_op_sub()
     : ast_expr_op() {}
 
@@ -6816,6 +6370,9 @@ ast_expr_op_sub::ast_expr_op_sub(const ast_expr_op_sub &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_sub::ast_expr_op_sub(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_sub &ast_expr_op_sub::operator=(ast_expr_op_sub obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6839,9 +6396,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_expr_op_sub &obj)
 }
 
 // implementations for isl::ast_expr_op_zdiv_r
-ast_expr_op_zdiv_r::ast_expr_op_zdiv_r(__isl_take isl_ast_expr *ptr)
-    : ast_expr_op(ptr) {}
-
 ast_expr_op_zdiv_r::ast_expr_op_zdiv_r()
     : ast_expr_op() {}
 
@@ -6849,6 +6403,9 @@ ast_expr_op_zdiv_r::ast_expr_op_zdiv_r(const ast_expr_op_zdiv_r &obj)
     : ast_expr_op(obj)
 {
 }
+
+ast_expr_op_zdiv_r::ast_expr_op_zdiv_r(__isl_take isl_ast_expr *ptr)
+    : ast_expr_op(ptr) {}
 
 ast_expr_op_zdiv_r &ast_expr_op_zdiv_r::operator=(ast_expr_op_zdiv_r obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6880,9 +6437,6 @@ ast_node manage_copy(__isl_keep isl_ast_node *ptr) {
   return ast_node(ptr);
 }
 
-ast_node::ast_node(__isl_take isl_ast_node *ptr)
-    : ptr(ptr) {}
-
 ast_node::ast_node()
     : ptr(nullptr) {}
 
@@ -6891,6 +6445,9 @@ ast_node::ast_node(const ast_node &obj)
 {
   ptr = obj.copy();
 }
+
+ast_node::ast_node(__isl_take isl_ast_node *ptr)
+    : ptr(ptr) {}
 
 ast_node &ast_node::operator=(ast_node obj) {
   std::swap(this->ptr, obj.ptr);
@@ -6944,20 +6501,6 @@ isl::checked::ctx ast_node::ctx() const {
   return isl::checked::ctx(isl_ast_node_get_ctx(ptr));
 }
 
-isl::checked::ast_node ast_node::map_descendant_bottom_up(const std::function<isl::checked::ast_node(isl::checked::ast_node)> &fn) const
-{
-  struct fn_data {
-    std::function<isl::checked::ast_node(isl::checked::ast_node)> func;
-  } fn_data = { fn };
-  auto fn_lambda = [](isl_ast_node *arg_0, void *arg_1) -> isl_ast_node * {
-    auto *data = static_cast<struct fn_data *>(arg_1);
-    auto ret = (data->func)(manage(arg_0));
-    return ret.release();
-  };
-  auto res = isl_ast_node_map_descendant_bottom_up(copy(), fn_lambda, &fn_data);
-  return manage(res);
-}
-
 std::string ast_node::to_C_str() const
 {
   auto res = isl_ast_node_to_C_str(get());
@@ -6985,9 +6528,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_node &obj)
 }
 
 // implementations for isl::ast_node_block
-ast_node_block::ast_node_block(__isl_take isl_ast_node *ptr)
-    : ast_node(ptr) {}
-
 ast_node_block::ast_node_block()
     : ast_node() {}
 
@@ -6996,11 +6536,8 @@ ast_node_block::ast_node_block(const ast_node_block &obj)
 {
 }
 
-ast_node_block::ast_node_block(isl::checked::ast_node_list list)
-{
-  auto res = isl_ast_node_block_from_children(list.release());
-  ptr = res;
-}
+ast_node_block::ast_node_block(__isl_take isl_ast_node *ptr)
+    : ast_node(ptr) {}
 
 ast_node_block &ast_node_block::operator=(ast_node_block obj) {
   std::swap(this->ptr, obj.ptr);
@@ -7035,9 +6572,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_node_block &obj)
 }
 
 // implementations for isl::ast_node_for
-ast_node_for::ast_node_for(__isl_take isl_ast_node *ptr)
-    : ast_node(ptr) {}
-
 ast_node_for::ast_node_for()
     : ast_node() {}
 
@@ -7045,6 +6579,9 @@ ast_node_for::ast_node_for(const ast_node_for &obj)
     : ast_node(obj)
 {
 }
+
+ast_node_for::ast_node_for(__isl_take isl_ast_node *ptr)
+    : ast_node(ptr) {}
 
 ast_node_for &ast_node_for::operator=(ast_node_for obj) {
   std::swap(this->ptr, obj.ptr);
@@ -7129,9 +6666,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_node_for &obj)
 }
 
 // implementations for isl::ast_node_if
-ast_node_if::ast_node_if(__isl_take isl_ast_node *ptr)
-    : ast_node(ptr) {}
-
 ast_node_if::ast_node_if()
     : ast_node() {}
 
@@ -7139,6 +6673,9 @@ ast_node_if::ast_node_if(const ast_node_if &obj)
     : ast_node(obj)
 {
 }
+
+ast_node_if::ast_node_if(__isl_take isl_ast_node *ptr)
+    : ast_node(ptr) {}
 
 ast_node_if &ast_node_if::operator=(ast_node_if obj) {
   std::swap(this->ptr, obj.ptr);
@@ -7209,9 +6746,6 @@ ast_node_list manage_copy(__isl_keep isl_ast_node_list *ptr) {
   return ast_node_list(ptr);
 }
 
-ast_node_list::ast_node_list(__isl_take isl_ast_node_list *ptr)
-    : ptr(ptr) {}
-
 ast_node_list::ast_node_list()
     : ptr(nullptr) {}
 
@@ -7220,6 +6754,9 @@ ast_node_list::ast_node_list(const ast_node_list &obj)
 {
   ptr = obj.copy();
 }
+
+ast_node_list::ast_node_list(__isl_take isl_ast_node_list *ptr)
+    : ptr(ptr) {}
 
 ast_node_list::ast_node_list(isl::checked::ctx ctx, int n)
 {
@@ -7314,37 +6851,9 @@ stat ast_node_list::foreach(const std::function<stat(isl::checked::ast_node)> &f
   return manage(res);
 }
 
-stat ast_node_list::foreach_scc(const std::function<boolean(isl::checked::ast_node, isl::checked::ast_node)> &follows, const std::function<stat(isl::checked::ast_node_list)> &fn) const
-{
-  struct follows_data {
-    std::function<boolean(isl::checked::ast_node, isl::checked::ast_node)> func;
-  } follows_data = { follows };
-  auto follows_lambda = [](isl_ast_node *arg_0, isl_ast_node *arg_1, void *arg_2) -> isl_bool {
-    auto *data = static_cast<struct follows_data *>(arg_2);
-    auto ret = (data->func)(manage_copy(arg_0), manage_copy(arg_1));
-    return ret.release();
-  };
-  struct fn_data {
-    std::function<stat(isl::checked::ast_node_list)> func;
-  } fn_data = { fn };
-  auto fn_lambda = [](isl_ast_node_list *arg_0, void *arg_1) -> isl_stat {
-    auto *data = static_cast<struct fn_data *>(arg_1);
-    auto ret = (data->func)(manage(arg_0));
-    return ret.release();
-  };
-  auto res = isl_ast_node_list_foreach_scc(get(), follows_lambda, &follows_data, fn_lambda, &fn_data);
-  return manage(res);
-}
-
 isl::checked::ast_node_list ast_node_list::insert(unsigned int pos, isl::checked::ast_node el) const
 {
   auto res = isl_ast_node_list_insert(copy(), pos, el.release());
-  return manage(res);
-}
-
-isl::checked::ast_node_list ast_node_list::set_at(int index, isl::checked::ast_node el) const
-{
-  auto res = isl_ast_node_list_set_at(copy(), index, el.release());
   return manage(res);
 }
 
@@ -7367,9 +6876,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_node_list &obj)
 }
 
 // implementations for isl::ast_node_mark
-ast_node_mark::ast_node_mark(__isl_take isl_ast_node *ptr)
-    : ast_node(ptr) {}
-
 ast_node_mark::ast_node_mark()
     : ast_node() {}
 
@@ -7377,6 +6883,9 @@ ast_node_mark::ast_node_mark(const ast_node_mark &obj)
     : ast_node(obj)
 {
 }
+
+ast_node_mark::ast_node_mark(__isl_take isl_ast_node *ptr)
+    : ast_node(ptr) {}
 
 ast_node_mark &ast_node_mark::operator=(ast_node_mark obj) {
   std::swap(this->ptr, obj.ptr);
@@ -7422,9 +6931,6 @@ inline std::ostream &operator<<(std::ostream &os, const ast_node_mark &obj)
 }
 
 // implementations for isl::ast_node_user
-ast_node_user::ast_node_user(__isl_take isl_ast_node *ptr)
-    : ast_node(ptr) {}
-
 ast_node_user::ast_node_user()
     : ast_node() {}
 
@@ -7433,11 +6939,8 @@ ast_node_user::ast_node_user(const ast_node_user &obj)
 {
 }
 
-ast_node_user::ast_node_user(isl::checked::ast_expr expr)
-{
-  auto res = isl_ast_node_user_from_expr(expr.release());
-  ptr = res;
-}
+ast_node_user::ast_node_user(__isl_take isl_ast_node *ptr)
+    : ast_node(ptr) {}
 
 ast_node_user &ast_node_user::operator=(ast_node_user obj) {
   std::swap(this->ptr, obj.ptr);
@@ -7480,9 +6983,6 @@ basic_map manage_copy(__isl_keep isl_basic_map *ptr) {
   return basic_map(ptr);
 }
 
-basic_map::basic_map(__isl_take isl_basic_map *ptr)
-    : ptr(ptr) {}
-
 basic_map::basic_map()
     : ptr(nullptr) {}
 
@@ -7491,6 +6991,9 @@ basic_map::basic_map(const basic_map &obj)
 {
   ptr = obj.copy();
 }
+
+basic_map::basic_map(__isl_take isl_basic_map *ptr)
+    : ptr(ptr) {}
 
 basic_map::basic_map(isl::checked::ctx ctx, const std::string &str)
 {
@@ -7665,24 +7168,9 @@ isl::checked::union_map basic_map::domain_product(const isl::checked::union_map 
   return isl::checked::map(*this).domain_product(umap2);
 }
 
-isl::checked::map basic_map::domain_reverse() const
-{
-  return isl::checked::map(*this).domain_reverse();
-}
-
-class size basic_map::domain_tuple_dim() const
-{
-  return isl::checked::map(*this).domain_tuple_dim();
-}
-
 isl::checked::id basic_map::domain_tuple_id() const
 {
   return isl::checked::map(*this).domain_tuple_id();
-}
-
-isl::checked::map basic_map::drop_unused_params() const
-{
-  return isl::checked::map(*this).drop_unused_params();
 }
 
 isl::checked::map basic_map::eq_at(const isl::checked::multi_pw_aff &mpa) const
@@ -7715,12 +7203,12 @@ isl::checked::map basic_map::factor_range() const
   return isl::checked::map(*this).factor_range();
 }
 
-isl::checked::map basic_map::fixed_power(const isl::checked::val &exp) const
+isl::checked::union_map basic_map::fixed_power(const isl::checked::val &exp) const
 {
   return isl::checked::map(*this).fixed_power(exp);
 }
 
-isl::checked::map basic_map::fixed_power(long exp) const
+isl::checked::union_map basic_map::fixed_power(long exp) const
 {
   return this->fixed_power(isl::checked::val(ctx(), exp));
 }
@@ -7779,9 +7267,9 @@ isl::checked::union_map basic_map::gist_domain(const isl::checked::union_set &us
   return isl::checked::map(*this).gist_domain(uset);
 }
 
-isl::checked::map basic_map::gist_params(const isl::checked::set &context) const
+isl::checked::union_map basic_map::gist_params(const isl::checked::set &set) const
 {
-  return isl::checked::map(*this).gist_params(context);
+  return isl::checked::map(*this).gist_params(set);
 }
 
 isl::checked::union_map basic_map::gist_range(const isl::checked::union_set &uset) const
@@ -7861,16 +7349,6 @@ isl::checked::union_map basic_map::intersect_domain_factor_range(const isl::chec
   return isl::checked::map(*this).intersect_domain_factor_range(factor);
 }
 
-isl::checked::map basic_map::intersect_domain_wrapped_domain(const isl::checked::set &domain) const
-{
-  return isl::checked::map(*this).intersect_domain_wrapped_domain(domain);
-}
-
-isl::checked::union_map basic_map::intersect_domain_wrapped_domain(const isl::checked::union_set &domain) const
-{
-  return isl::checked::map(*this).intersect_domain_wrapped_domain(domain);
-}
-
 isl::checked::map basic_map::intersect_params(const isl::checked::set &params) const
 {
   return isl::checked::map(*this).intersect_params(params);
@@ -7920,16 +7398,6 @@ isl::checked::map basic_map::intersect_range_factor_range(const isl::checked::ma
 isl::checked::union_map basic_map::intersect_range_factor_range(const isl::checked::union_map &factor) const
 {
   return isl::checked::map(*this).intersect_range_factor_range(factor);
-}
-
-isl::checked::map basic_map::intersect_range_wrapped_domain(const isl::checked::set &domain) const
-{
-  return isl::checked::map(*this).intersect_range_wrapped_domain(domain);
-}
-
-isl::checked::union_map basic_map::intersect_range_wrapped_domain(const isl::checked::union_set &domain) const
-{
-  return isl::checked::map(*this).intersect_range_wrapped_domain(domain);
 }
 
 boolean basic_map::is_bijective() const
@@ -8057,11 +7525,6 @@ isl::checked::map basic_map::lower_bound(const isl::checked::multi_pw_aff &lower
   return isl::checked::map(*this).lower_bound(lower);
 }
 
-isl::checked::map_list basic_map::map_list() const
-{
-  return isl::checked::map(*this).map_list();
-}
-
 isl::checked::multi_pw_aff basic_map::max_multi_pw_aff() const
 {
   return isl::checked::map(*this).max_multi_pw_aff();
@@ -8070,16 +7533,6 @@ isl::checked::multi_pw_aff basic_map::max_multi_pw_aff() const
 isl::checked::multi_pw_aff basic_map::min_multi_pw_aff() const
 {
   return isl::checked::map(*this).min_multi_pw_aff();
-}
-
-class size basic_map::n_basic_map() const
-{
-  return isl::checked::map(*this).n_basic_map();
-}
-
-isl::checked::set basic_map::params() const
-{
-  return isl::checked::map(*this).params();
 }
 
 isl::checked::basic_map basic_map::polyhedral_hull() const
@@ -8137,21 +7590,6 @@ isl::checked::map basic_map::project_out_all_params() const
   return isl::checked::map(*this).project_out_all_params();
 }
 
-isl::checked::map basic_map::project_out_param(const isl::checked::id &id) const
-{
-  return isl::checked::map(*this).project_out_param(id);
-}
-
-isl::checked::map basic_map::project_out_param(const std::string &id) const
-{
-  return this->project_out_param(isl::checked::id(ctx(), id));
-}
-
-isl::checked::map basic_map::project_out_param(const isl::checked::id_list &list) const
-{
-  return isl::checked::map(*this).project_out_param(list);
-}
-
 isl::checked::set basic_map::range() const
 {
   return isl::checked::map(*this).range();
@@ -8165,11 +7603,6 @@ isl::checked::map basic_map::range_factor_domain() const
 isl::checked::map basic_map::range_factor_range() const
 {
   return isl::checked::map(*this).range_factor_range();
-}
-
-isl::checked::fixed_box basic_map::range_lattice_tile() const
-{
-  return isl::checked::map(*this).range_lattice_tile();
 }
 
 isl::checked::union_map basic_map::range_map() const
@@ -8195,11 +7628,6 @@ isl::checked::map basic_map::range_reverse() const
 isl::checked::fixed_box basic_map::range_simple_fixed_box_hull() const
 {
   return isl::checked::map(*this).range_simple_fixed_box_hull();
-}
-
-class size basic_map::range_tuple_dim() const
-{
-  return isl::checked::map(*this).range_tuple_dim();
 }
 
 isl::checked::id basic_map::range_tuple_id() const
@@ -8262,11 +7690,6 @@ isl::checked::union_map basic_map::subtract_domain(const isl::checked::union_set
 isl::checked::union_map basic_map::subtract_range(const isl::checked::union_set &dom) const
 {
   return isl::checked::map(*this).subtract_range(dom);
-}
-
-isl::checked::map_list basic_map::to_list() const
-{
-  return isl::checked::map(*this).to_list();
 }
 
 isl::checked::union_map basic_map::to_union_map() const
@@ -8336,9 +7759,6 @@ basic_set manage_copy(__isl_keep isl_basic_set *ptr) {
   return basic_set(ptr);
 }
 
-basic_set::basic_set(__isl_take isl_basic_set *ptr)
-    : ptr(ptr) {}
-
 basic_set::basic_set()
     : ptr(nullptr) {}
 
@@ -8347,6 +7767,9 @@ basic_set::basic_set(const basic_set &obj)
 {
   ptr = obj.copy();
 }
+
+basic_set::basic_set(__isl_take isl_basic_set *ptr)
+    : ptr(ptr) {}
 
 basic_set::basic_set(isl::checked::point pnt)
 {
@@ -8461,11 +7884,6 @@ isl::checked::val basic_set::dim_min_val(int pos) const
   return isl::checked::set(*this).dim_min_val(pos);
 }
 
-isl::checked::set basic_set::drop_unused_params() const
-{
-  return isl::checked::set(*this).drop_unused_params();
-}
-
 boolean basic_set::every_set(const std::function<boolean(isl::checked::set)> &test) const
 {
   return isl::checked::set(*this).every_set(test);
@@ -8518,9 +7936,9 @@ isl::checked::basic_set basic_set::gist(const isl::checked::point &context) cons
   return this->gist(isl::checked::basic_set(context));
 }
 
-isl::checked::set basic_set::gist_params(const isl::checked::set &context) const
+isl::checked::union_set basic_set::gist_params(const isl::checked::set &set) const
 {
-  return isl::checked::set(*this).gist_params(context);
+  return isl::checked::set(*this).gist_params(set);
 }
 
 isl::checked::map basic_set::identity() const
@@ -8664,11 +8082,6 @@ boolean basic_set::isa_set() const
   return isl::checked::set(*this).isa_set();
 }
 
-isl::checked::fixed_box basic_set::lattice_tile() const
-{
-  return isl::checked::set(*this).lattice_tile();
-}
-
 isl::checked::set basic_set::lexmax() const
 {
   auto res = isl_basic_set_lexmax(copy());
@@ -8719,21 +8132,6 @@ isl::checked::multi_pw_aff basic_set::min_multi_pw_aff() const
 isl::checked::val basic_set::min_val(const isl::checked::aff &obj) const
 {
   return isl::checked::set(*this).min_val(obj);
-}
-
-class size basic_set::n_basic_set() const
-{
-  return isl::checked::set(*this).n_basic_set();
-}
-
-isl::checked::pw_aff basic_set::param_pw_aff_on_domain(const isl::checked::id &id) const
-{
-  return isl::checked::set(*this).param_pw_aff_on_domain(id);
-}
-
-isl::checked::pw_aff basic_set::param_pw_aff_on_domain(const std::string &id) const
-{
-  return this->param_pw_aff_on_domain(isl::checked::id(ctx(), id));
 }
 
 isl::checked::basic_set basic_set::params() const
@@ -8797,16 +8195,6 @@ isl::checked::set basic_set::project_out_param(const isl::checked::id_list &list
   return isl::checked::set(*this).project_out_param(list);
 }
 
-isl::checked::pw_aff basic_set::pw_aff_on_domain(const isl::checked::val &v) const
-{
-  return isl::checked::set(*this).pw_aff_on_domain(v);
-}
-
-isl::checked::pw_aff basic_set::pw_aff_on_domain(long v) const
-{
-  return this->pw_aff_on_domain(isl::checked::val(ctx(), v));
-}
-
 isl::checked::pw_multi_aff basic_set::pw_multi_aff_on_domain(const isl::checked::multi_val &mv) const
 {
   return isl::checked::set(*this).pw_multi_aff_on_domain(mv);
@@ -8822,11 +8210,6 @@ isl::checked::point basic_set::sample_point() const
 {
   auto res = isl_basic_set_sample_point(copy());
   return manage(res);
-}
-
-isl::checked::set_list basic_set::set_list() const
-{
-  return isl::checked::set(*this).set_list();
 }
 
 isl::checked::fixed_box basic_set::simple_fixed_box_hull() const
@@ -8854,7 +8237,7 @@ isl::checked::union_set basic_set::subtract(const isl::checked::union_set &uset2
   return isl::checked::set(*this).subtract(uset2);
 }
 
-isl::checked::set_list basic_set::to_list() const
+isl::checked::union_set_list basic_set::to_list() const
 {
   return isl::checked::set(*this).to_list();
 }
@@ -8873,11 +8256,6 @@ isl::checked::union_set basic_set::to_union_set() const
 isl::checked::map basic_set::translation() const
 {
   return isl::checked::set(*this).translation();
-}
-
-class size basic_set::tuple_dim() const
-{
-  return isl::checked::set(*this).tuple_dim();
 }
 
 isl::checked::set basic_set::unbind_params(const isl::checked::multi_id &tuple) const
@@ -8931,11 +8309,6 @@ isl::checked::set basic_set::upper_bound(const isl::checked::multi_val &upper) c
   return isl::checked::set(*this).upper_bound(upper);
 }
 
-isl::checked::set basic_set::wrapped_reverse() const
-{
-  return isl::checked::set(*this).wrapped_reverse();
-}
-
 inline std::ostream &operator<<(std::ostream &os, const basic_set &obj)
 {
   char *str = isl_basic_set_to_str(obj.get());
@@ -8957,9 +8330,6 @@ fixed_box manage_copy(__isl_keep isl_fixed_box *ptr) {
   return fixed_box(ptr);
 }
 
-fixed_box::fixed_box(__isl_take isl_fixed_box *ptr)
-    : ptr(ptr) {}
-
 fixed_box::fixed_box()
     : ptr(nullptr) {}
 
@@ -8969,11 +8339,8 @@ fixed_box::fixed_box(const fixed_box &obj)
   ptr = obj.copy();
 }
 
-fixed_box::fixed_box(isl::checked::ctx ctx, const std::string &str)
-{
-  auto res = isl_fixed_box_read_from_str(ctx.release(), str.c_str());
-  ptr = res;
-}
+fixed_box::fixed_box(__isl_take isl_fixed_box *ptr)
+    : ptr(ptr) {}
 
 fixed_box &fixed_box::operator=(fixed_box obj) {
   std::swap(this->ptr, obj.ptr);
@@ -9067,9 +8434,6 @@ id manage_copy(__isl_keep isl_id *ptr) {
   return id(ptr);
 }
 
-id::id(__isl_take isl_id *ptr)
-    : ptr(ptr) {}
-
 id::id()
     : ptr(nullptr) {}
 
@@ -9078,6 +8442,9 @@ id::id(const id &obj)
 {
   ptr = obj.copy();
 }
+
+id::id(__isl_take isl_id *ptr)
+    : ptr(ptr) {}
 
 id::id(isl::checked::ctx ctx, const std::string &str)
 {
@@ -9135,47 +8502,6 @@ isl::checked::id_list id::to_list() const
   return manage(res);
 }
 
-#if __cplusplus >= 201703L
-id::id(isl::checked::ctx ctx, const std::string &str, const std::any &any)
-{
-  std::any *p = new std::any(any);
-  auto res = isl_id_alloc(ctx.get(), str.c_str(), p);
-  res = isl_id_set_free_user(res, &ctx::free_user);
-  if (!res) {
-    delete p;
-  }
-  ptr = res;
-}
-
-template <class T>
-std::optional<T> id::try_user() const
-{
-  std::any *p = (std::any *) isl_id_get_user(ptr);
-  if (!p)
-    return std::nullopt;
-  if (isl_id_get_free_user(ptr) != &ctx::free_user)
-    return std::nullopt;
-  T *res = std::any_cast<T>(p);
-  if (!res)
-    return std::nullopt;
-  return *res;
-}
-
-template <class T>
-T id::user() const
-{
-  std::any *p = (std::any *) isl_id_get_user(ptr);
-  if (!p)
-    isl_die(ctx().get(), isl_error_invalid, "no user pointer", return T());
-  if (isl_id_get_free_user(ptr) != &ctx::free_user)
-    isl_die(ctx().get(), isl_error_invalid, "user pointer not attached by C++ interface", return T());
-  T *res = std::any_cast<T>(p);
-  if (!res)
-    isl_die(ctx().get(), isl_error_invalid, "user pointer not of given type", return T());
-  return *res;
-}
-#endif
-
 inline std::ostream &operator<<(std::ostream &os, const id &obj)
 {
   char *str = isl_id_to_str(obj.get());
@@ -9197,9 +8523,6 @@ id_list manage_copy(__isl_keep isl_id_list *ptr) {
   return id_list(ptr);
 }
 
-id_list::id_list(__isl_take isl_id_list *ptr)
-    : ptr(ptr) {}
-
 id_list::id_list()
     : ptr(nullptr) {}
 
@@ -9208,6 +8531,9 @@ id_list::id_list(const id_list &obj)
 {
   ptr = obj.copy();
 }
+
+id_list::id_list(__isl_take isl_id_list *ptr)
+    : ptr(ptr) {}
 
 id_list::id_list(isl::checked::ctx ctx, int n)
 {
@@ -9218,12 +8544,6 @@ id_list::id_list(isl::checked::ctx ctx, int n)
 id_list::id_list(isl::checked::id el)
 {
   auto res = isl_id_list_from_id(el.release());
-  ptr = res;
-}
-
-id_list::id_list(isl::checked::ctx ctx, const std::string &str)
-{
-  auto res = isl_id_list_read_from_str(ctx.release(), str.c_str());
   ptr = res;
 }
 
@@ -9313,28 +8633,6 @@ stat id_list::foreach(const std::function<stat(isl::checked::id)> &fn) const
   return manage(res);
 }
 
-stat id_list::foreach_scc(const std::function<boolean(isl::checked::id, isl::checked::id)> &follows, const std::function<stat(isl::checked::id_list)> &fn) const
-{
-  struct follows_data {
-    std::function<boolean(isl::checked::id, isl::checked::id)> func;
-  } follows_data = { follows };
-  auto follows_lambda = [](isl_id *arg_0, isl_id *arg_1, void *arg_2) -> isl_bool {
-    auto *data = static_cast<struct follows_data *>(arg_2);
-    auto ret = (data->func)(manage_copy(arg_0), manage_copy(arg_1));
-    return ret.release();
-  };
-  struct fn_data {
-    std::function<stat(isl::checked::id_list)> func;
-  } fn_data = { fn };
-  auto fn_lambda = [](isl_id_list *arg_0, void *arg_1) -> isl_stat {
-    auto *data = static_cast<struct fn_data *>(arg_1);
-    auto ret = (data->func)(manage(arg_0));
-    return ret.release();
-  };
-  auto res = isl_id_list_foreach_scc(get(), follows_lambda, &follows_data, fn_lambda, &fn_data);
-  return manage(res);
-}
-
 isl::checked::id_list id_list::insert(unsigned int pos, isl::checked::id el) const
 {
   auto res = isl_id_list_insert(copy(), pos, el.release());
@@ -9344,17 +8642,6 @@ isl::checked::id_list id_list::insert(unsigned int pos, isl::checked::id el) con
 isl::checked::id_list id_list::insert(unsigned int pos, const std::string &el) const
 {
   return this->insert(pos, isl::checked::id(ctx(), el));
-}
-
-isl::checked::id_list id_list::set_at(int index, isl::checked::id el) const
-{
-  auto res = isl_id_list_set_at(copy(), index, el.release());
-  return manage(res);
-}
-
-isl::checked::id_list id_list::set_at(int index, const std::string &el) const
-{
-  return this->set_at(index, isl::checked::id(ctx(), el));
 }
 
 class size id_list::size() const
@@ -9375,204 +8662,6 @@ inline std::ostream &operator<<(std::ostream &os, const id_list &obj)
   return os;
 }
 
-// implementations for isl::id_to_ast_expr
-id_to_ast_expr manage(__isl_take isl_id_to_ast_expr *ptr) {
-  return id_to_ast_expr(ptr);
-}
-id_to_ast_expr manage_copy(__isl_keep isl_id_to_ast_expr *ptr) {
-  ptr = isl_id_to_ast_expr_copy(ptr);
-  return id_to_ast_expr(ptr);
-}
-
-id_to_ast_expr::id_to_ast_expr(__isl_take isl_id_to_ast_expr *ptr)
-    : ptr(ptr) {}
-
-id_to_ast_expr::id_to_ast_expr()
-    : ptr(nullptr) {}
-
-id_to_ast_expr::id_to_ast_expr(const id_to_ast_expr &obj)
-    : ptr(nullptr)
-{
-  ptr = obj.copy();
-}
-
-id_to_ast_expr::id_to_ast_expr(isl::checked::ctx ctx, int min_size)
-{
-  auto res = isl_id_to_ast_expr_alloc(ctx.release(), min_size);
-  ptr = res;
-}
-
-id_to_ast_expr::id_to_ast_expr(isl::checked::ctx ctx, const std::string &str)
-{
-  auto res = isl_id_to_ast_expr_read_from_str(ctx.release(), str.c_str());
-  ptr = res;
-}
-
-id_to_ast_expr &id_to_ast_expr::operator=(id_to_ast_expr obj) {
-  std::swap(this->ptr, obj.ptr);
-  return *this;
-}
-
-id_to_ast_expr::~id_to_ast_expr() {
-  if (ptr)
-    isl_id_to_ast_expr_free(ptr);
-}
-
-__isl_give isl_id_to_ast_expr *id_to_ast_expr::copy() const & {
-  return isl_id_to_ast_expr_copy(ptr);
-}
-
-__isl_keep isl_id_to_ast_expr *id_to_ast_expr::get() const {
-  return ptr;
-}
-
-__isl_give isl_id_to_ast_expr *id_to_ast_expr::release() {
-  isl_id_to_ast_expr *tmp = ptr;
-  ptr = nullptr;
-  return tmp;
-}
-
-bool id_to_ast_expr::is_null() const {
-  return ptr == nullptr;
-}
-
-isl::checked::ctx id_to_ast_expr::ctx() const {
-  return isl::checked::ctx(isl_id_to_ast_expr_get_ctx(ptr));
-}
-
-boolean id_to_ast_expr::is_equal(const isl::checked::id_to_ast_expr &hmap2) const
-{
-  auto res = isl_id_to_ast_expr_is_equal(get(), hmap2.get());
-  return manage(res);
-}
-
-isl::checked::id_to_ast_expr id_to_ast_expr::set(isl::checked::id key, isl::checked::ast_expr val) const
-{
-  auto res = isl_id_to_ast_expr_set(copy(), key.release(), val.release());
-  return manage(res);
-}
-
-isl::checked::id_to_ast_expr id_to_ast_expr::set(const std::string &key, const isl::checked::ast_expr &val) const
-{
-  return this->set(isl::checked::id(ctx(), key), val);
-}
-
-inline std::ostream &operator<<(std::ostream &os, const id_to_ast_expr &obj)
-{
-  char *str = isl_id_to_ast_expr_to_str(obj.get());
-  if (!str) {
-    os.setstate(std::ios_base::badbit);
-    return os;
-  }
-  os << str;
-  free(str);
-  return os;
-}
-
-// implementations for isl::id_to_id
-id_to_id manage(__isl_take isl_id_to_id *ptr) {
-  return id_to_id(ptr);
-}
-id_to_id manage_copy(__isl_keep isl_id_to_id *ptr) {
-  ptr = isl_id_to_id_copy(ptr);
-  return id_to_id(ptr);
-}
-
-id_to_id::id_to_id(__isl_take isl_id_to_id *ptr)
-    : ptr(ptr) {}
-
-id_to_id::id_to_id()
-    : ptr(nullptr) {}
-
-id_to_id::id_to_id(const id_to_id &obj)
-    : ptr(nullptr)
-{
-  ptr = obj.copy();
-}
-
-id_to_id::id_to_id(isl::checked::ctx ctx, int min_size)
-{
-  auto res = isl_id_to_id_alloc(ctx.release(), min_size);
-  ptr = res;
-}
-
-id_to_id::id_to_id(isl::checked::ctx ctx, const std::string &str)
-{
-  auto res = isl_id_to_id_read_from_str(ctx.release(), str.c_str());
-  ptr = res;
-}
-
-id_to_id &id_to_id::operator=(id_to_id obj) {
-  std::swap(this->ptr, obj.ptr);
-  return *this;
-}
-
-id_to_id::~id_to_id() {
-  if (ptr)
-    isl_id_to_id_free(ptr);
-}
-
-__isl_give isl_id_to_id *id_to_id::copy() const & {
-  return isl_id_to_id_copy(ptr);
-}
-
-__isl_keep isl_id_to_id *id_to_id::get() const {
-  return ptr;
-}
-
-__isl_give isl_id_to_id *id_to_id::release() {
-  isl_id_to_id *tmp = ptr;
-  ptr = nullptr;
-  return tmp;
-}
-
-bool id_to_id::is_null() const {
-  return ptr == nullptr;
-}
-
-isl::checked::ctx id_to_id::ctx() const {
-  return isl::checked::ctx(isl_id_to_id_get_ctx(ptr));
-}
-
-boolean id_to_id::is_equal(const isl::checked::id_to_id &hmap2) const
-{
-  auto res = isl_id_to_id_is_equal(get(), hmap2.get());
-  return manage(res);
-}
-
-isl::checked::id_to_id id_to_id::set(isl::checked::id key, isl::checked::id val) const
-{
-  auto res = isl_id_to_id_set(copy(), key.release(), val.release());
-  return manage(res);
-}
-
-isl::checked::id_to_id id_to_id::set(const isl::checked::id &key, const std::string &val) const
-{
-  return this->set(key, isl::checked::id(ctx(), val));
-}
-
-isl::checked::id_to_id id_to_id::set(const std::string &key, const isl::checked::id &val) const
-{
-  return this->set(isl::checked::id(ctx(), key), val);
-}
-
-isl::checked::id_to_id id_to_id::set(const std::string &key, const std::string &val) const
-{
-  return this->set(isl::checked::id(ctx(), key), isl::checked::id(ctx(), val));
-}
-
-inline std::ostream &operator<<(std::ostream &os, const id_to_id &obj)
-{
-  char *str = isl_id_to_id_to_str(obj.get());
-  if (!str) {
-    os.setstate(std::ios_base::badbit);
-    return os;
-  }
-  os << str;
-  free(str);
-  return os;
-}
-
 // implementations for isl::map
 map manage(__isl_take isl_map *ptr) {
   return map(ptr);
@@ -9582,9 +8671,6 @@ map manage_copy(__isl_keep isl_map *ptr) {
   return map(ptr);
 }
 
-map::map(__isl_take isl_map *ptr)
-    : ptr(ptr) {}
-
 map::map()
     : ptr(nullptr) {}
 
@@ -9593,6 +8679,9 @@ map::map(const map &obj)
 {
   ptr = obj.copy();
 }
+
+map::map(__isl_take isl_map *ptr)
+    : ptr(ptr) {}
 
 map::map(isl::checked::basic_map bmap)
 {
@@ -9788,18 +8877,6 @@ isl::checked::map map::domain_product(const isl::checked::basic_map &map2) const
   return this->domain_product(isl::checked::map(map2));
 }
 
-isl::checked::map map::domain_reverse() const
-{
-  auto res = isl_map_domain_reverse(copy());
-  return manage(res);
-}
-
-class size map::domain_tuple_dim() const
-{
-  auto res = isl_map_domain_tuple_dim(get());
-  return manage(res);
-}
-
 isl::checked::id map::domain_tuple_id() const
 {
   auto res = isl_map_get_domain_tuple_id(get());
@@ -9809,12 +8886,6 @@ isl::checked::id map::domain_tuple_id() const
 isl::checked::id map::get_domain_tuple_id() const
 {
   return domain_tuple_id();
-}
-
-isl::checked::map map::drop_unused_params() const
-{
-  auto res = isl_map_drop_unused_params(copy());
-  return manage(res);
 }
 
 isl::checked::map map::empty(isl::checked::space space)
@@ -9876,13 +8947,12 @@ isl::checked::map map::factor_range() const
   return manage(res);
 }
 
-isl::checked::map map::fixed_power(isl::checked::val exp) const
+isl::checked::union_map map::fixed_power(const isl::checked::val &exp) const
 {
-  auto res = isl_map_fixed_power_val(copy(), exp.release());
-  return manage(res);
+  return isl::checked::union_map(*this).fixed_power(exp);
 }
 
-isl::checked::map map::fixed_power(long exp) const
+isl::checked::union_map map::fixed_power(long exp) const
 {
   return this->fixed_power(isl::checked::val(ctx(), exp));
 }
@@ -9961,10 +9031,9 @@ isl::checked::map map::gist_domain(const isl::checked::point &context) const
   return this->gist_domain(isl::checked::set(context));
 }
 
-isl::checked::map map::gist_params(isl::checked::set context) const
+isl::checked::union_map map::gist_params(const isl::checked::set &set) const
 {
-  auto res = isl_map_gist_params(copy(), context.release());
-  return manage(res);
+  return isl::checked::union_map(*this).gist_params(set);
 }
 
 isl::checked::union_map map::gist_range(const isl::checked::union_set &uset) const
@@ -10058,27 +9127,6 @@ isl::checked::map map::intersect_domain_factor_range(const isl::checked::basic_m
   return this->intersect_domain_factor_range(isl::checked::map(factor));
 }
 
-isl::checked::map map::intersect_domain_wrapped_domain(isl::checked::set domain) const
-{
-  auto res = isl_map_intersect_domain_wrapped_domain(copy(), domain.release());
-  return manage(res);
-}
-
-isl::checked::union_map map::intersect_domain_wrapped_domain(const isl::checked::union_set &domain) const
-{
-  return isl::checked::union_map(*this).intersect_domain_wrapped_domain(domain);
-}
-
-isl::checked::map map::intersect_domain_wrapped_domain(const isl::checked::basic_set &domain) const
-{
-  return this->intersect_domain_wrapped_domain(isl::checked::set(domain));
-}
-
-isl::checked::map map::intersect_domain_wrapped_domain(const isl::checked::point &domain) const
-{
-  return this->intersect_domain_wrapped_domain(isl::checked::set(domain));
-}
-
 isl::checked::map map::intersect_params(isl::checked::set params) const
 {
   auto res = isl_map_intersect_params(copy(), params.release());
@@ -10141,27 +9189,6 @@ isl::checked::union_map map::intersect_range_factor_range(const isl::checked::un
 isl::checked::map map::intersect_range_factor_range(const isl::checked::basic_map &factor) const
 {
   return this->intersect_range_factor_range(isl::checked::map(factor));
-}
-
-isl::checked::map map::intersect_range_wrapped_domain(isl::checked::set domain) const
-{
-  auto res = isl_map_intersect_range_wrapped_domain(copy(), domain.release());
-  return manage(res);
-}
-
-isl::checked::union_map map::intersect_range_wrapped_domain(const isl::checked::union_set &domain) const
-{
-  return isl::checked::union_map(*this).intersect_range_wrapped_domain(domain);
-}
-
-isl::checked::map map::intersect_range_wrapped_domain(const isl::checked::basic_set &domain) const
-{
-  return this->intersect_range_wrapped_domain(isl::checked::set(domain));
-}
-
-isl::checked::map map::intersect_range_wrapped_domain(const isl::checked::point &domain) const
-{
-  return this->intersect_range_wrapped_domain(isl::checked::set(domain));
 }
 
 boolean map::is_bijective() const
@@ -10311,11 +9338,6 @@ isl::checked::map map::lower_bound(isl::checked::multi_pw_aff lower) const
   return manage(res);
 }
 
-isl::checked::map_list map::map_list() const
-{
-  return isl::checked::union_map(*this).map_list();
-}
-
 isl::checked::multi_pw_aff map::max_multi_pw_aff() const
 {
   auto res = isl_map_max_multi_pw_aff(copy());
@@ -10325,18 +9347,6 @@ isl::checked::multi_pw_aff map::max_multi_pw_aff() const
 isl::checked::multi_pw_aff map::min_multi_pw_aff() const
 {
   auto res = isl_map_min_multi_pw_aff(copy());
-  return manage(res);
-}
-
-class size map::n_basic_map() const
-{
-  auto res = isl_map_n_basic_map(get());
-  return manage(res);
-}
-
-isl::checked::set map::params() const
-{
-  auto res = isl_map_params(copy());
   return manage(res);
 }
 
@@ -10408,23 +9418,6 @@ isl::checked::map map::project_out_all_params() const
   return manage(res);
 }
 
-isl::checked::map map::project_out_param(isl::checked::id id) const
-{
-  auto res = isl_map_project_out_param_id(copy(), id.release());
-  return manage(res);
-}
-
-isl::checked::map map::project_out_param(const std::string &id) const
-{
-  return this->project_out_param(isl::checked::id(ctx(), id));
-}
-
-isl::checked::map map::project_out_param(isl::checked::id_list list) const
-{
-  auto res = isl_map_project_out_param_id_list(copy(), list.release());
-  return manage(res);
-}
-
 isl::checked::set map::range() const
 {
   auto res = isl_map_range(copy());
@@ -10441,17 +9434,6 @@ isl::checked::map map::range_factor_range() const
 {
   auto res = isl_map_range_factor_range(copy());
   return manage(res);
-}
-
-isl::checked::fixed_box map::range_lattice_tile() const
-{
-  auto res = isl_map_get_range_lattice_tile(get());
-  return manage(res);
-}
-
-isl::checked::fixed_box map::get_range_lattice_tile() const
-{
-  return range_lattice_tile();
 }
 
 isl::checked::union_map map::range_map() const
@@ -10490,12 +9472,6 @@ isl::checked::fixed_box map::range_simple_fixed_box_hull() const
 isl::checked::fixed_box map::get_range_simple_fixed_box_hull() const
 {
   return range_simple_fixed_box_hull();
-}
-
-class size map::range_tuple_dim() const
-{
-  auto res = isl_map_range_tuple_dim(get());
-  return manage(res);
 }
 
 isl::checked::id map::range_tuple_id() const
@@ -10580,12 +9556,6 @@ isl::checked::union_map map::subtract_range(const isl::checked::union_set &dom) 
   return isl::checked::union_map(*this).subtract_range(dom);
 }
 
-isl::checked::map_list map::to_list() const
-{
-  auto res = isl_map_to_list(copy());
-  return manage(res);
-}
-
 isl::checked::union_map map::to_union_map() const
 {
   auto res = isl_map_to_union_map(copy());
@@ -10656,178 +9626,6 @@ inline std::ostream &operator<<(std::ostream &os, const map &obj)
   return os;
 }
 
-// implementations for isl::map_list
-map_list manage(__isl_take isl_map_list *ptr) {
-  return map_list(ptr);
-}
-map_list manage_copy(__isl_keep isl_map_list *ptr) {
-  ptr = isl_map_list_copy(ptr);
-  return map_list(ptr);
-}
-
-map_list::map_list(__isl_take isl_map_list *ptr)
-    : ptr(ptr) {}
-
-map_list::map_list()
-    : ptr(nullptr) {}
-
-map_list::map_list(const map_list &obj)
-    : ptr(nullptr)
-{
-  ptr = obj.copy();
-}
-
-map_list::map_list(isl::checked::ctx ctx, int n)
-{
-  auto res = isl_map_list_alloc(ctx.release(), n);
-  ptr = res;
-}
-
-map_list::map_list(isl::checked::map el)
-{
-  auto res = isl_map_list_from_map(el.release());
-  ptr = res;
-}
-
-map_list::map_list(isl::checked::ctx ctx, const std::string &str)
-{
-  auto res = isl_map_list_read_from_str(ctx.release(), str.c_str());
-  ptr = res;
-}
-
-map_list &map_list::operator=(map_list obj) {
-  std::swap(this->ptr, obj.ptr);
-  return *this;
-}
-
-map_list::~map_list() {
-  if (ptr)
-    isl_map_list_free(ptr);
-}
-
-__isl_give isl_map_list *map_list::copy() const & {
-  return isl_map_list_copy(ptr);
-}
-
-__isl_keep isl_map_list *map_list::get() const {
-  return ptr;
-}
-
-__isl_give isl_map_list *map_list::release() {
-  isl_map_list *tmp = ptr;
-  ptr = nullptr;
-  return tmp;
-}
-
-bool map_list::is_null() const {
-  return ptr == nullptr;
-}
-
-isl::checked::ctx map_list::ctx() const {
-  return isl::checked::ctx(isl_map_list_get_ctx(ptr));
-}
-
-isl::checked::map_list map_list::add(isl::checked::map el) const
-{
-  auto res = isl_map_list_add(copy(), el.release());
-  return manage(res);
-}
-
-isl::checked::map map_list::at(int index) const
-{
-  auto res = isl_map_list_get_at(get(), index);
-  return manage(res);
-}
-
-isl::checked::map map_list::get_at(int index) const
-{
-  return at(index);
-}
-
-isl::checked::map_list map_list::clear() const
-{
-  auto res = isl_map_list_clear(copy());
-  return manage(res);
-}
-
-isl::checked::map_list map_list::concat(isl::checked::map_list list2) const
-{
-  auto res = isl_map_list_concat(copy(), list2.release());
-  return manage(res);
-}
-
-isl::checked::map_list map_list::drop(unsigned int first, unsigned int n) const
-{
-  auto res = isl_map_list_drop(copy(), first, n);
-  return manage(res);
-}
-
-stat map_list::foreach(const std::function<stat(isl::checked::map)> &fn) const
-{
-  struct fn_data {
-    std::function<stat(isl::checked::map)> func;
-  } fn_data = { fn };
-  auto fn_lambda = [](isl_map *arg_0, void *arg_1) -> isl_stat {
-    auto *data = static_cast<struct fn_data *>(arg_1);
-    auto ret = (data->func)(manage(arg_0));
-    return ret.release();
-  };
-  auto res = isl_map_list_foreach(get(), fn_lambda, &fn_data);
-  return manage(res);
-}
-
-stat map_list::foreach_scc(const std::function<boolean(isl::checked::map, isl::checked::map)> &follows, const std::function<stat(isl::checked::map_list)> &fn) const
-{
-  struct follows_data {
-    std::function<boolean(isl::checked::map, isl::checked::map)> func;
-  } follows_data = { follows };
-  auto follows_lambda = [](isl_map *arg_0, isl_map *arg_1, void *arg_2) -> isl_bool {
-    auto *data = static_cast<struct follows_data *>(arg_2);
-    auto ret = (data->func)(manage_copy(arg_0), manage_copy(arg_1));
-    return ret.release();
-  };
-  struct fn_data {
-    std::function<stat(isl::checked::map_list)> func;
-  } fn_data = { fn };
-  auto fn_lambda = [](isl_map_list *arg_0, void *arg_1) -> isl_stat {
-    auto *data = static_cast<struct fn_data *>(arg_1);
-    auto ret = (data->func)(manage(arg_0));
-    return ret.release();
-  };
-  auto res = isl_map_list_foreach_scc(get(), follows_lambda, &follows_data, fn_lambda, &fn_data);
-  return manage(res);
-}
-
-isl::checked::map_list map_list::insert(unsigned int pos, isl::checked::map el) const
-{
-  auto res = isl_map_list_insert(copy(), pos, el.release());
-  return manage(res);
-}
-
-isl::checked::map_list map_list::set_at(int index, isl::checked::map el) const
-{
-  auto res = isl_map_list_set_at(copy(), index, el.release());
-  return manage(res);
-}
-
-class size map_list::size() const
-{
-  auto res = isl_map_list_size(get());
-  return manage(res);
-}
-
-inline std::ostream &operator<<(std::ostream &os, const map_list &obj)
-{
-  char *str = isl_map_list_to_str(obj.get());
-  if (!str) {
-    os.setstate(std::ios_base::badbit);
-    return os;
-  }
-  os << str;
-  free(str);
-  return os;
-}
-
 // implementations for isl::multi_aff
 multi_aff manage(__isl_take isl_multi_aff *ptr) {
   return multi_aff(ptr);
@@ -10837,9 +9635,6 @@ multi_aff manage_copy(__isl_keep isl_multi_aff *ptr) {
   return multi_aff(ptr);
 }
 
-multi_aff::multi_aff(__isl_take isl_multi_aff *ptr)
-    : ptr(ptr) {}
-
 multi_aff::multi_aff()
     : ptr(nullptr) {}
 
@@ -10848,6 +9643,9 @@ multi_aff::multi_aff(const multi_aff &obj)
 {
   ptr = obj.copy();
 }
+
+multi_aff::multi_aff(__isl_take isl_multi_aff *ptr)
+    : ptr(ptr) {}
 
 multi_aff::multi_aff(isl::checked::aff aff)
 {
@@ -11040,17 +9838,6 @@ isl::checked::multi_aff multi_aff::domain_map(isl::checked::space space)
   return manage(res);
 }
 
-isl::checked::multi_aff multi_aff::domain_reverse() const
-{
-  auto res = isl_multi_aff_domain_reverse(copy());
-  return manage(res);
-}
-
-isl::checked::pw_multi_aff multi_aff::drop_unused_params() const
-{
-  return isl::checked::pw_multi_aff(*this).drop_unused_params();
-}
-
 isl::checked::pw_multi_aff multi_aff::extract_pw_multi_aff(const isl::checked::space &space) const
 {
   return isl::checked::pw_multi_aff(*this).extract_pw_multi_aff(space);
@@ -11117,12 +9904,6 @@ isl::checked::multi_aff multi_aff::gist(const isl::checked::basic_set &context) 
 isl::checked::multi_aff multi_aff::gist(const isl::checked::point &context) const
 {
   return this->gist(isl::checked::set(context));
-}
-
-isl::checked::multi_aff multi_aff::gist_params(isl::checked::set context) const
-{
-  auto res = isl_multi_aff_gist_params(copy(), context.release());
-  return manage(res);
 }
 
 boolean multi_aff::has_range_tuple_id() const
@@ -11285,16 +10066,6 @@ boolean multi_aff::plain_is_equal(const isl::checked::multi_union_pw_aff &multi2
   return isl::checked::pw_multi_aff(*this).plain_is_equal(multi2);
 }
 
-boolean multi_aff::plain_is_equal(const isl::checked::pw_multi_aff &pma2) const
-{
-  return isl::checked::pw_multi_aff(*this).plain_is_equal(pma2);
-}
-
-boolean multi_aff::plain_is_equal(const isl::checked::union_pw_multi_aff &upma2) const
-{
-  return isl::checked::pw_multi_aff(*this).plain_is_equal(upma2);
-}
-
 boolean multi_aff::plain_is_equal(const isl::checked::aff &multi2) const
 {
   return this->plain_is_equal(isl::checked::multi_aff(multi2));
@@ -11355,11 +10126,6 @@ isl::checked::union_pw_multi_aff multi_aff::pullback(const isl::checked::union_p
 isl::checked::multi_aff multi_aff::pullback(const isl::checked::aff &ma2) const
 {
   return this->pullback(isl::checked::multi_aff(ma2));
-}
-
-isl::checked::pw_multi_aff_list multi_aff::pw_multi_aff_list() const
-{
-  return isl::checked::pw_multi_aff(*this).pw_multi_aff_list();
 }
 
 isl::checked::pw_multi_aff multi_aff::range_factor_domain() const
@@ -11631,9 +10397,6 @@ multi_id manage_copy(__isl_keep isl_multi_id *ptr) {
   return multi_id(ptr);
 }
 
-multi_id::multi_id(__isl_take isl_multi_id *ptr)
-    : ptr(ptr) {}
-
 multi_id::multi_id()
     : ptr(nullptr) {}
 
@@ -11642,6 +10405,9 @@ multi_id::multi_id(const multi_id &obj)
 {
   ptr = obj.copy();
 }
+
+multi_id::multi_id(__isl_take isl_multi_id *ptr)
+    : ptr(ptr) {}
 
 multi_id::multi_id(isl::checked::space space, isl::checked::id_list list)
 {
@@ -11776,9 +10542,6 @@ multi_pw_aff manage_copy(__isl_keep isl_multi_pw_aff *ptr) {
   return multi_pw_aff(ptr);
 }
 
-multi_pw_aff::multi_pw_aff(__isl_take isl_multi_pw_aff *ptr)
-    : ptr(ptr) {}
-
 multi_pw_aff::multi_pw_aff()
     : ptr(nullptr) {}
 
@@ -11787,6 +10550,9 @@ multi_pw_aff::multi_pw_aff(const multi_pw_aff &obj)
 {
   ptr = obj.copy();
 }
+
+multi_pw_aff::multi_pw_aff(__isl_take isl_multi_pw_aff *ptr)
+    : ptr(ptr) {}
 
 multi_pw_aff::multi_pw_aff(isl::checked::aff aff)
 {
@@ -11910,12 +10676,6 @@ isl::checked::map multi_pw_aff::as_map() const
   return manage(res);
 }
 
-isl::checked::multi_aff multi_pw_aff::as_multi_aff() const
-{
-  auto res = isl_multi_pw_aff_as_multi_aff(copy());
-  return manage(res);
-}
-
 isl::checked::set multi_pw_aff::as_set() const
 {
   auto res = isl_multi_pw_aff_as_set(copy());
@@ -11960,12 +10720,6 @@ isl::checked::multi_pw_aff multi_pw_aff::coalesce() const
 isl::checked::set multi_pw_aff::domain() const
 {
   auto res = isl_multi_pw_aff_domain(copy());
-  return manage(res);
-}
-
-isl::checked::multi_pw_aff multi_pw_aff::domain_reverse() const
-{
-  auto res = isl_multi_pw_aff_domain_reverse(copy());
   return manage(res);
 }
 
@@ -12019,12 +10773,6 @@ isl::checked::multi_pw_aff multi_pw_aff::gist(const isl::checked::basic_set &set
 isl::checked::multi_pw_aff multi_pw_aff::gist(const isl::checked::point &set) const
 {
   return this->gist(isl::checked::set(set));
-}
-
-isl::checked::multi_pw_aff multi_pw_aff::gist_params(isl::checked::set set) const
-{
-  auto res = isl_multi_pw_aff_gist_params(copy(), set.release());
-  return manage(res);
 }
 
 boolean multi_pw_aff::has_range_tuple_id() const
@@ -12098,12 +10846,6 @@ boolean multi_pw_aff::involves_param(const std::string &id) const
 boolean multi_pw_aff::involves_param(const isl::checked::id_list &list) const
 {
   auto res = isl_multi_pw_aff_involves_param_id_list(get(), list.get());
-  return manage(res);
-}
-
-boolean multi_pw_aff::isa_multi_aff() const
-{
-  auto res = isl_multi_pw_aff_isa_multi_aff(get());
   return manage(res);
 }
 
@@ -12424,9 +11166,6 @@ multi_union_pw_aff manage_copy(__isl_keep isl_multi_union_pw_aff *ptr) {
   return multi_union_pw_aff(ptr);
 }
 
-multi_union_pw_aff::multi_union_pw_aff(__isl_take isl_multi_union_pw_aff *ptr)
-    : ptr(ptr) {}
-
 multi_union_pw_aff::multi_union_pw_aff()
     : ptr(nullptr) {}
 
@@ -12435,6 +11174,9 @@ multi_union_pw_aff::multi_union_pw_aff(const multi_union_pw_aff &obj)
 {
   ptr = obj.copy();
 }
+
+multi_union_pw_aff::multi_union_pw_aff(__isl_take isl_multi_union_pw_aff *ptr)
+    : ptr(ptr) {}
 
 multi_union_pw_aff::multi_union_pw_aff(isl::checked::multi_pw_aff mpa)
 {
@@ -12536,12 +11278,6 @@ isl::checked::multi_union_pw_aff multi_union_pw_aff::flat_range_product(isl::che
 isl::checked::multi_union_pw_aff multi_union_pw_aff::gist(isl::checked::union_set context) const
 {
   auto res = isl_multi_union_pw_aff_gist(copy(), context.release());
-  return manage(res);
-}
-
-isl::checked::multi_union_pw_aff multi_union_pw_aff::gist_params(isl::checked::set context) const
-{
-  auto res = isl_multi_union_pw_aff_gist_params(copy(), context.release());
   return manage(res);
 }
 
@@ -12728,9 +11464,6 @@ multi_val manage_copy(__isl_keep isl_multi_val *ptr) {
   return multi_val(ptr);
 }
 
-multi_val::multi_val(__isl_take isl_multi_val *ptr)
-    : ptr(ptr) {}
-
 multi_val::multi_val()
     : ptr(nullptr) {}
 
@@ -12739,6 +11472,9 @@ multi_val::multi_val(const multi_val &obj)
 {
   ptr = obj.copy();
 }
+
+multi_val::multi_val(__isl_take isl_multi_val *ptr)
+    : ptr(ptr) {}
 
 multi_val::multi_val(isl::checked::space space, isl::checked::val_list list)
 {
@@ -13000,9 +11736,6 @@ point manage_copy(__isl_keep isl_point *ptr) {
   return point(ptr);
 }
 
-point::point(__isl_take isl_point *ptr)
-    : ptr(ptr) {}
-
 point::point()
     : ptr(nullptr) {}
 
@@ -13011,6 +11744,9 @@ point::point(const point &obj)
 {
   ptr = obj.copy();
 }
+
+point::point(__isl_take isl_point *ptr)
+    : ptr(ptr) {}
 
 point &point::operator=(point obj) {
   std::swap(this->ptr, obj.ptr);
@@ -13109,11 +11845,6 @@ isl::checked::val point::dim_min_val(int pos) const
   return isl::checked::basic_set(*this).dim_min_val(pos);
 }
 
-isl::checked::set point::drop_unused_params() const
-{
-  return isl::checked::basic_set(*this).drop_unused_params();
-}
-
 boolean point::every_set(const std::function<boolean(isl::checked::set)> &test) const
 {
   return isl::checked::basic_set(*this).every_set(test);
@@ -13159,9 +11890,9 @@ isl::checked::union_set point::gist(const isl::checked::union_set &context) cons
   return isl::checked::basic_set(*this).gist(context);
 }
 
-isl::checked::set point::gist_params(const isl::checked::set &context) const
+isl::checked::union_set point::gist_params(const isl::checked::set &set) const
 {
-  return isl::checked::basic_set(*this).gist_params(context);
+  return isl::checked::basic_set(*this).gist_params(set);
 }
 
 isl::checked::map point::identity() const
@@ -13279,11 +12010,6 @@ boolean point::isa_set() const
   return isl::checked::basic_set(*this).isa_set();
 }
 
-isl::checked::fixed_box point::lattice_tile() const
-{
-  return isl::checked::basic_set(*this).lattice_tile();
-}
-
 isl::checked::set point::lexmax() const
 {
   return isl::checked::basic_set(*this).lexmax();
@@ -13343,21 +12069,6 @@ isl::checked::multi_val point::multi_val() const
 isl::checked::multi_val point::get_multi_val() const
 {
   return multi_val();
-}
-
-class size point::n_basic_set() const
-{
-  return isl::checked::basic_set(*this).n_basic_set();
-}
-
-isl::checked::pw_aff point::param_pw_aff_on_domain(const isl::checked::id &id) const
-{
-  return isl::checked::basic_set(*this).param_pw_aff_on_domain(id);
-}
-
-isl::checked::pw_aff point::param_pw_aff_on_domain(const std::string &id) const
-{
-  return this->param_pw_aff_on_domain(isl::checked::id(ctx(), id));
 }
 
 isl::checked::basic_set point::params() const
@@ -13420,16 +12131,6 @@ isl::checked::set point::project_out_param(const isl::checked::id_list &list) co
   return isl::checked::basic_set(*this).project_out_param(list);
 }
 
-isl::checked::pw_aff point::pw_aff_on_domain(const isl::checked::val &v) const
-{
-  return isl::checked::basic_set(*this).pw_aff_on_domain(v);
-}
-
-isl::checked::pw_aff point::pw_aff_on_domain(long v) const
-{
-  return this->pw_aff_on_domain(isl::checked::val(ctx(), v));
-}
-
 isl::checked::pw_multi_aff point::pw_multi_aff_on_domain(const isl::checked::multi_val &mv) const
 {
   return isl::checked::basic_set(*this).pw_multi_aff_on_domain(mv);
@@ -13443,11 +12144,6 @@ isl::checked::basic_set point::sample() const
 isl::checked::point point::sample_point() const
 {
   return isl::checked::basic_set(*this).sample_point();
-}
-
-isl::checked::set_list point::set_list() const
-{
-  return isl::checked::basic_set(*this).set_list();
 }
 
 isl::checked::fixed_box point::simple_fixed_box_hull() const
@@ -13475,7 +12171,7 @@ isl::checked::union_set point::subtract(const isl::checked::union_set &uset2) co
   return isl::checked::basic_set(*this).subtract(uset2);
 }
 
-isl::checked::set_list point::to_list() const
+isl::checked::union_set_list point::to_list() const
 {
   return isl::checked::basic_set(*this).to_list();
 }
@@ -13494,11 +12190,6 @@ isl::checked::union_set point::to_union_set() const
 isl::checked::map point::translation() const
 {
   return isl::checked::basic_set(*this).translation();
-}
-
-class size point::tuple_dim() const
-{
-  return isl::checked::basic_set(*this).tuple_dim();
 }
 
 isl::checked::set point::unbind_params(const isl::checked::multi_id &tuple) const
@@ -13546,11 +12237,6 @@ isl::checked::set point::upper_bound(const isl::checked::multi_val &upper) const
   return isl::checked::basic_set(*this).upper_bound(upper);
 }
 
-isl::checked::set point::wrapped_reverse() const
-{
-  return isl::checked::basic_set(*this).wrapped_reverse();
-}
-
 inline std::ostream &operator<<(std::ostream &os, const point &obj)
 {
   char *str = isl_point_to_str(obj.get());
@@ -13572,9 +12258,6 @@ pw_aff manage_copy(__isl_keep isl_pw_aff *ptr) {
   return pw_aff(ptr);
 }
 
-pw_aff::pw_aff(__isl_take isl_pw_aff *ptr)
-    : ptr(ptr) {}
-
 pw_aff::pw_aff()
     : ptr(nullptr) {}
 
@@ -13583,6 +12266,9 @@ pw_aff::pw_aff(const pw_aff &obj)
 {
   ptr = obj.copy();
 }
+
+pw_aff::pw_aff(__isl_take isl_pw_aff *ptr)
+    : ptr(ptr) {}
 
 pw_aff::pw_aff(isl::checked::aff aff)
 {
@@ -13785,18 +12471,6 @@ isl::checked::set pw_aff::domain() const
   return manage(res);
 }
 
-isl::checked::pw_aff pw_aff::domain_reverse() const
-{
-  auto res = isl_pw_aff_domain_reverse(copy());
-  return manage(res);
-}
-
-isl::checked::pw_aff pw_aff::drop_unused_params() const
-{
-  auto res = isl_pw_aff_drop_unused_params(copy());
-  return manage(res);
-}
-
 isl::checked::set pw_aff::eq_set(isl::checked::pw_aff pwaff2) const
 {
   auto res = isl_pw_aff_eq_set(copy(), pwaff2.release());
@@ -13870,12 +12544,6 @@ isl::checked::pw_aff pw_aff::gist(const isl::checked::basic_set &context) const
 isl::checked::pw_aff pw_aff::gist(const isl::checked::point &context) const
 {
   return this->gist(isl::checked::set(context));
-}
-
-isl::checked::pw_aff pw_aff::gist_params(isl::checked::set context) const
-{
-  auto res = isl_pw_aff_gist_params(copy(), context.release());
-  return manage(res);
 }
 
 isl::checked::set pw_aff::gt_set(isl::checked::pw_aff pwaff2) const
@@ -14021,12 +12689,6 @@ isl::checked::multi_val pw_aff::max_multi_val() const
   return isl::checked::pw_multi_aff(*this).max_multi_val();
 }
 
-isl::checked::val pw_aff::max_val() const
-{
-  auto res = isl_pw_aff_max_val(copy());
-  return manage(res);
-}
-
 isl::checked::multi_pw_aff pw_aff::min(const isl::checked::multi_pw_aff &multi2) const
 {
   return isl::checked::pw_multi_aff(*this).min(multi2);
@@ -14046,12 +12708,6 @@ isl::checked::pw_aff pw_aff::min(const isl::checked::aff &pwaff2) const
 isl::checked::multi_val pw_aff::min_multi_val() const
 {
   return isl::checked::pw_multi_aff(*this).min_multi_val();
-}
-
-isl::checked::val pw_aff::min_val() const
-{
-  auto res = isl_pw_aff_min_val(copy());
-  return manage(res);
 }
 
 isl::checked::pw_aff pw_aff::mod(isl::checked::val mod) const
@@ -14094,12 +12750,6 @@ isl::checked::pw_aff pw_aff::param_on_domain(isl::checked::set domain, isl::chec
   return manage(res);
 }
 
-isl::checked::set pw_aff::params() const
-{
-  auto res = isl_pw_aff_params(copy());
-  return manage(res);
-}
-
 boolean pw_aff::plain_is_empty() const
 {
   return isl::checked::union_pw_aff(*this).plain_is_empty();
@@ -14113,32 +12763,6 @@ boolean pw_aff::plain_is_equal(const isl::checked::multi_pw_aff &multi2) const
 boolean pw_aff::plain_is_equal(const isl::checked::multi_union_pw_aff &multi2) const
 {
   return isl::checked::union_pw_aff(*this).plain_is_equal(multi2);
-}
-
-boolean pw_aff::plain_is_equal(const isl::checked::pw_aff &pwaff2) const
-{
-  auto res = isl_pw_aff_plain_is_equal(get(), pwaff2.get());
-  return manage(res);
-}
-
-boolean pw_aff::plain_is_equal(const isl::checked::pw_multi_aff &pma2) const
-{
-  return isl::checked::pw_multi_aff(*this).plain_is_equal(pma2);
-}
-
-boolean pw_aff::plain_is_equal(const isl::checked::union_pw_aff &upa2) const
-{
-  return isl::checked::union_pw_aff(*this).plain_is_equal(upa2);
-}
-
-boolean pw_aff::plain_is_equal(const isl::checked::union_pw_multi_aff &upma2) const
-{
-  return isl::checked::union_pw_aff(*this).plain_is_equal(upma2);
-}
-
-boolean pw_aff::plain_is_equal(const isl::checked::aff &pwaff2) const
-{
-  return this->plain_is_equal(isl::checked::pw_aff(pwaff2));
 }
 
 isl::checked::pw_multi_aff pw_aff::preimage_domain_wrapped_domain(const isl::checked::pw_multi_aff &pma2) const
@@ -14184,11 +12808,6 @@ isl::checked::union_pw_aff pw_aff::pullback(const isl::checked::union_pw_multi_a
   return isl::checked::union_pw_aff(*this).pullback(upma);
 }
 
-isl::checked::pw_multi_aff_list pw_aff::pw_multi_aff_list() const
-{
-  return isl::checked::union_pw_aff(*this).pw_multi_aff_list();
-}
-
 isl::checked::pw_multi_aff pw_aff::range_factor_domain() const
 {
   return isl::checked::pw_multi_aff(*this).range_factor_domain();
@@ -14229,6 +12848,11 @@ isl::checked::multi_pw_aff pw_aff::reset_range_tuple_id() const
   return isl::checked::multi_pw_aff(*this).reset_range_tuple_id();
 }
 
+isl::checked::multi_pw_aff pw_aff::scale(const isl::checked::multi_val &mv) const
+{
+  return isl::checked::multi_pw_aff(*this).scale(mv);
+}
+
 isl::checked::pw_aff pw_aff::scale(isl::checked::val v) const
 {
   auto res = isl_pw_aff_scale_val(copy(), v.release());
@@ -14240,9 +12864,9 @@ isl::checked::pw_aff pw_aff::scale(long v) const
   return this->scale(isl::checked::val(ctx(), v));
 }
 
-isl::checked::pw_multi_aff pw_aff::scale(const isl::checked::multi_val &mv) const
+isl::checked::multi_pw_aff pw_aff::scale_down(const isl::checked::multi_val &mv) const
 {
-  return isl::checked::pw_multi_aff(*this).scale(mv);
+  return isl::checked::multi_pw_aff(*this).scale_down(mv);
 }
 
 isl::checked::pw_aff pw_aff::scale_down(isl::checked::val f) const
@@ -14254,11 +12878,6 @@ isl::checked::pw_aff pw_aff::scale_down(isl::checked::val f) const
 isl::checked::pw_aff pw_aff::scale_down(long f) const
 {
   return this->scale_down(isl::checked::val(ctx(), f));
-}
-
-isl::checked::pw_multi_aff pw_aff::scale_down(const isl::checked::multi_val &mv) const
-{
-  return isl::checked::pw_multi_aff(*this).scale_down(mv);
 }
 
 isl::checked::multi_pw_aff pw_aff::set_at(int pos, const isl::checked::pw_aff &el) const
@@ -14288,13 +12907,7 @@ class size pw_aff::size() const
 
 isl::checked::space pw_aff::space() const
 {
-  auto res = isl_pw_aff_get_space(get());
-  return manage(res);
-}
-
-isl::checked::space pw_aff::get_space() const
-{
-  return space();
+  return isl::checked::union_pw_aff(*this).space();
 }
 
 isl::checked::multi_pw_aff pw_aff::sub(const isl::checked::multi_pw_aff &multi2) const
@@ -14455,9 +13068,6 @@ pw_aff_list manage_copy(__isl_keep isl_pw_aff_list *ptr) {
   return pw_aff_list(ptr);
 }
 
-pw_aff_list::pw_aff_list(__isl_take isl_pw_aff_list *ptr)
-    : ptr(ptr) {}
-
 pw_aff_list::pw_aff_list()
     : ptr(nullptr) {}
 
@@ -14466,6 +13076,9 @@ pw_aff_list::pw_aff_list(const pw_aff_list &obj)
 {
   ptr = obj.copy();
 }
+
+pw_aff_list::pw_aff_list(__isl_take isl_pw_aff_list *ptr)
+    : ptr(ptr) {}
 
 pw_aff_list::pw_aff_list(isl::checked::ctx ctx, int n)
 {
@@ -14476,12 +13089,6 @@ pw_aff_list::pw_aff_list(isl::checked::ctx ctx, int n)
 pw_aff_list::pw_aff_list(isl::checked::pw_aff el)
 {
   auto res = isl_pw_aff_list_from_pw_aff(el.release());
-  ptr = res;
-}
-
-pw_aff_list::pw_aff_list(isl::checked::ctx ctx, const std::string &str)
-{
-  auto res = isl_pw_aff_list_read_from_str(ctx.release(), str.c_str());
   ptr = res;
 }
 
@@ -14566,37 +13173,9 @@ stat pw_aff_list::foreach(const std::function<stat(isl::checked::pw_aff)> &fn) c
   return manage(res);
 }
 
-stat pw_aff_list::foreach_scc(const std::function<boolean(isl::checked::pw_aff, isl::checked::pw_aff)> &follows, const std::function<stat(isl::checked::pw_aff_list)> &fn) const
-{
-  struct follows_data {
-    std::function<boolean(isl::checked::pw_aff, isl::checked::pw_aff)> func;
-  } follows_data = { follows };
-  auto follows_lambda = [](isl_pw_aff *arg_0, isl_pw_aff *arg_1, void *arg_2) -> isl_bool {
-    auto *data = static_cast<struct follows_data *>(arg_2);
-    auto ret = (data->func)(manage_copy(arg_0), manage_copy(arg_1));
-    return ret.release();
-  };
-  struct fn_data {
-    std::function<stat(isl::checked::pw_aff_list)> func;
-  } fn_data = { fn };
-  auto fn_lambda = [](isl_pw_aff_list *arg_0, void *arg_1) -> isl_stat {
-    auto *data = static_cast<struct fn_data *>(arg_1);
-    auto ret = (data->func)(manage(arg_0));
-    return ret.release();
-  };
-  auto res = isl_pw_aff_list_foreach_scc(get(), follows_lambda, &follows_data, fn_lambda, &fn_data);
-  return manage(res);
-}
-
 isl::checked::pw_aff_list pw_aff_list::insert(unsigned int pos, isl::checked::pw_aff el) const
 {
   auto res = isl_pw_aff_list_insert(copy(), pos, el.release());
-  return manage(res);
-}
-
-isl::checked::pw_aff_list pw_aff_list::set_at(int index, isl::checked::pw_aff el) const
-{
-  auto res = isl_pw_aff_list_set_at(copy(), index, el.release());
   return manage(res);
 }
 
@@ -14627,9 +13206,6 @@ pw_multi_aff manage_copy(__isl_keep isl_pw_multi_aff *ptr) {
   return pw_multi_aff(ptr);
 }
 
-pw_multi_aff::pw_multi_aff(__isl_take isl_pw_multi_aff *ptr)
-    : ptr(ptr) {}
-
 pw_multi_aff::pw_multi_aff()
     : ptr(nullptr) {}
 
@@ -14638,6 +13214,9 @@ pw_multi_aff::pw_multi_aff(const pw_multi_aff &obj)
 {
   ptr = obj.copy();
 }
+
+pw_multi_aff::pw_multi_aff(__isl_take isl_pw_multi_aff *ptr)
+    : ptr(ptr) {}
 
 pw_multi_aff::pw_multi_aff(isl::checked::multi_aff ma)
 {
@@ -14821,18 +13400,6 @@ isl::checked::pw_multi_aff pw_multi_aff::domain_map(isl::checked::space space)
   return manage(res);
 }
 
-isl::checked::pw_multi_aff pw_multi_aff::domain_reverse() const
-{
-  auto res = isl_pw_multi_aff_domain_reverse(copy());
-  return manage(res);
-}
-
-isl::checked::pw_multi_aff pw_multi_aff::drop_unused_params() const
-{
-  auto res = isl_pw_multi_aff_drop_unused_params(copy());
-  return manage(res);
-}
-
 isl::checked::pw_multi_aff pw_multi_aff::extract_pw_multi_aff(const isl::checked::space &space) const
 {
   return isl::checked::union_pw_multi_aff(*this).extract_pw_multi_aff(space);
@@ -14902,12 +13469,6 @@ isl::checked::pw_multi_aff pw_multi_aff::gist(const isl::checked::basic_set &set
 isl::checked::pw_multi_aff pw_multi_aff::gist(const isl::checked::point &set) const
 {
   return this->gist(isl::checked::set(set));
-}
-
-isl::checked::pw_multi_aff pw_multi_aff::gist_params(isl::checked::set set) const
-{
-  auto res = isl_pw_multi_aff_gist_params(copy(), set.release());
-  return manage(res);
 }
 
 boolean pw_multi_aff::has_range_tuple_id() const
@@ -15071,27 +13632,6 @@ boolean pw_multi_aff::plain_is_equal(const isl::checked::multi_union_pw_aff &mul
   return isl::checked::multi_pw_aff(*this).plain_is_equal(multi2);
 }
 
-boolean pw_multi_aff::plain_is_equal(const isl::checked::pw_multi_aff &pma2) const
-{
-  auto res = isl_pw_multi_aff_plain_is_equal(get(), pma2.get());
-  return manage(res);
-}
-
-boolean pw_multi_aff::plain_is_equal(const isl::checked::union_pw_multi_aff &upma2) const
-{
-  return isl::checked::union_pw_multi_aff(*this).plain_is_equal(upma2);
-}
-
-boolean pw_multi_aff::plain_is_equal(const isl::checked::multi_aff &pma2) const
-{
-  return this->plain_is_equal(isl::checked::pw_multi_aff(pma2));
-}
-
-boolean pw_multi_aff::plain_is_equal(const isl::checked::pw_aff &pma2) const
-{
-  return this->plain_is_equal(isl::checked::pw_multi_aff(pma2));
-}
-
 isl::checked::pw_multi_aff pw_multi_aff::preimage_domain_wrapped_domain(isl::checked::pw_multi_aff pma2) const
 {
   auto res = isl_pw_multi_aff_preimage_domain_wrapped_domain_pw_multi_aff(copy(), pma2.release());
@@ -15154,11 +13694,6 @@ isl::checked::pw_multi_aff pw_multi_aff::pullback(isl::checked::pw_multi_aff pma
 isl::checked::union_pw_multi_aff pw_multi_aff::pullback(const isl::checked::union_pw_multi_aff &upma2) const
 {
   return isl::checked::union_pw_multi_aff(*this).pullback(upma2);
-}
-
-isl::checked::pw_multi_aff_list pw_multi_aff::pw_multi_aff_list() const
-{
-  return isl::checked::union_pw_multi_aff(*this).pw_multi_aff_list();
 }
 
 isl::checked::pw_multi_aff pw_multi_aff::range_factor_domain() const
@@ -15226,10 +13761,9 @@ isl::checked::multi_pw_aff pw_multi_aff::reset_range_tuple_id() const
   return isl::checked::multi_pw_aff(*this).reset_range_tuple_id();
 }
 
-isl::checked::pw_multi_aff pw_multi_aff::scale(isl::checked::multi_val mv) const
+isl::checked::multi_pw_aff pw_multi_aff::scale(const isl::checked::multi_val &mv) const
 {
-  auto res = isl_pw_multi_aff_scale_multi_val(copy(), mv.release());
-  return manage(res);
+  return isl::checked::multi_pw_aff(*this).scale(mv);
 }
 
 isl::checked::pw_multi_aff pw_multi_aff::scale(isl::checked::val v) const
@@ -15243,10 +13777,9 @@ isl::checked::pw_multi_aff pw_multi_aff::scale(long v) const
   return this->scale(isl::checked::val(ctx(), v));
 }
 
-isl::checked::pw_multi_aff pw_multi_aff::scale_down(isl::checked::multi_val mv) const
+isl::checked::multi_pw_aff pw_multi_aff::scale_down(const isl::checked::multi_val &mv) const
 {
-  auto res = isl_pw_multi_aff_scale_down_multi_val(copy(), mv.release());
-  return manage(res);
+  return isl::checked::multi_pw_aff(*this).scale_down(mv);
 }
 
 isl::checked::pw_multi_aff pw_multi_aff::scale_down(isl::checked::val v) const
@@ -15435,9 +13968,6 @@ pw_multi_aff_list manage_copy(__isl_keep isl_pw_multi_aff_list *ptr) {
   return pw_multi_aff_list(ptr);
 }
 
-pw_multi_aff_list::pw_multi_aff_list(__isl_take isl_pw_multi_aff_list *ptr)
-    : ptr(ptr) {}
-
 pw_multi_aff_list::pw_multi_aff_list()
     : ptr(nullptr) {}
 
@@ -15446,6 +13976,9 @@ pw_multi_aff_list::pw_multi_aff_list(const pw_multi_aff_list &obj)
 {
   ptr = obj.copy();
 }
+
+pw_multi_aff_list::pw_multi_aff_list(__isl_take isl_pw_multi_aff_list *ptr)
+    : ptr(ptr) {}
 
 pw_multi_aff_list::pw_multi_aff_list(isl::checked::ctx ctx, int n)
 {
@@ -15456,12 +13989,6 @@ pw_multi_aff_list::pw_multi_aff_list(isl::checked::ctx ctx, int n)
 pw_multi_aff_list::pw_multi_aff_list(isl::checked::pw_multi_aff el)
 {
   auto res = isl_pw_multi_aff_list_from_pw_multi_aff(el.release());
-  ptr = res;
-}
-
-pw_multi_aff_list::pw_multi_aff_list(isl::checked::ctx ctx, const std::string &str)
-{
-  auto res = isl_pw_multi_aff_list_read_from_str(ctx.release(), str.c_str());
   ptr = res;
 }
 
@@ -15546,37 +14073,9 @@ stat pw_multi_aff_list::foreach(const std::function<stat(isl::checked::pw_multi_
   return manage(res);
 }
 
-stat pw_multi_aff_list::foreach_scc(const std::function<boolean(isl::checked::pw_multi_aff, isl::checked::pw_multi_aff)> &follows, const std::function<stat(isl::checked::pw_multi_aff_list)> &fn) const
-{
-  struct follows_data {
-    std::function<boolean(isl::checked::pw_multi_aff, isl::checked::pw_multi_aff)> func;
-  } follows_data = { follows };
-  auto follows_lambda = [](isl_pw_multi_aff *arg_0, isl_pw_multi_aff *arg_1, void *arg_2) -> isl_bool {
-    auto *data = static_cast<struct follows_data *>(arg_2);
-    auto ret = (data->func)(manage_copy(arg_0), manage_copy(arg_1));
-    return ret.release();
-  };
-  struct fn_data {
-    std::function<stat(isl::checked::pw_multi_aff_list)> func;
-  } fn_data = { fn };
-  auto fn_lambda = [](isl_pw_multi_aff_list *arg_0, void *arg_1) -> isl_stat {
-    auto *data = static_cast<struct fn_data *>(arg_1);
-    auto ret = (data->func)(manage(arg_0));
-    return ret.release();
-  };
-  auto res = isl_pw_multi_aff_list_foreach_scc(get(), follows_lambda, &follows_data, fn_lambda, &fn_data);
-  return manage(res);
-}
-
 isl::checked::pw_multi_aff_list pw_multi_aff_list::insert(unsigned int pos, isl::checked::pw_multi_aff el) const
 {
   auto res = isl_pw_multi_aff_list_insert(copy(), pos, el.release());
-  return manage(res);
-}
-
-isl::checked::pw_multi_aff_list pw_multi_aff_list::set_at(int index, isl::checked::pw_multi_aff el) const
-{
-  auto res = isl_pw_multi_aff_list_set_at(copy(), index, el.release());
   return manage(res);
 }
 
@@ -15607,9 +14106,6 @@ schedule manage_copy(__isl_keep isl_schedule *ptr) {
   return schedule(ptr);
 }
 
-schedule::schedule(__isl_take isl_schedule *ptr)
-    : ptr(ptr) {}
-
 schedule::schedule()
     : ptr(nullptr) {}
 
@@ -15618,6 +14114,9 @@ schedule::schedule(const schedule &obj)
 {
   ptr = obj.copy();
 }
+
+schedule::schedule(__isl_take isl_schedule *ptr)
+    : ptr(ptr) {}
 
 schedule::schedule(isl::checked::ctx ctx, const std::string &str)
 {
@@ -15723,9 +14222,6 @@ schedule_constraints manage_copy(__isl_keep isl_schedule_constraints *ptr) {
   return schedule_constraints(ptr);
 }
 
-schedule_constraints::schedule_constraints(__isl_take isl_schedule_constraints *ptr)
-    : ptr(ptr) {}
-
 schedule_constraints::schedule_constraints()
     : ptr(nullptr) {}
 
@@ -15734,6 +14230,9 @@ schedule_constraints::schedule_constraints(const schedule_constraints &obj)
 {
   ptr = obj.copy();
 }
+
+schedule_constraints::schedule_constraints(__isl_take isl_schedule_constraints *ptr)
+    : ptr(ptr) {}
 
 schedule_constraints::schedule_constraints(isl::checked::ctx ctx, const std::string &str)
 {
@@ -15913,9 +14412,6 @@ schedule_node manage_copy(__isl_keep isl_schedule_node *ptr) {
   return schedule_node(ptr);
 }
 
-schedule_node::schedule_node(__isl_take isl_schedule_node *ptr)
-    : ptr(ptr) {}
-
 schedule_node::schedule_node()
     : ptr(nullptr) {}
 
@@ -15924,6 +14420,9 @@ schedule_node::schedule_node(const schedule_node &obj)
 {
   ptr = obj.copy();
 }
+
+schedule_node::schedule_node(__isl_take isl_schedule_node *ptr)
+    : ptr(ptr) {}
 
 schedule_node &schedule_node::operator=(schedule_node obj) {
   std::swap(this->ptr, obj.ptr);
@@ -16301,9 +14800,6 @@ inline std::ostream &operator<<(std::ostream &os, const schedule_node &obj)
 }
 
 // implementations for isl::schedule_node_band
-schedule_node_band::schedule_node_band(__isl_take isl_schedule_node *ptr)
-    : schedule_node(ptr) {}
-
 schedule_node_band::schedule_node_band()
     : schedule_node() {}
 
@@ -16311,6 +14807,9 @@ schedule_node_band::schedule_node_band(const schedule_node_band &obj)
     : schedule_node(obj)
 {
 }
+
+schedule_node_band::schedule_node_band(__isl_take isl_schedule_node *ptr)
+    : schedule_node(ptr) {}
 
 schedule_node_band &schedule_node_band::operator=(schedule_node_band obj) {
   std::swap(this->ptr, obj.ptr);
@@ -16468,9 +14967,6 @@ inline std::ostream &operator<<(std::ostream &os, const schedule_node_band &obj)
 }
 
 // implementations for isl::schedule_node_context
-schedule_node_context::schedule_node_context(__isl_take isl_schedule_node *ptr)
-    : schedule_node(ptr) {}
-
 schedule_node_context::schedule_node_context()
     : schedule_node() {}
 
@@ -16478,6 +14974,9 @@ schedule_node_context::schedule_node_context(const schedule_node_context &obj)
     : schedule_node(obj)
 {
 }
+
+schedule_node_context::schedule_node_context(__isl_take isl_schedule_node *ptr)
+    : schedule_node(ptr) {}
 
 schedule_node_context &schedule_node_context::operator=(schedule_node_context obj) {
   std::swap(this->ptr, obj.ptr);
@@ -16512,9 +15011,6 @@ inline std::ostream &operator<<(std::ostream &os, const schedule_node_context &o
 }
 
 // implementations for isl::schedule_node_domain
-schedule_node_domain::schedule_node_domain(__isl_take isl_schedule_node *ptr)
-    : schedule_node(ptr) {}
-
 schedule_node_domain::schedule_node_domain()
     : schedule_node() {}
 
@@ -16522,6 +15018,9 @@ schedule_node_domain::schedule_node_domain(const schedule_node_domain &obj)
     : schedule_node(obj)
 {
 }
+
+schedule_node_domain::schedule_node_domain(__isl_take isl_schedule_node *ptr)
+    : schedule_node(ptr) {}
 
 schedule_node_domain &schedule_node_domain::operator=(schedule_node_domain obj) {
   std::swap(this->ptr, obj.ptr);
@@ -16556,9 +15055,6 @@ inline std::ostream &operator<<(std::ostream &os, const schedule_node_domain &ob
 }
 
 // implementations for isl::schedule_node_expansion
-schedule_node_expansion::schedule_node_expansion(__isl_take isl_schedule_node *ptr)
-    : schedule_node(ptr) {}
-
 schedule_node_expansion::schedule_node_expansion()
     : schedule_node() {}
 
@@ -16566,6 +15062,9 @@ schedule_node_expansion::schedule_node_expansion(const schedule_node_expansion &
     : schedule_node(obj)
 {
 }
+
+schedule_node_expansion::schedule_node_expansion(__isl_take isl_schedule_node *ptr)
+    : schedule_node(ptr) {}
 
 schedule_node_expansion &schedule_node_expansion::operator=(schedule_node_expansion obj) {
   std::swap(this->ptr, obj.ptr);
@@ -16611,9 +15110,6 @@ inline std::ostream &operator<<(std::ostream &os, const schedule_node_expansion 
 }
 
 // implementations for isl::schedule_node_extension
-schedule_node_extension::schedule_node_extension(__isl_take isl_schedule_node *ptr)
-    : schedule_node(ptr) {}
-
 schedule_node_extension::schedule_node_extension()
     : schedule_node() {}
 
@@ -16621,6 +15117,9 @@ schedule_node_extension::schedule_node_extension(const schedule_node_extension &
     : schedule_node(obj)
 {
 }
+
+schedule_node_extension::schedule_node_extension(__isl_take isl_schedule_node *ptr)
+    : schedule_node(ptr) {}
 
 schedule_node_extension &schedule_node_extension::operator=(schedule_node_extension obj) {
   std::swap(this->ptr, obj.ptr);
@@ -16655,9 +15154,6 @@ inline std::ostream &operator<<(std::ostream &os, const schedule_node_extension 
 }
 
 // implementations for isl::schedule_node_filter
-schedule_node_filter::schedule_node_filter(__isl_take isl_schedule_node *ptr)
-    : schedule_node(ptr) {}
-
 schedule_node_filter::schedule_node_filter()
     : schedule_node() {}
 
@@ -16665,6 +15161,9 @@ schedule_node_filter::schedule_node_filter(const schedule_node_filter &obj)
     : schedule_node(obj)
 {
 }
+
+schedule_node_filter::schedule_node_filter(__isl_take isl_schedule_node *ptr)
+    : schedule_node(ptr) {}
 
 schedule_node_filter &schedule_node_filter::operator=(schedule_node_filter obj) {
   std::swap(this->ptr, obj.ptr);
@@ -16699,9 +15198,6 @@ inline std::ostream &operator<<(std::ostream &os, const schedule_node_filter &ob
 }
 
 // implementations for isl::schedule_node_guard
-schedule_node_guard::schedule_node_guard(__isl_take isl_schedule_node *ptr)
-    : schedule_node(ptr) {}
-
 schedule_node_guard::schedule_node_guard()
     : schedule_node() {}
 
@@ -16709,6 +15205,9 @@ schedule_node_guard::schedule_node_guard(const schedule_node_guard &obj)
     : schedule_node(obj)
 {
 }
+
+schedule_node_guard::schedule_node_guard(__isl_take isl_schedule_node *ptr)
+    : schedule_node(ptr) {}
 
 schedule_node_guard &schedule_node_guard::operator=(schedule_node_guard obj) {
   std::swap(this->ptr, obj.ptr);
@@ -16743,9 +15242,6 @@ inline std::ostream &operator<<(std::ostream &os, const schedule_node_guard &obj
 }
 
 // implementations for isl::schedule_node_leaf
-schedule_node_leaf::schedule_node_leaf(__isl_take isl_schedule_node *ptr)
-    : schedule_node(ptr) {}
-
 schedule_node_leaf::schedule_node_leaf()
     : schedule_node() {}
 
@@ -16753,6 +15249,9 @@ schedule_node_leaf::schedule_node_leaf(const schedule_node_leaf &obj)
     : schedule_node(obj)
 {
 }
+
+schedule_node_leaf::schedule_node_leaf(__isl_take isl_schedule_node *ptr)
+    : schedule_node(ptr) {}
 
 schedule_node_leaf &schedule_node_leaf::operator=(schedule_node_leaf obj) {
   std::swap(this->ptr, obj.ptr);
@@ -16776,9 +15275,6 @@ inline std::ostream &operator<<(std::ostream &os, const schedule_node_leaf &obj)
 }
 
 // implementations for isl::schedule_node_mark
-schedule_node_mark::schedule_node_mark(__isl_take isl_schedule_node *ptr)
-    : schedule_node(ptr) {}
-
 schedule_node_mark::schedule_node_mark()
     : schedule_node() {}
 
@@ -16786,6 +15282,9 @@ schedule_node_mark::schedule_node_mark(const schedule_node_mark &obj)
     : schedule_node(obj)
 {
 }
+
+schedule_node_mark::schedule_node_mark(__isl_take isl_schedule_node *ptr)
+    : schedule_node(ptr) {}
 
 schedule_node_mark &schedule_node_mark::operator=(schedule_node_mark obj) {
   std::swap(this->ptr, obj.ptr);
@@ -16809,9 +15308,6 @@ inline std::ostream &operator<<(std::ostream &os, const schedule_node_mark &obj)
 }
 
 // implementations for isl::schedule_node_sequence
-schedule_node_sequence::schedule_node_sequence(__isl_take isl_schedule_node *ptr)
-    : schedule_node(ptr) {}
-
 schedule_node_sequence::schedule_node_sequence()
     : schedule_node() {}
 
@@ -16819,6 +15315,9 @@ schedule_node_sequence::schedule_node_sequence(const schedule_node_sequence &obj
     : schedule_node(obj)
 {
 }
+
+schedule_node_sequence::schedule_node_sequence(__isl_take isl_schedule_node *ptr)
+    : schedule_node(ptr) {}
 
 schedule_node_sequence &schedule_node_sequence::operator=(schedule_node_sequence obj) {
   std::swap(this->ptr, obj.ptr);
@@ -16842,9 +15341,6 @@ inline std::ostream &operator<<(std::ostream &os, const schedule_node_sequence &
 }
 
 // implementations for isl::schedule_node_set
-schedule_node_set::schedule_node_set(__isl_take isl_schedule_node *ptr)
-    : schedule_node(ptr) {}
-
 schedule_node_set::schedule_node_set()
     : schedule_node() {}
 
@@ -16852,6 +15348,9 @@ schedule_node_set::schedule_node_set(const schedule_node_set &obj)
     : schedule_node(obj)
 {
 }
+
+schedule_node_set::schedule_node_set(__isl_take isl_schedule_node *ptr)
+    : schedule_node(ptr) {}
 
 schedule_node_set &schedule_node_set::operator=(schedule_node_set obj) {
   std::swap(this->ptr, obj.ptr);
@@ -16883,9 +15382,6 @@ set manage_copy(__isl_keep isl_set *ptr) {
   return set(ptr);
 }
 
-set::set(__isl_take isl_set *ptr)
-    : ptr(ptr) {}
-
 set::set()
     : ptr(nullptr) {}
 
@@ -16894,6 +15390,9 @@ set::set(const set &obj)
 {
   ptr = obj.copy();
 }
+
+set::set(__isl_take isl_set *ptr)
+    : ptr(ptr) {}
 
 set::set(isl::checked::basic_set bset)
 {
@@ -17019,12 +15518,6 @@ isl::checked::val set::dim_min_val(int pos) const
   return manage(res);
 }
 
-isl::checked::set set::drop_unused_params() const
-{
-  auto res = isl_set_drop_unused_params(copy());
-  return manage(res);
-}
-
 isl::checked::set set::empty(isl::checked::space space)
 {
   auto res = isl_set_empty(space.release());
@@ -17101,10 +15594,9 @@ isl::checked::set set::gist(const isl::checked::point &context) const
   return this->gist(isl::checked::set(context));
 }
 
-isl::checked::set set::gist_params(isl::checked::set context) const
+isl::checked::union_set set::gist_params(const isl::checked::set &set) const
 {
-  auto res = isl_set_gist_params(copy(), context.release());
-  return manage(res);
+  return isl::checked::union_set(*this).gist_params(set);
 }
 
 isl::checked::map set::identity() const
@@ -17265,17 +15757,6 @@ boolean set::isa_set() const
   return isl::checked::union_set(*this).isa_set();
 }
 
-isl::checked::fixed_box set::lattice_tile() const
-{
-  auto res = isl_set_get_lattice_tile(get());
-  return manage(res);
-}
-
-isl::checked::fixed_box set::get_lattice_tile() const
-{
-  return lattice_tile();
-}
-
 isl::checked::set set::lexmax() const
 {
   auto res = isl_set_lexmax(copy());
@@ -17334,23 +15815,6 @@ isl::checked::val set::min_val(const isl::checked::aff &obj) const
 {
   auto res = isl_set_min_val(get(), obj.get());
   return manage(res);
-}
-
-class size set::n_basic_set() const
-{
-  auto res = isl_set_n_basic_set(get());
-  return manage(res);
-}
-
-isl::checked::pw_aff set::param_pw_aff_on_domain(isl::checked::id id) const
-{
-  auto res = isl_set_param_pw_aff_on_domain_id(copy(), id.release());
-  return manage(res);
-}
-
-isl::checked::pw_aff set::param_pw_aff_on_domain(const std::string &id) const
-{
-  return this->param_pw_aff_on_domain(isl::checked::id(ctx(), id));
 }
 
 isl::checked::set set::params() const
@@ -17428,17 +15892,6 @@ isl::checked::set set::project_out_param(isl::checked::id_list list) const
   return manage(res);
 }
 
-isl::checked::pw_aff set::pw_aff_on_domain(isl::checked::val v) const
-{
-  auto res = isl_set_pw_aff_on_domain_val(copy(), v.release());
-  return manage(res);
-}
-
-isl::checked::pw_aff set::pw_aff_on_domain(long v) const
-{
-  return this->pw_aff_on_domain(isl::checked::val(ctx(), v));
-}
-
 isl::checked::pw_multi_aff set::pw_multi_aff_on_domain(isl::checked::multi_val mv) const
 {
   auto res = isl_set_pw_multi_aff_on_domain_multi_val(copy(), mv.release());
@@ -17455,11 +15908,6 @@ isl::checked::point set::sample_point() const
 {
   auto res = isl_set_sample_point(copy());
   return manage(res);
-}
-
-isl::checked::set_list set::set_list() const
-{
-  return isl::checked::union_set(*this).set_list();
 }
 
 isl::checked::fixed_box set::simple_fixed_box_hull() const
@@ -17516,10 +15964,9 @@ isl::checked::set set::subtract(const isl::checked::point &set2) const
   return this->subtract(isl::checked::set(set2));
 }
 
-isl::checked::set_list set::to_list() const
+isl::checked::union_set_list set::to_list() const
 {
-  auto res = isl_set_to_list(copy());
-  return manage(res);
+  return isl::checked::union_set(*this).to_list();
 }
 
 isl::checked::union_set set::to_union_set() const
@@ -17531,12 +15978,6 @@ isl::checked::union_set set::to_union_set() const
 isl::checked::map set::translation() const
 {
   auto res = isl_set_translation(copy());
-  return manage(res);
-}
-
-class size set::tuple_dim() const
-{
-  auto res = isl_set_tuple_dim(get());
   return manage(res);
 }
 
@@ -17603,187 +16044,9 @@ isl::checked::set set::upper_bound(isl::checked::multi_val upper) const
   return manage(res);
 }
 
-isl::checked::set set::wrapped_reverse() const
-{
-  auto res = isl_set_wrapped_reverse(copy());
-  return manage(res);
-}
-
 inline std::ostream &operator<<(std::ostream &os, const set &obj)
 {
   char *str = isl_set_to_str(obj.get());
-  if (!str) {
-    os.setstate(std::ios_base::badbit);
-    return os;
-  }
-  os << str;
-  free(str);
-  return os;
-}
-
-// implementations for isl::set_list
-set_list manage(__isl_take isl_set_list *ptr) {
-  return set_list(ptr);
-}
-set_list manage_copy(__isl_keep isl_set_list *ptr) {
-  ptr = isl_set_list_copy(ptr);
-  return set_list(ptr);
-}
-
-set_list::set_list(__isl_take isl_set_list *ptr)
-    : ptr(ptr) {}
-
-set_list::set_list()
-    : ptr(nullptr) {}
-
-set_list::set_list(const set_list &obj)
-    : ptr(nullptr)
-{
-  ptr = obj.copy();
-}
-
-set_list::set_list(isl::checked::ctx ctx, int n)
-{
-  auto res = isl_set_list_alloc(ctx.release(), n);
-  ptr = res;
-}
-
-set_list::set_list(isl::checked::set el)
-{
-  auto res = isl_set_list_from_set(el.release());
-  ptr = res;
-}
-
-set_list::set_list(isl::checked::ctx ctx, const std::string &str)
-{
-  auto res = isl_set_list_read_from_str(ctx.release(), str.c_str());
-  ptr = res;
-}
-
-set_list &set_list::operator=(set_list obj) {
-  std::swap(this->ptr, obj.ptr);
-  return *this;
-}
-
-set_list::~set_list() {
-  if (ptr)
-    isl_set_list_free(ptr);
-}
-
-__isl_give isl_set_list *set_list::copy() const & {
-  return isl_set_list_copy(ptr);
-}
-
-__isl_keep isl_set_list *set_list::get() const {
-  return ptr;
-}
-
-__isl_give isl_set_list *set_list::release() {
-  isl_set_list *tmp = ptr;
-  ptr = nullptr;
-  return tmp;
-}
-
-bool set_list::is_null() const {
-  return ptr == nullptr;
-}
-
-isl::checked::ctx set_list::ctx() const {
-  return isl::checked::ctx(isl_set_list_get_ctx(ptr));
-}
-
-isl::checked::set_list set_list::add(isl::checked::set el) const
-{
-  auto res = isl_set_list_add(copy(), el.release());
-  return manage(res);
-}
-
-isl::checked::set set_list::at(int index) const
-{
-  auto res = isl_set_list_get_at(get(), index);
-  return manage(res);
-}
-
-isl::checked::set set_list::get_at(int index) const
-{
-  return at(index);
-}
-
-isl::checked::set_list set_list::clear() const
-{
-  auto res = isl_set_list_clear(copy());
-  return manage(res);
-}
-
-isl::checked::set_list set_list::concat(isl::checked::set_list list2) const
-{
-  auto res = isl_set_list_concat(copy(), list2.release());
-  return manage(res);
-}
-
-isl::checked::set_list set_list::drop(unsigned int first, unsigned int n) const
-{
-  auto res = isl_set_list_drop(copy(), first, n);
-  return manage(res);
-}
-
-stat set_list::foreach(const std::function<stat(isl::checked::set)> &fn) const
-{
-  struct fn_data {
-    std::function<stat(isl::checked::set)> func;
-  } fn_data = { fn };
-  auto fn_lambda = [](isl_set *arg_0, void *arg_1) -> isl_stat {
-    auto *data = static_cast<struct fn_data *>(arg_1);
-    auto ret = (data->func)(manage(arg_0));
-    return ret.release();
-  };
-  auto res = isl_set_list_foreach(get(), fn_lambda, &fn_data);
-  return manage(res);
-}
-
-stat set_list::foreach_scc(const std::function<boolean(isl::checked::set, isl::checked::set)> &follows, const std::function<stat(isl::checked::set_list)> &fn) const
-{
-  struct follows_data {
-    std::function<boolean(isl::checked::set, isl::checked::set)> func;
-  } follows_data = { follows };
-  auto follows_lambda = [](isl_set *arg_0, isl_set *arg_1, void *arg_2) -> isl_bool {
-    auto *data = static_cast<struct follows_data *>(arg_2);
-    auto ret = (data->func)(manage_copy(arg_0), manage_copy(arg_1));
-    return ret.release();
-  };
-  struct fn_data {
-    std::function<stat(isl::checked::set_list)> func;
-  } fn_data = { fn };
-  auto fn_lambda = [](isl_set_list *arg_0, void *arg_1) -> isl_stat {
-    auto *data = static_cast<struct fn_data *>(arg_1);
-    auto ret = (data->func)(manage(arg_0));
-    return ret.release();
-  };
-  auto res = isl_set_list_foreach_scc(get(), follows_lambda, &follows_data, fn_lambda, &fn_data);
-  return manage(res);
-}
-
-isl::checked::set_list set_list::insert(unsigned int pos, isl::checked::set el) const
-{
-  auto res = isl_set_list_insert(copy(), pos, el.release());
-  return manage(res);
-}
-
-isl::checked::set_list set_list::set_at(int index, isl::checked::set el) const
-{
-  auto res = isl_set_list_set_at(copy(), index, el.release());
-  return manage(res);
-}
-
-class size set_list::size() const
-{
-  auto res = isl_set_list_size(get());
-  return manage(res);
-}
-
-inline std::ostream &operator<<(std::ostream &os, const set_list &obj)
-{
-  char *str = isl_set_list_to_str(obj.get());
   if (!str) {
     os.setstate(std::ios_base::badbit);
     return os;
@@ -17802,9 +16065,6 @@ space manage_copy(__isl_keep isl_space *ptr) {
   return space(ptr);
 }
 
-space::space(__isl_take isl_space *ptr)
-    : ptr(ptr) {}
-
 space::space()
     : ptr(nullptr) {}
 
@@ -17814,11 +16074,8 @@ space::space(const space &obj)
   ptr = obj.copy();
 }
 
-space::space(isl::checked::ctx ctx, const std::string &str)
-{
-  auto res = isl_space_read_from_str(ctx.release(), str.c_str());
-  ptr = res;
-}
+space::space(__isl_take isl_space *ptr)
+    : ptr(ptr) {}
 
 space &space::operator=(space obj) {
   std::swap(this->ptr, obj.ptr);
@@ -17863,17 +16120,6 @@ isl::checked::space space::add_named_tuple(const std::string &tuple_id, unsigned
   return this->add_named_tuple(isl::checked::id(ctx(), tuple_id), dim);
 }
 
-isl::checked::space space::add_param(isl::checked::id id) const
-{
-  auto res = isl_space_add_param_id(copy(), id.release());
-  return manage(res);
-}
-
-isl::checked::space space::add_param(const std::string &id) const
-{
-  return this->add_param(isl::checked::id(ctx(), id));
-}
-
 isl::checked::space space::add_unnamed_tuple(unsigned int dim) const
 {
   auto res = isl_space_add_unnamed_tuple_ui(copy(), dim);
@@ -17904,12 +16150,6 @@ isl::checked::pw_multi_aff space::domain_map_pw_multi_aff() const
   return manage(res);
 }
 
-isl::checked::space space::domain_reverse() const
-{
-  auto res = isl_space_domain_reverse(copy());
-  return manage(res);
-}
-
 isl::checked::id space::domain_tuple_id() const
 {
   auto res = isl_space_get_domain_tuple_id(get());
@@ -17919,12 +16159,6 @@ isl::checked::id space::domain_tuple_id() const
 isl::checked::id space::get_domain_tuple_id() const
 {
   return domain_tuple_id();
-}
-
-isl::checked::space space::drop_all_params() const
-{
-  auto res = isl_space_drop_all_params(copy());
-  return manage(res);
 }
 
 isl::checked::space space::flatten_domain() const
@@ -18021,17 +16255,6 @@ isl::checked::multi_val space::multi_val(isl::checked::val_list list) const
 {
   auto res = isl_space_multi_val(copy(), list.release());
   return manage(res);
-}
-
-isl::checked::aff space::param_aff_on_domain(isl::checked::id id) const
-{
-  auto res = isl_space_param_aff_on_domain_id(copy(), id.release());
-  return manage(res);
-}
-
-isl::checked::aff space::param_aff_on_domain(const std::string &id) const
-{
-  return this->param_aff_on_domain(isl::checked::id(ctx(), id));
 }
 
 isl::checked::space space::params() const
@@ -18145,12 +16368,6 @@ isl::checked::space space::wrap() const
   return manage(res);
 }
 
-isl::checked::space space::wrapped_reverse() const
-{
-  auto res = isl_space_wrapped_reverse(copy());
-  return manage(res);
-}
-
 isl::checked::aff space::zero_aff_on_domain() const
 {
   auto res = isl_space_zero_aff_on_domain(copy());
@@ -18202,9 +16419,6 @@ union_access_info manage_copy(__isl_keep isl_union_access_info *ptr) {
   return union_access_info(ptr);
 }
 
-union_access_info::union_access_info(__isl_take isl_union_access_info *ptr)
-    : ptr(ptr) {}
-
 union_access_info::union_access_info()
     : ptr(nullptr) {}
 
@@ -18213,6 +16427,9 @@ union_access_info::union_access_info(const union_access_info &obj)
 {
   ptr = obj.copy();
 }
+
+union_access_info::union_access_info(__isl_take isl_union_access_info *ptr)
+    : ptr(ptr) {}
 
 union_access_info::union_access_info(isl::checked::union_map sink)
 {
@@ -18309,9 +16526,6 @@ union_flow manage_copy(__isl_keep isl_union_flow *ptr) {
   return union_flow(ptr);
 }
 
-union_flow::union_flow(__isl_take isl_union_flow *ptr)
-    : ptr(ptr) {}
-
 union_flow::union_flow()
     : ptr(nullptr) {}
 
@@ -18320,6 +16534,9 @@ union_flow::union_flow(const union_flow &obj)
 {
   ptr = obj.copy();
 }
+
+union_flow::union_flow(__isl_take isl_union_flow *ptr)
+    : ptr(ptr) {}
 
 union_flow &union_flow::operator=(union_flow obj) {
   std::swap(this->ptr, obj.ptr);
@@ -18440,9 +16657,6 @@ union_map manage_copy(__isl_keep isl_union_map *ptr) {
   return union_map(ptr);
 }
 
-union_map::union_map(__isl_take isl_union_map *ptr)
-    : ptr(ptr) {}
-
 union_map::union_map()
     : ptr(nullptr) {}
 
@@ -18451,6 +16665,9 @@ union_map::union_map(const union_map &obj)
 {
   ptr = obj.copy();
 }
+
+union_map::union_map(__isl_take isl_union_map *ptr)
+    : ptr(ptr) {}
 
 union_map::union_map(isl::checked::basic_map bmap)
 {
@@ -18610,18 +16827,6 @@ isl::checked::union_map union_map::domain_product(isl::checked::union_map umap2)
   return manage(res);
 }
 
-isl::checked::union_map union_map::domain_reverse() const
-{
-  auto res = isl_union_map_domain_reverse(copy());
-  return manage(res);
-}
-
-isl::checked::union_map union_map::drop_unused_params() const
-{
-  auto res = isl_union_map_drop_unused_params(copy());
-  return manage(res);
-}
-
 isl::checked::union_map union_map::empty(isl::checked::ctx ctx)
 {
   auto res = isl_union_map_empty_ctx(ctx.release());
@@ -18775,12 +16980,6 @@ isl::checked::union_map union_map::intersect_domain_factor_range(isl::checked::u
   return manage(res);
 }
 
-isl::checked::union_map union_map::intersect_domain_wrapped_domain(isl::checked::union_set domain) const
-{
-  auto res = isl_union_map_intersect_domain_wrapped_domain_union_set(copy(), domain.release());
-  return manage(res);
-}
-
 isl::checked::union_map union_map::intersect_params(isl::checked::set set) const
 {
   auto res = isl_union_map_intersect_params(copy(), set.release());
@@ -18808,12 +17007,6 @@ isl::checked::union_map union_map::intersect_range_factor_domain(isl::checked::u
 isl::checked::union_map union_map::intersect_range_factor_range(isl::checked::union_map factor) const
 {
   auto res = isl_union_map_intersect_range_factor_range(copy(), factor.release());
-  return manage(res);
-}
-
-isl::checked::union_map union_map::intersect_range_wrapped_domain(isl::checked::union_set domain) const
-{
-  auto res = isl_union_map_intersect_range_wrapped_domain_union_set(copy(), domain.release());
   return manage(res);
 }
 
@@ -18883,23 +17076,6 @@ isl::checked::union_map union_map::lexmin() const
   return manage(res);
 }
 
-isl::checked::map_list union_map::map_list() const
-{
-  auto res = isl_union_map_get_map_list(get());
-  return manage(res);
-}
-
-isl::checked::map_list union_map::get_map_list() const
-{
-  return map_list();
-}
-
-isl::checked::set union_map::params() const
-{
-  auto res = isl_union_map_params(copy());
-  return manage(res);
-}
-
 isl::checked::union_map union_map::polyhedral_hull() const
 {
   auto res = isl_union_map_polyhedral_hull(copy());
@@ -18957,23 +17133,6 @@ isl::checked::union_map union_map::product(isl::checked::union_map umap2) const
 isl::checked::union_map union_map::project_out_all_params() const
 {
   auto res = isl_union_map_project_out_all_params(copy());
-  return manage(res);
-}
-
-isl::checked::union_map union_map::project_out_param(isl::checked::id id) const
-{
-  auto res = isl_union_map_project_out_param_id(copy(), id.release());
-  return manage(res);
-}
-
-isl::checked::union_map union_map::project_out_param(const std::string &id) const
-{
-  return this->project_out_param(isl::checked::id(ctx(), id));
-}
-
-isl::checked::union_map union_map::project_out_param(isl::checked::id_list list) const
-{
-  auto res = isl_union_map_project_out_param_id_list(copy(), list.release());
   return manage(res);
 }
 
@@ -19099,9 +17258,6 @@ union_pw_aff manage_copy(__isl_keep isl_union_pw_aff *ptr) {
   return union_pw_aff(ptr);
 }
 
-union_pw_aff::union_pw_aff(__isl_take isl_union_pw_aff *ptr)
-    : ptr(ptr) {}
-
 union_pw_aff::union_pw_aff()
     : ptr(nullptr) {}
 
@@ -19110,6 +17266,9 @@ union_pw_aff::union_pw_aff(const union_pw_aff &obj)
 {
   ptr = obj.copy();
 }
+
+union_pw_aff::union_pw_aff(__isl_take isl_union_pw_aff *ptr)
+    : ptr(ptr) {}
 
 union_pw_aff::union_pw_aff(isl::checked::aff aff)
 {
@@ -19240,12 +17399,6 @@ isl::checked::union_set union_pw_aff::domain() const
   return manage(res);
 }
 
-isl::checked::union_pw_aff union_pw_aff::drop_unused_params() const
-{
-  auto res = isl_union_pw_aff_drop_unused_params(copy());
-  return manage(res);
-}
-
 isl::checked::pw_multi_aff union_pw_aff::extract_pw_multi_aff(const isl::checked::space &space) const
 {
   return isl::checked::union_pw_multi_aff(*this).extract_pw_multi_aff(space);
@@ -19265,11 +17418,6 @@ isl::checked::union_pw_aff union_pw_aff::gist(isl::checked::union_set context) c
 {
   auto res = isl_union_pw_aff_gist(copy(), context.release());
   return manage(res);
-}
-
-isl::checked::multi_union_pw_aff union_pw_aff::gist_params(const isl::checked::set &context) const
-{
-  return isl::checked::multi_union_pw_aff(*this).gist_params(context);
 }
 
 boolean union_pw_aff::has_range_tuple_id() const
@@ -19342,27 +17490,6 @@ boolean union_pw_aff::plain_is_equal(const isl::checked::multi_union_pw_aff &mul
   return isl::checked::multi_union_pw_aff(*this).plain_is_equal(multi2);
 }
 
-boolean union_pw_aff::plain_is_equal(const isl::checked::union_pw_aff &upa2) const
-{
-  auto res = isl_union_pw_aff_plain_is_equal(get(), upa2.get());
-  return manage(res);
-}
-
-boolean union_pw_aff::plain_is_equal(const isl::checked::union_pw_multi_aff &upma2) const
-{
-  return isl::checked::union_pw_multi_aff(*this).plain_is_equal(upma2);
-}
-
-boolean union_pw_aff::plain_is_equal(const isl::checked::aff &upa2) const
-{
-  return this->plain_is_equal(isl::checked::union_pw_aff(upa2));
-}
-
-boolean union_pw_aff::plain_is_equal(const isl::checked::pw_aff &upa2) const
-{
-  return this->plain_is_equal(isl::checked::union_pw_aff(upa2));
-}
-
 isl::checked::union_pw_multi_aff union_pw_aff::preimage_domain_wrapped_domain(const isl::checked::union_pw_multi_aff &upma2) const
 {
   return isl::checked::union_pw_multi_aff(*this).preimage_domain_wrapped_domain(upma2);
@@ -19372,11 +17499,6 @@ isl::checked::union_pw_aff union_pw_aff::pullback(isl::checked::union_pw_multi_a
 {
   auto res = isl_union_pw_aff_pullback_union_pw_multi_aff(copy(), upma.release());
   return manage(res);
-}
-
-isl::checked::pw_multi_aff_list union_pw_aff::pw_multi_aff_list() const
-{
-  return isl::checked::union_pw_multi_aff(*this).pw_multi_aff_list();
 }
 
 isl::checked::union_pw_multi_aff union_pw_aff::range_factor_domain() const
@@ -19561,9 +17683,6 @@ union_pw_aff_list manage_copy(__isl_keep isl_union_pw_aff_list *ptr) {
   return union_pw_aff_list(ptr);
 }
 
-union_pw_aff_list::union_pw_aff_list(__isl_take isl_union_pw_aff_list *ptr)
-    : ptr(ptr) {}
-
 union_pw_aff_list::union_pw_aff_list()
     : ptr(nullptr) {}
 
@@ -19572,6 +17691,9 @@ union_pw_aff_list::union_pw_aff_list(const union_pw_aff_list &obj)
 {
   ptr = obj.copy();
 }
+
+union_pw_aff_list::union_pw_aff_list(__isl_take isl_union_pw_aff_list *ptr)
+    : ptr(ptr) {}
 
 union_pw_aff_list::union_pw_aff_list(isl::checked::ctx ctx, int n)
 {
@@ -19582,12 +17704,6 @@ union_pw_aff_list::union_pw_aff_list(isl::checked::ctx ctx, int n)
 union_pw_aff_list::union_pw_aff_list(isl::checked::union_pw_aff el)
 {
   auto res = isl_union_pw_aff_list_from_union_pw_aff(el.release());
-  ptr = res;
-}
-
-union_pw_aff_list::union_pw_aff_list(isl::checked::ctx ctx, const std::string &str)
-{
-  auto res = isl_union_pw_aff_list_read_from_str(ctx.release(), str.c_str());
   ptr = res;
 }
 
@@ -19672,37 +17788,9 @@ stat union_pw_aff_list::foreach(const std::function<stat(isl::checked::union_pw_
   return manage(res);
 }
 
-stat union_pw_aff_list::foreach_scc(const std::function<boolean(isl::checked::union_pw_aff, isl::checked::union_pw_aff)> &follows, const std::function<stat(isl::checked::union_pw_aff_list)> &fn) const
-{
-  struct follows_data {
-    std::function<boolean(isl::checked::union_pw_aff, isl::checked::union_pw_aff)> func;
-  } follows_data = { follows };
-  auto follows_lambda = [](isl_union_pw_aff *arg_0, isl_union_pw_aff *arg_1, void *arg_2) -> isl_bool {
-    auto *data = static_cast<struct follows_data *>(arg_2);
-    auto ret = (data->func)(manage_copy(arg_0), manage_copy(arg_1));
-    return ret.release();
-  };
-  struct fn_data {
-    std::function<stat(isl::checked::union_pw_aff_list)> func;
-  } fn_data = { fn };
-  auto fn_lambda = [](isl_union_pw_aff_list *arg_0, void *arg_1) -> isl_stat {
-    auto *data = static_cast<struct fn_data *>(arg_1);
-    auto ret = (data->func)(manage(arg_0));
-    return ret.release();
-  };
-  auto res = isl_union_pw_aff_list_foreach_scc(get(), follows_lambda, &follows_data, fn_lambda, &fn_data);
-  return manage(res);
-}
-
 isl::checked::union_pw_aff_list union_pw_aff_list::insert(unsigned int pos, isl::checked::union_pw_aff el) const
 {
   auto res = isl_union_pw_aff_list_insert(copy(), pos, el.release());
-  return manage(res);
-}
-
-isl::checked::union_pw_aff_list union_pw_aff_list::set_at(int index, isl::checked::union_pw_aff el) const
-{
-  auto res = isl_union_pw_aff_list_set_at(copy(), index, el.release());
   return manage(res);
 }
 
@@ -19733,9 +17821,6 @@ union_pw_multi_aff manage_copy(__isl_keep isl_union_pw_multi_aff *ptr) {
   return union_pw_multi_aff(ptr);
 }
 
-union_pw_multi_aff::union_pw_multi_aff(__isl_take isl_union_pw_multi_aff *ptr)
-    : ptr(ptr) {}
-
 union_pw_multi_aff::union_pw_multi_aff()
     : ptr(nullptr) {}
 
@@ -19744,6 +17829,9 @@ union_pw_multi_aff::union_pw_multi_aff(const union_pw_multi_aff &obj)
 {
   ptr = obj.copy();
 }
+
+union_pw_multi_aff::union_pw_multi_aff(__isl_take isl_union_pw_multi_aff *ptr)
+    : ptr(ptr) {}
 
 union_pw_multi_aff::union_pw_multi_aff(isl::checked::multi_aff ma)
 {
@@ -19843,12 +17931,6 @@ isl::checked::union_set union_pw_multi_aff::domain() const
   return manage(res);
 }
 
-isl::checked::union_pw_multi_aff union_pw_multi_aff::drop_unused_params() const
-{
-  auto res = isl_union_pw_multi_aff_drop_unused_params(copy());
-  return manage(res);
-}
-
 isl::checked::union_pw_multi_aff union_pw_multi_aff::empty(isl::checked::ctx ctx)
 {
   auto res = isl_union_pw_multi_aff_empty_ctx(ctx.release());
@@ -19921,12 +18003,6 @@ boolean union_pw_multi_aff::plain_is_empty() const
   return manage(res);
 }
 
-boolean union_pw_multi_aff::plain_is_equal(const isl::checked::union_pw_multi_aff &upma2) const
-{
-  auto res = isl_union_pw_multi_aff_plain_is_equal(get(), upma2.get());
-  return manage(res);
-}
-
 isl::checked::union_pw_multi_aff union_pw_multi_aff::preimage_domain_wrapped_domain(isl::checked::union_pw_multi_aff upma2) const
 {
   auto res = isl_union_pw_multi_aff_preimage_domain_wrapped_domain_union_pw_multi_aff(copy(), upma2.release());
@@ -19937,17 +18013,6 @@ isl::checked::union_pw_multi_aff union_pw_multi_aff::pullback(isl::checked::unio
 {
   auto res = isl_union_pw_multi_aff_pullback_union_pw_multi_aff(copy(), upma2.release());
   return manage(res);
-}
-
-isl::checked::pw_multi_aff_list union_pw_multi_aff::pw_multi_aff_list() const
-{
-  auto res = isl_union_pw_multi_aff_get_pw_multi_aff_list(get());
-  return manage(res);
-}
-
-isl::checked::pw_multi_aff_list union_pw_multi_aff::get_pw_multi_aff_list() const
-{
-  return pw_multi_aff_list();
 }
 
 isl::checked::union_pw_multi_aff union_pw_multi_aff::range_factor_domain() const
@@ -20024,9 +18089,6 @@ union_set manage_copy(__isl_keep isl_union_set *ptr) {
   return union_set(ptr);
 }
 
-union_set::union_set(__isl_take isl_union_set *ptr)
-    : ptr(ptr) {}
-
 union_set::union_set()
     : ptr(nullptr) {}
 
@@ -20035,6 +18097,9 @@ union_set::union_set(const union_set &obj)
 {
   ptr = obj.copy();
 }
+
+union_set::union_set(__isl_take isl_union_set *ptr)
+    : ptr(ptr) {}
 
 union_set::union_set(isl::checked::basic_set bset)
 {
@@ -20125,12 +18190,6 @@ isl::checked::union_set union_set::compute_divs() const
 isl::checked::union_set union_set::detect_equalities() const
 {
   auto res = isl_union_set_detect_equalities(copy());
-  return manage(res);
-}
-
-isl::checked::union_set union_set::drop_unused_params() const
-{
-  auto res = isl_union_set_drop_unused_params(copy());
   return manage(res);
 }
 
@@ -20266,12 +18325,6 @@ isl::checked::union_set union_set::lexmin() const
   return manage(res);
 }
 
-isl::checked::set union_set::params() const
-{
-  auto res = isl_union_set_params(copy());
-  return manage(res);
-}
-
 isl::checked::union_set union_set::polyhedral_hull() const
 {
   auto res = isl_union_set_polyhedral_hull(copy());
@@ -20296,27 +18349,10 @@ isl::checked::union_set union_set::preimage(isl::checked::union_pw_multi_aff upm
   return manage(res);
 }
 
-isl::checked::union_set union_set::project_out_all_params() const
-{
-  auto res = isl_union_set_project_out_all_params(copy());
-  return manage(res);
-}
-
 isl::checked::point union_set::sample_point() const
 {
   auto res = isl_union_set_sample_point(copy());
   return manage(res);
-}
-
-isl::checked::set_list union_set::set_list() const
-{
-  auto res = isl_union_set_get_set_list(get());
-  return manage(res);
-}
-
-isl::checked::set_list union_set::get_set_list() const
-{
-  return set_list();
 }
 
 isl::checked::space union_set::space() const
@@ -20381,9 +18417,6 @@ union_set_list manage_copy(__isl_keep isl_union_set_list *ptr) {
   return union_set_list(ptr);
 }
 
-union_set_list::union_set_list(__isl_take isl_union_set_list *ptr)
-    : ptr(ptr) {}
-
 union_set_list::union_set_list()
     : ptr(nullptr) {}
 
@@ -20392,6 +18425,9 @@ union_set_list::union_set_list(const union_set_list &obj)
 {
   ptr = obj.copy();
 }
+
+union_set_list::union_set_list(__isl_take isl_union_set_list *ptr)
+    : ptr(ptr) {}
 
 union_set_list::union_set_list(isl::checked::ctx ctx, int n)
 {
@@ -20402,12 +18438,6 @@ union_set_list::union_set_list(isl::checked::ctx ctx, int n)
 union_set_list::union_set_list(isl::checked::union_set el)
 {
   auto res = isl_union_set_list_from_union_set(el.release());
-  ptr = res;
-}
-
-union_set_list::union_set_list(isl::checked::ctx ctx, const std::string &str)
-{
-  auto res = isl_union_set_list_read_from_str(ctx.release(), str.c_str());
   ptr = res;
 }
 
@@ -20492,37 +18522,9 @@ stat union_set_list::foreach(const std::function<stat(isl::checked::union_set)> 
   return manage(res);
 }
 
-stat union_set_list::foreach_scc(const std::function<boolean(isl::checked::union_set, isl::checked::union_set)> &follows, const std::function<stat(isl::checked::union_set_list)> &fn) const
-{
-  struct follows_data {
-    std::function<boolean(isl::checked::union_set, isl::checked::union_set)> func;
-  } follows_data = { follows };
-  auto follows_lambda = [](isl_union_set *arg_0, isl_union_set *arg_1, void *arg_2) -> isl_bool {
-    auto *data = static_cast<struct follows_data *>(arg_2);
-    auto ret = (data->func)(manage_copy(arg_0), manage_copy(arg_1));
-    return ret.release();
-  };
-  struct fn_data {
-    std::function<stat(isl::checked::union_set_list)> func;
-  } fn_data = { fn };
-  auto fn_lambda = [](isl_union_set_list *arg_0, void *arg_1) -> isl_stat {
-    auto *data = static_cast<struct fn_data *>(arg_1);
-    auto ret = (data->func)(manage(arg_0));
-    return ret.release();
-  };
-  auto res = isl_union_set_list_foreach_scc(get(), follows_lambda, &follows_data, fn_lambda, &fn_data);
-  return manage(res);
-}
-
 isl::checked::union_set_list union_set_list::insert(unsigned int pos, isl::checked::union_set el) const
 {
   auto res = isl_union_set_list_insert(copy(), pos, el.release());
-  return manage(res);
-}
-
-isl::checked::union_set_list union_set_list::set_at(int index, isl::checked::union_set el) const
-{
-  auto res = isl_union_set_list_set_at(copy(), index, el.release());
   return manage(res);
 }
 
@@ -20553,9 +18555,6 @@ val manage_copy(__isl_keep isl_val *ptr) {
   return val(ptr);
 }
 
-val::val(__isl_take isl_val *ptr)
-    : ptr(ptr) {}
-
 val::val()
     : ptr(nullptr) {}
 
@@ -20564,6 +18563,9 @@ val::val(const val &obj)
 {
   ptr = obj.copy();
 }
+
+val::val(__isl_take isl_val *ptr)
+    : ptr(ptr) {}
 
 val::val(isl::checked::ctx ctx, long i)
 {
@@ -20996,9 +18998,6 @@ val_list manage_copy(__isl_keep isl_val_list *ptr) {
   return val_list(ptr);
 }
 
-val_list::val_list(__isl_take isl_val_list *ptr)
-    : ptr(ptr) {}
-
 val_list::val_list()
     : ptr(nullptr) {}
 
@@ -21007,6 +19006,9 @@ val_list::val_list(const val_list &obj)
 {
   ptr = obj.copy();
 }
+
+val_list::val_list(__isl_take isl_val_list *ptr)
+    : ptr(ptr) {}
 
 val_list::val_list(isl::checked::ctx ctx, int n)
 {
@@ -21017,12 +19019,6 @@ val_list::val_list(isl::checked::ctx ctx, int n)
 val_list::val_list(isl::checked::val el)
 {
   auto res = isl_val_list_from_val(el.release());
-  ptr = res;
-}
-
-val_list::val_list(isl::checked::ctx ctx, const std::string &str)
-{
-  auto res = isl_val_list_read_from_str(ctx.release(), str.c_str());
   ptr = res;
 }
 
@@ -21112,28 +19108,6 @@ stat val_list::foreach(const std::function<stat(isl::checked::val)> &fn) const
   return manage(res);
 }
 
-stat val_list::foreach_scc(const std::function<boolean(isl::checked::val, isl::checked::val)> &follows, const std::function<stat(isl::checked::val_list)> &fn) const
-{
-  struct follows_data {
-    std::function<boolean(isl::checked::val, isl::checked::val)> func;
-  } follows_data = { follows };
-  auto follows_lambda = [](isl_val *arg_0, isl_val *arg_1, void *arg_2) -> isl_bool {
-    auto *data = static_cast<struct follows_data *>(arg_2);
-    auto ret = (data->func)(manage_copy(arg_0), manage_copy(arg_1));
-    return ret.release();
-  };
-  struct fn_data {
-    std::function<stat(isl::checked::val_list)> func;
-  } fn_data = { fn };
-  auto fn_lambda = [](isl_val_list *arg_0, void *arg_1) -> isl_stat {
-    auto *data = static_cast<struct fn_data *>(arg_1);
-    auto ret = (data->func)(manage(arg_0));
-    return ret.release();
-  };
-  auto res = isl_val_list_foreach_scc(get(), follows_lambda, &follows_data, fn_lambda, &fn_data);
-  return manage(res);
-}
-
 isl::checked::val_list val_list::insert(unsigned int pos, isl::checked::val el) const
 {
   auto res = isl_val_list_insert(copy(), pos, el.release());
@@ -21143,17 +19117,6 @@ isl::checked::val_list val_list::insert(unsigned int pos, isl::checked::val el) 
 isl::checked::val_list val_list::insert(unsigned int pos, long el) const
 {
   return this->insert(pos, isl::checked::val(ctx(), el));
-}
-
-isl::checked::val_list val_list::set_at(int index, isl::checked::val el) const
-{
-  auto res = isl_val_list_set_at(copy(), index, el.release());
-  return manage(res);
-}
-
-isl::checked::val_list val_list::set_at(int index, long el) const
-{
-  return this->set_at(index, isl::checked::val(ctx(), el));
 }
 
 class size val_list::size() const

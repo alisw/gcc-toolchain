@@ -37,12 +37,6 @@
 #include "gp-experiment.h"
 #include "tsd.h"
 
-/* TprintfT(<level>,...) definitions.  Adjust per module as needed */
-#define DBG_LT0 0 // for high-level configuration, unexpected errors/warnings
-#define DBG_LT1 1 // for configuration details, warnings
-#define DBG_LT2 2
-#define DBG_LT3 3
-
 /* ARCH_STRLEN is defined in dbe, copied here */
 #define ARCH_STRLEN(s)      ((CALL_UTIL(strlen)(s) + 4 ) & ~0x3)
 
@@ -367,8 +361,8 @@ JVM_OnLoad (JavaVM *vm, char *options, void *reserved)
       err = (*jvmti)->GetPotentialCapabilities (jvmti, &cpblts);
       if (err == JVMTI_ERROR_NONE)
 	{
-	  jvmtiCapabilities cpblts_set;
-	  CALL_UTIL (memset)(&cpblts_set, 0, sizeof (cpblts_set));
+	  static jvmtiCapabilities cpblts_set_0;
+	  jvmtiCapabilities cpblts_set = cpblts_set_0;
 
 	  /* Add only those capabilities that are among potential ones */
 	  cpblts_set.can_get_source_file_name = cpblts.can_get_source_file_name;

@@ -184,7 +184,7 @@ __isl_give isl_schedule *isl_schedule_node_get_schedule(
 
 /* Return a fresh copy of "node".
  */
-__isl_give isl_schedule_node *isl_schedule_node_dup(
+__isl_take isl_schedule_node *isl_schedule_node_dup(
 	__isl_keep isl_schedule_node *node)
 {
 	if (!node)
@@ -1141,14 +1141,6 @@ __isl_give isl_schedule_node *isl_schedule_node_parent(
 	return isl_schedule_node_ancestor(node, 1);
 }
 
-/* Move the "node" pointer to the parent of its parent.
- */
-__isl_give isl_schedule_node *isl_schedule_node_grandparent(
-	__isl_take isl_schedule_node *node)
-{
-	return isl_schedule_node_ancestor(node, 2);
-}
-
 /* Move the "node" pointer to the root of its schedule tree.
  */
 __isl_give isl_schedule_node *isl_schedule_node_root(
@@ -1206,17 +1198,6 @@ __isl_give isl_schedule_node *isl_schedule_node_child(
 	if (!node->tree || !node->ancestors)
 		return isl_schedule_node_free(node);
 
-	return node;
-}
-
-/* Move the "node" pointer to the child at position "pos2" of the child
- * at position "pos1".
- */
-__isl_give isl_schedule_node *isl_schedule_node_grandchild(
-	__isl_take isl_schedule_node *node, int pos1, int pos2)
-{
-	node = isl_schedule_node_child(node, pos1);
-	node = isl_schedule_node_child(node, pos2);
 	return node;
 }
 
@@ -2292,20 +2273,6 @@ __isl_give isl_id *isl_schedule_node_mark_get_id(
 	return isl_schedule_tree_mark_get_id(node->tree);
 }
 
-/* Check that "node" is a sequence node.
- */
-static isl_stat check_is_sequence(__isl_keep isl_schedule_node *node)
-{
-	if (!node)
-		return isl_stat_error;
-
-	if (isl_schedule_node_get_type(node) != isl_schedule_node_sequence)
-		isl_die(isl_schedule_node_get_ctx(node), isl_error_invalid,
-			"not a sequence node", return isl_stat_error);
-
-	return isl_stat_ok;
-}
-
 /* Replace the child at position "pos" of the sequence node "node"
  * by the children of sequence root node of "tree".
  */
@@ -2315,8 +2282,11 @@ __isl_give isl_schedule_node *isl_schedule_node_sequence_splice(
 {
 	isl_schedule_tree *node_tree;
 
-	if (check_is_sequence(node) < 0 || !tree)
+	if (!node || !tree)
 		goto error;
+	if (isl_schedule_node_get_type(node) != isl_schedule_node_sequence)
+		isl_die(isl_schedule_node_get_ctx(node), isl_error_invalid,
+			"not a sequence node", goto error);
 	if (isl_schedule_tree_get_type(tree) != isl_schedule_node_sequence)
 		isl_die(isl_schedule_node_get_ctx(node), isl_error_invalid,
 			"not a sequence node", goto error);
@@ -2347,11 +2317,18 @@ __isl_give isl_schedule_node *isl_schedule_node_sequence_splice_child(
 	isl_schedule_node *child;
 	isl_schedule_tree *tree;
 
-	if (check_is_sequence(node) < 0)
-		return isl_schedule_node_free(node);
-	node = isl_schedule_node_grandchild(node, pos, 0);
-	if (check_is_sequence(node) < 0)
-		return isl_schedule_node_free(node);
+	if (!node)
+		return NULL;
+	if (isl_schedule_node_get_type(node) != isl_schedule_node_sequence)
+		isl_die(isl_schedule_node_get_ctx(node), isl_error_invalid,
+			"not a sequence node",
+			return isl_schedule_node_free(node));
+	node = isl_schedule_node_child(node, pos);
+	node = isl_schedule_node_child(node, 0);
+	if (isl_schedule_node_get_type(node) != isl_schedule_node_sequence)
+		isl_die(isl_schedule_node_get_ctx(node), isl_error_invalid,
+			"not a sequence node",
+			return isl_schedule_node_free(node));
 	n = isl_schedule_node_n_children(node);
 	if (n < 0)
 		return isl_schedule_node_free(node);
@@ -2369,46 +2346,6 @@ __isl_give isl_schedule_node *isl_schedule_node_sequence_splice_child(
 	isl_schedule_node_free(child);
 	node = isl_schedule_node_parent(node);
 	node = isl_schedule_node_sequence_splice(node, pos, tree);
-
-	return node;
-}
-
-/* Given a sequence node "node", for each child that is also
- * (the parent of) a sequence node, attach the children of that node directly
- * as children of "node" at the position of the child,
- * replacing this original child.
- *
- * Since splicing in a child may change the positions of later children,
- * iterate through the children from last to first.
- */
-__isl_give isl_schedule_node *isl_schedule_node_sequence_splice_children(
-	__isl_take isl_schedule_node *node)
-{
-	int i;
-	isl_size n;
-
-	if (check_is_sequence(node) < 0)
-		return isl_schedule_node_free(node);
-	n = isl_schedule_node_n_children(node);
-	if (n < 0)
-		return isl_schedule_node_free(node);
-
-	for (i = n - 1; i >= 0; --i) {
-		enum isl_schedule_node_type type;
-		int is_seq;
-
-		node = isl_schedule_node_grandchild(node, i, 0);
-		type = isl_schedule_node_get_type(node);
-		if (type < 0)
-			return isl_schedule_node_free(node);
-		is_seq = type == isl_schedule_node_sequence;
-		node = isl_schedule_node_grandparent(node);
-
-		if (!is_seq)
-			continue;
-
-		node = isl_schedule_node_sequence_splice_child(node, i);
-	}
 
 	return node;
 }
@@ -4214,15 +4151,17 @@ static isl_bool has_ancestors(__isl_keep isl_schedule_node *node,
  * of both the original extension and the domain elements that reach
  * that original extension?
  */
-static isl_bool is_disjoint_extension(__isl_keep isl_schedule_node *node,
+static int is_disjoint_extension(__isl_keep isl_schedule_node *node,
 	__isl_keep isl_union_map *extension)
 {
 	isl_union_map *old;
 	isl_union_set *domain;
-	isl_bool empty;
+	int empty;
 
 	node = isl_schedule_node_copy(node);
-	node = isl_schedule_node_ancestor(node, 3);
+	node = isl_schedule_node_parent(node);
+	node = isl_schedule_node_parent(node);
+	node = isl_schedule_node_parent(node);
 	old = isl_schedule_node_extension_get_extension(node);
 	domain = isl_schedule_node_get_universe_domain(node);
 	isl_schedule_node_free(node);
@@ -4256,12 +4195,14 @@ static __isl_give isl_schedule_node *extend_extension(
 	pos = isl_schedule_node_get_child_position(node);
 	if (pos < 0)
 		node = isl_schedule_node_free(node);
-	node = isl_schedule_node_grandparent(node);
+	node = isl_schedule_node_parent(node);
+	node = isl_schedule_node_parent(node);
 	node_extension = isl_schedule_node_extension_get_extension(node);
 	disjoint = isl_union_map_is_disjoint(extension, node_extension);
 	extension = isl_union_map_union(extension, node_extension);
 	node = isl_schedule_node_extension_set_extension(node, extension);
-	node = isl_schedule_node_grandchild(node, 0, pos);
+	node = isl_schedule_node_child(node, 0);
+	node = isl_schedule_node_child(node, pos);
 
 	if (disjoint < 0)
 		return isl_schedule_node_free(node);
@@ -4338,7 +4279,7 @@ static __isl_give isl_schedule_node *insert_extension(
 	if (in_ext < 0)
 		goto error;
 	if (in_ext) {
-		isl_bool disjoint;
+		int disjoint;
 
 		disjoint = is_disjoint_extension(node, extension);
 		if (disjoint < 0)
@@ -4386,7 +4327,8 @@ static __isl_give isl_schedule_node *graft_or_splice(
 		pos = 0;
 		node = isl_schedule_node_graft_tree(node, tree);
 	}
-	node = isl_schedule_node_grandchild(node, pos + tree_pos, 0);
+	node = isl_schedule_node_child(node, pos + tree_pos);
+	node = isl_schedule_node_child(node, 0);
 
 	return node;
 }

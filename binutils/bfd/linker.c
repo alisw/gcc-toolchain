@@ -573,6 +573,8 @@ bfd_wrapped_link_hash_lookup (bfd *abfd,
 	  strcat (n, WRAP);
 	  strcat (n, l);
 	  h = bfd_link_hash_lookup (info->hash, n, create, true, follow);
+	  if (h != NULL)
+	    h->wrapper_symbol = true;
 	  free (n);
 	  return h;
 	}
@@ -1678,6 +1680,8 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
 	case MIND:
 	  /* Multiple indirect symbols.  This is OK if they both point
 	     to the same symbol.  */
+	  if (h->u.i.link == inh)
+	    break;
 	  if (h->u.i.link->type == bfd_link_hash_defweak)
 	    {
 	      /* It is also OK to redefine a symbol that indirects to
@@ -1689,8 +1693,6 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
 	      cycle = true;
 	      break;
 	    }
-	  if (string != NULL && strcmp (h->u.i.link->root.string, string) == 0)
-	    break;
 	  /* Fall through.  */
 	case MDEF:
 	  /* Handle a multiple definition.  */
@@ -3555,39 +3557,4 @@ _bfd_nolink_bfd_define_start_stop (struct bfd_link_info *info ATTRIBUTE_UNUSED,
 				   asection *sec)
 {
   return (struct bfd_link_hash_entry *) _bfd_ptr_bfd_null_error (sec->owner);
-}
-
-/* Return false if linker should avoid caching relocation infomation
-   and symbol tables of input files in memory.  */
-
-bool
-_bfd_link_keep_memory (struct bfd_link_info * info)
-{
-  bfd *abfd;
-  bfd_size_type size;
-
-  if (!info->keep_memory)
-    return false;
-
-  if (info->max_cache_size == (bfd_size_type) -1)
-    return true;
-
-  abfd = info->input_bfds;
-  size = info->cache_size;
-  do
-    {
-      if (size >= info->max_cache_size)
-	{
-	  /* Over the limit.  Reduce the memory usage.  */
-	  info->keep_memory = false;
-	  return false;
-	}
-      if (!abfd)
-	break;
-      size += abfd->alloc_size;
-      abfd = abfd->link.next;
-    }
-  while (1);
-
-  return true;
 }

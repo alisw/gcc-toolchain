@@ -1,4 +1,4 @@
-This is ctf-spec.info, produced by makeinfo version 7.0.2 from
+This is ctf-spec.info, produced by makeinfo version 7.0.3 from
 ctf-spec.texi.
 
 Copyright © 2021-2024 Free Software Foundation, Inc.
@@ -467,7 +467,7 @@ typedef struct ctf_stype
     uint32_t ctt_size;
     uint32_t ctt_type;
   };
-} ctf_type_t;
+} ctf_stype_t;
 
    If ‘ctt_size’ is the #define ‘CTF_LSIZE_SENT’, 0xffffffff, this type
 is described by a ‘ctf_type_t’: otherwise, a ‘ctf_stype_t’.
@@ -1727,25 +1727,25 @@ Node: CTF Preamble9355
 Node: CTF file-wide flags12041
 Node: CTF header13539
 Node: The type section19533
-Node: The info word24320
-Node: Type indexes and type IDs26932
-Node: Type kinds30352
-Node: Integer types33733
-Node: Floating-point types37391
-Node: Slices41572
-Node: Pointers typedefs and cvr-quals45136
-Node: Arrays46355
-Node: Function pointers48130
-Node: Enums48819
-Node: Structs and unions50129
-Node: Forward declarations54118
-Node: The symtypetab sections55727
-Node: The variable section58853
-Node: The label section59999
-Node: The string section60986
-Node: Data models62260
-Node: Limits of CTF62933
-Node: Index64010
+Node: The info word24321
+Node: Type indexes and type IDs26933
+Node: Type kinds30353
+Node: Integer types33734
+Node: Floating-point types37392
+Node: Slices41573
+Node: Pointers typedefs and cvr-quals45137
+Node: Arrays46356
+Node: Function pointers48131
+Node: Enums48820
+Node: Structs and unions50130
+Node: Forward declarations54119
+Node: The symtypetab sections55728
+Node: The variable section58854
+Node: The label section60000
+Node: The string section60987
+Node: Data models62261
+Node: Limits of CTF62934
+Node: Index64011
 
 End Tag Table
 

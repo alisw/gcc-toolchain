@@ -260,7 +260,8 @@ gcc(1), ld(1), and the Info entries for @file{binutils} and @file{ld}.
  [@b{--size-check=[error|warning]}]
  [@b{--statistics}]
  [@b{-v}] [@b{-version}] [@b{--version}]
- [@b{-W}] [@b{--warn}] [@b{--fatal-warnings}] [@b{-w}] [@b{-x}]
+ [@b{-W}] [@b{--no-warn}] [@b{--warn}] [@b{--fatal-warnings}]
+ [@b{-w}] [@b{-x}]
  [@b{-Z}] [@b{@@@var{FILE}}]
  [@var{target-options}]
  [@b{--}|@var{files} @dots{}]
@@ -584,6 +585,10 @@ gcc(1), ld(1), and the Info entries for @file{binutils} and @file{ld}.
    [@b{-m31}|@b{-m64}] [@b{-mesa}|@b{-mzarch}] [@b{-march}=@var{CPU}]
    [@b{-mregnames}|@b{-mno-regnames}]
    [@b{-mwarn-areg-zero}]
+   [@b{-mwarn-regtype-mismatch=strict}
+    @b{-mwarn-regtype-mismatch=relaxed}
+    @b{-mwarn-regtype-mismatch=no}
+    @b{-mno-warn-regtype-mismatch}]
 @end ifset
 @ifset SCORE
 
@@ -932,7 +937,7 @@ Name the object-file output from @command{@value{AS}} @var{objfile}.
 Fold the data section into the text section.
 
 @item --reduce-memory-overheads
-Ignored.  Supported for compatibility with tools that apss the same option to
+Ignored.  Supported for compatibility with tools that pass the same option to
 both the assembler and the linker.
 
 @ifset ELF
@@ -979,11 +984,11 @@ Print the @command{as} version and exit.
 @itemx --no-warn
 Suppress warning messages.
 
-@item --fatal-warnings
-Treat warnings as errors.
-
 @item --warn
 Don't suppress warning messages or treat them as errors.
+
+@item --fatal-warnings
+Treat warnings as errors.
 
 @item -w
 Ignored.
@@ -1963,6 +1968,22 @@ Allow or disallow symbolic names for registers.
 @item -mwarn-areg-zero
 Warn whenever the operand for a base or index register has been specified
 but evaluates to zero.
+@item -mwarn-regtype-mismatch=strict
+@itemx -mwarn-regtype-mismatch=relaxed
+@itemx -mwarn-regtype-mismatch=no
+@itemx -mno-warn-regtype-mismatch
+Controls whether the assembler performs register name type checks and generates
+a warning message in case of a mismatch with the operand register type.
+The default (which can be restored by using the @option{relaxed} argument) is
+to perform relaxed register name type checks, which allow floating point
+register (FPR) names %f0 to %f15 to be specified as argument to vector register
+(VR) operands and vector register (VR) names %v0 to %v15 to be specified as
+argument to floating point register (FPR) operands.  This is acceptable as the
+FPR are embedded into the lower half of the VR.
+Using the @option{strict} argument strict register name type checks are
+performed.
+The @option{no} argument, which is equivalent to
+@samp{-mno-warn-regtype-mismatch}, disables any register name type checks.
 @end table
 @end ifset
 @c man end
@@ -2843,7 +2864,7 @@ option @samp{-v} (which you can also spell as @samp{-version}) on the
 command line.
 
 @node W
-@section Control Warnings: @option{-W}, @option{--warn}, @option{--no-warn}, @option{--fatal-warnings}
+@section Control Warnings: @option{-W}, @option{--no-warn}, @option{--warn}, @option{--fatal-warnings}
 
 @command{@value{AS}} should never give a warning or error message when
 assembling compiler output.  But programs written by people often
@@ -2854,21 +2875,23 @@ made.  All such warnings are directed to the standard error file.
 @kindex --no-warn
 @cindex suppressing warnings
 @cindex warnings, suppressing
-If you use the @option{-W} and @option{--no-warn} options, no warnings are issued.
+If you use the @option{-W} or @option{--no-warn} option, no warnings are issued.
 This only affects the warning messages: it does not change any particular of
 how @command{@value{AS}} assembles your file.  Errors, which stop the assembly,
 are still reported.
+
+@kindex --warn
+@cindex outputing warnings
+@cindex warnings, switching on
+Warnings are switched on by default. They can be switched off with @option{-W} or
+@option{--no-warn}. Specifying the @option{--warn} again later on the command line
+will switch on warnings again, and cause them to be output as usual.
 
 @kindex --fatal-warnings
 @cindex errors, caused by warnings
 @cindex warnings, causing error
 If you use the @option{--fatal-warnings} option, @command{@value{AS}} considers
 files that generate warnings to be in error.
-
-@kindex --warn
-@cindex warnings, switching on
-You can switch these options off again by specifying @option{--warn}, which
-causes warnings to be output as usual.
 
 @node Z
 @section Generate Object File in Spite of Errors: @option{-Z}
@@ -2967,11 +2990,11 @@ as exactly one space.
 @section Comments
 
 @cindex comments
-There are two ways of rendering comments to @command{@value{AS}}.  In both
-cases the comment is equivalent to one space.
+There are two ways of rendering comments to @command{@value{AS}}.
 
 Anything from @samp{/*} through the next @samp{*/} is a comment.
-This means you may not nest these comments.
+This means you may not nest these comments.  Such a comment is equivalent to
+one space, plus bumping the line counter accordingly.
 
 @smallexample
 /*
@@ -4477,6 +4500,7 @@ Some machine configurations provide additional directives.
 * Asciz::                       @code{.asciz "@var{string}"}@dots{}
 * Attach_to_group::             @code{.attach_to_group @var{name}}
 * Balign::                      @code{.balign [@var{abs-expr}[, @var{abs-expr}]]}
+* Base64::                      @code{.base64 "@var{string}"[, @dots{}]}
 @ifset ELF
 * Bss::                         @code{.bss @var{subsection}}
 @end ifset
@@ -4761,6 +4785,10 @@ write @samp{<4.3 !> 5.4!!>} to get the literal text @samp{4.3 > 5.4!}.
 @item Expression results as strings
 You can write @samp{%@var{expr}} to evaluate the expression @var{expr}
 and use the result as a string.
+
+@item No passing arguments to macros based upon keyword assignment.
+In altmacro mode arguments cannot be passed to macros by keyword assignment.
+See @xref{altmacro-keyword-arguments} for more details
 @end ftable
 
 @node Ascii
@@ -4826,6 +4854,24 @@ fill pattern as a four byte longword value.  For example, @code{.balignw
 filled in with the value 0x368d (the exact placement of the bytes depends upon
 the endianness of the processor).  If it skips 1 or 3 bytes, the fill value is
 undefined.
+
+@node Base64
+@section @code{.base64 "@var{string}"[, @dots{}]}
+Allows binary data to be entered into a section encoded as a base64 string.
+There is no maximum length to the strings, but they must be a multiple of four
+bytes long.  If necessary the ends of the strings can be padded with @code{=}
+characters.  Line breaks, control characters and escaped characters are not
+allowed in the strings.  The strings must be enclosed between double quote
+characters.  Multiple strings are allowed, but they must be separated by
+commas.
+
+As an example of how to create a base64 encoded string, see the
+@command{base64} program (with its @option{-w0} option to disable line breaks).
+
+Note: for targets where the size of a byte is larger than the size of an octet
+the @code{.base64} directive will, if necessary, pad the end of the @emph{last}
+string so that the total number of octets generated are a multiple the number
+of octets in a byte.
 
 @ifset ELF
 @node Bss
@@ -5835,7 +5881,7 @@ processing must also be performed upon the  symbols as well.
 @end ifset
 
 @node Irp
-@section @code{.irp @var{symbol},@var{values}}@dots{}
+@section @code{.irp @var{symbol},@var{value}}@dots{}
 
 @cindex @code{irp} directive
 Evaluate a sequence of statements assigning different values to @var{symbol}.
@@ -5869,12 +5915,13 @@ For some caveats with the spelling of @var{symbol}, see also @ref{Macro}.
 
 @cindex @code{irpc} directive
 Evaluate a sequence of statements assigning different values to @var{symbol}.
-The sequence of statements starts at the @code{.irpc} directive, and is
-terminated by an @code{.endr} directive.  For each character in @var{value},
-@var{symbol} is set to the character, and the sequence of statements is
-assembled.  If no @var{value} is listed, the sequence of statements is
-assembled once, with @var{symbol} set to the null string.  To refer to
-@var{symbol} within the sequence of statements, use @var{\symbol}.
+The sequence of statements starts at the line following the @code{.irpc}
+directive, and is terminated by an @code{.endr} directive.  For each character
+in each (possibly double quoted) @var{values}, @var{symbol} is set to the
+character, and the sequence of statements is assembled.  If no @var{values} is
+listed, the sequence of statements is assembled once, with @var{symbol} set to
+the null string.  To refer to @var{symbol} within the sequence of statements,
+use @var{\symbol}.
 
 For example, assembling
 
@@ -6197,7 +6244,31 @@ will get assigned all remaining arguments specified at invocation time.
 
 When you call a macro, you can specify the argument values either by
 position, or by keyword.  For example, @samp{sum 9,17} is equivalent to
-@samp{sum to=17, from=9}.
+@samp{sum to=17, from=9}.  You can also omit values when using keywords,
+so for example @samp{sum to=6} is equivalent to @samp{sum 0, 6}.
+
+@anchor{altmacro-keyword-arguments}
+Note however that when operating in altmacro mode arguments can only be
+specified by position, not keyword.  @xref{Altmacro,,@code{.altmacro}}.
+
+Thus for example:
+
+@example
+.macro foo bar=1, baz=2
+.print "\bar \baz"
+.endm
+
+foo baz=3
+.altmacro
+foo baz=3
+@end example
+
+Will print:
+
+@smallexample
+1 3
+baz=3 2
+@end smallexample
 
 @end table
 
@@ -6313,6 +6384,14 @@ Exit early from the current macro definition.
 @command{@value{AS}} maintains a counter of how many macros it has
 executed in this pseudo-variable; you can copy that number to your
 output with @samp{\@@}, but @emph{only within a macro definition}.
+
+@cindex number of times a macro has been executed
+@cindex macro, execution count
+@item \+
+Similar to the @code{\@@} pseudo-variable, @command{@value{AS}} also maintains
+a per-macro count of the number of times that that macro has been executed.
+You can copy that number to your output with @samp{\+}, but
+@emph{only within a macro definition}.
 
 @item LOCAL @var{name} [ , @dots{} ]
 @emph{Warning: @code{LOCAL} is only available if you select ``alternate
@@ -6681,6 +6760,13 @@ is equivalent to assembling
 
 A count of zero is allowed, but nothing is generated.  Negative counts are not
 allowed and if encountered will be treated as if they were zero.
+
+Much like for macros, @code{.irp}, and @code{.irpc} the @samp{\+} sequence can
+be used to substitute in the number of iterations done so far.  In such cases,
+i.e. when any @samp{\+} character sequence is present between @code{.rept} and
+the corresponding @code{.endr}, other backslashes also need escaping by
+backslashes.  Naturally the amount of escaping necessary may increase when
+using nested constructs.
 
 @node Sbttl
 @section @code{.sbttl "@var{subheading}"}
@@ -7721,7 +7807,7 @@ section, using the endian model of the target.  If an expression will not fit
 in two bytes, a warning message is displayed and the least significant two
 bytes of the expression's value are used.  If an expression cannot be evaluated
 at assembly time then relocations will be generated in order to compute the
-value at link time.  
+value at link time.
 
 This directive does not apply any alignment before or after inserting the
 values.  As a result of this, if relocations are generated, they may be

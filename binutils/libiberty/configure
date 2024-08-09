@@ -4413,7 +4413,6 @@ $as_echo "$ac_cv_safe_to_define___extensions__" >&6; }
   $as_echo "#define _TANDEM_SOURCE 1" >>confdefs.h
 
 
-
 # Check whether --enable-largefile was given.
 if test "${enable_largefile+set}" = set; then :
   enableval=$enable_largefile;
@@ -7724,6 +7723,9 @@ if test x$gcc_no_link = xyes; then
   fi
 fi
 if test "x${ac_cv_func_mmap_fixed_mapped}" != xno; then
+  save_ASAN_OPTIONS="$ASAN_OPTIONS"
+  ASAN_OPTIONS=detect_leaks=0
+  export ASAN_OPTIONS
 
 for ac_func in getpagesize
 do :
@@ -7901,6 +7903,8 @@ $as_echo "#define HAVE_MMAP 1" >>confdefs.h
 
 fi
 rm -f conftest.mmap conftest.txt
+
+  ASAN_OPTIONS="$save_ASAN_OPTIONS"
 
 fi
 

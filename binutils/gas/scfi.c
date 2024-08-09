@@ -141,10 +141,13 @@ scfi_ops_cleanup (scfi_opS **head)
 
   while (op)
     {
+      free (op->op_data);
       free (op);
       op = next;
       next = op ? op->next : NULL;
     }
+
+  free (head);
 }
 
 /* Compare two SCFI states.  */
@@ -155,7 +158,7 @@ cmp_scfi_state (scfi_stateS *state1, scfi_stateS *state2)
   int ret;
 
   if (!state1 || !state2)
-    ret = 1;
+    return 1;
 
   /* Skip comparing the scratch[] value of registers.  The user visible
      unwind information is derived from the regs[] from the SCFI state.  */
@@ -164,10 +167,12 @@ cmp_scfi_state (scfi_stateS *state1, scfi_stateS *state2)
 
   /* For user functions which perform dynamic stack allocation, after switching
      t REG_FP based CFA tracking, it is perfectly possible to have stack usage
-     in some control flows.  However, double-checking that all control flows
-     have the same idea of CFA tracking before this wont hurt.  */
-  gas_assert (state1->regs[REG_CFA].base == state2->regs[REG_CFA].base);
-  if (state1->regs[REG_CFA].base == REG_SP)
+     in some control flows.  Further, the different control flows may even not
+     have the same idea of CFA tracking (likely later necessitating generation
+     of .cfi_remember_state / .cfi_restore_state pair).  */
+  ret |= state1->regs[REG_CFA].base != state2->regs[REG_CFA].base;
+
+  if (!ret && state1->regs[REG_CFA].base == REG_SP)
     ret |= state1->stack_size != state2->stack_size;
 
   ret |= state1->traceable_p != state2->traceable_p;
@@ -218,11 +223,12 @@ scfi_state_restore_reg (scfi_stateS *state, unsigned int reg)
   gas_assert (state->regs[reg].state == CFI_ON_STACK);
   gas_assert (state->regs[reg].base == REG_CFA);
 
-  state->regs[reg].base = reg;
+  /* PS: the register may still be on stack much after the restore.  Reset the
+     SCFI state to CFI_UNDEFINED, however, to indicate that the most updated
+     source of value is register itself from here onwards.  */
+  state->regs[reg].base = 0;
   state->regs[reg].offset = 0;
-  /* PS: the register may still be on stack much after the restore, but the
-     SCFI state keeps the state as 'in register'.  */
-  state->regs[reg].state = CFI_IN_REG;
+  state->regs[reg].state = CFI_UNDEFINED;
 }
 
 /* Identify if the given GAS instruction GINSN saves a register
@@ -911,11 +917,11 @@ gen_scfi_ops (ginsnS *ginsn, scfi_stateS *state)
   return ret;
 }
 
-/* Recursively perform forward flow of the (unwind information) SCFI state
+/* Recursively perform forward flow of the (unwind information) SCFI STATE
    starting at basic block GBB.
 
-   The forward flow process propagates the SCFI state at exit of a basic block
-   to the successor basic block.
+   The core of forward flow process takes the SCFI state at the entry of a bb
+   and updates it incrementally as per the semantics of each ginsn in the bb.
 
    Returns error code, if any.  */
 
@@ -961,6 +967,8 @@ forward_flow_scfi_state (gcfgS *gcfg, gbbS *gbb, scfi_stateS *state)
       bb_for_each_edge(gbb, gedge)
 	{
 	  gbb = gedge->dst_bb;
+	  /* Ensure that the state is the one from the exit of the prev bb.  */
+	  memcpy (state, prev_bb->exit_state, sizeof (scfi_stateS));
 	  if (gbb->visited)
 	    {
 	      ret = cmp_scfi_state (gbb->entry_state, state);
@@ -1137,6 +1145,7 @@ handle_scfi_dot_cfi (ginsnS *ginsn)
 	  break;
 	case CFI_label:
 	  scfi_dot_cfi (CFI_label, 0, 0, 0, op->op_data->name, ginsn->sym);
+	  free ((char *) op->op_data->name);
 	  break;
 	case CFI_signal_frame:
 	  scfi_dot_cfi (CFI_signal_frame, 0, 0, 0, NULL, ginsn->sym);

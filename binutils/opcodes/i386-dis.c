@@ -107,6 +107,7 @@ static bool DistinctDest_Fixup (instr_info *, int, int);
 static bool PREFETCHI_Fixup (instr_info *, int, int);
 static bool PUSH2_POP2_Fixup (instr_info *, int, int);
 static bool JMPABS_Fixup (instr_info *, int, int);
+static bool CFCMOV_Fixup (instr_info *, int, int);
 
 static void ATTRIBUTE_PRINTF_3 i386_dis_printf (const disassemble_info *,
 						enum disassembler_style,
@@ -160,6 +161,7 @@ struct instr_info
   unsigned char rex2_payload;
 
   bool need_modrm;
+  unsigned char condition_code;
   unsigned char need_vex;
   bool has_sib;
 
@@ -218,6 +220,7 @@ struct instr_info
     int length;
     int prefix;
     int mask_register_specifier;
+    int scc;
     int ll;
     bool w;
     bool evex;
@@ -225,6 +228,7 @@ struct instr_info
     bool zeroing;
     bool b;
     bool no_broadcast;
+    bool nf;
   }
   vex;
 
@@ -821,6 +825,9 @@ enum
   USE_PREFIX_TABLE,
   USE_X86_64_TABLE,
   USE_X86_64_EVEX_FROM_VEX_TABLE,
+  USE_X86_64_EVEX_PFX_TABLE,
+  USE_X86_64_EVEX_W_TABLE,
+  USE_X86_64_EVEX_MEM_W_TABLE,
   USE_3BYTE_TABLE,
   USE_XOP_8F_TABLE,
   USE_VEX_C4_TABLE,
@@ -841,6 +848,9 @@ enum
 #define X86_64_TABLE(I)		DIS386 (USE_X86_64_TABLE, (I))
 #define X86_64_EVEX_FROM_VEX_TABLE(I) \
   DIS386 (USE_X86_64_EVEX_FROM_VEX_TABLE, (I))
+#define X86_64_EVEX_PFX_TABLE(I) DIS386 (USE_X86_64_EVEX_PFX_TABLE, (I))
+#define X86_64_EVEX_W_TABLE(I) DIS386 (USE_X86_64_EVEX_W_TABLE, (I))
+#define X86_64_EVEX_MEM_W_TABLE(I) DIS386 (USE_X86_64_EVEX_MEM_W_TABLE, (I))
 #define THREE_BYTE_TABLE(I)	DIS386 (USE_3BYTE_TABLE, (I))
 #define XOP_8F_TABLE()		DIS386 (USE_XOP_8F_TABLE, 0)
 #define VEX_C4_TABLE()		DIS386 (USE_VEX_C4_TABLE, 0)
@@ -951,6 +961,8 @@ enum
 
   MOD_VEX_0F3849_X86_64_L_0_W_0,
 
+  MOD_EVEX_MAP4_60,
+  MOD_EVEX_MAP4_61,
   MOD_EVEX_MAP4_F8_P_1,
   MOD_EVEX_MAP4_F8_P_3,
 };
@@ -1192,13 +1204,7 @@ enum
   PREFIX_EVEX_0F3A67,
   PREFIX_EVEX_0F3AC2,
 
-  PREFIX_EVEX_MAP4_D8,
-  PREFIX_EVEX_MAP4_DA,
-  PREFIX_EVEX_MAP4_DB,
-  PREFIX_EVEX_MAP4_DC,
-  PREFIX_EVEX_MAP4_DD,
-  PREFIX_EVEX_MAP4_DE,
-  PREFIX_EVEX_MAP4_DF,
+  PREFIX_EVEX_MAP4_4x,
   PREFIX_EVEX_MAP4_F0,
   PREFIX_EVEX_MAP4_F1,
   PREFIX_EVEX_MAP4_F2,
@@ -1299,35 +1305,9 @@ enum
   X86_64_VEX_0F385C,
   X86_64_VEX_0F385E,
   X86_64_VEX_0F386C,
-  X86_64_VEX_0F38E0,
-  X86_64_VEX_0F38E1,
-  X86_64_VEX_0F38E2,
-  X86_64_VEX_0F38E3,
-  X86_64_VEX_0F38E4,
-  X86_64_VEX_0F38E5,
-  X86_64_VEX_0F38E6,
-  X86_64_VEX_0F38E7,
-  X86_64_VEX_0F38E8,
-  X86_64_VEX_0F38E9,
-  X86_64_VEX_0F38EA,
-  X86_64_VEX_0F38EB,
-  X86_64_VEX_0F38EC,
-  X86_64_VEX_0F38ED,
-  X86_64_VEX_0F38EE,
-  X86_64_VEX_0F38EF,
+  X86_64_VEX_0F38Ex,
 
   X86_64_VEX_MAP7_F8_L_0_W_0_R_0,
-
-  X86_64_EVEX_0F90,
-  X86_64_EVEX_0F91,
-  X86_64_EVEX_0F92,
-  X86_64_EVEX_0F93,
-  X86_64_EVEX_0F38F2,
-  X86_64_EVEX_0F38F3,
-  X86_64_EVEX_0F38F5,
-  X86_64_EVEX_0F38F6,
-  X86_64_EVEX_0F38F7,
-  X86_64_EVEX_0F3AF0,
 };
 
 enum
@@ -1750,6 +1730,8 @@ enum
   EVEX_W_0F3A72,
 
   EVEX_W_MAP4_8F_R_0,
+  EVEX_W_MAP4_F8_P1_M_1,
+  EVEX_W_MAP4_F8_P3_M_1,
   EVEX_W_MAP4_FF_R_6,
 
   EVEX_W_MAP5_5B_P_0,
@@ -1809,6 +1791,7 @@ struct dis386 {
 	  nothing otherwise; behave as 'P' in all other cases
 
    2 upper case letter macros:
+   "CC" => print condition code
    "XY" => print 'x' or 'y' if suffix_always is true or no register
 	   operands and no broadcast.
    "XZ" => print 'x', 'y', or 'z' if suffix_always is true or no
@@ -1820,6 +1803,14 @@ struct dis386 {
    "XV" => print "{vex} " pseudo prefix
    "XE" => print "{evex} " pseudo prefix if no EVEX-specific functionality is
 	   is used by an EVEX-encoded (AVX512VL) instruction.
+   "NF" => print "{nf} " pseudo prefix when EVEX.NF = 1 and print "{evex} "
+	   pseudo prefix when instructions without NF, EGPR and VVVV,
+   "NE" => don't print "{evex} " pseudo prefix for some special instructions
+	   in MAP4.
+   "ZU" => print 'zu' if EVEX.ZU=1.
+   "SC" => print suffix SCC for SCC insns
+   "SW" => print '.s' to indicate operands were swapped when suffix_always is
+	   true.
    "YK" keep unused, to avoid ambiguity with the combined use of Y and K.
    "YX" keep unused, to avoid ambiguity with the combined use of Y and X.
    "LQ" => print 'l' ('d' in Intel mode) or 'q' for memory operand, cond
@@ -1829,6 +1820,7 @@ struct dis386 {
    "LS" => print "abs" in 64bit mode and behave as 'S' otherwise
    "LV" => print "abs" for 64bit operand and behave as 'S' otherwise
    "DQ" => print 'd' or 'q' depending on the VEX.W bit
+   "DF" => print default flag value for SCC insns
    "BW" => print 'b' or 'w' depending on the VEX.W bit
    "LP" => print 'w' or 'l' ('d' in Intel mode) if instruction has
 	   an operand size prefix, or suffix_always is true.  print
@@ -2624,25 +2616,25 @@ static const struct dis386 reg_table[][8] = {
   },
   /* REG_C0 */
   {
-    { "rolA",	{ VexGb, Eb, Ib }, NO_PREFIX },
-    { "rorA",	{ VexGb, Eb, Ib }, NO_PREFIX },
+    { "%NFrolA",	{ VexGb, Eb, Ib }, NO_PREFIX },
+    { "%NFrorA",	{ VexGb, Eb, Ib }, NO_PREFIX },
     { "rclA",	{ VexGb, Eb, Ib }, NO_PREFIX },
     { "rcrA",	{ VexGb, Eb, Ib }, NO_PREFIX },
-    { "shlA",	{ VexGb, Eb, Ib }, NO_PREFIX },
-    { "shrA",	{ VexGb, Eb, Ib }, NO_PREFIX },
-    { "shlA",	{ VexGb, Eb, Ib }, NO_PREFIX },
-    { "sarA",	{ VexGb, Eb, Ib }, NO_PREFIX },
+    { "%NFshlA",	{ VexGb, Eb, Ib }, NO_PREFIX },
+    { "%NFshrA",	{ VexGb, Eb, Ib }, NO_PREFIX },
+    { "%NFshlA",	{ VexGb, Eb, Ib }, NO_PREFIX },
+    { "%NFsarA",	{ VexGb, Eb, Ib }, NO_PREFIX },
   },
   /* REG_C1 */
   {
-    { "rolQ",	{ VexGv, Ev, Ib }, PREFIX_NP_OR_DATA },
-    { "rorQ",	{ VexGv, Ev, Ib }, PREFIX_NP_OR_DATA },
+    { "%NFrolQ",	{ VexGv, Ev, Ib }, PREFIX_NP_OR_DATA },
+    { "%NFrorQ",	{ VexGv, Ev, Ib }, PREFIX_NP_OR_DATA },
     { "rclQ",	{ VexGv, Ev, Ib }, PREFIX_NP_OR_DATA },
     { "rcrQ",	{ VexGv, Ev, Ib }, PREFIX_NP_OR_DATA },
-    { "shlQ",	{ VexGv, Ev, Ib }, PREFIX_NP_OR_DATA },
-    { "shrQ",	{ VexGv, Ev, Ib }, PREFIX_NP_OR_DATA },
-    { "shlQ",	{ VexGv, Ev, Ib }, PREFIX_NP_OR_DATA },
-    { "sarQ",	{ VexGv, Ev, Ib }, PREFIX_NP_OR_DATA },
+    { "%NFshlQ",	{ VexGv, Ev, Ib }, PREFIX_NP_OR_DATA },
+    { "%NFshrQ",	{ VexGv, Ev, Ib }, PREFIX_NP_OR_DATA },
+    { "%NFshlQ",	{ VexGv, Ev, Ib }, PREFIX_NP_OR_DATA },
+    { "%NFsarQ",	{ VexGv, Ev, Ib }, PREFIX_NP_OR_DATA },
   },
   /* REG_C6 */
   {
@@ -2668,47 +2660,47 @@ static const struct dis386 reg_table[][8] = {
   },
   /* REG_D0 */
   {
-    { "rolA",	{ VexGb, Eb, I1 }, NO_PREFIX },
-    { "rorA",	{ VexGb, Eb, I1 }, NO_PREFIX },
+    { "%NFrolA",	{ VexGb, Eb, I1 }, NO_PREFIX },
+    { "%NFrorA",	{ VexGb, Eb, I1 }, NO_PREFIX },
     { "rclA",	{ VexGb, Eb, I1 }, NO_PREFIX },
     { "rcrA",	{ VexGb, Eb, I1 }, NO_PREFIX },
-    { "shlA",	{ VexGb, Eb, I1 }, NO_PREFIX },
-    { "shrA",	{ VexGb, Eb, I1 }, NO_PREFIX },
-    { "shlA",	{ VexGb, Eb, I1 }, NO_PREFIX },
-    { "sarA",	{ VexGb, Eb, I1 }, NO_PREFIX },
+    { "%NFshlA",	{ VexGb, Eb, I1 }, NO_PREFIX },
+    { "%NFshrA",	{ VexGb, Eb, I1 }, NO_PREFIX },
+    { "%NFshlA",	{ VexGb, Eb, I1 }, NO_PREFIX },
+    { "%NFsarA",	{ VexGb, Eb, I1 }, NO_PREFIX },
   },
   /* REG_D1 */
   {
-    { "rolQ",	{ VexGv, Ev, I1 }, PREFIX_NP_OR_DATA },
-    { "rorQ",	{ VexGv, Ev, I1 }, PREFIX_NP_OR_DATA },
+    { "%NFrolQ",	{ VexGv, Ev, I1 }, PREFIX_NP_OR_DATA },
+    { "%NFrorQ",	{ VexGv, Ev, I1 }, PREFIX_NP_OR_DATA },
     { "rclQ",	{ VexGv, Ev, I1 }, PREFIX_NP_OR_DATA },
     { "rcrQ",	{ VexGv, Ev, I1 }, PREFIX_NP_OR_DATA },
-    { "shlQ",	{ VexGv, Ev, I1 }, PREFIX_NP_OR_DATA },
-    { "shrQ",	{ VexGv, Ev, I1 }, PREFIX_NP_OR_DATA },
-    { "shlQ",	{ VexGv, Ev, I1 }, PREFIX_NP_OR_DATA },
-    { "sarQ",	{ VexGv, Ev, I1 }, PREFIX_NP_OR_DATA },
+    { "%NFshlQ",	{ VexGv, Ev, I1 }, PREFIX_NP_OR_DATA },
+    { "%NFshrQ",	{ VexGv, Ev, I1 }, PREFIX_NP_OR_DATA },
+    { "%NFshlQ",	{ VexGv, Ev, I1 }, PREFIX_NP_OR_DATA },
+    { "%NFsarQ",	{ VexGv, Ev, I1 }, PREFIX_NP_OR_DATA },
   },
   /* REG_D2 */
   {
-    { "rolA",	{ VexGb, Eb, CL }, NO_PREFIX },
-    { "rorA",	{ VexGb, Eb, CL }, NO_PREFIX },
+    { "%NFrolA",	{ VexGb, Eb, CL }, NO_PREFIX },
+    { "%NFrorA",	{ VexGb, Eb, CL }, NO_PREFIX },
     { "rclA",	{ VexGb, Eb, CL }, NO_PREFIX },
     { "rcrA",	{ VexGb, Eb, CL }, NO_PREFIX },
-    { "shlA",	{ VexGb, Eb, CL }, NO_PREFIX },
-    { "shrA",	{ VexGb, Eb, CL }, NO_PREFIX },
-    { "shlA",	{ VexGb, Eb, CL }, NO_PREFIX },
-    { "sarA",	{ VexGb, Eb, CL }, NO_PREFIX },
+    { "%NFshlA",	{ VexGb, Eb, CL }, NO_PREFIX },
+    { "%NFshrA",	{ VexGb, Eb, CL }, NO_PREFIX },
+    { "%NFshlA",	{ VexGb, Eb, CL }, NO_PREFIX },
+    { "%NFsarA",	{ VexGb, Eb, CL }, NO_PREFIX },
   },
   /* REG_D3 */
   {
-    { "rolQ",	{ VexGv, Ev, CL }, PREFIX_NP_OR_DATA },
-    { "rorQ",	{ VexGv, Ev, CL }, PREFIX_NP_OR_DATA },
+    { "%NFrolQ",	{ VexGv, Ev, CL }, PREFIX_NP_OR_DATA },
+    { "%NFrorQ",	{ VexGv, Ev, CL }, PREFIX_NP_OR_DATA },
     { "rclQ",	{ VexGv, Ev, CL }, PREFIX_NP_OR_DATA },
     { "rcrQ",	{ VexGv, Ev, CL }, PREFIX_NP_OR_DATA },
-    { "shlQ",	{ VexGv, Ev, CL }, PREFIX_NP_OR_DATA },
-    { "shrQ",	{ VexGv, Ev, CL }, PREFIX_NP_OR_DATA },
-    { "shlQ",	{ VexGv, Ev, CL }, PREFIX_NP_OR_DATA },
-    { "sarQ",	{ VexGv, Ev, CL }, PREFIX_NP_OR_DATA },
+    { "%NFshlQ",	{ VexGv, Ev, CL }, PREFIX_NP_OR_DATA },
+    { "%NFshrQ",	{ VexGv, Ev, CL }, PREFIX_NP_OR_DATA },
+    { "%NFshlQ",	{ VexGv, Ev, CL }, PREFIX_NP_OR_DATA },
+    { "%NFsarQ",	{ VexGv, Ev, CL }, PREFIX_NP_OR_DATA },
   },
   /* REG_F6 */
   {
@@ -2949,9 +2941,9 @@ static const struct dis386 reg_table[][8] = {
   /* REG_VEX_0F38F3_L_0_P_0 */
   {
     { Bad_Opcode },
-    { "blsrS",		{ VexGdq, Edq }, 0 },
-    { "blsmskS",	{ VexGdq, Edq }, 0 },
-    { "blsiS",		{ VexGdq, Edq }, 0 },
+    { "%NFblsrS",		{ VexGdq, Edq }, 0 },
+    { "%NFblsmskS",		{ VexGdq, Edq }, 0 },
+    { "%NFblsiS",		{ VexGdq, Edq }, 0 },
   },
   /* REG_VEX_MAP7_F8_L_0_W_0 */
   {
@@ -3885,38 +3877,38 @@ static const struct dis386 prefix_table[][4] = {
 
   /* PREFIX_VEX_0F90_L_0_W_0 */
   {
-    { "kmovw",		{ MaskG, MaskE }, 0 },
+    { "%XEkmovw",		{ MaskG, MaskE }, 0 },
     { Bad_Opcode },
-    { "kmovb",		{ MaskG, MaskBDE }, 0 },
+    { "%XEkmovb",		{ MaskG, MaskBDE }, 0 },
   },
 
   /* PREFIX_VEX_0F90_L_0_W_1 */
   {
-    { "kmovq",		{ MaskG, MaskE }, 0 },
+    { "%XEkmovq",		{ MaskG, MaskE }, 0 },
     { Bad_Opcode },
-    { "kmovd",		{ MaskG, MaskBDE }, 0 },
+    { "%XEkmovd",		{ MaskG, MaskBDE }, 0 },
   },
 
   /* PREFIX_VEX_0F91_L_0_W_0 */
   {
-    { "kmovw",		{ Mw, MaskG }, 0 },
+    { "%XEkmovw",		{ Mw, MaskG }, 0 },
     { Bad_Opcode },
-    { "kmovb",		{ Mb, MaskG }, 0 },
+    { "%XEkmovb",		{ Mb, MaskG }, 0 },
   },
 
   /* PREFIX_VEX_0F91_L_0_W_1 */
   {
-    { "kmovq",		{ Mq, MaskG }, 0 },
+    { "%XEkmovq",		{ Mq, MaskG }, 0 },
     { Bad_Opcode },
-    { "kmovd",		{ Md, MaskG }, 0 },
+    { "%XEkmovd",		{ Md, MaskG }, 0 },
   },
 
   /* PREFIX_VEX_0F92_L_0_W_0 */
   {
-    { "kmovw",		{ MaskG, Rdq }, 0 },
+    { "%XEkmovw",		{ MaskG, Rdq }, 0 },
     { Bad_Opcode },
-    { "kmovb",		{ MaskG, Rdq }, 0 },
-    { "kmovd",		{ MaskG, Rdq }, 0 },
+    { "%XEkmovb",		{ MaskG, Rdq }, 0 },
+    { "%XEkmovd",		{ MaskG, Rdq }, 0 },
   },
 
   /* PREFIX_VEX_0F92_L_0_W_1 */
@@ -3924,15 +3916,15 @@ static const struct dis386 prefix_table[][4] = {
     { Bad_Opcode },
     { Bad_Opcode },
     { Bad_Opcode },
-    { "kmovK",		{ MaskG, Rdq }, 0 },
+    { "%XEkmovK",		{ MaskG, Rdq }, 0 },
   },
 
   /* PREFIX_VEX_0F93_L_0_W_0 */
   {
-    { "kmovw",		{ Gdq, MaskR }, 0 },
+    { "%XEkmovw",		{ Gdq, MaskR }, 0 },
     { Bad_Opcode },
-    { "kmovb",		{ Gdq, MaskR }, 0 },
-    { "kmovd",		{ Gdq, MaskR }, 0 },
+    { "%XEkmovb",		{ Gdq, MaskR }, 0 },
+    { "%XEkmovd",		{ Gdq, MaskR }, 0 },
   },
 
   /* PREFIX_VEX_0F93_L_0_W_1 */
@@ -3940,7 +3932,7 @@ static const struct dis386 prefix_table[][4] = {
     { Bad_Opcode },
     { Bad_Opcode },
     { Bad_Opcode },
-    { "kmovK",		{ Gdq, MaskR }, 0 },
+    { "%XEkmovK",		{ Gdq, MaskR }, 0 },
   },
 
   /* PREFIX_VEX_0F98_L_0_W_0 */
@@ -4052,7 +4044,7 @@ static const struct dis386 prefix_table[][4] = {
     { "vbcstnebf162ps", { XM, Mw }, 0 },
     { "vbcstnesh2ps", { XM, Mw }, 0 },
   },
- 
+
   /* PREFIX_VEX_0F38D2_W_0 */
   {
     { "vpdpwuud",	{ XM, Vex, EXx }, 0 },
@@ -4101,7 +4093,7 @@ static const struct dis386 prefix_table[][4] = {
 
   /* PREFIX_VEX_0F38F2_L_0 */
   {
-    { "andnS",          { Gdq, VexGdq, Edq }, 0 },
+    { "%NFandnS",          { Gdq, VexGdq, Edq }, 0 },
   },
 
   /* PREFIX_VEX_0F38F3_L_0 */
@@ -4111,10 +4103,10 @@ static const struct dis386 prefix_table[][4] = {
 
   /* PREFIX_VEX_0F38F5_L_0 */
   {
-    { "bzhiS",		{ Gdq, Edq, VexGdq }, 0 },
-    { "pextS",		{ Gdq, VexGdq, Edq }, 0 },
+    { "%NFbzhiS",	{ Gdq, Edq, VexGdq }, 0 },
+    { "%XEpextS",		{ Gdq, VexGdq, Edq }, 0 },
     { Bad_Opcode },
-    { "pdepS",		{ Gdq, VexGdq, Edq }, 0 },
+    { "%XEpdepS",		{ Gdq, VexGdq, Edq }, 0 },
   },
 
   /* PREFIX_VEX_0F38F6_L_0 */
@@ -4122,15 +4114,15 @@ static const struct dis386 prefix_table[][4] = {
     { Bad_Opcode },
     { Bad_Opcode },
     { Bad_Opcode },
-    { "mulxS",		{ Gdq, VexGdq, Edq }, 0 },
+    { "%XEmulxS",		{ Gdq, VexGdq, Edq }, 0 },
   },
 
   /* PREFIX_VEX_0F38F7_L_0 */
   {
-    { "bextrS",		{ Gdq, Edq, VexGdq }, 0 },
-    { "sarxS",		{ Gdq, Edq, VexGdq }, 0 },
-    { "shlxS",		{ Gdq, Edq, VexGdq }, 0 },
-    { "shrxS",		{ Gdq, Edq, VexGdq }, 0 },
+    { "%NFbextrS",	{ Gdq, Edq, VexGdq }, 0 },
+    { "%XEsarxS",		{ Gdq, Edq, VexGdq }, 0 },
+    { "%XEshlxS",		{ Gdq, Edq, VexGdq }, 0 },
+    { "%XEshrxS",		{ Gdq, Edq, VexGdq }, 0 },
   },
 
   /* PREFIX_VEX_0F3AF0_L_0 */
@@ -4138,7 +4130,7 @@ static const struct dis386 prefix_table[][4] = {
     { Bad_Opcode },
     { Bad_Opcode },
     { Bad_Opcode },
-    { "rorxS",		{ Gdq, Edq, Ib }, 0 },
+    { "%XErorxS",		{ Gdq, Edq, Ib }, 0 },
   },
 
   /* PREFIX_VEX_MAP7_F8_L_0_W_0_R_0_X86_64 */
@@ -4499,100 +4491,10 @@ static const struct dis386 x86_64_table[][2] = {
     { VEX_LEN_TABLE (VEX_LEN_0F386C_X86_64) },
   },
 
-  /* X86_64_VEX_0F38E0 */
+  /* X86_64_VEX_0F38Ex */
   {
     { Bad_Opcode },
-    { "cmpoxadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38E1 */
-  {
-    { Bad_Opcode },
-    { "cmpnoxadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38E2 */
-  {
-    { Bad_Opcode },
-    { "cmpbxadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38E3 */
-  {
-    { Bad_Opcode },
-    { "cmpnbxadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38E4 */
-  {
-    { Bad_Opcode },
-    { "cmpzxadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38E5 */
-  {
-    { Bad_Opcode },
-    { "cmpnzxadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38E6 */
-  {
-    { Bad_Opcode },
-    { "cmpbexadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38E7 */
-  {
-    { Bad_Opcode },
-    { "cmpnbexadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38E8 */
-  {
-    { Bad_Opcode },
-    { "cmpsxadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38E9 */
-  {
-    { Bad_Opcode },
-    { "cmpnsxadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38EA */
-  {
-    { Bad_Opcode },
-    { "cmppxadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38EB */
-  {
-    { Bad_Opcode },
-    { "cmpnpxadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38EC */
-  {
-    { Bad_Opcode },
-    { "cmplxadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38ED */
-  {
-    { Bad_Opcode },
-    { "cmpnlxadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38EE */
-  {
-    { Bad_Opcode },
-    { "cmplexadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
-  },
-
-  /* X86_64_VEX_0F38EF */
-  {
-    { Bad_Opcode },
-    { "cmpnlexadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
+    { "%XEcmp%CCxadd", { Mdq, Gdq, VexGdq }, PREFIX_DATA },
   },
 
   /* X86_64_VEX_MAP7_F8_L_0_W_0_R_0 */
@@ -4600,8 +4502,6 @@ static const struct dis386 x86_64_table[][2] = {
     { Bad_Opcode },
     { PREFIX_TABLE (PREFIX_VEX_MAP7_F8_L_0_W_0_R_0_X86_64) },
   },
-
-#include "i386-dis-evex-x86-64.h"
 };
 
 static const struct dis386 three_byte_table[][256] = {
@@ -6613,23 +6513,23 @@ static const struct dis386 vex_table[][256] = {
     { "vaesdec",	{ XM, Vex, EXx }, PREFIX_DATA },
     { "vaesdeclast",	{ XM, Vex, EXx }, PREFIX_DATA },
     /* e0 */
-    { X86_64_TABLE (X86_64_VEX_0F38E0) },
-    { X86_64_TABLE (X86_64_VEX_0F38E1) },
-    { X86_64_TABLE (X86_64_VEX_0F38E2) },
-    { X86_64_TABLE (X86_64_VEX_0F38E3) },
-    { X86_64_TABLE (X86_64_VEX_0F38E4) },
-    { X86_64_TABLE (X86_64_VEX_0F38E5) },
-    { X86_64_TABLE (X86_64_VEX_0F38E6) },
-    { X86_64_TABLE (X86_64_VEX_0F38E7) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
     /* e8 */
-    { X86_64_TABLE (X86_64_VEX_0F38E8) },
-    { X86_64_TABLE (X86_64_VEX_0F38E9) },
-    { X86_64_TABLE (X86_64_VEX_0F38EA) },
-    { X86_64_TABLE (X86_64_VEX_0F38EB) },
-    { X86_64_TABLE (X86_64_VEX_0F38EC) },
-    { X86_64_TABLE (X86_64_VEX_0F38ED) },
-    { X86_64_TABLE (X86_64_VEX_0F38EE) },
-    { X86_64_TABLE (X86_64_VEX_0F38EF) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
+    { X86_64_TABLE (X86_64_VEX_0F38Ex) },
     /* f0 */
     { Bad_Opcode },
     { Bad_Opcode },
@@ -8738,6 +8638,7 @@ get_valid_dis386 (const struct dis386 *dp, instr_info *ins)
       break;
 
     case USE_PREFIX_TABLE:
+    use_prefix_table:
       if (ins->need_vex)
 	{
 	  /* The prefix in VEX is implicit.  */
@@ -8808,14 +8709,29 @@ get_valid_dis386 (const struct dis386 *dp, instr_info *ins)
       break;
 
     case USE_X86_64_EVEX_FROM_VEX_TABLE:
+    case USE_X86_64_EVEX_PFX_TABLE:
+    case USE_X86_64_EVEX_W_TABLE:
+    case USE_X86_64_EVEX_MEM_W_TABLE:
       ins->evex_type = evex_from_vex;
-      /* EVEX from VEX instrucions require that EVEX.z, EVEX.L’L, EVEX.b and
-	 the lower 2 bits of EVEX.aaa must be 0.  */
-      if ((ins->vex.mask_register_specifier & 0x3) != 0
+      /* EVEX from VEX instructions are 64-bit only and require that EVEX.z,
+	 EVEX.L'L, EVEX.b, and the lower 2 bits of EVEX.aaa must be 0.  */
+      if (ins->address_mode != mode_64bit
+	  || (ins->vex.mask_register_specifier & 0x3) != 0
 	  || ins->vex.ll != 0
 	  || ins->vex.zeroing != 0
 	  || ins->vex.b)
 	return &bad_opcode;
+
+      if (dp->op[0].bytemode == USE_X86_64_EVEX_PFX_TABLE)
+	goto use_prefix_table;
+      if (dp->op[0].bytemode == USE_X86_64_EVEX_W_TABLE)
+	goto use_vex_w_table;
+      if (dp->op[0].bytemode == USE_X86_64_EVEX_MEM_W_TABLE)
+	{
+	  if (ins->modrm.mod == 3)
+	    return &bad_opcode;
+	  goto use_vex_w_table;
+	}
 
       /* Fall through.  */
     case USE_X86_64_TABLE:
@@ -8824,6 +8740,8 @@ get_valid_dis386 (const struct dis386 *dp, instr_info *ins)
       break;
 
     case USE_3BYTE_TABLE:
+      if (ins->last_rex2_prefix >= 0)
+	return &err_opcode;
       if (!fetch_code (ins->info, ins->codep + 2))
 	return &err_opcode;
       vindex = *ins->codep++;
@@ -9002,6 +8920,7 @@ get_valid_dis386 (const struct dis386 *dp, instr_info *ins)
       ins->need_vex = 3;
       ins->codep++;
       vindex = *ins->codep++;
+      ins->condition_code = vindex & 0xf;
       if (vex_table_index != VEX_MAP7)
 	dp = &vex_table[vex_table_index][vindex];
       else if (vindex == 0xf8)
@@ -9050,6 +8969,7 @@ get_valid_dis386 (const struct dis386 *dp, instr_info *ins)
       break;
 
     case USE_VEX_W_TABLE:
+    use_vex_w_table:
       if (!ins->need_vex)
 	abort ();
 
@@ -9087,6 +9007,7 @@ get_valid_dis386 (const struct dis386 *dp, instr_info *ins)
 	  ins->evex_type = evex_from_legacy;
 	  if (ins->address_mode != mode_64bit)
 	    return &bad_opcode;
+	  ins->rex |= REX_OPCODE;
 	  break;
 	case 0x5:
 	  vex_table_index = EVEX_MAP5;
@@ -9134,7 +9055,11 @@ get_valid_dis386 (const struct dis386 *dp, instr_info *ins)
 
       ins->vex.v = *ins->codep & 0x8;
       ins->vex.mask_register_specifier = *ins->codep & 0x7;
+      ins->vex.scc = *ins->codep & 0xf;
       ins->vex.zeroing = *ins->codep & 0x80;
+      /* Set the NF bit for EVEX-Promoted instructions, this bit will be cleared
+	 when it's an evex_default one.  */
+      ins->vex.nf = *ins->codep & 0x4;
 
       if (ins->address_mode != mode_64bit)
 	{
@@ -9148,24 +9073,11 @@ get_valid_dis386 (const struct dis386 *dp, instr_info *ins)
 	  ins->rex2 &= ~REX_R;
 	}
 
-      /* EVEX from legacy instructions, when the EVEX.ND bit is 0,
-	 all bits of EVEX.vvvv and EVEX.V' must be 1.  */
-      if (ins->evex_type == evex_from_legacy && !ins->vex.nd
-	  && (ins->vex.register_specifier || !ins->vex.v))
-	return &bad_opcode;
-
       ins->need_vex = 4;
-
-      /* EVEX from legacy instructions require that EVEX.z, EVEX.L’L and the
-	 lower 2 bits of EVEX.aaa must be 0.  */
-      if (ins->evex_type == evex_from_legacy
-	  && ((ins->vex.mask_register_specifier & 0x3) != 0
-	      || ins->vex.ll != 0
-	      || ins->vex.zeroing != 0))
-	return &bad_opcode;
 
       ins->codep++;
       vindex = *ins->codep++;
+      ins->condition_code = vindex & 0xf;
       if (vex_table_index != EVEX_MAP7)
 	dp = &evex_table[vex_table_index][vindex];
       else if (vindex == 0xf8)
@@ -9175,6 +9087,9 @@ get_valid_dis386 (const struct dis386 *dp, instr_info *ins)
       ins->end_codep = ins->codep;
       if (!fetch_modrm (ins))
 	return &err_opcode;
+
+      if (ins->modrm.mod == 3 && (ins->rex2 & REX_X))
+	return &bad_opcode;
 
       /* Set vector length. For EVEX-promoted instructions, evex.ll == 0b00,
 	 which has the same encoding as vex.length == 128 and they can share
@@ -9266,7 +9181,7 @@ i386_dis_printf (const disassemble_info *info, enum disassembler_style style,
   va_list ap;
   enum disassembler_style curr_style = style;
   const char *start, *curr;
-  char staging_area[40];
+  char staging_area[50];
 
   va_start (ap, fmt);
   /* In particular print_insn()'s processing of op_txt[] can hand rather long
@@ -9540,8 +9455,6 @@ print_insn (bfd_vma pc, disassemble_info *info, int intel_syntax)
   /* REX2.M in rex2 prefix represents map0 or map1.  */
   if (ins.last_rex2_prefix < 0 ? *ins.codep == 0x0f : (ins.rex2 & REX2_M))
     {
-      unsigned char threebyte;
-
       if (!ins.rex2)
 	{
 	  ins.codep++;
@@ -9549,17 +9462,16 @@ print_insn (bfd_vma pc, disassemble_info *info, int intel_syntax)
 	    goto fetch_error_out;
 	}
 
-      threebyte = *ins.codep;
-      dp = &dis386_twobyte[threebyte];
-      ins.need_modrm = twobyte_has_modrm[threebyte];
-      ins.codep++;
+      dp = &dis386_twobyte[*ins.codep];
+      ins.need_modrm = twobyte_has_modrm[*ins.codep];
     }
   else
     {
       dp = &dis386[*ins.codep];
       ins.need_modrm = onebyte_has_modrm[*ins.codep];
-      ins.codep++;
     }
+  ins.condition_code = *ins.codep & 0xf;
+  ins.codep++;
 
   /* Save sizeflag for printing the extra ins.prefixes later before updating
      it for mnemonic and operand processing.  The prefix names depend
@@ -9591,6 +9503,15 @@ print_insn (bfd_vma pc, disassemble_info *info, int intel_syntax)
       if (ins.evex_type == evex_from_legacy
 	  && ins.vex.prefix == DATA_PREFIX_OPCODE)
 	sizeflag ^= DFLAG;
+
+      if(ins.evex_type == evex_default)
+	ins.vex.nf = false;
+      else
+	/* For EVEX-promoted formats, we need to clear EVEX.NF (ccmp and ctest
+	   are cleared separately.) in mask_register_specifier and keep the low
+	   2 bits of mask_register_specifier to report errors for invalid cases
+	   .  */
+	ins.vex.mask_register_specifier &= 0x3;
 
       if (dp != NULL && putop (&ins, dp->name, sizeflag) == 0)
 	{
@@ -9644,6 +9565,9 @@ print_insn (bfd_vma pc, disassemble_info *info, int intel_syntax)
 		    oappend (&ins, "/(bad)");
 		}
 	    }
+	  /* vex.nf is cleared after being consumed.  */
+	  if (ins.vex.nf)
+	    oappend (&ins, "{bad-nf}");
 
 	  /* Check whether rounding control was enabled for an insn not
 	     supporting it, when evex.b is not treated as evex.nd.  */
@@ -9701,7 +9625,32 @@ print_insn (bfd_vma pc, disassemble_info *info, int intel_syntax)
 	    ? dis_jsr : dis_branch;
       }
   }
+  /* The purpose of placing the check here is to wait for the EVEX prefix for
+     conditional CMP and TEST to be consumed and cleared, and then make a
+     unified judgment. Because they are both in map4, we can not distinguish
+     EVEX prefix for conditional CMP and TEST from others during the
+     EVEX prefix stage of parsing.  */
+  if (ins.evex_type == evex_from_legacy)
+    {
+      /* EVEX from legacy instructions, when the EVEX.ND bit is 0,
+	 all bits of EVEX.vvvv and EVEX.V' must be 1.  */
+      if (!ins.vex.nd && (ins.vex.register_specifier || !ins.vex.v))
+	{
+	  i386_dis_printf (info, dis_style_text, "(bad)");
+	  ret = ins.end_codep - priv.the_buffer;
+	  goto out;
+	}
 
+      /* EVEX from legacy instructions require that EVEX.z, EVEX.L’L and the
+	 lower 2 bits of EVEX.aaa must be 0.  */
+      if ((ins.vex.mask_register_specifier & 0x3) != 0
+	  || ins.vex.ll != 0 || ins.vex.zeroing != 0)
+	{
+	  i386_dis_printf (info, dis_style_text, "(bad)");
+	  ret = ins.end_codep - priv.the_buffer;
+	  goto out;
+	}
+    }
   /* If VEX.vvvv and EVEX.vvvv are unused, they must be all 1s, which
      are all 0s in inverted form.  */
   if (ins.need_vex && ins.vex.register_specifier != 0)
@@ -10287,6 +10236,18 @@ static const char *const fgrps[][8] = {
   },
 };
 
+static const char *const oszc_flags[16] = {
+  " {dfv=}", " {dfv=cf}", " {dfv=zf}", " {dfv=zf, cf}", " {dfv=sf}",
+  " {dfv=sf, cf}", " {dfv=sf, zf}", " {dfv=sf, zf, cf}", " {dfv=of}",
+  " {dfv=of, cf}", " {dfv=of, zf}", " {dfv=of, zf, cf}", " {dfv=of, sf}",
+  " {dfv=of, sf, cf}", " {dfv=of, sf, zf}", " {dfv=of, sf, zf, cf}"
+};
+
+static const char *const scc_suffix[16] = {
+  "o", "no", "b", "ae", "e", "ne", "be", "a", "s", "ns", "t", "f",
+  "l", "ge", "le", "g"
+};
+
 static void
 swap_operand (instr_info *ins)
 {
@@ -10373,6 +10334,16 @@ putop (instr_info *ins, const char *in_template, int sizeflag)
   int cond = 1;
   unsigned int l = 0, len = 0;
   char last[4];
+  bool evex_printed = false;
+
+  /* We don't want to add any prefix or suffix to (bad), so return early.  */
+  if (!strncmp (in_template, "(bad)", 5))
+    {
+      oappend (ins, "(bad)");
+      *ins->obufp = 0;
+      ins->mnemonicendp = ins->obufp;
+      return 0;
+    }
 
   for (p = in_template; *p; p++)
     {
@@ -10386,6 +10357,12 @@ putop (instr_info *ins, const char *in_template, int sizeflag)
       switch (*p)
 	{
 	default:
+	  if (ins->evex_type == evex_from_legacy && !ins->vex.nd
+	      && !(ins->rex2 & 7) && !evex_printed)
+	    {
+	      oappend (ins, "{evex} ");
+	      evex_printed = true;
+	    }
 	  *ins->obufp++ = *p;
 	  break;
 	case '%':
@@ -10445,6 +10422,33 @@ putop (instr_info *ins, const char *in_template, int sizeflag)
 	    abort ();
 	  break;
 	case 'C':
+	  if (l == 1 && last[0] == 'C')
+	    {
+	      /* Condition code (taken from the map-0 Jcc entries).  */
+	      for (const char *q = dis386[0x70 | ins->condition_code].name + 1;
+		   ISLOWER(*q); ++q)
+		*ins->obufp++ = *q;
+	      break;
+	    }
+	  else if (l == 1 && last[0] == 'S')
+	    {
+	      /* Add scc suffix.  */
+	      oappend (ins, scc_suffix[ins->vex.scc]);
+
+	      /* For SCC insns, the ND bit is required to be set to 0.  */
+	      if (ins->vex.nd)
+		oappend (ins, "(bad)");
+
+	      /* These bits have been consumed and should be cleared or restored
+		 to default values.  */
+	      ins->vex.v = 1;
+	      ins->vex.nf = false;
+	      ins->vex.mask_register_specifier = 0;
+	      break;
+	    }
+
+	  if (l)
+	    abort ();
 	  if (ins->intel_syntax && !alt)
 	    break;
 	  if ((ins->prefixes & PREFIX_DATA) || (sizeflag & SUFFIX_ALWAYS))
@@ -10522,6 +10526,10 @@ putop (instr_info *ins, const char *in_template, int sizeflag)
 		  *ins->obufp++ = '}';
 		  *ins->obufp++ = ' ';
 		  break;
+		case 'N':
+		  /* Skip printing {evex} for some special instructions in MAP4.  */
+		  evex_printed = true;
+		  break;
 		default:
 		  abort ();
 		}
@@ -10555,7 +10563,41 @@ putop (instr_info *ins, const char *in_template, int sizeflag)
 		}
 	    }
 	  else if (l == 1 && last[0] == 'C')
-	    break;
+	    {
+	      if (ins->vex.nd && !ins->vex.nf)
+		break;
+	      *ins->obufp++ = 'c';
+	      *ins->obufp++ = 'f';
+	      /* Skip printing {evex} */
+	      evex_printed = true;
+	    }
+	  else if (l == 1 && last[0] == 'N')
+	    {
+	      if (ins->vex.nf)
+		{
+		  oappend (ins, "{nf} ");
+		  /* This bit needs to be cleared after it is consumed.  */
+		  ins->vex.nf = false;
+		  evex_printed = true;
+		}
+	      else if (ins->evex_type == evex_from_vex && !(ins->rex2 & 7)
+		       && ins->vex.v)
+		{
+		  oappend (ins, "{evex} ");
+		  evex_printed = true;
+		}
+	    }
+	  else if (l == 1 && last[0] == 'D')
+	    {
+	      /* Get oszc flags value from register_specifier.  */
+	      int oszc_value = ~ins->vex.register_specifier & 0xf;
+
+	      /* Add {dfv=of, sf, zf, cf} flags.  */
+	      oappend (ins, oszc_flags[oszc_value]);
+
+	      /* These bits have been consumed and should be cleared.  */
+	      ins->vex.register_specifier = 0;
+	    }
 	  else
 	    abort ();
 	  break;
@@ -10813,6 +10855,18 @@ putop (instr_info *ins, const char *in_template, int sizeflag)
 	      abort ();
 	    }
 	  break;
+	case 'U':
+	  if (l == 1 && (last[0] == 'Z'))
+	    {
+	      /* Although IMUL/SETcc does not support NDD, the EVEX.ND bit is
+		 used to control whether its destination register has its upper
+		 bits zeroed.  */
+	      if (ins->vex.nd)
+		oappend (ins, "zu");
+	    }
+	  else
+	    abort ();
+	  break;
 	case 'V':
 	  if (l == 0)
 	    {
@@ -10875,6 +10929,14 @@ putop (instr_info *ins, const char *in_template, int sizeflag)
 		*ins->obufp++ = ins->vex.w ? 'd': 's';
 	      else if (last[0] == 'B')
 		*ins->obufp++ = ins->vex.w ? 'w': 'b';
+	      else if (last[0] == 'S')
+		{
+		  if (ins->modrm.mod == 3 && (sizeflag & SUFFIX_ALWAYS))
+		    {
+		      *ins->obufp++ = '.';
+		      *ins->obufp++ = 's';
+		    }
+		}
 	      else
 		abort ();
 	    }
@@ -13995,4 +14057,27 @@ JMPABS_Fixup (instr_info *ins, int bytemode, int sizeflag)
   if (bytemode == eAX_reg)
     return OP_IMREG (ins, bytemode, sizeflag);
   return OP_OFF64 (ins, bytemode, sizeflag);
+}
+
+static bool
+CFCMOV_Fixup (instr_info *ins, int opnd, int sizeflag)
+{
+  /* EVEX.NF is used as a direction bit in the 2-operand case to reverse the
+     source and destination operands.  */
+  bool dstmem = !ins->vex.nd && ins->vex.nf;
+
+  if (opnd == 0)
+    {
+      if (dstmem)
+	return OP_E (ins, v_swap_mode, sizeflag);
+      return OP_G (ins, v_mode, sizeflag);
+    }
+
+  /* These bits have been consumed and should be cleared.  */
+  ins->vex.nf = false;
+  ins->vex.mask_register_specifier = 0;
+
+  if (dstmem)
+    return OP_G (ins, v_mode, sizeflag);
+  return OP_E (ins, v_mode, sizeflag);
 }

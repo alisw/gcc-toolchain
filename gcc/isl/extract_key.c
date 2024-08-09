@@ -13,17 +13,17 @@
  * Return KEY_ERROR on error, i.e., if "tok" does not
  * correspond to any known key.
  */
-static KEY KEY_EXTRACT(__isl_keep isl_stream *s, struct isl_token *tok)
+static KEY extract_key(__isl_keep isl_stream *s, struct isl_token *tok)
 {
-	isl_bool has_string;
+	int type;
 	char *name;
 	KEY key;
 	isl_ctx *ctx;
 
-	has_string = isl_token_has_str(tok);
-	if (has_string < 0)
+	if (!tok)
 		return KEY_ERROR;
-	if (!has_string) {
+	type = isl_token_get_type(tok);
+	if (type != ISL_TOKEN_IDENT && type != ISL_TOKEN_STRING) {
 		isl_stream_error(s, tok, "expecting key");
 		return KEY_ERROR;
 	}
@@ -34,7 +34,7 @@ static KEY KEY_EXTRACT(__isl_keep isl_stream *s, struct isl_token *tok)
 		return KEY_ERROR;
 
 	for (key = 0; key < KEY_END; ++key) {
-		if (KEY_STR[key] && !strcmp(name, KEY_STR[key]))
+		if (!strcmp(name, key_str[key]))
 			break;
 	}
 	free(name);
@@ -49,13 +49,13 @@ static KEY KEY_EXTRACT(__isl_keep isl_stream *s, struct isl_token *tok)
  * Return KEY_ERROR on error, i.e., if the first token
  * on the stream does not correspond to any known key.
  */
-static KEY KEY_GET(__isl_keep isl_stream *s)
+static KEY get_key(__isl_keep isl_stream *s)
 {
 	struct isl_token *tok;
 	KEY key;
 
 	tok = isl_stream_next_token(s);
-	key = KEY_EXTRACT(s, tok);
+	key = extract_key(s, tok);
 	isl_token_free(tok);
 
 	return key;

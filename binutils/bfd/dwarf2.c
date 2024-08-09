@@ -716,7 +716,7 @@ read_section (bfd *abfd,
 	  return false;
 	}
 
-      if (_bfd_section_size_insane (abfd, msec))
+      if (bfd_section_size_insane (abfd, msec))
 	{
 	  /* PR 26946 */
 	  _bfd_error_handler (_("DWARF error: section %s is too big"),
@@ -2151,6 +2151,7 @@ insert_arange_in_trie (bfd *abfd,
   bfd_vma clamped_low_pc, clamped_high_pc;
   int ch, from_ch, to_ch;
   bool is_full_leaf = false;
+  bool splitting_leaf_will_help = false;
 
   /* See if we can extend any of the existing ranges.  This merging
      isn't perfect (if merging opens up the possibility of merging two existing
@@ -2176,11 +2177,31 @@ insert_arange_in_trie (bfd *abfd,
 	}
 
       is_full_leaf = leaf->num_stored_in_leaf == trie->num_room_in_leaf;
+
+      if (is_full_leaf && trie_pc_bits < VMA_BITS)
+	{
+	  /* See if we have at least one leaf that does _not_ cover the
+	     entire bucket, so that splitting will actually reduce the number
+	     of elements in at least one of the child nodes.  (For simplicity,
+	     we don't test the range we're inserting, but it will be counted
+	     on the next insertion where we're full, if any.)   */
+	  bfd_vma bucket_high_pc =
+	    trie_pc + ((bfd_vma) -1 >> trie_pc_bits);  /* Inclusive.  */
+	  for (i = 0; i < leaf->num_stored_in_leaf; ++i)
+	    {
+	      if (leaf->ranges[i].low_pc > trie_pc
+		  || leaf->ranges[i].high_pc <= bucket_high_pc)
+		{
+		  splitting_leaf_will_help = true;
+		  break;
+		}
+	    }
+	}
     }
 
   /* If we're a leaf with no more room and we're _not_ at the bottom,
      convert to an interior node.  */
-  if (is_full_leaf && trie_pc_bits < VMA_BITS)
+  if (is_full_leaf && splitting_leaf_will_help)
     {
       const struct trie_leaf *leaf = (struct trie_leaf *) trie;
       unsigned int i;
@@ -2202,8 +2223,9 @@ insert_arange_in_trie (bfd *abfd,
 	}
     }
 
-  /* If we're a leaf with no more room and we _are_ at the bottom,
-     we have no choice but to just make it larger. */
+  /* If we're a leaf with no more room and we _are_ at the bottom
+     (or splitting it won't help), we have no choice but to just
+     make it larger.  */
   if (is_full_leaf)
     {
       const struct trie_leaf *leaf = (struct trie_leaf *) trie;
@@ -2894,10 +2916,9 @@ decode_line_info (struct comp_unit *unit)
 
       if (table->num_files)
 	{
-	  if (table->use_dir_and_file_0)
-	    filename = concat_filename (table, 0);
-	  else
-	    filename = concat_filename (table, 1);
+	  /* PR 30783: Always start with a file index of 1, even
+	     for DWARF-5.  */
+	  filename = concat_filename (table, 1);
 	}
 
       /* Decode the table.  */
@@ -5498,7 +5519,7 @@ _bfd_dwarf2_slurp_debug_info (bfd *abfd, bfd *debug_bfd,
 	   msec;
 	   msec = find_debug_info (debug_bfd, debug_sections, msec))
 	{
-	  if (_bfd_section_size_insane (debug_bfd, msec))
+	  if (bfd_section_size_insane (debug_bfd, msec))
 	    goto restore_vma;
 	  /* Catch PR25070 testcase overflowing size calculation here.  */
 	  if (total_size + msec->size < total_size)
@@ -6127,6 +6148,8 @@ _bfd_dwarf2_cleanup_debug_info (bfd *abfd, void **pinfo)
       free (file->dwarf_line_buffer);
       free (file->dwarf_abbrev_buffer);
       free (file->dwarf_info_buffer);
+      free (file->dwarf_addr_buffer);
+      free (file->dwarf_str_offsets_buffer);
       if (file == &stash->alt)
 	break;
       file = &stash->alt;

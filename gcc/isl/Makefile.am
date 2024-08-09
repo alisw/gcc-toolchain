@@ -15,8 +15,7 @@ AUTOMAKE_OPTIONS = nostdinc subdir-objects
 lib_LTLIBRARIES = libisl.la
 noinst_PROGRAMS = isl_test isl_polyhedron_sample isl_pip \
 	isl_polyhedron_minimize isl_polytope_scan \
-	isl_polyhedron_detect_equalities \
-	isl_polyhedron_remove_redundant_equalities isl_cat \
+	isl_polyhedron_detect_equalities isl_cat \
 	isl_closure isl_bound isl_schedule isl_codegen isl_test_int \
 	isl_flow isl_flow_cmp isl_schedule_cmp
 TESTS = isl_test codegen_test.sh pip_test.sh bound_test.sh isl_test_int \
@@ -24,12 +23,8 @@ TESTS = isl_test codegen_test.sh pip_test.sh bound_test.sh isl_test_int \
 if HAVE_CPP_ISL_H
   CPP_H = include/isl/cpp.h include/isl/typed_cpp.h
 if HAVE_CXX11
-  noinst_PROGRAMS += isl_test2 isl_test_cpp
-  TESTS += isl_test2 isl_test_cpp isl_test_cpp_failed.sh
-endif
-if HAVE_CXX17
-  noinst_PROGRAMS += isl_test_cpp17 isl_test_cpp17-checked
-  TESTS += isl_test_cpp17 isl_test_cpp17-checked
+  noinst_PROGRAMS += isl_test_cpp
+  TESTS += isl_test_cpp isl_test_cpp_failed.sh
 endif
 endif
 if HAVE_CLANG
@@ -139,7 +134,6 @@ libisl_la_SOURCES = \
 	isl_flow.c \
 	isl_fold.c \
 	isl_hash.c \
-	isl_hash_private.h \
 	isl_id_to_ast_expr.c \
 	isl_id_to_id.c \
 	isl_id_to_pw_aff.c \
@@ -199,11 +193,6 @@ libisl_la_SOURCES = \
 	isl_schedule_constraints.c \
 	isl_schedule_constraints.h \
 	isl_scheduler.c \
-	isl_scheduler.h \
-	isl_scheduler_clustering.c \
-	isl_scheduler_clustering.h \
-	isl_scheduler_scc.c \
-	isl_scheduler_scc.h \
 	isl_set_list.c \
 	isl_sort.c \
 	isl_sort.h \
@@ -239,12 +228,6 @@ libisl_la_LDFLAGS = -version-info @versioninfo@ \
 
 isl_test_LDFLAGS = @MP_LDFLAGS@
 isl_test_LDADD = libisl.la @MP_LIBS@
-
-isl_test2_SOURCES = \
-	isl_test2.cc \
-	include/isl/cpp.h
-isl_test2_LDFLAGS = @MP_LDFLAGS@
-isl_test2_LDADD = libisl.la @MP_LIBS@
 
 isl_test_int_LDFLAGS = @MP_LDFLAGS@
 isl_test_int_LDADD = libisl.la @MP_LIBS@
@@ -306,10 +289,6 @@ isl_polyhedron_detect_equalities_LDADD = libisl.la
 isl_polyhedron_detect_equalities_SOURCES = \
 	polyhedron_detect_equalities.c
 
-isl_polyhedron_remove_redundant_equalities_LDADD = libisl.la
-isl_polyhedron_remove_redundant_equalities_SOURCES = \
-	polyhedron_remove_redundant_equalities.c
-
 isl_cat_LDADD = libisl.la
 isl_cat_SOURCES = \
 	cat.c
@@ -337,23 +316,11 @@ isl_test_cpp_failed_SOURCES = \
 isl_test_cpp_failed_LDFLAGS = @MP_LDFLAGS@
 isl_test_cpp_failed_LDADD = libisl.la @MP_LIBS@
 
-isl_test_cpp17_SOURCES = \
-	isl_test_cpp17.cc \
-	include/isl/cpp.h
-isl_test_cpp17_LDFLAGS = @MP_LDFLAGS@
-isl_test_cpp17_LDADD = libisl.la @MP_LIBS@
-
 isl_test_cpp_checked_SOURCES = \
 	isl_test_cpp-checked.cc \
 	include/isl/cpp-checked.h
 isl_test_cpp_checked_LDFLAGS = @MP_LDFLAGS@
 isl_test_cpp_checked_LDADD = libisl.la @MP_LIBS@
-
-isl_test_cpp17_checked_SOURCES = \
-	isl_test_cpp17-checked.cc \
-	include/isl/cpp.h
-isl_test_cpp17_checked_LDFLAGS = @MP_LDFLAGS@
-isl_test_cpp17_checked_LDADD = libisl.la @MP_LIBS@
 
 isl_test_cpp_checked_conversion_SOURCES = \
 	isl_test_cpp-checked-conversion.cc \
@@ -500,7 +467,6 @@ CLEANFILES = \
 	interface/isldlname.py \
 	interface/isl.py \
 	interface/isl.pyc \
-	interface/__pycache__/*.pyc \
 	$(CPP_INTERFACES)
 
 DISTCLEANFILES = \
@@ -516,23 +482,18 @@ EXTRA_DIST = \
 	isl_aff_lex_templ.c \
 	isl_align_params_templ.c \
 	isl_align_params_bin_templ.c \
-	isl_ast_node_set_field_templ.c \
 	basis_reduction_templ.c \
 	isl_bind_domain_templ.c \
 	bset_to_bmap.c \
 	bset_from_bmap.c \
 	isl_check_named_params_templ.c \
-	check_parse_fail_test_templ.c \
 	check_reparse_templ.c \
 	check_reparse_test_templ.c \
 	check_single_reference_templ.c \
 	check_type_range_templ.c \
 	isl_copy_tuple_id_templ.c \
 	isl_domain_factor_templ.c \
-	isl_drop_unused_params_templ.c \
 	extract_key.c \
-	isl_from_range_templ.c \
-	isl_ilp_opt_fn_val_templ.c \
 	isl_ilp_opt_multi_val_templ.c \
 	isl_ilp_opt_val_templ.c \
 	has_single_reference_templ.c \
@@ -540,8 +501,6 @@ EXTRA_DIST = \
 	isl_list_macro.h \
 	isl_list_templ.c \
 	isl_list_templ.h \
-	isl_list_read_templ.c \
-	isl_list_read_yaml_templ.c \
 	isl_map_bound_templ.c \
 	isl_map_lexopt_templ.c \
 	isl_maybe_ast_graft_list.h \
@@ -556,27 +515,21 @@ EXTRA_DIST = \
 	isl_multi_templ.c \
 	isl_multi_templ.h \
 	isl_multi_add_constant_templ.c \
+	isl_multi_align_templ.c \
 	isl_multi_align_set.c \
 	isl_multi_align_union_set.c \
 	isl_multi_apply_templ.c \
-	isl_multi_apply_explicit_domain_templ.c \
-	isl_multi_apply_no_explicit_domain_templ.c \
-	isl_multi_apply_set_explicit_domain_templ.c \
-	isl_multi_apply_set_no_explicit_domain_templ.c \
-	isl_multi_apply_union_set_explicit_domain_templ.c \
+	isl_multi_apply_set.c \
+	isl_multi_apply_union_set.c \
 	isl_multi_arith_templ.c \
-	isl_multi_bin_val_templ.c \
 	isl_multi_bind_domain_templ.c \
-	isl_multi_check_domain_templ.c \
 	isl_multi_cmp.c \
 	isl_multi_coalesce.c \
 	isl_multi_dim_id_templ.c \
 	isl_multi_dims.c \
 	isl_multi_domain_templ.c \
-	isl_multi_domain_reverse_templ.c \
 	isl_multi_floor.c \
 	isl_multi_from_base_templ.c \
-	isl_multi_from_tuple_templ.c \
 	isl_multi_gist.c \
 	isl_multi_hash.c \
 	isl_multi_insert_domain_templ.c \
@@ -588,11 +541,9 @@ EXTRA_DIST = \
 	isl_multi_nan_templ.c \
 	isl_multi_param_templ.c \
 	isl_multi_product_templ.c \
-	isl_multi_pw_aff_pullback_templ.c \
 	isl_multi_read_no_explicit_domain_templ.c \
 	isl_multi_splice_templ.c \
 	isl_multi_tuple_id_templ.c \
-	isl_multi_un_op_templ.c \
 	isl_multi_unbind_params_templ.c \
 	isl_multi_union_add_templ.c \
 	isl_multi_zero_templ.c \
@@ -604,19 +555,14 @@ EXTRA_DIST = \
 	print_yaml_field_templ.c \
 	isl_power_templ.c \
 	isl_project_out_all_params_templ.c \
-	isl_project_out_param_templ.c \
 	isl_pw_macro.h \
 	isl_pw_templ.c \
 	isl_pw_templ.h \
 	isl_pw_add_constant_templ.c \
 	isl_pw_add_constant_multi_val_templ.c \
 	isl_pw_add_constant_val_templ.c \
-	isl_pw_add_disjoint_templ.c \
 	isl_pw_bind_domain_templ.c \
-	isl_pw_domain_reverse_templ.c \
 	isl_pw_eval.c \
-	isl_pw_fix_templ.c \
-	isl_pw_from_range_templ.c \
 	isl_pw_hash.c \
 	isl_pw_insert_dims_templ.c \
 	isl_pw_insert_domain_templ.c \
@@ -626,26 +572,18 @@ EXTRA_DIST = \
 	isl_pw_move_dims_templ.c \
 	isl_pw_neg_templ.c \
 	isl_pw_opt_templ.c \
-	isl_pw_print_templ.c \
 	isl_pw_pullback_templ.c \
 	isl_pw_range_tuple_id_templ.c \
-	isl_pw_scale_templ.c \
-	isl_pw_split_dims_templ.c \
 	isl_pw_sub_templ.c \
-	isl_pw_un_op_templ.c \
 	isl_pw_union_opt.c \
-	isl_read_from_str_templ.c \
 	read_in_string_templ.c \
 	set_to_map.c \
 	set_from_map.c \
 	set_list_from_map_list_inl.c \
-	isl_stream_read_pw_with_params_templ.c \
-	isl_stream_read_with_params_templ.c \
 	isl_tab_lexopt_templ.c \
 	isl_test_list_templ.c \
 	isl_test_plain_equal_templ.c \
 	isl_type_check_equal_space_templ.c \
-	isl_type_check_match_range_multi_val.c \
 	isl_type_has_equal_space_bin_templ.c \
 	isl_type_has_equal_space_templ.c \
 	isl_type_has_space_templ.c \
@@ -656,14 +594,11 @@ EXTRA_DIST = \
 	isl_union_templ.c \
 	isl_union_single.c \
 	isl_union_multi.c \
-	isl_union_domain_reverse_templ.c \
 	isl_union_eval.c \
 	isl_union_locals_templ.c \
 	isl_union_map_lex_templ.c \
 	isl_union_neg.c \
-	isl_union_print_templ.c \
 	isl_union_pw_templ.c \
-	isl_union_sub_templ.c \
 	libisl-gdb.py \
 	doc/CodingStyle \
 	doc/SubmittingPatches \
@@ -684,7 +619,6 @@ EXTRA_DIST = \
 	python \
 	isl_test_cpp-generic.cc \
 	isl_test_cpp_failed.sh \
-	isl_test_cpp17-generic.cc \
 	isl_test_python.py \
 	test_inputs
 

@@ -138,56 +138,6 @@ __isl_null MULTI(BASE) *FN(MULTI(BASE),free)(__isl_take MULTI(BASE) *multi)
 	return NULL;
 }
 
-/* Return the space of "multi".
- * The caller is not allowed to modify "multi" between this call
- * and the call to *_restore_space because the number
- * of references needs to stay the same.
- * The only exception is that isl_multi_*_free can be called instead.
- * No copy is taken of multi->space if "multi" has only one reference
- * such that it can be modified inplace if both have only a single reference.
- */
-__isl_give isl_space *FN(MULTI(BASE),take_space)(__isl_keep MULTI(BASE) *multi)
-{
-	isl_space *space;
-
-	if (!multi)
-		return NULL;
-	if (multi->ref != 1)
-		return FN(MULTI(BASE),get_space)(multi);
-	space = multi->space;
-	multi->space = NULL;
-	return space;
-}
-
-/* Set the space of "multi" to "space", where the space of "multi"
- * may be missing due to a preceding call to isl_multi_*_take_space.
- * However, in this case, "multi" only has a single reference and
- * then the call to isl_multi_*_cow has no effect.
- */
-__isl_give MULTI(BASE) *FN(MULTI(BASE),restore_space)(
-	__isl_take MULTI(BASE) *multi, __isl_take isl_space *space)
-{
-	if (!multi || !space)
-		goto error;
-
-	if (multi->space == space) {
-		isl_space_free(space);
-		return multi;
-	}
-
-	multi = FN(MULTI(BASE),cow)(multi);
-	if (!multi)
-		goto error;
-	isl_space_free(multi->space);
-	multi->space = space;
-
-	return multi;
-error:
-	FN(MULTI(BASE),free)(multi);
-	isl_space_free(space);
-	return NULL;
-}
-
 isl_size FN(MULTI(BASE),dim)(__isl_keep MULTI(BASE) *multi,
 	enum isl_dim_type type)
 {
@@ -206,21 +156,16 @@ isl_size FN(MULTI(BASE),size)(__isl_keep MULTI(BASE) *multi)
 static
 #include "check_type_range_templ.c"
 
-/* Return the base expression at position "pos" in "multi".
- */
-static __isl_give EL *FN(MULTI(BASE),peek_at)(__isl_keep MULTI(BASE) *multi,
-	int pos)
-{
-	if (FN(MULTI(BASE),check_range)(multi, isl_dim_out, pos, 1) < 0)
-		return NULL;
-	return multi->u.p[pos];
-}
-
 /* Return a copy of the base expression at position "pos" in "multi".
  */
 __isl_give EL *FN(MULTI(BASE),get_at)(__isl_keep MULTI(BASE) *multi, int pos)
 {
-	return FN(EL,copy)(FN(MULTI(BASE),peek_at)(multi, pos));
+	isl_ctx *ctx;
+
+	if (FN(MULTI(BASE),check_range)(multi, isl_dim_out, pos, 1) < 0)
+		return NULL;
+	ctx = FN(MULTI(BASE),get_ctx)(multi);
+	return FN(EL,copy)(multi->u.p[pos]);
 }
 
 /* This is an alternative name for the function above.
@@ -231,48 +176,17 @@ __isl_give EL *FN(FN(MULTI(BASE),get),BASE)(__isl_keep MULTI(BASE) *multi,
 	return FN(MULTI(BASE),get_at)(multi, pos);
 }
 
-/* Return the base expression at position "pos" in "multi".
- * This may be either a copy or the base expression itself
- * if there is only one reference to "multi".
- * This allows the base expression to be modified inplace
- * if both the multi expression and this base expression
- * have only a single reference.
- * The caller is not allowed to modify "multi" between this call and
- * the subsequent call to isl_multi_*_restore_at_*.
- * The only exception is that isl_multi_*_free can be called instead.
- */
-static __isl_give EL *FN(MULTI(BASE),take_at)(__isl_keep MULTI(BASE) *multi,
-	int pos)
-{
-	EL *el;
-
-	if (!multi)
-		return NULL;
-	if (multi->ref != 1)
-		return FN(MULTI(BASE),get_at)(multi, pos);
-	if (FN(MULTI(BASE),check_range)(multi, isl_dim_out, pos, 1) < 0)
-		return NULL;
-	el = multi->u.p[pos];
-	multi->u.p[pos] = NULL;
-	return el;
-}
-
 /* Set the element at position "pos" of "multi" to "el",
  * where the position may be empty if "multi" has only a single reference.
  */
-static __isl_give MULTI(BASE) *FN(MULTI(BASE),restore_at)(
+static __isl_give MULTI(BASE) *FN(MULTI(BASE),restore)(
 	__isl_take MULTI(BASE) *multi, int pos, __isl_take EL *el)
 {
-	if (FN(MULTI(BASE),check_range)(multi, isl_dim_out, pos, 1) < 0 || !el)
+	multi = FN(MULTI(BASE),cow)(multi);
+	if (!multi || !el)
 		goto error;
 
-	if (multi->u.p[pos] == el) {
-		FN(EL,free)(el);
-		return multi;
-	}
-
-	multi = FN(MULTI(BASE),cow)(multi);
-	if (!multi)
+	if (FN(MULTI(BASE),check_range)(multi, isl_dim_out, pos, 1) < 0)
 		goto error;
 
 	FN(EL,free)(multi->u.p[pos]);
@@ -298,7 +212,7 @@ static __isl_give MULTI(BASE) *FN(MULTI(BASE),restore_check_space)(
 	space = FN(MULTI(BASE),peek_space)(multi);
 	if (FN(EL,check_match_domain_space)(el, space) < 0)
 		multi = FN(MULTI(BASE),free)(multi);
-	return FN(MULTI(BASE),restore_at)(multi, pos, el);
+	return FN(MULTI(BASE),restore)(multi, pos, el);
 }
 
 /* Replace the base expression at position "pos" in "multi" with "el".
@@ -379,26 +293,27 @@ __isl_give MULTI(BASE) *FN(MULTI(BASE),reset_space_and_domain)(
 	__isl_take MULTI(BASE) *multi, __isl_take isl_space *space,
 	__isl_take isl_space *domain)
 {
-	isl_size n;
 	int i;
 
-	n = FN(MULTI(BASE),size)(multi);
-	if (n < 0 || !space || !domain)
+	multi = FN(MULTI(BASE),cow)(multi);
+	if (!multi || !space || !domain)
 		goto error;
 
-	for (i = 0; i < n; ++i) {
-		EL *el;
-
-		el = FN(MULTI(BASE),take_at)(multi, i);
-		el = FN(EL,reset_domain_space)(el, isl_space_copy(domain));
-		multi = FN(MULTI(BASE),restore_at)(multi, i, el);
+	for (i = 0; i < multi->n; ++i) {
+		multi->u.p[i] = FN(EL,reset_domain_space)(multi->u.p[i],
+				 isl_space_copy(domain));
+		if (!multi->u.p[i])
+			goto error;
 	}
-	if (FN(MULTI(BASE),has_explicit_domain)(multi))
+	if (FN(MULTI(BASE),has_explicit_domain)(multi)) {
 		multi = FN(MULTI(BASE),reset_explicit_domain_space)(multi,
 							isl_space_copy(domain));
+		if (!multi)
+			goto error;
+	}
 	isl_space_free(domain);
-
-	multi = FN(MULTI(BASE),restore_space)(multi, space);
+	isl_space_free(multi->space);
+	multi->space = space;
 
 	return multi;
 error:
@@ -411,11 +326,10 @@ error:
 __isl_give MULTI(BASE) *FN(MULTI(BASE),reset_domain_space)(
 	__isl_take MULTI(BASE) *multi, __isl_take isl_space *domain)
 {
-	isl_space *space, *multi_space;
+	isl_space *space;
 
-	multi_space = FN(MULTI(BASE),get_space)(multi);
 	space = isl_space_extend_domain_with_range(isl_space_copy(domain),
-						multi_space);
+						isl_space_copy(multi->space));
 	return FN(MULTI(BASE),reset_space_and_domain)(multi, space, domain);
 }
 
@@ -446,19 +360,17 @@ __isl_give MULTI(BASE) *FN(MULTI(BASE),realign_domain)(
 	__isl_take MULTI(BASE) *multi, __isl_take isl_reordering *exp)
 {
 	int i;
-	isl_size n;
 	isl_space *space;
 
-	n = FN(MULTI(BASE),size)(multi);
-	if (n < 0 || !exp)
+	multi = FN(MULTI(BASE),cow)(multi);
+	if (!multi || !exp)
 		goto error;
 
-	for (i = 0; i < n; ++i) {
-		EL *el;
-
-		el = FN(MULTI(BASE),take_at)(multi, i);
-		el = FN(EL,realign_domain)(el, isl_reordering_copy(exp));
-		multi = FN(MULTI(BASE),restore_at)(multi, i, el);
+	for (i = 0; i < multi->n; ++i) {
+		multi->u.p[i] = FN(EL,realign_domain)(multi->u.p[i],
+						isl_reordering_copy(exp));
+		if (!multi->u.p[i])
+			goto error;
 	}
 
 	space = isl_reordering_get_space(exp);
@@ -482,7 +394,6 @@ __isl_give MULTI(BASE) *FN(MULTI(BASE),align_params)(
 {
 	isl_ctx *ctx;
 	isl_bool equal_params;
-	isl_space *domain_space;
 	isl_reordering *exp;
 
 	if (!multi || !model)
@@ -510,9 +421,9 @@ __isl_give MULTI(BASE) *FN(MULTI(BASE),align_params)(
 		if (!multi)
 			goto error;
 	}
-	domain_space = FN(MULTI(BASE),get_domain_space)(multi);
-	exp = isl_parameter_alignment_reordering(domain_space, model);
-	isl_space_free(domain_space);
+	exp = isl_parameter_alignment_reordering(multi->space, model);
+	exp = isl_reordering_extend_space(exp,
+				    FN(MULTI(BASE),get_domain_space)(multi));
 	multi = FN(MULTI(BASE),realign_domain)(multi, exp);
 
 	isl_space_free(model);
@@ -577,60 +488,42 @@ __isl_give MULTI(BASE) *FN(isl_space_multi,BASE)(__isl_take isl_space *space,
 	return FN(FN(MULTI(BASE),from),LIST(BASE))(space, list);
 }
 
-/* Drop the "n" output dimensions of "multi" starting at "first",
- * where the space is assumed to have been adjusted already.
- */
-static __isl_give MULTI(BASE) *FN(MULTI(BASE),drop_output_dims)(
-	__isl_take MULTI(BASE) *multi, unsigned first, unsigned n)
-{
-	int i;
-
-	multi = FN(MULTI(BASE),cow)(multi);
-	if (!multi)
-		return NULL;
-
-	for (i = 0; i < n; ++i)
-		FN(EL,free)(multi->u.p[first + i]);
-	for (i = first; i + n < multi->n; ++i)
-		multi->u.p[i] = multi->u.p[i + n];
-	multi->n -= n;
-	if (n > 0 && FN(MULTI(BASE),has_explicit_domain)(multi))
-		multi = FN(MULTI(BASE),init_explicit_domain)(multi);
-
-	return multi;
-}
-
 __isl_give MULTI(BASE) *FN(MULTI(BASE),drop_dims)(
 	__isl_take MULTI(BASE) *multi,
 	enum isl_dim_type type, unsigned first, unsigned n)
 {
-	isl_space *space;
-	isl_size size;
 	int i;
 
+	multi = FN(MULTI(BASE),cow)(multi);
 	if (FN(MULTI(BASE),check_range)(multi, type, first, n) < 0)
 		return FN(MULTI(BASE),free)(multi);
 
-	space = FN(MULTI(BASE),take_space)(multi);
-	space = isl_space_drop_dims(space, type, first, n);
-	multi = FN(MULTI(BASE),restore_space)(multi, space);
+	multi->space = isl_space_drop_dims(multi->space, type, first, n);
+	if (!multi->space)
+		return FN(MULTI(BASE),free)(multi);
 
-	if (type == isl_dim_out)
-		return FN(MULTI(BASE),drop_output_dims)(multi, first, n);
+	if (type == isl_dim_out) {
+		for (i = 0; i < n; ++i)
+			FN(EL,free)(multi->u.p[first + i]);
+		for (i = first; i + n < multi->n; ++i)
+			multi->u.p[i] = multi->u.p[i + n];
+		multi->n -= n;
+		if (n > 0 && FN(MULTI(BASE),has_explicit_domain)(multi))
+			multi = FN(MULTI(BASE),init_explicit_domain)(multi);
+
+		return multi;
+	}
 
 	if (FN(MULTI(BASE),has_explicit_domain)(multi))
 		multi = FN(MULTI(BASE),drop_explicit_domain_dims)(multi,
 								type, first, n);
+	if (!multi)
+		return NULL;
 
-	size = FN(MULTI(BASE),size)(multi);
-	if (size < 0)
-		return FN(MULTI(BASE),free)(multi);
-	for (i = 0; i < size; ++i) {
-		EL *el;
-
-		el = FN(MULTI(BASE),take_at)(multi, i);
-		el = FN(EL,drop_dims)(el, type, first, n);
-		multi = FN(MULTI(BASE),restore_at)(multi, i, el);
+	for (i = 0; i < multi->n; ++i) {
+		multi->u.p[i] = FN(EL,drop_dims)(multi->u.p[i], type, first, n);
+		if (!multi->u.p[i])
+			return FN(MULTI(BASE),free)(multi);
 	}
 
 	return multi;
@@ -785,11 +678,19 @@ __isl_give MULTI(BASE) *FN(MULTI(BASE),factor_range)(
 __isl_give MULTI(BASE) *FN(MULTI(BASE),flatten_range)(
 	__isl_take MULTI(BASE) *multi)
 {
-	isl_space *space;
+	if (!multi)
+		return NULL;
 
-	space = FN(MULTI(BASE),take_space)(multi);
-	space = isl_space_flatten_range(space);
-	multi = FN(MULTI(BASE),restore_space)(multi, space);
+	if (!multi->space->nested[1])
+		return multi;
+
+	multi = FN(MULTI(BASE),cow)(multi);
+	if (!multi)
+		return NULL;
+
+	multi->space = isl_space_flatten_range(multi->space);
+	if (!multi->space)
+		return FN(MULTI(BASE),free)(multi);
 
 	return multi;
 }
@@ -872,21 +773,18 @@ static __isl_give MULTI(BASE) *FN(MULTI(BASE),bin_op)(
 	__isl_take MULTI(BASE) *multi1, __isl_take MULTI(BASE) *multi2,
 	__isl_give EL *(*fn)(__isl_take EL *, __isl_take EL *))
 {
-	isl_size n;
 	int i;
 
 	FN(MULTI(BASE),align_params_bin)(&multi1, &multi2);
-	n = FN(MULTI(BASE),size)(multi1);
-	if (n < 0 || FN(MULTI(BASE),check_equal_space)(multi1, multi2) < 0)
+	multi1 = FN(MULTI(BASE),cow)(multi1);
+	if (FN(MULTI(BASE),check_equal_space)(multi1, multi2) < 0)
 		goto error;
 
-	for (i = 0; i < n; ++i) {
-		EL *el1, *el2;
-
-		el2 = FN(MULTI(BASE),get_at)(multi2, i);
-		el1 = FN(MULTI(BASE),take_at)(multi1, i);
-		el1 = fn(el1, el2);
-		multi1 = FN(MULTI(BASE),restore_at)(multi1, i, el1);
+	for (i = 0; i < multi1->n; ++i) {
+		multi1->u.p[i] = fn(multi1->u.p[i],
+						FN(EL,copy)(multi2->u.p[i]));
+		if (!multi1->u.p[i])
+			goto error;
 	}
 
 	if (FN(MULTI(BASE),has_explicit_domain)(multi2))
@@ -953,9 +851,27 @@ static isl_bool FN(MULTI(BASE),every)(__isl_keep MULTI(BASE) *multi,
 	return isl_bool_true;
 }
 
-#undef TYPE
-#define TYPE MULTI(BASE)
-#include "isl_from_range_templ.c"
+/* Convert a multiple expression defined over a parameter domain
+ * into one that is defined over a zero-dimensional set.
+ */
+__isl_give MULTI(BASE) *FN(MULTI(BASE),from_range)(
+	__isl_take MULTI(BASE) *multi)
+{
+	isl_space *space;
+
+	if (!multi)
+		return NULL;
+	if (!isl_space_is_set(multi->space))
+		isl_die(FN(MULTI(BASE),get_ctx)(multi), isl_error_invalid,
+			"not living in a set space",
+			return FN(MULTI(BASE),free)(multi));
+
+	space = FN(MULTI(BASE),get_space)(multi);
+	space = isl_space_from_range(space);
+	multi = FN(MULTI(BASE),reset_space)(multi, space);
+
+	return multi;
+}
 
 /* Are "multi1" and "multi2" obviously equal?
  */

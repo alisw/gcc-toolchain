@@ -42,6 +42,7 @@ typedef struct
 static const s390_options_t options[] =
 {
   { "esa" ,       N_("Disassemble in ESA architecture mode") },
+  /* TRANSLATORS: Please do not translate 'z/Architecture' as this is a technical name.  */
   { "zarch",      N_("Disassemble in z/Architecture mode") },
   { "insnlength", N_("Print unknown instructions according to "
 		     "length from first two bits") },
@@ -203,10 +204,11 @@ s390_print_insn_with_opcode (bfd_vma memaddr,
       union operand_value val = s390_extract_operand (buffer, operand);
       unsigned long flags = operand->flags;
 
+      /* Omit index register 0.  */
       if ((flags & S390_OPERAND_INDEX) && val.u == 0)
 	continue;
-      if ((flags & S390_OPERAND_BASE) &&
-	  val.u == 0 && separator == '(')
+      /* Omit base register 0, if no or omitted index register 0.  */
+      if ((flags & S390_OPERAND_BASE) && val.u == 0 && separator == '(')
 	{
 	  separator = ',';
 	  continue;
@@ -232,8 +234,13 @@ s390_print_insn_with_opcode (bfd_vma memaddr,
 	{
 	  info->fprintf_styled_func (info->stream, dis_style_text,
 				     "%c", separator);
-	  info->fprintf_styled_func (info->stream, dis_style_register,
-				     "%%r%u", val.u);
+	  if ((flags & (S390_OPERAND_BASE | S390_OPERAND_INDEX))
+	      && val.u == 0)
+	    info->fprintf_styled_func (info->stream, dis_style_register,
+				       "%u", val.u);
+	  else
+	    info->fprintf_styled_func (info->stream, dis_style_register,
+				       "%%r%u", val.u);
 	}
       else if (flags & S390_OPERAND_FPR)
 	{
@@ -246,8 +253,12 @@ s390_print_insn_with_opcode (bfd_vma memaddr,
 	{
 	  info->fprintf_styled_func (info->stream, dis_style_text,
 				     "%c", separator);
-	  info->fprintf_styled_func (info->stream, dis_style_register,
-				     "%%v%i", val.u);
+	  if ((flags & S390_OPERAND_INDEX) && val.u == 0)
+	    info->fprintf_styled_func (info->stream, dis_style_register,
+				       "%u", val.u);
+	  else
+	    info->fprintf_styled_func (info->stream, dis_style_register,
+				       "%%v%i", val.u);
 	}
       else if (flags & S390_OPERAND_AR)
 	{

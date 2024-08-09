@@ -23,14 +23,10 @@ isl was written by
 	    Domaine de Voluceau - Rocquencourt, B.P. 105
 	    78153 Le Chesnay
 	    France
-2015-2022   Polly Labs
-2018-2021   Cerebras Systems
+2015-2020   Polly Labs
+2018-2020   Cerebras Systems
 	    175 S San Antonio Rd
 	    Los Altos, CA
-	    USA
-2021-2022   Cerebras Systems
-	    1237 E Arques Ave
-	    Sunnyvale, CA
 	    USA
 
 Contributions by
@@ -38,7 +34,6 @@ Contributions by
 Mythri Alle
 Riyadh Baghdadi
 Serge Belyshev
-Basile Clement
 Albert Cohen
 Ray Donnelly
 Johannes Doerfert
@@ -54,7 +49,6 @@ Michael Kruse
 Manjunath Kudlur
 Alexander Matz
 Chielo Newctle
-Riccardo Mori
 Sebastian Pop
 Louis-Noel Pouchet
 Benoit Pradelle
@@ -65,7 +59,6 @@ Malhar Thakkar
 Sergei Trofimovich
 Miheer Vaidya
 Sven van Haastregt
-Matt Whitlock
 Oleksandr Zinenko
 
 The merge sort implementation was written by Jeffrey Stedfast.

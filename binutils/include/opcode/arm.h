@@ -98,16 +98,16 @@
 
 /* Co-processor space extensions.  */
 #define ARM_CEXT_XSCALE	     0x00000001	/* Allow MIA etc.	 	   */
-#define ARM_CEXT_MAVERICK    0x00000002	/* Use Cirrus/DSP coprocessor.	   */
+/* unused		     0x00000002	*/
 #define ARM_CEXT_IWMMXT	     0x00000004 /* Intel Wireless MMX technology
 					   coprocessor.			   */
 #define ARM_CEXT_IWMMXT2     0x00000008 /* Intel Wireless MMX technology
 					   coprocessor version 2.	   */
 
 #define FPU_ENDIAN_PURE	     0x80000000	/* Pure-endian doubles.		   */
-#define FPU_FPA_EXT_V1	     0x40000000	/* Base FPA instruction set.	   */
-#define FPU_FPA_EXT_V2	     0x20000000	/* LFM/SFM.			   */
-#define FPU_MAVERICK	     0x10000000	/* Cirrus Maverick.		   */
+/* unused		     0x40000000	*/
+/* unused		     0x20000000	*/
+/* unused		     0x10000000	*/
 #define FPU_VFP_EXT_V1xD     0x08000000	/* Base VFP instruction set.	   */
 #define FPU_VFP_EXT_V1	     0x04000000	/* Double-precision insns.	   */
 #define FPU_VFP_EXT_V2	     0x02000000	/* ARM10E VFPr1.		   */
@@ -244,13 +244,9 @@
 					     | FPU_VFP_EXT_V3	   \
 					     | FPU_NEON_EXT_V1	   \
 					     | FPU_VFP_EXT_D32)
-#define FPU_FPA		  (FPU_FPA_EXT_V1    | FPU_FPA_EXT_V2)
 
 /* Deprecated.  */
-#define FPU_ARCH_VFP		ARM_FEATURE_COPROC (FPU_ENDIAN_PURE)
-
-#define FPU_ARCH_FPE		ARM_FEATURE_COPROC (FPU_FPA_EXT_V1)
-#define FPU_ARCH_FPA		ARM_FEATURE_COPROC (FPU_FPA)
+#define FPU_ARCH_SOFTVFP	ARM_FEATURE_COPROC (FPU_ENDIAN_PURE)
 
 #define FPU_ARCH_VFP_V1xD	ARM_FEATURE_COPROC (FPU_VFP_V1xD)
 #define FPU_ARCH_VFP_V1		ARM_FEATURE_COPROC (FPU_VFP_V1)
@@ -324,8 +320,6 @@
 						  | FPU_NEON_EXT_DOTPROD)
 
 #define FPU_ARCH_ENDIAN_PURE ARM_FEATURE_COPROC (FPU_ENDIAN_PURE)
-
-#define FPU_ARCH_MAVERICK ARM_FEATURE_COPROC (FPU_MAVERICK)
 
 #define ARM_ARCH_V1	 ARM_FEATURE_CORE_LOW (ARM_AEXT_V1)
 #define ARM_ARCH_V2	 ARM_FEATURE_CORE_LOW (ARM_AEXT_V2)
@@ -401,6 +395,7 @@
 #define ARM_ARCH_V9_2A   ARM_ARCH_V9_1A
 #define ARM_ARCH_V9_3A   ARM_ARCH_V9_2A
 #define ARM_ARCH_V9_4A   ARM_ARCH_V9_3A
+#define ARM_ARCH_V9_5A   ARM_ARCH_V9_4A
 
 /* Some useful combinations:  */
 #define ARM_ARCH_NONE	ARM_FEATURE_ALL (0, 0, 0, 0)
@@ -408,7 +403,7 @@
 #define ARM_ARCH_UNKNOWN	ARM_FEATURE_ALL (-1, -1 & ~(ARM_EXT2_MVE | ARM_EXT2_MVE_FP), -1, -1)	/* Machine type is unknown.  */
 #define ARM_ANY		ARM_FEATURE_ALL (-1, -1 & ~(ARM_EXT2_MVE | ARM_EXT2_MVE_FP), -1, 0)	/* Any basic core.  */
 #define FPU_ANY		ARM_FEATURE_COPROC (-1 & ~(ARM_CEXT_XSCALE | ARM_CEXT_IWMMXT | ARM_CEXT_IWMMXT2)) /* Any FPU.  */
-#define FPU_ANY_HARD	ARM_FEATURE_COPROC (FPU_FPA | FPU_VFP_HARD | FPU_MAVERICK)
+#define FPU_ANY_HARD	ARM_FEATURE_COPROC (FPU_VFP_HARD)
 /* Extensions containing some Thumb-2 instructions.  If any is present, Thumb
    ISA is Thumb-2.  */
 #define ARM_ARCH_THUMB2 ARM_FEATURE_CORE (ARM_EXT_V6T2 | ARM_EXT_V7	\

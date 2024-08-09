@@ -408,10 +408,8 @@ struct aoutdata
   /* The external symbol information.  */
   struct external_nlist *external_syms;
   bfd_size_type external_sym_count;
-  bfd_window sym_window;
   char *external_strings;
   bfd_size_type external_string_size;
-  bfd_window string_window;
   struct aout_link_hash_entry **sym_hashes;
 
   /* A pointer for shared library information.  */
@@ -442,10 +440,8 @@ struct  aout_data_struct
 #define obj_aout_subformat(bfd)		   (adata (bfd).subformat)
 #define obj_aout_external_syms(bfd)	   (adata (bfd).external_syms)
 #define obj_aout_external_sym_count(bfd)   (adata (bfd).external_sym_count)
-#define obj_aout_sym_window(bfd)	   (adata (bfd).sym_window)
 #define obj_aout_external_strings(bfd)	   (adata (bfd).external_strings)
 #define obj_aout_external_string_size(bfd) (adata (bfd).external_string_size)
-#define obj_aout_string_window(bfd)	   (adata (bfd).string_window)
 #define obj_aout_sym_hashes(bfd)	   (adata (bfd).sym_hashes)
 #define obj_aout_dynamic_info(bfd)	   (adata (bfd).dynamic_info)
 
@@ -570,7 +566,7 @@ extern bool NAME (aout, adjust_sizes_and_vmas)
 extern void NAME (aout, swap_exec_header_in)
   (bfd *, struct external_exec *, struct internal_exec *);
 
-extern void NAME (aout, swap_exec_header_out)
+extern bool NAME (aout, swap_exec_header_out)
   (bfd *, struct internal_exec *, struct external_exec *);
 
 extern struct bfd_hash_entry * NAME (aout, link_hash_newfunc)
@@ -631,7 +627,8 @@ extern bool NAME (aout, bfd_free_cached_info)
 		       * obj_reloc_entry_size (abfd));			\
     execp->a_drsize = ((obj_datasec (abfd)->reloc_count)		\
 		       * obj_reloc_entry_size (abfd));			\
-    NAME (aout, swap_exec_header_out) (abfd, execp, &exec_bytes);	\
+    if (!NAME (aout, swap_exec_header_out) (abfd, execp, &exec_bytes))	\
+      return false;							\
 									\
     if (bfd_seek (abfd, 0, SEEK_SET) != 0				\
 	|| bfd_write (&exec_bytes, EXEC_BYTES_SIZE,			\

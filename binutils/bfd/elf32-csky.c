@@ -1614,7 +1614,7 @@ csky_elf_adjust_dynamic_symbol (struct bfd_link_info *info,
      only references to the symbol are via the global offset table.
      For such cases we need not do anything here; the relocations will
      be handled correctly by relocate_section.  */
-  if (bfd_link_pic (info) || htab->elf.is_relocatable_executable)
+  if (bfd_link_pic (info))
     return true;
 
   /* We must allocate the symbol in our .dynbss section, which will
@@ -1893,8 +1893,8 @@ csky_allocate_dynrelocs (struct elf_link_hash_entry *h, void *inf)
 /* Set the sizes of the dynamic sections.  */
 
 static bool
-csky_elf_size_dynamic_sections (bfd *output_bfd ATTRIBUTE_UNUSED,
-				struct bfd_link_info *info)
+csky_elf_late_size_sections (bfd *output_bfd ATTRIBUTE_UNUSED,
+			     struct bfd_link_info *info)
 {
   struct csky_elf_link_hash_table *htab;
   bfd *dynobj;
@@ -1907,7 +1907,7 @@ csky_elf_size_dynamic_sections (bfd *output_bfd ATTRIBUTE_UNUSED,
     return false;
   dynobj = htab->elf.dynobj;
   if (dynobj == NULL)
-    return false;
+    return true;
 
   if (htab->elf.dynamic_sections_created)
     {
@@ -2105,8 +2105,6 @@ csky_elf_finish_dynamic_symbol (bfd *output_bfd,
   struct csky_elf_link_hash_table *htab;
 
   htab = csky_elf_hash_table (info);
-  if (htab == NULL)
-    return false;
 
   /* Sanity check to make sure no unexpected symbol reaches here.
      This matches the test in csky_elf_relocate_section handling
@@ -5333,7 +5331,7 @@ elf32_csky_obj_attrs_handle_unknown (bfd *abfd ATTRIBUTE_UNUSED,
 /* Dynamic relocate related API.  */
 #define elf_backend_create_dynamic_sections   _bfd_elf_create_dynamic_sections
 #define elf_backend_adjust_dynamic_symbol     csky_elf_adjust_dynamic_symbol
-#define elf_backend_size_dynamic_sections     csky_elf_size_dynamic_sections
+#define elf_backend_late_size_sections        csky_elf_late_size_sections
 #define elf_backend_finish_dynamic_symbol     csky_elf_finish_dynamic_symbol
 #define elf_backend_finish_dynamic_sections   csky_elf_finish_dynamic_sections
 #define elf_backend_rela_normal               1
