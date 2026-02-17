@@ -1,6 +1,6 @@
 This is gdb.info, produced by makeinfo version 6.8 from gdb.texinfo.
 
-Copyright (C) 1988-2024 Free Software Foundation, Inc.
+Copyright (C) 1988-2025 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -21,9 +21,9 @@ END-INFO-DIR-ENTRY
    This file documents the GNU debugger GDB.
 
    This is the Tenth Edition, of 'Debugging with GDB: the GNU
-Source-Level Debugger' for GDB (GDB) Version 15.1.
+Source-Level Debugger' for GDB (GDB) Version 17.1.
 
-   Copyright (C) 1988-2024 Free Software Foundation, Inc.
+   Copyright (C) 1988-2025 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -35,6 +35,262 @@ with the Back-Cover Texts as in (a) below.
    (a) The FSF's Back-Cover Text is: "You are free to copy and modify
 this GNU Manual.  Buying copies from GNU Press supports the FSF in
 developing GNU and promoting software freedom."
+
+
+File: gdb.info,  Node: Remote Stub,  Prev: Remote Configuration,  Up: Remote Debugging
+
+20.5 Implementing a Remote Stub
+===============================
+
+The stub files provided with GDB implement the target side of the
+communication protocol, and the GDB side is implemented in the GDB
+source file 'remote.c'.  Normally, you can simply allow these
+subroutines to communicate, and ignore the details.  (If you're
+implementing your own stub file, you can still ignore the details: start
+with one of the existing stub files.  'sparc-stub.c' is the best
+organized, and therefore the easiest to read.)
+
+   To debug a program running on another machine (the debugging "target"
+machine), you must first arrange for all the usual prerequisites for the
+program to run by itself.  For example, for a C program, you need:
+
+  1. A startup routine to set up the C runtime environment; these
+     usually have a name like 'crt0'.  The startup routine may be
+     supplied by your hardware supplier, or you may have to write your
+     own.
+
+  2. A C subroutine library to support your program's subroutine calls,
+     notably managing input and output.
+
+  3. A way of getting your program to the other machine--for example, a
+     download program.  These are often supplied by the hardware
+     manufacturer, but you may have to write your own from hardware
+     documentation.
+
+   The next step is to arrange for your program to use a serial port to
+communicate with the machine where GDB is running (the "host" machine).
+In general terms, the scheme looks like this:
+
+_On the host,_
+     GDB already understands how to use this protocol; when everything
+     else is set up, you can simply use the 'target remote' command
+     (*note Specifying a Debugging Target: Targets.).
+
+_On the target,_
+     you must link with your program a few special-purpose subroutines
+     that implement the GDB remote serial protocol.  The file containing
+     these subroutines is called a "debugging stub".
+
+     On certain remote targets, you can use an auxiliary program
+     'gdbserver' instead of linking a stub into your program.  *Note
+     Using the 'gdbserver' Program: Server, for details.
+
+   The debugging stub is specific to the architecture of the remote
+machine; for example, use 'sparc-stub.c' to debug programs on SPARC
+boards.
+
+   These working remote stubs are distributed with GDB:
+
+'i386-stub.c'
+     For Intel 386 and compatible architectures.
+
+'m68k-stub.c'
+     For Motorola 680x0 architectures.
+
+'sh-stub.c'
+     For Renesas SH architectures.
+
+'sparc-stub.c'
+     For SPARC architectures.
+
+'sparcl-stub.c'
+     For Fujitsu SPARCLITE architectures.
+
+   The 'README' file in the GDB distribution may list other recently
+added stubs.
+
+* Menu:
+
+* Stub Contents::       What the stub can do for you
+* Bootstrapping::       What you must do for the stub
+* Debug Session::       Putting it all together
+
+
+File: gdb.info,  Node: Stub Contents,  Next: Bootstrapping,  Up: Remote Stub
+
+20.5.1 What the Stub Can Do for You
+-----------------------------------
+
+The debugging stub for your architecture supplies these three
+subroutines:
+
+'set_debug_traps'
+     This routine arranges for 'handle_exception' to run when your
+     program stops.  You must call this subroutine explicitly in your
+     program's startup code.
+
+'handle_exception'
+     This is the central workhorse, but your program never calls it
+     explicitly--the setup code arranges for 'handle_exception' to run
+     when a trap is triggered.
+
+     'handle_exception' takes control when your program stops during
+     execution (for example, on a breakpoint), and mediates
+     communications with GDB on the host machine.  This is where the
+     communications protocol is implemented; 'handle_exception' acts as
+     the GDB representative on the target machine.  It begins by sending
+     summary information on the state of your program, then continues to
+     execute, retrieving and transmitting any information GDB needs,
+     until you execute a GDB command that makes your program resume; at
+     that point, 'handle_exception' returns control to your own code on
+     the target machine.
+
+'breakpoint'
+     Use this auxiliary subroutine to make your program contain a
+     breakpoint.  Depending on the particular situation, this may be the
+     only way for GDB to get control.  For instance, if your target
+     machine has some sort of interrupt button, you won't need to call
+     this; pressing the interrupt button transfers control to
+     'handle_exception'--in effect, to GDB.  On some machines, simply
+     receiving characters on the serial port may also trigger a trap;
+     again, in that situation, you don't need to call 'breakpoint' from
+     your own program--simply running 'target remote' from the host GDB
+     session gets control.
+
+     Call 'breakpoint' if none of these is true, or if you simply want
+     to make certain your program stops at a predetermined point for the
+     start of your debugging session.
+
+
+File: gdb.info,  Node: Bootstrapping,  Next: Debug Session,  Prev: Stub Contents,  Up: Remote Stub
+
+20.5.2 What You Must Do for the Stub
+------------------------------------
+
+The debugging stubs that come with GDB are set up for a particular chip
+architecture, but they have no information about the rest of your
+debugging target machine.
+
+   First of all you need to tell the stub how to communicate with the
+serial port.
+
+'int getDebugChar()'
+     Write this subroutine to read a single character from the serial
+     port.  It may be identical to 'getchar' for your target system; a
+     different name is used to allow you to distinguish the two if you
+     wish.
+
+'void putDebugChar(int)'
+     Write this subroutine to write a single character to the serial
+     port.  It may be identical to 'putchar' for your target system; a
+     different name is used to allow you to distinguish the two if you
+     wish.
+
+   If you want GDB to be able to stop your program while it is running,
+you need to use an interrupt-driven serial driver, and arrange for it to
+stop when it receives a '^C' ('\003', the control-C character).  That is
+the character which GDB uses to tell the remote system to stop.
+
+   Getting the debugging target to return the proper status to GDB
+probably requires changes to the standard stub; one quick and dirty way
+is to just execute a breakpoint instruction (the "dirty" part is that
+GDB reports a 'SIGTRAP' instead of a 'SIGINT').
+
+   Other routines you need to supply are:
+
+'void exceptionHandler (int EXCEPTION_NUMBER, void *EXCEPTION_ADDRESS)'
+     Write this function to install EXCEPTION_ADDRESS in the exception
+     handling tables.  You need to do this because the stub does not
+     have any way of knowing what the exception handling tables on your
+     target system are like (for example, the processor's table might be
+     in ROM, containing entries which point to a table in RAM).  The
+     EXCEPTION_NUMBER specifies the exception which should be changed;
+     its meaning is architecture-dependent (for example, different
+     numbers might represent divide by zero, misaligned access, etc).
+     When this exception occurs, control should be transferred directly
+     to EXCEPTION_ADDRESS, and the processor state (stack, registers,
+     and so on) should be just as it is when a processor exception
+     occurs.  So if you want to use a jump instruction to reach
+     EXCEPTION_ADDRESS, it should be a simple jump, not a jump to
+     subroutine.
+
+     For the 386, EXCEPTION_ADDRESS should be installed as an interrupt
+     gate so that interrupts are masked while the handler runs.  The
+     gate should be at privilege level 0 (the most privileged level).
+     The SPARC and 68k stubs are able to mask interrupts themselves
+     without help from 'exceptionHandler'.
+
+'void flush_i_cache()'
+     On SPARC and SPARCLITE only, write this subroutine to flush the
+     instruction cache, if any, on your target machine.  If there is no
+     instruction cache, this subroutine may be a no-op.
+
+     On target machines that have instruction caches, GDB requires this
+     function to make certain that the state of your program is stable.
+
+You must also make sure this library routine is available:
+
+'void *memset(void *, int, int)'
+     This is the standard library function 'memset' that sets an area of
+     memory to a known value.  If you have one of the free versions of
+     'libc.a', 'memset' can be found there; otherwise, you must either
+     obtain it from your hardware manufacturer, or write your own.
+
+   If you do not use the GNU C compiler, you may need other standard
+library subroutines as well; this varies from one stub to another, but
+in general the stubs are likely to use any of the common library
+subroutines which 'GCC' generates as inline code.
+
+
+File: gdb.info,  Node: Debug Session,  Prev: Bootstrapping,  Up: Remote Stub
+
+20.5.3 Putting it All Together
+------------------------------
+
+In summary, when your program is ready to debug, you must follow these
+steps.
+
+  1. Make sure you have defined the supporting low-level routines (*note
+     What You Must Do for the Stub: Bootstrapping.):
+          'getDebugChar', 'putDebugChar',
+          'flush_i_cache', 'memset', 'exceptionHandler'.
+
+  2. Insert these lines in your program's startup code, before the main
+     procedure is called:
+
+          set_debug_traps();
+          breakpoint();
+
+     On some machines, when a breakpoint trap is raised, the hardware
+     automatically makes the PC point to the instruction after the
+     breakpoint.  If your machine doesn't do that, you may need to
+     adjust 'handle_exception' to arrange for it to return to the
+     instruction after the breakpoint on this first invocation, so that
+     your program doesn't keep hitting the initial breakpoint instead of
+     making progress.
+
+  3. For the 680x0 stub only, you need to provide a variable called
+     'exceptionHook'.  Normally you just use:
+
+          void (*exceptionHook)() = 0;
+
+     but if before calling 'set_debug_traps', you set it to point to a
+     function in your program, that function is called when 'GDB'
+     continues after stopping on a trap (for example, bus error).  The
+     function indicated by 'exceptionHook' is called with one parameter:
+     an 'int' which is the exception number.
+
+  4. Compile and link together: your program, the GDB debugging stub for
+     your target architecture, and the supporting subroutines.
+
+  5. Make sure you have a serial connection between your target machine
+     and the GDB host, and identify the serial port on the host.
+
+  6. Download your program to your target machine (or get it there by
+     whatever means the manufacturer provides), and start it.
+
+  7. Start GDB on the host, and connect to the target (*note Connecting
+     to a Remote Target: Connecting.).
 
 
 File: gdb.info,  Node: Configurations,  Next: Controlling GDB,  Prev: Remote Debugging,  Up: Top
@@ -234,14 +490,6 @@ currently available from cores created on GNU/Linux and FreeBSD systems.
 'proc-untrace-exit'
      These commands enable and disable tracing of entries into and exits
      from the 'syscall' interface.
-
-'info pidlist'
-     For QNX Neutrino only, this command displays the list of all the
-     processes and all the threads within each process.
-
-'info meminfo'
-     For QNX Neutrino only, this command displays the list of all
-     mapinfos.
 
 
 File: gdb.info,  Node: DJGPP Native,  Next: Cygwin Native,  Prev: Process Information,  Up: Native
@@ -1243,10 +1491,10 @@ uses of GDB with the architecture, both native and cross.
 * MIPS::
 * HPPA::               HP PA architecture
 * PowerPC::
-* Nios II::
 * Sparc64::
 * S12Z::
 * AMD GPU::            AMD GPU architectures
+* RISC-V::
 
 
 File: gdb.info,  Node: AArch64,  Next: x86,  Up: Architectures
@@ -1264,8 +1512,8 @@ following special commands:
 'show debug aarch64'
      Show whether AArch64 debugging messages are displayed.
 
-21.4.1.1 AArch64 SVE.
-.....................
+21.4.1.1 AArch64 Scalable Vector Extension
+..........................................
 
 When GDB is debugging the AArch64 architecture, if the Scalable Vector
 Extension (SVE) is present, then GDB will provide the vector registers
@@ -1291,8 +1539,8 @@ code and in this document:
    * VG: The number of 64 bit units in VL.  This is mostly used
      internally by GDB and the Linux Kernel.
 
-21.4.1.2 AArch64 SME.
-.....................
+21.4.1.2 AArch64 Scalable Matrix Extension
+..........................................
 
 The Scalable Matrix Extension (SME
 (https://community.arm.com/arm-community-blogs/b/architectures-and-processors-blog/posts/scalable-matrix-extension-armv9-a-architecture))
@@ -1465,8 +1713,8 @@ values for the 'ZA' register and incorrect values for SVE registers
    This is the same limitation we have for the SVE registers, and there
 are plans to address this limitation going forward.
 
-21.4.1.3 AArch64 SME2.
-......................
+21.4.1.3 AArch64 Scalable Matrix Extension 2
+............................................
 
 The Scalable Matrix Extension 2 is an AArch64 architecture extension
 that further expands the SME extension with the following:
@@ -1501,8 +1749,8 @@ which means the 'SVCR' ZA bit gets set to 1.
 architecture documentation
 (https://developer.arm.com/documentation/ddi0487/latest).
 
-21.4.1.4 AArch64 Pointer Authentication.
-........................................
+21.4.1.4 AArch64 Pointer Authentication
+.......................................
 
 When GDB is debugging the AArch64 architecture, and the program is using
 the v8.3-A feature Pointer Authentication (PAC), then whenever the link
@@ -1511,8 +1759,8 @@ When GDB prints a backtrace, any addresses that required unmasking will
 be postfixed with the marker [PAC]. When using the MI, this is printed
 as part of the 'addr_flags' field.
 
-21.4.1.5 AArch64 Memory Tagging Extension.
-..........................................
+21.4.1.5 AArch64 Memory Tagging Extension
+.........................................
 
 When GDB is debugging the AArch64 architecture, the program is using the
 v8.5-A feature Memory Tagging Extension (MTE) and there is support in
@@ -1562,6 +1810,27 @@ information automatically from the core file, and will show one of the
 above messages depending on whether the synchronous or asynchronous mode
 is selected.  *Note Memory Tagging::.  *Note Memory::.
 
+21.4.1.6 AArch64 Guarded Control Stack
+......................................
+
+When GDB is debugging the AArch64 architecture, the program is using the
+feature Guarded Control Stack (GCS), the operating system kernel is
+Linux and it supports GCS, GDB will make a couple of special registers
+-- 'gcs_features_enabled' and 'gcs_features_locked' -- available through
+the 'org.gnu.gdb.aarch64.gcs.linux' feature.  These registers expose
+some options that can be controlled at runtime and emulate the 'prctl'
+option 'PR_SET_SHADOW_STACK_STATUS'.  For further information, see the
+documentation in the Linux kernel.
+
+   Naturally the Guarded Control Stack pointer at 'EL0' is also
+available, as the 'gcspr' register.
+
+   To aid debugging, GDB will note when SIGSEGV signals are generated as
+a result of a Guarded Control Stack error:
+
+     Program received signal SIGSEGV, Segmentation fault
+     Guarded Control Stack error.
+
 
 File: gdb.info,  Node: x86,  Next: Alpha,  Prev: AArch64,  Up: Architectures
 
@@ -1580,85 +1849,7 @@ File: gdb.info,  Node: x86,  Next: Alpha,  Prev: AArch64,  Up: Architectures
      Show the current setting of the convention to return 'struct's from
      functions.
 
-21.4.2.1 Intel "Memory Protection Extensions" (MPX).
-....................................................
-
-Memory Protection Extension (MPX) adds the bound registers 'BND0' (1)
-through 'BND3'.  Bound registers store a pair of 64-bit values which are
-the lower bound and upper bound.  Bounds are effective addresses or
-memory locations.  The upper bounds are architecturally represented in
-1's complement form.  A bound having lower bound = 0, and upper bound =
-0 (1's complement of all bits set) will allow access to the entire
-address space.
-
-   'BND0' through 'BND3' are represented in GDB as 'bnd0raw' through
-'bnd3raw'.  Pseudo registers 'bnd0' through 'bnd3' display the upper
-bound performing the complement of one operation on the upper bound
-value, i.e. when upper bound in 'bnd0raw' is 0 in the GDB 'bnd0' it will
-be '0xfff...'.  In this sense it can also be noted that the upper bounds
-are inclusive.
-
-   As an example, assume that the register BND0 holds bounds for a
-pointer having access allowed for the range between 0x32 and 0x71.  The
-values present on bnd0raw and bnd registers are presented as follows:
-
-     	bnd0raw = {0x32, 0xffffffff8e}
-     	bnd0 = {lbound = 0x32, ubound = 0x71} : size 64
-
-   This way the raw value can be accessed via bnd0raw...bnd3raw.  Any
-change on bnd0...bnd3 or bnd0raw...bnd3raw is reflect on its
-counterpart.  When the bnd0...bnd3 registers are displayed via Python,
-the display includes the memory size, in bits, accessible to the
-pointer.
-
-   Bounds can also be stored in bounds tables, which are stored in
-application memory.  These tables store bounds for pointers by
-specifying the bounds pointer's value along with its bounds.  Evaluating
-and changing bounds located in bound tables is therefore interesting
-while investigating bugs on MPX context.  GDB provides commands for this
-purpose:
-
-'show mpx bound POINTER'
-     Display bounds of the given POINTER.
-
-'set mpx bound POINTER, LBOUND, UBOUND'
-     Set the bounds of a pointer in the bound table.  This command takes
-     three parameters: POINTER is the pointers whose bounds are to be
-     changed, LBOUND and UBOUND are new values for lower and upper
-     bounds respectively.
-
-   Both commands are deprecated and will be removed in future versions
-of GDB.  MPX itself was listed as removed by Intel in 2019.
-
-   When you call an inferior function on an Intel MPX enabled program,
-GDB sets the inferior's bound registers to the init (disabled) state
-before calling the function.  As a consequence, bounds checks for the
-pointer arguments passed to the function will always pass.
-
-   This is necessary because when you call an inferior function, the
-program is usually in the middle of the execution of other function.
-Since at that point bound registers are in an arbitrary state, not
-clearing them would lead to random bound violations in the called
-function.
-
-   You can still examine the influence of the bound registers on the
-execution of the called function by stopping the execution of the called
-function at its prologue, setting bound registers, and continuing the
-execution.  For example:
-
-     	$ break *upper
-     	Breakpoint 2 at 0x4009de: file i386-mpx-call.c, line 47.
-     	$ print upper (a, b, c, d, 1)
-     	Breakpoint 2, upper (a=0x0, b=0x6e0000005b, c=0x0, d=0x0, len=48)....
-     	$ print $bnd0
-     	{lbound = 0x0, ubound = ffffffff} : size -1
-
-   At this last step the value of bnd0 can be changed for investigation
-of bound violations caused along the execution of the call.  In order to
-know how to set the bound registers or bound table for the call consult
-the ABI.
-
-21.4.2.2 x87 registers
+21.4.2.1 x87 registers
 ......................
 
 GDB provides access to the x87 state through the following registers:
@@ -1673,10 +1864,40 @@ GDB provides access to the x87 state through the following registers:
    * '$fooff': last data pointer
    * '$fop': last opcode
 
-   ---------- Footnotes ----------
+21.4.2.2 Intel Control-Flow Enforcement Technology.
+...................................................
 
-   (1) The register named with capital letters represent the
-architecture registers.
+The "Intel Control-Flow Enforcement Technology" (Intel CET) provides two
+capabilities to defend against "Return-oriented Programming" and
+"call/jmp-oriented programming" style control-flow attacks:
+
+   * Shadow Stack: A shadow stack is a second stack for a program.  It
+     holds the return addresses pushed by the call instruction.  The
+     'RET' instruction pops the return addresses from both call and
+     shadow stack.  If the return addresses from the two stacks do not
+     match, the processor signals a control protection exception.
+   * Indirect Branch Tracking (IBT): When IBT is enabled, the CPU
+     implements a state machine that tracks indirect 'JMP' and 'CALL'
+     instructions.  The state machine can be either IDLE or
+     WAIT_FOR_ENDBRANCH. When a 'JMP' or 'CALL' is executed the state
+     machine chages to the WAIT_FOR_ENDBRANCH state.  In
+     WAIT_FOR_ENDBRANCH state the next instruction in the program stream
+     must be an 'ENDBR' instruction, otherwise the processor signals a
+     control protection exception.  After executing a 'ENDBR'
+     instruction the state machine returns to the IDLE state.
+
+   Impact on GDB commands:
+   * Call/Print: Inferior calls in GDB reset the current PC to the
+     beginning of the function that is called.  No call instruction is
+     executed, but the 'RET' instruction actually is.  To avoid a
+     control protection exception due to the missing return address on
+     the shadow stack, GDB pushes the new return address to the shadow
+     stack and updates the shadow stack pointer.
+   * Step: With displaced stepping, GDB may run an out of line copy of a
+     call instruction.  In this case, the wrong return address is pushed
+     to the shadow stack.  GDB corrects this value to avoid a control
+     protection exception.  For more details on displaced stepping, see
+     *note displaced-stepping::.
 
 
 File: gdb.info,  Node: Alpha,  Next: MIPS,  Prev: x86,  Up: Architectures
@@ -1813,7 +2034,7 @@ special commands:
      given ADDRESS.
 
 
-File: gdb.info,  Node: PowerPC,  Next: Nios II,  Prev: HPPA,  Up: Architectures
+File: gdb.info,  Node: PowerPC,  Next: Sparc64,  Prev: HPPA,  Up: Architectures
 
 21.4.6 PowerPC
 --------------
@@ -1832,28 +2053,12 @@ and 'f3' for '$dl1' and so on.
 64-bit wide Extended Floating Point Registers ('f32' through 'f63').
 
 
-File: gdb.info,  Node: Nios II,  Next: Sparc64,  Prev: PowerPC,  Up: Architectures
+File: gdb.info,  Node: Sparc64,  Next: S12Z,  Prev: PowerPC,  Up: Architectures
 
-21.4.7 Nios II
+21.4.7 Sparc64
 --------------
 
-When GDB is debugging the Nios II architecture, it provides the
-following special commands:
-
-'set debug nios2'
-     This command turns on and off debugging messages for the Nios II
-     target code in GDB.
-
-'show debug nios2'
-     Show the current setting of Nios II debugging messages.
-
-
-File: gdb.info,  Node: Sparc64,  Next: S12Z,  Prev: Nios II,  Up: Architectures
-
-21.4.8 Sparc64
---------------
-
-21.4.8.1 ADI Support
+21.4.7.1 ADI Support
 ....................
 
 The M7 processor supports an Application Data Integrity (ADI) feature
@@ -1916,7 +2121,7 @@ cacheline (64 bytes), can be viewed or modified.
 
 File: gdb.info,  Node: S12Z,  Next: AMD GPU,  Prev: Sparc64,  Up: Architectures
 
-21.4.9 S12Z
+21.4.8 S12Z
 -----------
 
 When GDB is debugging the S12Z architecture, it provides the following
@@ -1927,25 +2132,25 @@ special command:
      BDCCSR register.
 
 
-File: gdb.info,  Node: AMD GPU,  Prev: S12Z,  Up: Architectures
+File: gdb.info,  Node: AMD GPU,  Next: RISC-V,  Prev: S12Z,  Up: Architectures
 
-21.4.10 AMD GPU
----------------
+21.4.9 AMD GPU
+--------------
 
 GDB supports debugging programs offloaded to AMD GPU devices using the
 AMD ROCm (https://docs.amd.com/) platform.  GDB presents host threads
 alongside GPU wavefronts, allowing debugging both the host and device
 parts of the program simultaneously.
 
-21.4.10.1 AMD GPU Architectures
-...............................
+21.4.9.1 AMD GPU Architectures
+..............................
 
 The list of AMD GPU architectures supported by GDB depends on the
 version of the AMD Debugger API library used.  See its documentation
 (https://docs.amd.com/bundle/ROCDebugger_User_and_API) for more details.
 
-21.4.10.2 AMD GPU Device Driver and AMD ROCm Runtime
-....................................................
+21.4.9.2 AMD GPU Device Driver and AMD ROCm Runtime
+...................................................
 
 GDB requires a compatible AMD GPU device driver to be installed.  A
 warning message is displayed if either the device driver version or the
@@ -1963,8 +2168,8 @@ displayed if an unsupported AMD ROCm runtime is detected, or there is an
 error or restriction that prevents debugging.  GDB will continue to
 function except no AMD GPU debugging will be possible.
 
-21.4.10.3 AMD GPU Wavefronts
-............................
+21.4.9.3 AMD GPU Wavefronts
+...........................
 
 An AMD GPU wavefront is represented in GDB as a thread.
 
@@ -1977,8 +2182,8 @@ Restrictions.).
 new wavefronts created by the resumed thread (either CPU thread or GPU
 wavefront) are held in the halt state.
 
-21.4.10.4 AMD GPU Code Objects
-..............................
+21.4.9.4 AMD GPU Code Objects
+.............................
 
 The 'info sharedlibrary' command will show the AMD GPU code objects as
 file or memory URIs, together with the host's shared libraries.  For
@@ -2012,8 +2217,8 @@ loaded multiple times.  As a consequence, setting a breakpoint in AMD
 GPU code will result in multiple breakpoint locations if there are
 multiple AMD GPU devices.
 
-21.4.10.5 AMD GPU Entity Target Identifiers and Convenience Variables
-.....................................................................
+21.4.9.5 AMD GPU Entity Target Identifiers and Convenience Variables
+....................................................................
 
 The AMD GPU entities have the following target identifier formats:
 
@@ -2023,8 +2228,8 @@ Thread Target ID
 
           AMDGPU Wave AGENT-ID:QUEUE-ID:DISPATCH-ID:WAVE-ID (WORK-GROUP-X,WORK-GROUP-Y,WORK-GROUP-Z)/WORK-GROUP-THREAD-INDEX
 
-21.4.10.6 AMD GPU Signals
-.........................
+21.4.9.6 AMD GPU Signals
+........................
 
 For AMD GPU wavefronts, GDB maps target conditions to stop signals in
 the following way:
@@ -2082,8 +2287,8 @@ the following way:
    If a single instruction raises more than one signal, they will be
 reported one at a time each time the wavefront is continued.
 
-21.4.10.7 AMD GPU Memory Violation Reporting
-............................................
+21.4.9.7 AMD GPU Memory Violation Reporting
+...........................................
 
 A wavefront can report memory violation events.  However, the program
 location at which they are reported may be after the machine instruction
@@ -2115,8 +2320,8 @@ behavior:
 'show amdgpu precise-memory'
      Displays the currently requested AMD GPU precise memory setting.
 
-21.4.10.8 AMD GPU Logging
-.........................
+21.4.9.8 AMD GPU Logging
+........................
 
 The 'set debug amd-dbgapi' command can be used to enable diagnostic
 messages in the 'amd-dbgapi' target.  The 'show debug amd-dbgapi'
@@ -2128,8 +2333,8 @@ under the hood).  The 'show debug amd-dbgapi-lib log-level' command
 displays the current 'amd-dbgapi' library log level.  *Note set debug
 amd-dbgapi-lib::.
 
-21.4.10.9 AMD GPU Restrictions
-..............................
+21.4.9.9 AMD GPU Restrictions
+.............................
 
   1. When in non-stop mode, wavefronts may not hit breakpoints inserted
      while not stopped, nor see memory updates made while not stopped,
@@ -2178,6 +2383,25 @@ amd-dbgapi-lib::.
      GDB was not attached.
 
 
+File: gdb.info,  Node: RISC-V,  Prev: AMD GPU,  Up: Architectures
+
+21.4.10 RISC-V
+--------------
+
+When GDB is debugging a RISC-V architecture, it provides the following
+special commands:
+
+'set riscv numeric-register-names [on|off]'
+     This command controls whether GDB displays RISC-V register names
+     using their numeric or abi names.  When 'on', GDB displays
+     registers by their numeric names (e.g.  'x1').  When 'off', GDB
+     displays registers by their abi names (e.g.  'ra').  The default is
+     'off'.
+
+'show riscv numeric-register-names'
+     Show whether GDB will refer to registers by their numeric names.
+
+
 File: gdb.info,  Node: Controlling GDB,  Next: Extending GDB,  Prev: Configurations,  Up: Top
 
 22 Controlling GDB
@@ -2219,6 +2443,14 @@ prompt that does not.
 
 'set prompt NEWPROMPT'
      Directs GDB to use NEWPROMPT as its prompt string henceforth.
+
+     For example, this will set a blue-colored "(gdb)" prompt:
+
+          set prompt \001\033[0;34m\002(gdb)\001\033[0m\002
+
+     It uses '\001' and '\002' to begin and end a sequence of
+     non-printing characters, to make sure they're not counted in the
+     string length.
 
 'show prompt'
      Prints a line of the form: 'Gdb's prompt is: YOUR-PROMPT'
@@ -2281,6 +2513,9 @@ conditions in '.inputrc'.
 This is bound to 'C-o' by default.  This command accepts the current
 line for execution and fetches the next line relative to the current
 line from the history for editing.  Any argument is ignored.
+
+   It is possible to discover which version of Readline GDB is using
+with the 'show configuration' command (*note show configuration::).
 
 
 File: gdb.info,  Node: Command History,  Next: Screen Size,  Prev: Editing,  Up: Controlling GDB
@@ -2471,6 +2706,19 @@ styles can also be disabled entirely.
 'show style enabled'
      Show the current state of styling.
 
+'set style emoji 'auto|on|off''
+     Enable or disable the use of emoji.  On most hosts, the default is
+     'auto', meaning that emoji will only be used if the host character
+     set is 'UTF-8'; however, on Windows the default is 'off' when using
+     the console.  Note that disabling styling as a whole will also
+     prevent emoji display.
+
+     Currently, emoji are printed whenever GDB reports an error or a
+     warning.
+
+'show style emoji'
+     Show the current state of emoji output.
+
 'set style sources 'on|off''
      Enable or disable source code styling.  This affects whether source
      code, such as the output of the 'list' command, is styled.  The
@@ -2485,6 +2733,17 @@ styles can also be disabled entirely.
 
 'show style sources'
      Show the current state of source code styling.
+
+'set style warning-prefix'
+'show style warning-prefix'
+'set style error-prefix'
+'show style error-prefix'
+
+     These commands control the prefix that is printed before warnings
+     and errors, respectively.  This functionality is intended for use
+     with emoji display, and so the prefixes are only displayed if emoji
+     styling is enabled.  The defaults are the warning sign emoji for
+     warnings, and and the cross mark emoji for errors.
 
 'set style tui-current-position 'on|off''
      Enable or disable styling of the source and assembly code
@@ -2535,14 +2794,32 @@ styled with a foreground color, a background color, and an intensity.
 style filename' group of commands:
 
 'set style filename background COLOR'
-     Set the background to COLOR.  Valid colors are 'none' (meaning the
-     terminal's default color), 'black', 'red', 'green', 'yellow',
-     'blue', 'magenta', 'cyan', and'white'.
+     Set the background to COLOR.  COLOR can be 'none' (meaning the
+     terminal's default color), a name of one of the eight standard
+     colors of ISO/IEC 6429, index from 0 to 255 into terminal's color
+     palette or a hexadecimal RGB triplet in '#RRGGBB' format for 24-bit
+     TrueColor.
+
+     Valid color names are 'black', 'red', 'green', 'yellow', 'blue',
+     'magenta', 'cyan', and 'white'.
+
+     Integers 0 to 7 are the synonyms for the standard colors.  Integers
+     8-15 are used for the so-called bright colors from the aixterm
+     extended 16-color palette.  Integers 16-255 are the indexes into
+     xterm extended 256-color palette (usually 6x6x6 cube plus gray
+     ramp).  In general, 256-color palette is terminal dependent and
+     sometimes can be changed with OSC 4 sequences, e.g.
+     "\033]4;1;rgb:00/FF/00\033\\".  A hexadecimal 24-bit TrueColor is
+     specified in the format '#RRGGBB' where RR, GG and BB are the
+     2-digit hexadecimal integers specifiing the intensity of the red,
+     green and blue color components, respectively.
+
+     It is the responsibility of the user to verify that the terminal
+     supports the specified colors.
 
 'set style filename foreground COLOR'
-     Set the foreground to COLOR.  Valid colors are 'none' (meaning the
-     terminal's default color), 'black', 'red', 'green', 'yellow',
-     'blue', 'magenta', 'cyan', and'white'.
+     Set the foreground to COLOR.  COLOR can be given in the same ways
+     as for the background.
 
 'set style filename intensity VALUE'
      Set the intensity to VALUE.  Valid intensities are 'normal' (the
@@ -2554,6 +2831,10 @@ complete list of styles, their characteristics and the visual aspect of
 each style.
 
    The style-able objects are:
+'command'
+     Control the styling of any GDB commands that are displayed by GDB.
+     By default, this style's intensity is bold.
+
 'filename'
      Control the styling of file names and URLs.  By default, this
      style's foreground color is green.
@@ -2567,6 +2848,10 @@ each style.
      output if GDB is using its builtin disassembler library for styling
      (*note 'set style disassembler enabled':
      style_disassembler_enabled.).
+
+'line-number'
+     Control the styling of line numbers.  By default, this style's
+     intensity is dim.
 
 'variable'
      Control the styling of variable names.  These are managed with the
@@ -2595,10 +2880,9 @@ each style.
 'title'
      Control the styling of titles.  These are managed with the 'set
      style title' family of commands.  By default, this style's
-     intensity is bold.  Commands are using the title style to improve
-     the readability of large output.  For example, the commands
-     'apropos' and 'help' are using the title style for the command
-     names.
+     intensity is bold.  The title style is used when displaying the
+     header line of a list, for example the first line of the output of
+     'info breakpoints' (*note Set Breaks::).
 
 'highlight'
      Control the styling of highlightings.  These are managed with the
@@ -3675,9 +3959,20 @@ File: gdb.info,  Node: Define,  Next: Hooks,  Up: Sequences
 
 A "user-defined command" is a sequence of GDB commands to which you
 assign a new name as a command.  This is done with the 'define' command.
-User commands may accept an unlimited number of arguments separated by
-whitespace.  Arguments are accessed within the user command via
-'$arg0...$argN'.  A trivial example:
+
+   User commands may accept an unlimited number of arguments separated
+by whitespace.  Arguments are accessed within the user command via
+'$arg0...$argN'.  The arguments are text substitutions, so they may
+reference variables, use complex expressions, or even perform inferior
+functions calls.  Note, however, that this textual substitution means
+that working with certain arguments is difficult.  For example, there is
+no way for the user to pass an argument containing a space; and while
+stringifying an argument can be done using an expression like '"$arg1"',
+this will fail if the argument contains a quote.  For more complicated
+and robust commands, we recommend writing them in Python; see *note CLI
+Commands In Python::.
+
+   A trivial example:
 
      define adder
        print $arg0 + $arg1 + $arg2
@@ -3688,9 +3983,7 @@ To execute the command use:
      adder 1 2 3
 
 This defines the command 'adder', which prints the sum of its three
-arguments.  Note the arguments are text substitutions, so they may
-reference variables, use complex expressions, or even perform inferior
-functions calls.
+arguments.
 
    In addition, '$argc' may be used to find out how many arguments have
 been passed.
@@ -4279,7 +4572,7 @@ explicitly when using the alias(1).
 
    For example, if you often use the command 'thread apply all'
 specifying to work on the threads in ascending order and to continue in
-case it encounters an error, you can tell GDB to automatically preprend
+case it encounters an error, you can tell GDB to automatically prepend
 the '-ascending' and '-c' options by using:
 
      (gdb) alias thread apply asc-all = thread apply all -ascending -c
@@ -4544,12 +4837,14 @@ optional arguments while skipping others.  Example:
 * Finish Breakpoints in Python:: Setting Breakpoints on function return
                                 using Python.
 * Lazy Strings In Python::      Python representation of lazy strings.
+* Colors In Python::            Python representation of colors.
 * Architectures In Python::     Python representation of architectures.
 * Registers In Python::         Python representation of registers.
 * Connections In Python::       Python representation of connections.
 * TUI Windows In Python::       Implementing new TUI windows.
 * Disassembly In Python::       Instruction Disassembly In Python
 * Missing Debug Info In Python:: Handle missing debug info from Python.
+* Missing Objfiles In Python::  Handle objfiles from Python.
 
 
 File: gdb.info,  Node: Basic Python,  Next: Threading in GDB,  Up: Python API
@@ -4571,7 +4866,7 @@ things worth noting in particular:
      If your program changes the handling of these signals, GDB will
      most likely stop working correctly.  Note that it is unfortunately
      common for GUI toolkits to install a 'SIGCHLD' handler.  When
-     creating a new Python thread, you can use 'gdb.block_signals' or
+     creating a new Python thread, you can use 'gdb.blocked_signals' or
      'gdb.Thread' to handle this correctly; see *note Threading in
      GDB::.
 
@@ -4594,7 +4889,8 @@ for debugging purposes only, expect them to change over time.
  -- Variable: gdb.PYTHONDIR
      A string containing the python directory (*note Python::).
 
- -- Function: gdb.execute (command [, from_tty [, to_string]])
+ -- Function: gdb.execute (command [, from_tty [, to_string
+          [, styling ]]])
      Evaluate COMMAND, a string, as a GDB CLI command.  If a GDB
      exception happens while COMMAND runs, it is translated as described
      in *note Exception Handling: Exception Handling.
@@ -4612,6 +4908,13 @@ for debugging purposes only, expect them to change over time.
      the GDB virtual terminal will be temporarily set to unlimited width
      and height, and its pagination will be disabled; *note Screen
      Size::.
+
+     When STYLING is 'True', the output, whether sent to standard
+     output, or to a string, will have styling applied, if GDB's
+     standard output supports styling, and 'show style enabled' is 'on'.
+     When STYLING is 'False' then no styling is applied.  The default
+     for STYLING is 'True' when TO_STRING is 'False', and 'False' when
+     TO_STRING is 'True'.
 
  -- Function: gdb.breakpoints ()
      Return a sequence holding all of GDB's breakpoints.  *Note
@@ -4753,7 +5056,7 @@ for debugging purposes only, expect them to change over time.
      this function and will automatically direct the output to the
      relevant stream.
 
- -- Function: gdb.flush ([, stream])
+ -- Function: gdb.flush ([stream])
      Flush the buffer of a GDB paginated stream so that the contents are
      displayed immediately.  GDB will flush the contents of a stream
      automatically when it encounters a newline in the buffer.  The
@@ -4771,6 +5074,16 @@ for debugging purposes only, expect them to change over time.
 
      Flushing 'sys.stdout' or 'sys.stderr' will automatically call this
      function for the relevant stream.
+
+ -- Function: gdb.warning (text)
+     Print a warning message to GDB's standard output stream.  The
+     warning message is the warning prefix (*note warning-prefix::), the
+     string 'warning: ', and then TEXT, which must be a non-empty
+     string.
+
+     Due to the warning prefix, TEXT should not begin with a capital
+     letter (except for proper nouns), and TEXT should end with a
+     period.
 
  -- Function: gdb.target_charset ()
      Return the name of the current target character set (*note
@@ -4893,19 +5206,19 @@ GDB is not thread-safe.  If your Python program uses multiple threads,
 you must be careful to only call GDB-specific functions in the GDB
 thread.  GDB provides some functions to help with this.
 
- -- Function: gdb.block_signals ()
+ -- Function: gdb.blocked_signals ()
      As mentioned earlier (*note Basic Python::), certain signals must
-     be delivered to the GDB main thread.  The 'block_signals' function
-     returns a context manager that will block these signals on entry.
-     This can be used when starting a new thread to ensure that the
-     signals are blocked there, like:
+     be delivered to the GDB main thread.  The 'blocked_signals'
+     function returns a context manager that will block these signals on
+     entry.  This can be used when starting a new thread to ensure that
+     the signals are blocked there, like:
 
-          with gdb.block_signals():
+          with gdb.blocked_signals():
              start_new_thread()
 
  -- class: gdb.Thread
      This is a subclass of Python's 'threading.Thread' class.  It
-     overrides the 'start' method to call 'block_signals', making this
+     overrides the 'start' method to call 'blocked_signals', making this
      an easy-to-use drop-in replacement for creating threads that will
      work well in GDB.
 
@@ -5096,8 +5409,24 @@ function, call it like so:
 
  -- Variable: Value.is_optimized_out
      This read-only boolean attribute is true if the compiler optimized
-     out this value, thus it is not available for fetching from the
-     inferior.
+     out this value, or any part of this value, and thus it is not
+     available for fetching from the inferior.
+
+ -- Variable: Value.is_unavailable
+     This read-only boolean attribute is true if this value, or any part
+     of this value, is not available to GDB.  Where an optimized out
+     value has been removed from the program by the compiler, an
+     unavailable value does exist in the program, but GDB is unable to
+     fetch it.
+
+     Some reasons why this might occur include, but are not limited to:
+     a core file format that GDB doesn't fully understand; during live
+     debugging if the debug API has no mechanism to access the required
+     state, e.g. the kernel gives an error when trying to read a
+     particular register set; or reading a value from GDB's history,
+     when only a partial value was stored, e.g. due to the
+     'max-value-size' setting (*note max-value-size: set
+     max-value-size.).
 
  -- Variable: Value.type
      The type of this 'gdb.Value'.  The value of this attribute is a
@@ -5353,7 +5682,7 @@ function, call it like so:
           unlike for the 'print' command, references are not
           automatically expanded when using the 'format_string' method
           or the 'str' function.  There is no global 'print' setting to
-          change the default behaviour.
+          change the default behavior.
 
      'actual_objects'
           'True' if the representation of a pointer to an object should
@@ -5451,9 +5780,10 @@ function, call it like so:
      fetched and converted to the given length.
 
  -- Function: Value.lazy_string ([encoding [, length]])
-     If this 'gdb.Value' represents a string, then this method converts
-     the contents to a 'gdb.LazyString' (*note Lazy Strings In
-     Python::).  Otherwise, this method will throw an exception.
+     This method attempts to convert this 'gdb.Value' to a
+     'gdb.LazyString' (*note Lazy Strings In Python::).  Values of array
+     or pointer type can be converted; for other types, this method will
+     throw an exception.
 
      If the optional ENCODING argument is given, it must be a string
      naming the encoding of the 'gdb.LazyString'.  Some examples are:
@@ -7007,7 +7337,7 @@ classes:
      derive from this class, so long as any user created unwinder has
      the required 'name' and 'enabled' attributes.
 
-      -- Function: gdb.unwinder.Unwinder.__init__(name)
+      -- Function: gdb.unwinder.Unwinder.__init__ (name)
           The NAME is a string used to reference this unwinder within
           some GDB commands (*note Managing Registered Unwinders::).
 
@@ -7029,7 +7359,8 @@ classes:
 
      'gdb.unwinder.FrameId' has the following method:
 
-      -- Function: gdb.unwinder.FrameId.__init__(sp, pc, special = None)
+      -- Function: gdb.unwinder.FrameId.__init__ (sp, pc, special =
+               None)
           The SP and PC arguments are required and should be either a
           'gdb.Value' object, or an integer.
 
@@ -7132,144 +7463,4 @@ GDB defines 3 commands to manage registered unwinders.  These are:
      above, but instead of listing the matching unwinders, all of the
      matching unwinders are enabled.  The 'enabled' field of each
      matching unwinder is set to 'True'.
-
-
-File: gdb.info,  Node: Xmethods In Python,  Next: Xmethod API,  Prev: Unwinding Frames in Python,  Up: Python API
-
-23.3.2.14 Xmethods In Python
-............................
-
-"Xmethods" are additional methods or replacements for existing methods
-of a C++ class.  This feature is useful for those cases where a method
-defined in C++ source code could be inlined or optimized out by the
-compiler, making it unavailable to GDB.  For such cases, one can define
-an xmethod to serve as a replacement for the method defined in the C++
-source code.  GDB will then invoke the xmethod, instead of the C++
-method, to evaluate expressions.  One can also use xmethods when
-debugging with core files.  Moreover, when debugging live programs,
-invoking an xmethod need not involve running the inferior (which can
-potentially perturb its state).  Hence, even if the C++ method is
-available, it is better to use its replacement xmethod if one is
-defined.
-
-   The xmethods feature in Python is available via the concepts of an
-"xmethod matcher" and an "xmethod worker".  To implement an xmethod, one
-has to implement a matcher and a corresponding worker for it (more than
-one worker can be implemented, each catering to a different overloaded
-instance of the method).  Internally, GDB invokes the 'match' method of
-a matcher to match the class type and method name.  On a match, the
-'match' method returns a list of matching _worker_ objects.  Each worker
-object typically corresponds to an overloaded instance of the xmethod.
-They implement a 'get_arg_types' method which returns a sequence of
-types corresponding to the arguments the xmethod requires.  GDB uses
-this sequence of types to perform overload resolution and picks a
-winning xmethod worker.  A winner is also selected from among the
-methods GDB finds in the C++ source code.  Next, the winning xmethod
-worker and the winning C++ method are compared to select an overall
-winner.  In case of a tie between a xmethod worker and a C++ method, the
-xmethod worker is selected as the winner.  That is, if a winning xmethod
-worker is found to be equivalent to the winning C++ method, then the
-xmethod worker is treated as a replacement for the C++ method.  GDB uses
-the overall winner to invoke the method.  If the winning xmethod worker
-is the overall winner, then the corresponding xmethod is invoked via the
-'__call__' method of the worker object.
-
-   If one wants to implement an xmethod as a replacement for an existing
-C++ method, then they have to implement an equivalent xmethod which has
-exactly the same name and takes arguments of exactly the same type as
-the C++ method.  If the user wants to invoke the C++ method even though
-a replacement xmethod is available for that method, then they can
-disable the xmethod.
-
-   *Note Xmethod API::, for API to implement xmethods in Python.  *Note
-Writing an Xmethod::, for implementing xmethods in Python.
-
-
-File: gdb.info,  Node: Xmethod API,  Next: Writing an Xmethod,  Prev: Xmethods In Python,  Up: Python API
-
-23.3.2.15 Xmethod API
-.....................
-
-The GDB Python API provides classes, interfaces and functions to
-implement, register and manipulate xmethods.  *Note Xmethods In
-Python::.
-
-   An xmethod matcher should be an instance of a class derived from
-'XMethodMatcher' defined in the module 'gdb.xmethod', or an object with
-similar interface and attributes.  An instance of 'XMethodMatcher' has
-the following attributes:
-
- -- Variable: name
-     The name of the matcher.
-
- -- Variable: enabled
-     A boolean value indicating whether the matcher is enabled or
-     disabled.
-
- -- Variable: methods
-     A list of named methods managed by the matcher.  Each object in the
-     list is an instance of the class 'XMethod' defined in the module
-     'gdb.xmethod', or any object with the following attributes:
-
-     'name'
-          Name of the xmethod which should be unique for each xmethod
-          managed by the matcher.
-
-     'enabled'
-          A boolean value indicating whether the xmethod is enabled or
-          disabled.
-
-     The class 'XMethod' is a convenience class with same attributes as
-     above along with the following constructor:
-
-      -- Function: XMethod.__init__ (self, name)
-          Constructs an enabled xmethod with name NAME.
-
-The 'XMethodMatcher' class has the following methods:
-
- -- Function: XMethodMatcher.__init__ (self, name)
-     Constructs an enabled xmethod matcher with name NAME.  The
-     'methods' attribute is initialized to 'None'.
-
- -- Function: XMethodMatcher.match (self, class_type, method_name)
-     Derived classes should override this method.  It should return a
-     xmethod worker object (or a sequence of xmethod worker objects)
-     matching the CLASS_TYPE and METHOD_NAME.  CLASS_TYPE is a
-     'gdb.Type' object, and METHOD_NAME is a string value.  If the
-     matcher manages named methods as listed in its 'methods' attribute,
-     then only those worker objects whose corresponding entries in the
-     'methods' list are enabled should be returned.
-
-   An xmethod worker should be an instance of a class derived from
-'XMethodWorker' defined in the module 'gdb.xmethod', or support the
-following interface:
-
- -- Function: XMethodWorker.get_arg_types (self)
-     This method returns a sequence of 'gdb.Type' objects corresponding
-     to the arguments that the xmethod takes.  It can return an empty
-     sequence or 'None' if the xmethod does not take any arguments.  If
-     the xmethod takes a single argument, then a single 'gdb.Type'
-     object corresponding to it can be returned.
-
- -- Function: XMethodWorker.get_result_type (self, *args)
-     This method returns a 'gdb.Type' object representing the type of
-     the result of invoking this xmethod.  The ARGS argument is the same
-     tuple of arguments that would be passed to the '__call__' method of
-     this worker.
-
- -- Function: XMethodWorker.__call__ (self, *args)
-     This is the method which does the _work_ of the xmethod.  The ARGS
-     arguments is the tuple of arguments to the xmethod.  Each element
-     in this tuple is a gdb.Value object.  The first element is always
-     the 'this' pointer value.
-
-   For GDB to lookup xmethods, the xmethod matchers should be registered
-using the following function defined in the module 'gdb.xmethod':
-
- -- Function: register_xmethod_matcher (locus, matcher, replace=False)
-     The 'matcher' is registered with 'locus', replacing an existing
-     matcher with the same name as 'matcher' if 'replace' is 'True'.
-     'locus' can be a 'gdb.Objfile' object (*note Objfiles In Python::),
-     or a 'gdb.Progspace' object (*note Progspaces In Python::), or
-     'None'.  If it is 'None', then 'matcher' is registered globally.
 

@@ -34,6 +34,7 @@
 * ax_boost_date_time::
 * ax_boost_filesystem::
 * ax_boost_iostreams::
+* ax_boost_json::
 * ax_boost_locale::
 * ax_boost_log::
 * ax_boost_log_setup::
@@ -59,12 +60,15 @@
 * ax_c_float_words_bigendian::
 * ax_c_long_long::
 * ax_c_referenceable_passed_va_list::
+* ax_c_restrict::
 * ax_c_var_func::
 * ax_cache_size::
 * ax_caolan_check_package::
 * ax_caolan_search_package::
+* ax_cc_attrcommon::
 * ax_cc_for_build::
 * ax_cc_maxopt::
+* ax_cc_tentdef::
 * ax_cf_ebcdic::
 * ax_cflags_aix_option::
 * ax_cflags_force_c89::
@@ -334,7 +338,9 @@
 * ax_func_mkdir::
 * ax_func_posix_memalign::
 * ax_func_snprintf::
+* ax_func_which_gethostbyaddr_r::
 * ax_func_which_gethostbyname_r::
+* ax_func_which_gethostent_r::
 * ax_func_which_getservbyname_r::
 * ax_gcc_archflag::
 * ax_gcc_builtin::
@@ -616,6 +622,7 @@
 @include ax_boost_date_time.texi
 @include ax_boost_filesystem.texi
 @include ax_boost_iostreams.texi
+@include ax_boost_json.texi
 @include ax_boost_locale.texi
 @include ax_boost_log.texi
 @include ax_boost_log_setup.texi
@@ -641,12 +648,15 @@
 @include ax_c_float_words_bigendian.texi
 @include ax_c_long_long.texi
 @include ax_c_referenceable_passed_va_list.texi
+@include ax_c_restrict.texi
 @include ax_c_var_func.texi
 @include ax_cache_size.texi
 @include ax_caolan_check_package.texi
 @include ax_caolan_search_package.texi
+@include ax_cc_attrcommon.texi
 @include ax_cc_for_build.texi
 @include ax_cc_maxopt.texi
+@include ax_cc_tentdef.texi
 @include ax_cf_ebcdic.texi
 @include ax_cflags_aix_option.texi
 @include ax_cflags_force_c89.texi
@@ -916,7 +926,9 @@
 @include ax_func_mkdir.texi
 @include ax_func_posix_memalign.texi
 @include ax_func_snprintf.texi
+@include ax_func_which_gethostbyaddr_r.texi
 @include ax_func_which_gethostbyname_r.texi
+@include ax_func_which_gethostent_r.texi
 @include ax_func_which_getservbyname_r.texi
 @include ax_gcc_archflag.texi
 @include ax_gcc_builtin.texi

@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <ccache/storage/remote/RemoteStorage.hpp>
+#include <ccache/storage/remote/remotestorage.hpp>
 
 #include <cxxurl/url.hpp>
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -56,31 +56,12 @@ ASTValidation::visit (AST::LoopLabel &label)
 void
 ASTValidation::visit (AST::ConstantItem &const_item)
 {
-  if (!const_item.has_expr () && context.back () != Context::TRAIT_IMPL)
+  if (!const_item.has_expr () && ctx.peek () != Kind::TRAIT)
     {
       rust_error_at (const_item.get_locus (),
 		     "associated constant in %<impl%> without body");
     }
   AST::ContextualASTVisitor::visit (const_item);
-}
-
-void
-ASTValidation::visit (AST::ExternalFunctionItem &item)
-{
-  auto &params = item.get_function_params ();
-
-  if (params.size () == 1 && params[0].is_variadic ())
-    rust_error_at (
-      params[0].get_locus (),
-      "C-variadic function must be declared with at least one named argument");
-
-  for (auto it = params.begin (); it != params.end (); it++)
-    if (it->is_variadic () && it + 1 != params.end ())
-      rust_error_at (
-	it->get_locus (),
-	"%<...%> must be the last argument of a C-variadic function");
-
-  AST::ContextualASTVisitor::visit (item);
 }
 
 void
@@ -101,44 +82,78 @@ ASTValidation::visit (AST::Function &function)
 		   "functions cannot be both %<const%> and %<async%>");
 
   if (qualifiers.is_const ()
-      && (context.back () == Context::TRAIT_IMPL
-	  || context.back () == Context::TRAIT))
+      && (ctx.peek () == Kind::TRAIT_IMPL || ctx.peek () == Kind::TRAIT))
     rust_error_at (function.get_locus (), ErrorCode::E0379,
 		   "functions in traits cannot be declared %<const%>");
 
   // may change soon
   if (qualifiers.is_async ()
-      && (context.back () == Context::TRAIT_IMPL
-	  || context.back () == Context::TRAIT))
+      && (ctx.peek () == Kind::TRAIT_IMPL || ctx.peek () == Kind::TRAIT))
     rust_error_at (function.get_locus (), ErrorCode::E0706,
 		   "functions in traits cannot be declared %<async%>");
 
   // if not an associated function but has a self parameter
-  if (context.back () != Context::TRAIT
-      && context.back () != Context::TRAIT_IMPL
-      && context.back () != Context::INHERENT_IMPL
-      && function.has_self_param ())
+  if (ctx.peek () != Kind::TRAIT && ctx.peek () != Kind::TRAIT_IMPL
+      && ctx.peek () != Kind::INHERENT_IMPL && function.has_self_param ())
     rust_error_at (
-      function.get_self_param ()->get_locus (),
+      function.get_self_param ().get_locus (),
       "%<self%> parameter is only allowed in associated functions");
 
-  if (!function.has_body ())
+  if (function.is_external ())
     {
-      if (context.back () == Context::INHERENT_IMPL
-	  || context.back () == Context::TRAIT_IMPL)
+      if (function.has_body ())
+	rust_error_at (function.get_locus (), "cannot have a body");
+
+      auto &params = function.get_function_params ();
+
+      if (params.size () == 1 && function.is_variadic ())
 	rust_error_at (function.get_locus (),
-		       "associated function in %<impl%> without body");
-      else if (context.back () != Context::TRAIT)
-	rust_error_at (function.get_locus (), "free function without a body");
+		       "C-variadic function must be declared with at least one "
+		       "named argument");
+
+      for (auto it = params.begin (); it != params.end (); it++)
+	{
+	  if (it->get ()->is_variadic () && it + 1 != params.end ())
+	    rust_error_at (
+	      it->get ()->get_locus (),
+	      "%<...%> must be the last argument of a C-variadic function");
+
+	  // if functional parameter
+	  if (!it->get ()->is_self () && !it->get ()->is_variadic ())
+	    {
+	      auto &param = static_cast<AST::FunctionParam &> (**it);
+	      auto kind = param.get_pattern ().get_pattern_kind ();
+
+	      if (kind != AST::Pattern::Kind::Identifier
+		  && kind != AST::Pattern::Kind::Wildcard)
+		rust_error_at (it->get ()->get_locus (), ErrorCode::E0130,
+			       "pattern not allowed in foreign function");
+	    }
+	}
     }
 
-  auto &function_params = function.get_function_params ();
-  for (auto it = function_params.begin (); it != function_params.end (); it++)
+  else
     {
-      if (it->get ()->is_variadic ())
-	rust_error_at (it->get ()->get_locus (),
-		       "only foreign or %<unsafe extern \"C\"%> functions may "
-		       "be C-variadic");
+      if (!function.has_body ())
+	{
+	  if (ctx.peek () == Kind::INHERENT_IMPL
+	      || ctx.peek () == Kind::TRAIT_IMPL)
+	    rust_error_at (function.get_locus (),
+			   "associated function in %<impl%> without body");
+	  else if (ctx.peek () != Kind::TRAIT)
+	    rust_error_at (function.get_locus (),
+			   "free function without a body");
+	}
+      auto &function_params = function.get_function_params ();
+      for (auto it = function_params.begin (); it != function_params.end ();
+	   it++)
+	{
+	  if (it->get ()->is_variadic ())
+	    rust_error_at (
+	      it->get ()->get_locus (),
+	      "only foreign or %<unsafe extern \"C\"%> functions may "
+	      "be C-variadic");
+	}
     }
 
   AST::ContextualASTVisitor::visit (function);

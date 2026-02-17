@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -25,6 +25,12 @@
 namespace Rust {
 namespace Analysis {
 
+class Attributes
+{
+public:
+  static bool is_known (const std::string &attribute_path);
+};
+
 enum CompilerPass
 {
   UNKNOWN,
@@ -34,7 +40,12 @@ enum CompilerPass
   HIR_LOWERING,
   TYPE_CHECK,
   STATIC_ANALYSIS,
-  CODE_GENERATION
+  CODE_GENERATION,
+
+  // External Rust tooling attributes, like #[rustfmt::skip]
+  EXTERNAL,
+
+  // Do we need to add something here for const fns?
 };
 
 struct BuiltinAttrDefinition
@@ -199,7 +210,6 @@ private:
   void visit (AST::TraitImpl &impl) override;
   void visit (AST::ExternalTypeItem &item) override;
   void visit (AST::ExternalStaticItem &item) override;
-  void visit (AST::ExternalFunctionItem &item) override;
   void visit (AST::ExternBlock &block) override;
 
   // rust-macro.h

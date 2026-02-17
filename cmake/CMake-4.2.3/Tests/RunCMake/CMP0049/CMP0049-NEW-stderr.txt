@@ -1,0 +1,9 @@
+CMake Error at CMP0049-NEW\.cmake:[0-9]+ \(add_library\):
+  Cannot find source file:
+
+    \${tgt_srcs}
+
+  Tried extensions ([^
+]+
+)+Call Stack \(most recent call first\):
+  CMakeLists\.txt:3 \(include\)

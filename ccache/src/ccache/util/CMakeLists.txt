@@ -1,27 +1,31 @@
 set(
   sources
-  Bytes.cpp
-  DirEntry.cpp
-  LockFile.cpp
-  LongLivedLockFileManager.cpp
-  MemoryMap.cpp
-  TemporaryFile.cpp
-  TextTable.cpp
-  ThreadPool.cpp
-  TimePoint.cpp
-  Tokenizer.cpp
-  UmaskScope.cpp
+  args.cpp
   assertions.cpp
+  bytes.cpp
+  clang.cpp
   cpu.cpp
+  direntry.cpp
   environment.cpp
   error.cpp
+  exec.cpp
   file.cpp
+  filelock.cpp
   filesystem.cpp
+  lockfile.cpp
   logging.cpp
+  longlivedlockfilemanager.cpp
+  memorymap.cpp
   path.cpp
   process.cpp
   string.cpp
+  temporaryfile.cpp
+  texttable.cpp
+  threadpool.cpp
   time.cpp
+  timepoint.cpp
+  tokenizer.cpp
+  umaskscope.cpp
   zstd.cpp
 )
 

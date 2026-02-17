@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2021-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -18,8 +18,9 @@
 
 #pragma once
 
-#include <ccache/util/Tokenizer.hpp>
 #include <ccache/util/conversion.hpp>
+#include <ccache/util/timepoint.hpp>
+#include <ccache/util/tokenizer.hpp>
 
 #include <nonstd/span.hpp>
 #include <tl/expected.hpp>
@@ -40,6 +41,7 @@ namespace util {
 // --- Interface ---
 
 enum class SizeUnitPrefixType { binary, decimal };
+enum class TimeZone { local, utc };
 
 // Return true if `suffix` is a suffix of `string`.
 bool ends_with(std::string_view string, std::string_view suffix);
@@ -50,7 +52,6 @@ bool ends_with(std::string_view string, std::string_view suffix);
 // is not at the end of `argv[i]` either.
 std::string
 format_argv_as_win32_command_string(const char* const* argv,
-                                    const std::string& prefix,
                                     bool escape_backslashes = false);
 
 // Format `argv` as a simple string for logging purposes. That is, the result is
@@ -82,6 +83,10 @@ std::string format_human_readable_diff(int64_t diff,
 std::string format_human_readable_size(uint64_t size,
                                        SizeUnitPrefixType prefix_type);
 
+// Format `time` as a human-readable ISO8601 timestamp string.
+std::string format_iso8601_timestamp(const TimePoint& time,
+                                     TimeZone time_zone = TimeZone::local);
+
 // Join stringified elements of `container` delimited by `delimiter` into a
 // string. There must exist an `std::string to_string(T::value_type)` function.
 template<typename T>
@@ -93,6 +98,9 @@ std::string join(const T& container, const std::string_view delimiter);
 template<typename T>
 std::string
 join(const T& begin, const T& end, const std::string_view delimiter);
+
+// Join paths into a string with system-dependent delimiter.
+std::string join_path_list(const std::vector<std::filesystem::path>& path_list);
 
 // Parse a string into a double.
 //
@@ -173,12 +181,12 @@ split_into_views(std::string_view string,
 
 // Split `string` into two parts using `split_char` as the delimiter. The second
 // part will be `nullopt` if there is no `split_char` in `string.`
-std::pair<std::string_view, std::optional<std::string_view>>
-split_once(const char* string, char split_char);
 std::pair<std::string, std::optional<std::string>>
-split_once(std::string&& string, char split_char);
-std::pair<std::string_view, std::optional<std::string_view>>
 split_once(std::string_view string, char split_char);
+
+// Like `split_once` but splits into `std::string_view`.
+std::pair<std::string_view, std::optional<std::string_view>>
+split_once_into_views(std::string_view string, char split_char);
 
 // Split `string` into two parts where the split point is before a potential
 // absolute path. The second part will be `nullopt` if no absolute path

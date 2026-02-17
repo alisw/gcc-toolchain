@@ -89,7 +89,7 @@ extract_module_path (const AST::AttrVec &inner_attrs,
   // Source: rustc compiler
   // (https://github.com/rust-lang/rust/blob/9863bf51a52b8e61bcad312f81b5193d53099f9f/compiler/rustc_expand/src/module.rs#L174)
 #if defined(HAVE_DOS_BASED_FILE_SYSTEM)
-  path.replace ('/', '\\');
+  std::replace (path.begin (), path.end (), '/', '\\');
 #endif /* HAVE_DOS_BASED_FILE_SYSTEM */
 
   return path;
@@ -146,7 +146,7 @@ peculiar_fragment_match_compatible_fragment (
   if (!is_valid)
     rust_error_at (
       match_locus,
-      "fragment specifier %<%s%> is not allowed after %<%s%> fragments",
+      "fragment specifier %qs is not allowed after %qs fragments",
       spec.as_string ().c_str (), last_spec.as_string ().c_str ());
 
   return is_valid;
@@ -299,7 +299,7 @@ peculiar_fragment_match_compatible (const AST::MacroMatchFragment &last_match,
       break;
     }
 
-  rust_error_at (error_locus, "%s is not allowed after %<%s%> fragment",
+  rust_error_at (error_locus, "%s is not allowed after %qs fragment",
 		 kind_str.c_str (),
 		 last_match.get_frag_spec ().as_string ().c_str ());
   auto allowed_toks_str

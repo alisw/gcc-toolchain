@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -17,6 +17,7 @@
 // <http://www.gnu.org/licenses/>.
 
 #include "rust-expand-visitor.h"
+#include "rust-ast-fragment.h"
 #include "rust-proc-macro.h"
 #include "rust-attributes.h"
 #include "rust-ast.h"
@@ -42,7 +43,7 @@ ExpandVisitor::go (AST::Crate &crate)
   visit (crate);
 }
 
-static std::unique_ptr<AST::Item>
+static std::vector<std::unique_ptr<AST::Item>>
 builtin_derive_item (AST::Item &item, const AST::Attribute &derive,
 		     BuiltinMacro to_derive)
 {
@@ -166,10 +167,10 @@ ExpandVisitor::expand_inner_items (
 
   for (auto it = items.begin (); it != items.end (); it++)
     {
-      auto &item = *it;
-      if (item->has_outer_attrs ())
+      Rust::AST::Item &item = **it;
+      if (item.has_outer_attrs ())
 	{
-	  auto &attrs = item->get_outer_attrs ();
+	  auto &attrs = item.get_outer_attrs ();
 
 	  for (auto attr_it = attrs.begin (); attr_it != attrs.end ();
 	       /* erase => No increment*/)
@@ -186,19 +187,21 @@ ExpandVisitor::expand_inner_items (
 		    {
 		      auto maybe_builtin = MacroBuiltin::builtins.lookup (
 			to_derive.get ().as_string ());
-		      if (MacroBuiltin::builtins.is_iter_ok (maybe_builtin))
+		      if (maybe_builtin.has_value ())
 			{
-			  auto new_item
-			    = builtin_derive_item (*item, current,
-						   maybe_builtin->second);
-			  // this inserts the derive *before* the item - is it a
-			  // problem?
-			  it = items.insert (it, std::move (new_item));
+			  auto new_items
+			    = builtin_derive_item (item, current,
+						   maybe_builtin.value ());
+
+			  for (auto &&new_item : new_items)
+			    it = items.insert (it, std::move (new_item));
 			}
 		      else
 			{
+			  // Macro is not a builtin, so it must be a
+			  // user-defined derive macro.
 			  auto new_items
-			    = derive_item (*item, to_derive, expander);
+			    = derive_item (item, to_derive, expander);
 			  std::move (new_items.begin (), new_items.end (),
 				     std::inserter (items, it));
 			}
@@ -214,7 +217,7 @@ ExpandVisitor::expand_inner_items (
 		    {
 		      attr_it = attrs.erase (attr_it);
 		      auto new_items
-			= expand_item_attribute (*item, current.get_path (),
+			= expand_item_attribute (item, current.get_path (),
 						 expander);
 		      it = items.erase (it);
 		      std::move (new_items.begin (), new_items.end (),
@@ -272,14 +275,16 @@ ExpandVisitor::expand_inner_stmts (AST::BlockExpr &expr)
 		    {
 		      auto maybe_builtin = MacroBuiltin::builtins.lookup (
 			to_derive.get ().as_string ());
-		      if (MacroBuiltin::builtins.is_iter_ok (maybe_builtin))
+		      if (maybe_builtin.has_value ())
 			{
-			  auto new_item
+			  auto new_items
 			    = builtin_derive_item (item, current,
-						   maybe_builtin->second);
+						   maybe_builtin.value ());
+
 			  // this inserts the derive *before* the item - is it a
 			  // problem?
-			  it = stmts.insert (it, std::move (new_item));
+			  for (auto &&new_item : new_items)
+			    it = stmts.insert (it, std::move (new_item));
 			}
 		      else
 			{
@@ -360,7 +365,7 @@ ExpandVisitor::expand_struct_fields (std::vector<AST::StructField> &fields)
 {
   for (auto &field : fields)
     {
-      maybe_expand_type (field.get_field_type ());
+      maybe_expand_type (field.get_field_type_ptr ());
     }
 }
 
@@ -368,7 +373,7 @@ void
 ExpandVisitor::expand_tuple_fields (std::vector<AST::TupleField> &fields)
 {
   for (auto &field : fields)
-    maybe_expand_type (field.get_field_type ());
+    maybe_expand_type (field.get_field_type_ptr ());
 }
 
 // FIXME: This can definitely be refactored with the method above
@@ -388,10 +393,10 @@ ExpandVisitor::expand_generic_args (AST::GenericArgs &args)
       switch (arg.get_kind ())
 	{
 	case AST::GenericArg::Kind::Type:
-	  maybe_expand_type (arg.get_type ());
+	  maybe_expand_type (arg.get_type_ptr ());
 	  break;
 	case AST::GenericArg::Kind::Const:
-	  maybe_expand_expr (arg.get_expression ());
+	  maybe_expand_expr (arg.get_expression_ptr ());
 	  break;
 	default:
 	  break;
@@ -407,13 +412,13 @@ ExpandVisitor::expand_generic_args (AST::GenericArgs &args)
   // expand binding args - strip sub-types only
   // FIXME: ARTHUR: This needs a test! Foo<Item = macro!()>
   for (auto &binding : args.get_binding_args ())
-    maybe_expand_type (binding.get_type ());
+    maybe_expand_type (binding.get_type_ptr ());
 }
 
 void
 ExpandVisitor::expand_qualified_path_type (AST::QualifiedPathType &path_type)
 {
-  maybe_expand_type (path_type.get_type ());
+  maybe_expand_type (path_type.get_type_ptr ());
 
   // FIXME: ARTHUR: Can we do macro expansion in there? Needs a test!
   if (path_type.has_as_clause ())
@@ -426,7 +431,7 @@ ExpandVisitor::expand_closure_params (std::vector<AST::ClosureParam> &params)
   for (auto &param : params)
     {
       if (param.has_type_given ())
-	maybe_expand_type (param.get_type ());
+	maybe_expand_type (param.get_type_ptr ());
     }
 }
 
@@ -467,20 +472,25 @@ void
 ExpandVisitor::visit (AST::MacroInvocation &macro_invoc)
 {
   // TODO: Can we do the AST fragment replacing here? Probably not, right?
-  expander.expand_invoc (macro_invoc, macro_invoc.has_semicolon ());
+  expander.expand_invoc (macro_invoc, macro_invoc.has_semicolon ()
+					? AST::InvocKind::Semicoloned
+					: AST::InvocKind::Expr);
 }
 
 void
 ExpandVisitor::visit (AST::PathInExpression &path)
 {
-  for (auto &segment : path.get_segments ())
-    if (segment.has_generic_args ())
-      expand_generic_args (segment.get_generic_args ());
+  if (!path.is_lang_item ())
+    for (auto &segment : path.get_segments ())
+      if (segment.has_generic_args ())
+	expand_generic_args (segment.get_generic_args ());
 }
 
 void
 ExpandVisitor::visit (AST::TypePathSegmentGeneric &segment)
-{}
+{
+  expand_generic_args (segment.get_generic_args ());
+}
 
 void
 ExpandVisitor::visit (AST::TypePathSegmentFunction &segment)
@@ -491,7 +501,7 @@ ExpandVisitor::visit (AST::TypePathSegmentFunction &segment)
     visit (type);
 
   if (type_path_function.has_return_type ())
-    maybe_expand_type (type_path_function.get_return_type ());
+    maybe_expand_type (type_path_function.get_return_type_ptr ());
 }
 
 void
@@ -545,42 +555,42 @@ ExpandVisitor::visit (AST::ErrorPropagationExpr &expr)
 void
 ExpandVisitor::visit (AST::ArithmeticOrLogicalExpr &expr)
 {
-  maybe_expand_expr (expr.get_left_expr ());
-  maybe_expand_expr (expr.get_right_expr ());
+  maybe_expand_expr (expr.get_left_expr_ptr ());
+  maybe_expand_expr (expr.get_right_expr_ptr ());
 }
 
 void
 ExpandVisitor::visit (AST::ComparisonExpr &expr)
 {
-  maybe_expand_expr (expr.get_left_expr ());
-  maybe_expand_expr (expr.get_right_expr ());
+  maybe_expand_expr (expr.get_left_expr_ptr ());
+  maybe_expand_expr (expr.get_right_expr_ptr ());
 }
 
 void
 ExpandVisitor::visit (AST::LazyBooleanExpr &expr)
 {
-  maybe_expand_expr (expr.get_left_expr ());
-  maybe_expand_expr (expr.get_right_expr ());
+  maybe_expand_expr (expr.get_left_expr_ptr ());
+  maybe_expand_expr (expr.get_right_expr_ptr ());
 }
 
 void
 ExpandVisitor::visit (AST::AssignmentExpr &expr)
 {
-  maybe_expand_expr (expr.get_left_expr ());
-  maybe_expand_expr (expr.get_right_expr ());
+  maybe_expand_expr (expr.get_left_expr_ptr ());
+  maybe_expand_expr (expr.get_right_expr_ptr ());
 }
 
 void
 ExpandVisitor::visit (AST::CompoundAssignmentExpr &expr)
 {
-  maybe_expand_expr (expr.get_left_expr ());
-  maybe_expand_expr (expr.get_right_expr ());
+  maybe_expand_expr (expr.get_left_expr_ptr ());
+  maybe_expand_expr (expr.get_right_expr_ptr ());
 }
 
 void
 ExpandVisitor::visit (AST::GroupedExpr &expr)
 {
-  maybe_expand_expr (expr.get_expr_in_parens ());
+  maybe_expand_expr (expr.get_expr_in_parens_ptr ());
 }
 
 void
@@ -620,7 +630,7 @@ ExpandVisitor::visit (AST::BlockExpr &expr)
 
   expand_tail_expr (expr, expander);
   if (expr.has_tail_expr ())
-    maybe_expand_expr (expr.get_tail_expr ());
+    maybe_expand_expr (expr.get_tail_expr_ptr ());
 }
 
 void
@@ -628,7 +638,7 @@ ExpandVisitor::visit (AST::ClosureExprInnerTyped &expr)
 {
   expand_closure_params (expr.get_params ());
 
-  maybe_expand_type (expr.get_return_type ());
+  maybe_expand_type (expr.get_return_type_ptr ());
 
   visit (expr.get_definition_block ());
 }
@@ -640,7 +650,7 @@ ExpandVisitor::visit (AST::ContinueExpr &expr)
 void
 ExpandVisitor::visit (AST::IfExpr &expr)
 {
-  maybe_expand_expr (expr.get_condition_expr ());
+  maybe_expand_expr (expr.get_condition_expr_ptr ());
 
   visit (expr.get_if_block ());
 }
@@ -648,7 +658,7 @@ ExpandVisitor::visit (AST::IfExpr &expr)
 void
 ExpandVisitor::visit (AST::IfExprConseqElse &expr)
 {
-  maybe_expand_expr (expr.get_condition_expr ());
+  maybe_expand_expr (expr.get_condition_expr_ptr ());
 
   visit (expr.get_if_block ());
   visit (expr.get_else_block ());
@@ -657,7 +667,7 @@ ExpandVisitor::visit (AST::IfExprConseqElse &expr)
 void
 ExpandVisitor::visit (AST::IfLetExpr &expr)
 {
-  maybe_expand_expr (expr.get_value_expr ());
+  maybe_expand_expr (expr.get_value_expr_ptr ());
 
   visit (expr.get_if_block ());
 }
@@ -665,7 +675,7 @@ ExpandVisitor::visit (AST::IfLetExpr &expr)
 void
 ExpandVisitor::visit (AST::IfLetExprConseqElse &expr)
 {
-  maybe_expand_expr (expr.get_value_expr ());
+  maybe_expand_expr (expr.get_value_expr_ptr ());
 
   visit (expr.get_if_block ());
   visit (expr.get_else_block ());
@@ -684,9 +694,9 @@ ExpandVisitor::visit (AST::MatchExpr &expr)
 	visit (pattern);
 
       if (arm.has_match_arm_guard ())
-	maybe_expand_expr (arm.get_guard_expr ());
+	maybe_expand_expr (arm.get_guard_expr_ptr ());
 
-      maybe_expand_expr (match_case.get_expr ());
+      maybe_expand_expr (match_case.get_expr_ptr ());
     }
 }
 
@@ -697,7 +707,7 @@ ExpandVisitor::visit (AST::TypeParam &param)
     visit (bound);
 
   if (param.has_type ())
-    maybe_expand_type (param.get_type ());
+    maybe_expand_type (param.get_type_ptr ());
 }
 
 void
@@ -707,10 +717,16 @@ ExpandVisitor::visit (AST::LifetimeWhereClauseItem &)
 void
 ExpandVisitor::visit (AST::TypeBoundWhereClauseItem &item)
 {
-  maybe_expand_type (item.get_type ());
+  maybe_expand_type (item.get_type_ptr ());
 
   for (auto &bound : item.get_type_param_bounds ())
     visit (bound);
+}
+
+void
+ExpandVisitor::visit (AST::Module &module)
+{
+  expand_inner_items (module.get_items ());
 }
 
 void
@@ -745,7 +761,7 @@ ExpandVisitor::visit (AST::Function &function)
   expand_function_params (function.get_function_params ());
 
   if (function.has_return_type ())
-    maybe_expand_type (function.get_return_type ());
+    maybe_expand_type (function.get_return_type_ptr ());
 
   if (function.has_where_clause ())
     expand_where_clause (function.get_where_clause ());
@@ -797,7 +813,7 @@ ExpandVisitor::visit (AST::EnumItemStruct &item)
 void
 ExpandVisitor::visit (AST::EnumItemDiscriminant &item)
 {
-  maybe_expand_expr (item.get_expr ());
+  maybe_expand_expr (item.get_expr_ptr ());
 }
 
 void
@@ -812,27 +828,27 @@ ExpandVisitor::visit (AST::Union &union_item)
 void
 ExpandVisitor::visit (AST::ConstantItem &const_item)
 {
-  maybe_expand_type (const_item.get_type ());
+  maybe_expand_type (const_item.get_type_ptr ());
 
   if (const_item.has_expr ())
-    maybe_expand_expr (const_item.get_expr ());
+    maybe_expand_expr (const_item.get_expr_ptr ());
 }
 
 void
 ExpandVisitor::visit (AST::StaticItem &static_item)
 {
-  maybe_expand_type (static_item.get_type ());
+  maybe_expand_type (static_item.get_type_ptr ());
 
-  maybe_expand_expr (static_item.get_expr ());
+  maybe_expand_expr (static_item.get_expr_ptr ());
 }
 
 void
 ExpandVisitor::visit (AST::TraitItemConst &const_item)
 {
-  maybe_expand_type (const_item.get_type ());
+  maybe_expand_type (const_item.get_type_ptr ());
 
   if (const_item.has_expr ())
-    maybe_expand_expr (const_item.get_expr ());
+    maybe_expand_expr (const_item.get_expr_ptr ());
 }
 
 void
@@ -851,7 +867,7 @@ ExpandVisitor::visit (AST::Trait &trait)
 
   std::function<std::unique_ptr<AST::AssociatedItem> (AST::SingleASTNode)>
     extractor
-    = [] (AST::SingleASTNode node) { return node.take_trait_item (); };
+    = [] (AST::SingleASTNode node) { return node.take_assoc_item (); };
 
   expand_macro_children (MacroExpander::ContextType::TRAIT,
 			 trait.get_trait_items (), extractor);
@@ -870,7 +886,7 @@ ExpandVisitor::visit (AST::InherentImpl &impl)
   // FIXME: Is that correct? How do we test that?
   expander.push_context (MacroExpander::ContextType::ITEM);
 
-  maybe_expand_type (impl.get_type ());
+  maybe_expand_type (impl.get_type_ptr ());
 
   expander.pop_context ();
 
@@ -878,7 +894,8 @@ ExpandVisitor::visit (AST::InherentImpl &impl)
     expand_where_clause (impl.get_where_clause ());
 
   std::function<std::unique_ptr<AST::AssociatedItem> (AST::SingleASTNode)>
-    extractor = [] (AST::SingleASTNode node) { return node.take_impl_item (); };
+    extractor
+    = [] (AST::SingleASTNode node) { return node.take_assoc_item (); };
 
   expand_macro_children (MacroExpander::ContextType::IMPL,
 			 impl.get_impl_items (), extractor);
@@ -895,7 +912,7 @@ ExpandVisitor::visit (AST::TraitImpl &impl)
   // FIXME: Is that correct? How do we test that?
   expander.push_context (MacroExpander::ContextType::ITEM);
 
-  maybe_expand_type (impl.get_type ());
+  maybe_expand_type (impl.get_type_ptr ());
 
   expander.pop_context ();
 
@@ -906,7 +923,7 @@ ExpandVisitor::visit (AST::TraitImpl &impl)
 
   std::function<std::unique_ptr<AST::AssociatedItem> (AST::SingleASTNode)>
     extractor
-    = [] (AST::SingleASTNode node) { return node.take_trait_impl_item (); };
+    = [] (AST::SingleASTNode node) { return node.take_assoc_item (); };
 
   expand_macro_children (MacroExpander::ContextType::TRAIT_IMPL,
 			 impl.get_impl_items (), extractor);
@@ -919,24 +936,7 @@ ExpandVisitor::visit (AST::ExternalTypeItem &item)
 void
 ExpandVisitor::visit (AST::ExternalStaticItem &static_item)
 {
-  maybe_expand_type (static_item.get_type ());
-}
-
-void
-ExpandVisitor::visit (AST::ExternalFunctionItem &item)
-{
-  for (auto &param : item.get_generic_params ())
-    visit (param);
-
-  for (auto &param : item.get_function_params ())
-    if (!param.is_variadic ())
-      maybe_expand_type (param.get_type ());
-
-  if (item.has_return_type ())
-    maybe_expand_type (item.get_return_type ());
-
-  if (item.has_where_clause ())
-    expand_where_clause (item.get_where_clause ());
+  maybe_expand_type (static_item.get_type_ptr ());
 }
 
 void
@@ -995,16 +995,16 @@ ExpandVisitor::visit (AST::LetStmt &stmt)
   visit (stmt.get_pattern ());
 
   if (stmt.has_type ())
-    maybe_expand_type (stmt.get_type ());
+    maybe_expand_type (stmt.get_type_ptr ());
 
   if (stmt.has_init_expr ())
-    maybe_expand_expr (stmt.get_init_expr ());
+    maybe_expand_expr (stmt.get_init_expr_ptr ());
 }
 
 void
 ExpandVisitor::visit (AST::ExprStmt &stmt)
 {
-  maybe_expand_expr (stmt.get_expr ());
+  maybe_expand_expr (stmt.get_expr_ptr ());
 }
 
 void
@@ -1012,7 +1012,7 @@ ExpandVisitor::visit (AST::BareFunctionType &type)
 {
   for (auto &param : type.get_function_params ())
     {
-      maybe_expand_type (param.get_type ());
+      maybe_expand_type (param.get_type_ptr ());
     }
 
   if (type.has_return_type ())
@@ -1022,7 +1022,7 @@ ExpandVisitor::visit (AST::BareFunctionType &type)
 void
 ExpandVisitor::visit (AST::FunctionParam &param)
 {
-  maybe_expand_type (param.get_type ());
+  maybe_expand_type (param.get_type_ptr ());
 }
 
 void
@@ -1031,7 +1031,7 @@ ExpandVisitor::visit (AST::SelfParam &param)
   /* TODO: maybe check for invariants being violated - e.g. both type and
    * lifetime? */
   if (param.has_type ())
-    maybe_expand_type (param.get_type ());
+    maybe_expand_type (param.get_type_ptr ());
 }
 
 template <typename T>

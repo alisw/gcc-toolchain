@@ -16,7 +16,7 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "TextTable.hpp"
+#include "texttable.hpp"
 
 #include <ccache/util/assertions.hpp>
 #include <ccache/util/format.hpp>
@@ -116,15 +116,18 @@ TextTable::render() const
   return result;
 }
 
-TextTable::Cell::Cell(const std::string& text) : m_text(text)
+TextTable::Cell::Cell(const std::string& text)
+  : m_text(text)
 {
 }
 
-TextTable::Cell::Cell(std::string_view text) : Cell(std::string(text))
+TextTable::Cell::Cell(std::string_view text)
+  : Cell(std::string(text))
 {
 }
 
-TextTable::Cell::Cell(const char* text) : Cell(std::string(text))
+TextTable::Cell::Cell(const char* text)
+  : Cell(std::string(text))
 {
 }
 

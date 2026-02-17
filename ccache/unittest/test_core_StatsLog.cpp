@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2021-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,9 +16,9 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "TestUtil.hpp"
+#include "testutil.hpp"
 
-#include <ccache/core/StatsLog.hpp>
+#include <ccache/core/statslog.hpp>
 #include <ccache/util/file.hpp>
 
 #include <doctest/doctest.h>
@@ -33,7 +33,7 @@ TEST_CASE("read")
 {
   TestContext test_context;
 
-  util::write_file("stats.log", "# comment\ndirect_cache_hit\n");
+  REQUIRE(util::write_file("stats.log", "# comment\ndirect_cache_hit\n"));
   const auto counters = StatsLog("stats.log").read();
 
   CHECK(counters.get(Statistic::direct_cache_hit) == 1);

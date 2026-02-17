@@ -574,24 +574,6 @@ __isl_give isl_constraint *isl_constraint_set_constant_si(
 	return constraint;
 }
 
-__isl_give isl_constraint *isl_constraint_set_coefficient(
-	__isl_take isl_constraint *constraint,
-	enum isl_dim_type type, int pos, isl_int v)
-{
-	constraint = isl_constraint_cow(constraint);
-	if (isl_constraint_check_range(constraint, type, pos, 1) < 0)
-		return isl_constraint_free(constraint);
-
-	constraint->v = isl_vec_cow(constraint->v);
-	if (!constraint->v)
-		return isl_constraint_free(constraint);
-
-	pos += isl_local_space_offset(constraint->ls, type);
-	isl_int_set(constraint->v->el[pos], v);
-
-	return constraint;
-}
-
 /* Replace the coefficient of the variable of type "type" at position "pos"
  * of "constraint" by "v".
  */
@@ -794,8 +776,8 @@ isl_bool isl_basic_map_has_defining_equality(
 		return isl_bool_error;
 	for (i = 0; i < bmap->n_eq; ++i) {
 		if (isl_int_is_zero(bmap->eq[i][offset + pos]) ||
-		    isl_seq_first_non_zero(bmap->eq[i]+offset+pos+1,
-					   1+total-offset-pos-1) != -1)
+		    isl_seq_any_non_zero(bmap->eq[i]+offset+pos+1,
+					   1+total-offset-pos-1))
 			continue;
 		if (c)
 			*c = isl_basic_map_constraint(isl_basic_map_copy(bmap),
@@ -843,8 +825,8 @@ isl_bool isl_basic_set_has_defining_inequalities(
 			continue;
 		if (isl_int_is_negone(bset->ineq[i][offset + pos]))
 			continue;
-		if (isl_seq_first_non_zero(bset->ineq[i]+offset+pos+1,
-						1+total-offset-pos-1) != -1)
+		if (isl_seq_any_non_zero(bset->ineq[i]+offset+pos+1,
+						1+total-offset-pos-1))
 			continue;
 		for (j = i + 1; j < bset->n_ineq; ++j) {
 			if (!isl_seq_is_neg(bset->ineq[i]+1, bset->ineq[j]+1,

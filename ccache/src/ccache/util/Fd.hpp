@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include <ccache/util/NonCopyable.hpp>
 #include <ccache/util/assertions.hpp>
+#include <ccache/util/noncopyable.hpp>
 #include <ccache/util/wincompat.hpp>
 
 #ifdef HAVE_UNISTD_H
@@ -53,11 +53,13 @@ private:
   int m_fd = -1;
 };
 
-inline Fd::Fd(int fd) : m_fd(fd)
+inline Fd::Fd(int fd)
+  : m_fd(fd)
 {
 }
 
-inline Fd::Fd(Fd&& other_fd) noexcept : m_fd(other_fd.release())
+inline Fd::Fd(Fd&& other_fd) noexcept
+  : m_fd(other_fd.release())
 {
 }
 

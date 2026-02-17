@@ -118,14 +118,20 @@ M2MODS = ASCII.mod IO.mod \
        Indexing.mod \
        LMathLib0.mod LegacyReal.mod \
        MemUtils.mod gdbif.mod \
-       GetOpt.mod OptLib.mod
+       GetOpt.mod OptLib.mod \
+       ARRAYOFCHAR.mod \
+       CHAR.mod \
+       StringFileSysOp.mod \
+       String.mod \
+       FileSysOp.mod
 
 # COROUTINES.mod has been removed as it is implemented in ../libm2iso.
 
 M2DEFS = Args.def   ASCII.def \
          Assertion.def  Break.def \
          Builtins.def  cbuiltin.def \
-         CmdArgs.def COROUTINES.def \
+         CmdArgs.def CFileSysOp.def \
+         COROUTINES.def \
          cxxabi.def  Debug.def \
          dtoa.def  DynamicStrings.def \
          Environment.def  errno.def \
@@ -153,7 +159,12 @@ M2DEFS = Args.def   ASCII.def \
          termios.def  TimeString.def \
          UnixArgs.def  wrapc.def  \
          GetOpt.def OptLib.def \
-         cgetopt.def
+         cgetopt.def \
+         ARRAYOFCHAR.def \
+         CHAR.def \
+         StringFileSysOp.def \
+         String.def \
+         FileSysOp.def
 
 libm2pim_la_SOURCES = $(M2MODS) \
                       UnixArgs.cc \
@@ -161,7 +172,8 @@ libm2pim_la_SOURCES = $(M2MODS) \
                       errno.cc dtoa.cc \
                       ldtoa.cc termios.cc \
                       SysExceptions.cc target.c \
-                      wrapc.cc cgetopt.cc
+                      wrapc.cc cgetopt.cc \
+                      CFileSysOp.cc
 
 libm2pimdir = libm2pim
 libm2pim_la_DEPENDENCIES = SYSTEM.def $(addsuffix .lo, $(basename $(libm2pim_la_SOURCES)))
@@ -183,7 +195,7 @@ endif
 if ENABLE_DARWIN_AT_RPATH
 libm2pim_la_link_flags += -nodefaultrpaths -Wl,-rpath,@loader_path/
 endif
-libm2pim_la_LINK = $(LINK) -version-info $(libtool_VERSION) $(libm2pim_la_link_flags)
+libm2pim_la_LINK = $(LINK) -version-info $(libtool_VERSION) $(libm2pim_la_link_flags) -lm
 BUILT_SOURCES = SYSTEM.def
 CLEANFILES = SYSTEM.def
 

@@ -1,0 +1,18 @@
+{
+  "callbacks" :
+  [
+    "@CMAKE_COMMAND_QUOTE@ -E echo callback2",
+    "@CMAKE_COMMAND_QUOTE@ -E echo callback3"
+  ],
+  "hooks" :
+  [
+    "postCMakeBuild"
+  ],
+  "options" :
+  [
+    "staticSystemInformation",
+    "dynamicSystemInformation",
+    "trace"
+  ],
+  "version": 1
+}

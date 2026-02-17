@@ -1,5 +1,5 @@
 // Copyright (C) 2002 Andrew Tridgell
-// Copyright (C) 2011-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2011-2026 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -19,27 +19,31 @@
 
 #include "execute.hpp"
 
-#include <ccache/Config.hpp>
-#include <ccache/Context.hpp>
-#include <ccache/SignalHandler.hpp>
 #include <ccache/ccache.hpp>
+#include <ccache/config.hpp>
+#include <ccache/context.hpp>
 #include <ccache/core/exceptions.hpp>
-#include <ccache/util/DirEntry.hpp>
-#include <ccache/util/Fd.hpp>
-#include <ccache/util/Finalizer.hpp>
-#include <ccache/util/PathString.hpp>
-#include <ccache/util/TemporaryFile.hpp>
+#include <ccache/signalhandler.hpp>
+#include <ccache/util/defer.hpp>
+#include <ccache/util/direntry.hpp>
+#include <ccache/util/environment.hpp>
 #include <ccache/util/error.hpp>
 #include <ccache/util/expected.hpp>
+#include <ccache/util/fd.hpp>
 #include <ccache/util/file.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/logging.hpp>
 #include <ccache/util/path.hpp>
 #include <ccache/util/string.hpp>
+#include <ccache/util/temporaryfile.hpp>
 #include <ccache/util/wincompat.hpp>
 
 #include <vector>
+
+#ifdef HAVE_SPAWN_H
+#  include <spawn.h>
+#endif
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
@@ -49,13 +53,25 @@
 #  include <sys/wait.h>
 #endif
 
+#ifndef _WIN32
+#  include <signal.h> // NOLINT: sigaddset et al are defined in signal.h
+#endif
+
+// Call a function that returns 0 on success and either an error code or -1 (and
+// sets errno) on failure.
+#define CHECK_LIB_CALL(function, ...)                                          \
+  do {                                                                         \
+    int _result = function(__VA_ARGS__);                                       \
+    if (_result != 0) {                                                        \
+      throw core::Fatal(FMT(#function " failed: {}",                           \
+                            strerror(_result == -1 ? errno : _result)));       \
+    }                                                                          \
+  } while (false)
+
 namespace fs = util::filesystem;
 
-using pstr = util::PathString;
-
 #ifdef _WIN32
-static int win32execute(const char* path,
-                        const char* const* argv,
+static int win32execute(const char* const* argv,
                         int doreturn,
                         int fd_stdout,
                         int fd_stderr,
@@ -67,54 +83,28 @@ execute(Context& ctx,
         util::Fd&& fd_out,
         util::Fd&& fd_err)
 {
-  LOG("Executing {}", util::format_argv_for_logging(argv));
-
-  return win32execute(argv[0],
-                      argv,
+  return win32execute(argv,
                       1,
                       fd_out.release(),
                       fd_err.release(),
-                      ctx.config.temporary_dir());
+                      util::pstr(ctx.config.temporary_dir()));
 }
 
 void
-execute_noreturn(const char* const* argv, const std::string& temp_dir)
+execute_noreturn(const char* const* argv, const fs::path& temp_dir)
 {
-  win32execute(argv[0], argv, 0, -1, -1, temp_dir);
-}
-
-std::string
-win32getshell(const std::string& path)
-{
-  const char* path_list = getenv("PATH");
-  std::string sh;
-  if (util::to_lowercase(pstr(fs::path(path).extension()).str()) == ".sh"
-      && path_list) {
-    sh = pstr(find_executable_in_path("sh.exe", path_list)).str();
-  }
-  if (sh.empty() && getenv("CCACHE_DETECT_SHEBANG")) {
-    // Detect shebang.
-    util::FileStream fp(path, "r");
-    if (fp) {
-      char buf[10] = {0};
-      fgets(buf, sizeof(buf) - 1, fp.get());
-      if (std::string(buf) == "#!/bin/sh" && path_list) {
-        sh = pstr(find_executable_in_path("sh.exe", path_list)).str();
-      }
-    }
-  }
-
-  return sh;
+  win32execute(argv, 0, -1, -1, util::pstr(temp_dir).c_str());
 }
 
 int
-win32execute(const char* path,
-             const char* const* argv,
+win32execute(const char* const* argv,
              int doreturn,
              int fd_stdout,
              int fd_stderr,
              const std::string& temp_dir)
 {
+  LOG("Executing {}", util::format_argv_for_logging(argv));
+
   BOOL is_process_in_job = false;
   DWORD dw_creation_flags = 0;
 
@@ -123,7 +113,7 @@ win32execute(const char* path,
       IsProcessInJob(GetCurrentProcess(), nullptr, &is_process_in_job);
     if (!job_success) {
       DWORD error = GetLastError();
-      LOG("failed to IsProcessInJob: {} ({})",
+      LOG("Failed to IsProcessInJob: {} ({})",
           util::win32_error_message(error),
           error);
       return 0;
@@ -138,7 +128,7 @@ win32execute(const char* path,
                                   nullptr);
       if (!querySuccess) {
         DWORD error = GetLastError();
-        LOG("failed to QueryInformationJobObject: {} ({})",
+        LOG("Failed to QueryInformationJobObject: {} ({})",
             util::win32_error_message(error),
             error);
         return 0;
@@ -161,7 +151,7 @@ win32execute(const char* path,
     job = CreateJobObject(nullptr, nullptr);
     if (job == nullptr) {
       DWORD error = GetLastError();
-      LOG("failed to CreateJobObject: {} ({})",
+      LOG("Failed to CreateJobObject: {} ({})",
           util::win32_error_message(error),
           error);
       return -1;
@@ -178,7 +168,7 @@ win32execute(const char* path,
         job, JobObjectExtendedLimitInformation, &jobInfo, sizeof(jobInfo));
       if (!job_success) {
         DWORD error = GetLastError();
-        LOG("failed to JobObjectExtendedLimitInformation: {} ({})",
+        LOG("Failed to JobObjectExtendedLimitInformation: {} ({})",
             util::win32_error_message(error),
             error);
         return -1;
@@ -191,11 +181,6 @@ win32execute(const char* path,
 
   STARTUPINFO si;
   memset(&si, 0x00, sizeof(si));
-
-  std::string sh = win32getshell(path);
-  if (!sh.empty()) {
-    path = sh.c_str();
-  }
 
   si.cb = sizeof(STARTUPINFO);
   if (fd_stdout != -1) {
@@ -219,27 +204,32 @@ win32execute(const char* path,
     }
   }
 
-  std::string args = util::format_argv_as_win32_command_string(argv, sh);
-  std::string full_path = util::add_exe_suffix(path);
-  fs::path tmp_file_path;
+  std::string commandline = util::format_argv_as_win32_command_string(argv);
 
-  util::Finalizer tmp_file_remover([&tmp_file_path] {
+  fs::path tmp_file_path;
+  DEFER([&] {
     if (!tmp_file_path.empty()) {
-      util::remove(tmp_file_path);
+      std::ignore = util::remove(tmp_file_path);
     }
   });
 
-  if (args.length() > 8192) {
+  if (commandline.length() > 8192) {
     auto tmp_file = util::value_or_throw<core::Fatal>(
       util::TemporaryFile::create(FMT("{}/cmd_args", temp_dir)));
-    args = util::format_argv_as_win32_command_string(argv + 1, sh, true);
-    util::write_fd(*tmp_file.fd, args.data(), args.length());
-    args = FMT(R"("{}" "@{}")", full_path, tmp_file.path);
-    tmp_file_path = tmp_file.path;
     LOG("Arguments from {}", tmp_file.path);
+    commandline = util::format_argv_as_win32_command_string(argv + 1, true);
+    if (auto r = util::write_fd(
+          *tmp_file.fd, commandline.data(), commandline.length());
+        !r) {
+      LOG("Failed to write {}: {}", tmp_file.path, r.error());
+      return -1;
+    }
+    commandline = FMT(R"("{}" "@{}")", argv[0], tmp_file.path);
+    tmp_file_path = tmp_file.path;
   }
-  BOOL ret = CreateProcess(full_path.c_str(),
-                           const_cast<char*>(args.c_str()),
+
+  BOOL ret = CreateProcess(nullptr,
+                           const_cast<char*>(commandline.c_str()),
                            nullptr,
                            nullptr,
                            1,
@@ -254,10 +244,8 @@ win32execute(const char* path,
   }
   if (ret == 0) {
     DWORD error = GetLastError();
-    LOG("failed to execute {}: {} ({})",
-        full_path,
-        util::win32_error_message(error),
-        error);
+    LOG(
+      "CreateProcess failed: {} ({})", util::win32_error_message(error), error);
     return -1;
   }
   if (job) {
@@ -266,8 +254,8 @@ win32execute(const char* path,
       TerminateProcess(pi.hProcess, 1);
 
       DWORD error = GetLastError();
-      LOG("failed to assign process to job object {}: {} ({})",
-          full_path,
+      LOG("Failed to assign process to job object for {}: {} ({})",
+          argv[0],
           util::win32_error_message(error),
           error);
       return -1;
@@ -299,35 +287,69 @@ execute(Context& ctx,
 {
   LOG("Executing {}", util::format_argv_for_logging(argv));
 
+  // Make a copy of stderr that will not be cached, so things like distcc can
+  // send networking errors to it.
+  util::Fd uncached_fd(dup(STDERR_FILENO));
+  if (uncached_fd) {
+    util::setenv("UNCACHED_ERR_FD", std::to_string(*uncached_fd));
+  } else {
+    LOG("Failed to dup(2) stderr: {}", strerror(errno));
+  }
+  DEFER(util::unsetenv("UNCACHED_ERR_FD"));
+
+  util::Fd out(std::move(fd_out));
+  util::Fd err(std::move(fd_err));
+
+  posix_spawn_file_actions_t fa;
+
+  CHECK_LIB_CALL(posix_spawn_file_actions_init, &fa);
+  CHECK_LIB_CALL(posix_spawn_file_actions_adddup2, &fa, *out, STDOUT_FILENO);
+  CHECK_LIB_CALL(posix_spawn_file_actions_addclose, &fa, *out);
+  CHECK_LIB_CALL(posix_spawn_file_actions_adddup2, &fa, *err, STDERR_FILENO);
+  CHECK_LIB_CALL(posix_spawn_file_actions_addclose, &fa, *err);
+
+  posix_spawnattr_t attr;
+  CHECK_LIB_CALL(posix_spawnattr_init, &attr);
+  CHECK_LIB_CALL(posix_spawnattr_setflags,
+                 &attr,
+                 POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK);
+
+  sigset_t sigmask;
+  CHECK_LIB_CALL(sigemptyset, &sigmask);
+  CHECK_LIB_CALL(posix_spawnattr_setsigmask, &attr, &sigmask);
+
+  sigset_t sigdefault;
+  CHECK_LIB_CALL(sigemptyset, &sigdefault);
+  for (int signum : SignalHandler::get_handled_signals()) {
+    CHECK_LIB_CALL(sigaddset, &sigdefault, signum);
+  }
+  CHECK_LIB_CALL(posix_spawnattr_setsigdefault, &attr, &sigdefault);
+
+  int result;
   {
     SignalHandlerBlocker signal_handler_blocker;
-    ctx.compiler_pid = fork();
+    pid_t pid;
+    extern char** environ;
+    result = posix_spawn(
+      &pid, argv[0], &fa, &attr, const_cast<char* const*>(argv), environ);
+    if (result == 0) {
+      ctx.compiler_pid = pid;
+    }
   }
 
-  if (ctx.compiler_pid == -1) {
-    throw core::Fatal(FMT("Failed to fork: {}", strerror(errno)));
-  }
+  posix_spawn_file_actions_destroy(&fa);
+  out.close();
+  err.close();
 
-  if (ctx.compiler_pid == 0) {
-    // Child.
-    dup2(*fd_out, STDOUT_FILENO);
-    fd_out.close();
-    dup2(*fd_err, STDERR_FILENO);
-    fd_err.close();
-    exit(execv(argv[0], const_cast<char* const*>(argv)));
+  if (result != 0) {
+    return -1;
   }
-
-  fd_out.close();
-  fd_err.close();
 
   int status;
-  int result;
-
-  while ((result = waitpid(ctx.compiler_pid, &status, 0)) != ctx.compiler_pid) {
-    if (result == -1 && errno == EINTR) {
-      continue;
+  while (waitpid(ctx.compiler_pid, &status, 0) == -1) {
+    if (errno != EINTR) {
+      throw core::Fatal(FMT("waitpid failed: {}", strerror(errno)));
     }
-    throw core::Fatal(FMT("waitpid failed: {}", strerror(errno)));
   }
 
   {
@@ -343,8 +365,10 @@ execute(Context& ctx,
 }
 
 void
-execute_noreturn(const char* const* argv, const std::string& /*temp_dir*/)
+execute_noreturn(const char* const* argv, const fs::path& /*temp_dir*/)
 {
+  LOG("Executing {}", util::format_argv_for_logging(argv));
+
   execv(argv[0], const_cast<char* const*>(argv));
 }
 #endif
@@ -358,9 +382,9 @@ find_executable(const Context& ctx,
     return name;
   }
 
-  std::string path_list = ctx.config.path();
+  auto path_list = util::split_path_list(ctx.config.path());
   if (path_list.empty()) {
-    path_list = getenv("PATH");
+    path_list = util::getenv_path_list("PATH");
   }
   if (path_list.empty()) {
     LOG_RAW("No PATH variable");
@@ -372,7 +396,7 @@ find_executable(const Context& ctx,
 
 fs::path
 find_executable_in_path(const std::string& name,
-                        const std::string& path_list,
+                        const std::vector<fs::path>& path_list,
                         const std::optional<fs::path>& exclude_path)
 {
   if (path_list.empty()) {
@@ -384,7 +408,7 @@ find_executable_in_path(const std::string& name,
 
   // Search the path list looking for the first compiler of the right name that
   // isn't us.
-  for (const auto& dir : util::split_path_list(path_list)) {
+  for (const auto& dir : path_list) {
     const std::vector<fs::path> candidates = {
       dir / name,
 #ifdef _WIN32

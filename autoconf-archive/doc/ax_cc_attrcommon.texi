@@ -1,0 +1,47 @@
+@node ax_cc_attrcommon
+@unnumberedsec ax_cc_attrcommon
+
+@majorheading Synopsis
+
+@smallexample
+AX_CC_ATTRCOMMON
+@end smallexample
+
+@majorheading Description
+
+Determine whether the C compiler supports C tentative definitions with
+__attribute((__common__)) See K&R book Appendix A10.2 on 'extern' and
+tentative definitions. Some compilers use a 'strict definition-reference
+model' Traditionally most UNIX C compilers support C tentative
+definitions. GCC 10 switched from default fcommon to fnocommon and will
+need __attribute__ ((__common__)) for tentative definitions.
+
+The $ac_cv_attrcommon variable will be either yes or no, and can be
+overridden on the command line with using --with-attrcommon
+
+See also:  ax_cc_tentdef.m4 for a test on C tentative definitions
+
+@majorheading Source Code
+
+Download the
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_cc_attrcommon.m4,latest
+version of @file{ax_cc_attrcommon.m4}} or browse
+@uref{http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=history;f=m4/ax_cc_attrcommon.m4,the
+macro's revision history}.
+
+@majorheading License
+
+@w{Copyright @copyright{} 1996-2023 David Stes}
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.

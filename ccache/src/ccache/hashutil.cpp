@@ -1,4 +1,4 @@
-// Copyright (C) 2009-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2009-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -18,40 +18,33 @@
 
 #include "hashutil.hpp"
 
-#include <ccache/Args.hpp>
-#include <ccache/Config.hpp>
-#include <ccache/Context.hpp>
+#include <ccache/config.hpp>
+#include <ccache/context.hpp>
 #include <ccache/core/exceptions.hpp>
 #include <ccache/execute.hpp>
 #include <ccache/macroskip.hpp>
-#include <ccache/util/DirEntry.hpp>
+#include <ccache/util/args.hpp>
 #include <ccache/util/cpu.hpp>
+#include <ccache/util/direntry.hpp>
+#include <ccache/util/environment.hpp>
+#include <ccache/util/exec.hpp>
 #include <ccache/util/file.hpp>
+#include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/logging.hpp>
+#include <ccache/util/path.hpp>
 #include <ccache/util/string.hpp>
 #include <ccache/util/time.hpp>
-#include <ccache/util/wincompat.hpp>
 
 #ifdef INODE_CACHE_SUPPORTED
-#  include "InodeCache.hpp"
-#endif
-
-#ifdef HAVE_SPAWN_H
-#  include <spawn.h>
-#endif
-
-#ifdef HAVE_UNISTD_H
-#  include <unistd.h>
-#endif
-
-#ifdef HAVE_SYS_WAIT_H
-#  include <sys/wait.h>
+#  include <ccache/inodecache.hpp>
 #endif
 
 #ifdef HAVE_AVX2
 #  include <immintrin.h>
 #endif
+
+namespace fs = util::filesystem;
 
 namespace {
 
@@ -176,7 +169,7 @@ check_for_temporal_macros_avx2(std::string_view str)
 HashSourceCodeResult
 do_hash_file(const Context& ctx,
              Hash::Digest& digest,
-             const std::string& path,
+             const fs::path& path,
              size_t size_hint,
              bool check_temporal_macros)
 {
@@ -233,7 +226,7 @@ check_for_temporal_macros(std::string_view str)
 HashSourceCodeResult
 hash_source_code_file(const Context& ctx,
                       Hash::Digest& digest,
-                      const std::string& path,
+                      const fs::path& path,
                       size_t size_hint)
 {
   const bool check_temporal_macros =
@@ -302,17 +295,8 @@ hash_source_code_file(const Context& ctx,
       return result;
     }
     hash.hash_delimiter("timestamp");
-#ifdef HAVE_ASCTIME_R
-    char buffer[26];
-    const char* timestamp = asctime_r(&*modified_time, buffer);
-#else
-    // cppcheck-suppress asctimeCalled; thread-safety not needed here
-    const char* timestamp = asctime(&*modified_time);
-#endif
-    if (!timestamp) {
-      result.insert(HashSourceCode::error);
-      return result;
-    }
+    char timestamp[26];
+    (void)strftime(timestamp, sizeof(timestamp), "%c", &*modified_time);
     hash.hash(timestamp);
   }
 
@@ -323,14 +307,14 @@ hash_source_code_file(const Context& ctx,
 bool
 hash_binary_file(const Context& ctx,
                  Hash::Digest& digest,
-                 const std::string& path,
+                 const fs::path& path,
                  size_t size_hint)
 {
   return do_hash_file(ctx, digest, path, size_hint, false).empty();
 }
 
 bool
-hash_binary_file(const Context& ctx, Hash& hash, const std::string& path)
+hash_binary_file(const Context& ctx, Hash& hash, const fs::path& path)
 {
   Hash::Digest digest;
   const bool success = hash_binary_file(ctx, digest, path);
@@ -345,25 +329,14 @@ hash_command_output(Hash& hash,
                     const std::string& command,
                     const std::string& compiler)
 {
+  util::Args args = util::Args::from_string(command);
 #ifdef _WIN32
-  std::string adjusted_command = util::strip_whitespace(command);
-
-  // Add "echo" command.
-  bool using_cmd_exe;
-  if (util::starts_with(adjusted_command, "echo")) {
-    adjusted_command = FMT("cmd.exe /c \"{}\"", adjusted_command);
-    using_cmd_exe = true;
-  } else if (util::starts_with(adjusted_command, "%compiler%")
-             && compiler == "echo") {
-    adjusted_command =
-      FMT("cmd.exe /c \"{}{}\"", compiler, adjusted_command.substr(10));
-    using_cmd_exe = true;
-  } else {
-    using_cmd_exe = false;
+  // CreateProcess does not search PATH.
+  auto full_path =
+    find_executable_in_path(args[0], util::getenv_path_list("PATH")).string();
+  if (!full_path.empty()) {
+    args[0] = full_path;
   }
-  Args args = Args::from_string(adjusted_command);
-#else
-  Args args = Args::from_string(command);
 #endif
 
   for (size_t i = 0; i < args.size(); i++) {
@@ -372,133 +345,14 @@ hash_command_output(Hash& hash,
     }
   }
 
-  auto argv = args.to_argv();
-  LOG("Executing compiler check command {}",
-      util::format_argv_for_logging(argv.data()));
-
-#ifdef _WIN32
-  PROCESS_INFORMATION pi;
-  memset(&pi, 0x00, sizeof(pi));
-  STARTUPINFO si;
-  memset(&si, 0x00, sizeof(si));
-
-  auto path = find_executable_in_path(args[0], getenv("PATH")).string();
-  if (path.empty()) {
-    path = args[0];
-  }
-  std::string sh = win32getshell(path);
-  if (!sh.empty()) {
-    path = sh;
-  }
-
-  si.cb = sizeof(STARTUPINFO);
-
-  HANDLE pipe_out[2];
-  SECURITY_ATTRIBUTES sa = {sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
-  CreatePipe(&pipe_out[0], &pipe_out[1], &sa, 0);
-  SetHandleInformation(pipe_out[0], HANDLE_FLAG_INHERIT, 0);
-  si.hStdOutput = pipe_out[1];
-  si.hStdError = pipe_out[1];
-  si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-  si.dwFlags = STARTF_USESTDHANDLES;
-
-  std::string win32args;
-  if (using_cmd_exe) {
-    win32args = adjusted_command; // quoted
-  } else {
-    win32args = util::format_argv_as_win32_command_string(argv.data(), sh);
-  }
-  BOOL ret = CreateProcess(path.c_str(),
-                           const_cast<char*>(win32args.c_str()),
-                           nullptr,
-                           nullptr,
-                           1,
-                           0,
-                           nullptr,
-                           nullptr,
-                           &si,
-                           &pi);
-  CloseHandle(pipe_out[1]);
-  if (ret == 0) {
-    return false;
-  }
-  int fd = _open_osfhandle((intptr_t)pipe_out[0], O_BINARY);
-  const auto compiler_check_result = hash.hash_fd(fd);
-  if (!compiler_check_result) {
-    LOG("Error hashing compiler check command output: {}",
-        compiler_check_result.error());
-  }
-  WaitForSingleObject(pi.hProcess, INFINITE);
-  DWORD exitcode;
-  GetExitCodeProcess(pi.hProcess, &exitcode);
-  CloseHandle(pipe_out[0]);
-  CloseHandle(pi.hProcess);
-  CloseHandle(pi.hThread);
-  if (exitcode != 0) {
-    LOG("Compiler check command returned {}", exitcode);
-    return false;
-  }
-  return bool(compiler_check_result);
-#else
-  int pipefd[2];
-  if (pipe(pipefd) == -1) {
-    throw core::Fatal(FMT("pipe failed: {}", strerror(errno)));
-  }
-
-  int result;
-  posix_spawn_file_actions_t file_actions;
-  if ((result = posix_spawn_file_actions_init(&file_actions))) {
-    throw core::Fatal(
-      FMT("posix_spawn_file_actions_init failed: {}", strerror(result)));
-  }
-
-  if ((result = posix_spawn_file_actions_addclose(&file_actions, pipefd[0]))
-      || (result = posix_spawn_file_actions_addclose(&file_actions, 0))
-      || (result =
-            posix_spawn_file_actions_adddup2(&file_actions, pipefd[1], 1))
-      || (result =
-            posix_spawn_file_actions_adddup2(&file_actions, pipefd[1], 2))) {
-    throw core::Fatal(FMT("posix_spawn_file_actions_addclose/dup2 failed: {}",
-                          strerror(result)));
-  }
-
-  pid_t pid;
-  extern char** environ;
-  result = posix_spawnp(&pid,
-                        argv[0],
-                        &file_actions,
-                        nullptr,
-                        const_cast<char* const*>(argv.data()),
-                        environ);
-
-  posix_spawn_file_actions_destroy(&file_actions);
-  close(pipefd[1]);
-
-  const auto hash_result = hash.hash_fd(pipefd[0]);
-  if (!hash_result) {
-    LOG("Error hashing compiler check command output: {}", hash_result.error());
-  }
-  close(pipefd[0]);
-
-  if (result) {
-    LOG("posix_spawnp failed: {}", strerror(errno));
+  auto result = util::exec_to_string(args);
+  if (!result) {
+    LOG("Error executing compiler check command: {}", result.error());
     return false;
   }
 
-  int status;
-  while ((result = waitpid(pid, &status, 0)) != pid) {
-    if (result == -1 && errno == EINTR) {
-      continue;
-    }
-    LOG("waitpid failed: {}", strerror(errno));
-    return false;
-  }
-  if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-    LOG("Compiler check command returned {}", WEXITSTATUS(status));
-    return false;
-  }
-  return bool(hash_result);
-#endif
+  hash.hash(*result);
+  return true;
 }
 
 bool

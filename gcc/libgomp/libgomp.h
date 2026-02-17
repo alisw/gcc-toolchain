@@ -1,4 +1,4 @@
-/* Copyright (C) 2005-2024 Free Software Foundation, Inc.
+/* Copyright (C) 2005-2025 Free Software Foundation, Inc.
    Contributed by Richard Henderson <rth@redhat.com>.
 
    This file is part of the GNU Offloading and Multi Processing Library
@@ -43,7 +43,14 @@
 
 #include "config.h"
 #include <stdint.h>
+
+/* Include omp.h by parts.  */
+#include "omp-lock.h"
+#define _LIBGOMP_OMP_LOCK_DEFINED 1
+#include "omp.h.in"
+
 #include "libgomp-plugin.h"
+
 #include "gomp-constants.h"
 
 #ifdef HAVE_PTHREAD_H
@@ -1387,6 +1394,7 @@ struct gomp_device_descr
 
   /* The name of the device.  */
   const char *name;
+  const char *uid;
 
   /* Capabilities of device (supports OpenACC, OpenMP).  */
   unsigned int capabilities;
@@ -1399,6 +1407,7 @@ struct gomp_device_descr
 
   /* Function handlers.  */
   __typeof (GOMP_OFFLOAD_get_name) *get_name_func;
+  __typeof (GOMP_OFFLOAD_get_uid) *get_uid_func;
   __typeof (GOMP_OFFLOAD_get_caps) *get_caps_func;
   __typeof (GOMP_OFFLOAD_get_type) *get_type_func;
   __typeof (GOMP_OFFLOAD_get_num_devices) *get_num_devices_func;
@@ -1417,6 +1426,11 @@ struct gomp_device_descr
   __typeof (GOMP_OFFLOAD_can_run) *can_run_func;
   __typeof (GOMP_OFFLOAD_run) *run_func;
   __typeof (GOMP_OFFLOAD_async_run) *async_run_func;
+  __typeof (GOMP_OFFLOAD_interop) *interop_func;
+  __typeof (GOMP_OFFLOAD_get_interop_int) *get_interop_int_func;
+  __typeof (GOMP_OFFLOAD_get_interop_ptr) *get_interop_ptr_func;
+  __typeof (GOMP_OFFLOAD_get_interop_str) *get_interop_str_func;
+  __typeof (GOMP_OFFLOAD_get_interop_type_desc) *get_interop_type_desc_func;
 
   /* Splay tree containing information about mapped memory regions.  */
   struct splay_tree_s mem_map;
@@ -1454,10 +1468,10 @@ extern void gomp_copy_dev2host (struct gomp_device_descr *,
 				struct goacc_asyncqueue *, void *, const void *,
 				size_t);
 extern uintptr_t gomp_map_val (struct target_mem_desc *, void **, size_t);
-extern void gomp_attach_pointer (struct gomp_device_descr *,
+extern bool gomp_attach_pointer (struct gomp_device_descr *,
 				 struct goacc_asyncqueue *, splay_tree,
 				 splay_tree_key, uintptr_t, size_t,
-				 struct gomp_coalesce_buf *, bool);
+				 struct gomp_coalesce_buf *, bool, bool);
 extern void gomp_detach_pointer (struct gomp_device_descr *,
 				 struct goacc_asyncqueue *, splay_tree_key,
 				 uintptr_t, bool, struct gomp_coalesce_buf *);
@@ -1498,11 +1512,6 @@ gomp_work_share_init_done (void)
 
 /* Now that we're back to default visibility, include the globals.  */
 #include "libgomp_g.h"
-
-/* Include omp.h by parts.  */
-#include "omp-lock.h"
-#define _LIBGOMP_OMP_LOCK_DEFINED 1
-#include "omp.h.in"
 
 #if !defined (HAVE_ATTRIBUTE_VISIBILITY) \
     || !defined (HAVE_ATTRIBUTE_ALIAS) \

@@ -1,5 +1,5 @@
 # Expect script for LoongArch ELF linker tests
-#   Copyright (C) 2021-2024 Free Software Foundation, Inc.
+#   Copyright (C) 2021-2026 Free Software Foundation, Inc.
 #
 # This file is part of the GNU Binutils.
 #
@@ -45,8 +45,12 @@ if [istarget "loongarch64-*-*"] {
     run_dump_test "underflow_s_5_20"
     run_dump_test "tls-le-norelax"
     run_dump_test "tls-le-relax"
+    run_dump_test "relax-after-alignment"
     run_dump_test "relax-medium-call"
     run_dump_test "relax-medium-call-1"
+    run_dump_test "relax-sym-size-1"
+    run_dump_test "relax-sym-size-2"
+    run_dump_test "check_got_relax"
 }
 
 if [istarget "loongarch32-*-*"] {
@@ -54,6 +58,10 @@ if [istarget "loongarch32-*-*"] {
     run_dump_test "macro_op_32"
     run_dump_test "syscall"
     run_dump_test "disas-jirl-32"
+    run_dump_test "la32"
+    if [check_shared_lib_support] {
+      run_dump_test "desc-ie"
+    }
 }
 
 if [istarget "loongarch64-*-*"] {
@@ -118,6 +126,70 @@ if [istarget "loongarch64-*-*"] {
 	      "abi1_max_imm" \
 	  ] \
       ]
+
+  run_ld_link_tests \
+      [list \
+	   [list \
+		"binary output format" \
+		"-T binary.ld" "" \
+		"" \
+		{binary.s} \
+		{} \
+		"a.binary" \
+	   ] \
+      ]
+
+
+  run_ld_link_exec_tests [list \
+	[list \
+	    "get global abs symbol test" \
+	    "-Wl,-z norelro -Wl,--defsym sym=0xabba" \
+	    "" \
+	    { abs-global.s get_abs_global_sym.c} \
+	    "abs-global" \
+	    "abs-global.out" \
+	] \
+    ]
+
+  run_cc_link_tests [list \
+      [list \
+	  "call undefweak symbol" \
+	  "-no-pie" "" \
+	  {call_undefweak.s} \
+	  {{objdump {-d} call_undefweak.d}} \
+	  "call_undefweak" \
+      ] \
+  ]
+
+  # Using DESC and IE to access the same tls symbol but with
+  # -mno-relax requires allocating GOT entries for both DESC and IE,
+  # not just IE
+  if [check_pie_support] {
+    run_ld_link_tests [list \
+	[list \
+	    "desc and ie do not type transition" \
+	    "-pie -e0 --hash-style=both" "" \
+	    "-mno-relax" \
+	    {desc-ie-norelax.s} \
+	    {{objdump {-d} desc-ie-norelax.dd} \
+	    {readelf {-rW} desc-ie-norelax.rd} \
+	    {objdump {-sj.got} desc-ie-norelax.sd}} \
+	    "desc-ie-norelax" \
+	] \
+    ] \
+  }
+
+  run_ld_link_tests \
+      [list \
+	   [list \
+		"undefind weak with tls le" \
+		"" "-e0" \
+		"" \
+		{undefweak_le.s} \
+		{} \
+		"undefweak_le" \
+	   ] \
+      ]
 }
 
 if [istarget "loongarch64-*-*"] {
@@ -142,6 +214,15 @@ if [istarget "loongarch64-*-*"] {
     run_dump_test "relr-got-shared"
     run_dump_test "relr-text-shared"
     run_dump_test "abssym_shared"
+    run_dump_test "bad_pcala_hi20_global"
+    run_dump_test "bad_pcala_hi20_weak"
+    run_dump_test "bad_pcala_hi20_global_pie"
+    run_dump_test "bad_pcala_hi20_weak_pie"
+    run_dump_test "bad_pcrel20_s2_global"
+    run_dump_test "bad_pcrel20_s2_weak"
+    run_dump_test "weak-undef-hidden-shared"
+    run_dump_test "overflow_32_pcrel"
+    run_dump_test "underflow_32_pcrel"
   }
 
   if [check_pie_support] {
@@ -149,8 +230,11 @@ if [istarget "loongarch64-*-*"] {
     run_dump_test "relr-data-pie"
     run_dump_test "relr-discard-pie"
     run_dump_test "relr-got-pie"
+    run_dump_test "relr-got-start"
     run_dump_test "relr-text-pie"
     run_dump_test "abssym_pie"
+    run_dump_test "weak-undef-hidden-pie"
+    run_dump_test "weak-undef-static-pie"
   }
 
   run_dump_test "max_imm_b16"
@@ -171,5 +255,8 @@ if [istarget "loongarch64-*-*"] {
   run_dump_test "ie-le-relax"
   run_dump_test "tlsdesc_abs"
   run_dump_test "tlsdesc_extreme"
+  run_dump_test "provide_abs"
+  run_dump_test "provide_noabs"
+
 }
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -21,7 +21,7 @@
 #include "rust-lex.h"
 #include "rust-diagnostics.h"
 #include "rust-linemap.h"
-#include "rust-session-manager.h"
+#include "rust-edition.h"
 #include "safe-ctype.h"
 #include "cpplib.h"
 #include "rust-keyword-values.h"
@@ -128,7 +128,8 @@ is_non_decimal_int_literal_separator (uint32_t character)
 bool
 is_identifier_start (uint32_t codepoint)
 {
-  return (cpp_check_xid_property (codepoint) & CPP_XID_START) || codepoint == '_';
+  return (cpp_check_xid_property (codepoint) & CPP_XID_START)
+	 || codepoint == '_';
 }
 
 bool
@@ -276,9 +277,7 @@ Lexer::classify_keyword (const std::string &str)
   // https://doc.rust-lang.org/reference/keywords.html#reserved-keywords
 
   // `try` is not a reserved keyword before 2018
-  if (Session::get_instance ().options.get_edition ()
-	== CompileOptions::Edition::E2015
-      && id == TRY)
+  if (get_rust_edition () == Edition::E2015 && id == TRY)
     return IDENTIFIER;
 
   return id;
@@ -588,7 +587,8 @@ Lexer::build_token ()
 		  if (current_char.is_eof ())
 		    {
 		      rust_error_at (
-			loc, "unexpected EOF while looking for end of comment");
+			loc, ErrorCode::E0758,
+			"unexpected EOF while looking for end of comment");
 		      break;
 		    }
 		  str += current_char;
@@ -643,7 +643,8 @@ Lexer::build_token ()
 		  if (current_char.is_eof ())
 		    {
 		      rust_error_at (
-			loc, "unexpected EOF while looking for end of comment");
+			loc, ErrorCode::E0758,
+			"unexpected EOF while looking for end of comment");
 		      break;
 		    }
 
@@ -707,7 +708,8 @@ Lexer::build_token ()
 		  if (current_char.is_eof ())
 		    {
 		      rust_error_at (
-			loc, "unexpected EOF while looking for end of comment");
+			loc, ErrorCode::E0758,
+			"unexpected EOF while looking for end of comment");
 		      break;
 		    }
 
@@ -1630,7 +1632,7 @@ Lexer::parse_partial_unicode_escape ()
       else
 	{
 	  rust_error_at (get_current_location (),
-			 "invalid character %<%s%> in unicode escape",
+			 "invalid character %qs in unicode escape",
 			 current_char.as_string ().c_str ());
 	  // TODO use utf-8 codepoint to skip whitespaces
 	  while (current_char != '}' && current_char != '{'
@@ -1839,14 +1841,18 @@ Lexer::parse_raw_byte_string (location_t loc)
   int length = 1;
   int hash_count = 0;
 
+  const location_t string_begin_locus = get_current_location ();
+
   // get hash count at beginnning
   skip_input ();
   current_char = peek_input ();
   length++;
+  current_column++;
   while (current_char == '#')
     {
       hash_count++;
       length++;
+      current_column++;
 
       skip_input ();
       current_char = peek_input ();
@@ -1861,6 +1867,7 @@ Lexer::parse_raw_byte_string (location_t loc)
   skip_input ();
   current_char = peek_input ();
   length++;
+  current_column++;
 
   while (true)
     {
@@ -1883,26 +1890,36 @@ Lexer::parse_raw_byte_string (location_t loc)
 	      skip_input (hash_count);
 	      current_char = peek_input ();
 	      length += hash_count + 1;
+	      current_column += hash_count + 1;
 	      break;
 	    }
 	}
-
-      if (current_char.value > 127)
+      else if (current_char.value > 127)
 	{
 	  rust_error_at (get_current_location (),
-			 "character %<%s%> in raw byte string out of range",
+			 "character %qs in raw byte string out of range",
 			 current_char.as_string ().c_str ());
 	  current_char = 0;
 	}
+      else if (current_char.is_eof ())
+	{
+	  rust_error_at (string_begin_locus, "unended raw byte string literal");
+	  return Token::make (END_OF_FILE, get_current_location ());
+	}
 
       length++;
+      current_column++;
+      if (current_char == '\n')
+	{
+	  current_line++;
+	  current_column = 1;
+	  start_line (current_line, max_column_hint);
+	}
 
       str += current_char;
       skip_input ();
       current_char = peek_input ();
     }
-
-  current_column += length;
 
   loc += length - 1;
 
@@ -2136,6 +2153,9 @@ Lexer::parse_raw_string (location_t loc, int initial_hash_count)
   str.reserve (16); // some sensible default
 
   int length = 1 + initial_hash_count;
+  current_column += length;
+
+  const location_t string_begin_locus = get_current_location ();
 
   if (initial_hash_count > 0)
     skip_input (initial_hash_count - 1);
@@ -2146,10 +2166,11 @@ Lexer::parse_raw_string (location_t loc, int initial_hash_count)
     rust_error_at (get_current_location (), "raw string has no opening %<\"%>");
 
   length++;
+  current_column++;
   skip_input ();
   current_char = peek_input ();
 
-  while (!current_char.is_eof ())
+  while (true)
     {
       if (current_char.value == '"')
 	{
@@ -2170,24 +2191,35 @@ Lexer::parse_raw_string (location_t loc, int initial_hash_count)
 	      skip_input (initial_hash_count);
 	      current_char = peek_input ();
 	      length += initial_hash_count + 1;
+	      current_column += initial_hash_count + 1;
 	      break;
 	    }
 	}
+      else if (current_char.is_eof ())
+	{
+	  rust_error_at (string_begin_locus, "unended raw string literal");
+	  return Token::make (END_OF_FILE, get_current_location ());
+	}
 
       length++;
+      current_column++;
+      if (current_char == '\n')
+	{
+	  current_line++;
+	  current_column = 1;
+	  start_line (current_line, max_column_hint);
+	}
 
       str += current_char.as_string ();
       skip_input ();
       current_char = peek_input ();
     }
 
-  current_column += length;
-
   loc += length - 1;
 
   str.shrink_to_fit ();
 
-  return Token::make_string (loc, std::move (str));
+  return Token::make_raw_string (loc, std::move (str));
 }
 
 template <typename IsDigitFunc>

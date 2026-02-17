@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <ccache/util/BitSet.hpp>
+#include <ccache/util/bitset.hpp>
 
 #include <cstdint>
 #include <string>

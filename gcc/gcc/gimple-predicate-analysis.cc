@@ -1,6 +1,6 @@
 /* Support for simple predicate analysis.
 
-   Copyright (C) 2001-2024 Free Software Foundation, Inc.
+   Copyright (C) 2001-2025 Free Software Foundation, Inc.
    Contributed by Xinliang David Li <davidxl@google.com>
    Generalized by Martin Sebor <msebor@redhat.com>
 
@@ -300,7 +300,7 @@ find_var_cmp_const (pred_chain_union preds, gphi *phi, gimple **flag_def,
 	       flag_var >= [min, max] ->  flag_var > [min-1, max]
 	     if no overflow/wrap.  */
 	  tree type = TREE_TYPE (cond_lhs);
-	  value_range r;
+	  int_range_max r;
 	  if (!INTEGRAL_TYPE_P (type)
 	      || !get_range_query (cfun)->range_of_expr (r, cond_rhs)
 	      || r.undefined_p ()
@@ -385,7 +385,8 @@ bool
 uninit_analysis::prune_phi_opnds (gphi *phi, unsigned opnds, gphi *flag_def,
 				  tree boundary_cst, tree_code cmp_code,
 				  hash_set<gphi *> *visited_phis,
-				  bitmap *visited_flag_phis)
+				  bitmap *visited_flag_phis,
+				  unsigned &max_attempts)
 {
   /* The Boolean predicate guarding the PHI definition.  Initialized
      lazily from PHI in the first call to is_use_guarded() and cached
@@ -397,6 +398,10 @@ uninit_analysis::prune_phi_opnds (gphi *phi, unsigned opnds, gphi *flag_def,
     {
       if (!MASK_TEST_BIT (opnds, i))
 	continue;
+
+      if (max_attempts == 0)
+	return false;
+      --max_attempts;
 
       tree flag_arg = gimple_phi_arg_def (flag_def, i);
       if (!is_gimple_constant (flag_arg))
@@ -432,7 +437,7 @@ uninit_analysis::prune_phi_opnds (gphi *phi, unsigned opnds, gphi *flag_def,
 	  unsigned opnds_arg_phi = m_eval.phi_arg_set (phi_arg_def);
 	  if (!prune_phi_opnds (phi_arg_def, opnds_arg_phi, flag_arg_def,
 				boundary_cst, cmp_code, visited_phis,
-				visited_flag_phis))
+				visited_flag_phis, max_attempts))
 	    return false;
 
 	  bitmap_clear_bit (*visited_flag_phis, SSA_NAME_VERSION (phi_result));
@@ -634,9 +639,10 @@ uninit_analysis::overlap (gphi *phi, unsigned opnds, hash_set<gphi *> *visited,
 	 value that is in conflict with the use guard/predicate.  */
       bitmap visited_flag_phis = NULL;
       gphi *phi_def = as_a<gphi *> (flag_def);
+      unsigned max_attempts = param_uninit_max_prune_work;
       bool all_pruned = prune_phi_opnds (phi, opnds, phi_def, boundary_cst,
 					 cmp_code, visited,
-					 &visited_flag_phis);
+					 &visited_flag_phis, max_attempts);
       if (visited_flag_phis)
 	BITMAP_FREE (visited_flag_phis);
       if (all_pruned)

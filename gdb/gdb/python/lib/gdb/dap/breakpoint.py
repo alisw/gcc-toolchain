@@ -1,4 +1,4 @@
-# Copyright 2022-2024 Free Software Foundation, Inc.
+# Copyright 2022-2025 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,9 +21,16 @@ from typing import Optional, Sequence
 
 import gdb
 
-from .server import capability, request, send_event
+from .server import capability, export_line, import_line, request, send_event
 from .sources import make_source
-from .startup import DAPException, LogLevel, in_gdb_thread, log_stack, parse_and_eval
+from .startup import (
+    DAPException,
+    LogLevel,
+    exec_mi_and_log,
+    in_gdb_thread,
+    log_stack,
+    parse_and_eval,
+)
 from .typecheck import type_check
 
 # True when suppressing new breakpoint events.
@@ -44,7 +51,6 @@ def suppress_new_breakpoint_event():
 
 @in_gdb_thread
 def _bp_modified(event):
-    global _suppress_bp
     if not _suppress_bp:
         send_event(
             "breakpoint",
@@ -57,7 +63,6 @@ def _bp_modified(event):
 
 @in_gdb_thread
 def _bp_created(event):
-    global _suppress_bp
     if not _suppress_bp:
         send_event(
             "breakpoint",
@@ -70,7 +75,6 @@ def _bp_created(event):
 
 @in_gdb_thread
 def _bp_deleted(event):
-    global _suppress_bp
     if not _suppress_bp:
         send_event(
             "breakpoint",
@@ -97,11 +101,16 @@ breakpoint_map = {}
 @in_gdb_thread
 def _breakpoint_descriptor(bp):
     "Return the Breakpoint object descriptor given a gdb Breakpoint."
+    # If there are no objfiles (that is, before the launch request),
+    # we consider all breakpoints to be pending.  This is done to work
+    # around the gdb oddity that setting a breakpoint by address will
+    # always succeed.
+    pending = bp.pending or len(gdb.objfiles()) == 0
     result = {
         "id": bp.number,
-        "verified": not bp.pending,
+        "verified": not pending,
     }
-    if bp.pending:
+    if pending:
         result["reason"] = "pending"
     if bp.locations:
         # Just choose the first location, because DAP doesn't allow
@@ -116,7 +125,7 @@ def _breakpoint_descriptor(bp):
             result.update(
                 {
                     "source": make_source(filename),
-                    "line": line,
+                    "line": export_line(line),
                 }
             )
 
@@ -139,7 +148,6 @@ def _remove_entries(table, *names):
 # the breakpoint.
 @in_gdb_thread
 def _set_breakpoints_callback(kind, specs, creator):
-    global breakpoint_map
     # Try to reuse existing breakpoints if possible.
     if kind in breakpoint_map:
         saved_map = breakpoint_map[kind]
@@ -196,9 +204,9 @@ def _set_breakpoints_callback(kind, specs, creator):
                     }
                 )
 
-    # Delete any breakpoints that were not reused.
-    for entry in saved_map.values():
-        entry.delete()
+        # Delete any breakpoints that were not reused.
+        for entry in saved_map.values():
+            entry.delete()
     return result
 
 
@@ -206,11 +214,11 @@ class _PrintBreakpoint(gdb.Breakpoint):
     def __init__(self, logMessage, **args):
         super().__init__(**args)
         # Split the message up for easier processing.
-        self.message = re.split("{(.*?)}", logMessage)
+        self._message = re.split("{(.*?)}", logMessage)
 
     def stop(self):
         output = ""
-        for idx, item in enumerate(self.message):
+        for idx, item in enumerate(self._message):
             if idx % 2 == 0:
                 # Even indices are plain text.
                 output += item
@@ -269,14 +277,14 @@ def _rewrite_src_breakpoint(
 ):
     return {
         "source": source["path"],
-        "line": line,
+        "line": import_line(line),
         "condition": condition,
         "hitCondition": hitCondition,
         "logMessage": logMessage,
     }
 
 
-@request("setBreakpoints")
+@request("setBreakpoints", expect_stopped=False)
 @capability("supportsHitConditionalBreakpoints")
 @capability("supportsConditionalBreakpoints")
 @capability("supportsLogPoints")
@@ -318,7 +326,7 @@ def _rewrite_fn_breakpoint(
     }
 
 
-@request("setFunctionBreakpoints")
+@request("setFunctionBreakpoints", expect_stopped=False)
 @capability("supportsFunctionBreakpoints")
 def set_fn_breakpoint(*, breakpoints: Sequence, **args):
     specs = [_rewrite_fn_breakpoint(**bp) for bp in breakpoints]
@@ -351,7 +359,7 @@ def _rewrite_insn_breakpoint(
     }
 
 
-@request("setInstructionBreakpoints")
+@request("setInstructionBreakpoints", expect_stopped=False)
 @capability("supportsInstructionBreakpoints")
 def set_insn_breakpoints(
     *, breakpoints: Sequence, offset: Optional[int] = None, **args
@@ -368,10 +376,13 @@ def _catch_exception(filterId, **args):
         cmd = "-catch-" + filterId
     else:
         raise DAPException("Invalid exception filterID: " + str(filterId))
-    result = gdb.execute_mi(cmd)
+    result = exec_mi_and_log(cmd)
+    # While the Ada catchpoints emit a "bkptno" field here, the C++
+    # ones do not.  So, instead we look at the "number" field.
+    num = result["bkpt"]["number"]
     # A little lame that there's no more direct way.
     for bp in gdb.breakpoints():
-        if bp.number == result["bkptno"]:
+        if bp.number == num:
             return bp
     # Not a DAPException because this is definitely unexpected.
     raise Exception("Could not find catchpoint after creating")
@@ -399,7 +410,7 @@ def _rewrite_exception_breakpoint(
     }
 
 
-@request("setExceptionBreakpoints")
+@request("setExceptionBreakpoints", expect_stopped=False)
 @capability("supportsExceptionFilterOptions")
 @capability(
     "exceptionBreakpointFilters",

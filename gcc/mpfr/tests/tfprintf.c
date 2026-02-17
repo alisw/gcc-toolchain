@@ -1,7 +1,7 @@
 /* tfprintf.c -- test file for mpfr_fprintf and mpfr_vfprintf
 
-Copyright 2008-2023 Free Software Foundation, Inc.
-Contributed by the AriC and Caramba projects, INRIA.
+Copyright 2008-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 /* FIXME: The output is not tested (thus coverage data are meaningless).
    For instance, slightly changing the code of mpfr_fprintf does not
@@ -405,6 +404,22 @@ bug_20090316 (FILE *fout)
   mpfr_clear (x);
 }
 
+/* See check_null test in tsprintf.c for details.
+   Fixed in commits
+     390e51ef8570da4e338e9806ecaf2d022210d951 (2023-12-03)
+     3babf029fe604c08ec517ca6945a5efb155f69d1 (2023-12-13)
+*/
+static void
+check_null (FILE *fout)
+{
+#ifndef MPFR_TESTS_SKIP_CHECK_NULL
+  int n;
+
+  check_vfprintf (fout, ".%c%c.%n", 0, 1, &n);
+  check_length (40, n, 4, d);
+#endif
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -442,6 +457,7 @@ main (int argc, char *argv[])
   check_random (fout, N);
 
   bug_20090316 (fout);
+  check_null (fout);
 
   fclose (fout);
   tests_end_mpfr ();

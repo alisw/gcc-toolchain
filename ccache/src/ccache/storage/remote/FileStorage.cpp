@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2021-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,20 +16,20 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "FileStorage.hpp"
+#include "filestorage.hpp"
 
-#include <ccache/core/AtomicFile.hpp>
+#include <ccache/core/atomicfile.hpp>
 #include <ccache/core/exceptions.hpp>
-#include <ccache/util/Bytes.hpp>
-#include <ccache/util/DirEntry.hpp>
-#include <ccache/util/UmaskScope.hpp>
 #include <ccache/util/assertions.hpp>
+#include <ccache/util/bytes.hpp>
+#include <ccache/util/direntry.hpp>
 #include <ccache/util/expected.hpp>
 #include <ccache/util/file.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/logging.hpp>
 #include <ccache/util/string.hpp>
+#include <ccache/util/umaskscope.hpp>
 
 #include <sys/stat.h> // for mode_t
 
@@ -54,12 +54,12 @@ public:
 
   tl::expected<bool, Failure> put(const Hash::Digest& key,
                                   nonstd::span<const uint8_t> value,
-                                  bool only_if_missing) override;
+                                  Overwrite overwrite) override;
 
   tl::expected<bool, Failure> remove(const Hash::Digest& key) override;
 
 private:
-  enum class Layout { flat, subdirs };
+  enum class Layout : uint8_t { flat, subdirs };
 
   std::string m_dir;
   std::optional<mode_t> m_umask;
@@ -140,11 +140,11 @@ FileStorageBackend::get(const Hash::Digest& key)
 tl::expected<bool, RemoteStorage::Backend::Failure>
 FileStorageBackend::put(const Hash::Digest& key,
                         const nonstd::span<const uint8_t> value,
-                        const bool only_if_missing)
+                        const Overwrite overwrite)
 {
   const auto path = get_entry_path(key);
 
-  if (only_if_missing && DirEntry(path).exists()) {
+  if (overwrite == Overwrite::no && DirEntry(path).exists()) {
     LOG("{} already in cache", path);
     return false;
   }
@@ -176,13 +176,12 @@ FileStorageBackend::put(const Hash::Digest& key,
 tl::expected<bool, RemoteStorage::Backend::Failure>
 FileStorageBackend::remove(const Hash::Digest& key)
 {
-  auto entry_path = get_entry_path(key);
-  auto result = util::remove_nfs_safe(entry_path);
-  if (!result) {
-    LOG("Failed to remove {}: {}", entry_path, result.error().message());
+  auto result = util::remove_nfs_safe(get_entry_path(key));
+  if (result) {
+    return *result;
+  } else {
     return tl::unexpected(RemoteStorage::Backend::Failure::error);
   }
-  return *result;
 }
 
 std::string

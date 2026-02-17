@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2020-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,17 +16,17 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "Context.hpp"
+#include "context.hpp"
 
-#include <ccache/SignalHandler.hpp>
 #include <ccache/hashutil.hpp>
-#include <ccache/util/TimePoint.hpp>
+#include <ccache/signalhandler.hpp>
 #include <ccache/util/file.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/logging.hpp>
 #include <ccache/util/path.hpp>
 #include <ccache/util/process.hpp>
 #include <ccache/util/string.hpp>
+#include <ccache/util/timepoint.hpp>
 #include <ccache/util/wincompat.hpp>
 
 #ifdef HAVE_UNISTD_H
@@ -51,7 +51,7 @@ Context::Context()
 }
 
 void
-Context::initialize(Args&& compiler_and_args,
+Context::initialize(util::Args&& compiler_and_args,
                     const std::vector<std::string>& cmdline_config_settings)
 {
   orig_args = std::move(compiler_and_args);
@@ -67,8 +67,9 @@ Context::initialize(Args&& compiler_and_args,
   // initial configuration file. The intention is that all files and directories
   // in the cache directory should be affected by the configured umask and that
   // no other files and directories should.
-  if (config.umask()) {
-    original_umask = util::set_umask(*config.umask());
+  auto mask = config.umask();
+  if (mask) {
+    original_umask = util::set_umask(*mask);
   }
 }
 
@@ -78,7 +79,7 @@ Context::~Context()
 }
 
 void
-Context::register_pending_tmp_file(const std::string& path)
+Context::register_pending_tmp_file(const fs::path& path)
 {
   SignalHandlerBlocker signal_handler_blocker;
 
@@ -90,9 +91,8 @@ Context::unlink_pending_tmp_files_signal_safe()
 {
   for (auto it = m_pending_tmp_files.rbegin(); it != m_pending_tmp_files.rend();
        ++it) {
-    // Don't call util::remove or std::filesystem::remove since they are not
-    // signal safe.
-    unlink(it->c_str());
+    // Don't call util::remove or fs::remove since they are not signal safe.
+    unlink(util::pstr(*it).c_str());
   }
   // Don't clear m_pending_tmp_files since this method must be signal safe.
 }
@@ -104,7 +104,7 @@ Context::unlink_pending_tmp_files()
 
   for (auto it = m_pending_tmp_files.rbegin(); it != m_pending_tmp_files.rend();
        ++it) {
-    util::remove(*it, util::LogFailure::no);
+    std::ignore = util::remove(*it, util::LogFailure::no);
   }
   m_pending_tmp_files.clear();
 }

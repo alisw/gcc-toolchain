@@ -1,7 +1,7 @@
 /* Scalar Replacement of Aggregates (SRA) converts some structure
    references into scalar references, exposing them to the scalar
    optimizers.
-   Copyright (C) 2008-2024 Free Software Foundation, Inc.
+   Copyright (C) 2008-2025 Free Software Foundation, Inc.
    Contributed by Martin Jambor <mjambor@suse.cz>
 
 This file is part of GCC.
@@ -100,6 +100,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "builtins.h"
 #include "tree-sra.h"
 #include "opts.h"
+#include "tree-ssa-alias-compare.h"
 
 /* Enumeration of all aggregate reductions we can do.  */
 enum sra_mode { SRA_MODE_EARLY_IPA,   /* early call regularization */
@@ -979,6 +980,7 @@ create_access (tree expr, gimple *stmt, bool write)
   access->type = TREE_TYPE (expr);
   access->write = write;
   access->grp_unscalarizable_region = unscalarizable_region;
+  access->grp_same_access_path = true;
   access->stmt = stmt;
   access->reverse = reverse;
 
@@ -1397,6 +1399,15 @@ static bool
 build_access_from_call_arg (tree expr, gimple *stmt, bool can_be_returned,
 			    enum out_edge_check *oe_check)
 {
+  if (gimple_call_flags (stmt) & ECF_RETURNS_TWICE)
+    {
+      tree base = expr;
+      if (TREE_CODE (expr) == ADDR_EXPR)
+	base = get_base_address (TREE_OPERAND (expr, 0));
+      disqualify_base_of_expr (base, "Passed to a returns_twice call.");
+      return false;
+    }
+
   if (TREE_CODE (expr) == ADDR_EXPR)
     {
       tree base = get_base_address (TREE_OPERAND (expr, 0));
@@ -1513,6 +1524,9 @@ build_accesses_from_assign (gimple *stmt)
   racc = build_access_from_expr_1 (rhs, stmt, false);
   lacc = build_access_from_expr_1 (lhs, stmt, true);
 
+  bool tbaa_hazard
+    = !types_equal_for_same_type_for_tbaa_p (TREE_TYPE (lhs), TREE_TYPE (rhs));
+
   if (lacc)
     {
       lacc->grp_assignment_write = 1;
@@ -1527,6 +1541,8 @@ build_accesses_from_assign (gimple *stmt)
 	    bitmap_set_bit (cannot_scalarize_away_bitmap,
 			    DECL_UID (lacc->base));
 	}
+      if (tbaa_hazard)
+	lacc->grp_same_access_path = false;
     }
 
   if (racc)
@@ -1546,6 +1562,8 @@ build_accesses_from_assign (gimple *stmt)
 	}
       if (storage_order_barrier_p (lhs))
 	racc->grp_unscalarizable_region = 1;
+      if (tbaa_hazard)
+	racc->grp_same_access_path = false;
     }
 
   if (lacc && racc
@@ -2177,7 +2195,7 @@ maybe_add_sra_candidate (tree var)
   const char *msg;
   tree_node **slot;
 
-  if (!AGGREGATE_TYPE_P (type)) 
+  if (!AGGREGATE_TYPE_P (type))
     {
       reject (var, "not aggregate");
       return false;
@@ -2335,6 +2353,19 @@ same_access_path_p (tree exp1, tree exp2)
   return true;
 }
 
+/* Return true when either T1 is a type that, when loaded into a register and
+   stored back to memory will yield the same bits or when both T1 and T2 are
+   compatible.  */
+
+static bool
+types_risk_mangled_binary_repr_p (tree t1, tree t2)
+{
+  if (mode_can_transfer_bits (TYPE_MODE (t1)))
+    return false;
+
+  return !types_compatible_p (t1, t2);
+}
+
 /* Sort all accesses for the given variable, check for partial overlaps and
    return NULL if there are any.  If there are none, pick a representative for
    each combination of offset and size and create a linked list out of them.
@@ -2374,7 +2405,7 @@ sort_and_splice_var_accesses (tree var)
       bool grp_partial_lhs = access->grp_partial_lhs;
       bool first_scalar = is_gimple_reg_type (access->type);
       bool unscalarizable_region = access->grp_unscalarizable_region;
-      bool grp_same_access_path = true;
+      bool grp_same_access_path = access->grp_same_access_path;
       bool bf_non_full_precision
 	= (INTEGRAL_TYPE_P (access->type)
 	   && TYPE_PRECISION (access->type) != access->size
@@ -2410,7 +2441,8 @@ sort_and_splice_var_accesses (tree var)
 	  return NULL;
 	}
 
-      grp_same_access_path = path_comparable_for_same_access (access->expr);
+      if (grp_same_access_path)
+	grp_same_access_path = path_comparable_for_same_access (access->expr);
 
       j = i + 1;
       while (j < access_count)
@@ -2461,9 +2493,27 @@ sort_and_splice_var_accesses (tree var)
 		}
 	      unscalarizable_region = true;
 	    }
+	  else if (types_risk_mangled_binary_repr_p (access->type, ac2->type))
+	    {
+	      if (dump_file && (dump_flags & TDF_DETAILS))
+		{
+		  fprintf (dump_file, "Cannot scalarize the following access "
+			   "because data would be held in a mode which is not "
+			   "guaranteed to preserve all bits.\n  ");
+		  dump_access (dump_file, access, false);
+		}
+	      unscalarizable_region = true;
+	    }
+	  /* If there the same place is accessed with two incompatible
+	     aggregate types, trying to base total scalarization on either of
+	     them can be wrong.  */
+	  if (!first_scalar && !types_compatible_p (access->type, ac2->type))
+	    bitmap_set_bit (cannot_scalarize_away_bitmap,
+			    DECL_UID (access->base));
 
 	  if (grp_same_access_path
-	      && !same_access_path_p (access->expr, ac2->expr))
+	      && (!ac2->grp_same_access_path
+		  || !same_access_path_p (access->expr, ac2->expr)))
 	    grp_same_access_path = false;
 
 	  ac2->group_representative = access;
@@ -2845,7 +2895,10 @@ analyze_access_subtree (struct access *root, struct access *parent,
 
   for (child = root->first_child; child; child = child->next_sibling)
     {
-      hole |= covered_to < child->offset;
+      if (totally)
+	covered_to = child->offset;
+      else
+	hole |= covered_to < child->offset;
       sth_created |= analyze_access_subtree (child, root,
 					     allow_replacements && !scalar
 					     && !root->grp_partial_lhs,
@@ -2856,6 +2909,8 @@ analyze_access_subtree (struct access *root, struct access *parent,
 	covered_to += child->size;
       else
 	hole = true;
+      if (totally && !hole)
+	covered_to = limit;
     }
 
   if (allow_replacements && scalar && !root->first_child
@@ -2928,7 +2983,7 @@ analyze_access_subtree (struct access *root, struct access *parent,
 	root->grp_total_scalarization = 0;
     }
 
-  if (!hole || totally)
+  if (!hole)
     root->grp_covered = 1;
   else if (root->grp_write || comes_initialized_p (root->base))
     root->grp_unscalarized_data = 1; /* not covered and written to */
@@ -3127,7 +3182,9 @@ propagate_subaccesses_from_rhs (struct access *lacc, struct access *racc)
 	  ret = true;
 	  subtree_mark_written_and_rhs_enqueue (lacc);
 	}
-      if (!lacc->first_child && !racc->first_child)
+      if (!lacc->first_child
+	  && !racc->first_child
+	  && !types_risk_mangled_binary_repr_p (racc->type, lacc->type))
 	{
 	  /* We are about to change the access type from aggregate to scalar,
 	     so we need to put the reverse flag onto the access, if any.  */
@@ -3416,7 +3473,7 @@ create_total_scalarization_access (struct access *parent, HOST_WIDE_INT pos,
   access->grp_write = parent->grp_write;
   access->grp_total_scalarization = 1;
   access->grp_hint = 1;
-  access->grp_same_access_path = path_comparable_for_same_access (expr);
+  access->grp_same_access_path = 0;
   access->reverse = reverse_storage_order_for_component_p (expr);
 
   access->next_sibling = next_sibling;
@@ -4159,8 +4216,10 @@ sra_modify_expr (tree *expr, bool write, gimple_stmt_iterator *stmt_gsi,
 	    }
 	  else
 	    {
-	      gassign *stmt;
+	      if (TREE_READONLY (access->base))
+		return false;
 
+	      gassign *stmt;
 	      if (access->grp_partial_lhs)
 		repl = force_gimple_operand_gsi (stmt_gsi, repl, true,
 						 NULL_TREE, true,

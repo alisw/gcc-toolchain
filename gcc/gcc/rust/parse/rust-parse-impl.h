@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -29,11 +29,10 @@
 #include "rust-token.h"
 #define INCLUDE_ALGORITHM
 #include "rust-diagnostics.h"
-#include "rust-make-unique.h"
 #include "rust-dir-owner.h"
 #include "rust-attribute-values.h"
 #include "rust-keyword-values.h"
-#include "rust-session-manager.h"
+#include "rust-edition.h"
 
 #include "optional.h"
 
@@ -854,6 +853,9 @@ Parser<ManagedTokenSource>::parse_attr_input ()
 	  case BYTE_STRING_LITERAL:
 	    lit_type = AST::Literal::BYTE_STRING;
 	    break;
+	  case RAW_STRING_LITERAL:
+	    lit_type = AST::Literal::RAW_STRING;
+	    break;
 	  case STRING_LITERAL:
 	  default:
 	    lit_type = AST::Literal::STRING;
@@ -1382,10 +1384,10 @@ Parser<ManagedTokenSource>::parse_vis_item (AST::AttrVec outer_attrs)
 	case IDENTIFIER:
 	case UNDERSCORE:
 	  return parse_const_item (std::move (vis), std::move (outer_attrs));
-	case UNSAFE:
-	case EXTERN_KW:
 	case ASYNC:
 	  return parse_async_item (std::move (vis), std::move (outer_attrs));
+	case UNSAFE:
+	case EXTERN_KW:
 	case FN_KW:
 	  return parse_function (std::move (vis), std::move (outer_attrs));
 	default:
@@ -1451,8 +1453,7 @@ Parser<ManagedTokenSource>::parse_async_item (AST::Visibility vis,
   auto offset = (lexer.peek_token ()->get_id () == CONST) ? 1 : 0;
   const_TokenPtr t = lexer.peek_token (offset);
 
-  if (Session::get_instance ().options.get_edition ()
-      == CompileOptions::Edition::E2015)
+  if (get_rust_edition () == Edition::E2015)
     {
       add_error (Error (t->get_locus (), ErrorCode::E0670,
 			"%<async fn%> is not permitted in Rust 2015"));
@@ -2908,7 +2909,8 @@ Parser<ManagedTokenSource>::parse_use_tree ()
 template <typename ManagedTokenSource>
 std::unique_ptr<AST::Function>
 Parser<ManagedTokenSource>::parse_function (AST::Visibility vis,
-					    AST::AttrVec outer_attrs)
+					    AST::AttrVec outer_attrs,
+					    bool is_external)
 {
   location_t locus = lexer.peek_token ()->get_locus ();
   // Get qualifiers for function if they exist
@@ -2992,7 +2994,7 @@ Parser<ManagedTokenSource>::parse_function (AST::Visibility vis,
 		       std::move (generic_params), std::move (function_params),
 		       std::move (return_type), std::move (where_clause),
 		       std::move (body), std::move (vis),
-		       std::move (outer_attrs), locus));
+		       std::move (outer_attrs), locus, false, is_external));
 }
 
 // Parses function or method qualifiers (i.e. const, unsafe, and extern).
@@ -3092,15 +3094,15 @@ template <typename EndTokenPred>
 std::unique_ptr<AST::GenericParam>
 Parser<ManagedTokenSource>::parse_generic_param (EndTokenPred is_end_token)
 {
-  auto token = lexer.peek_token ();
-  auto outer_attrs = parse_outer_attribute ();
+  auto outer_attrs = parse_outer_attributes ();
   std::unique_ptr<AST::GenericParam> param;
+  auto token = lexer.peek_token ();
 
   switch (token->get_id ())
     {
       case LIFETIME: {
 	auto lifetime = parse_lifetime (false);
-	if (lifetime.is_error ())
+	if (!lifetime)
 	  {
 	    rust_error_at (
 	      token->get_locus (),
@@ -3120,7 +3122,7 @@ Parser<ManagedTokenSource>::parse_generic_param (EndTokenPred is_end_token)
 	  }
 
 	param = std::unique_ptr<AST::LifetimeParam> (new AST::LifetimeParam (
-	  std::move (lifetime), std::move (lifetime_bounds),
+	  std::move (lifetime.value ()), std::move (lifetime_bounds),
 	  std::move (outer_attrs), token->get_locus ()));
 	break;
       }
@@ -3274,16 +3276,16 @@ Parser<ManagedTokenSource>::parse_lifetime_params ()
 
   while (lexer.peek_token ()->get_id () != END_OF_FILE)
     {
-      AST::LifetimeParam lifetime_param = parse_lifetime_param ();
+      auto lifetime_param = parse_lifetime_param ();
 
-      if (lifetime_param.is_error ())
+      if (!lifetime_param)
 	{
 	  // can't treat as error as only way to get out with trailing comma
 	  break;
 	}
 
       lifetime_params.push_back (std::unique_ptr<AST::LifetimeParam> (
-	new AST::LifetimeParam (std::move (lifetime_param))));
+	new AST::LifetimeParam (std::move (lifetime_param.value ()))));
 
       if (lexer.peek_token ()->get_id () != COMMA)
 	break;
@@ -3309,9 +3311,9 @@ Parser<ManagedTokenSource>::parse_lifetime_params (EndTokenPred is_end_token)
   // if end_token is not specified, it defaults to EOF, so should work fine
   while (!is_end_token (lexer.peek_token ()->get_id ()))
     {
-      AST::LifetimeParam lifetime_param = parse_lifetime_param ();
+      auto lifetime_param = parse_lifetime_param ();
 
-      if (lifetime_param.is_error ())
+      if (!lifetime_param)
 	{
 	  /* TODO: is it worth throwing away all lifetime params just because
 	   * one failed? */
@@ -3349,9 +3351,9 @@ Parser<ManagedTokenSource>::parse_lifetime_params_objs ()
   // bad control structure as end token cannot be guaranteed
   while (true)
     {
-      AST::LifetimeParam lifetime_param = parse_lifetime_param ();
+      auto lifetime_param = parse_lifetime_param ();
 
-      if (lifetime_param.is_error ())
+      if (!lifetime_param)
 	{
 	  // not an error as only way to exit if trailing comma
 	  break;
@@ -3384,9 +3386,9 @@ Parser<ManagedTokenSource>::parse_lifetime_params_objs (
 
   while (!is_end_token (lexer.peek_token ()->get_id ()))
     {
-      AST::LifetimeParam lifetime_param = parse_lifetime_param ();
+      auto lifetime_param = parse_lifetime_param ();
 
-      if (lifetime_param.is_error ())
+      if (!lifetime_param)
 	{
 	  /* TODO: is it worth throwing away all lifetime params just because
 	   * one failed? */
@@ -3397,7 +3399,7 @@ Parser<ManagedTokenSource>::parse_lifetime_params_objs (
 	  return {};
 	}
 
-      lifetime_params.push_back (std::move (lifetime_param));
+      lifetime_params.push_back (std::move (lifetime_param.value ()));
 
       if (lexer.peek_token ()->get_id () != COMMA)
 	break;
@@ -3456,18 +3458,18 @@ Parser<ManagedTokenSource>::parse_non_ptr_sequence (
 
 /* Parses a single lifetime generic parameter (not including comma). */
 template <typename ManagedTokenSource>
-AST::LifetimeParam
+tl::expected<AST::LifetimeParam, ParseLifetimeParamError>
 Parser<ManagedTokenSource>::parse_lifetime_param ()
 {
-  // parse outer attribute, which is optional and may not exist
-  AST::Attribute outer_attr = parse_outer_attribute ();
+  // parse outer attributes, which are optional and may not exist
+  auto outer_attrs = parse_outer_attributes ();
 
   // save lifetime token - required
   const_TokenPtr lifetime_tok = lexer.peek_token ();
   if (lifetime_tok->get_id () != LIFETIME)
     {
-      // if lifetime is missing, must not be a lifetime param, so return null
-      return AST::LifetimeParam::create_error ();
+      // if lifetime is missing, must not be a lifetime param, so return error
+      return tl::make_unexpected<ParseLifetimeParamError> ({});
     }
   lexer.skip_token ();
   AST::Lifetime lifetime (AST::Lifetime::NAMED, lifetime_tok->get_str (),
@@ -3483,7 +3485,7 @@ Parser<ManagedTokenSource>::parse_lifetime_param ()
     }
 
   return AST::LifetimeParam (std::move (lifetime), std::move (lifetime_bounds),
-			     std::move (outer_attr),
+			     std::move (outer_attrs),
 			     lifetime_tok->get_locus ());
 }
 
@@ -3560,8 +3562,8 @@ template <typename ManagedTokenSource>
 std::unique_ptr<AST::TypeParam>
 Parser<ManagedTokenSource>::parse_type_param ()
 {
-  // parse outer attribute, which is optional and may not exist
-  AST::Attribute outer_attr = parse_outer_attribute ();
+  // parse outer attributes, which are optional and may not exist
+  auto outer_attrs = parse_outer_attributes ();
 
   const_TokenPtr identifier_tok = lexer.peek_token ();
   if (identifier_tok->get_id () != IDENTIFIER)
@@ -3604,7 +3606,7 @@ Parser<ManagedTokenSource>::parse_type_param ()
   return std::unique_ptr<AST::TypeParam> (
     new AST::TypeParam (std::move (ident), identifier_tok->get_locus (),
 			std::move (type_param_bounds), std::move (type),
-			std::move (outer_attr)));
+			std::move (outer_attrs)));
 }
 
 /* Parses regular (i.e. non-generic) parameters in functions or methods. Also
@@ -3679,7 +3681,7 @@ Parser<ManagedTokenSource>::parse_function_param ()
   if (lexer.peek_token ()->get_id () == ELLIPSIS) // Unnamed variadic
     {
       lexer.skip_token (); // Skip ellipsis
-      return Rust::make_unique<AST::VariadicParam> (
+      return std::make_unique<AST::VariadicParam> (
 	AST::VariadicParam (std::move (outer_attrs), locus));
     }
 
@@ -3701,7 +3703,7 @@ Parser<ManagedTokenSource>::parse_function_param ()
   if (lexer.peek_token ()->get_id () == ELLIPSIS) // Named variadic
     {
       lexer.skip_token (); // Skip ellipsis
-      return Rust::make_unique<AST::VariadicParam> (
+      return std::make_unique<AST::VariadicParam> (
 	AST::VariadicParam (std::move (param_pattern), std::move (outer_attrs),
 			    locus));
     }
@@ -3712,7 +3714,7 @@ Parser<ManagedTokenSource>::parse_function_param ()
 	{
 	  return nullptr;
 	}
-      return Rust::make_unique<AST::FunctionParam> (
+      return std::make_unique<AST::FunctionParam> (
 	AST::FunctionParam (std::move (param_pattern), std::move (param_type),
 			    std::move (outer_attrs), locus));
     }
@@ -3813,12 +3815,13 @@ template <typename ManagedTokenSource>
 std::unique_ptr<AST::LifetimeWhereClauseItem>
 Parser<ManagedTokenSource>::parse_lifetime_where_clause_item ()
 {
-  AST::Lifetime lifetime = parse_lifetime (false);
-  if (lifetime.is_error ())
+  auto parsed_lifetime = parse_lifetime (false);
+  if (!parsed_lifetime)
     {
       // TODO: error here?
       return nullptr;
     }
+  auto lifetime = parsed_lifetime.value ();
 
   if (!skip_token (COLON))
     {
@@ -4011,7 +4014,7 @@ Parser<ManagedTokenSource>::parse_type_param_bound ()
     {
     case LIFETIME:
       return std::unique_ptr<AST::Lifetime> (
-	new AST::Lifetime (parse_lifetime (false)));
+	new AST::Lifetime (parse_lifetime (false).value ()));
     case LEFT_PAREN:
     case QUESTION_MARK:
     case FOR:
@@ -4084,13 +4087,13 @@ Parser<ManagedTokenSource>::parse_lifetime_bounds ()
 
   while (true)
     {
-      AST::Lifetime lifetime = parse_lifetime (false);
+      auto lifetime = parse_lifetime (false);
 
       // quick exit for parsing failure
-      if (lifetime.is_error ())
+      if (!lifetime)
 	break;
 
-      lifetime_bounds.push_back (std::move (lifetime));
+      lifetime_bounds.push_back (std::move (lifetime.value ()));
 
       /* plus is maybe not allowed at end - spec defines it weirdly, so
        * assuming allowed at end */
@@ -4114,9 +4117,9 @@ Parser<ManagedTokenSource>::parse_lifetime_bounds (EndTokenPred is_end_token)
 
   while (!is_end_token (lexer.peek_token ()->get_id ()))
     {
-      AST::Lifetime lifetime = parse_lifetime (false);
+      auto lifetime = parse_lifetime (false);
 
-      if (lifetime.is_error ())
+      if (!lifetime)
 	{
 	  /* TODO: is it worth throwing away all lifetime bound info just
 	   * because one failed? */
@@ -4127,7 +4130,7 @@ Parser<ManagedTokenSource>::parse_lifetime_bounds (EndTokenPred is_end_token)
 	  return {};
 	}
 
-      lifetime_bounds.push_back (std::move (lifetime));
+      lifetime_bounds.push_back (std::move (lifetime.value ()));
 
       /* plus is maybe not allowed at end - spec defines it weirdly, so
        * assuming allowed at end */
@@ -4144,14 +4147,20 @@ Parser<ManagedTokenSource>::parse_lifetime_bounds (EndTokenPred is_end_token)
 /* Parses a lifetime token (named, 'static, or '_). Also handles lifetime not
  * existing. */
 template <typename ManagedTokenSource>
-AST::Lifetime
+tl::expected<AST::Lifetime, ParseLifetimeError>
 Parser<ManagedTokenSource>::parse_lifetime (bool allow_elided)
 {
   const_TokenPtr lifetime_tok = lexer.peek_token ();
   if (lifetime_tok->get_id () != LIFETIME)
     {
-      return (allow_elided) ? AST::Lifetime::elided ()
-			    : AST::Lifetime::error ();
+      if (allow_elided)
+	{
+	  return AST::Lifetime::elided ();
+	}
+      else
+	{
+	  return tl::make_unexpected<ParseLifetimeError> ({});
+	}
     }
   lexer.skip_token ();
 
@@ -5933,168 +5942,6 @@ Parser<ManagedTokenSource>::parse_extern_block (AST::Visibility vis,
 			  std::move (outer_attrs), locus));
 }
 
-template <typename ManagedTokenSource>
-AST::NamedFunctionParam
-Parser<ManagedTokenSource>::parse_named_function_param ()
-{
-  AST::AttrVec outer_attrs = parse_outer_attributes ();
-  location_t locus = lexer.peek_token ()->get_locus ();
-
-  if (lexer.peek_token ()->get_id () == ELLIPSIS) // Unnamed variadic
-    {
-      lexer.skip_token (); // Skip ellipsis
-      return AST::NamedFunctionParam (std::move (outer_attrs), locus);
-    }
-
-  // parse identifier/_
-  std::string name;
-
-  const_TokenPtr t = lexer.peek_token ();
-  location_t name_location = t->get_locus ();
-  switch (t->get_id ())
-    {
-    case IDENTIFIER:
-      name = t->get_str ();
-      lexer.skip_token ();
-      break;
-    case UNDERSCORE:
-      name = "_";
-      lexer.skip_token ();
-      break;
-    default:
-      // this is not a function param, but not necessarily an error
-      return AST::NamedFunctionParam::create_error ();
-    }
-
-  if (!skip_token (COLON))
-    {
-      // skip after somewhere?
-      return AST::NamedFunctionParam::create_error ();
-    }
-
-  if (lexer.peek_token ()->get_id () == ELLIPSIS) // Named variadic
-    {
-      lexer.skip_token (); // Skip ellipsis
-      return AST::NamedFunctionParam (std::move (name), std::move (outer_attrs),
-				      locus);
-    }
-
-  // parse (required) type
-  std::unique_ptr<AST::Type> param_type = parse_type ();
-  if (param_type == nullptr)
-    {
-      Error error (
-	lexer.peek_token ()->get_locus (),
-	"could not parse param type in extern block function declaration");
-      add_error (std::move (error));
-
-      skip_after_semicolon ();
-      return AST::NamedFunctionParam::create_error ();
-    }
-
-  return AST::NamedFunctionParam (std::move (name), std::move (param_type),
-				  std::move (outer_attrs), name_location);
-}
-
-template <typename ManagedTokenSource>
-template <typename EndTokenPred>
-std::vector<AST::NamedFunctionParam>
-Parser<ManagedTokenSource>::parse_named_function_params (
-  EndTokenPred is_end_token)
-{
-  std::vector<AST::NamedFunctionParam> params;
-  if (is_end_token (lexer.peek_token ()->get_id ()))
-    return params;
-
-  auto initial_param = parse_named_function_param ();
-  if (initial_param.is_error ())
-    return params;
-
-  params.push_back (std::move (initial_param));
-  auto t = lexer.peek_token ();
-  while (t->get_id () == COMMA)
-    {
-      lexer.skip_token ();
-      if (is_end_token (lexer.peek_token ()->get_id ()))
-	break;
-
-      auto param = parse_named_function_param ();
-      if (param.is_error ())
-	{
-	  Error error (lexer.peek_token ()->get_locus (),
-		       "failed to parse param in c function params");
-	  add_error (error);
-	  return std::vector<AST::NamedFunctionParam> ();
-	}
-      params.push_back (std::move (param));
-      t = lexer.peek_token ();
-    }
-  params.shrink_to_fit ();
-  return params;
-}
-
-template <typename ManagedTokenSource>
-std::unique_ptr<AST::ExternalFunctionItem>
-Parser<ManagedTokenSource>::parse_external_function_item (
-  AST::Visibility vis, AST::AttrVec outer_attrs)
-{
-  location_t locus = lexer.peek_token ()->get_locus ();
-
-  // parse extern function declaration item
-  // skip function token
-  lexer.skip_token ();
-
-  // parse identifier
-  const_TokenPtr ident_tok = expect_token (IDENTIFIER);
-  if (ident_tok == nullptr)
-    {
-      skip_after_semicolon ();
-      return nullptr;
-    }
-  Identifier ident{ident_tok};
-
-  // parse (optional) generic params
-  std::vector<std::unique_ptr<AST::GenericParam>> generic_params
-    = parse_generic_params_in_angles ();
-
-  if (!skip_token (LEFT_PAREN))
-    {
-      skip_after_semicolon ();
-      return nullptr;
-    }
-
-  // parse parameters
-  std::vector<AST::NamedFunctionParam> function_params
-    = parse_named_function_params (
-      [] (TokenId id) { return id == RIGHT_PAREN; });
-
-  if (!skip_token (RIGHT_PAREN))
-    {
-      skip_after_semicolon ();
-      return nullptr;
-    }
-
-  // parse (optional) return type
-  std::unique_ptr<AST::Type> return_type = parse_function_return_type ();
-
-  // parse (optional) where clause
-  AST::WhereClause where_clause = parse_where_clause ();
-
-  if (!skip_token (SEMICOLON))
-    {
-      // skip somewhere?
-      return nullptr;
-    }
-
-  function_params.shrink_to_fit ();
-
-  return std::unique_ptr<AST::ExternalFunctionItem> (
-    new AST::ExternalFunctionItem (
-      std::move (ident), std::move (generic_params), std::move (return_type),
-      std::move (where_clause), std::move (function_params), std::move (vis),
-      std::move (outer_attrs), locus));
-}
-
 // Parses a single extern block item (static or function declaration).
 template <typename ManagedTokenSource>
 std::unique_ptr<AST::ExternalItem>
@@ -6164,8 +6011,8 @@ Parser<ManagedTokenSource>::parse_external_item ()
 				       std::move (outer_attrs), locus));
       }
     case FN_KW:
-      return parse_external_function_item (std::move (vis),
-					   std::move (outer_attrs));
+      return parse_function (std::move (vis), std::move (outer_attrs), true);
+
     case TYPE:
       return parse_external_type_item (std::move (vis),
 				       std::move (outer_attrs));
@@ -6323,6 +6170,10 @@ Parser<ManagedTokenSource>::parse_let_stmt (AST::AttrVec outer_attrs,
 	}
     }
 
+  tl::optional<std::unique_ptr<AST::Expr>> else_expr = tl::nullopt;
+  if (maybe_skip_token (ELSE))
+    else_expr = parse_block_expr ();
+
   if (restrictions.consume_semi)
     {
       // `stmt` macro variables are parsed without a semicolon, but should be
@@ -6337,7 +6188,7 @@ Parser<ManagedTokenSource>::parse_let_stmt (AST::AttrVec outer_attrs,
 
   return std::unique_ptr<AST::LetStmt> (
     new AST::LetStmt (std::move (pattern), std::move (expr), std::move (type),
-		      std::move (outer_attrs), locus));
+		      std::move (else_expr), std::move (outer_attrs), locus));
 }
 
 // Parses a type path.
@@ -6496,14 +6347,14 @@ Parser<ManagedTokenSource>::parse_path_generic_args ()
   location_t locus = t->get_locus ();
   while (!is_right_angle_tok (t->get_id ()))
     {
-      AST::Lifetime lifetime = parse_lifetime (false);
-      if (lifetime.is_error ())
+      auto lifetime = parse_lifetime (false);
+      if (!lifetime)
 	{
 	  // not necessarily an error
 	  break;
 	}
 
-      lifetime_args.push_back (std::move (lifetime));
+      lifetime_args.push_back (std::move (lifetime.value ()));
 
       // if next token isn't comma, then it must be end of list
       if (lexer.peek_token ()->get_id () != COMMA)
@@ -7117,10 +6968,12 @@ Parser<ManagedTokenSource>::parse_self_param ()
       // now test whether it has a lifetime
       if (lexer.peek_token ()->get_id () == LIFETIME)
 	{
-	  lifetime = parse_lifetime (true);
-
 	  // something went wrong somehow
-	  if (lifetime.is_error ())
+	  if (auto parsed_lifetime = parse_lifetime (true))
+	    {
+	      lifetime = parsed_lifetime.value ();
+	    }
+	  else
 	    {
 	      Error error (lexer.peek_token ()->get_locus (),
 			   "failed to parse lifetime in self param");
@@ -7182,14 +7035,14 @@ Parser<ManagedTokenSource>::parse_self_param ()
 
   if (has_reference)
     {
-      return Rust::make_unique<AST::SelfParam> (std::move (lifetime), has_mut,
-						locus);
+      return std::make_unique<AST::SelfParam> (std::move (lifetime), has_mut,
+					       locus);
     }
   else
     {
       // note that type may be nullptr here and that's fine
-      return Rust::make_unique<AST::SelfParam> (std::move (type), has_mut,
-						locus);
+      return std::make_unique<AST::SelfParam> (std::move (type), has_mut,
+					       locus);
     }
 }
 
@@ -7309,9 +7162,9 @@ Parser<ManagedTokenSource>::parse_expr_stmt (AST::AttrVec outer_attrs,
 // Parses a block expression, including the curly braces at start and end.
 template <typename ManagedTokenSource>
 std::unique_ptr<AST::BlockExpr>
-Parser<ManagedTokenSource>::parse_block_expr (AST::AttrVec outer_attrs,
-					      AST::LoopLabel label,
-					      location_t pratt_parsed_loc)
+Parser<ManagedTokenSource>::parse_block_expr (
+  AST::AttrVec outer_attrs, tl::optional<AST::LoopLabel> label,
+  location_t pratt_parsed_loc)
 {
   location_t locus = pratt_parsed_loc;
   if (locus == UNKNOWN_LOCATION)
@@ -7572,6 +7425,11 @@ Parser<ManagedTokenSource>::parse_literal_expr (AST::AttrVec outer_attrs)
       literal_value = t->get_str ();
       lexer.skip_token ();
       break;
+    case RAW_STRING_LITERAL:
+      type = AST::Literal::RAW_STRING;
+      literal_value = t->get_str ();
+      lexer.skip_token ();
+      break;
     case INT_LITERAL:
       type = AST::Literal::INT;
       literal_value = t->get_str ();
@@ -7609,6 +7467,27 @@ Parser<ManagedTokenSource>::parse_literal_expr (AST::AttrVec outer_attrs)
     new AST::LiteralExpr (std::move (literal_value), std::move (type),
 			  t->get_type_hint (), std::move (outer_attrs),
 			  t->get_locus ()));
+}
+
+template <typename ManagedTokenSource>
+std::unique_ptr<AST::BoxExpr>
+Parser<ManagedTokenSource>::parse_box_expr (AST::AttrVec outer_attrs,
+					    location_t pratt_parsed_loc)
+{
+  location_t locus = pratt_parsed_loc;
+  if (locus == UNKNOWN_LOCATION)
+    {
+      locus = lexer.peek_token ()->get_locus ();
+      skip_token (BOX);
+    }
+
+  ParseRestrictions restrictions;
+  restrictions.expr_can_be_null = false;
+
+  std::unique_ptr<AST::Expr> expr = parse_expr (AST::AttrVec (), restrictions);
+
+  return std::unique_ptr<AST::BoxExpr> (
+    new AST::BoxExpr (std::move (expr), std::move (outer_attrs), locus));
 }
 
 // Parses a return expression (including any expression to return).
@@ -7649,12 +7528,10 @@ Parser<ManagedTokenSource>::parse_break_expr (AST::AttrVec outer_attrs,
       skip_token (BREAK);
     }
 
-  // parse label (lifetime) if it exists - create dummy first
-  AST::Lifetime label = AST::Lifetime::error ();
-  if (lexer.peek_token ()->get_id () == LIFETIME)
-    {
-      label = parse_lifetime (false);
-    }
+  auto parsed_label = parse_lifetime (false);
+  auto label = (parsed_label)
+		 ? tl::optional<AST::Lifetime> (parsed_label.value ())
+		 : tl::nullopt;
 
   // parse break return expression if it exists
   ParseRestrictions restrictions;
@@ -7680,12 +7557,10 @@ Parser<ManagedTokenSource>::parse_continue_expr (AST::AttrVec outer_attrs,
       skip_token (CONTINUE);
     }
 
-  // parse label (lifetime) if it exists - create dummy first
-  AST::Lifetime label = AST::Lifetime::error ();
-  if (lexer.peek_token ()->get_id () == LIFETIME)
-    {
-      label = parse_lifetime (false);
-    }
+  auto parsed_label = parse_lifetime (false);
+  auto label = (parsed_label)
+		 ? tl::optional<AST::Lifetime> (parsed_label.value ())
+		 : tl::nullopt;
 
   return std::unique_ptr<AST::ContinueExpr> (
     new AST::ContinueExpr (std::move (label), std::move (outer_attrs), locus));
@@ -7693,14 +7568,15 @@ Parser<ManagedTokenSource>::parse_continue_expr (AST::AttrVec outer_attrs,
 
 // Parses a loop label used in loop expressions.
 template <typename ManagedTokenSource>
-AST::LoopLabel
+tl::expected<AST::LoopLabel, ParseLoopLabelError>
 Parser<ManagedTokenSource>::parse_loop_label (const_TokenPtr tok)
 {
   // parse lifetime - if doesn't exist, assume no label
   if (tok->get_id () != LIFETIME)
     {
       // not necessarily an error
-      return AST::LoopLabel::error ();
+      return tl::unexpected<ParseLoopLabelError> (
+	ParseLoopLabelError::NOT_LOOP_LABEL);
     }
   /* FIXME: check for named lifetime requirement here? or check in semantic
    * analysis phase? */
@@ -7709,10 +7585,12 @@ Parser<ManagedTokenSource>::parse_loop_label (const_TokenPtr tok)
   if (!skip_token (COLON))
     {
       // skip somewhere?
-      return AST::LoopLabel::error ();
+      return tl::unexpected<ParseLoopLabelError> (
+	ParseLoopLabelError::MISSING_COLON);
     }
 
-  return AST::LoopLabel (std::move (label), tok->get_locus ());
+  return tl::expected<AST::LoopLabel, ParseLoopLabelError> (
+    AST::LoopLabel (std::move (label), tok->get_locus ()));
 }
 
 /* Parses an if expression of any kind, including with else, else if, else if
@@ -8065,16 +7943,16 @@ Parser<ManagedTokenSource>::parse_if_let_expr (AST::AttrVec outer_attrs,
 template <typename ManagedTokenSource>
 std::unique_ptr<AST::LoopExpr>
 Parser<ManagedTokenSource>::parse_loop_expr (AST::AttrVec outer_attrs,
-					     AST::LoopLabel label,
+					     tl::optional<AST::LoopLabel> label,
 					     location_t pratt_parsed_loc)
 {
   location_t locus = pratt_parsed_loc;
   if (locus == UNKNOWN_LOCATION)
     {
-      if (label.is_error ())
-	locus = lexer.peek_token ()->get_locus ();
+      if (label)
+	locus = label->get_locus ();
       else
-	locus = label.get_locus ();
+	locus = lexer.peek_token ()->get_locus ();
 
       if (!skip_token (LOOP))
 	{
@@ -8084,8 +7962,8 @@ Parser<ManagedTokenSource>::parse_loop_expr (AST::AttrVec outer_attrs,
     }
   else
     {
-      if (!label.is_error ())
-	locus = label.get_locus ();
+      if (label)
+	locus = label->get_locus ();
     }
 
   // parse loop body, which is required
@@ -8108,17 +7986,17 @@ Parser<ManagedTokenSource>::parse_loop_expr (AST::AttrVec outer_attrs,
  * via parse_labelled_loop_expr, which would call this. */
 template <typename ManagedTokenSource>
 std::unique_ptr<AST::WhileLoopExpr>
-Parser<ManagedTokenSource>::parse_while_loop_expr (AST::AttrVec outer_attrs,
-						   AST::LoopLabel label,
-						   location_t pratt_parsed_loc)
+Parser<ManagedTokenSource>::parse_while_loop_expr (
+  AST::AttrVec outer_attrs, tl::optional<AST::LoopLabel> label,
+  location_t pratt_parsed_loc)
 {
   location_t locus = pratt_parsed_loc;
   if (locus == UNKNOWN_LOCATION)
     {
-      if (label.is_error ())
-	locus = lexer.peek_token ()->get_locus ();
+      if (label)
+	locus = label->get_locus ();
       else
-	locus = label.get_locus ();
+	locus = lexer.peek_token ()->get_locus ();
 
       if (!skip_token (WHILE))
 	{
@@ -8128,8 +8006,8 @@ Parser<ManagedTokenSource>::parse_while_loop_expr (AST::AttrVec outer_attrs,
     }
   else
     {
-      if (!label.is_error ())
-	locus = label.get_locus ();
+      if (label)
+	locus = label->get_locus ();
     }
 
   // ensure it isn't a while let loop
@@ -8181,14 +8059,14 @@ Parser<ManagedTokenSource>::parse_while_loop_expr (AST::AttrVec outer_attrs,
  * parsed via parse_labelled_loop_expr, which would call this. */
 template <typename ManagedTokenSource>
 std::unique_ptr<AST::WhileLetLoopExpr>
-Parser<ManagedTokenSource>::parse_while_let_loop_expr (AST::AttrVec outer_attrs,
-						       AST::LoopLabel label)
+Parser<ManagedTokenSource>::parse_while_let_loop_expr (
+  AST::AttrVec outer_attrs, tl::optional<AST::LoopLabel> label)
 {
   location_t locus = UNKNOWN_LOCATION;
-  if (label.is_error ())
-    locus = lexer.peek_token ()->get_locus ();
+  if (label)
+    locus = label->get_locus ();
   else
-    locus = label.get_locus ();
+    locus = lexer.peek_token ()->get_locus ();
   maybe_skip_token (WHILE);
 
   /* check for possible accidental recognition of a while loop as a while let
@@ -8255,14 +8133,14 @@ Parser<ManagedTokenSource>::parse_while_let_loop_expr (AST::AttrVec outer_attrs,
  * parse_labelled_loop_expr, which would call this. */
 template <typename ManagedTokenSource>
 std::unique_ptr<AST::ForLoopExpr>
-Parser<ManagedTokenSource>::parse_for_loop_expr (AST::AttrVec outer_attrs,
-						 AST::LoopLabel label)
+Parser<ManagedTokenSource>::parse_for_loop_expr (
+  AST::AttrVec outer_attrs, tl::optional<AST::LoopLabel> label)
 {
   location_t locus = UNKNOWN_LOCATION;
-  if (label.is_error ())
-    locus = lexer.peek_token ()->get_locus ();
+  if (label)
+    locus = label->get_locus ();
   else
-    locus = label.get_locus ();
+    locus = lexer.peek_token ()->get_locus ();
   maybe_skip_token (FOR);
 
   // parse pattern, which is required
@@ -8340,8 +8218,9 @@ Parser<ManagedTokenSource>::parse_labelled_loop_expr (const_TokenPtr tok,
     }
 
   // parse loop label (required)
-  AST::LoopLabel label = parse_loop_label (tok);
-  if (label.is_error ())
+  // TODO: Convert this return type to tl::expected instead of tl::optional
+  auto parsed_label = parse_loop_label (tok);
+  if (!parsed_label)
     {
       Error error (lexer.peek_token ()->get_locus (),
 		   "failed to parse loop label in labelled loop expr");
@@ -8350,6 +8229,10 @@ Parser<ManagedTokenSource>::parse_labelled_loop_expr (const_TokenPtr tok,
       // skip?
       return nullptr;
     }
+
+  auto label = parsed_label
+		 ? tl::optional<AST::LoopLabel> (parsed_label.value ())
+		 : tl::nullopt;
 
   // branch on next token
   const_TokenPtr t = lexer.peek_token ();
@@ -8725,10 +8608,10 @@ Parser<ManagedTokenSource>::parse_array_expr (AST::AttrVec outer_attrs,
 
       std::vector<std::unique_ptr<AST::Expr>> exprs;
       auto array_elems
-	= Rust::make_unique<AST::ArrayElemsValues> (std::move (exprs), locus);
-      return Rust::make_unique<AST::ArrayExpr> (std::move (array_elems),
-						std::move (inner_attrs),
-						std::move (outer_attrs), locus);
+	= std::make_unique<AST::ArrayElemsValues> (std::move (exprs), locus);
+      return std::make_unique<AST::ArrayExpr> (std::move (array_elems),
+					       std::move (inner_attrs),
+					       std::move (outer_attrs), locus);
     }
   else
     {
@@ -9728,8 +9611,12 @@ Parser<ManagedTokenSource>::parse_reference_type_inner (location_t locus)
   AST::Lifetime lifetime = AST::Lifetime::elided ();
   if (lexer.peek_token ()->get_id () == LIFETIME)
     {
-      lifetime = parse_lifetime (true);
-      if (lifetime.is_error ())
+      auto parsed_lifetime = parse_lifetime (true);
+      if (parsed_lifetime)
+	{
+	  lifetime = parsed_lifetime.value ();
+	}
+      else
 	{
 	  Error error (lexer.peek_token ()->get_locus (),
 		       "failed to parse lifetime in reference type");
@@ -10301,8 +10188,10 @@ Parser<ManagedTokenSource>::parse_literal_or_range_pattern ()
     }
 
   const_TokenPtr next = lexer.peek_token ();
-  if (next->get_id () == DOT_DOT_EQ || next->get_id () == ELLIPSIS)
+  if (next->get_id () == DOT_DOT_EQ || next->get_id () == ELLIPSIS
+      || next->get_id () == DOT_DOT)
     {
+      AST::RangeKind kind = AST::tokenid_to_rangekind (next->get_id ());
       // range pattern
       lexer.skip_token ();
       std::unique_ptr<AST::RangePatternBound> lower (
@@ -10323,7 +10212,7 @@ Parser<ManagedTokenSource>::parse_literal_or_range_pattern ()
 	}
 
       return std::unique_ptr<AST::RangePattern> (
-	new AST::RangePattern (std::move (lower), std::move (upper),
+	new AST::RangePattern (std::move (lower), std::move (upper), kind,
 			       range_lower->get_locus ()));
     }
   else
@@ -10475,6 +10364,7 @@ Parser<ManagedTokenSource>::parse_pattern ()
       lexer.skip_token ();
       alts.push_back (parse_pattern_no_alt ());
     }
+
   while (lexer.peek_token ()->get_id () == PIPE);
 
   /* alternates */
@@ -10517,6 +10407,11 @@ Parser<ManagedTokenSource>::parse_pattern_no_alt ()
       lexer.skip_token ();
       return std::unique_ptr<AST::LiteralPattern> (
 	new AST::LiteralPattern (t->get_str (), AST::Literal::BYTE_STRING,
+				 t->get_locus (), t->get_type_hint ()));
+    case RAW_STRING_LITERAL:
+      lexer.skip_token ();
+      return std::unique_ptr<AST::LiteralPattern> (
+	new AST::LiteralPattern (t->get_str (), AST::Literal::RAW_STRING,
 				 t->get_locus (), t->get_type_hint ()));
     // raw string and raw byte string literals too if they are readded to
     // lexer
@@ -10571,11 +10466,12 @@ Parser<ManagedTokenSource>::parse_pattern_no_alt ()
 	  = parse_qualified_path_in_expression ();
 
 	if (lexer.peek_token ()->get_id () == DOT_DOT_EQ
-	    || lexer.peek_token ()->get_id () == ELLIPSIS)
+	    || lexer.peek_token ()->get_id () == ELLIPSIS
+	    || lexer.peek_token ()->get_id () == DOT_DOT)
 	  {
 	    // qualified range pattern bound, so parse rest of range pattern
-	    bool has_ellipsis_syntax
-	      = lexer.peek_token ()->get_id () == ELLIPSIS;
+	    AST::RangeKind kind
+	      = AST::tokenid_to_rangekind (lexer.peek_token ()->get_id ());
 	    lexer.skip_token ();
 
 	    std::unique_ptr<AST::RangePatternBoundQualPath> lower_bound (
@@ -10585,8 +10481,8 @@ Parser<ManagedTokenSource>::parse_pattern_no_alt ()
 
 	    return std::unique_ptr<AST::RangePattern> (
 	      new AST::RangePattern (std::move (lower_bound),
-				     std::move (upper_bound), t->get_locus (),
-				     has_ellipsis_syntax));
+				     std::move (upper_bound), kind,
+				     t->get_locus ()));
 	  }
 	else
 	  {
@@ -10608,10 +10504,10 @@ Parser<ManagedTokenSource>::parse_pattern_no_alt ()
 	switch (next->get_id ())
 	  {
 	  case DOT_DOT_EQ:
+	  case DOT_DOT:
 	    case ELLIPSIS: {
 	      // qualified range pattern bound, so parse rest of range pattern
-	      bool has_ellipsis_syntax
-		= lexer.peek_token ()->get_id () == ELLIPSIS;
+	      AST::RangeKind kind = AST::tokenid_to_rangekind (next->get_id ());
 	      lexer.skip_token ();
 
 	      std::unique_ptr<AST::RangePatternBoundPath> lower_bound (
@@ -10621,8 +10517,8 @@ Parser<ManagedTokenSource>::parse_pattern_no_alt ()
 
 	      return std::unique_ptr<AST::RangePattern> (
 		new AST::RangePattern (std::move (lower_bound),
-				       std::move (upper_bound),
-				       UNKNOWN_LOCATION, has_ellipsis_syntax));
+				       std::move (upper_bound), kind,
+				       next->get_locus ()));
 	    }
 	  case EXCLAM:
 	    return parse_macro_invocation_partial (std::move (path),
@@ -10630,14 +10526,6 @@ Parser<ManagedTokenSource>::parse_pattern_no_alt ()
 	    case LEFT_PAREN: {
 	      // tuple struct
 	      lexer.skip_token ();
-
-	      // check if empty tuple
-	      if (lexer.peek_token ()->get_id () == RIGHT_PAREN)
-		{
-		  lexer.skip_token ();
-		  return std::unique_ptr<AST::TupleStructPattern> (
-		    new AST::TupleStructPattern (std::move (path), nullptr));
-		}
 
 	      // parse items
 	      std::unique_ptr<AST::TupleStructItems> items
@@ -11094,14 +10982,6 @@ Parser<ManagedTokenSource>::parse_ident_leading_pattern ()
 	// DEBUG
 	rust_debug ("parsing tuple struct pattern");
 
-	// check if empty tuple
-	if (lexer.peek_token ()->get_id () == RIGHT_PAREN)
-	  {
-	    lexer.skip_token ();
-	    return std::unique_ptr<AST::TupleStructPattern> (
-	      new AST::TupleStructPattern (std::move (path), nullptr));
-	  }
-
 	// parse items
 	std::unique_ptr<AST::TupleStructItems> items
 	  = parse_tuple_struct_items ();
@@ -11148,9 +11028,11 @@ Parser<ManagedTokenSource>::parse_ident_leading_pattern ()
 				  std::move (elems)));
       }
     case DOT_DOT_EQ:
+    case DOT_DOT:
       case ELLIPSIS: {
 	// range
-	bool has_ellipsis_syntax = lexer.peek_token ()->get_id () == ELLIPSIS;
+	AST::RangeKind kind
+	  = AST::tokenid_to_rangekind (lexer.peek_token ()->get_id ());
 
 	lexer.skip_token ();
 
@@ -11161,8 +11043,8 @@ Parser<ManagedTokenSource>::parse_ident_leading_pattern ()
 
 	return std::unique_ptr<AST::RangePattern> (
 	  new AST::RangePattern (std::move (lower_bound),
-				 std::move (upper_bound), UNKNOWN_LOCATION,
-				 has_ellipsis_syntax));
+				 std::move (upper_bound), kind,
+				 t->get_locus ()));
       }
       case PATTERN_BIND: {
 	// only allow on single-segment paths
@@ -11754,6 +11636,7 @@ template <typename ManagedTokenSource>
 std::unique_ptr<AST::StructExprField>
 Parser<ManagedTokenSource>::parse_struct_expr_field ()
 {
+  AST::AttrVec outer_attrs = parse_outer_attributes ();
   const_TokenPtr t = lexer.peek_token ();
   switch (t->get_id ())
     {
@@ -11779,6 +11662,7 @@ Parser<ManagedTokenSource>::parse_struct_expr_field ()
 	  return std::unique_ptr<AST::StructExprFieldIdentifierValue> (
 	    new AST::StructExprFieldIdentifierValue (std::move (ident),
 						     std::move (expr),
+						     std::move (outer_attrs),
 						     t->get_locus ()));
 	}
       else
@@ -11789,6 +11673,7 @@ Parser<ManagedTokenSource>::parse_struct_expr_field ()
 
 	  return std::unique_ptr<AST::StructExprFieldIdentifier> (
 	    new AST::StructExprFieldIdentifier (std::move (ident),
+						std::move (outer_attrs),
 						t->get_locus ()));
 	}
       case INT_LITERAL: {
@@ -11816,6 +11701,7 @@ Parser<ManagedTokenSource>::parse_struct_expr_field ()
 
 	return std::unique_ptr<AST::StructExprFieldIndexValue> (
 	  new AST::StructExprFieldIndexValue (index, std::move (expr),
+					      std::move (outer_attrs),
 					      t->get_locus ()));
       }
     case DOT_DOT:
@@ -12321,6 +12207,10 @@ Parser<ManagedTokenSource>::null_denotation_not_path (
       return std::unique_ptr<AST::LiteralExpr> (
 	new AST::LiteralExpr (tok->get_str (), AST::Literal::BYTE_STRING,
 			      tok->get_type_hint (), {}, tok->get_locus ()));
+    case RAW_STRING_LITERAL:
+      return std::unique_ptr<AST::LiteralExpr> (
+	new AST::LiteralExpr (tok->get_str (), AST::Literal::RAW_STRING,
+			      tok->get_type_hint (), {}, tok->get_locus ()));
     case CHAR_LITERAL:
       return std::unique_ptr<AST::LiteralExpr> (
 	new AST::LiteralExpr (tok->get_str (), AST::Literal::CHAR,
@@ -12427,33 +12317,64 @@ Parser<ManagedTokenSource>::null_denotation_not_path (
       case AMP: {
 	// (single) "borrow" expression - shared (mutable) or immutable
 	std::unique_ptr<AST::Expr> expr = nullptr;
-	bool is_mut_borrow = false;
+	Mutability mutability = Mutability::Imm;
+	bool raw_borrow = false;
 
 	ParseRestrictions entered_from_unary;
 	entered_from_unary.entered_from_unary = true;
 	if (!restrictions.can_be_struct_expr)
 	  entered_from_unary.can_be_struct_expr = false;
 
-	if (lexer.peek_token ()->get_id () == MUT)
+	auto is_mutability = [] (const_TokenPtr token) {
+	  return token->get_id () == CONST || token->get_id () == MUT;
+	};
+
+	auto t = lexer.peek_token ();
+	// Weak raw keyword, we look (1) ahead and treat it as an identifier if
+	// there is no mut nor const.
+	if (t->get_id () == IDENTIFIER
+	    && t->get_str () == Values::WeakKeywords::RAW
+	    && is_mutability (lexer.peek_token (1)))
+	  {
+	    lexer.skip_token ();
+	    switch (lexer.peek_token ()->get_id ())
+	      {
+	      case MUT:
+		mutability = Mutability::Mut;
+		break;
+	      case CONST:
+		mutability = Mutability::Imm;
+		break;
+	      default:
+		rust_error_at (lexer.peek_token ()->get_locus (),
+			       "raw borrow should be either const or mut");
+	      }
+	    lexer.skip_token ();
+	    expr = parse_expr (LBP_UNARY_AMP_MUT, {}, entered_from_unary);
+	    raw_borrow = true;
+	  }
+	else if (t->get_id () == MUT)
 	  {
 	    lexer.skip_token ();
 	    expr = parse_expr (LBP_UNARY_AMP_MUT, {}, entered_from_unary);
-	    is_mut_borrow = true;
+	    mutability = Mutability::Mut;
+	    raw_borrow = false;
 	  }
 	else
 	  {
 	    expr = parse_expr (LBP_UNARY_AMP, {}, entered_from_unary);
+	    raw_borrow = false;
 	  }
 
 	// FIXME: allow outer attributes on expression
 	return std::unique_ptr<AST::BorrowExpr> (
-	  new AST::BorrowExpr (std::move (expr), is_mut_borrow, false,
+	  new AST::BorrowExpr (std::move (expr), mutability, raw_borrow, false,
 			       std::move (outer_attrs), tok->get_locus ()));
       }
       case LOGICAL_AND: {
 	// (double) "borrow" expression - shared (mutable) or immutable
 	std::unique_ptr<AST::Expr> expr = nullptr;
-	bool is_mut_borrow = false;
+	Mutability mutability = Mutability::Imm;
 
 	ParseRestrictions entered_from_unary;
 	entered_from_unary.entered_from_unary = true;
@@ -12462,16 +12383,17 @@ Parser<ManagedTokenSource>::null_denotation_not_path (
 	  {
 	    lexer.skip_token ();
 	    expr = parse_expr (LBP_UNARY_AMP_MUT, {}, entered_from_unary);
-	    is_mut_borrow = true;
+	    mutability = Mutability::Mut;
 	  }
 	else
 	  {
 	    expr = parse_expr (LBP_UNARY_AMP, {}, entered_from_unary);
+	    mutability = Mutability::Imm;
 	  }
 
 	// FIXME: allow outer attributes on expression
 	return std::unique_ptr<AST::BorrowExpr> (
-	  new AST::BorrowExpr (std::move (expr), is_mut_borrow, true,
+	  new AST::BorrowExpr (std::move (expr), mutability, false, true,
 			       std::move (outer_attrs), tok->get_locus ()));
       }
     case OR:
@@ -12495,8 +12417,8 @@ Parser<ManagedTokenSource>::null_denotation_not_path (
       return parse_continue_expr (std::move (outer_attrs), tok->get_locus ());
     case LEFT_CURLY:
       // ok - this is an expression with block for once.
-      return parse_block_expr (std::move (outer_attrs),
-			       AST::LoopLabel::error (), tok->get_locus ());
+      return parse_block_expr (std::move (outer_attrs), tl::nullopt,
+			       tok->get_locus ());
     case IF:
       // if or if let, so more lookahead to find out
       if (lexer.peek_token ()->get_id () == LET)
@@ -12512,7 +12434,7 @@ Parser<ManagedTokenSource>::null_denotation_not_path (
     case LIFETIME:
       return parse_labelled_loop_expr (tok, std::move (outer_attrs));
     case LOOP:
-      return parse_loop_expr (std::move (outer_attrs), AST::LoopLabel::error (),
+      return parse_loop_expr (std::move (outer_attrs), tl::nullopt,
 			      tok->get_locus ());
     case WHILE:
       if (lexer.peek_token ()->get_id () == LET)
@@ -12521,13 +12443,11 @@ Parser<ManagedTokenSource>::null_denotation_not_path (
 	}
       else
 	{
-	  return parse_while_loop_expr (std::move (outer_attrs),
-					AST::LoopLabel::error (),
+	  return parse_while_loop_expr (std::move (outer_attrs), tl::nullopt,
 					tok->get_locus ());
 	}
     case FOR:
-      return parse_for_loop_expr (std::move (outer_attrs),
-				  AST::LoopLabel::error ());
+      return parse_for_loop_expr (std::move (outer_attrs), tl::nullopt);
     case MATCH_KW:
       // also an expression with block
       return parse_match_expr (std::move (outer_attrs), tok->get_locus ());
@@ -12537,6 +12457,8 @@ Parser<ManagedTokenSource>::null_denotation_not_path (
     case UNSAFE:
       return parse_unsafe_block_expr (std::move (outer_attrs),
 				      tok->get_locus ());
+    case BOX:
+      return parse_box_expr (std::move (outer_attrs), tok->get_locus ());
     case UNDERSCORE:
       add_error (
 	Error (tok->get_locus (),
@@ -14135,6 +14057,7 @@ Parser<ManagedTokenSource>::parse_struct_expr_struct_partial (
       /* technically this would give a struct base-only struct, but this
        * algorithm should work too. As such, AST type not happening. */
     case IDENTIFIER:
+    case HASH:
       case INT_LITERAL: {
 	// struct with struct expr fields
 

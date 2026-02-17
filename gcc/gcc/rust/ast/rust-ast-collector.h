@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -210,7 +210,6 @@ public:
   void visit (TupleField &field);
   void visit (StructField &field);
   void visit (SimplePathSegment &segment);
-  void visit (NamedFunctionParam &param);
   void visit (MacroRule &rule);
   void visit (WhereClause &rule);
   void visit (std::vector<LifetimeParam> &for_lifetimes);
@@ -288,6 +287,7 @@ public:
   void visit (RangeFromToInclExpr &expr);
   void visit (RangeToInclExpr &expr);
   void visit (ReturnExpr &expr);
+  void visit (BoxExpr &expr);
   void visit (UnsafeBlockExpr &expr);
   void visit (LoopExpr &expr);
   void visit (WhileLoopExpr &expr);
@@ -302,7 +302,7 @@ public:
   void visit (MatchExpr &expr);
   void visit (AwaitExpr &expr);
   void visit (AsyncBlockExpr &expr);
-
+  void visit (InlineAsm &expr);
   // rust-item.h
   void visit (TypeParam &param);
   void visit (LifetimeWhereClauseItem &item);
@@ -333,7 +333,6 @@ public:
   void visit (TraitImpl &impl);
   void visit (ExternalTypeItem &item);
   void visit (ExternalStaticItem &item);
-  void visit (ExternalFunctionItem &item);
   void visit (ExternBlock &block);
 
   // rust-macro.h
@@ -398,6 +397,8 @@ public:
   void visit (SliceType &type);
   void visit (InferredType &type);
   void visit (BareFunctionType &type);
+
+  void visit (FormatArgs &fmt);
 };
 } // namespace AST
 

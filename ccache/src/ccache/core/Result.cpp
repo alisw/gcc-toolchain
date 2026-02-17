@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2019-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,20 +16,20 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "Result.hpp"
+#include "result.hpp"
 
-#include <ccache/Config.hpp>
-#include <ccache/Context.hpp>
 #include <ccache/ccache.hpp>
-#include <ccache/core/CacheEntryDataReader.hpp>
-#include <ccache/core/CacheEntryDataWriter.hpp>
-#include <ccache/core/Statistic.hpp>
+#include <ccache/config.hpp>
+#include <ccache/context.hpp>
+#include <ccache/core/cacheentrydatareader.hpp>
+#include <ccache/core/cacheentrydatawriter.hpp>
 #include <ccache/core/exceptions.hpp>
-#include <ccache/util/Bytes.hpp>
-#include <ccache/util/DirEntry.hpp>
-#include <ccache/util/FileStream.hpp>
+#include <ccache/core/statistic.hpp>
+#include <ccache/util/bytes.hpp>
+#include <ccache/util/direntry.hpp>
 #include <ccache/util/expected.hpp>
 #include <ccache/util/file.hpp>
+#include <ccache/util/filestream.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/logging.hpp>
@@ -81,9 +81,9 @@ const uint8_t k_raw_file_marker = 1;
 const uint8_t k_max_raw_file_entries = 10;
 
 bool
-should_store_raw_file(const Config& config, core::Result::FileType type)
+should_store_raw_file(const Config& config, core::result::FileType type)
 {
-  if (!core::Result::Serializer::use_raw_files(config)) {
+  if (!core::result::Serializer::use_raw_files(config)) {
     return false;
   }
 
@@ -103,12 +103,12 @@ should_store_raw_file(const Config& config, core::Result::FileType type)
   // files that become large enough that it's of interest to clone or hard link
   // them, so we keep things simple for now. This will also save i-nodes in the
   // cache.
-  return type == core::Result::FileType::object;
+  return type == core::result::FileType::object;
 }
 
 } // namespace
 
-namespace core::Result {
+namespace core::result {
 
 const uint8_t k_format_version = 0;
 
@@ -161,26 +161,23 @@ file_type_to_string(FileType type)
   return k_unknown_file_type;
 }
 
-std::string
+fs::path
 gcno_file_in_mangled_form(const Context& ctx)
 {
   const auto& output_obj = ctx.args_info.output_obj;
-  const std::string abs_output_obj =
-    fs::path(output_obj).is_absolute()
-      ? output_obj
-      : FMT("{}/{}", ctx.apparent_cwd, output_obj);
-  std::string hashified_obj = abs_output_obj;
+  std::string hashified_obj = (ctx.apparent_cwd / output_obj).generic_string();
   std::replace(hashified_obj.begin(), hashified_obj.end(), '/', '#');
-  return fs::path(hashified_obj).replace_extension(".gcno").string();
+  return util::with_extension(hashified_obj, ".gcno");
 }
 
-std::string
+fs::path
 gcno_file_in_unmangled_form(const Context& ctx)
 {
-  return fs::path(ctx.args_info.output_obj).replace_extension(".gcno").string();
+  return util::with_extension(ctx.args_info.output_obj, ".gcno");
 }
 
-Deserializer::Deserializer(nonstd::span<const uint8_t> data) : m_data(data)
+Deserializer::Deserializer(nonstd::span<const uint8_t> data)
+  : m_data(data)
 {
 }
 
@@ -254,7 +251,7 @@ Serializer::add_data(const FileType file_type, nonstd::span<const uint8_t> data)
 }
 
 bool
-Serializer::add_file(const FileType file_type, const std::string& path)
+Serializer::add_file(const FileType file_type, const fs::path& path)
 {
   m_serialized_size += 1 + 1 + 8; // marker + file_type + file_size
   if (!should_store_raw_file(m_config, file_type)) {
@@ -264,7 +261,7 @@ Serializer::add_file(const FileType file_type, const std::string& path)
     }
     m_serialized_size += entry.size();
   }
-  m_file_entries.push_back(FileEntry{file_type, path});
+  m_file_entries.push_back(FileEntry{file_type, path.string()});
   return true;
 }
 
@@ -341,4 +338,4 @@ Serializer::get_raw_files() const
   return m_raw_files;
 }
 
-} // namespace core::Result
+} // namespace core::result

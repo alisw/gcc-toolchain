@@ -16,13 +16,13 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "DirEntry.hpp"
+#include "direntry.hpp"
 
-#include <ccache/util/Finalizer.hpp>
-#include <ccache/util/PathString.hpp>
+#include <ccache/util/defer.hpp>
 #include <ccache/util/file.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/logging.hpp>
+#include <ccache/util/pathstring.hpp>
 #include <ccache/util/wincompat.hpp>
 
 #ifdef _WIN32
@@ -30,8 +30,6 @@
 #endif
 
 #include <cstring>
-
-using pstr = util::PathString;
 
 namespace {
 
@@ -41,14 +39,19 @@ template<typename Proc>
 Proc*
 get_proc_address(HMODULE module, const char* proc_name)
 {
-#  if defined __GNUC__
+#  if __GNUC__ >= 8
 #    pragma GCC diagnostic push
-#    if __GNUC__ >= 8
-#      pragma GCC diagnostic ignored "-Wcast-function-type"
-#    endif
+#    pragma GCC diagnostic ignored "-Wcast-function-type"
+#  endif
+#  if __clang_major__ >= 19
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wcast-function-type-mismatch"
 #  endif
   return reinterpret_cast<Proc*>(GetProcAddress(module, proc_name));
-#  if defined __GNUC__
+#  if __clang_major__ >= 19
+#    pragma clang diagnostic pop
+#  endif
+#  if __GNUC__ >= 8
 #    pragma GCC diagnostic pop
 #  endif
 }
@@ -168,7 +171,7 @@ win32_stat_impl(const char* path,
     return false;
   }
 
-  util::Finalizer closer([&] { CloseHandle(handle); });
+  DEFER(CloseHandle(handle));
 
   switch (GetFileType(handle)) {
   case FILE_TYPE_DISK: {
@@ -268,8 +271,8 @@ DirEntry::do_stat() const
   } else
 #endif
   {
-    auto mpath = pstr(m_path);
-    result = lstat_func(mpath, &m_stat);
+    util::PathString mpath(m_path);
+    result = lstat_func(mpath.c_str(), &m_stat);
     if (result == 0) {
       if (S_ISLNK(m_stat.st_mode)
 #ifdef _WIN32
@@ -278,7 +281,7 @@ DirEntry::do_stat() const
       ) {
         m_is_symlink = true;
         stat_t st;
-        if (stat_func(mpath, &st) == 0) {
+        if (stat_func(mpath.c_str(), &st) == 0) {
           m_stat = st;
           m_exists = true;
         }

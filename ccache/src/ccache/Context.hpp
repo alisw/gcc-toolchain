@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2020-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -18,19 +18,19 @@
 
 #pragma once
 
-#include <ccache/Args.hpp>
-#include <ccache/ArgsInfo.hpp>
-#include <ccache/Config.hpp>
-#include <ccache/Hash.hpp>
-#include <ccache/core/Manifest.hpp>
-#include <ccache/storage/Storage.hpp>
-#include <ccache/util/Bytes.hpp>
-#include <ccache/util/FileStream.hpp>
-#include <ccache/util/NonCopyable.hpp>
-#include <ccache/util/TimePoint.hpp>
+#include <ccache/argsinfo.hpp>
+#include <ccache/config.hpp>
+#include <ccache/core/manifest.hpp>
+#include <ccache/hash.hpp>
+#include <ccache/storage/storage.hpp>
+#include <ccache/util/args.hpp>
+#include <ccache/util/bytes.hpp>
+#include <ccache/util/filestream.hpp>
+#include <ccache/util/noncopyable.hpp>
+#include <ccache/util/timepoint.hpp>
 
 #ifdef INODE_CACHE_SUPPORTED
-#  include <ccache/InodeCache.hpp>
+#  include <ccache/inodecache.hpp>
 #endif
 
 #include <sys/types.h>
@@ -52,7 +52,7 @@ public:
 
   // Read configuration, initialize logging, etc. Typically not called from unit
   // tests.
-  void initialize(Args&& compiler_and_args,
+  void initialize(util::Args&& compiler_and_args,
                   const std::vector<std::string>& cmdline_config_settings);
 
   ArgsInfo args_info;
@@ -65,7 +65,7 @@ public:
   std::filesystem::path apparent_cwd;
 
   // The original argument list.
-  Args orig_args;
+  util::Args orig_args;
 
   // Files included by the preprocessor and their hashes.
   std::unordered_map<std::string, Hash::Digest> included_files;
@@ -74,7 +74,7 @@ public:
   bool diagnostics_color_failed = false;
 
   // The name of the temporary preprocessed file.
-  std::string i_tmpfile;
+  std::filesystem::path i_tmpfile;
 
   // The preprocessor's stderr output.
   util::Bytes cpp_stderr_data;
@@ -116,7 +116,7 @@ public:
   bool auto_depend_mode = false;
 
   // Register a temporary file to remove at program exit.
-  void register_pending_tmp_file(const std::string& path);
+  void register_pending_tmp_file(const std::filesystem::path& path);
 
 private:
   // Options to ignore for the hash.
@@ -125,7 +125,7 @@ private:
   // [Start of variables touched by the signal handler]
 
   // Temporary files to remove at program exit.
-  std::vector<std::string> m_pending_tmp_files;
+  std::vector<std::filesystem::path> m_pending_tmp_files;
 
   // [End of variables touched by the signal handler]
 

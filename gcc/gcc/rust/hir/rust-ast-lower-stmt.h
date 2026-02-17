@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -45,6 +45,7 @@ public:
   void visit (AST::Trait &trait) override;
   void visit (AST::InherentImpl &impl_block) override;
   void visit (AST::TraitImpl &impl_block) override;
+  void visit (AST::StaticItem &var) override;
 
 private:
   ASTLoweringStmt () : translated (nullptr), terminated (false) {}

@@ -1,5 +1,5 @@
 /* Calculate branch probabilities, and basic block execution counts.
-   Copyright (C) 1990-2024 Free Software Foundation, Inc.
+   Copyright (C) 1990-2025 Free Software Foundation, Inc.
    Contributed by James E. Wilson, UC Berkeley/Cygnus Support;
    based on some ideas from Dain Samples of UC Berkeley.
    Further mangling by Bob Manson, Cygnus Support.
@@ -876,7 +876,7 @@ find_conditions (struct function *fn)
     make_top_index (fnblocks, ctx.B1, ctx.top_index);
 
     /* Bin the Boolean expressions so that exprs[id] -> [x1, x2, ...].  */
-    hash_map<int_hash<unsigned, 0>, vec<basic_block>> exprs;
+    hash_map<int_hash<unsigned, 0>, auto_vec<basic_block>> exprs;
     for (basic_block b : fnblocks)
     {
 	const unsigned uid = condition_uid (fn, b);
@@ -1908,7 +1908,7 @@ tree_profiling (void)
 	  thunk = true;
 	  /* When generate profile, expand thunk to gimple so it can be
 	     instrumented same way as other functions.  */
-	  if (profile_arc_flag || condition_coverage_flag)
+	  if (coverage_instrumentation_p ())
 	    expand_thunk (node, false, true);
 	  /* Read cgraph profile but keep function as thunk at profile-use
 	     time.  */
@@ -1953,7 +1953,7 @@ tree_profiling (void)
   release_profile_file_filtering ();
 
   /* Drop pure/const flags from instrumented functions.  */
-  if (profile_arc_flag || condition_coverage_flag || flag_test_coverage)
+  if (coverage_instrumentation_p () || flag_test_coverage)
     FOR_EACH_DEFINED_FUNCTION (node)
       {
 	if (!gimple_has_body_p (node->decl)
@@ -1985,7 +1985,7 @@ tree_profiling (void)
 
       push_cfun (DECL_STRUCT_FUNCTION (node->decl));
 
-      if (profile_arc_flag || condition_coverage_flag || flag_test_coverage)
+      if (coverage_instrumentation_p () || flag_test_coverage)
 	FOR_EACH_BB_FN (bb, cfun)
 	  {
 	    gimple_stmt_iterator gsi;
@@ -2070,7 +2070,8 @@ pass_ipa_tree_profile::gate (function *)
      disabled.  */
   return (!in_lto_p && !flag_auto_profile
 	  && (flag_branch_probabilities || flag_test_coverage
-	      || profile_arc_flag || condition_coverage_flag));
+	      || coverage_instrumentation_p ())
+	  && !seen_error ());
 }
 
 } // anon namespace

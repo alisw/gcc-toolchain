@@ -69,7 +69,7 @@
 #   and this notice are preserved. This file is offered as-is, without any
 #   warranty.
 
-#serial 30
+#serial 32
 
 dnl #########################################################################
 AC_DEFUN([AX_PATH_BDB], [
@@ -406,7 +406,7 @@ AC_DEFUN([_AX_PATH_BDB_ENV_GET_VERSION_HEADER],[
   _AX_PATH_BDB_ENV_GET_VERSION_HEADER_VERSION_HEADER_VERSION=''
   # Indicate status of checking for Berkeley DB library.
   AC_MSG_CHECKING([for db.h])
-  # could not cache compile manualy
+  # could not cache compile manually
   AC_COMPILE_IFELSE([
     AC_LANG_SOURCE([[
 #include <db.h>

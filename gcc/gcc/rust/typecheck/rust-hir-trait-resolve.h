@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Free Software Foundation, Inc.
+// Copyright (C) 2021-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -57,6 +57,8 @@ public:
   static TraitReference *Resolve (HIR::Trait &trait);
 
   static TraitReference *Lookup (HIR::TypePath &path);
+
+  static HIR::Trait *ResolveHirItem (const HIR::TypePath &path);
 
 private:
   TraitResolver ();

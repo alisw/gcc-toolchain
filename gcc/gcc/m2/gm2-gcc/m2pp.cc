@@ -1,6 +1,6 @@
 /* m2pp.c pretty print trees, output in Modula-2 where possible.
 
-Copyright (C) 2007-2024 Free Software Foundation, Inc.
+Copyright (C) 2007-2025 Free Software Foundation, Inc.
 Contributed by Gaius Mulley <gaius@glam.ac.uk>.
 
 This file is part of GNU Modula-2.
@@ -35,6 +35,12 @@ along with GNU Modula-2; see the file COPYING3.  If not see
 #include "m2pp.h"
 
 #define GM2
+/* VERBOSE_TYPE_DESC enables type descriptions to be generated in the
+   assignment and during variable declarations.  It generates
+   moderately ugly output, although the assignment type information
+   can be useful when tracking down non gimple complient trees (during
+   assignment).  */
+#undef VERBOSE_TYPE_DESC
 
 const char *m2pp_dump_description[M2PP_DUMP_END] =
 {
@@ -898,6 +904,7 @@ m2pp_identifier (pretty *s, tree t)
           else
             snprintf (name, 100, "D_%u", DECL_UID (t));
           m2pp_print (s, name);
+#ifdef VERBOSE_TYPE_DESC
 	  if (TREE_TYPE (t) != NULL_TREE)
 	    {
 	      m2pp_needspace (s);
@@ -905,12 +912,11 @@ m2pp_identifier (pretty *s, tree t)
 	      m2pp_needspace (s);
 	      m2pp_simple_type (s, TREE_TYPE (t));
 	      m2pp_needspace (s);
-#if 0
 	      m2pp_type_lowlevel (s, TREE_TYPE (t));
 	      m2pp_needspace (s);
-#endif
 	      m2pp_print (s, "*)");
 	    }
+#endif
         }
     }
 }
@@ -1842,11 +1848,13 @@ m2pp_constructor (pretty *s, tree t)
     m2pp_print (s, ", ");
   }
   m2pp_print (s, "}");
+#ifdef VERBOSE_TYPE_DESC
   m2pp_print (s, "(* type: ");
   setindent (s, getindent (s) + 8);
   m2pp_type (s, TREE_TYPE (t));
   setindent (s, getindent (s) - 8);
   m2pp_print (s, " *)\n");
+#endif
 }
 
 /* m2pp_complex_expr handle GCC complex_expr tree.  */
@@ -1914,6 +1922,14 @@ m2pp_bit_ior_expr (pretty *s, tree t)
   m2pp_binary (s, t, "|");
 }
 
+/* m2pp_bit_and_expr generate a C style bit and.  */
+
+static void
+m2pp_bit_and_expr (pretty *s, tree t)
+{
+  m2pp_binary (s, t, "&");
+}
+
 /* m2pp_truth_expr.  */
 
 static void
@@ -1926,6 +1942,21 @@ m2pp_truth_expr (pretty *s, tree t, const char *op)
   m2pp_print (s, op);
   m2pp_needspace (s);
   m2pp_print (s, "(");
+  m2pp_expression (s, TREE_OPERAND (t, 1));
+  m2pp_print (s, ")");
+}
+
+/* m2pp_binary_function handle GCC expression tree as a function.  */
+
+static void
+m2pp_binary_function (pretty *s, tree t, const char *funcname)
+{
+  m2pp_print (s, funcname);
+  m2pp_needspace (s);
+  m2pp_print (s, "(");
+  m2pp_expression (s, TREE_OPERAND (t, 0));
+  m2pp_print (s, ",");
+  m2pp_needspace (s);
   m2pp_expression (s, TREE_OPERAND (t, 1));
   m2pp_print (s, ")");
 }
@@ -2077,11 +2108,20 @@ m2pp_simple_expression (pretty *s, tree t)
     case BIT_IOR_EXPR:
       m2pp_bit_ior_expr (s, t);
       break;
+    case BIT_AND_EXPR:
+      m2pp_bit_and_expr (s, t);
+      break;
     case TRUTH_ANDIF_EXPR:
       m2pp_truth_expr (s, t, "AND");
       break;
     case TRUTH_ORIF_EXPR:
       m2pp_truth_expr (s, t, "OR");
+      break;
+    case LROTATE_EXPR:
+      m2pp_binary_function (s, t, "LROTATE");
+      break;
+    case RROTATE_EXPR:
+      m2pp_binary_function (s, t, "RROTATE");      
       break;
     default:
       m2pp_unknown (s, __FUNCTION__, get_tree_code_name (code));
@@ -2322,6 +2362,17 @@ m2pp_asm_expr (pretty *state, tree node)
   m2pp_print (state, ");\n");
 }
 
+/* m2pp_nop_expr display the nop_expr node.  */
+
+static void
+m2pp_nop_expr (pretty *state, tree t)
+{
+  m2pp_begin (state);
+  m2pp_print (state, "(* NOP for debug location *)");
+  m2pp_needspace (state);
+  m2pp_loc (state, t);
+}
+  
 /* m2pp_statement attempts to reconstruct a statement.  */
 
 static void
@@ -2389,6 +2440,9 @@ m2pp_statement (pretty *s, tree t)
       break;
     case IF_STMT:
       m2pp_if_stmt (s, t);
+      break;
+    case NOP_EXPR:
+      m2pp_nop_expr (s, t);
       break;
     case ERROR_MARK:
       m2pp_print (s, "<ERROR CODE>\n");
@@ -2569,15 +2623,20 @@ m2pp_assignment (pretty *s, tree t)
   int o;
 
   m2pp_begin (s);
-
+#ifdef VERBOSE_TYPE_DESC
   /* Print the types of des and expr.  */
+  m2pp_print (s, "(*");
+  m2pp_needspace (s);
   m2pp_type (s, TREE_TYPE (TREE_OPERAND (t, 0)));
   m2pp_needspace (s);
   m2pp_print (s, ":=");
   m2pp_needspace (s);
   m2pp_type (s, TREE_TYPE (TREE_OPERAND (t, 1)));
   m2pp_needspace (s);
-  m2pp_print (s, ";\n");
+  m2pp_print (s, ";");
+  m2pp_needspace (s);
+  m2pp_print (s, "*)\n");
+#endif
   /* Print the assignment statement.  */
   m2pp_designator (s, TREE_OPERAND (t, 0));
   m2pp_needspace (s);

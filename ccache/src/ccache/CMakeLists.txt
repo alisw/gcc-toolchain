@@ -1,26 +1,25 @@
 set(
   source_files
-  Args.cpp
-  Config.cpp
-  Context.cpp
-  Depfile.cpp
-  Hash.cpp
-  ProgressBar.cpp
   argprocessing.cpp
   ccache.cpp
   compopt.cpp
+  config.cpp
+  context.cpp
+  depfile.cpp
   execute.cpp
+  hash.cpp
   hashutil.cpp
   language.cpp
+  progressbar.cpp
   version.cpp
 )
 
 if(INODE_CACHE_SUPPORTED)
-  list(APPEND source_files InodeCache.cpp)
+  list(APPEND source_files inodecache.cpp)
 endif()
 
 if(NOT WIN32)
-  list(APPEND source_files SignalHandler.cpp)
+  list(APPEND source_files signalhandler.cpp)
 endif()
 
 file(GLOB headers *.hpp)
@@ -51,7 +50,6 @@ target_link_libraries(
     dep_tlexpected
     dep_xxhash
   PRIVATE
-    dep_cpphttplib
     dep_zstd
     standard_settings
     standard_warnings
@@ -68,6 +66,14 @@ target_include_directories(ccache_framework PUBLIC ${CMAKE_BINARY_DIR} ${SRC_DIR
 if(REDIS_STORAGE_BACKEND)
   target_compile_definitions(ccache_framework PUBLIC -DHAVE_REDIS_STORAGE_BACKEND)
   target_link_libraries(ccache_framework PRIVATE dep_hiredis)
+endif()
+
+if(HTTP_STORAGE_BACKEND)
+  target_compile_definitions(ccache_framework PUBLIC -DHAVE_HTTP_STORAGE_BACKEND)
+  target_link_libraries(ccache_framework PRIVATE dep_cpphttplib)
+  if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+    target_link_libraries(ccache_framework PRIVATE socket)
+  endif()
 endif()
 
 add_executable(test-lockfile test_lockfile.cpp)

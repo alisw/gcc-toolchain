@@ -16,10 +16,10 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "TestUtil.hpp"
+#include "testutil.hpp"
 
-#include <ccache/util/Fd.hpp>
-#include <ccache/util/Finalizer.hpp>
+#include <ccache/util/defer.hpp>
+#include <ccache/util/fd.hpp>
 #include <ccache/util/wincompat.hpp>
 
 #include <doctest/doctest.h>
@@ -42,11 +42,13 @@ class ScopedHANDLE
 public:
   ScopedHANDLE() = default;
 
-  explicit ScopedHANDLE(HANDLE handle) : m_handle(handle)
+  explicit ScopedHANDLE(HANDLE handle)
+    : m_handle(handle)
   {
   }
 
-  ScopedHANDLE(ScopedHANDLE&& other) : ScopedHANDLE(other.release())
+  ScopedHANDLE(ScopedHANDLE&& other)
+    : ScopedHANDLE(other.release())
   {
   }
 
@@ -64,7 +66,8 @@ public:
     return *this;
   }
 
-  explicit operator bool() const
+  explicit
+  operator bool() const
   {
     return m_handle != INVALID_HANDLE_VALUE;
   }
@@ -104,8 +107,7 @@ TEST_CASE("bsd_mkstemps")
     ++rand_iter;
   });
 
-  util::Finalizer reset_random_source(
-    [] { bsd_mkstemp_set_random_source(nullptr); });
+  DEFER(bsd_mkstemp_set_random_source(nullptr));
 
   SUBCASE("successful")
   {

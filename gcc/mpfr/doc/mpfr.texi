@@ -4,8 +4,8 @@
 @documentencoding UTF-8
 @c Note that the 5 occurrences of the version string in this file
 @c should be updated by the tools/update-version script.
-@set VERSION 4.2.1
-@set UPDATED-MONTH August 2023
+@set VERSION 4.2.2
+@set UPDATED-MONTH March 2025
 @settitle GNU MPFR @value{VERSION}
 @synindex tp fn
 @iftex
@@ -25,10 +25,10 @@
 This manual documents how to install and use the Multiple Precision
 Floating-Point Reliable Library, version @value{VERSION}.
 
-Copyright 1991, 1993-2023 Free Software Foundation, Inc.
+Copyright 1991, 1993-2025 Free Software Foundation, Inc.
 
 Permission is granted to copy, distribute and/or modify this document under
-the terms of the GNU Free Documentation License, Version 1.2 or any later
+the terms of the GNU Free Documentation License, Version 1.3 or any later
 version published by the Free Software Foundation; with no Invariant Sections,
 with no Front-Cover Texts, and with no Back-Cover Texts.  A copy of the
 license is included in @ref{GNU Free Documentation License}.
@@ -587,7 +587,7 @@ specific to MPFR)@. Problems are also mentioned in the FAQ
 Please report problems to the MPFR mailing-list @samp{mpfr@@inria.fr}.
 @xref{Reporting Bugs}.
 Some bug fixes are available on the
-MPFR@tie{}4.2.1 web page @url{https://www.mpfr.org/mpfr-4.2.1/}.
+MPFR@tie{}4.2.2 web page @url{https://www.mpfr.org/mpfr-4.2.2/}.
 
 @section Getting the Latest Version of MPFR
 
@@ -602,7 +602,7 @@ The latest version of MPFR is available from
 @comment Warning! Do not split "MPFR ... @url{...}" across several lines
 @comment as this needs to be updated with update-version.
 If you think you have found a bug in the MPFR library, first have a look
-on the MPFR@tie{}4.2.1 web page @url{https://www.mpfr.org/mpfr-4.2.1/}
+on the MPFR@tie{}4.2.2 web page @url{https://www.mpfr.org/mpfr-4.2.2/}
 and the FAQ @url{https://www.mpfr.org/faq.html}:
 perhaps this bug is already known, in which case you may find there
 a workaround for it.
@@ -832,6 +832,26 @@ The corresponding C data type is @code{mpfr_rnd_t}.
 MPFR has a global (or per-thread) flag for each supported exception and
 provides operations on flags (@ref{Exceptions}). This C data type is used
 to represent a group of flags (or a mask).
+
+@cindex binary128
+@cindex float128
+@tindex @code{_Float128}
+@tindex @code{__float128}
+@tindex @code{mpfr_float128}
+MPFR can be built with binary128 support (a.k.a.@: float128) for some
+conversion functions if the @samp{_Float128} type (from ISO C23) or
+the @samp{__float128} type (a common extension) is available. This is
+automatically detected, but the @samp{--enable-float128} configure option
+can also be used to ensure this support.  For this support, MPFR uses a
+@code{mpfr_float128} macro, which needs to be defined as a supported type
+for the binary128 format, typically @samp{_Float128} or @samp{__float128},
+depending on the compiler and the system used to compile the user code.
+Before including @file{mpfr.h}, the user needs to do the following (in
+any order): define the @code{MPFR_WANT_FLOAT128} macro and define the
+@code{mpfr_float128} macro as the actual float128 type; @file{mpfr.h} will
+define @code{mpfr_float128} as @samp{_Float128} by default, but mainly for
+compatibility with software written for MPFR@tie{}4.1.x and 4.2.0, where
+the prototypes used @samp{_Float128}.
 
 @node MPFR Variable Conventions, Rounding, Nomenclature and Types, MPFR Basics
 @comment  node-name,  next,  previous,  up
@@ -1515,7 +1535,7 @@ These functions assign new values to already initialized floats
 @deftypefunx int mpfr_set_flt (mpfr_t @var{rop}, float @var{op}, mpfr_rnd_t @var{rnd})
 @deftypefunx int mpfr_set_d (mpfr_t @var{rop}, double @var{op}, mpfr_rnd_t @var{rnd})
 @deftypefunx int mpfr_set_ld (mpfr_t @var{rop}, long double @var{op}, mpfr_rnd_t @var{rnd})
-@deftypefunx int mpfr_set_float128 (mpfr_t @var{rop}, _Float128 @var{op}, mpfr_rnd_t @var{rnd})
+@deftypefunx int mpfr_set_float128 (mpfr_t @var{rop}, mpfr_float128 @var{op}, mpfr_rnd_t @var{rnd})
 @deftypefunx int mpfr_set_decimal64 (mpfr_t @var{rop}, _Decimal64 @var{op}, mpfr_rnd_t @var{rnd})
 @deftypefunx int mpfr_set_decimal128 (mpfr_t @var{rop}, _Decimal128 @var{op}, mpfr_rnd_t @var{rnd})
 @deftypefunx int mpfr_set_z (mpfr_t @var{rop}, mpz_t @var{op}, mpfr_rnd_t @var{rnd})
@@ -1527,12 +1547,7 @@ Note that the input 0 is converted to @mm{+}0 by @code{mpfr_set_ui},
 @code{mpfr_set_si}, @code{mpfr_set_uj}, @code{mpfr_set_sj},
 @code{mpfr_set_z}, @code{mpfr_set_q} and
 @code{mpfr_set_f}, regardless of the rounding mode.
-The @code{mpfr_set_float128} function is built only with the configure
-option @samp{--enable-float128}, which requires the compiler or
-system provides the @samp{_Float128} data type
-(GCC 4.3 or later supports this data type);
-to use @code{mpfr_set_float128}, one should define the macro
-@code{MPFR_WANT_FLOAT128} before including @file{mpfr.h}.
+To use the @code{mpfr_set_float128} function, see @ref{Nomenclature and Types}.
 If the system does not support the IEEE@tie{}754 standard,
 @code{mpfr_set_flt}, @code{mpfr_set_d}, @code{mpfr_set_ld},
 @code{mpfr_set_decimal64} and @code{mpfr_set_decimal128}
@@ -1725,7 +1740,7 @@ See @code{mpfr_set_str}.
 @deftypefun float mpfr_get_flt (mpfr_t @var{op}, mpfr_rnd_t @var{rnd})
 @deftypefunx double mpfr_get_d (mpfr_t @var{op}, mpfr_rnd_t @var{rnd})
 @deftypefunx {long double} mpfr_get_ld (mpfr_t @var{op}, mpfr_rnd_t @var{rnd})
-@deftypefunx {_Float128} mpfr_get_float128 (mpfr_t @var{op}, mpfr_rnd_t @var{rnd})
+@deftypefunx {mpfr_float128} mpfr_get_float128 (mpfr_t @var{op}, mpfr_rnd_t @var{rnd})
 @deftypefunx _Decimal64 mpfr_get_decimal64 (mpfr_t @var{op}, mpfr_rnd_t @var{rnd})
 @deftypefunx _Decimal128 mpfr_get_decimal128 (mpfr_t @var{op}, mpfr_rnd_t @var{rnd})
 Convert @var{op} to a @code{float} (respectively @code{double},
@@ -1931,6 +1946,11 @@ Like in usual functions, the inexact flag is set iff the result is inexact.
 Free a string allocated by @code{mpfr_get_str} using the unallocation
 function (@pxref{Memory Handling}).
 The block is assumed to be @code{strlen(@var{str})+1} bytes.
+
+Note: It is allowed to modify the string allocated by @code{mpfr_get_str};
+but when @code{mpfr_free_str} is called, its length must be the same as
+the original one (unless it is guaranteed that the unallocation function
+ignores its size parameter).
 @end deftypefun
 
 @deftypefun int mpfr_fits_ulong_p (mpfr_t @var{op}, mpfr_rnd_t @var{rnd})
@@ -2933,7 +2953,11 @@ The @samp{rounding} field is specific to @code{mpfr_t} arguments and should
 not be used with other types.
 
 With conversion specification not involving @samp{P} and @samp{R} types,
-@code{mpfr_printf} behaves exactly as @code{gmp_printf}.
+@code{mpfr_printf} behaves exactly as @code{gmp_vasprintf} (thus, if GMP
+uses its @code{vsnprintf} replacement, the behavior may differ from the
+C library or from other GMP formatted output functions; for instance, in
+such a case, up to GMP@tie{}6.3.0, the conversion specifiers @samp{a}/@samp{A}
+will not work).
 
 Thus the @samp{conv} specifier @samp{F} is not supported (due to the use
 of @samp{F} as the @samp{type} specifier for @code{mpf_t}), except for
@@ -3059,6 +3083,14 @@ yield the original value.
 @item With @samp{f}, @samp{F}, @samp{g}, and @samp{G}, it is 6.
 @end itemize
 
+For a given number with @samp{a}/@samp{A}, 4 exponent values allow the
+first hexadecimal digit to be non-zero as required, and the choice is
+unspecified in ISO C99 and later. In MPFR, the choice currently depends
+on the value of the precision field (zero or non-zero) and on the input
+value. This may change in the future in order to have a more consistent
+behavior. Details and discussion:
+@url{https://sympa.inria.fr/sympa/arc/mpfr/2021-05/msg00002.html}
+
 @c For the record, concerning the choice for 'e'/'E':
 @c   https://sympa.inria.fr/sympa/arc/mpfr/2019-12/msg00000.html
 @c   https://sympa.inria.fr/sympa/arc/mpfr/2020-01/msg00000.html
@@ -3093,7 +3125,7 @@ occurred.
 
 @deftypefun int mpfr_sprintf (char *@var{buf}, const char *@var{template}, @dots{})
 @deftypefunx int mpfr_vsprintf (char *@var{buf}, const char *@var{template}, va_list @var{ap})
-Form a null-terminated string corresponding to the optional arguments under
+Form a null-terminated array corresponding to the optional arguments under
 the control of the template string @var{template}, and print it in
 @var{buf}. No overlap is permitted between
 @var{buf} and the other arguments.
@@ -3104,7 +3136,7 @@ the terminating null character or a negative value if an error occurred.
 
 @deftypefun int mpfr_snprintf (char *@var{buf}, size_t @var{n}, const char *@var{template}, @dots{})
 @deftypefunx int mpfr_vsnprintf (char *@var{buf}, size_t @var{n}, const char *@var{template}, va_list @var{ap})
-Form a null-terminated string corresponding to the optional arguments under
+Form a null-terminated array corresponding to the optional arguments under
 the control of the template string @var{template}, and print it in
 @var{buf}. If @var{n} is zero, nothing is
 written and @var{buf} may be a null pointer, otherwise, the first
@@ -3117,13 +3149,18 @@ the terminating null character, or a negative value if an error occurred.
 
 @deftypefun int mpfr_asprintf (char **@var{str}, const char *@var{template}, @dots{})
 @deftypefunx int mpfr_vasprintf (char **@var{str}, const char *@var{template}, va_list @var{ap})
-Write their output as a null terminated string in a block of memory allocated
+Write their output as a null-terminated array in a block of memory allocated
 using the allocation function (@pxref{Memory Handling}). A pointer to the
-block is stored in
-@var{str}. The block of memory must be freed using @code{mpfr_free_str}.
-The return value is the number of characters written in the string, excluding
+block is stored in @var{str}. The block of memory must be freed using
+@code{mpfr_free_str}, but you must first make sure that it does not contain
+non-terminating null characters or that the unallocation function does not
+use its size argument.
+The return value is the number of characters written in the array, excluding
 the null-terminator, or a negative value if an error occurred, in which case
 the contents of @var{str} are undefined.
+Note that this return value may be used to know how many bytes may need to
+be set to a non-zero value (in case @samp{%c} was used with the value 0)
+before the call to @code{mpfr_free_str}.
 @end deftypefun
 
 @node Integer and Remainder Related Functions, Rounding-Related Functions, Formatted Output Functions, MPFR Interface
@@ -3646,9 +3683,9 @@ return zero otherwise.
 @end deftypefun
 
 @deftypefun int mpfr_buildopt_float128_p (void)
-Return a non-zero value if MPFR was compiled with @samp{_Float128} support
-(that is, MPFR was built with the @samp{--enable-float128} configure option),
-return zero otherwise.
+Return a non-zero value if MPFR was compiled with binary128 support
+(a.k.a.@: float128), return zero otherwise. @xref{Nomenclature and Types}
+for additional information.
 @end deftypefun
 
 @deftypefun int mpfr_buildopt_decimal_p (void)
@@ -3773,7 +3810,7 @@ The precision @tm{@PREC{}(@var{x})} of @var{x} is not modified by
 this function. @var{rnd} and @var{t} must be the rounding mode
 and the returned ternary value used when computing @var{x}
 (as in @code{mpfr_check_range}). The subnormal exponent range is
-from @var{emin} to @tm{@var{emin}+@PREC{}(@var{x})@minus{}1}.
+from @var{emin} to @tm{@var{emin}+@PREC{}(@var{x})@minus{}2}.
 If the result cannot be represented in the current exponent range of MPFR
 (due to a too small @var{emax}), the behavior is undefined.
 Note that unlike most functions, the result is compared to the exact one,
@@ -4578,18 +4615,18 @@ C code using @code{mpfr_get_z} as the second or third term of
 a conditional operator may also be affected. For instance, the
 following is correct with MPFR@tie{}3.0, but not with MPFR@tie{}2.x:
 @example
-bool ? mpfr_get_z(...) : mpfr_add(...);
+cond ? mpfr_get_z(...) : mpfr_add(...);
 @end example
 On the other hand, the following is correct with MPFR@tie{}2.x, but not
 with MPFR@tie{}3.0:
 @example
-bool ? mpfr_get_z(...) : (void) mpfr_add(...);
+cond ? mpfr_get_z(...) : (void) mpfr_add(...);
 @end example
 Portable code should cast @code{mpfr_get_z(...)} to @code{void} to
 use the type @code{void} for both terms of the conditional operator,
 as in:
 @example
-bool ? (void) mpfr_get_z(...) : (void) mpfr_add(...);
+cond ? (void) mpfr_get_z(...) : (void) mpfr_add(...);
 @end example
 Alternatively, @code{if ... else} can be used instead of the
 conditional operator.
@@ -4824,7 +4861,7 @@ the continuous support of INRIA, and of the LORIA (Nancy, France) and LIP
 (Lyon, France) laboratories. In particular the main authors were or are
 members of the PolKA, Spaces, Cacao, Caramel and Caramba
 project-teams at LORIA and of the
-Ar@'enaire and AriC project-teams at LIP@.
+Ar@'enaire, AriC and Pascaline project-teams at LIP@.
 This project was started during the Fiable (reliable in French) action
 supported by INRIA, and continued during the AOC action.
 The development of MPFR was also supported by a grant

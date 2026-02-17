@@ -151,6 +151,11 @@ namespace __unicode
       { return _M_curr(); }
 
       [[nodiscard]]
+      constexpr iter_difference_t<_Iter> 
+      _M_units() const requires forward_iterator<_Iter>
+      { return _M_to_increment; }
+
+      [[nodiscard]]
       constexpr value_type
       operator*() const { return _M_buf[_M_buf_index]; }
 
@@ -377,7 +382,7 @@ namespace __unicode
 	      {
 		++_M_curr();
 		__to_incr = 2;
-		uint32_t __x = (__u & 0x3F) << 10 | __u2 & 0x3FF;
+		uint32_t __x = (__u & 0x3F) << 10 | (__u2 & 0x3FF);
 		uint32_t __w = (__u >> 6) & 0x1F;
 		__c = (__w + 1) << 16 | __x;
 	      }
@@ -590,9 +595,9 @@ namespace __unicode
   template<typename _View>
     using _Utf32_view = _Utf_view<char32_t, _View>;
 
-inline namespace __v15_1_0
+inline namespace __v16_0_0
 {
-#define _GLIBCXX_GET_UNICODE_DATA 150100
+#define _GLIBCXX_GET_UNICODE_DATA 160000
 #include "unicode-data.h"
 #ifdef _GLIBCXX_GET_UNICODE_DATA
 # error "Invalid unicode data"
@@ -610,6 +615,18 @@ inline namespace __v15_1_0
   }
 
   // @pre c <= 0x10FFFF
+  constexpr bool
+  __should_escape_category(char32_t __c) noexcept
+  {
+    constexpr uint32_t __mask = 0x01;
+    auto* __end = std::end(__escape_edges);
+    auto* __p = std::lower_bound(__escape_edges, __end,
+				 (__c << 1u) + 2);
+    return __p[-1] & __mask;
+  }
+
+
+  // @pre c <= 0x10FFFF
   constexpr _Gcb_property
   __grapheme_cluster_break_property(char32_t __c) noexcept
   {
@@ -625,7 +642,7 @@ inline namespace __v15_1_0
   {
     const auto __end = std::end(__incb_linkers);
     // Array is small enough that linear search is faster than binary search.
-    return std::find(__incb_linkers, __end, __c) != __end;
+    return _GLIBCXX_STD_A::find(__incb_linkers, __end, __c) != __end;
   }
 
   // @pre c <= 0x10FFFF
@@ -943,7 +960,7 @@ inline namespace __v15_1_0
       _Iterator _M_begin;
     };
 
-} // namespace __v15_1_0
+} // namespace __v16_0_0
 
   // Return the field width of a string.
   template<typename _CharT>
@@ -1038,6 +1055,8 @@ inline namespace __v15_1_0
 	    {
 	      string_view __s(__enc);
 	      if (__s.ends_with("//"))
+		__s.remove_suffix(2);
+	      if (__s.ends_with("LE") || __s.ends_with("BE"))
 		__s.remove_suffix(2);
 	      return __s == "16" || __s == "32";
 	    }

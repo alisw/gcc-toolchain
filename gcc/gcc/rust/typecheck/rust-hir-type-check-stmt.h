@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -28,7 +28,7 @@ namespace Resolver {
 class TypeCheckStmt : private TypeCheckBase, private HIR::HIRStmtVisitor
 {
 public:
-  static TyTy::BaseType *Resolve (HIR::Stmt *stmt);
+  static TyTy::BaseType *Resolve (HIR::Stmt &stmt);
 
   void visit (HIR::ExprStmt &stmt) override;
   void visit (HIR::EmptyStmt &stmt) override;

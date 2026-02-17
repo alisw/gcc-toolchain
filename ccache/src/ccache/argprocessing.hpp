@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2020-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -18,11 +18,12 @@
 
 #pragma once
 
-#include <ccache/Args.hpp>
-#include <ccache/core/Statistic.hpp>
+#include <ccache/core/statistic.hpp>
+#include <ccache/util/args.hpp>
 
 #include <tl/expected.hpp>
 
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -31,16 +32,20 @@ class Context;
 
 struct ProcessArgsResult
 {
-  // Arguments (except -E) to send to the preprocessor.
-  Args preprocessor_args;
+  // Arguments (except "-E -o output.i") to send to the preprocessor. These are
+  // part of the input hash (except those marked as AFFECTS_CPP in compopt.cpp).
+  util::Args preprocessor_args;
 
-  // Arguments not sent to the preprocessor but that should be part of the hash.
-  Args extra_args_to_hash;
+  // Arguments to send to the real compiler. Not part of the input hash.
+  util::Args compiler_args;
 
-  // Arguments to send to the real compiler.
-  Args compiler_args;
+  // Arguments not sent to the preprocessor but added to the input hash anyway.
+  util::Args extra_args_to_hash;
 
-  // Whether to include the actual CWD in the hash.
+  // -m*=native arguments to let the preprocessor expand.
+  util::Args native_args;
+
+  // Whether to include the actual CWD in the input hash.
   bool hash_actual_cwd = false;
 };
 
@@ -48,7 +53,7 @@ tl::expected<ProcessArgsResult, core::Statistic> process_args(Context& ctx);
 
 // Return whether `path` represents a precompiled header (see "Precompiled
 // Headers" in GCC docs).
-bool is_precompiled_header(std::string_view path);
+bool is_precompiled_header(const std::filesystem::path& path);
 
 bool option_should_be_ignored(const std::string& arg,
                               const std::vector<std::string>& patterns);

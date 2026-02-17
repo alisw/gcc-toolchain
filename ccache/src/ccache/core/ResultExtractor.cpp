@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2020-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,13 +16,14 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "ResultExtractor.hpp"
+#include "resultextractor.hpp"
 
 #include <ccache/core/exceptions.hpp>
-#include <ccache/util/Bytes.hpp>
-#include <ccache/util/DirEntry.hpp>
+#include <ccache/util/bytes.hpp>
+#include <ccache/util/direntry.hpp>
 #include <ccache/util/expected.hpp>
 #include <ccache/util/file.hpp>
+#include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/wincompat.hpp>
 
@@ -32,12 +33,14 @@
 
 #include <vector>
 
+namespace fs = util::filesystem;
+
 using util::DirEntry;
 
 namespace core {
 
 ResultExtractor::ResultExtractor(
-  const std::string& output_directory,
+  const fs::path& output_directory,
   std::optional<GetRawFilePathFunction> get_raw_file_path)
   : m_output_directory(output_directory),
     m_get_raw_file_path(get_raw_file_path)
@@ -46,26 +49,26 @@ ResultExtractor::ResultExtractor(
 
 void
 ResultExtractor::on_embedded_file(uint8_t /*file_number*/,
-                                  Result::FileType file_type,
+                                  result::FileType file_type,
                                   nonstd::span<const uint8_t> data)
 {
-  std::string suffix = Result::file_type_to_string(file_type);
-  if (suffix == Result::k_unknown_file_type) {
+  std::string suffix = result::file_type_to_string(file_type);
+  if (suffix == result::k_unknown_file_type) {
     suffix =
-      FMT(".type_{}", static_cast<Result::UnderlyingFileTypeInt>(file_type));
+      FMT(".type_{}", static_cast<result::UnderlyingFileTypeInt>(file_type));
   } else if (suffix[0] == '<') {
     suffix[0] = '.';
     suffix.resize(suffix.length() - 1);
   }
 
-  const auto dest_path = FMT("{}/ccache-result{}", m_output_directory, suffix);
+  const auto dest_path = m_output_directory / FMT("ccache-result{}", suffix);
   util::throw_on_error<Error>(util::write_file(dest_path, data),
                               FMT("Failed to write to {}: ", dest_path));
 }
 
 void
 ResultExtractor::on_raw_file(uint8_t file_number,
-                             Result::FileType file_type,
+                             result::FileType file_type,
                              uint64_t file_size)
 {
   if (!m_get_raw_file_path) {

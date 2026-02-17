@@ -1,5 +1,5 @@
 ; Options for the Rust front end.
-; Copyright (C) 2003-2024 Free Software Foundation, Inc.
+; Copyright (C) 2003-2025 Free Software Foundation, Inc.
 ;
 ; This file is part of GCC.
 ;
@@ -211,5 +211,22 @@ Use the temporary and experimental name resolution pipeline instead of the stabl
 frust-borrowcheck
 Rust Var(flag_borrowcheck)
 Use the WIP borrow checker.
+
+frust-panic=
+Rust Joined RejectNegative Enum(frust_panic) Var(flag_rust_panic)
+-frust-edition=[unwind|abort]             Panic strategy to compile crate with
+
+Enum
+Name(frust_panic) Type(int) UnknownError(unknown panic strategy %qs)
+
+EnumValue
+Enum(frust_panic) String(unwind) Value(0)
+
+EnumValue
+Enum(frust_panic) String(abort) Value(1)
+
+frust-overflow-checks
+Rust Var(flag_overflow_checks) Init(1)
+Enable the overflow checks in code generation
 
 ; This comment is to ensure we retain the blank line above.

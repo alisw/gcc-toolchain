@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2020-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,9 +16,9 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "SignalHandler.hpp"
+#include "signalhandler.hpp"
 
-#include <ccache/Context.hpp>
+#include <ccache/context.hpp>
 #include <ccache/util/assertions.hpp>
 
 #include <signal.h> // NOLINT: sigaddset et al are defined in signal.h
@@ -31,7 +31,7 @@ namespace {
 SignalHandler* g_the_signal_handler = nullptr;
 sigset_t g_fatal_signal_set;
 
-const int k_handled_signals[] = {
+const std::vector<int> k_handled_signals = {
   SIGINT,
   SIGTERM,
 #ifdef SIGHUP
@@ -64,7 +64,8 @@ deregister_signal_handler(int signum)
 
 } // namespace
 
-SignalHandler::SignalHandler(Context& ctx) : m_ctx(ctx)
+SignalHandler::SignalHandler(Context& ctx)
+  : m_ctx(ctx)
 {
   ASSERT(!g_the_signal_handler);
   g_the_signal_handler = this;
@@ -100,7 +101,7 @@ SignalHandler::on_signal(int signum)
 
   // Unregister handler for this signal so that we can send the signal to
   // ourselves at the end of the handler.
-  signal(signum, SIG_DFL);
+  std::ignore = signal(signum, SIG_DFL);
 
   // If ccache was killed explicitly, then bring the compiler subprocess (if
   // any) with us as well.
@@ -133,6 +134,12 @@ SignalHandler::unblock_signals()
   sigset_t empty;
   sigemptyset(&empty);
   sigprocmask(SIG_SETMASK, &empty, nullptr);
+}
+
+const std::vector<int>&
+SignalHandler::get_handled_signals()
+{
+  return k_handled_signals;
 }
 
 SignalHandlerBlocker::SignalHandlerBlocker()

@@ -29,6 +29,7 @@ Additionally, the following variables are exported:
   QT_LRELEASE
   QT_LUPDATE
   QT_DIR
+  QMAKE
 @end smallexample
 
 which respectively contain an "-I" flag pointing to the Qt include

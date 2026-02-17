@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -145,7 +145,7 @@ protected:
     const std::vector<std::pair<const TraitReference *, HIR::ImplBlock *>> b)
     const;
 
-  bool is_reciever_generic () const;
+  bool is_receiver_generic () const;
 
   const TyTy::BaseType *receiver;
   const HIR::PathIdentSegment &search;

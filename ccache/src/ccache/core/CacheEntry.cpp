@@ -1,4 +1,4 @@
-// Copyright (C) 2022-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2022-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,21 +16,21 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "CacheEntry.hpp"
+#include "cacheentry.hpp"
 
 #include <ccache/ccache.hpp>
-#include <ccache/core/CacheEntryDataReader.hpp>
-#include <ccache/core/CacheEntryDataWriter.hpp>
-#include <ccache/core/Result.hpp>
+#include <ccache/core/cacheentrydatareader.hpp>
+#include <ccache/core/cacheentrydatawriter.hpp>
 #include <ccache/core/exceptions.hpp>
+#include <ccache/core/result.hpp>
 #include <ccache/core/types.hpp>
-#include <ccache/util/TimePoint.hpp>
-#include <ccache/util/XXH3_128.hpp>
 #include <ccache/util/expected.hpp>
 #include <ccache/util/file.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/logging.hpp>
+#include <ccache/util/timepoint.hpp>
+#include <ccache/util/xxh3_128.hpp>
 #include <ccache/util/zstd.hpp>
 
 #include <cstring>
@@ -91,7 +91,7 @@ CacheEntry::Header::Header(const Config& config,
     compression_type(compression_type_from_config(config)),
     compression_level(compression_level_from_config(config)),
     self_contained(entry_type != CacheEntryType::result
-                   || !core::Result::Serializer::use_raw_files(config)),
+                   || !core::result::Serializer::use_raw_files(config)),
     creation_time(util::TimePoint::now().sec()),
     ccache_version(CCACHE_VERSION),
     namespace_(config.namespace_()),
@@ -194,7 +194,8 @@ CacheEntry::Header::uncompressed_payload_size() const
                                - k_epilogue_fields_size);
 }
 
-CacheEntry::CacheEntry(nonstd::span<const uint8_t> data) : m_header(data)
+CacheEntry::CacheEntry(nonstd::span<const uint8_t> data)
+  : m_header(data)
 {
   const size_t non_payload_size =
     m_header.serialized_size() + k_epilogue_fields_size;

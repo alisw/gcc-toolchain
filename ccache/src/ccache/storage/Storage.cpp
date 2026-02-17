@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2021-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,27 +16,29 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "Storage.hpp"
+#include "storage.hpp"
 
-#include <ccache/Config.hpp>
-#include <ccache/core/CacheEntry.hpp>
-#include <ccache/core/Statistic.hpp>
+#include <ccache/config.hpp>
+#include <ccache/core/cacheentry.hpp>
 #include <ccache/core/exceptions.hpp>
-#include <ccache/storage/remote/FileStorage.hpp>
-#include <ccache/storage/remote/HttpStorage.hpp>
-#ifdef HAVE_REDIS_STORAGE_BACKEND
-#  include <ccache/storage/remote/RedisStorage.hpp>
+#include <ccache/core/statistic.hpp>
+#include <ccache/storage/remote/filestorage.hpp>
+#ifdef HAVE_HTTP_STORAGE_BACKEND
+#  include <ccache/storage/remote/httpstorage.hpp>
 #endif
-#include <ccache/util/Bytes.hpp>
-#include <ccache/util/Timer.hpp>
-#include <ccache/util/Tokenizer.hpp>
-#include <ccache/util/XXH3_64.hpp>
+#ifdef HAVE_REDIS_STORAGE_BACKEND
+#  include <ccache/storage/remote/redisstorage.hpp>
+#endif
 #include <ccache/util/assertions.hpp>
+#include <ccache/util/bytes.hpp>
 #include <ccache/util/expected.hpp>
 #include <ccache/util/file.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/logging.hpp>
 #include <ccache/util/string.hpp>
+#include <ccache/util/timer.hpp>
+#include <ccache/util/tokenizer.hpp>
+#include <ccache/util/xxh3_64.hpp>
 
 #include <cxxurl/url.hpp>
 
@@ -51,10 +53,12 @@ namespace storage {
 const std::unordered_map<std::string /*scheme*/,
                          std::shared_ptr<remote::RemoteStorage>>
   k_remote_storage_implementations = {
-    {"file", std::make_shared<remote::FileStorage>()},
-    {"http", std::make_shared<remote::HttpStorage>()},
+    {"file",       std::make_shared<remote::FileStorage>() },
+#ifdef HAVE_HTTP_STORAGE_BACKEND
+    {"http",       std::make_shared<remote::HttpStorage>() },
+#endif
 #ifdef HAVE_REDIS_STORAGE_BACKEND
-    {"redis", std::make_shared<remote::RedisStorage>()},
+    {"redis",      std::make_shared<remote::RedisStorage>()},
     {"redis+unix", std::make_shared<remote::RedisStorage>()},
 #endif
 };
@@ -158,7 +162,8 @@ parse_storage_config(const std::string_view entry)
     if (parts[i].empty()) {
       continue;
     }
-    const auto [key, right_hand_side] = util::split_once(parts[i], '=');
+    const auto [key, right_hand_side] =
+      util::split_once_into_views(parts[i], '=');
     const auto& raw_value = right_hand_side.value_or("true");
     const auto value =
       util::value_or_throw<core::Error>(util::percent_decode(raw_value));
@@ -240,7 +245,19 @@ get_storage(const std::string& scheme)
   }
 }
 
-Storage::Storage(const Config& config) : local(config), m_config(config)
+std::string
+get_redacted_url_str_for_logging(const Url& url)
+{
+  Url redacted_url(url);
+  if (!url.user_info().empty()) {
+    redacted_url.user_info(k_redacted_password);
+  }
+  return redacted_url.str();
+}
+
+Storage::Storage(const Config& config)
+  : local(config),
+    m_config(config)
 {
 }
 
@@ -269,7 +286,7 @@ Storage::get(const Hash::Hash::Digest& key,
     auto value = local.get(key, type);
     if (value) {
       if (m_config.reshare()) {
-        put_in_remote_storage(key, *value, true);
+        put_in_remote_storage(key, *value, Overwrite::no);
       }
       if (entry_receiver(std::move(*value))) {
         return;
@@ -279,7 +296,7 @@ Storage::get(const Hash::Hash::Digest& key,
 
   get_from_remote_storage(key, type, [&](util::Bytes&& data) {
     if (!m_config.remote_only()) {
-      local.put(key, type, data, true);
+      local.put(key, type, data, Overwrite::no);
     }
     return entry_receiver(std::move(data));
   });
@@ -291,9 +308,9 @@ Storage::put(const Hash::Digest& key,
              nonstd::span<const uint8_t> value)
 {
   if (!m_config.remote_only()) {
-    local.put(key, type, value);
+    local.put(key, type, value, Overwrite::yes);
   }
-  put_in_remote_storage(key, value, false);
+  put_in_remote_storage(key, value, Overwrite::yes);
 }
 
 void
@@ -309,16 +326,6 @@ bool
 Storage::has_remote_storage() const
 {
   return !m_remote_storages.empty();
-}
-
-static std::string
-get_redacted_url_str_for_logging(const Url& url)
-{
-  Url redacted_url(url);
-  if (!url.user_info().empty()) {
-    redacted_url.user_info(k_redacted_password);
-  }
-  return redacted_url.str();
 }
 
 std::string
@@ -495,7 +502,7 @@ Storage::get_from_remote_storage(const Hash::Digest& key,
 void
 Storage::put_in_remote_storage(const Hash::Digest& key,
                                nonstd::span<const uint8_t> value,
-                               bool only_if_missing)
+                               Overwrite overwrite)
 {
   if (!core::CacheEntry::Header(value).self_contained) {
     LOG("Not putting {} in remote storage since it's not self-contained",
@@ -510,7 +517,7 @@ Storage::put_in_remote_storage(const Hash::Digest& key,
     }
 
     Timer timer;
-    const auto result = backend->impl->put(key, value, only_if_missing);
+    const auto result = backend->impl->put(key, value, overwrite);
     const auto ms = timer.measure_ms();
     if (!result) {
       // The backend is expected to log details about the error.

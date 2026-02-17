@@ -27,7 +27,7 @@ of ARG1, [int, size_t].
 
 Generic usage pattern:
 
-1) add a call in configure.in
+1) add a call in configure.ac
 
 @smallexample
  AX_PROTOTYPE(...)
@@ -35,7 +35,7 @@ Generic usage pattern:
 
 2) call autoheader to see which symbols are not covered
 
-3) add the lines in acconfig.h
+3) add the lines in config.h
 
 @smallexample
  /* Type of Nth argument of function */
@@ -46,7 +46,7 @@ Generic usage pattern:
 
 Complete example:
 
-1) configure.in
+1) configure.ac
 
 @smallexample
  AX_PROTOTYPE(getpeername,
@@ -67,11 +67,11 @@ Complete example:
 2) call autoheader
 
 @smallexample
- autoheader: Symbol `GETPEERNAME_ARG2' is not covered by ./acconfig.h
- autoheader: Symbol `GETPEERNAME_ARG3' is not covered by ./acconfig.h
+ autoheader: Symbol `GETPEERNAME_ARG2' is not covered by ./config.h
+ autoheader: Symbol `GETPEERNAME_ARG3' is not covered by ./config.h
 @end smallexample
 
-3) acconfig.h
+3) config.h
 
 @smallexample
  /* Type of second argument of getpeername */

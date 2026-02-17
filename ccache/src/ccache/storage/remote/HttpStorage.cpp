@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2021-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,12 +16,12 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "HttpStorage.hpp"
+#include "httpstorage.hpp"
 
-#include <ccache/Hash.hpp>
 #include <ccache/ccache.hpp>
 #include <ccache/core/exceptions.hpp>
-#include <ccache/storage/Storage.hpp>
+#include <ccache/hash.hpp>
+#include <ccache/storage/storage.hpp>
 #include <ccache/util/assertions.hpp>
 #include <ccache/util/expected.hpp>
 #include <ccache/util/format.hpp>
@@ -49,14 +49,16 @@ public:
 
   tl::expected<bool, Failure> put(const Hash::Digest& key,
                                   nonstd::span<const uint8_t> value,
-                                  bool only_if_missing) override;
+                                  Overwrite overwrite) override;
 
   tl::expected<bool, Failure> remove(const Hash::Digest& key) override;
 
 private:
-  enum class Layout { bazel, flat, subdirs };
+  enum class Layout : uint8_t { bazel, flat, subdirs };
 
-  const std::string m_url_path;
+  Url m_url;
+  std::string m_redacted_url;
+  std::string m_url_path;
   httplib::Client m_http_client;
   Layout m_layout = Layout::subdirs;
 
@@ -107,11 +109,14 @@ failure_from_httplib_error(httplib::Error error)
 
 HttpStorageBackend::HttpStorageBackend(
   const Url& url, const std::vector<Backend::Attribute>& attributes)
-  : m_url_path(get_url_path(url)),
+  : m_url(url),
+    m_redacted_url(get_redacted_url_str_for_logging(url)),
+    m_url_path(get_url_path(url)),
     m_http_client(get_url(url))
 {
   if (!url.user_info().empty()) {
-    const auto [user, password] = util::split_once(url.user_info(), ':');
+    const auto [user, password] =
+      util::split_once_into_views(url.user_info(), ':');
     if (!password) {
       throw core::Fatal(FMT("Expected username:password in URL but got \"{}\"",
                             url.user_info()));
@@ -119,13 +124,13 @@ HttpStorageBackend::HttpStorageBackend(
     m_http_client.set_basic_auth(std::string(user), std::string(*password));
   }
 
-  m_http_client.set_default_headers({
-    {"User-Agent", FMT("ccache/{}", CCACHE_VERSION)},
-  });
   m_http_client.set_keep_alive(true);
 
   auto connect_timeout = k_default_connect_timeout;
   auto operation_timeout = k_default_operation_timeout;
+
+  httplib::Headers default_headers;
+  default_headers.emplace("User-Agent", FMT("ccache/{}", CCACHE_VERSION));
 
   for (const auto& attr : attributes) {
     if (attr.key == "bearer-token") {
@@ -146,6 +151,13 @@ HttpStorageBackend::HttpStorageBackend(
       }
     } else if (attr.key == "operation-timeout") {
       operation_timeout = parse_timeout_attribute(attr.value);
+    } else if (attr.key == "header") {
+      const auto [key, value] = util::split_once_into_views(attr.value, '=');
+      if (value) {
+        default_headers.emplace(std::string(key), std::string(*value));
+      } else {
+        LOG("Incomplete header specification: {}", attr.value);
+      }
     } else if (!is_framework_attribute(attr.key)) {
       LOG("Unknown attribute: {}", attr.key);
     }
@@ -154,6 +166,7 @@ HttpStorageBackend::HttpStorageBackend(
   m_http_client.set_connection_timeout(connect_timeout);
   m_http_client.set_read_timeout(operation_timeout);
   m_http_client.set_write_timeout(operation_timeout);
+  m_http_client.set_default_headers(default_headers);
 }
 
 tl::expected<std::optional<util::Bytes>, RemoteStorage::Backend::Failure>
@@ -162,13 +175,15 @@ HttpStorageBackend::get(const Hash::Digest& key)
   const auto url_path = get_entry_path(key);
   const auto result = m_http_client.Get(url_path);
 
-  if (result.error() != httplib::Error::Success || !result) {
+  if (!result || result.error() != httplib::Error::Success) {
     LOG("Failed to get {} from http storage: {} ({})",
         url_path,
         to_string(result.error()),
         static_cast<int>(result.error()));
     return tl::unexpected(failure_from_httplib_error(result.error()));
   }
+
+  LOG("GET {}{} -> {}", m_redacted_url, url_path, result->status);
 
   if (result->status < 200 || result->status >= 300) {
     // Don't log failure if the entry doesn't exist.
@@ -181,20 +196,21 @@ HttpStorageBackend::get(const Hash::Digest& key)
 tl::expected<bool, RemoteStorage::Backend::Failure>
 HttpStorageBackend::put(const Hash::Digest& key,
                         const nonstd::span<const uint8_t> value,
-                        const bool only_if_missing)
+                        const Overwrite overwrite)
 {
   const auto url_path = get_entry_path(key);
 
-  if (only_if_missing) {
+  if (overwrite == Overwrite::no) {
     const auto result = m_http_client.Head(url_path);
-
-    if (result.error() != httplib::Error::Success || !result) {
+    if (!result || result.error() != httplib::Error::Success) {
       LOG("Failed to check for {} in http storage: {} ({})",
           url_path,
           to_string(result.error()),
           static_cast<int>(result.error()));
       return tl::unexpected(failure_from_httplib_error(result.error()));
     }
+
+    LOG("HEAD {}{} -> {}", m_redacted_url, url_path, result->status);
 
     if (result->status >= 200 && result->status < 300) {
       LOG("Found entry {} already within http storage: status code: {}",
@@ -211,13 +227,15 @@ HttpStorageBackend::put(const Hash::Digest& key,
                       value.size(),
                       content_type);
 
-  if (result.error() != httplib::Error::Success || !result) {
+  if (!result || result.error() != httplib::Error::Success) {
     LOG("Failed to put {} to http storage: {} ({})",
         url_path,
         to_string(result.error()),
         static_cast<int>(result.error()));
     return tl::unexpected(failure_from_httplib_error(result.error()));
   }
+
+  LOG("PUT {}{} -> {}", m_redacted_url, url_path, result->status);
 
   if (result->status < 200 || result->status >= 300) {
     LOG("Failed to put {} to http storage: status code: {}",
@@ -235,13 +253,15 @@ HttpStorageBackend::remove(const Hash::Digest& key)
   const auto url_path = get_entry_path(key);
   const auto result = m_http_client.Delete(url_path);
 
-  if (result.error() != httplib::Error::Success || !result) {
+  if (!result || result.error() != httplib::Error::Success) {
     LOG("Failed to delete {} from http storage: {} ({})",
         url_path,
         to_string(result.error()),
         static_cast<int>(result.error()));
     return tl::unexpected(failure_from_httplib_error(result.error()));
   }
+
+  LOG("DELETE {}{} -> {}", m_redacted_url, url_path, result->status);
 
   if (result->status < 200 || result->status >= 300) {
     LOG("Failed to delete {} from http storage: status code: {}",

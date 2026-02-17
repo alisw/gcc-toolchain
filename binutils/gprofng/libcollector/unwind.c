@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2024 Free Software Foundation, Inc.
+/* Copyright (C) 2021-2026 Free Software Foundation, Inc.
    Contributed by Oracle.
 
    This file is part of GNU Binutils.
@@ -421,7 +421,7 @@ __collector_ext_unwind_init (int record)
   omp_no_walk = 1;
 
   if (__collector_VM_ReadByteInstruction == NULL)
-    __collector_VM_ReadByteInstruction = (int(*)()) dlsym (RTLD_DEFAULT, "Async_VM_ReadByteInstruction");
+    __collector_VM_ReadByteInstruction = (int(*)(unsigned char*)) dlsym (RTLD_DEFAULT, "Async_VM_ReadByteInstruction");
 
 #if ARCH(SPARC)
 #if WSIZE(64)
@@ -1555,8 +1555,8 @@ read_int (unsigned char *pc, int w)
   if (w == 1)
     return *((char *) pc);
   if (w == 2)
-    return *(short*) pc;
-  return *(int*) pc;
+    return pc[0] | (pc[1] << 8);
+  return pc[0] | (pc[1] << 8) | (pc[2] << 16) | (pc[3] << 24);
 }
 
 /* Return codes */

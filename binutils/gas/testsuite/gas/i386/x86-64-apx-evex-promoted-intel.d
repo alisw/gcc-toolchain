@@ -118,6 +118,10 @@ Disassembly of section \.text:
 [	 ]*[a-f0-9]+:[	 ]*62 4c 7d 08 f8 bc 87 23 01 00 00[	 ]+movdir64b[	 ]+r31,\[r31\+rax\*4\+0x123\]
 [	 ]*[a-f0-9]+:[	 ]*62 4c 7c 08 f9 8c 87 23 01 00 00[	 ]+movdiri[	 ]+DWORD PTR \[r31\+rax\*4\+0x123\],r25d
 [	 ]*[a-f0-9]+:[	 ]*62 4c fc 08 f9 bc 87 23 01 00 00[	 ]+movdiri[	 ]+QWORD PTR \[r31\+rax\*4\+0x123\],r31
+[	 ]*[a-f0-9]+:[	 ]*62 cc 7c 08 8a 84 87 23 01 00 00[	 ]+movrs[	 ]+r16b,BYTE PTR \[r31\+rax\*4\+0x123\]
+[	 ]*[a-f0-9]+:[	 ]*62 ec 7d 08 8b 94 80 23 01 00 00[	 ]+movrs[	 ]+r18w,WORD PTR \[r16\+rax\*4\+0x123\]
+[	 ]*[a-f0-9]+:[	 ]*62 4c 7c 08 8b 8c 87 23 01 00 00[	 ]+movrs[	 ]+r25d,DWORD PTR \[r31\+rax\*4\+0x123\]
+[	 ]*[a-f0-9]+:[	 ]*62 6c fc 08 8b bc 80 23 01 00 00[	 ]+movrs[	 ]+r31,QWORD PTR \[r16\+rax\*4\+0x123\]
 [	 ]*[a-f0-9]+:[	 ]*62 5a 6f 08 f5 d1[	 ]+pdep[	 ]+r10d,edx,r25d
 [	 ]*[a-f0-9]+:[	 ]*62 5a 87 08 f5 df[	 ]+pdep[	 ]+r11,r15,r31
 [	 ]*[a-f0-9]+:[	 ]*62 da 37 00 f5 94 87 23 01 00 00[	 ]+pdep[	 ]+edx,r25d,DWORD PTR \[r31\+rax\*4\+0x123\]
@@ -136,18 +140,12 @@ Disassembly of section \.text:
 [	 ]*[a-f0-9]+:[	 ]*62 5a 87 00 f7 bc 87 23 01 00 00[	 ]+shrx[	 ]+r15,QWORD PTR \[r31\+rax\*4\+0x123\],r31
 [	 ]*[a-f0-9]+:[	 ]*62 da 7d 08 49 84 87 23 01 00 00[	 ]+sttilecfg[	 ]+\[r31\+rax\*4\+0x123\]
 [	 ]*[a-f0-9]+:[	 ]*62 da 7f 08 4b b4 87 23 01 00 00[	 ]+tileloadd tmm6,\[r31\+rax\*4\+0x123\]
+[	 ]*[a-f0-9]+:[	 ]*62 b2 7b 08 4a b4 fd 00 00 00 10[	 ]+tileloaddrs[	 ]+tmm6,\[rbp\+r31\*8\+0x10000000\]
+[	 ]*[a-f0-9]+:[	 ]*62 fa 7f 08 4a 1c 20[	 ]+tileloaddrs[	 ]+tmm3,\[r16\+riz\*1\]
+[	 ]*[a-f0-9]+:[	 ]*62 9a 7d 08 4a b4 f7 00 00 00 10[	 ]+tileloaddrst1[	 ]+tmm6,\[r31\+r14\*8\+0x10000000\]
+[	 ]*[a-f0-9]+:[	 ]*62 fa 7d 08 4a 1c 20[	 ]+tileloaddrst1[	 ]+tmm3,\[r16\+riz\*1\]
 [	 ]*[a-f0-9]+:[	 ]*62 da 7d 08 4b b4 87 23 01 00 00[	 ]+tileloaddt1 tmm6,\[r31\+rax\*4\+0x123\]
 [	 ]*[a-f0-9]+:[	 ]*62 da 7e 08 4b b4 87 23 01 00 00[	 ]+tilestored[	 ]+\[r31\+rax\*4\+0x123\],tmm6
-[	 ]*[a-f0-9]+:[	 ]*62 fa 7d 28 1a 18[	 ]+vbroadcastf32x4 ymm3,XMMWORD PTR \[r16\]
-[	 ]*[a-f0-9]+:[	 ]*62 fa 7d 28 5a 18[	 ]+vbroadcasti32x4 ymm3,XMMWORD PTR \[r16\]
-[	 ]*[a-f0-9]+:[	 ]*62 fb 7d 28 19 18 01[	 ]+vextractf32x4 XMMWORD PTR \[r16\],ymm3,(0x)?1
-[	 ]*[a-f0-9]+:[	 ]*62 fb 7d 28 39 18 01[	 ]+vextracti32x4 XMMWORD PTR \[r16\],ymm3,(0x)?1
-[	 ]*[a-f0-9]+:[	 ]*62 7b 65 28 18 00 01[	 ]+vinsertf32x4 ymm8,ymm3,XMMWORD PTR \[r16\],(0x)?1
-[	 ]*[a-f0-9]+:[	 ]*62 7b 65 28 38 00 01[	 ]+vinserti32x4 ymm8,ymm3,XMMWORD PTR \[r16\],(0x)?1
-[	 ]*[a-f0-9]+:[	 ]*62 db fd 08 09 30 01[	 ]+vrndscalepd xmm6,XMMWORD PTR \[r24\],(0x)?1
-[	 ]*[a-f0-9]+:[	 ]*62 db 7d 08 08 30 02[	 ]+vrndscaleps xmm6,XMMWORD PTR \[r24\],(0x)?2
-[	 ]*[a-f0-9]+:[	 ]*62 db cd 08 0b 18 03[	 ]+vrndscalesd xmm3,xmm6,QWORD PTR \[r24\],(0x)?3
-[	 ]*[a-f0-9]+:[	 ]*62 db 4d 08 0a 18 04[	 ]+vrndscaless xmm3,xmm6,DWORD PTR \[r24\],(0x)?4
 [	 ]*[a-f0-9]+:[	 ]*62 4c 7c 08 66 8c 87 23 01 00 00[	 ]+wrssd[	 ]+\[r31\+rax\*4\+0x123\],r25d
 [	 ]*[a-f0-9]+:[	 ]*62 4c fc 08 66 bc 87 23 01 00 00[	 ]+wrssq[	 ]+\[r31\+rax\*4\+0x123\],r31
 [	 ]*[a-f0-9]+:[	 ]*62 4c 7d 08 65 8c 87 23 01 00 00[	 ]+wrussd[	 ]+\[r31\+rax\*4\+0x123\],r25d
@@ -259,6 +257,10 @@ Disassembly of section \.text:
 [	 ]*[a-f0-9]+:[	 ]*62 4c 7d 08 f8 bc 87 23 01 00 00[	 ]+movdir64b[	 ]+r31,\[r31\+rax\*4\+0x123\]
 [	 ]*[a-f0-9]+:[	 ]*62 4c 7c 08 f9 8c 87 23 01 00 00[	 ]+movdiri[	 ]+DWORD PTR \[r31\+rax\*4\+0x123\],r25d
 [	 ]*[a-f0-9]+:[	 ]*62 4c fc 08 f9 bc 87 23 01 00 00[	 ]+movdiri[	 ]+QWORD PTR \[r31\+rax\*4\+0x123\],r31
+[	 ]*[a-f0-9]+:[	 ]*62 cc 7c 08 8a 84 87 23 01 00 00[	 ]+movrs[	 ]+r16b,BYTE PTR \[r31\+rax\*4\+0x123\]
+[	 ]*[a-f0-9]+:[	 ]*62 ec 7d 08 8b 94 80 23 01 00 00[	 ]+movrs[	 ]+r18w,WORD PTR \[r16\+rax\*4\+0x123\]
+[	 ]*[a-f0-9]+:[	 ]*62 4c 7c 08 8b 8c 87 23 01 00 00[	 ]+movrs[	 ]+r25d,DWORD PTR \[r31\+rax\*4\+0x123\]
+[	 ]*[a-f0-9]+:[	 ]*62 6c fc 08 8b bc 80 23 01 00 00[	 ]+movrs[	 ]+r31,QWORD PTR \[r16\+rax\*4\+0x123\]
 [	 ]*[a-f0-9]+:[	 ]*62 5a 6f 08 f5 d1[	 ]+pdep[	 ]+r10d,edx,r25d
 [	 ]*[a-f0-9]+:[	 ]*62 5a 87 08 f5 df[	 ]+pdep[	 ]+r11,r15,r31
 [	 ]*[a-f0-9]+:[	 ]*62 da 37 00 f5 94 87 23 01 00 00[	 ]+pdep[	 ]+edx,r25d,DWORD PTR \[r31\+rax\*4\+0x123\]
@@ -277,6 +279,10 @@ Disassembly of section \.text:
 [	 ]*[a-f0-9]+:[	 ]*62 5a 87 00 f7 bc 87 23 01 00 00[	 ]+shrx[	 ]+r15,QWORD PTR \[r31\+rax\*4\+0x123\],r31
 [	 ]*[a-f0-9]+:[	 ]*62 da 7d 08 49 84 87 23 01 00 00[	 ]+sttilecfg[	 ]+\[r31\+rax\*4\+0x123\]
 [	 ]*[a-f0-9]+:[	 ]*62 da 7f 08 4b b4 87 23 01 00 00[	 ]+tileloadd tmm6,\[r31\+rax\*4\+0x123\]
+[	 ]*[a-f0-9]+:[	 ]*62 b2 7b 08 4a b4 fd 00 00 00 10[	 ]+tileloaddrs[	 ]+tmm6,\[rbp\+r31\*8\+0x10000000\]
+[	 ]*[a-f0-9]+:[	 ]*62 fa 7f 08 4a 1c 20[	 ]+tileloaddrs[	 ]+tmm3,\[r16\+riz\*1\]
+[	 ]*[a-f0-9]+:[	 ]*62 9a 7d 08 4a b4 f7 00 00 00 10[	 ]+tileloaddrst1[	 ]+tmm6,\[r31\+r14\*8\+0x10000000\]
+[	 ]*[a-f0-9]+:[	 ]*62 fa 7d 08 4a 1c 20[	 ]+tileloaddrst1[	 ]+tmm3,\[r16\+riz\*1\]
 [	 ]*[a-f0-9]+:[	 ]*62 da 7d 08 4b b4 87 23 01 00 00[	 ]+tileloaddt1 tmm6,\[r31\+rax\*4\+0x123\]
 [	 ]*[a-f0-9]+:[	 ]*62 da 7e 08 4b b4 87 23 01 00 00[	 ]+tilestored[	 ]+\[r31\+rax\*4\+0x123\],tmm6
 [	 ]*[a-f0-9]+:[	 ]*62 4c 7c 08 66 8c 87 23 01 00 00[	 ]+wrssd[	 ]+\[r31\+rax\*4\+0x123\],r25d

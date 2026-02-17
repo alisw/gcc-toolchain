@@ -1,12 +1,15 @@
 set(
   sources
-  FileStorage.cpp
-  HttpStorage.cpp
-  RemoteStorage.cpp
+  filestorage.cpp
+  remotestorage.cpp
 )
 
 if(REDIS_STORAGE_BACKEND)
-  list(APPEND sources RedisStorage.cpp)
+  list(APPEND sources redisstorage.cpp)
+endif()
+
+if(HTTP_STORAGE_BACKEND)
+  list(APPEND sources httpstorage.cpp)
 endif()
 
 file(GLOB headers *.hpp)

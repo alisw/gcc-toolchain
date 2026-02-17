@@ -24,7 +24,7 @@ macro's revision history}.
 
 @majorheading License
 
-@w{Copyright @copyright{} 2017 Ricardo Wurmus}
+@w{Copyright @copyright{} 2017, 2022 Ricardo Wurmus}
 
 Copying and distribution of this file, with or without modification, are
 permitted in any medium without royalty provided the copyright notice

@@ -16,10 +16,10 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "FileRecompressor.hpp"
+#include "filerecompressor.hpp"
 
-#include <ccache/core/AtomicFile.hpp>
-#include <ccache/core/CacheEntry.hpp>
+#include <ccache/core/atomicfile.hpp>
+#include <ccache/core/cacheentry.hpp>
 #include <ccache/core/exceptions.hpp>
 #include <ccache/util/expected.hpp>
 #include <ccache/util/file.hpp>

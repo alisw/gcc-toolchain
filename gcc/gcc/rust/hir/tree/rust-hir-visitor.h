@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -80,11 +80,10 @@ public:
   virtual void visit (WhileLetLoopExpr &expr) = 0;
   virtual void visit (IfExpr &expr) = 0;
   virtual void visit (IfExprConseqElse &expr) = 0;
-  virtual void visit (IfLetExpr &expr) = 0;
-  virtual void visit (IfLetExprConseqElse &expr) = 0;
   virtual void visit (MatchExpr &expr) = 0;
   virtual void visit (AwaitExpr &expr) = 0;
   virtual void visit (AsyncBlockExpr &expr) = 0;
+  virtual void visit (InlineAsm &expr) = 0;
   virtual void visit (TypeParam &param) = 0;
   virtual void visit (ConstGenericParam &param) = 0;
   virtual void visit (LifetimeWhereClauseItem &item) = 0;
@@ -114,6 +113,7 @@ public:
   virtual void visit (ImplBlock &impl) = 0;
   virtual void visit (ExternalStaticItem &item) = 0;
   virtual void visit (ExternalFunctionItem &item) = 0;
+  virtual void visit (ExternalTypeItem &item) = 0;
   virtual void visit (ExternBlock &block) = 0;
   virtual void visit (LiteralPattern &pattern) = 0;
   virtual void visit (IdentifierPattern &pattern) = 0;
@@ -142,7 +142,6 @@ public:
   virtual void visit (ImplTraitType &type) = 0;
   virtual void visit (TraitObjectType &type) = 0;
   virtual void visit (ParenthesisedType &type) = 0;
-  virtual void visit (ImplTraitTypeOneBound &type) = 0;
   virtual void visit (TupleType &type) = 0;
   virtual void visit (NeverType &type) = 0;
   virtual void visit (RawPointerType &type) = 0;
@@ -216,12 +215,11 @@ public:
   virtual void visit (WhileLetLoopExpr &) override {}
   virtual void visit (IfExpr &) override {}
   virtual void visit (IfExprConseqElse &) override {}
-  virtual void visit (IfLetExpr &) override {}
-  virtual void visit (IfLetExprConseqElse &) override {}
 
   virtual void visit (MatchExpr &) override {}
   virtual void visit (AwaitExpr &) override {}
   virtual void visit (AsyncBlockExpr &) override {}
+  virtual void visit (InlineAsm &) override {}
 
   virtual void visit (TypeParam &) override {}
   virtual void visit (ConstGenericParam &) override {}
@@ -255,6 +253,7 @@ public:
 
   virtual void visit (ExternalStaticItem &) override {}
   virtual void visit (ExternalFunctionItem &) override {}
+  virtual void visit (ExternalTypeItem &) override {}
   virtual void visit (ExternBlock &) override {}
 
   virtual void visit (LiteralPattern &) override {}
@@ -290,7 +289,6 @@ public:
   virtual void visit (ImplTraitType &) override {}
   virtual void visit (TraitObjectType &) override {}
   virtual void visit (ParenthesisedType &) override {}
-  virtual void visit (ImplTraitTypeOneBound &) override {}
   virtual void visit (TupleType &) override {}
   virtual void visit (NeverType &) override {}
   virtual void visit (RawPointerType &) override {}
@@ -306,6 +304,7 @@ class HIRExternalItemVisitor
 public:
   virtual void visit (ExternalStaticItem &item) = 0;
   virtual void visit (ExternalFunctionItem &item) = 0;
+  virtual void visit (ExternalTypeItem &item) = 0;
 };
 
 class HIRTraitItemVisitor
@@ -353,7 +352,6 @@ public:
   virtual void visit (ImplTraitType &type) = 0;
   virtual void visit (TraitObjectType &type) = 0;
   virtual void visit (ParenthesisedType &type) = 0;
-  virtual void visit (ImplTraitTypeOneBound &type) = 0;
   virtual void visit (TupleType &type) = 0;
   virtual void visit (NeverType &type) = 0;
   virtual void visit (RawPointerType &type) = 0;
@@ -442,8 +440,7 @@ public:
   virtual void visit (WhileLetLoopExpr &expr) = 0;
   virtual void visit (IfExpr &expr) = 0;
   virtual void visit (IfExprConseqElse &expr) = 0;
-  virtual void visit (IfLetExpr &expr) = 0;
-  virtual void visit (IfLetExprConseqElse &expr) = 0;
+  virtual void visit (InlineAsm &expr) = 0;
   virtual void visit (MatchExpr &expr) = 0;
   virtual void visit (AwaitExpr &expr) = 0;
   virtual void visit (AsyncBlockExpr &expr) = 0;

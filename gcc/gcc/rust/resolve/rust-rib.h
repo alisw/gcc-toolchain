@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -103,6 +103,71 @@ struct DuplicateNameError
 class Rib
 {
 public:
+  // TODO: Rename the class? to what? Binding? Declaration?
+  // This is useful for items which are in namespaces where shadowing is not
+  // allowed, but which are still shadowable! for example, when you do a glob
+  // import, if a later import has the same name as an item imported in the glob
+  // import, that glob imported item will need to get shadowed
+  class Definition
+  {
+  public:
+    static Definition NonShadowable (NodeId id, bool enum_variant = false);
+    static Definition Shadowable (NodeId id);
+    static Definition Globbed (NodeId id);
+
+    // checked shadowable -> non_shadowable -> globbed
+    // we have shadowable *and* globbed in order to control
+    // resolution priority
+    // we *could* use a single vector with 2 indices here
+    // but it's probably not worth it for now
+    std::vector<NodeId> ids_shadowable;
+    std::vector<NodeId> ids_non_shadowable;
+    std::vector<NodeId> ids_globbed;
+
+    // Enum variant should be skipped when dealing with inner definition.
+    // struct E2;
+    //
+    // enum MyEnum<T> /* <-- Should be kept */{
+    //     E2 /* <-- Should be skipped */ (E2);
+    // }
+    bool enum_variant;
+
+    Definition () = default;
+
+    Definition &operator= (const Definition &) = default;
+    Definition (Definition const &) = default;
+
+    bool is_variant () const;
+
+    bool is_ambiguous () const;
+
+    NodeId get_node_id () const
+    {
+      if (!ids_shadowable.empty ())
+	return ids_shadowable.back ();
+
+      rust_assert (!is_ambiguous ());
+
+      if (!ids_non_shadowable.empty ())
+	return ids_non_shadowable.back ();
+
+      rust_assert (!ids_globbed.empty ());
+      return ids_globbed.back ();
+    }
+
+    std::string to_string () const;
+
+  private:
+    enum class Mode
+    {
+      SHADOWABLE,
+      NON_SHADOWABLE,
+      GLOBBED
+    };
+
+    Definition (NodeId id, Mode mode, bool enum_variant);
+  };
+
   enum class Kind
   {
     Normal,
@@ -118,7 +183,41 @@ public:
     ForwardTypeParamBan,
     /* Const generic, as in the following example: fn foo<T, const X: T>() {} */
     ConstParamType,
+    /* Prelude rib, used for both the language prelude (i32,usize,etc) and the
+     * (future) {std,core}::prelude::* import. A regular rib with the
+     * restriction that you cannot `use` items from the Prelude
+     */
+    Prelude,
   } kind;
+
+  static std::string kind_to_string (Rib::Kind kind)
+  {
+    switch (kind)
+      {
+      case Rib::Kind::Normal:
+	return "Normal";
+      case Rib::Kind::Module:
+	return "Module";
+      case Rib::Kind::Function:
+	return "Function";
+      case Rib::Kind::ConstantItem:
+	return "ConstantItem";
+      case Rib::Kind::TraitOrImpl:
+	return "TraitOrImpl";
+      case Rib::Kind::Item:
+	return "Item";
+      case Rib::Kind::Closure:
+	return "Closure";
+      case Rib::Kind::MacroDefinition:
+	return "Macro definition";
+      case Rib::Kind::ForwardTypeParamBan:
+	return "Forward type param ban";
+      case Rib::Kind::ConstParamType:
+	return "Const Param Type";
+      default:
+	rust_unreachable ();
+      }
+  }
 
   Rib (Kind kind);
   Rib (Kind kind, std::string identifier, NodeId id);
@@ -131,28 +230,28 @@ public:
    * Insert a new node in the rib
    *
    * @param name The name associated with the AST node
-   * @param id Its NodeId
-   * @param can_shadow If the newly inserted value can shadow an existing one
+   * @param def The `Definition` to insert
    *
    * @return `DuplicateNameError` if the node is already present in the rib. The
    *         `DuplicateNameError` class contains the NodeId of the existing
    * node. Returns the new NodeId on success.
    */
-  tl::expected<NodeId, DuplicateNameError> insert (std::string name, NodeId id,
-						   bool can_shadow = false);
+  tl::expected<NodeId, DuplicateNameError> insert (std::string name,
+						   Definition def);
 
   /**
    * Access an inserted NodeId.
    *
    * @return tl::nullopt if the key does not exist, the NodeId otherwise
    */
-  tl::optional<NodeId> get (const std::string &name);
+  tl::optional<Rib::Definition> get (const std::string &name);
 
   /* View all the values stored in the rib */
-  const std::unordered_map<std::string, NodeId> &get_values () const;
+  const std::unordered_map<std::string, Definition> &get_values () const;
 
 private:
-  std::unordered_map<std::string, NodeId> values;
+  // TODO: Switch this to (NodeId, shadowable = false);
+  std::unordered_map<std::string, Definition> values;
 };
 
 } // namespace Resolver2_0

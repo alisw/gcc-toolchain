@@ -1,4 +1,4 @@
-# Copyright 2022-2024 Free Software Foundation, Inc.
+# Copyright 2022-2025 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,6 +46,67 @@ _commands = {}
 # The global server.
 _server = None
 
+# This is set by the initialize request and is used when rewriting
+# line numbers.
+_lines_start_at_1 = False
+_columns_start_at_1 = False
+
+
+class DeferredRequest:
+    """If a DAP request function returns a deferred request, no
+    response is sent immediately.
+
+    Instead, request processing continues, with this particular
+    request remaining un-replied-to.
+
+    Later, when the result is available, the deferred request can be
+    scheduled.  This causes 'invoke' to be called and then the
+    response to be sent to the client.
+
+    """
+
+    # This is for internal use by the server.  It should not be
+    # overridden by any subclass.  This adds the request ID and the
+    # result template object to this object.  These are then used
+    # during rescheduling.
+    def set_request(self, req, result):
+        self._req = req
+        self._result = result
+
+    @in_dap_thread
+    def defer_events(self):
+        """Return True if events should be deferred during execution.
+
+        This may be overridden by subclasses."""
+        return True
+
+    @in_dap_thread
+    def invoke(self):
+        """Implement the deferred request.
+
+        This will be called from 'reschedule' (and should not be
+        called elsewhere).  It should return the 'body' that will be
+        sent in the response.  None means no 'body' field will be set.
+
+        Subclasses must override this.
+
+        """
+        pass
+
+    @in_dap_thread
+    def reschedule(self):
+        """Call this to reschedule this deferred request.
+
+        This will call 'invoke' after the appropriate bookkeeping and
+        will arrange for its result to be reported to the client.
+
+        """
+        with _server.canceller.current_request(self._req):
+            if self.defer_events():
+                _server.set_defer_events()
+            _server.invoke_request(self._req, self._result, self.invoke)
+        _server.emit_pending_events()
+
 
 # A subclass of Exception that is used solely for reporting that a
 # request needs the inferior to be stopped, but it is not stopped.
@@ -59,21 +120,78 @@ class NotStoppedException(Exception):
 class CancellationHandler:
     def __init__(self):
         # Methods on this class acquire this lock before proceeding.
-        self.lock = threading.Lock()
+        # A recursive lock is used to simplify the 'check_cancel'
+        # callers.
+        self.lock = threading.RLock()
         # The request currently being handled, or None.
         self.in_flight_dap_thread = None
         self.in_flight_gdb_thread = None
-        self.reqs = []
+        self._reqs = []
+        # A set holding the request IDs of all deferred requests that
+        # are still unresolved.
+        self._deferred_ids = set()
 
-    def starting(self, req):
-        """Call at the start of the given request."""
-        with self.lock:
-            self.in_flight_dap_thread = req
+    @contextmanager
+    def current_request(self, req):
+        """Return a new context manager that registers that request
+        REQ has started."""
+        try:
+            with self.lock:
+                self.in_flight_dap_thread = req
+            # Note we do not call check_cancel here.  This is a bit of
+            # a hack, but it's because the direct callers of this
+            # aren't prepared for a KeyboardInterrupt.
+            yield
+        finally:
+            with self.lock:
+                self.in_flight_dap_thread = None
 
-    def done(self, req):
-        """Indicate that the request is done."""
+    def defer_request(self, req):
+        """Indicate that the request REQ has been deferred."""
         with self.lock:
-            self.in_flight_dap_thread = None
+            self._deferred_ids.add(req)
+
+    def request_finished(self, req):
+        """Indicate that the request REQ is finished.
+
+        It doesn't matter whether REQ succeeded or failed, only that
+        processing for it is done.
+
+        """
+        with self.lock:
+            # Use discard here, not remove, because this is called
+            # regardless of whether REQ was deferred.
+            self._deferred_ids.discard(req)
+
+    def check_cancel(self, req):
+        """Check whether request REQ is cancelled.
+        If so, raise KeyboardInterrupt."""
+        with self.lock:
+            # We want to drop any cancellations that come before REQ,
+            # but keep ones for any deferred requests that are still
+            # unresolved.  This holds any such requests that were
+            # popped during the loop.
+            deferred = []
+            try:
+                # If the request is cancelled, don't execute the region.
+                while len(self._reqs) > 0 and self._reqs[0] <= req:
+                    # In most cases, if we see a cancellation request
+                    # on the heap that is before REQ, we can just
+                    # ignore it -- we missed our chance to cancel that
+                    # request.
+                    next_id = heapq.heappop(self._reqs)
+                    if next_id == req:
+                        raise KeyboardInterrupt()
+                    elif next_id in self._deferred_ids:
+                        # We could be in a situation where we're
+                        # processing request 23, but request 18 is
+                        # still deferred.  In this case, popping
+                        # request 18 here will lose the cancellation.
+                        # So, we preserve it.
+                        deferred.append(next_id)
+            finally:
+                for x in deferred:
+                    heapq.heappush(self._reqs, x)
 
     def cancel(self, req):
         """Call to cancel a request.
@@ -86,12 +204,12 @@ class CancellationHandler:
                 gdb.interrupt()
             else:
                 # We don't actually ignore the request here, but in
-                # the 'starting' method.  This way we don't have to
+                # the 'check_cancel' method.  This way we don't have to
                 # track as much state.  Also, this implementation has
                 # the weird property that a request can be cancelled
                 # before it is even sent.  It didn't seem worthwhile
                 # to try to check for this.
-                heapq.heappush(self.reqs, req)
+                heapq.heappush(self._reqs, req)
 
     @contextmanager
     def interruptable_region(self, req):
@@ -103,10 +221,7 @@ class CancellationHandler:
             return
         try:
             with self.lock:
-                # If the request is cancelled, don't execute the region.
-                while len(self.reqs) > 0 and self.reqs[0] <= req:
-                    if heapq.heappop(self.reqs) == req:
-                        raise KeyboardInterrupt()
+                self.check_cancel(req)
                 # Request is being handled by the gdb thread.
                 self.in_flight_gdb_thread = req
             # Execute region.  This may be interrupted by gdb.interrupt.
@@ -121,43 +236,45 @@ class Server:
     """The DAP server class."""
 
     def __init__(self, in_stream, out_stream, child_stream):
-        self.in_stream = in_stream
-        self.out_stream = out_stream
-        self.child_stream = child_stream
-        self.delayed_events = []
+        self._in_stream = in_stream
+        self._out_stream = out_stream
+        self._child_stream = child_stream
+        self._delayed_fns_lock = threading.Lock()
+        self._defer_events = False
+        self._delayed_fns = []
         # This queue accepts JSON objects that are then sent to the
         # DAP client.  Writing is done in a separate thread to avoid
         # blocking the read loop.
-        self.write_queue = DAPQueue()
+        self._write_queue = DAPQueue()
         # Reading is also done in a separate thread, and a queue of
         # requests is kept.
-        self.read_queue = DAPQueue()
-        self.done = False
+        self._read_queue = DAPQueue()
+        self._done = False
         self.canceller = CancellationHandler()
         global _server
         _server = self
 
-    # Treat PARAMS as a JSON-RPC request and perform its action.
-    # PARAMS is just a dictionary from the JSON.
+    # A helper for request processing.  REQ is the request ID.  RESULT
+    # is a result "template" -- a dictionary with a few items already
+    # filled in.  This helper calls FN and then fills in the remaining
+    # parts of RESULT, as needed.  If FN returns an ordinary result,
+    # or if it fails, then the final RESULT is sent as a response to
+    # the client.  However, if FN returns a DeferredRequest, then that
+    # request is updated (see DeferredRequest.set_request) and no
+    # response is sent.
     @in_dap_thread
-    def _handle_command(self, params):
-        req = params["seq"]
-        result = {
-            "request_seq": req,
-            "type": "response",
-            "command": params["command"],
-        }
+    def invoke_request(self, req, result, fn):
         try:
-            self.canceller.starting(req)
-            if "arguments" in params:
-                args = params["arguments"]
-            else:
-                args = {}
-            global _commands
-            body = _commands[params["command"]](**args)
-            if body is not None:
-                result["body"] = body
+            self.canceller.check_cancel(req)
+            fn_result = fn()
             result["success"] = True
+            if isinstance(fn_result, DeferredRequest):
+                fn_result.set_request(req, result)
+                self.canceller.defer_request(req)
+                # Do not send a response.
+                return
+            elif fn_result is not None:
+                result["body"] = fn_result
         except NotStoppedException:
             # This is an expected exception, and the result is clearly
             # visible in the log, so do not log it.
@@ -177,15 +294,39 @@ class Server:
             log_stack()
             result["success"] = False
             result["message"] = str(e)
-        self.canceller.done(req)
-        return result
+
+        self.canceller.request_finished(req)
+        # We have a response for the request, so send it back to the
+        # client.
+        self._send_json(result)
+
+    # Treat PARAMS as a JSON-RPC request and perform its action.
+    # PARAMS is just a dictionary from the JSON.
+    @in_dap_thread
+    def _handle_command(self, params):
+        req = params["seq"]
+        result = {
+            "request_seq": req,
+            "type": "response",
+            "command": params["command"],
+        }
+
+        if "arguments" in params:
+            args = params["arguments"]
+        else:
+            args = {}
+
+        def fn():
+            return _commands[params["command"]](**args)
+
+        self.invoke_request(req, result, fn)
 
     # Read inferior output and sends OutputEvents to the client.  It
     # is run in its own thread.
     def _read_inferior_output(self):
         while True:
-            line = self.child_stream.readline()
-            self.send_event(
+            line = self._child_stream.readline()
+            self.send_event_maybe_later(
                 "output",
                 {
                     "category": "stdout",
@@ -196,7 +337,7 @@ class Server:
     # Send OBJ to the client, logging first if needed.
     def _send_json(self, obj):
         log("WROTE: <<<" + json.dumps(obj) + ">>>")
-        self.write_queue.put(obj)
+        self._write_queue.put(obj)
 
     # This is run in a separate thread and simply reads requests from
     # the client and puts them into a queue.  A separate thread is
@@ -204,7 +345,7 @@ class Server:
     # will normally block, waiting for each request to complete.
     def _reader_thread(self):
         while True:
-            cmd = read_json(self.in_stream)
+            cmd = read_json(self._in_stream)
             if cmd is None:
                 break
             log("READ: <<<" + json.dumps(cmd) + ">>>")
@@ -220,9 +361,20 @@ class Server:
                 and "requestId" in cmd["arguments"]
             ):
                 self.canceller.cancel(cmd["arguments"]["requestId"])
-            self.read_queue.put(cmd)
+            self._read_queue.put(cmd)
         # When we hit EOF, signal it with None.
-        self.read_queue.put(None)
+        self._read_queue.put(None)
+
+    @in_dap_thread
+    def emit_pending_events(self):
+        """Emit any pending events."""
+        fns = None
+        with self._delayed_fns_lock:
+            fns = self._delayed_fns
+            self._delayed_fns = []
+            self._defer_events = False
+        for fn in fns:
+            fn()
 
     @in_dap_thread
     def main_loop(self):
@@ -230,36 +382,55 @@ class Server:
         # Before looping, start the thread that writes JSON to the
         # client, and the thread that reads output from the inferior.
         start_thread("output reader", self._read_inferior_output)
-        json_writer = start_json_writer(self.out_stream, self.write_queue)
+        json_writer = start_json_writer(self._out_stream, self._write_queue)
         start_thread("JSON reader", self._reader_thread)
-        while not self.done:
-            cmd = self.read_queue.get()
+        while not self._done:
+            cmd = self._read_queue.get()
             # A None value here means the reader hit EOF.
             if cmd is None:
                 break
-            result = self._handle_command(cmd)
-            self._send_json(result)
-            events = self.delayed_events
-            self.delayed_events = []
-            for event, body in events:
-                self.send_event(event, body)
+            req = cmd["seq"]
+            with self.canceller.current_request(req):
+                self._handle_command(cmd)
+            self.emit_pending_events()
         # Got the terminate request.  This is handled by the
         # JSON-writing thread, so that we can ensure that all
         # responses are flushed to the client before exiting.
-        self.write_queue.put(None)
+        self._write_queue.put(None)
         json_writer.join()
         send_gdb("quit")
 
     @in_dap_thread
-    def send_event_later(self, event, body=None):
-        """Send a DAP event back to the client, but only after the
-        current request has completed."""
-        self.delayed_events.append((event, body))
+    def set_defer_events(self):
+        """Defer any events until the current request has completed."""
+        with self._delayed_fns_lock:
+            self._defer_events = True
+
+    # Note that this does not need to be run in any particular thread,
+    # because it uses locks for thread-safety.
+    def send_event_maybe_later(self, event, body=None):
+        """Send a DAP event back to the client, but if a request is in-flight
+        within the dap thread and that request is configured to delay the event,
+        wait until the response has been sent until the event is sent back to
+        the client."""
+        with self.canceller.lock:
+            if self.canceller.in_flight_dap_thread:
+                with self._delayed_fns_lock:
+                    if self._defer_events:
+                        self._delayed_fns.append(lambda: self._send_event(event, body))
+                        return
+        self._send_event(event, body)
+
+    @in_dap_thread
+    def call_function_later(self, fn):
+        """Call FN later -- after the current request's response has been sent."""
+        with self._delayed_fns_lock:
+            self._delayed_fns.append(fn)
 
     # Note that this does not need to be run in any particular thread,
     # because it just creates an object and writes it to a thread-safe
     # queue.
-    def send_event(self, event, body=None):
+    def _send_event(self, event, body=None):
         """Send an event to the DAP client.
         EVENT is the name of the event, a string.
         BODY is the body of the event, an arbitrary object."""
@@ -276,15 +447,19 @@ class Server:
         # Just set a flag.  This operation is complicated because we
         # want to write the result of the request before exiting.  See
         # main_loop.
-        self.done = True
+        self._done = True
 
 
 def send_event(event, body=None):
     """Send an event to the DAP client.
     EVENT is the name of the event, a string.
     BODY is the body of the event, an arbitrary object."""
-    global _server
-    _server.send_event(event, body)
+    _server.send_event_maybe_later(event, body)
+
+
+def call_function_later(fn):
+    """Call FN later -- after the current request's response has been sent."""
+    _server.call_function_later(fn)
 
 
 # A helper decorator that checks whether the inferior is running.
@@ -307,7 +482,8 @@ def request(
     *,
     response: bool = True,
     on_dap_thread: bool = False,
-    expect_stopped: bool = True
+    expect_stopped: bool = True,
+    defer_events: bool = True
 ):
     """A decorator for DAP requests.
 
@@ -328,6 +504,10 @@ def request(
     fail with the 'notStopped' reason if it is processed while the
     inferior is running.  When EXPECT_STOPPED is False, the request
     will proceed regardless of the inferior's state.
+
+    If DEFER_EVENTS is True, then make sure any events sent during the
+    request processing are not sent to the client until the response
+    has been sent.
     """
 
     # Validate the parameters.
@@ -350,7 +530,7 @@ def request(
 
         # Verify that the function is run on the correct thread.
         if on_dap_thread:
-            cmd = in_dap_thread(func)
+            check_cmd = in_dap_thread(func)
         else:
             func = in_gdb_thread(func)
 
@@ -359,13 +539,24 @@ def request(
                 def sync_call(**args):
                     return send_gdb_with_response(lambda: func(**args))
 
-                cmd = sync_call
+                check_cmd = sync_call
             else:
 
                 def non_sync_call(**args):
                     return send_gdb(lambda: func(**args))
 
-                cmd = non_sync_call
+                check_cmd = non_sync_call
+
+        if defer_events:
+
+            def deferring(**args):
+                _server.set_defer_events()
+                return check_cmd(**args)
+
+            cmd = deferring
+
+        else:
+            cmd = check_cmd
 
         # If needed, check that the inferior is not running.  This
         # wrapping is done last, so the check is done first, before
@@ -373,7 +564,6 @@ def request(
         if expect_stopped:
             cmd = _check_not_running(cmd)
 
-        global _commands
         assert name not in _commands
         _commands[name] = cmd
         return cmd
@@ -386,7 +576,6 @@ def capability(name, value=True):
     the DAP capability NAME."""
 
     def wrap(func):
-        global _capabilities
         assert name not in _capabilities
         _capabilities[name] = value
         return func
@@ -394,22 +583,24 @@ def capability(name, value=True):
     return wrap
 
 
-def client_bool_capability(name):
+def client_bool_capability(name, default=False):
     """Return the value of a boolean client capability.
 
     If the capability was not specified, or did not have boolean type,
-    False is returned."""
-    global _server
+    DEFAULT is returned.  DEFAULT defaults to False."""
     if name in _server.config and isinstance(_server.config[name], bool):
         return _server.config[name]
-    return False
+    return default
 
 
 @request("initialize", on_dap_thread=True)
 def initialize(**args):
-    global _server, _capabilities
     _server.config = args
-    _server.send_event_later("initialized")
+    _server.send_event_maybe_later("initialized")
+    global _lines_start_at_1
+    _lines_start_at_1 = client_bool_capability("linesStartAt1", True)
+    global _columns_start_at_1
+    _columns_start_at_1 = client_bool_capability("columnsStartAt1", True)
     return _capabilities.copy()
 
 
@@ -446,19 +637,19 @@ class Invoker(object):
     """A simple class that can invoke a gdb command."""
 
     def __init__(self, cmd):
-        self.cmd = cmd
+        self._cmd = cmd
 
     # This is invoked in the gdb thread to run the command.
     @in_gdb_thread
     def __call__(self):
-        exec_and_log(self.cmd)
+        exec_and_log(self._cmd)
 
 
 class Cancellable(object):
 
     def __init__(self, fn, result_q=None):
-        self.fn = fn
-        self.result_q = result_q
+        self._fn = fn
+        self._result_q = result_q
         with _server.canceller.lock:
             self.req = _server.canceller.in_flight_dap_thread
 
@@ -467,13 +658,13 @@ class Cancellable(object):
     def __call__(self):
         try:
             with _server.canceller.interruptable_region(self.req):
-                val = self.fn()
-                if self.result_q is not None:
-                    self.result_q.put(val)
+                val = self._fn()
+                if self._result_q is not None:
+                    self._result_q.put(val)
         except (Exception, KeyboardInterrupt) as e:
-            if self.result_q is not None:
+            if self._result_q is not None:
                 # Pass result or exception to caller.
-                self.result_q.put(e)
+                self._result_q.put(e)
             elif isinstance(e, KeyboardInterrupt):
                 # Fn was cancelled.
                 pass
@@ -513,3 +704,39 @@ def send_gdb_with_response(fn):
     if isinstance(val, (Exception, KeyboardInterrupt)):
         raise val
     return val
+
+
+def export_line(line: int) -> int:
+    """Rewrite LINE according to client capability.
+    This applies the linesStartAt1 capability as needed,
+    when sending a line number from gdb to the client."""
+    if not _lines_start_at_1:
+        # In gdb, lines start at 1, so we only need to change this if
+        # the client starts at 0.
+        line = line - 1
+    return line
+
+
+def import_line(line: int) -> int:
+    """Rewrite LINE according to client capability.
+    This applies the linesStartAt1 capability as needed,
+    when the client sends a line number to gdb."""
+    if not _lines_start_at_1:
+        # In gdb, lines start at 1, so we only need to change this if
+        # the client starts at 0.
+        line = line + 1
+    return line
+
+
+def export_column(column: int) -> int:
+    """Rewrite COLUMN according to client capability.
+    This applies the columnsStartAt1 capability as needed,
+    when sending a column number from gdb to the client."""
+    return column if _columns_start_at_1 else column - 1
+
+
+def import_column(column: int) -> int:
+    """Rewrite COLUMN according to client capability.
+    This applies the columnsStartAt1 capability as needed,
+    when the client sends a column number to gdb."""
+    return column if _columns_start_at_1 else column + 1

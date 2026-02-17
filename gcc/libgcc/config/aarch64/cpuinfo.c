@@ -1,5 +1,5 @@
 /* CPU feature detection for AArch64 architecture.
-   Copyright (C) 2023-2024 Free Software Foundation, Inc.
+   Copyright (C) 2023-2025 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -16,7 +16,7 @@
    Under Section 7 of GPL version 3, you are granted additional
    permissions described in the GCC Runtime Library Exception, version
    3.1, as published by the Free Software Foundation.
-  
+
    You should have received a copy of the GNU General Public License and
    a copy of the GCC Runtime Library Exception along with this program;
    see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
@@ -339,25 +339,6 @@ __init_cpu_features_constructor (unsigned long hwcap,
     setCPUFeature(FEAT_SME_I64);
   if (hwcap2 & HWCAP2_SME_F64F64)
     setCPUFeature(FEAT_SME_F64);
-  if (hwcap & HWCAP_CPUID)
-    {
-      unsigned long ftr;
-
-      getCPUFeature(ID_AA64ISAR1_EL1, ftr);
-      /* ID_AA64ISAR1_EL1.SPECRES >= 0b0001  */
-      if (extractBits(ftr, 40, 4) >= 0x1)
-	setCPUFeature(FEAT_PREDRES);
-      /* ID_AA64ISAR1_EL1.LS64 >= 0b0001  */
-      if (extractBits(ftr, 60, 4) >= 0x1)
-	setCPUFeature(FEAT_LS64);
-      /* ID_AA64ISAR1_EL1.LS64 >= 0b0010  */
-      if (extractBits(ftr, 60, 4) >= 0x2)
-	setCPUFeature(FEAT_LS64_V);
-      /* ID_AA64ISAR1_EL1.LS64 >= 0b0011  */
-      if (extractBits(ftr, 60, 4) >= 0x3)
-	setCPUFeature(FEAT_LS64_ACCDATA);
-    }
-
   if (hwcap & HWCAP_FP)
     {
       setCPUFeature(FEAT_FP);
@@ -387,6 +368,7 @@ __init_cpu_features_constructor (unsigned long hwcap,
   __atomic_store_n (&__aarch64_cpu_features.features, feat, __ATOMIC_RELAXED);
 }
 
+void __init_cpu_features_resolver(unsigned long, const __ifunc_arg_t *);
 void
 __init_cpu_features_resolver(unsigned long hwcap, const __ifunc_arg_t *arg)
 {
@@ -395,6 +377,7 @@ __init_cpu_features_resolver(unsigned long hwcap, const __ifunc_arg_t *arg)
   __init_cpu_features_constructor(hwcap, arg);
 }
 
+void __init_cpu_features(void);
 void __attribute__ ((constructor))
 __init_cpu_features(void)
 {

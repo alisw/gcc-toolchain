@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2020-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,16 +16,16 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "ResultRetriever.hpp"
+#include "resultretriever.hpp"
 
-#include <ccache/Context.hpp>
-#include <ccache/Depfile.hpp>
-#include <ccache/core/MsvcShowIncludesOutput.hpp>
+#include <ccache/context.hpp>
 #include <ccache/core/common.hpp>
 #include <ccache/core/exceptions.hpp>
-#include <ccache/util/DirEntry.hpp>
-#include <ccache/util/Fd.hpp>
+#include <ccache/core/msvcshowincludesoutput.hpp>
+#include <ccache/depfile.hpp>
+#include <ccache/util/direntry.hpp>
 #include <ccache/util/expected.hpp>
+#include <ccache/util/fd.hpp>
 #include <ccache/util/file.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
@@ -48,7 +48,7 @@ using util::DirEntry;
 
 namespace core {
 
-using Result::FileType;
+using result::FileType;
 
 ResultRetriever::ResultRetriever(const Context& ctx,
                                  std::optional<Hash::Digest> result_key)
@@ -64,7 +64,7 @@ ResultRetriever::on_embedded_file(uint8_t file_number,
 {
   LOG("Reading embedded entry #{} {} ({} bytes)",
       file_number,
-      Result::file_type_to_string(file_type),
+      result::file_type_to_string(file_type),
       data.size());
 
   if (file_type == FileType::stdout_output) {
@@ -100,7 +100,7 @@ ResultRetriever::on_raw_file(uint8_t file_number,
 {
   LOG("Reading raw entry #{} {} ({} bytes)",
       file_number,
-      Result::file_type_to_string(file_type),
+      result::file_type_to_string(file_type),
       file_size);
 
   if (!m_result_key) {
@@ -140,11 +140,11 @@ ResultRetriever::on_raw_file(uint8_t file_number,
     // Should never happen.
     LOG("Did not copy {} since destination path is unknown for type {}",
         raw_file_path,
-        static_cast<Result::UnderlyingFileTypeInt>(file_type));
+        static_cast<result::UnderlyingFileTypeInt>(file_type));
   }
 }
 
-std::string
+fs::path
 ResultRetriever::get_dest_path(FileType file_type) const
 {
   switch (file_type) {
@@ -164,9 +164,7 @@ ResultRetriever::get_dest_path(FileType file_type) const
 
   case FileType::coverage_unmangled:
     if (m_ctx.args_info.generating_coverage) {
-      return fs::path(m_ctx.args_info.output_obj)
-        .replace_extension(".gcno")
-        .string();
+      return util::with_extension(m_ctx.args_info.output_obj, ".gcno");
     }
     break;
 
@@ -191,7 +189,7 @@ ResultRetriever::get_dest_path(FileType file_type) const
 
   case FileType::coverage_mangled:
     if (m_ctx.args_info.generating_coverage) {
-      return Result::gcno_file_in_mangled_form(m_ctx);
+      return result::gcno_file_in_mangled_form(m_ctx);
     }
     break;
 
@@ -217,13 +215,13 @@ ResultRetriever::get_dest_path(FileType file_type) const
 }
 
 void
-ResultRetriever::write_dependency_file(const std::string& path,
+ResultRetriever::write_dependency_file(const fs::path& path,
                                        nonstd::span<const uint8_t> data)
 {
   ASSERT(m_ctx.args_info.dependency_target);
 
-  util::Fd fd(
-    open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666));
+  util::Fd fd(open(
+    util::pstr(path).c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666));
   if (!fd) {
     throw WriteError(FMT("Failed to open {} for writing", path));
   }

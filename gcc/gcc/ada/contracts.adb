@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 2015-2024, Free Software Foundation, Inc.         --
+--          Copyright (C) 2015-2025, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -266,6 +266,7 @@ package body Contracts is
          elsif Prag_Nam in Name_Always_Terminates
                          | Name_Contract_Cases
                          | Name_Exceptional_Cases
+                         | Name_Exit_Cases
                          | Name_Subprogram_Variant
                          | Name_Test_Case
          then
@@ -512,7 +513,6 @@ package body Contracts is
                if Present (It) then
                   Validate_Iterable_Aspect (E, It);
                end if;
-
                if Present (I_Lit) then
                   Validate_Literal_Aspect (E, I_Lit);
                end if;
@@ -547,33 +547,41 @@ package body Contracts is
 
    begin
       --  Move through the body's declarations analyzing all pragmas which
-      --  appear at the top of the declarations.
+      --  appear at the top of the declarations. Go over the list twice, so
+      --  that pragmas which should be analyzed first are analyzed in the
+      --  first pass.
 
-      Curr_Decl := First (Declarations (Unit_Declaration_Node (Body_Id)));
-      while Present (Curr_Decl) loop
+      for Pragmas_Analyzed_First in reverse False .. True loop
 
-         if Nkind (Curr_Decl) = N_Pragma then
+         Curr_Decl := First (Declarations (Unit_Declaration_Node (Body_Id)));
+         while Present (Curr_Decl) loop
 
-            if Pragma_Significant_To_Subprograms
-                 (Get_Pragma_Id (Curr_Decl))
-            then
-               Analyze (Curr_Decl);
+            if Nkind (Curr_Decl) = N_Pragma then
+
+               if Pragma_Significant_To_Subprograms
+                    (Get_Pragma_Id (Curr_Decl))
+                 and then Pragmas_Analyzed_First =
+                   Pragma_Significant_To_Subprograms_Analyzed_First
+                     (Get_Pragma_Id (Curr_Decl))
+               then
+                  Analyze (Curr_Decl);
+               end if;
+
+            --  Skip the renamings of discriminants and protection fields
+
+            elsif Is_Prologue_Renaming (Curr_Decl) then
+               null;
+
+            --  We have reached something which is not a pragma so we can be
+            --  sure there are no more contracts or pragmas which need to be
+            --  taken into account.
+
+            else
+               exit;
             end if;
 
-         --  Skip the renamings of discriminants and protection fields
-
-         elsif Is_Prologue_Renaming (Curr_Decl) then
-            null;
-
-         --  We have reached something which is not a pragma so we can be sure
-         --  there are no more contracts or pragmas which need to be taken into
-         --  account.
-
-         else
-            exit;
-         end if;
-
-         Next (Curr_Decl);
+            Next (Curr_Decl);
+         end loop;
       end loop;
    end Analyze_Pragmas_In_Declarations;
 
@@ -782,6 +790,9 @@ package body Contracts is
                else
                   Analyze_Contract_Cases_In_Decl_Part (Prag, Freeze_Id);
                end if;
+
+            elsif Prag_Nam = Name_Exit_Cases then
+               Analyze_Exit_Cases_In_Decl_Part (Prag);
 
             elsif Prag_Nam = Name_Exceptional_Cases then
                Analyze_Exceptional_Cases_In_Decl_Part (Prag);
@@ -1115,7 +1126,7 @@ package body Contracts is
       if Comes_From_Source (Obj_Id) and then Is_Ghost_Entity (Obj_Id) then
 
          --  A Ghost object cannot be of a type that yields a synchronized
-         --  object (SPARK RM 6.9(19)).
+         --  object (SPARK RM 6.9(21)).
 
          if Yields_Synchronized_Object (Obj_Typ) then
             Error_Msg_N ("ghost object & cannot be synchronized", Obj_Id);
@@ -2115,9 +2126,7 @@ package body Contracts is
       if Nkind (Templ) = N_Generic_Package_Declaration then
          Mutate_Ekind (Templ_Id, E_Generic_Package);
 
-         if Present (Visible_Declarations (Specification (Templ))) then
-            Decl := First (Visible_Declarations (Specification (Templ)));
-         end if;
+         Decl := First (Visible_Declarations (Specification (Templ)));
 
       --  A generic package body carries contract-related source pragmas in its
       --  declarations.
@@ -2125,9 +2134,7 @@ package body Contracts is
       elsif Nkind (Templ) = N_Package_Body then
          Mutate_Ekind (Templ_Id, E_Package_Body);
 
-         if Present (Declarations (Templ)) then
-            Decl := First (Declarations (Templ));
-         end if;
+         Decl := First (Declarations (Templ));
 
       --  Generic subprogram declaration
 
@@ -2142,9 +2149,7 @@ package body Contracts is
          --  the Pragmas_After list for contract-related source pragmas.
 
          if Nkind (Context) = N_Compilation_Unit then
-            if Present (Aux_Decls_Node (Context))
-              and then Present (Pragmas_After (Aux_Decls_Node (Context)))
-            then
+            if Present (Aux_Decls_Node (Context)) then
                Decl := First (Pragmas_After (Aux_Decls_Node (Context)));
             end if;
 
@@ -2161,9 +2166,7 @@ package body Contracts is
       elsif Nkind (Templ) = N_Subprogram_Body then
          Mutate_Ekind (Templ_Id, E_Subprogram_Body);
 
-         if Present (Declarations (Templ)) then
-            Decl := First (Declarations (Templ));
-         end if;
+         Decl := First (Declarations (Templ));
       end if;
 
       --  Inspect the relevant declarations looking for contract-related source
@@ -2714,22 +2717,7 @@ package body Contracts is
          --  Otherwise, add the item
 
          else
-            if No (List) then
-               List := New_List;
-            end if;
-
-            --  If the pragma is a conjunct in a composite postcondition, it
-            --  has been processed in reverse order. In the postcondition body
-            --  it must appear before the others.
-
-            if Nkind (Item) = N_Pragma
-              and then From_Aspect_Specification (Item)
-              and then Split_PPC (Item)
-            then
-               Prepend (Item, List);
-            else
-               Append (Item, List);
-            end if;
+            Append_New (Item, List);
          end if;
       end Append_Enabled_Item;
 
@@ -2769,6 +2757,9 @@ package body Contracts is
 
                      elsif Pragma_Name (Prag) = Name_Exceptional_Cases then
                         Expand_Pragma_Exceptional_Cases (Prag);
+
+                     elsif Pragma_Name (Prag) = Name_Exit_Cases then
+                        Expand_Pragma_Exit_Cases (Prag);
 
                      elsif Pragma_Name (Prag) = Name_Subprogram_Variant then
                         Expand_Pragma_Subprogram_Variant
@@ -2942,9 +2933,7 @@ package body Contracts is
                --  Wrappers of class-wide pre/postconditions reference the
                --  parent primitive that has the inherited contract.
 
-               if Is_Wrapper (Subp_Id)
-                 and then Present (LSP_Subprogram (Subp_Id))
-               then
+               if Is_LSP_Wrapper (Subp_Id) then
                   Subp_Id := LSP_Subprogram (Subp_Id);
                end if;
 
@@ -3604,8 +3593,7 @@ package body Contracts is
       --------------------
 
       procedure Inherit_Pragma (Prag_Id : Pragma_Id) is
-         Prag     : constant Node_Id := Get_Pragma (From_Subp, Prag_Id);
-         New_Prag : Node_Id;
+         Prag : constant Node_Id := Get_Pragma (From_Subp, Prag_Id);
 
       begin
          --  A pragma cannot be part of more than one First_Pragma/Next_Pragma
@@ -3613,14 +3601,11 @@ package body Contracts is
          --  flagged as inherited for distinction purposes.
 
          if Present (Prag) then
-            New_Prag := New_Copy_Tree (Prag);
-            Set_Is_Inherited_Pragma (New_Prag);
-
-            Add_Contract_Item (New_Prag, Subp);
+            Add_Contract_Item (New_Copy_Tree (Prag), Subp);
          end if;
       end Inherit_Pragma;
 
-   --   Start of processing for Inherit_Subprogram_Contract
+   --  Start of processing for Inherit_Subprogram_Contract
 
    begin
       --  Inheritance is carried out only when both entities are subprograms
@@ -4081,8 +4066,8 @@ package body Contracts is
 
          begin
             Spec := Build_Call_Helper_Spec (Helper_Id);
-            Set_Must_Override      (Spec, False);
-            Set_Must_Not_Override  (Spec, False);
+            Set_Must_Override     (Spec, False);
+            Set_Must_Not_Override (Spec, False);
             Set_Is_Inlined (Helper_Id);
             Set_Is_Public  (Helper_Id);
 
@@ -4176,13 +4161,13 @@ package body Contracts is
          Helper_Decl := Build_Call_Helper_Decl;
          Mutate_Ekind (Helper_Id, Ekind (Subp_Id));
 
-         --  Add the helper to the freezing actions of the tagged type
+         --  Add the helper to the freezing actions of the class-wide type
 
-         Append_Freeze_Action (Tagged_Type, Helper_Decl);
+         Append_Freeze_Action (Class_Wide_Type (Tagged_Type), Helper_Decl);
          Analyze (Helper_Decl);
 
          Helper_Body := Build_Call_Helper_Body;
-         Append_Freeze_Action (Tagged_Type, Helper_Body);
+         Append_Freeze_Action (Class_Wide_Type (Tagged_Type), Helper_Body);
 
          --  If this helper is built as part of building the DTW at the
          --  freezing point of its tagged type then we cannot defer
@@ -4404,10 +4389,10 @@ package body Contracts is
          Seen    : Subprogram_List (Subps'Range) := (others => Empty);
 
          function Inherit_Condition
-           (Par_Subp : Entity_Id;
-            Subp     : Entity_Id) return Node_Id;
-         --  Inherit the class-wide condition from Par_Subp to Subp and adjust
-         --  all the references to formals in the inherited condition.
+           (Par_Subp : Entity_Id) return Node_Id;
+         --  Inherit the class-wide condition from Par_Subp. Simply makes
+         --  a copy of the condition in preparation for later mapping of
+         --  referenced formals and functions by Build_Class_Wide_Expression.
 
          procedure Merge_Conditions (From : Node_Id; Into : Node_Id);
          --  Merge two class-wide preconditions or postconditions (the former
@@ -4422,92 +4407,11 @@ package body Contracts is
          -----------------------
 
          function Inherit_Condition
-           (Par_Subp : Entity_Id;
-            Subp     : Entity_Id) return Node_Id
-         is
-            function Check_Condition (Expr : Node_Id) return Boolean;
-            --  Used in assertion to check that Expr has no reference to the
-            --  formals of Par_Subp.
-
-            ---------------------
-            -- Check_Condition --
-            ---------------------
-
-            function Check_Condition (Expr : Node_Id) return Boolean is
-               Par_Formal_Id : Entity_Id;
-
-               function Check_Entity (N : Node_Id) return Traverse_Result;
-               --  Check occurrence of Par_Formal_Id
-
-               ------------------
-               -- Check_Entity --
-               ------------------
-
-               function Check_Entity (N : Node_Id) return Traverse_Result is
-               begin
-                  if Nkind (N) = N_Identifier
-                    and then Present (Entity (N))
-                    and then Entity (N) = Par_Formal_Id
-                  then
-                     return Abandon;
-                  end if;
-
-                  return OK;
-               end Check_Entity;
-
-               function Check_Expression is new Traverse_Func (Check_Entity);
-
-            --  Start of processing for Check_Condition
-
-            begin
-               Par_Formal_Id := First_Formal (Par_Subp);
-
-               while Present (Par_Formal_Id) loop
-                  if Check_Expression (Expr) = Abandon then
-                     return False;
-                  end if;
-
-                  Next_Formal (Par_Formal_Id);
-               end loop;
-
-               return True;
-            end Check_Condition;
-
-            --  Local variables
-
-            Assoc_List     : constant Elist_Id := New_Elmt_List;
-            Par_Formal_Id  : Entity_Id := First_Formal (Par_Subp);
-            Subp_Formal_Id : Entity_Id := First_Formal (Subp);
-            New_Condition  : Node_Id;
-
+           (Par_Subp : Entity_Id) return Node_Id is
          begin
-            while Present (Par_Formal_Id) loop
-               Append_Elmt (Par_Formal_Id,  Assoc_List);
-               Append_Elmt (Subp_Formal_Id, Assoc_List);
-
-               Next_Formal (Par_Formal_Id);
-               Next_Formal (Subp_Formal_Id);
-            end loop;
-
-            --  Check that Parent field of all the nodes have their correct
-            --  decoration; required because otherwise mapped nodes with
-            --  wrong Parent field are left unmodified in the copied tree
-            --  and cause reporting wrong errors at later stages.
-
-            pragma Assert
-              (Check_Parents (Class_Condition (Kind, Par_Subp), Assoc_List));
-
-            New_Condition :=
+            return
               New_Copy_Tree
-                (Source => Class_Condition (Kind, Par_Subp),
-                 Map    => Assoc_List);
-
-            --  Ensure that the inherited condition has no reference to the
-            --  formals of the parent subprogram.
-
-            pragma Assert (Check_Condition (New_Condition));
-
-            return New_Condition;
+                (Source => Class_Condition (Kind, Par_Subp));
          end Inherit_Condition;
 
          ----------------------
@@ -4610,9 +4514,7 @@ package body Contracts is
                --  parent primitive that has the inherited contract and help
                --  us to climb fast.
 
-               if Is_Wrapper (Subp_Id)
-                 and then Present (LSP_Subprogram (Subp_Id))
-               then
+               if Is_LSP_Wrapper (Subp_Id) then
                   Subp_Id := LSP_Subprogram (Subp_Id);
                end if;
 
@@ -4623,9 +4525,7 @@ package body Contracts is
                   Par_Prim        := Subp_Id;
                   Par_Iface_Prims := Covered_Interface_Primitives (Par_Prim);
 
-                  Cond := Inherit_Condition
-                            (Subp     => Spec_Id,
-                             Par_Subp => Subp_Id);
+                  Cond := Inherit_Condition (Par_Subp => Subp_Id);
 
                   if Present (Class_Cond) then
                      Merge_Conditions (Cond, Class_Cond);
@@ -4669,9 +4569,7 @@ package body Contracts is
                then
                   Seen (Index) := Subp_Id;
 
-                  Cond := Inherit_Condition
-                            (Subp     => Spec_Id,
-                             Par_Subp => Subp_Id);
+                  Cond := Inherit_Condition (Par_Subp => Subp_Id);
 
                   Check_Class_Condition
                     (Cond            => Cond,
@@ -4995,9 +4893,7 @@ package body Contracts is
 
       Push_Scope (Gen_Id);
 
-      if Permits_Aspect_Specifications (Templ)
-        and then Has_Aspects (Templ)
-      then
+      if Permits_Aspect_Specifications (Templ) then
          Save_Global_References_In_Aspects (Templ);
       end if;
 

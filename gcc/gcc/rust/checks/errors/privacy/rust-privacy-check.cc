@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -35,13 +35,13 @@ void
 Resolver::resolve (HIR::Crate &crate)
 {
   PrivacyContext ctx;
-  auto mappings = Analysis::Mappings::get ();
+  auto &mappings = Analysis::Mappings::get ();
   auto resolver = Rust::Resolver::Resolver::get ();
   auto ty_ctx = ::Rust::Resolver::TypeCheckContext::get ();
 
-  VisibilityResolver (*mappings, *resolver).go (crate);
-  PubRestrictedVisitor (*mappings).go (crate);
-  PrivacyReporter (*mappings, *resolver, *ty_ctx).go (crate);
+  VisibilityResolver (mappings, *resolver).go (crate);
+  PubRestrictedVisitor (mappings).go (crate);
+  PrivacyReporter (mappings, *resolver, *ty_ctx).go (crate);
 
   auto visitor = ReachabilityVisitor (ctx, *ty_ctx);
 

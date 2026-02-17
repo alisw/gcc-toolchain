@@ -32,7 +32,7 @@
 #   and this notice are preserved. This file is offered as-is, without any
 #   warranty.
 
-#serial 20
+#serial 22
 
 AU_ALIAS([AC_PROG_CC_FOR_BUILD], [AX_PROG_CC_FOR_BUILD])
 AC_DEFUN([AX_PROG_CC_FOR_BUILD], [dnl
@@ -89,16 +89,16 @@ AC_LANG_PUSH([C])
 dnl The pushdef([ac_cv_c_compiler_gnu], ...) currently does not cover
 dnl the use of this variable in _AC_LANG_COMPILER_GNU called by
 dnl AC_PROG_CC. Unset this cache variable temporarily as a workaround.
-was_set_ac_cv_c_compiler_gnu=${[ac_cv_c_compiler_gnu]+y}
-AS_IF([test ${was_set_ac_cv_c_compiler_gnu}],
-    [saved_ac_cv_c_compiler_gnu=$[ac_cv_c_compiler_gnu]
+was_set_c_compiler_gnu=${[ac_cv_c_compiler_gnu]+y}
+AS_IF([test ${was_set_c_compiler_gnu}],
+    [saved_c_compiler_gnu=$[ac_cv_c_compiler_gnu]
     AS_UNSET([[ac_cv_c_compiler_gnu]])])
 
 AC_PROG_CC
 
 dnl Restore ac_cv_c_compiler_gnu
-AS_IF([test ${was_set_ac_cv_c_compiler_gnu}],
-  [[ac_cv_c_compiler_gnu]=saved_ac_cv_c_compiler_gnu])
+AS_IF([test ${was_set_c_compiler_gnu}],
+  [[ac_cv_c_compiler_gnu]=$[saved_c_compiler_gnu]])
 
 _AC_COMPILER_EXEEXT
 _AC_COMPILER_OBJEXT
@@ -141,7 +141,7 @@ popdef([ac_cv_prog_gcc])dnl
 popdef([ac_cv_prog_CPP])dnl
 
 dnl restore global variables ac_ext, ac_cpp, ac_compile,
-dnl ac_link, ac_compiler_gnu (dependant on the current
+dnl ac_link, ac_compiler_gnu (dependent on the current
 dnl language after popping):
 AC_LANG_POP([C])
 

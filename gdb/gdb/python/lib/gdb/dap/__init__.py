@@ -1,4 +1,4 @@
-# Copyright 2022-2024 Free Software Foundation, Inc.
+# Copyright 2022-2025 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ from . import startup
 # server object.  "F401" is the flake8 "imported but unused" code.
 from . import breakpoint  # noqa: F401
 from . import bt  # noqa: F401
+from . import completions  # noqa: F401
 from . import disassemble  # noqa: F401
 from . import evaluate  # noqa: F401
 from . import launch  # noqa: F401
@@ -92,5 +93,7 @@ def pre_command_loop():
         # session.
         session_started = True
         startup.thread_log("starting DAP server")
-        global server
+        # These are handy for bug reports.
+        startup.exec_and_log("show version")
+        startup.exec_and_log("show configuration")
         startup.start_dap(server.main_loop)

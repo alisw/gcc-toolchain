@@ -1,0 +1,9 @@
+cmake_minimum_required(VERSION 3.12)
+
+message("@LEVEL_CURRENT@")
+
+ctest_run_script("${CMAKE_CURRENT_LIST_DIR}/ctest_run_script_@LEVEL_NEXT@.cmake" RETURN_VALUE val)
+
+if(NOT val EQUAL 0)
+  message(FATAL_ERROR "Nested script failed")
+endif()

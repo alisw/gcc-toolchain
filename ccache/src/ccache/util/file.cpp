@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2021-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -18,18 +18,19 @@
 
 #include "file.hpp"
 
-#include <ccache/util/Bytes.hpp>
-#include <ccache/util/DirEntry.hpp>
-#include <ccache/util/Fd.hpp>
-#include <ccache/util/Finalizer.hpp>
-#include <ccache/util/PathString.hpp>
-#include <ccache/util/TemporaryFile.hpp>
+#include <ccache/util/bytes.hpp>
+#include <ccache/util/defer.hpp>
+#include <ccache/util/direntry.hpp>
 #include <ccache/util/error.hpp>
 #include <ccache/util/expected.hpp>
+#include <ccache/util/fd.hpp>
 #include <ccache/util/file.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/logging.hpp>
+#include <ccache/util/path.hpp>
+#include <ccache/util/pathstring.hpp>
+#include <ccache/util/temporaryfile.hpp>
 
 #ifdef __APPLE__
 #  include <copyfile.h>
@@ -76,8 +77,6 @@
 
 namespace fs = util::filesystem;
 
-using pstr = util::PathString;
-
 namespace util {
 
 #ifdef _WIN32
@@ -90,14 +89,11 @@ copy_file_impl(const fs::path& src,
 {
   auto dst_cstr = dest.c_str();
   if (via_tmp_file == ViaTmpFile::yes) {
-    auto temp_file = TemporaryFile::create(dest);
-    if (!temp_file) {
-      return tl::unexpected(temp_file.error());
-    }
-    tmp_file = std::move(temp_file->path);
+    TRY_ASSIGN(auto temp_file, TemporaryFile::create(dest));
+    tmp_file = std::move(temp_file.path);
     dst_cstr = tmp_file.c_str();
   }
-  unlink(pstr(dest));
+  unlink(util::pstr(dest).c_str());
   if (!CopyFileExW(src.c_str(), dst_cstr, nullptr, nullptr, nullptr, 0)) {
     return tl::unexpected(
       FMT("Failed to copy {} to {}: {}", src, dest, strerror(errno)));
@@ -110,9 +106,22 @@ copy_file_impl(const fs::path& src,
 static tl::expected<void, std::string>
 copy_fd(int src_fd, int dst_fd)
 {
-  return read_fd(src_fd, [&](nonstd::span<const uint8_t> data) {
-    write_fd(dst_fd, data.data(), data.size());
+  std::optional<std::string> write_error;
+  auto read_result = read_fd(src_fd, [&](nonstd::span<const uint8_t> data) {
+    auto result = write_fd(dst_fd, data.data(), data.size());
+    if (!result) {
+      write_error = result.error();
+    }
   });
+  if (write_error) {
+    return tl::unexpected(
+      FMT("failed to write to FD {}: {}", dst_fd, *write_error));
+  }
+  if (!read_result) {
+    return tl::unexpected(
+      FMT("failed to read from FD {}: {}", src_fd, read_result.error()));
+  }
+  return {};
 }
 
 static tl::expected<void, std::string>
@@ -121,25 +130,22 @@ copy_file_impl(const fs::path& src,
                ViaTmpFile via_tmp_file,
                fs::path& tmp_file)
 {
-  Fd src_fd(open(pstr(src), O_RDONLY | O_BINARY));
+  Fd src_fd(open(util::pstr(src).c_str(), O_RDONLY | O_BINARY));
   if (!src_fd) {
     return tl::unexpected(
       FMT("Failed to open {} for reading: {}", src, strerror(errno)));
   }
 
-  unlink(pstr(dest));
+  unlink(util::pstr(dest).c_str());
 
   Fd dst_fd;
   if (via_tmp_file == ViaTmpFile::yes) {
-    auto temp_file = TemporaryFile::create(dest);
-    if (!temp_file) {
-      return tl::unexpected(temp_file.error());
-    }
-    dst_fd = std::move(temp_file->fd);
-    tmp_file = std::move(temp_file->path);
+    TRY_ASSIGN(auto temp_file, TemporaryFile::create(dest));
+    dst_fd = std::move(temp_file.fd);
+    tmp_file = std::move(temp_file.path);
   } else {
-    dst_fd =
-      Fd(open(pstr(dest), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666));
+    dst_fd = Fd(open(
+      util::pstr(dest).c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666));
     if (!dst_fd) {
       return tl::unexpected(
         FMT("Failed to open {} for writing: {}", dest, strerror(errno)));
@@ -154,6 +160,7 @@ copy_file_impl(const fs::path& src,
     return tl::unexpected(
       FMT("Failed to copy {} to {}: {}", src, dest, strerror(errno)));
   }
+  return {};
 #  elif defined(HAVE_SYS_SENDFILE_H)
   DirEntry dir_entry(src, *src_fd);
   if (!dir_entry) {
@@ -174,10 +181,10 @@ copy_file_impl(const fs::path& src,
     }
     bytes_left -= n;
   }
-#  else
-  copy_fd(*src_fd, *dst_fd);
-#  endif
   return {};
+#  else
+  return copy_fd(*src_fd, *dst_fd);
+#  endif
 }
 
 #endif
@@ -186,11 +193,7 @@ tl::expected<void, std::string>
 copy_file(const fs::path& src, const fs::path& dest, ViaTmpFile via_tmp_file)
 {
   fs::path tmp_file;
-  auto r = copy_file_impl(src, dest, via_tmp_file, tmp_file);
-  if (!r) {
-    return tl::unexpected(r.error());
-  }
-
+  TRY(copy_file_impl(src, dest, via_tmp_file, tmp_file));
   if (via_tmp_file == ViaTmpFile::yes) {
     const auto result = fs::rename(tmp_file, dest);
     if (!result) {
@@ -237,7 +240,7 @@ fallocate(int fd, size_t new_size)
   // The underlying filesystem does not support the operation so fall back to
   // lseek.
 #endif
-  off_t saved_pos = lseek(fd, 0, SEEK_END);
+  off_t saved_pos = lseek(fd, 0, SEEK_CUR);
   off_t old_size = lseek(fd, 0, SEEK_END);
   if (old_size == -1) {
     int err = errno;
@@ -255,7 +258,7 @@ fallocate(int fd, size_t new_size)
     lseek(fd, saved_pos, SEEK_SET);
     return tl::unexpected(strerror(ENOMEM));
   }
-  Finalizer buf_freer([&] { free(buf); });
+  DEFER(free(buf));
 
   return write_fd(fd, buf, bytes_to_write)
     .and_then([&]() -> tl::expected<void, std::string> {
@@ -319,13 +322,13 @@ tl::expected<T, std::string>
 read_file(const fs::path& path, size_t size_hint)
 {
   const int open_flags = [] {
-    if constexpr (std::is_same<T, std::string>::value) {
+    if constexpr (std::is_same_v<T, std::string>) {
       return O_RDONLY | O_TEXT;
     } else {
       return O_RDONLY | O_BINARY;
     }
   }();
-  Fd fd(open(pstr(path), open_flags));
+  Fd fd(open(util::pstr(path).c_str(), open_flags));
   if (!fd) {
     return tl::unexpected(strerror(errno));
   }
@@ -377,40 +380,39 @@ read_file(const fs::path& path, size_t size_hint)
   result.resize(pos);
 
 #ifdef _WIN32
-  if constexpr (std::is_same<T, std::string>::value) {
+  if constexpr (std::is_same_v<T, std::string>) {
     // Convert to UTF-8 if the content starts with a UTF-16 little-endian BOM.
     if (has_utf16_le_bom(result)) {
-      result.erase(0, 2); // Remove BOM.
-      if (result.empty()) {
-        return result;
-      }
-
-      std::wstring result_as_u16((result.size() / 2) + 1, '\0');
-      result_as_u16 = reinterpret_cast<const wchar_t*>(result.c_str());
-      const int size = WideCharToMultiByte(CP_UTF8,
-                                           WC_ERR_INVALID_CHARS,
-                                           result_as_u16.c_str(),
-                                           int(result_as_u16.size()),
-                                           nullptr,
-                                           0,
-                                           nullptr,
-                                           nullptr);
-      if (size <= 0) {
+      DEBUG_ASSERT(result.size() >= 2);
+      const wchar_t* utf16 =
+        reinterpret_cast<const wchar_t*>(result.data() + 2);
+      const int utf16_size = static_cast<int>((result.size() - 2) / 2);
+      const int utf8_size = WideCharToMultiByte(CP_UTF8,
+                                                WC_ERR_INVALID_CHARS,
+                                                utf16,
+                                                utf16_size,
+                                                nullptr,
+                                                0,
+                                                nullptr,
+                                                nullptr);
+      if (utf8_size <= 0) {
         return tl::unexpected(
           FMT("Failed to convert {} from UTF-16LE to UTF-8: {}",
               path,
               util::win32_error_message(GetLastError())));
       }
 
-      result = std::string(size, '\0');
+      std::string utf8(utf8_size, '\0');
       WideCharToMultiByte(CP_UTF8,
                           0,
-                          result_as_u16.c_str(),
-                          int(result_as_u16.size()),
-                          &result.at(0),
-                          size,
+                          utf16,
+                          utf16_size,
+                          utf8.data(),
+                          utf8_size,
                           nullptr,
                           nullptr);
+
+      result.swap(utf8);
     }
   }
 #endif
@@ -436,7 +438,7 @@ read_file_part(const fs::path& path, size_t pos, size_t count)
     return result;
   }
 
-  Fd fd(open(pstr(path), O_RDONLY | O_BINARY));
+  Fd fd(open(util::pstr(path).c_str(), O_RDONLY | O_BINARY));
   if (!fd) {
     LOG("Failed to open {}: {}", path, strerror(errno));
     return tl::unexpected(strerror(errno));
@@ -541,7 +543,8 @@ set_timestamps(const fs::path& path,
     atime_mtime[0] = (atime ? *atime : *mtime).to_timespec();
     atime_mtime[1] = mtime->to_timespec();
   }
-  utimensat(AT_FDCWD, pstr(path), mtime ? atime_mtime : nullptr, 0);
+  utimensat(
+    AT_FDCWD, util::pstr(path).c_str(), mtime ? atime_mtime : nullptr, 0);
 #elif defined(HAVE_UTIMES)
   timeval atime_mtime[2];
   if (mtime) {
@@ -551,15 +554,15 @@ set_timestamps(const fs::path& path,
     atime_mtime[1].tv_sec = mtime->sec();
     atime_mtime[1].tv_usec = mtime->nsec_decimal_part() / 1000;
   }
-  utimes(pstr(path), mtime ? atime_mtime : nullptr);
+  utimes(util::pstr(path).c_str(), mtime ? atime_mtime : nullptr);
 #else
   utimbuf atime_mtime;
   if (mtime) {
     atime_mtime.actime = atime ? atime->sec() : mtime->sec();
     atime_mtime.modtime = mtime->sec();
-    utime(pstr(path), &atime_mtime);
+    utime(util::pstr(path).c_str(), &atime_mtime);
   } else {
-    utime(pstr(path), nullptr);
+    utime(util::pstr(path).c_str(), nullptr);
   }
 #endif
 }
@@ -570,13 +573,13 @@ tl::expected<void, std::string>
 traverse_directory(const fs::path& directory,
                    const TraverseDirectoryVisitor& visitor)
 {
-  DIR* dir = opendir(pstr(directory));
+  DIR* dir = opendir(util::pstr(directory).c_str());
   if (!dir) {
     return tl::unexpected(
       FMT("Failed to traverse {}: {}", directory, strerror(errno)));
   }
 
-  Finalizer dir_closer([&] { closedir(dir); });
+  DEFER(closedir(dir));
 
   struct dirent* entry;
   while ((entry = readdir(dir))) {
@@ -605,7 +608,7 @@ traverse_directory(const fs::path& directory,
       is_dir = dir_entry.is_directory();
     }
     if (is_dir) {
-      traverse_directory(path, visitor);
+      TRY(traverse_directory(path, visitor));
     } else {
       visitor(path);
     }
@@ -621,7 +624,7 @@ tl::expected<void, std::string>
 traverse_directory(const fs::path& directory,
                    const TraverseDirectoryVisitor& visitor)
 {
-  // Note: Intentionally not using std::filesystem::recursive_directory_iterator
+  // Note: Intentionally not using fs::recursive_directory_iterator
   // since it visits directories in preorder.
 
   DirEntry dir_entry(directory);
@@ -633,9 +636,9 @@ traverse_directory(const fs::path& directory,
   }
 
   try {
-    for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+    for (const auto& entry : fs::directory_iterator(directory)) {
       if (entry.is_directory()) {
-        traverse_directory(entry.path(), visitor);
+        TRY(traverse_directory(entry.path(), visitor));
       } else {
         visitor(entry.path());
       }
@@ -671,15 +674,15 @@ write_fd(int fd, const void* data, size_t size)
 tl::expected<void, std::string>
 write_file(const fs::path& path, std::string_view data, WriteFileMode mode)
 {
-  auto path_str = pstr(path);
+  util::PathString path_str(path);
   if (mode == WriteFileMode::unlink) {
-    unlink(path_str);
+    unlink(path_str.c_str());
   }
   int flags = O_WRONLY | O_CREAT | O_TRUNC | O_TEXT;
   if (mode == WriteFileMode::exclusive) {
     flags |= O_EXCL;
   }
-  Fd fd(open(path_str, flags, 0666));
+  Fd fd(open(path_str.c_str(), flags, 0666));
   if (!fd) {
     return tl::unexpected(strerror(errno));
   }
@@ -691,15 +694,15 @@ write_file(const fs::path& path,
            nonstd::span<const uint8_t> data,
            WriteFileMode mode)
 {
-  auto path_str = pstr(path);
+  util::PathString path_str(path);
   if (mode == WriteFileMode::unlink) {
-    unlink(path_str);
+    unlink(path_str.c_str());
   }
   int flags = O_WRONLY | O_CREAT | O_TRUNC | O_BINARY;
   if (mode == WriteFileMode::exclusive) {
     flags |= O_EXCL;
   }
-  Fd fd(open(path_str, flags, 0666));
+  Fd fd(open(path_str.c_str(), flags, 0666));
   if (!fd) {
     return tl::unexpected(strerror(errno));
   }

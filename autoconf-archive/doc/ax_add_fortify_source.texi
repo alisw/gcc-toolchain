@@ -11,8 +11,8 @@ AX_ADD_FORTIFY_SOURCE
 
 Check whether -D_FORTIFY_SOURCE=2 can be added to CPPFLAGS without macro
 redefinition warnings, other cpp warnings or linker. Some distributions
-(such as Gentoo Linux) enable _FORTIFY_SOURCE globally in their
-compilers, leading to unnecessary warnings in the form of
+(such as Ubuntu or Gentoo Linux) enable _FORTIFY_SOURCE globally in
+their compilers, leading to unnecessary warnings in the form of
 
 @smallexample
   <command-line>:0:0: error: "_FORTIFY_SOURCE" redefined [-Werror]
@@ -39,7 +39,7 @@ macro's revision history}.
 
 @majorheading License
 
-@w{Copyright @copyright{} 2017 David Seifert @email{soap@@gentoo.org}} @* @w{Copyright @copyright{} 2019 Reini Urban @email{rurban@@cpan.org}}
+@w{Copyright @copyright{} 2017 David Seifert @email{soap@@gentoo.org}} @* @w{Copyright @copyright{} 2019, 2023 Reini Urban @email{rurban@@cpan.org}}
 
 Copying and distribution of this file, with or without modification, are
 permitted in any medium without royalty provided the copyright notice

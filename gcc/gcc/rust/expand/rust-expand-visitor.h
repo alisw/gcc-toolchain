@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -47,10 +47,16 @@ public:
 
   using AST::DefaultASTVisitor::visit;
 
-  /* Maybe expand a macro invocation in lieu of an expression */
+  /*
+     Maybe expand a macro invocation in lieu of an expression
+     expr : Core guidelines R33, this function reseat the pointer.
+  */
   void maybe_expand_expr (std::unique_ptr<AST::Expr> &expr);
 
-  /* Maybe expand a macro invocation in lieu of a type */
+  /*
+     Maybe expand a macro invocation in lieu of a type
+     type : Core guidelines R33, this function reseat the pointer.
+   */
   void maybe_expand_type (std::unique_ptr<AST::Type> &type);
 
   /**
@@ -134,7 +140,7 @@ public:
 	    it = values.erase (it);
 	    for (auto &node : final_fragment.get_nodes ())
 	      {
-		auto new_node = extractor (node);
+		U new_node = extractor (node);
 		if (new_node != nullptr)
 		  {
 		    it = values.insert (it, std::move (new_node));
@@ -231,6 +237,7 @@ public:
   void visit (AST::TypeParam &param) override;
   void visit (AST::LifetimeWhereClauseItem &) override;
   void visit (AST::TypeBoundWhereClauseItem &item) override;
+  void visit (AST::Module &module) override;
   void visit (AST::ExternCrate &crate) override;
   void visit (AST::UseTreeGlob &) override;
   void visit (AST::UseTreeList &) override;
@@ -252,7 +259,6 @@ public:
   void visit (AST::TraitImpl &impl) override;
   void visit (AST::ExternalTypeItem &item) override;
   void visit (AST::ExternalStaticItem &item) override;
-  void visit (AST::ExternalFunctionItem &item) override;
   void visit (AST::ExternBlock &block) override;
 
   // I don't think it would be possible to strip macros without expansion

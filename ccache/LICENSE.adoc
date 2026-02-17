@@ -35,7 +35,7 @@ The copyright for ccache as a whole is as follows:
 
 ----
 Copyright (C) 2002-2007 Andrew Tridgell
-Copyright (C) 2009-2024 Joel Rosdahl and other contributors
+Copyright (C) 2009-2026 Joel Rosdahl and other contributors
 ----
 
 
@@ -50,7 +50,7 @@ under less restrictive terms.
 
 === src/third_party/blake3/blake3/*
 
-This is a subset of https://github.com/BLAKE3-team/BLAKE3[BLAKE3] 1.5.1 with the
+This is a subset of https://github.com/BLAKE3-team/BLAKE3[BLAKE3] 1.8.2 with the
 following license:
 
 ----
@@ -390,13 +390,13 @@ express Statement of Purpose.
 === src/third_party/cpp-httplib/httplib.h
 
 cpp-httplib - A C++11 cross-platform HTTP/HTTPS library. Copied from cpp-httplib
-v0.15.3 downloaded from https://github.com/yhirose/cpp-httplib[cpp-httplib]. The
+v0.20.0 downloaded from https://github.com/yhirose/cpp-httplib[cpp-httplib]. The
 library has the following license:
 
 ----
 The MIT License (MIT)
 
-Copyright (c) 2024 yhirose
+Copyright (c) 2025 yhirose
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -450,12 +450,12 @@ SOFTWARE.
 
 === src/third_party/fmt/fmt/*.h and src/third_party/fmt/fmt/format.cc
 
-This is a subset of https://fmt.dev[fmt] 10.2.1 with the following license:
+This is a subset of https://fmt.dev[fmt] 11.1.4 with the following license:
 
 ----
 Formatting library for C++
 
-Copyright (c) 2012 - present, Victor Zverovich
+Copyright (c) 2012 - present, Victor Zverovich and {fmt} contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -521,7 +521,7 @@ DEALINGS IN THE SOFTWARE.
 
 === src/third_party/tl-expected/tl/expected.hpp
 
-This is https://github.com/TartanLlama/expected[TartanLlama expected] 1.1.0 with
+This is https://github.com/TartanLlama/expected[TartanLlama expected] 1.3.1 with
 the following license:
 
 ----

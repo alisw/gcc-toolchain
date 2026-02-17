@@ -1,5 +1,5 @@
 /* ldfile.h -
-   Copyright (C) 1991-2024 Free Software Foundation, Inc.
+   Copyright (C) 1991-2026 Free Software Foundation, Inc.
 
    This file is part of the GNU Binutils.
 
@@ -26,15 +26,6 @@ extern unsigned long ldfile_output_machine;
 extern enum bfd_architecture ldfile_output_architecture;
 extern const char *ldfile_output_machine_name;
 
-enum search_dir_source
-{
-  search_dir_cmd_line,
-#if BFD_SUPPORTS_PLUGINS
-  search_dir_plugin,
-#endif
-  search_dir_linker_script
-};
-
 /* Structure used to hold the list of directories to search for
    libraries.  */
 
@@ -44,12 +35,8 @@ typedef struct search_dirs
   struct search_dirs *next;
   /* Name of directory.  */
   const char *name;
-  /* Where the search path came from.  */
-  enum search_dir_source source;
-#if BFD_SUPPORTS_PLUGINS
-  /* For search dirs added by plugins, the plugin that added them.  */
-  void * plugin;
-#endif
+  /* TRUE if this is from the command line.  */
+  bool cmdline;
 } search_dirs_type;
 
 enum script_open_style
@@ -72,8 +59,8 @@ extern search_dirs_type *search_head;
 
 extern void ldfile_add_arch
   (const char *);
-extern search_dirs_type * ldfile_add_library_path
-  (const char *, enum search_dir_source);
+extern void ldfile_add_library_path
+  (const char *, bool cmdline);
 extern void ldfile_open_command_file
   (const char *name);
 extern void ldfile_open_script_file
@@ -94,7 +81,7 @@ extern void ldfile_add_remap
   (const char *, const char *);
 extern bool ldfile_add_remap_file
   (const char *);
-extern void ldfile_remap_input_free
+extern void ldfile_free
   (void);
 extern const char * ldfile_possibly_remap_input
   (const char *);

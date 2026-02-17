@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2020-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,28 +16,27 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "Depfile.hpp"
+#include "depfile.hpp"
 
-#include <ccache/Context.hpp>
-#include <ccache/Hash.hpp>
+#include <ccache/context.hpp>
 #include <ccache/core/common.hpp>
 #include <ccache/core/exceptions.hpp>
-#include <ccache/util/PathString.hpp>
-#include <ccache/util/Tokenizer.hpp>
+#include <ccache/hash.hpp>
 #include <ccache/util/assertions.hpp>
+#include <ccache/util/expected.hpp>
 #include <ccache/util/file.hpp>
 #include <ccache/util/filesystem.hpp>
+#include <ccache/util/format.hpp>
 #include <ccache/util/logging.hpp>
 #include <ccache/util/path.hpp>
 #include <ccache/util/string.hpp>
+#include <ccache/util/tokenizer.hpp>
 
 #include <algorithm>
 
 namespace fs = util::filesystem;
 
-using pstr = util::PathString;
-
-namespace Depfile {
+namespace depfile {
 
 std::string
 escape_filename(std::string_view filename)
@@ -65,7 +64,7 @@ escape_filename(std::string_view filename)
 std::optional<std::string>
 rewrite_source_paths(const Context& ctx, std::string_view content)
 {
-  ASSERT(!ctx.config.base_dir().empty());
+  ASSERT(!ctx.config.base_dirs().empty());
 
   bool rewritten = false;
   bool first = true;
@@ -82,7 +81,7 @@ rewrite_source_paths(const Context& ctx, std::string_view content)
     auto rel_path = core::make_relative_path(ctx, token);
     if (rel_path != token) {
       rewritten = true;
-      token = pstr(rel_path).str();
+      token = util::pstr(rel_path);
     }
   }
 
@@ -94,26 +93,24 @@ rewrite_source_paths(const Context& ctx, std::string_view content)
 }
 
 // Replace absolute paths with relative paths in the provided dependency file.
-void
+tl::expected<void, std::string>
 make_paths_relative_in_output_dep(const Context& ctx)
 {
-  if (ctx.config.base_dir().empty()) {
+  if (ctx.config.base_dirs().empty()) {
     LOG_RAW("Base dir not set, skip using relative paths");
-    return; // nothing to do
+    return {}; // nothing to do
   }
 
-  const std::string& output_dep = ctx.args_info.output_dep;
-  const auto content = util::read_file<std::string>(output_dep);
-  if (!content) {
-    LOG("Failed to read dependency file {}: {}", output_dep, content.error());
-    return;
-  }
-  const auto new_content = rewrite_source_paths(ctx, *content);
+  const auto& output_dep = ctx.args_info.output_dep;
+  TRY_ASSIGN(auto content, util::read_file<std::string>(output_dep));
+  const auto new_content = rewrite_source_paths(ctx, content);
   if (new_content) {
-    util::write_file(output_dep, *new_content);
+    TRY(util::write_file(output_dep, *new_content));
   } else {
     LOG("No paths in dependency file {} made relative", output_dep);
   }
+
+  return {};
 }
 
 std::vector<std::string>
@@ -256,4 +253,4 @@ untokenize(const std::vector<std::string>& tokens)
   return result;
 }
 
-} // namespace Depfile
+} // namespace depfile

@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2020-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,16 +16,16 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "LockFile.hpp"
+#include "lockfile.hpp"
 
-#include <ccache/util/DirEntry.hpp>
-#include <ccache/util/PathString.hpp>
 #include <ccache/util/assertions.hpp>
+#include <ccache/util/direntry.hpp>
 #include <ccache/util/error.hpp>
 #include <ccache/util/file.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/logging.hpp>
+#include <ccache/util/path.hpp>
 #include <ccache/util/process.hpp>
 #include <ccache/util/wincompat.hpp>
 
@@ -49,8 +49,6 @@ const util::Duration k_staleness_limit(2);
 
 namespace fs = util::filesystem;
 
-using pstr = util::PathString;
-
 namespace {
 
 class RandomNumberGenerator
@@ -66,7 +64,7 @@ public:
   get()
   {
     return m_distribution(m_random_engine);
-  };
+  }
 
 private:
   std::random_device m_random_device;
@@ -79,9 +77,9 @@ private:
 namespace util {
 
 LockFile::LockFile(const fs::path& path)
-  : m_lock_file(pstr(path).str() + ".lock"),
+  : m_lock_file(util::pstr(path).str() + ".lock"),
 #ifndef _WIN32
-    m_alive_file(pstr(path).str() + ".alive"),
+    m_alive_file(util::pstr(path).str() + ".alive"),
     m_acquired(false)
 #else
     m_handle(INVALID_HANDLE_VALUE)
@@ -164,8 +162,12 @@ LockFile::release()
   if (m_lock_manager) {
     m_lock_manager->deregister_alive_file(m_alive_file);
   }
-  fs::remove(m_alive_file);
-  fs::remove(m_lock_file);
+  if (auto r = fs::remove(m_alive_file); !r) {
+    LOG("Failed to remove {}: {}", m_alive_file, r.error());
+  }
+  if (auto r = fs::remove(m_lock_file); !r) {
+    LOG("Failed to remove {}: {}", m_lock_file, r.error());
+  }
 #else
   CloseHandle(m_handle);
 #endif
@@ -337,7 +339,12 @@ LockFile::do_acquire(const bool blocking)
           m_lock_file,
           inactive_duration.sec(),
           inactive_duration.nsec_decimal_part() / 1'000'000);
-      if (!fs::remove(m_alive_file) || !fs::remove(m_lock_file)) {
+      if (auto r = fs::remove(m_alive_file);
+          !r && r.error() != std::errc::no_such_file_or_directory) {
+        return false;
+      }
+      if (auto r = fs::remove(m_lock_file);
+          !r && r.error() != std::errc::no_such_file_or_directory) {
         return false;
       }
 
@@ -388,7 +395,7 @@ LockFile::do_acquire(const bool blocking)
 
   while (true) {
     DWORD flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE;
-    handle = CreateFile(pstr(m_lock_file),
+    handle = CreateFile(util::pstr(m_lock_file).c_str(),
                         GENERIC_WRITE, // desired access
                         0,             // shared mode (0 = not shared)
                         nullptr,       // security attributes

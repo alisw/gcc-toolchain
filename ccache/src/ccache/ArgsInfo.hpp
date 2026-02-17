@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2020-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -18,8 +18,9 @@
 
 #pragma once
 
-#include <ccache/Args.hpp>
+#include <ccache/util/args.hpp>
 
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -29,10 +30,10 @@
 struct ArgsInfo
 {
   // The source file path.
-  std::string orig_input_file;
+  std::filesystem::path orig_input_file;
 
   // The source file path, potentially rewritten into relative.
-  std::string input_file;
+  std::filesystem::path input_file;
 
   // Prefix to the input file when adding it to a command line.
   std::string input_file_prefix;
@@ -43,38 +44,38 @@ struct ArgsInfo
   bool expect_output_obj = true;
 
   // The output file being compiled to.
-  std::string orig_output_obj;
+  std::filesystem::path orig_output_obj;
 
   // The output file being compiled to, potentially rewritten into relative.
-  std::string output_obj;
+  std::filesystem::path output_obj;
 
   // The path to the dependency file (implicit or specified with -MFdepfile,
   // -Wp,-MD,depfile or -Wp,-MMD,depfile).
-  std::string output_dep;
+  std::filesystem::path output_dep;
 
   // The path to the stack usage (implicit when using -fstack-usage).
-  std::string output_su;
+  std::filesystem::path output_su;
 
   // The path to the callgraph info (implicit when using -fcallgraph-info).
-  std::string output_ci;
+  std::filesystem::path output_ci;
 
   // Diagnostic generation information (Clang). Contains pathname if not empty.
-  std::string output_dia;
+  std::filesystem::path output_dia;
 
   // Split dwarf information (GCC 4.8 and up). Contains pathname if not empty.
-  std::string output_dwo;
+  std::filesystem::path output_dwo;
 
   // The path to the ipa clones (implicit when using -fdump-ipa-clones).
-  std::string output_ipa;
+  std::filesystem::path output_ipa;
 
   // Assembler listing file.
-  std::string output_al;
+  std::filesystem::path output_al;
 
   // The given PCH filepath being compiled to (by -Fp option).
-  std::string orig_included_pch_file;
+  std::filesystem::path orig_included_pch_file;
 
   // The .gch/.pch/.pth file or directory used for compilation.
-  std::string included_pch_file;
+  std::filesystem::path included_pch_file;
 
   // Language to use for the compilation target (see language.c).
   std::string actual_language;
@@ -85,7 +86,8 @@ struct ArgsInfo
   // Is the compiler being asked to output dependencies?
   bool generating_dependencies = false;
 
-  // Is the compiler being asked to output includes (MSVC /showIncludes)?
+  // Is the compiler being asked to output includes (MSVC /showIncludes or
+  // clang-cl /showIncludes:user)?
   bool generating_includes = false;
 
   // The dependency target in the dependency file (the object file unless
@@ -98,11 +100,13 @@ struct ArgsInfo
   // Is the compiler being asked to output stack usage?
   bool generating_stackusage = false;
 
+  // -fdump-ipa-clones
   bool generating_ipa_clones = false;
 
+  // -fcallgraph-info
   bool generating_callgraphinfo = false;
 
-  // Us the compiler being asked to generate diagnostics
+  // Is the compiler being asked to generate diagnostics
   // (--serialize-diagnostics)?
   bool generating_diagnostics = false;
 
@@ -128,7 +132,12 @@ struct ArgsInfo
   bool profile_arcs = false;
 
   // Name of the custom profile directory or file.
-  std::string profile_path;
+  std::filesystem::path profile_path;
+
+  // Path to the root of the source tree during a profile build.
+  // This path will be stripped from the beginning of the mangled absolute paths
+  // in the gcda file name
+  std::filesystem::path profile_prefix_path;
 
   // Profile generation / usage information.
   bool profile_use = false;
@@ -143,7 +152,7 @@ struct ArgsInfo
   bool fno_pch_timestamp = false;
 
   // Files referenced by -fsanitize-blacklist options.
-  std::vector<std::string> sanitize_blacklists;
+  std::vector<std::filesystem::path> sanitize_blacklists;
 
   // Architectures from -arch options.
   std::vector<std::string> arch_args;
@@ -153,4 +162,11 @@ struct ArgsInfo
 
   // Relocating debuginfo in the format old=new.
   std::vector<std::string> debug_prefix_maps;
+
+  // Compilation directory as passed in -ffile-compilation-dir or
+  // -fdebug-compilation-dir.
+  std::string compilation_dir;
+
+  // Build session file as passed in -fbuild-session-file.
+  std::filesystem::path build_session_file;
 };

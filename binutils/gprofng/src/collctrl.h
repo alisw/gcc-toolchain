@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2024 Free Software Foundation, Inc.
+/* Copyright (C) 2021-2026 Free Software Foundation, Inc.
    Contributed by Oracle.
 
    This file is part of GNU Binutils.
@@ -101,8 +101,7 @@ public:
 
   /* set the parameters for heap tracing */
   char *set_heaptrace(const char *);
-  int get_heaptrace_mode()    { return heaptrace_enabled; };
-  int get_heaptrace_checkmode() { return heaptrace_checkenabled; };
+  char *get_heaptrace_mode()  { return heaptrace_mode; };
 
   /* set the parameters for I/O tracing */
   char *set_iotrace(const char *);
@@ -259,6 +258,7 @@ public:
   char *set (char *, const char *); /* set control's value */
   char *unset (char *); /* reset control's value to its default */
   void set_project_home (char *);
+  char *create_exp_dir ();
 
 private:
   int interactive;      /* 1 - dbx, 0 - collect */
@@ -272,7 +272,6 @@ private:
   char *node_name;      /* name of machine on which experiment is run */
   long ncpus;           /* number of online CPUs */
   int cpu_clk_freq;     /* chip clock (MHz.), as reported from processor_info */
-  int cpc_cpuver;       /* chip version, as reported from libcpc */
   long sys_resolution;  /* system clock resolution */
   int sample_period;    /* period for sampling, seconds */
   int sample_default;    /* if period for sampling set by default */
@@ -342,12 +341,7 @@ private:
   /* 	definitions in data_pckts.h */
   int synctrace_scope;
 
-  int heaptrace_enabled;    /* T if heap tracing */
-  /* if 0 no checking;
-   * if 1, check for over- and under-write
-   * if 2, also set patterns in malloc'd and free'd areas
-   */
-  int heaptrace_checkenabled;
+  char *heaptrace_mode; /* NULL, or on, or off, or range */
   int iotrace_enabled;  /* T if I/O tracing */
 
   /* count controls */
@@ -387,7 +381,6 @@ private:
   void determine_profile_params ();
   char *preprocess_names ();
   char *get_exp_name (const char *);
-  char *create_exp_dir ();
   void build_data_desc ();
   char *check_group ();
   char *join_group ();

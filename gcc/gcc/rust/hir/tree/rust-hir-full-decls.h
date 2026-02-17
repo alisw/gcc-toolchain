@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -113,8 +113,6 @@ class WhileLoopExpr;
 class WhileLetLoopExpr;
 class IfExpr;
 class IfExprConseqElse;
-class IfLetExpr;
-class IfLetExprConseqElse;
 struct MatchArm;
 // class MatchCase;
 // class MatchCaseBlockExpr;
@@ -125,7 +123,8 @@ class AwaitExpr;
 class AsyncBlockExpr;
 class InlineAsmReg;
 class InlineAsmRegClass;
-struct InlineAsmRegOrRegClass;
+struct AnonConst;
+class InlineAsmOperand;
 class InlineAsm;
 
 // rust-stmt.h
@@ -177,6 +176,7 @@ class ExternalItem;
 class ExternalStaticItem;
 struct NamedFunctionParam;
 class ExternalFunctionItem;
+class ExternalTypeItem;
 class ExternBlock;
 
 // rust-pattern.h
@@ -211,7 +211,6 @@ class TraitBound;
 class ImplTraitType;
 class TraitObjectType;
 class ParenthesisedType;
-class ImplTraitTypeOneBound;
 class TupleType;
 class NeverType;
 class RawPointerType;

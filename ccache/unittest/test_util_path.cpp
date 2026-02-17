@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2021-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,9 +16,8 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "TestUtil.hpp"
+#include "testutil.hpp"
 
-#include <ccache/util/PathString.hpp>
 #include <ccache/util/environment.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
@@ -30,7 +29,6 @@
 
 namespace fs = util::filesystem;
 
-using pstr = util::PathString;
 using TestUtil::TestContext;
 
 TEST_CASE("util::add_exe_suffix")
@@ -39,6 +37,12 @@ TEST_CASE("util::add_exe_suffix")
   CHECK(util::add_exe_suffix("foo.bat") == "foo.bat");
   CHECK(util::add_exe_suffix("foo.exe") == "foo.exe");
   CHECK(util::add_exe_suffix("foo.sh") == "foo.sh");
+}
+
+TEST_CASE("util::add_extension")
+{
+  CHECK(util::add_extension("foo.x", "") == "foo.x");
+  CHECK(util::add_extension("foo.x", ".y") == "foo.x.y");
 }
 
 TEST_CASE("util::is_full_path")
@@ -65,13 +69,23 @@ TEST_CASE("util::is_dev_null_path")
 #endif
 }
 
+TEST_CASE("util::lexically_normal")
+{
+  CHECK(util::lexically_normal("") == "");
+  CHECK(util::lexically_normal("/") == "/");
+  CHECK(util::lexically_normal("x") == "x");
+  CHECK(util::lexically_normal("x/../y") == "y");
+  CHECK(util::lexically_normal("x/") == "x");
+  CHECK(util::lexically_normal("x/.") == "x");
+}
+
 TEST_CASE("util::make_relative_path")
 {
   using util::make_relative_path;
 
   const TestContext test_context;
 
-  const std::string cwd = pstr(*fs::current_path()).str();
+  const std::string cwd = util::pstr(*fs::current_path());
   const std::string actual_cwd = FMT("{}/d", cwd);
 #if defined(_WIN32) || defined(__CYGWIN__)
   const std::string apparent_cwd = actual_cwd;
@@ -97,8 +111,21 @@ TEST_CASE("util::make_relative_path")
 
   SUBCASE("Match of actual CWD")
   {
+    REQUIRE(fs::create_directory("d"));
+
     CHECK(make_relative_path(actual_cwd, apparent_cwd, actual_cwd + "/x")
           == "x");
+    CHECK(make_relative_path(actual_cwd, apparent_cwd, actual_cwd + "/d")
+          == "d");
+    CHECK(make_relative_path(
+            actual_cwd + "/", apparent_cwd + "/", actual_cwd + "/d")
+          == "d");
+    CHECK(make_relative_path(
+            actual_cwd + "/", apparent_cwd + "/", actual_cwd + "/d/")
+          == "d");
+    CHECK(make_relative_path(
+            actual_cwd + "/", apparent_cwd + "/", actual_cwd + "/d/.")
+          == "d");
 #ifdef _WIN32
     CHECK(make_relative_path(actual_cwd, apparent_cwd, actual_cwd + "\\x")
           == "x");
@@ -113,12 +140,6 @@ TEST_CASE("util::make_relative_path")
     CHECK(make_relative_path(actual_cwd, apparent_cwd, apparent_cwd + "/x")
           == "x");
   }
-
-  SUBCASE("Match if using resolved (using realpath(3)) path")
-  {
-    CHECK(make_relative_path(actual_cwd, actual_cwd, apparent_cwd + "/x")
-          == "x");
-  }
 #endif
 }
 
@@ -127,19 +148,31 @@ TEST_CASE("util::path_starts_with")
   CHECK(util::path_starts_with("", ""));
   CHECK(!util::path_starts_with("", "/"));
   CHECK(util::path_starts_with("/foo/bar", "/foo"));
+  CHECK(util::path_starts_with("/foo/bar/", "/foo"));
+  CHECK(util::path_starts_with("/foo/bar", "/foo/"));
   CHECK(!util::path_starts_with("/batz/bar", "/foo"));
   CHECK(!util::path_starts_with("/foo/bar", "/foo/baz"));
   CHECK(!util::path_starts_with("/beh/foo", "/foo"));
 #ifdef _WIN32
   CHECK(util::path_starts_with("C:/foo/bar", "C:\\foo"));
+  CHECK(util::path_starts_with("C:/foo/bar\\", "C:\\foo"));
+  CHECK(util::path_starts_with("C:/foo/bar", "C:\\foo\\"));
   CHECK(util::path_starts_with("C:/foo/bar", "C:\\\\foo"));
   CHECK(util::path_starts_with("C:\\foo\\bar", "C:/foo"));
   CHECK(util::path_starts_with("C:\\\\foo\\\\bar", "C:/foo"));
   CHECK(util::path_starts_with("C:/FOO/BAR", "c:\\foo"));
   CHECK(util::path_starts_with("c:/foo/bar", "C:\\FOO"));
+  CHECK(util::path_starts_with("c:/foo/bar/", "C:\\FOO"));
+  CHECK(util::path_starts_with("c:/foo/bar", "C:\\FOO\\"));
   CHECK(!util::path_starts_with("C:\\foo\\bar", "/foo/baz"));
   CHECK(!util::path_starts_with("C:\\foo\\bar", "C:/foo/baz"));
   CHECK(!util::path_starts_with("C:\\beh\\foo", "/foo"));
   CHECK(!util::path_starts_with("C:\\beh\\foo", "C:/foo"));
 #endif
+}
+
+TEST_CASE("util::with_extension")
+{
+  CHECK(util::with_extension("foo.x", "") == "foo");
+  CHECK(util::with_extension("foo.x", ".y") == "foo.y");
 }

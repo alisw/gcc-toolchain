@@ -1,5 +1,5 @@
 # Expect script for LoongArch ELF linker tests
-#   Copyright (C) 2022-2024 Free Software Foundation, Inc.
+#   Copyright (C) 2022-2026 Free Software Foundation, Inc.
 #
 # This file is part of the GNU Binutils.
 #
@@ -50,6 +50,119 @@ if [istarget loongarch64-*-*] {
   if [isbuild loongarch64-*-*] {
     run_dump_test "relax-align-ignore-start"
     run_partial_linking_align_test
+
+    if [check_shared_lib_support] {
+      run_ld_link_tests \
+	[list \
+	  [list \
+	  "loongarch relax call36 .so build" \
+	  "-shared" "" \
+	  "" \
+	  {relax-call36-so.s} \
+	  {} \
+	  "relax-call36.so" \
+	  ] \
+	]
+
+      if [file exist "tmpdir/relax-call36.so"] {
+	set objdump_output [run_host_cmd "objdump" "-d tmpdir/relax-call36.so"]
+	if { [ regexp "pcaddu18i" $objdump_output] } {
+	  fail "loongarch relax call36 so"
+	} {
+	  pass "loongarch relax call36 so"
+	}
+      }
+    }
+
+    if [check_pie_support] {
+      run_ld_link_tests \
+	[list \
+	  [list \
+	  "loongarch relax call36 dyn exe build" \
+	  "-pie -e 0" "" \
+	  "" \
+	  {relax-call36-exe.s} \
+	  {} \
+	  "relax-call36-d.exe" \
+	  ] \
+	]
+
+      if [file exist "tmpdir/relax-call36-d.exe"] {
+	set objdump_output [run_host_cmd "objdump" "-d tmpdir/relax-call36-d.exe"]
+	if { [ regexp "pcaddu18i" $objdump_output] } {
+	  fail "loongarch relax call36 dyn exe"
+	} {
+	  pass "loongarch relax call36 dyn exe"
+	}
+      }
+    }
+
+    if [check_pie_support] {
+      run_ld_link_tests \
+	[list \
+	  [list \
+	  "loongarch relax call36 dyn-pie exe build" \
+	  "-pie -e 0" "" \
+	  "" \
+	  {relax-call36-exe.s} \
+	  {} \
+	  "relax-call36-dp.exe" \
+	  ] \
+	]
+
+      if [file exist "tmpdir/relax-call36-dp.exe"] {
+	set objdump_output [run_host_cmd "objdump" "-d tmpdir/relax-call36-dp.exe"]
+	if { [ regexp "pcaddu18i" $objdump_output] } {
+	  fail "loongarch relax call36 dyn-pie exe"
+	} {
+	  pass "loongarch relax call36 dyn-pie exe"
+	}
+      }
+    }
+
+    run_ld_link_tests \
+      [list \
+	[list \
+	"loongarch relax call36 static exe build" \
+	"-static -e 0" "" \
+	"" \
+	{relax-call36-exe.s} \
+	{} \
+	"relax-call36-s.exe" \
+	] \
+      ]
+
+    if [file exist "tmpdir/relax-call36-s.exe"] {
+      set objdump_output [run_host_cmd "objdump" "-d tmpdir/relax-call36-s.exe"]
+      if { [ regexp "pcaddu18i" $objdump_output] } {
+	fail "loongarch relax call36 static exe"
+      } {
+	pass "loongarch relax call36 static exe"
+      }
+    }
+
+    if [check_pie_support] {
+      run_ld_link_tests \
+	[list \
+	  [list \
+	  "loongarch relax call36 static-pie exe build" \
+	  "-static -pie --no-dynamic-linker -e 0" "" \
+	  "" \
+	  {relax-call36-exe.s} \
+	  {} \
+	  "relax-call36-sp.exe" \
+	  ] \
+	]
+
+      if [file exist "tmpdir/relax-call36-sp.exe"] {
+	set objdump_output [run_host_cmd "objdump" "-d tmpdir/relax-call36-sp.exe"]
+	if { [ regexp "pcaddu18i" $objdump_output] } {
+	  fail "loongarch relax call36 static-pie exe"
+	} {
+	  pass "loongarch relax call36 static-pie exe"
+	}
+      }
+    }
 
     run_ld_link_tests \
 	[list \
@@ -307,6 +420,8 @@ if [istarget loongarch64-*-*] {
 		  "relax-segment-max" \
 	      ] \
 	  ]
+
+     run_dump_test "start_stop"
     }
 
     run_ld_link_tests \

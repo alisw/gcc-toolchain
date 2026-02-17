@@ -1,4 +1,4 @@
-// Copyright (C) 2010-2023 Joel Rosdahl and other contributors
+// Copyright (C) 2010-2024 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "Statistic.hpp"
+#include <ccache/core/statistic.hpp>
 
 #include <cstddef>
 #include <cstdint>

@@ -1,0 +1,104 @@
+/* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
+#pragma once
+
+#include "cmConfigure.h" // IWYU pragma: keep
+
+#include <memory>
+#include <string>
+
+#include <cm/optional>
+#include <cm/string_view>
+
+#include "cmGlobalVisualStudio10Generator.h"
+#include "cmGlobalVisualStudio14Generator.h"
+#include "cmGlobalVisualStudioGenerator.h"
+#include "cmVSSetupHelper.h"
+
+class cmGlobalGeneratorFactory;
+class cmMakefile;
+class cmake;
+
+/** \class cmGlobalVisualStudioVersionedGenerator  */
+class cmGlobalVisualStudioVersionedGenerator
+  : public cmGlobalVisualStudio14Generator
+{
+public:
+  static std::unique_ptr<cmGlobalGeneratorFactory> NewFactory15();
+  static std::unique_ptr<cmGlobalGeneratorFactory> NewFactory16();
+  static std::unique_ptr<cmGlobalGeneratorFactory> NewFactory17();
+  static std::unique_ptr<cmGlobalGeneratorFactory> NewFactory18();
+
+  bool MatchesGeneratorName(std::string const& name) const override;
+
+  bool SetGeneratorInstance(std::string const& i, cmMakefile* mf) override;
+
+  bool GetVSInstance(std::string& dir) const;
+
+  cm::optional<std::string> FindMSBuildCommandEarly(cmMakefile* mf) override;
+
+  cm::optional<std::string> GetVSInstanceVersion() const override;
+
+  AuxToolset FindAuxToolset(std::string& version,
+                            std::string& props) const override;
+
+  bool IsStdOutEncodingSupported() const override;
+
+  bool IsUtf8EncodingSupported() const override;
+
+  bool IsScanDependenciesSupported() const override;
+
+  char const* GetAndroidApplicationTypeRevision() const override;
+
+  bool CheckCxxModuleSupport(CxxModuleSupportQuery /*query*/) override
+  {
+    return this->SupportsCxxModuleDyndep();
+  }
+  bool SupportsCxxModuleDyndep() const override
+  {
+    return this->Version >= cmGlobalVisualStudioGenerator::VSVersion::VS17;
+  }
+
+protected:
+  cmGlobalVisualStudioVersionedGenerator(VSVersion version, cmake* cm,
+                                         std::string const& name);
+
+  bool SelectWindowsStoreToolset(std::string& toolset) const override;
+
+  // Used to verify that the Desktop toolset for the current generator is
+  // installed on the machine.
+  bool IsWindowsDesktopToolsetInstalled() const override;
+
+  // These aren't virtual because we need to check if the selected version
+  // of the toolset is installed
+  bool IsWindowsStoreToolsetInstalled() const;
+
+  // Check for a Win 8 SDK known to the registry or VS installer tool.
+  bool IsWin81SDKInstalled() const override;
+
+  std::string GetWindows10SDKMaxVersionDefault(cmMakefile*) const override;
+
+  virtual bool ProcessGeneratorInstanceField(std::string const& key,
+                                             std::string const& value);
+
+  std::string FindMSBuildCommand() override;
+  std::string FindDevEnvCommand() override;
+
+private:
+  class Factory15;
+  friend class Factory15;
+  class Factory16;
+  friend class Factory16;
+  class Factory17;
+  friend class Factory17;
+  class Factory18;
+  friend class Factory18;
+  mutable cmVSSetupAPIHelper vsSetupAPIHelper;
+
+  bool ParseGeneratorInstance(std::string const& is, cmMakefile* mf);
+  void SetVSVersionVar(cmMakefile* mf);
+
+  std::string GeneratorInstance;
+  std::string GeneratorInstanceVersion;
+  cm::optional<std::string> LastGeneratorInstanceString;
+};

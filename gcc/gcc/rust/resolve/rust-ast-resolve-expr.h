@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -20,7 +20,9 @@
 #define RUST_AST_RESOLVE_EXPR_H
 
 #include "rust-ast-resolve-base.h"
+#include "rust-ast.h"
 #include "rust-ast-resolve-pattern.h"
+#include "rust-expr.h"
 
 namespace Rust {
 namespace Resolver {
@@ -30,7 +32,7 @@ class ResolveExpr : public ResolverBase
   using Rust::Resolver::ResolverBase::visit;
 
 public:
-  static void go (AST::Expr *expr, const CanonicalPath &prefix,
+  static void go (AST::Expr &expr, const CanonicalPath &prefix,
 		  const CanonicalPath &canonical_prefix,
 		  bool funny_error = false);
 
@@ -54,6 +56,7 @@ public:
   void visit (AST::IfLetExpr &expr) override;
   void visit (AST::IfLetExprConseqElse &expr) override;
   void visit (AST::BlockExpr &expr) override;
+  void visit (AST::InlineAsm &expr) override;
   void visit (AST::UnsafeBlockExpr &expr) override;
   void visit (AST::ArrayElemsValues &elems) override;
   void visit (AST::ArrayExpr &expr) override;
@@ -78,6 +81,7 @@ public:
   void visit (AST::RangeFromToInclExpr &expr) override;
   void visit (AST::ClosureExprInner &expr) override;
   void visit (AST::ClosureExprInnerTyped &expr) override;
+  void visit (AST::ErrorPropagationExpr &expr) override;
 
 protected:
   void resolve_closure_param (AST::ClosureParam &param,

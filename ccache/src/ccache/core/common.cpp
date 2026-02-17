@@ -1,4 +1,4 @@
-// Copyright (C) 2023-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2023-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -18,19 +18,17 @@
 
 #include "common.hpp"
 
-#include <ccache/Context.hpp>
+#include <ccache/context.hpp>
 #include <ccache/core/exceptions.hpp>
-#include <ccache/util/Finalizer.hpp>
-#include <ccache/util/PathString.hpp>
-#include <ccache/util/Tokenizer.hpp>
+#include <ccache/util/defer.hpp>
 #include <ccache/util/expected.hpp>
 #include <ccache/util/file.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/path.hpp>
+#include <ccache/util/tokenizer.hpp>
 
 using IncludeDelimiter = util::Tokenizer::IncludeDelimiter;
-using pstr = util::PathString;
 
 namespace fs = util::filesystem;
 
@@ -81,43 +79,91 @@ ensure_dir_exists(const fs::path& dir)
   }
 }
 
-std::filesystem::path
-make_relative_path(const Context& ctx, const std::filesystem::path& path)
+fs::path
+make_relative_path(const Context& ctx, const fs::path& path)
 {
-  if (!ctx.config.base_dir().empty() && path.is_absolute()
-      && util::path_starts_with(path, ctx.config.base_dir())) {
+  if (!ctx.config.base_dirs().empty() && path.is_absolute()
+      && util::path_starts_with(path, ctx.config.base_dirs())) {
     return util::make_relative_path(ctx.actual_cwd, ctx.apparent_cwd, path);
   } else {
     return path;
   }
 }
 
+inline bool
+parse_inlined_from_msg(std::string_view& line, std::string& result)
+{
+  // Reference for GCC: <https://github.com/gcc-mirror/gcc/blob/
+  // c7507e395f096240ffa8fa5dfcbfcfd8c5e23bb8/gcc/langhooks.cc#L450-L467>
+  static const std::string_view inlined_from_msg = "    inlined from ";
+  static const std::string_view inlined_from_msg_separator = " at ";
+
+  if (!util::starts_with(line, inlined_from_msg)) {
+    return false;
+  }
+
+  size_t signature_end = line.find(inlined_from_msg_separator);
+  if (signature_end == std::string_view::npos) {
+    return false;
+  }
+
+  signature_end += inlined_from_msg_separator.size();
+  result.append(line.data(), signature_end);
+  line = line.substr(signature_end);
+
+  return true;
+}
+
+inline bool
+parse_in_file_included_from_msg(std::string_view& line, std::string& result)
+{
+  // Line prefixes from GCC plus extra space at the end. Reference:
+  // <https://gcc.gnu.org/git?p=gcc.git;a=blob;f=gcc/diagnostic-format-text.cc;
+  // h=856d25e8482cd0bff39bd8076e6e529e184362cc;hb=HEAD#l676>
+  static const std::string_view in_file_included_from_msgs[] = {
+    "                 from ",
+    "In file included from ",
+    "        included from ",
+    "In module imported at ", // longer message first to match in full
+    "In module ",
+    "of module ",
+    "imported at ",
+  };
+
+  for (const auto& in_file_included_from : in_file_included_from_msgs) {
+    if (util::starts_with(line, in_file_included_from)) {
+      result += in_file_included_from;
+      line = line.substr(in_file_included_from.length());
+      return true;
+    }
+  }
+
+  return false;
+}
+
 std::string
 rewrite_stderr_to_absolute_paths(std::string_view text)
 {
-  const std::string_view in_file_included_from = "In file included from ";
-
   std::string result;
   using util::Tokenizer;
   for (auto line : Tokenizer(text,
                              "\n",
                              Tokenizer::Mode::include_empty,
                              Tokenizer::IncludeDelimiter::yes)) {
-    if (util::starts_with(line, in_file_included_from)) {
-      result += in_file_included_from;
-      line = line.substr(in_file_included_from.length());
+    if (!parse_inlined_from_msg(line, result)) {
+      parse_in_file_included_from_msg(line, result);
     }
     while (!line.empty() && line[0] == 0x1b) {
       auto csi_seq = find_first_ansi_csi_seq(line);
       result.append(csi_seq.data(), csi_seq.length());
       line = line.substr(csi_seq.length());
     }
-    size_t path_end = line.find(':');
-    if (path_end == std::string_view::npos) {
+    size_t path_end = get_diagnostics_path_length(line);
+    if (path_end == 0) {
       result.append(line.data(), line.length());
     } else {
       fs::path path(line.substr(0, path_end));
-      result += pstr(fs::canonical(path).value_or(path)).str();
+      result += util::pstr(fs::canonical(path).value_or(path));
       auto tail = line.substr(path_end);
       result.append(tail.data(), tail.length());
     }
@@ -136,7 +182,7 @@ send_to_console(const Context& ctx, std::string_view text, int fd)
   // newlines a second time since we treat output as binary data. Make sure to
   // switch to binary mode.
   int oldmode = _setmode(fd, _O_BINARY);
-  util::Finalizer binary_mode_restorer([=] { _setmode(fd, oldmode); });
+  DEFER(_setmode(fd, oldmode));
 #endif
 
   if (ctx.args_info.strip_diagnostics_colors) {
@@ -174,6 +220,55 @@ strip_ansi_csi_seqs(std::string_view string)
   }
 
   return result;
+}
+
+std::size_t
+get_diagnostics_path_length(std::string_view line)
+{
+  std::size_t path_end = 0;
+
+#ifdef _WIN32
+  // Check if the path starts with a drive letter.
+  if (line.size() >= 3 && line[1] == ':' && (line[2] == '\\' || line[2] == '/')
+      && ((line[0] >= 'A' && line[0] <= 'Z')
+          || (line[0] >= 'a' && line[0] <= 'z'))) {
+    path_end = line.find(':', 3);
+    if (path_end == std::string_view::npos) {
+      // Treat the drive letter as "path".
+      path_end = 1;
+    }
+  } else {
+    path_end = line.find(':');
+  }
+#else
+  path_end = line.find(':');
+#endif
+
+  if (path_end == std::string_view::npos || path_end == 0) {
+    return 0;
+  }
+
+  line = line.substr(0, path_end);
+  // There could be an extra space before ':'.
+  // https://developercommunity.visualstudio.com/t/10729549
+  if (line.back() == ' ') {
+    line.remove_suffix(1);
+    path_end -= 1;
+  }
+
+  // MSVC: Strip "(line[,column])" component.
+  if (!line.empty() && line.back() == ')') {
+    do {
+      line.remove_suffix(1);
+    } while (!line.empty() && line.back() != '('
+             && (std::isdigit(line.back()) || line.back() == ','));
+
+    if (!line.empty() && line.back() == '(') {
+      path_end = line.size() - 1;
+    }
+  }
+
+  return path_end;
 }
 
 } // namespace core

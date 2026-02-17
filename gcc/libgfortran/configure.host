@@ -61,6 +61,15 @@ case "${host_cpu}" in
         ieee_support='yes'
         ;;
     esac
+    ;;
+
+  powerpc*)
+    case "${host_os}" in
+      darwin*)
+        fpu_host='fpu-macppc'
+        ieee_support='yes'
+        ;;
+    esac
 
 esac
 
@@ -80,6 +89,10 @@ case "${target}" in
   *-*-aix*)
 	# Create AIX-style "FAT" libraries.
 	tmake_file="t-aix"
+	;;
+
+  nvptx-*-none)
+	tmake_file="$tmake_file t-nvptx"
 	;;
 
   *)

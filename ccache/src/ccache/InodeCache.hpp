@@ -18,16 +18,17 @@
 
 #pragma once
 
-#include <ccache/Hash.hpp>
+#include <ccache/hash.hpp>
 #include <ccache/hashutil.hpp>
-#include <ccache/util/Duration.hpp>
-#include <ccache/util/Fd.hpp>
-#include <ccache/util/MemoryMap.hpp>
-#include <ccache/util/TimePoint.hpp>
+#include <ccache/util/duration.hpp>
+#include <ccache/util/fd.hpp>
+#include <ccache/util/memorymap.hpp>
+#include <ccache/util/timepoint.hpp>
 
 #include <sys/types.h>
 
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <optional>
 #include <string>
@@ -79,13 +80,13 @@ public:
   // Get saved hash digest and return value from a previous call to
   // do_hash_file() in hashutil.cpp.
   std::optional<std::pair<HashSourceCodeResult, Hash::Digest>>
-  get(const std::string& path, ContentType type);
+  get(const std::filesystem::path& path, ContentType type);
 
   // Put hash digest and return value from a successful call to do_hash_file()
   // in hashutil.cpp.
   //
   // Returns true if values could be stored in the cache, false otherwise.
-  bool put(const std::string& path,
+  bool put(const std::filesystem::path& path,
            ContentType type,
            const Hash::Digest& file_digest,
            HashSourceCodeResult return_value);
@@ -96,7 +97,7 @@ public:
   bool drop();
 
   // Returns name of the persistent file.
-  std::string get_file();
+  std::filesystem::path get_path();
 
   // Returns total number of cache hits.
   //
@@ -123,15 +124,16 @@ private:
   struct SharedRegion;
   using BucketHandler = std::function<void(Bucket* bucket)>;
 
-  bool mmap_file(const std::string& inode_cache_file);
+  bool mmap_file(const std::filesystem::path& path);
 
-  bool
-  hash_inode(const std::string& path, ContentType type, Hash::Digest& digest);
+  bool hash_inode(const std::filesystem::path& path,
+                  ContentType type,
+                  Hash::Digest& digest);
 
   bool with_bucket(const Hash::Digest& key_digest,
                    const BucketHandler& bucket_handler);
 
-  static bool create_new_file(const std::string& filename);
+  static bool create_new_file(const std::filesystem::path& path);
 
   bool initialize();
 

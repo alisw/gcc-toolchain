@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -82,6 +82,8 @@ protected:
 			      TyTy::BaseType *rtype);
   TyTy::BaseType *expect_closure (TyTy::ClosureType *ltype,
 				  TyTy::BaseType *rtype);
+  TyTy::BaseType *expect_opaque (TyTy::OpaqueType *ltype,
+				 TyTy::BaseType *rtype);
 
 private:
   UnifyRules (TyTy::TyWithLocation lhs, TyTy::TyWithLocation rhs,

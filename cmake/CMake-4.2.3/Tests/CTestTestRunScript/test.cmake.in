@@ -1,0 +1,1 @@
+CTEST_RUN_SCRIPT("CTestTestRunScript/hello.cmake" RETURN_VALUE res RETURN_VALUE)

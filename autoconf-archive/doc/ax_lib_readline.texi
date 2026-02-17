@@ -5,6 +5,7 @@
 
 @smallexample
 AX_LIB_READLINE
+AX_LIB_READLINE([MIN-VERSION])
 @end smallexample
 
 @majorheading Description
@@ -15,6 +16,10 @@ sets also `HAVE_READLINE_HISTORY'. Also checks for the locations of the
 necessary include files and sets `HAVE_READLINE_H' or
 `HAVE_READLINE_READLINE_H' and `HAVE_READLINE_HISTORY_H' or
 'HAVE_HISTORY_H' if the corresponding include files exists.
+
+If given, MIN-VERSION specifies the minimum acceptable version; if that
+version is not found, HAVE_LIBREADLINE and HAVE_READLINE_HISTORY will
+not be defined.
 
 The libraries that may be readline compatible are `libedit',
 `libeditline' and `libreadline'. Sometimes we need to link a termcap
@@ -64,7 +69,7 @@ macro's revision history}.
 
 @majorheading License
 
-@w{Copyright @copyright{} 2008 Ville Laurikari @email{vl@@iki.fi}}
+@w{Copyright @copyright{} 2024 Reuben Thomas @email{rrt@@sc3d.org}} @* @w{Copyright @copyright{} 2008 Ville Laurikari @email{vl@@iki.fi}}
 
 Copying and distribution of this file, with or without modification, are
 permitted in any medium without royalty provided the copyright notice

@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -24,11 +24,11 @@
 #include "rust-ast-fragment.h"
 #include "rust-location.h"
 #include "rust-item.h"
-#include "rust-make-unique.h"
 #include "rust-macro-builtins.h"
 
 namespace Rust {
 namespace AST {
+
 class MacroFragSpec
 {
 public:
@@ -482,7 +482,7 @@ private:
    * should make use of the actual rules. If the macro is builtin, then another
    * associated transcriber should be used
    */
-  static Fragment dummy_builtin (location_t, MacroInvocData &)
+  static Fragment dummy_builtin (location_t, MacroInvocData &, AST::InvocKind)
   {
     rust_unreachable ();
     return Fragment::create_error ();
@@ -521,7 +521,7 @@ public:
   mbe (Identifier rule_name, DelimType delim_type, std::vector<MacroRule> rules,
        std::vector<Attribute> outer_attrs, location_t locus)
   {
-    return Rust::make_unique<MacroRulesDefinition> (
+    return std::make_unique<MacroRulesDefinition> (
       MacroRulesDefinition (rule_name, delim_type, rules, outer_attrs, locus,
 			    AST::MacroRulesDefinition::MacroKind::MBE,
 			    AST::Visibility::create_error ()));
@@ -532,7 +532,7 @@ public:
 	      std::vector<Attribute> outer_attrs, location_t locus,
 	      Visibility vis)
   {
-    return Rust::make_unique<MacroRulesDefinition> (MacroRulesDefinition (
+    return std::make_unique<MacroRulesDefinition> (MacroRulesDefinition (
       rule_name, AST::DelimType::CURLY, rules, outer_attrs, locus,
       AST::MacroRulesDefinition::MacroKind::DeclMacro, vis));
   }
@@ -572,12 +572,12 @@ public:
     is_builtin_rule = true;
   }
 
-  AST::Kind get_ast_kind () const override
-  {
-    return AST::Kind::MACRO_RULES_DEFINITION;
-  }
-
   MacroKind get_kind () const { return kind; }
+
+  Item::Kind get_item_kind () const override
+  {
+    return Item::Kind::MacroRulesDefinition;
+  }
 
 protected:
   /* Use covariance to implement clone function as returning this object rather
@@ -672,11 +672,6 @@ public:
     return ExprWithoutBlock::get_node_id ();
   }
 
-  AST::Kind get_ast_kind () const override
-  {
-    return AST::Kind::MACRO_INVOCATION;
-  }
-
   NodeId get_macro_node_id () const { return node_id; }
 
   MacroInvocData &get_invoc_data () { return invoc_data; }
@@ -715,17 +710,18 @@ private:
     location_t locus, bool is_semi_coloned,
     std::vector<std::unique_ptr<MacroInvocation>> &&pending_eager_invocs)
     : TraitItem (locus), outer_attrs (std::move (outer_attrs)), locus (locus),
-      node_id (Analysis::Mappings::get ()->get_next_node_id ()),
+      node_id (Analysis::Mappings::get ().get_next_node_id ()),
       invoc_data (std::move (invoc_data)), is_semi_coloned (is_semi_coloned),
       kind (kind), builtin_kind (builtin_kind),
       pending_eager_invocs (std::move (pending_eager_invocs))
   {}
 
   MacroInvocation (const MacroInvocation &other)
-    : TraitItem (other.locus), outer_attrs (other.outer_attrs),
-      locus (other.locus), node_id (other.node_id),
-      invoc_data (other.invoc_data), is_semi_coloned (other.is_semi_coloned),
-      kind (other.kind), builtin_kind (other.builtin_kind)
+    : TraitItem (other.locus), ExternalItem (other.node_id),
+      outer_attrs (other.outer_attrs), locus (other.locus),
+      node_id (other.node_id), invoc_data (other.invoc_data),
+      is_semi_coloned (other.is_semi_coloned), kind (other.kind),
+      builtin_kind (other.builtin_kind)
   {
     if (other.kind == InvocKind::Builtin)
       for (auto &pending : other.pending_eager_invocs)
@@ -793,6 +789,21 @@ public:
   }
 
   void add_semicolon () override { is_semi_coloned = true; }
+
+  Pattern::Kind get_pattern_kind () override
+  {
+    return Pattern::Kind::MacroInvocation;
+  }
+
+  Expr::Kind get_expr_kind () const override
+  {
+    return Expr::Kind::MacroInvocation;
+  }
+
+  Item::Kind get_item_kind () const override
+  {
+    return Item::Kind::MacroInvocation;
+  }
 
 protected:
   Item *clone_item_impl () const override

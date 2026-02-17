@@ -1,6 +1,6 @@
 (* PCSymBuild.mod pass C symbol creation.
 
-Copyright (C) 2001-2024 Free Software Foundation, Inc.
+Copyright (C) 2001-2025 Free Software Foundation, Inc.
 Contributed by Gaius Mulley <gaius.mulley@southwales.ac.uk>.
 
 This file is part of GNU Modula-2.
@@ -52,7 +52,7 @@ FROM M2Reserved IMPORT PlusTok, MinusTok, TimesTok, DivTok, ModTok,
                        LessTok, GreaterTok, HashTok, LessGreaterTok,
                        InTok, NotTok ;
 
-FROM SymbolTable IMPORT NulSym, ModeOfAddr,
+FROM SymbolTable IMPORT NulSym, ModeOfAddr, ProcedureKind,
                         StartScope, EndScope, GetScope, GetCurrentScope,
                         GetModuleScope,
                         SetCurrentModule, GetCurrentModule, SetFileModule,
@@ -64,7 +64,7 @@ FROM SymbolTable IMPORT NulSym, ModeOfAddr,
                         GetFromOuterModule,
                         CheckForEnumerationInCurrentModule,
                         GetMode, PutVariableAtAddress, ModeOfAddr, SkipType,
-                        IsSet, PutConstSet,
+                        IsSet, PutConstSet, IsType,
                         IsConst, IsConstructor, PutConst, PutConstructor,
                         PopValue, PushValue,
                         MakeTemporary, PutVar,
@@ -73,12 +73,12 @@ FROM SymbolTable IMPORT NulSym, ModeOfAddr,
                         CheckAnonymous,
                         IsProcedureBuiltin,
                         MakeProcType,
-                        NoOfParam,
+                        NoOfParamAny,
                         GetParam,
                         IsParameterVar, PutProcTypeParam,
                         PutProcTypeVarParam, IsParameterUnbounded,
                         PutFunction, PutProcTypeParam,
-                        GetType,
+                        GetType, IsVar,
                         IsAModula2Type, GetDeclaredMod ;
 
 FROM M2Batch IMPORT MakeDefinitionSource,
@@ -193,6 +193,22 @@ END GetSkippedType ;
 
 
 (*
+   CheckNotVar - checks to see that the top of stack is not a variable.
+*)
+
+PROCEDURE CheckNotVar (tok: CARDINAL) ;
+VAR
+   const: CARDINAL ;
+BEGIN
+   const := OperandT (1) ;
+   IF (const # NulSym) AND IsVar (const)
+   THEN
+      MetaErrorT1 (tok, 'not expecting a variable {%Aad} as a term in a constant expression', const)
+   END
+END CheckNotVar ;
+
+
+(*
    StartBuildDefinitionModule - Creates a definition module and starts
                                 a new scope.
 
@@ -253,7 +269,7 @@ BEGIN
    PopT(NameStart) ;
    IF NameStart#NameEnd
    THEN
-      WriteFormat2('inconsistant definition module was named (%a) and concluded as (%a)',
+      WriteFormat2('inconsistent definition module was named (%a) and concluded as (%a)',
                    NameStart, NameEnd)
    END ;
    M2Error.LeaveErrorScope
@@ -658,6 +674,28 @@ BEGIN
    EndScope ;
    M2Error.LeaveErrorScope
 END PCEndBuildProcedure ;
+
+
+(*
+   EndBuildForward - Ends building a forward declaration.
+
+                     The Stack:
+
+                     Entry                 Exit
+
+              Ptr ->
+                     +------------+
+                     | ProcSym    |
+                     |------------|
+                     | NameStart  |
+                     |------------|
+                                           Empty
+*)
+
+PROCEDURE PCEndBuildForward ;
+BEGIN
+   PopN (2)
+END PCEndBuildForward ;
 
 
 (*
@@ -1125,20 +1163,20 @@ BEGIN
       tok := GetTokenNo () ;
       t := MakeProcType (tok, CheckAnonymous (NulName)) ;
       i := 1 ;
-      n := NoOfParam(p) ;
+      n := NoOfParamAny (p) ;
       WHILE i<=n DO
          par := GetParam (p, i) ;
          IF IsParameterVar (par)
          THEN
-            PutProcTypeVarParam (t, GetType (par), IsParameterUnbounded (par))
+            PutProcTypeVarParam (tok, t, GetType (par), IsParameterUnbounded (par))
          ELSE
-            PutProcTypeParam (t, GetType (par), IsParameterUnbounded (par))
+            PutProcTypeParam (tok, t, GetType (par), IsParameterUnbounded (par))
          END ;
          INC(i)
       END ;
       IF GetType (p) # NulSym
       THEN
-         PutFunction (t, GetType (p))
+         PutFunction (tok, t, ProperProcedure, GetType (p))
       END ;
       RETURN( t )
    ELSE
@@ -1370,9 +1408,10 @@ END TypeToMeta ;
 
 
 (*
-   buildConstFunction - we are only concerned about resolving the return type o
+   buildConstFunction - we are only concerned about resolving the return type of
                         a function, so we can ignore all parameters - except
-                        the first one in the case of VAL(type, foo).
+                        the first one in the case of VAL(type, foo)
+                        and the type of bar in MIN (bar) and MAX (bar).
                         buildConstFunction uses a unary exprNode to represent
                         a function.
 *)
@@ -1828,11 +1867,11 @@ BEGIN
             THEN
                IF (func=Min) OR (func=Max)
                THEN
-                  IF IsSet (sym)
+                  IF IsSet (sym) OR (IsType (sym) AND IsSet (SkipType (sym)))
                   THEN
-                     type := SkipType(GetType(sym))
+                     type := GetType (SkipType (sym))
                   ELSE
-                     (* sym is the type required for MAX, MIN and VAL *)
+                     (* sym is the type required for MAX, MIN and VAL.  *)
                      type := sym
                   END
                ELSE

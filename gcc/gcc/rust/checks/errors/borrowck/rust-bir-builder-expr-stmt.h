@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -30,15 +30,16 @@ namespace BIR {
  * See AbstractExprBuilder for API usage docs (mainly `return_place` and
  * `return_expr`).
  */
-class ExprStmtBuilder : public AbstractExprBuilder, public HIR::HIRStmtVisitor
+class ExprStmtBuilder final : public AbstractExprBuilder,
+			      public HIR::HIRStmtVisitor
 {
 public:
   explicit ExprStmtBuilder (BuilderContext &ctx) : AbstractExprBuilder (ctx) {}
 
   /** Entry point. */
-  PlaceId build (HIR::Expr &expr, PlaceId place = INVALID_PLACE)
+  PlaceId build (HIR::Expr &expr, PlaceId destination = INVALID_PLACE)
   {
-    return visit_expr (expr, place);
+    return visit_expr (expr, destination);
   }
 
 private:
@@ -98,9 +99,8 @@ protected: // Expr
   void visit (HIR::WhileLetLoopExpr &expr) override;
   void visit (HIR::IfExpr &expr) override;
   void visit (HIR::IfExprConseqElse &expr) override;
+  void visit (HIR::InlineAsm &expr) override;
 
-  void visit (HIR::IfLetExpr &expr) override;
-  void visit (HIR::IfLetExprConseqElse &expr) override;
   void visit (HIR::MatchExpr &expr) override;
   void visit (HIR::AwaitExpr &expr) override;
   void visit (HIR::AsyncBlockExpr &expr) override;

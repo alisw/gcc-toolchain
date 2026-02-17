@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <ccache/util/NonCopyable.hpp>
+#include <ccache/util/noncopyable.hpp>
 
 #include <condition_variable>
 #include <filesystem>

@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -29,7 +29,7 @@ namespace Resolver {
 class TypeCheckExpr : private TypeCheckBase, private HIR::HIRExpressionVisitor
 {
 public:
-  static TyTy::BaseType *Resolve (HIR::Expr *expr);
+  static TyTy::BaseType *Resolve (HIR::Expr &expr);
 
   void visit (HIR::TupleIndexExpr &expr) override;
   void visit (HIR::TupleExpr &expr) override;
@@ -45,8 +45,6 @@ public:
   void visit (HIR::NegationExpr &expr) override;
   void visit (HIR::IfExpr &expr) override;
   void visit (HIR::IfExprConseqElse &expr) override;
-  void visit (HIR::IfLetExpr &expr) override;
-  void visit (HIR::IfLetExprConseqElse &) override;
   void visit (HIR::BlockExpr &expr) override;
   void visit (HIR::UnsafeBlockExpr &expr) override;
   void visit (HIR::ArrayIndexExpr &expr) override;
@@ -71,6 +69,7 @@ public:
   void visit (HIR::RangeFromToInclExpr &expr) override;
   void visit (HIR::WhileLoopExpr &expr) override;
   void visit (HIR::ClosureExpr &expr) override;
+  void visit (HIR::InlineAsm &expr) override;
 
   // TODO
   void visit (HIR::ErrorPropagationExpr &) override {}
@@ -96,10 +95,11 @@ public:
   }
 
 protected:
-  bool
-  resolve_operator_overload (Analysis::RustLangItem::ItemType lang_item_type,
-			     HIR::OperatorExprMeta expr, TyTy::BaseType *lhs,
-			     TyTy::BaseType *rhs);
+  bool resolve_operator_overload (LangItem::Kind lang_item_type,
+				  HIR::OperatorExprMeta expr,
+				  TyTy::BaseType *lhs, TyTy::BaseType *rhs,
+				  HIR::PathIdentSegment specified_segment
+				  = HIR::PathIdentSegment::create_error ());
 
   bool resolve_fn_trait_call (HIR::CallExpr &expr,
 			      TyTy::BaseType *function_tyty,

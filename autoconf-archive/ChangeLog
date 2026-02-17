@@ -1,8 +1,639 @@
-# Copyright (c) 2022 Autoconf Archive Maintainers <autoconf-archive-maintainers@gnu.org>
+# Copyright (c) 2024 Autoconf Archive Maintainers <autoconf-archive-maintainers@gnu.org>
 #
 # Copying and distribution of this file, with or without modification, are
 # permitted in any medium without royalty provided the copyright notice and
 # this notice are preserved. This file is offered as-is, without any warranty.
+
+2024-10-16  Peter Simons  <simons@cryp.to>
+
+	fix serial numbers
+
+2024-10-16  Dimitri Papadopoulos  <3234522+DimitriPapadopoulos@users.noreply.github.com>
+
+	Typo: ziping → zipinf
+	(cherry picked from commit 4396d6e1f6213452d77fca3e02e7f7439204bcb0)
+
+2024-10-16  Caleb Maclennan  <caleb@alerque.com>
+
+	ax_lua.m4: add LuaJIT support
+
+2024-10-16  Reuben Thomas  <rrt@sc3d.org>
+
+	AX_LIB_READLINE: add check for minimum version
+
+2024-10-16  Garrett Graham  <gtg240@gmail.com>
+
+	m4_define with braces around concat source, m4_if without extra arg
+
+2024-10-16  Dimitri Papadopoulos  <3234522+DimitriPapadopoulos@users.noreply.github.com>
+
+	Fix more typos not found by codespell
+
+	Fix typos found by codespell
+
+2024-10-16  Jan Zizka  <jan.zizka@nokia.com>
+
+	ax_code_coverage: remove /tmp/* from remove patterns failing with lcov 2.0
+	The lcov >= 2.0 refactored error handling and by default it fails
+	when an unused remove pattern is provided:
+
+	  LCOV   --remove /tmp/* */tests/*.c
+	lcov: ERROR: 'exclude' pattern '/tmp/*' is unused.
+	        (use "lcov --ignore-errors unused ..." to bypass this error)
+
+	Based on the macro history is is not clear why the /tmp/* would
+	be needed by default. Usual autotools projects don't use /tmp/.
+	If needed users can still add this pattern to
+	CODE_COVERAGE_IGNORE_PATTERN.
+
+2024-10-16  Olly Betts  <olly@survex.com>
+
+	AX_CXX_COMPILE_STDCXX: Add C++23 support
+
+	AX_CXX_COMPILE_STDCXX: Add (C) statements for myself
+
+	AX_CXX_COMPILE_STDCXX: Check _MSVC_LANG
+	This fixes a bug which meant AX_CXX_COMPILE_STDCXX([20]) would only
+	actually test for C++17 support.
+
+2024-10-16  Yury V. Zaytsev  <yury@shurup.com>
+
+	fixup! ax_check_compile_flag: add -Werror when checking for compiler flags
+
+	fixup! ax_check_compile_flag: add -Werror when checking for compiler flags
+
+2024-10-16  Yury V. Zaytsev  <yury@shurup.com>
+
+	ax_check_compile_flag: add -Werror when checking for compiler flags
+	Seemingly that at some point clang started accepting _any_ flags,
+	whereas previously it would error out.
+
+	These days, you can give it -Whamsandwich and it will succeed, while
+	at the same time throwing an annoying warning.
+
+	Add -Werror so that everything gets flagged and set accordingly.
+
+	Bugzilla: https://bugs.freedesktop.org/show_bug.cgi?id=108082
+	Cc: Vinson Lee <vlee@freedesktop.org>
+	Repored-by: Vinson Lee <vlee@freedesktop.org>
+	Reviewed-by: Dylan Baker <dylan@pnwbakers.com>
+	Reviewed-by: Eric Engestrom <eric.engestrom@intel.com>
+
+2024-10-16  Vadim Zeitlin  <vadim@zeitlins.org>
+
+	AX_BOOST_BASE: Don't set BOOST_*FLAGS if Boost is not found
+	Previously BOOST_CPPFLAGS was set to a nonsensical -I/include/boost-0
+	value if Boost headers were not found at all and BOOST_LDFLAGS was
+	similarly set to a wrong (although less obviously so) value in this
+	case because they kept the last values tested by the macro.
+
+	Just don't set these variables at all if detecting Boost failed.
+
+2024-10-16  Peter Simons  <simons@cryp.to>
+
+	fix serial numbers
+
+2024-10-16  Peter Kokot  <peterkokot@gmail.com>
+
+	Use AS_VAR_IF in ax_gcc_builtin.m4
+	The AS_VAR_IF check can be a simpler alternative to testing for variable
+	value inside AS_IF.
+
+2024-10-16  Eli Schwartz  <eschwartz93@gmail.com>
+
+	ax_switch_flags.m4: validate macro arguments at autoconf compile time
+	This is a nicer experience for detecting outright misuse of macros than
+	successfully creating a configure script and then having it fail.
+
+	ax_check_glx.m4: validate macro arguments at autoconf compile time
+	This is a nicer experience for detecting outright misuse of macros than
+	successfully creating a configure script and then having it fail.
+
+	ax_check_gl.m4: validate macro arguments at autoconf compile time
+	This is a nicer experience for detecting outright misuse of macros than
+	successfully creating a configure script and then having it fail.
+
+	ax_is_release.m4: validate macro arguments at autoconf compile time
+	This is a nicer experience for detecting outright misuse of macros than
+	successfully creating a configure script and then having it fail.
+
+2024-10-16  Christian Gutschow  <chris.g@cern.ch>
+
+	remove duplicated setting of CPPFLAGS/LDFLAGS
+
+2024-10-16  Michael Heimpold  <mhei@heimpold.de>
+
+	ax_python_devel: fix typo preventing correct variable evaluation
+	The test should check the variable, not the fixed string.
+	Most probably a simple typo, so fix it.
+
+2024-10-16  Antonin Décimo  <antonin@tarides.com>
+
+	AX_CHECK_{PREPROC,COMPILE}_FLAG: improve logging message
+
+2023-09-26  Caleb Maclennan  <caleb@alerque.com>
+
+	ax_lua.m4: add Lua 5.4 support
+
+	ax_lua.m4: Fix case of no Lua version match since 'xnil' != ''
+
+2023-09-04  Peter Simons  <simons@cryp.to>
+
+	AX_FUNC_WHICH_GETHOSTBYADDR_R: use canonical formatting
+
+	AX_FUNC_WHICH_GETHOSTENT_R: use canonical formatting
+
+	Re-generate macros using the canonical formatting.
+
+	Merge pull request #280 from theAeon/master
+	ax_blas: detect flexiblas
+
+2023-09-03  Peter Simons  <simons@cryp.to>
+
+	Merge pull request #282 from bogdro/gethostent_r
+	Create ax_func_which_gethostent_r.m4
+
+	Merge pull request #281 from bogdro/gethostbyaddr_r
+	Create ax_func_which_gethostbyaddr_r.m4
+
+	Merge pull request #283 from cminyard/master
+	ax_python_devel: Add an option to make it optional
+
+	Merge pull request #284 from SoapGentoo/Wstrict-prototypes
+	Make macros `-Wstrict-prototypes` compatible
+
+2023-08-18  Bogdan Drozdowski  <>
+
+	ax_prototype: Disable "unused variable" warning to prevent accidental failures
+
+2023-08-13  David Seifert  <soap@gentoo.org>
+
+	Make macros `-Wstrict-prototypes` compatible
+	* With Clang having switched to modern C conventions already and GCC
+	  following suit soon, we want to have macros that work in the presence
+	  of `-Wstrict-prototypes` in all C language modes, not just C23.
+
+2023-07-25  Corey Minyard  <minyard@acm.org>
+
+	ax_python_devel: Add an option to make it optional
+	ax_python_devel will fail the autoconf run if it doesn't detect that a
+	python development environment is available.  That's not always what
+	the user wants, they may want to go on without the functionality.
+
+	This change adds a way to pass in an option to specify if you want it to
+	fail or go on if the functionality is not found.  The default is to
+	fail, as before.
+
+2023-06-28  Bogdan Drozdowski  <>
+
+	Create ax_func_which_gethostent_r.m4
+
+	Create ax_func_which_gethostbyaddr_r.m4
+
+2023-06-07  Andrew Robbins  <andrew@robbinsa.me>
+
+	ax_blas: detect flexiblas
+
+2023-06-06  Peter Simons  <simons@cryp.to>
+
+	Merge remote-tracking branch 'github/master'.
+
+	Merge pull request #278 from rurban/fortify2
+	ax_add_fortify_source.m4: fix 2nd probe
+
+	ax_c_float_words_bigendian: use canon formatting
+
+2023-05-19  Dan Amelang  <dan@amelang.net>
+
+	AX_C_FLOAT_WORDS_BIGENDIAN: Fix bug "AX_C_FLOAT_WORDS_BIGENDIAN fails whenever interprocedural optimization is enabled."
+	Previous versions of this macro would not work when interprocedural
+	optimization (via link-time optimization) was enabled. This would happen
+	when, say, the GCC/clang "-flto" flag, or the ICC "-ipo" flag was used, for
+	example. The problem was that under these conditions, the compiler did not
+	allocate for and write the special float value in the data segment of the
+	test object file. Thus, the special value (in platform-dependent binary form)
+	could not be found, and the macro would fail.
+
+	The solution to the above problem was to:
+
+	  1) Compile and link a whole test program rather than just compile an
+	     object file.
+
+	  2) Add code that requires the compiler to write the special value to
+	     the data segment of the program executable.
+
+	For further details, refer to the documentation in the macro source file. Note
+	that this change already increments the serial number of the file.
+
+	This change resolves the following issues:
+
+	CPython issue #89640
+	  https://github.com/python/cpython/issues/89640
+
+	Gentoo bug #700012
+	  https://bugs.gentoo.org/700012
+
+	Cairo issue #459
+	  https://gitlab.freedesktop.org/cairo/cairo/-/issues/459
+
+	Poky (Yocto Project) #12699
+	  https://lists.yoctoproject.org/g/poky/topic/89131836
+
+2023-05-07  Reini Urban  <rurban@cpan.org>
+
+	ax_add_fortify_source.m4: fix 2nd probe
+	it didnt error anymore, just warned.
+	thus without -O it still enabled the 2nd variant
+
+2023-05-01  Peter Simons  <simons@cryp.to>
+
+	bump serial numbers after recent changes
+
+2023-04-19  Albert Chu  <chu11@llnl.gov>
+
+	ax_ext_have_lib.m4: fix typo
+
+	ax_python_config_var.m4: fix typo
+
+	ax_path_bdb.m4: fix typo
+
+	ax_pkg_mico.m4: fix typo
+
+	ax_cvs.m4: fix typo
+
+	ax_cc_tentdef.m4: fix typo
+
+	ax_ms_cpprest.m4: fix typo
+
+	ax_check_java_plugin.m4: fix typo
+
+	ax_cc_attrcommon.m4: Fix typo
+
+	ax_boost_base.m4: fix comment typo
+
+2023-04-13  Peter Simons  <simons@cryp.to>
+
+	Re-format macros into canonical format after recent changes.
+
+	Merge pull request #263 from k4rtik/icu
+	ax_check_icu: bump serial and update after icu-config deprecation
+
+	Merge pull request #275 from cstes/ax_cc_tentdef
+	ax_cc_tentdef: test for C tentative definitions
+
+	Merge pull request #276 from theAeon/master
+	AX_BLAS: Fix vecLib detection on modern MacOS
+
+2023-04-12  Andrew Robbins  <andrew@robbinsa.me>
+
+	Fix vecLib detection on modern MacOS
+	For whatever reason Apple's hardened runtime scoping disallows third-party linking to -framework vecLib. Linking -framework Accelerate solves this issue.
+
+2023-04-10  stes  <stes@telenet.be>
+
+	ax_cc_tentdef: test for C tentative definitions
+
+2023-03-08  SAITO Fuyuki  <saitofuyuki@jamstec.go.jp>
+
+	ax_lib_netcdf4: NF_CONFIG instead of NC_CONFIG for Fortran flags.
+	NF_CONFIG is better and safer than NC_CONFIG, for NETCDF4_FFLAGS and
+	NETCDF4_FLIBS configuration.
+
+2023-02-20  Peter Simons  <simons@cryp.to>
+
+	ax_have_qt: bump serial number
+
+	Merge pull request #262 from bastien-roucaries/fromdebian20200930
+	Fix  AX_HAVE_QT
+
+	ax_have_qt: bump serial number
+
+	Merge pull request #266 from netfab/fix-ax_have_qt
+	AX_HAVE_QT: remove qmake stash file before rmdir
+
+	ax_python_devel: bump serial number
+
+	Merge pull request #267 from bastien-roucaries/fromdebian20221118
+	Fix ax_python_devel serial 32 fails with current python3
+
+	ax_add_fortify_source: fix formatting
+
+	ax_check_sign: bump serial number
+
+	ax_cxx_compile_stdcxx: bump serial number
+
+	ax_c_restrict: fix formatting
+
+	Merge pull request #268 from omoerbeek/master
+	ax_check_sign: Avoid an unused warning
+
+	Merge pull request #269 from rurban/fortify3
+	AX_ADD_FORTIFY_SOURCE: add -D_FORTIFY_SOURCE=3 check
+
+	Merge pull request #270 from rurban/swig
+	fix SWIG_LIB windows newline
+
+	Merge pull request #271 from rurban/restrict
+	Add ax_c_restrict
+
+	Merge pull request #272 from ojwb/fix-AX_CXX_COMPILE_STDCXX-for-MSVC-C++17
+	AX_CXX_COMPILE_STDCXX: Fix MSVC with C++17 or later
+
+	Merge pull request #264 from thesamesam/clang-16
+	Clang 16 fixes
+
+2023-02-15  WANG Xuerui  <xen0n@gentoo.org>
+
+	ax_ms_cpprest: add loongarch64 to list of lib64 arches
+
+	ax_boost_base: add loongarch64 to list of lib64 arches
+
+2023-01-20  Olly Betts  <olly@survex.com>
+
+	Avoid cache variable name collision
+	AS_TR_SH maps both `:` and `=` to `_` so -std:c++17 was colliding
+	with -std=c++17.  Suffix the cache variable name for the former
+	with _MSVC to avoid this.
+
+2023-01-19  Olly Betts  <olly@survex.com>
+
+	AX_CXX_COMPILE_STDCXX: Fix MSVC with C++17 or later
+	MSVC defaults to C++14 and needs -std:c++NN to enable support for
+	newer versions so add that to the list of options to try.
+
+2023-01-07  Reini Urban  <rurban@cpan.org>
+
+	Add ax_c_restrict
+	to check for broken gcc-5 and clang-6 implementations
+
+2023-01-07  Reini Urban  <rurban@cpan.org>
+
+	fix SWIG_LIB windows newline
+	    mingw64 swig -swiglib prints a newline after each lib,
+	    there are two:
+	    SWIG_LIB = C:\msys64\MINGW64\bin\Lib
+	    C:/msys64/MINGW64/share/swig/3.0.12
+
+	    * m4/ax_pkg_swig.m4: strip \r\n in SWIG_LIB
+
+2023-01-06  Reinhard Urban  <reinhard.urban@nubix.de>
+
+	AX_ADD_FORTIFY_SOURCE: add -D_FORTIFY_SOURCE=3 check
+
+2022-11-30  Otto Moerbeek  <otto@drijf.net>
+
+	Avoid an unused warning
+
+2022-11-18  Jerome Benoit  <calculus@rezozer.net>
+
+	Fix ax_python_devel serial 32 fails with current python3
+	The faulty code was introduce in commit df89f6cdaade38f3c1c9987be0c5a57c96fc1730
+	https://github.com/autoconf-archive/autoconf-archive/commit/df89f6cdaade38f3c1c9987be0c5a57c96fc1730
+
+	The current code tuple(sys.version_info) gives the 5-tuple (3, 10, 7, 'final', 0) while
+	the former code sys.version.split()[0] would give the 3-tuple (3, 10, 7).
+	So, at first glance, the current code tuple(sys.version_info) should be replaced by
+	tuple(sys.version_info)[:3].
+
+	A patch that applied to the current ax_python_devel serial 32 is attached.
+
+2022-11-13  Fabrice Delliaux  <netbox253@gmail.com>
+
+	AX_HAVE_QT: remove qmake stash file before rmdir
+	Since a long time I'm seeing this when running AX_HAVE_QT :
+
+	> checking for Qt... Info: creating stash file /tmp/tmp.2FXDo4jy40/.qmake.stash
+	> rmdir: failed to remove '/tmp/tmp.2FXDo4jy40': Directory not empty
+
+	> $ ls -a /tmp/tmp.2FXDo4jy40/
+	> .  ..  .qmake.stash
+
+2022-10-30  Sam James  <sam@gentoo.org>
+
+	AX_CHECK_UNAME_SYSCALL: fix -Wstrict-prototypes
+	Preparation for Clang 16.
+
+	AX_CHECK_POSIX_SYSINFO: fix -Wstrict-prototypes
+	Preparation for Clang 16.
+
+	AX_CHECK_POSIX_REGCOMP: fix -Wstrict-prototypes
+	Preparation for Clang 16.
+
+	AX_C_VAR_FUNC: fix -Wstrict-prototypes
+	Preparation for Clang 16.
+
+	AX_C99_INLINE: fix -Wstrict-prototypes
+	Preparation for Clang 16.
+
+	AX_ADD_FORTIFY_SOURCE: fix -Wstrict-prototypes
+	Preparation for Clang 16.
+
+	AX_CPU_FREQ: include <cstring>, <unistd.h> for memset(), usleep()
+
+	AX_FUNC_MEMMOVE: add missing includes for strcmp(), exit()
+	Clang 16 makes -Wimplicit-function-declaration an error by default.
+
+	AX_CHECK_STRFTIME: add missing includes for strcmp()
+	Clang 16 makes -Wimplicit-function-declaration an error by default.
+
+	AX_FUNC_SNPRINTF: add missing includes for strcmp(), exit()
+	Clang 16 makes -Wimplicit-function-declaration an error by default.
+
+2022-10-17  Kartik Singhal  <kartiksinghal@gmail.com>
+
+	ax_check_icu: bump serial and update after icu-config deprecation
+	The changes in this file are primarily due to @TinoDidriksen
+	and @unhammer that they did for hfst <https://github.com/hfst/hfst>
+	at
+	https://github.com/hfst/hfst/blob/master/m4/ax_check_icu.m4
+
+2022-10-01  Helmut Grohne  <helmut@subdivi.de>
+
+	Fix  AX_HAVE_QT
+	The AX_HAVE_QT macro uses an uninitialized shell variable
+	am_have_qt_qmexe. Fix it.
+
+2022-09-07  Peter Simons  <simons@cryp.to>
+
+	AX_R_PACKAGE: bump serial number
+
+2022-09-07  Ricardo Wurmus  <rekado@elephly.net>
+
+	AX_R_PACKAGE: Use packageDescription.
+	* m4/ax_r_package.m4 (AX_R_PACKAGE): Use packageDescription instead of
+	the inappropriate system.file.
+
+	AX_R_PACKAGE: Fix version comparison.
+	* m4/ax_r_package.m4 (AX_R_PACKAGE): Use compareVersion instead of
+	comparing strings.
+
+2022-09-03  Peter Simons  <simons@cryp.to>
+
+	Fix broken e-mail addresses in copyright lines.
+
+	Merge remote-tracking branch 'github/master'.
+
+	fix serial numbers
+
+	Merge pull request #260 from fanquake/opt_brew_boost_base
+	boost_base: add /opt/homebrew to search paths
+
+2022-08-31  Yaakov Selkowitz  <yselkowi@redhat.com>
+
+	AX_PYTHON_DEVEL: fix for Python 3.10+
+
+2022-08-31  fanquake  <fanquake@gmail.com>
+
+	boost_base: add /opt/homebrew to search paths
+	Users with Boost installed via homebrew on arm64 (M1) hardware will
+	have the libs under this path. Not sure if this is something you'd want
+	to accomodate, but we currently patch this into the macro, so have
+	decided to upstream.
+
+	fix typo in boost_base.m4
+
+2022-08-29  Bastien Roucariès  <rouca@debian.org>
+
+	Add more python version
+	Add a few python version 3.12 3.11 3.10
+
+2022-08-29  Stefano Rivera  <stefanor@debian.org>
+
+	Fix typo, check for PYTHON_PLATFORM_SITE_PKG not PYTHON_SITE_PKG
+
+2022-08-29  Stefano Rivera  <stefanor@debian.org>
+
+	Support Debian's posix_local sysconfig scheme in ax_python_devel
+	Debian adds a custom sysconfig scheme to system python installs,
+	"posix_local". This is the default scheme, and it redirects local
+	users' Python module installs to /usr/local even though Python is
+	installed with a /usr prefix. Both are on Debian's python's sys.path
+	module search path.
+
+	Autoconf and its users understand prefixes, and are likely to select
+	/usr/local, explicitly. Select the "posix_prefix" scheme, with the
+	user-supplied prefix.
+
+	Previously this custom sysconfig scheme was specified in
+	distutils.sysconfig, but not sysconfig itself. As distutils is being
+	deprecated, the custom scheme is now specified in sysconfig, since
+	Debian's Python 3.10 (3.10.2-4).
+
+2022-08-13  Peter Simons  <simons@cryp.to>
+
+	Merge pull request #257 from lukem/ax_boost_json
+	ax_boost_json: implement for Boost::JSON library
+
+2022-08-13  Helmut Grohne  <helmut@subdivi.de>
+
+	Fix FTCBFS with lib mysql
+	apophenia fails to cross build from source, because it fails to locate
+	the mysql client libraries. It does so via the AX_LIB_MYSQL macro, which
+	consults mysql_config, which cannot work during cross builds. This patch
+	extends the AX_LIB_MYSQL
+	macro to try pkg-config before mysql_config.
+
+	FIX FTCBS
+	projectm fails to cross build from source, because it uses AX_HAVE_QT
+	from autoconf-archive and that macro hard codes the build architecture
+	qmake. We use the
+	host architecture for qmake.
+
+2022-08-13  Helmut Grohne  <helmut@subdivi.de>
+
+	Fix AX_LUA_HEADERS uses AC_RUN_IFELSE
+	telegram-cli fails to cross build from source, because it uses
+	AX_LUA_HEADERS, which happens to use AC_RUN_IFELSE to compute the lua
+	version. As it turns out, the version is also available as an integer,
+	which allows using the cross-friendly AC_COMPUTE_INT. The attached patch
+	updates AX_LUA_HEADERS to use AC_COMPUTE_INT.
+
+	debian-bug: https://bugs.debian.org/956713
+
+2022-08-06  Luke Mewburn  <Luke@Mewburn.net>
+
+	ax_boost_json: implement for Boost::JSON library
+	Add AX_BOOST_JSON() to search for Boost::JSON
+	(which is in boost 1.75 or newer)
+
+	Macro derived from AX_BOOST_RANDOM().
+
+2022-08-01  Peter Simons  <simons@cryp.to>
+
+	Merge pull request #255 from ojwb/fix-AX_CXX_COMPILE_STDCXX-for-MSVC
+	ax_cxx_compile_stdcxx: Fix for MSVC
+
+	Merge pull request #254 from dnicolson/remove-duplicate-variable
+	Remove duplicate $PYTHON_EXTRA_LIBS variable
+
+2022-07-28  SAITO Fuyuki  <saitofuyuki@jamstec.go.jp>
+
+	ax_lib_netcdf4: enable NF_CONFIG run-time definition.
+	nf-config may not be installed under the same directory as nc-config.
+	To avoid the automatic definition of nf-config, setting of NF_CONFIG
+	variable is introduced for a workaround.
+
+2022-07-25  Olly Betts  <olly@survex.com>
+
+	ax_cxx_compile_stdcxx: Fix for MSVC
+	MSVC always sets __cplusplus to 199711L in older versions; newer versions
+	do the same unless /Zc:__cplusplus is specified as well as a /std:c++<NN>
+	switch:
+
+	https://devblogs.microsoft.com/cppblog/msvc-now-correctly-reports-__cplusplus/
+
+	This fixes a regression compared to the old separate
+	AX_CXX_COMPILE_STDCXX_11, etc macros which didn't check the value of
+	__cplusplus so worked OK with MSVC.
+
+2022-06-06  Bogdan Drozdowski  <>
+
+	Make assembler-option macros more portable and exit early if assembler not found
+
+	Make assembler-finding macros more portable
+
+2022-04-26  Ondřej Surý  <ondrej@isc.org>
+
+	ax_prog_cc_for_build: Properly restore ac_cv_c_compiler_gnu
+	The ac_cv_c_compiler_gnu wasn't properly restored to original
+	state (f.e. yes), but value of the "save" variable was used:
+
+	ac_cv_c_compiler_gnu=${ac_cv_c_compiler_gnu=saved_ac_cv_c_compiler_gnu}
+
+	Additionally, we don't need to cache the saved_ac_cv_c_compiler_gnu
+	and was_set_ac_cv_c_compiler_gnu, so remove the ac_cv_ from their names.
+
+	This would not manifest on a single run, but any repeated run with cache
+	file (./configure -C) would be broken.
+
+2022-04-25  Peter Simons  <simons@cryp.to>
+
+	ax_python_devel: bump serial number after recent changes
+
+	Merge pull request #249 from bogdro/ax_prototype
+	Fix deprecated things in ax_prototype.m4
+
+	Merge pull request #250 from agbuckley/ax_python_devel-safe-pyversion
+	Fix Python version-string comparisons in ax_devel_python.m4
+
+2022-04-25  Reuben Thomas  <rrt@sc3d.org>
+
+	m4/ax_cc_maxopt.m4: add missing ;; to end of case
+
+2022-04-05  Andy Buckley  <andy.buckley@cern.ch>
+
+	Add a shim class to ax_devel_python.m4 to make the Python version-string comparisons evaluate correctly between < .10 and >= .10 micro version numbers
+
+2022-04-03  Dave Nicolson  <david.nicolson@gmail.com>
+
+	Remove duplicate variable
+
+	Make indentation consistent
+
+2022-03-30  bogdro  <93281795+bogdro@users.noreply.github.com>
+
+	Fix deprecated things in ax_prototype.m4
+	Fix deprecated things in ax_prototype.m4, other small changes.
 
 2022-02-11  Peter Simons  <simons@cryp.to>
 

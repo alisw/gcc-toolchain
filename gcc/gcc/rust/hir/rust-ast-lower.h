@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -39,6 +39,11 @@ struct_field_name_exists (std::vector<HIR::StructField> &fields,
 Visibility
 translate_visibility (const AST::Visibility &vis);
 
+/**
+ * Main base class used for lowering AST to HIR.
+ *
+ * Every subclass should provide a translate() method that takes an AST node and
+ * lowers it to some HIR stored in the TRANSLATED member. */
 class ASTLowering
 {
 public:

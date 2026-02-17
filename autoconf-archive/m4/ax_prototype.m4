@@ -26,13 +26,13 @@
 #
 #   Generic usage pattern:
 #
-#   1) add a call in configure.in
+#   1) add a call in configure.ac
 #
 #    AX_PROTOTYPE(...)
 #
 #   2) call autoheader to see which symbols are not covered
 #
-#   3) add the lines in acconfig.h
+#   3) add the lines in config.h
 #
 #    /* Type of Nth argument of function */
 #    #undef FUNCTION_ARGN
@@ -41,7 +41,7 @@
 #
 #   Complete example:
 #
-#   1) configure.in
+#   1) configure.ac
 #
 #    AX_PROTOTYPE(getpeername,
 #    [
@@ -59,10 +59,10 @@
 #
 #   2) call autoheader
 #
-#    autoheader: Symbol `GETPEERNAME_ARG2' is not covered by ./acconfig.h
-#    autoheader: Symbol `GETPEERNAME_ARG3' is not covered by ./acconfig.h
+#    autoheader: Symbol `GETPEERNAME_ARG2' is not covered by ./config.h
+#    autoheader: Symbol `GETPEERNAME_ARG3' is not covered by ./config.h
 #
-#   3) acconfig.h
+#   3) config.h
 #
 #    /* Type of second argument of getpeername */
 #    #undef GETPEERNAME_ARG2
@@ -114,7 +114,7 @@
 #   modified version of the Autoconf Macro, you may extend this special
 #   exception to the GPL to apply to your modified version as well.
 
-#serial 9
+#serial 11
 
 AU_ALIAS([AC_PROTOTYPE], [AX_PROTOTYPE])
 AC_DEFUN([AX_PROTOTYPE],[
@@ -217,9 +217,18 @@ dnl
 dnl Activate fatal warnings if possible, gives better guess
 dnl
      ac_save_CPPFLAGS="$CPPFLAGS"
-     ifelse(AC_LANG,CPLUSPLUS,if test "$GXX" = "yes" ; then CPPFLAGS="$CPPFLAGS -Werror" ; fi)
-     ifelse(AC_LANG,C,if test "$GCC" = "yes" ; then CPPFLAGS="$CPPFLAGS -Werror" ; fi)
-     AC_TRY_COMPILE($2, $1, [
+dnl     ifelse(AC_LANG,CPLUSPLUS,if test "$GXX" = "yes" ; then CPPFLAGS="$CPPFLAGS -Werror" ; fi)
+dnl     ifelse(AC_LANG,C,if test "$GCC" = "yes" ; then CPPFLAGS="$CPPFLAGS -Werror" ; fi)
+dnl
+dnl Disable the 'unused-variable' warning in case e.g. -Wall was enabled,
+dnl otherwise the test may always fail.
+dnl
+        if (test "x$GCC" = "xyes" || test "x$GXX" = "xyes" ); then
+          CPPFLAGS="$CPPFLAGS -Werror -Wno-unused-variable" ;
+        fi
+
+     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([$2], [$1])],
+     [
       CPPFLAGS="$ac_save_CPPFLAGS"
       AC_MSG_RESULT(ok)
       AX_PROTOTYPE_DEFINES(tags)

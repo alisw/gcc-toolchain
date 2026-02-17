@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2019-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,17 +16,14 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "Config.hpp"
+#include "config.hpp"
 
-#include <ccache/core/AtomicFile.hpp>
-#include <ccache/core/Sloppiness.hpp>
+#include <ccache/core/atomicfile.hpp>
 #include <ccache/core/common.hpp>
 #include <ccache/core/exceptions.hpp>
-#include <ccache/util/DirEntry.hpp>
-#include <ccache/util/PathString.hpp>
-#include <ccache/util/Tokenizer.hpp>
-#include <ccache/util/UmaskScope.hpp>
+#include <ccache/core/sloppiness.hpp>
 #include <ccache/util/assertions.hpp>
+#include <ccache/util/direntry.hpp>
 #include <ccache/util/environment.hpp>
 #include <ccache/util/expected.hpp>
 #include <ccache/util/file.hpp>
@@ -34,6 +31,8 @@
 #include <ccache/util/format.hpp>
 #include <ccache/util/path.hpp>
 #include <ccache/util/string.hpp>
+#include <ccache/util/tokenizer.hpp>
+#include <ccache/util/umaskscope.hpp>
 #include <ccache/util/wincompat.hpp>
 
 #ifdef HAVE_PWD_H
@@ -60,18 +59,20 @@
 DLLIMPORT extern char** environ;
 #endif
 
-// Make room for binary patching at install time.
-const char k_sysconfdir[4096 + 1] = SYSCONFDIR;
+// Make room for binary patching at install time. The extra pointer to a buffer
+// is needed to prevent the compiler from assuming too much about the string,
+// such as its actual length.
+const char k_sysconfdir_array[4096 + 1] = SYSCONFDIR;
+const char* k_sysconfdir = k_sysconfdir_array;
 
 namespace fs = util::filesystem;
 
-using pstr = util::PathString;
 using util::DirEntry;
 using util::make_path;
 
 namespace {
 
-enum class ConfigItem {
+enum class ConfigItem : uint8_t {
   absolute_paths_in_stderr,
   base_dir,
   cache_dir,
@@ -110,7 +111,7 @@ enum class ConfigItem {
   remote_only,
   remote_storage,
   reshare,
-  run_second_cpp,
+  response_file_format,
   sloppiness,
   stats,
   stats_log,
@@ -118,7 +119,7 @@ enum class ConfigItem {
   umask,
 };
 
-enum class ConfigKeyType { normal, alias };
+enum class ConfigKeyType : uint8_t { normal, alias };
 
 struct ConfigKeyTableEntry
 {
@@ -128,101 +129,113 @@ struct ConfigKeyTableEntry
 
 const std::unordered_map<std::string, ConfigKeyTableEntry> k_config_key_table =
   {
-    {"absolute_paths_in_stderr", {ConfigItem::absolute_paths_in_stderr}},
-    {"base_dir", {ConfigItem::base_dir}},
-    {"cache_dir", {ConfigItem::cache_dir}},
-    {"compiler", {ConfigItem::compiler}},
-    {"compiler_check", {ConfigItem::compiler_check}},
-    {"compiler_type", {ConfigItem::compiler_type}},
-    {"compression", {ConfigItem::compression}},
-    {"compression_level", {ConfigItem::compression_level}},
-    {"cpp_extension", {ConfigItem::cpp_extension}},
-    {"debug", {ConfigItem::debug}},
-    {"debug_dir", {ConfigItem::debug_dir}},
-    {"debug_level", {ConfigItem::debug_level}},
-    {"depend_mode", {ConfigItem::depend_mode}},
-    {"direct_mode", {ConfigItem::direct_mode}},
-    {"disable", {ConfigItem::disable}},
-    {"extra_files_to_hash", {ConfigItem::extra_files_to_hash}},
-    {"file_clone", {ConfigItem::file_clone}},
-    {"hard_link", {ConfigItem::hard_link}},
-    {"hash_dir", {ConfigItem::hash_dir}},
-    {"ignore_headers_in_manifest", {ConfigItem::ignore_headers_in_manifest}},
-    {"ignore_options", {ConfigItem::ignore_options}},
-    {"inode_cache", {ConfigItem::inode_cache}},
-    {"keep_comments_cpp", {ConfigItem::keep_comments_cpp}},
-    {"log_file", {ConfigItem::log_file}},
-    {"max_files", {ConfigItem::max_files}},
-    {"max_size", {ConfigItem::max_size}},
-    {"msvc_dep_prefix", {ConfigItem::msvc_dep_prefix}},
-    {"namespace", {ConfigItem::namespace_}},
-    {"path", {ConfigItem::path}},
-    {"pch_external_checksum", {ConfigItem::pch_external_checksum}},
-    {"prefix_command", {ConfigItem::prefix_command}},
-    {"prefix_command_cpp", {ConfigItem::prefix_command_cpp}},
-    {"read_only", {ConfigItem::read_only}},
-    {"read_only_direct", {ConfigItem::read_only_direct}},
-    {"recache", {ConfigItem::recache}},
-    {"remote_only", {ConfigItem::remote_only}},
-    {"remote_storage", {ConfigItem::remote_storage}},
-    {"reshare", {ConfigItem::reshare}},
-    {"run_second_cpp", {ConfigItem::run_second_cpp}},
-    {"secondary_storage", {ConfigItem::remote_storage, "remote_storage"}},
-    {"sloppiness", {ConfigItem::sloppiness}},
-    {"stats", {ConfigItem::stats}},
-    {"stats_log", {ConfigItem::stats_log}},
-    {"temporary_dir", {ConfigItem::temporary_dir}},
-    {"umask", {ConfigItem::umask}},
+    {"absolute_paths_in_stderr",   {ConfigItem::absolute_paths_in_stderr}        },
+    {"base_dir",                   {ConfigItem::base_dir}                        },
+    {"cache_dir",                  {ConfigItem::cache_dir}                       },
+    {"compiler",                   {ConfigItem::compiler}                        },
+    {"compiler_check",             {ConfigItem::compiler_check}                  },
+    {"compiler_type",              {ConfigItem::compiler_type}                   },
+    {"compression",                {ConfigItem::compression}                     },
+    {"compression_level",          {ConfigItem::compression_level}               },
+    {"cpp_extension",              {ConfigItem::cpp_extension}                   },
+    {"debug",                      {ConfigItem::debug}                           },
+    {"debug_dir",                  {ConfigItem::debug_dir}                       },
+    {"debug_level",                {ConfigItem::debug_level}                     },
+    {"depend_mode",                {ConfigItem::depend_mode}                     },
+    {"direct_mode",                {ConfigItem::direct_mode}                     },
+    {"disable",                    {ConfigItem::disable}                         },
+    {"extra_files_to_hash",        {ConfigItem::extra_files_to_hash}             },
+    {"file_clone",                 {ConfigItem::file_clone}                      },
+    {"hard_link",                  {ConfigItem::hard_link}                       },
+    {"hash_dir",                   {ConfigItem::hash_dir}                        },
+    {"ignore_headers_in_manifest", {ConfigItem::ignore_headers_in_manifest}      },
+    {"ignore_options",             {ConfigItem::ignore_options}                  },
+    {"inode_cache",                {ConfigItem::inode_cache}                     },
+    {"keep_comments_cpp",          {ConfigItem::keep_comments_cpp}               },
+    {"log_file",                   {ConfigItem::log_file}                        },
+    {"max_files",                  {ConfigItem::max_files}                       },
+    {"max_size",                   {ConfigItem::max_size}                        },
+    {"msvc_dep_prefix",            {ConfigItem::msvc_dep_prefix}                 },
+    {"namespace",                  {ConfigItem::namespace_}                      },
+    {"path",                       {ConfigItem::path}                            },
+    {"pch_external_checksum",      {ConfigItem::pch_external_checksum}           },
+    {"prefix_command",             {ConfigItem::prefix_command}                  },
+    {"prefix_command_cpp",         {ConfigItem::prefix_command_cpp}              },
+    {"read_only",                  {ConfigItem::read_only}                       },
+    {"read_only_direct",           {ConfigItem::read_only_direct}                },
+    {"recache",                    {ConfigItem::recache}                         },
+    {"remote_only",                {ConfigItem::remote_only}                     },
+    {"remote_storage",             {ConfigItem::remote_storage}                  },
+    {"reshare",                    {ConfigItem::reshare}                         },
+    {"response_file_format",       {ConfigItem::response_file_format}            },
+    {"secondary_storage",          {ConfigItem::remote_storage, "remote_storage"}},
+    {"sloppiness",                 {ConfigItem::sloppiness}                      },
+    {"stats",                      {ConfigItem::stats}                           },
+    {"stats_log",                  {ConfigItem::stats_log}                       },
+    {"temporary_dir",              {ConfigItem::temporary_dir}                   },
+    {"umask",                      {ConfigItem::umask}                           },
 };
 
 const std::unordered_map<std::string, std::string> k_env_variable_table = {
-  {"ABSSTDERR", "absolute_paths_in_stderr"},
-  {"BASEDIR", "base_dir"},
-  {"CC", "compiler"}, // Alias for CCACHE_COMPILER
-  {"COMMENTS", "keep_comments_cpp"},
-  {"COMPILER", "compiler"},
-  {"COMPILERCHECK", "compiler_check"},
-  {"COMPILERTYPE", "compiler_type"},
-  {"COMPRESS", "compression"},
-  {"COMPRESSLEVEL", "compression_level"},
-  {"CPP2", "run_second_cpp"},
-  {"DEBUG", "debug"},
-  {"DEBUGDIR", "debug_dir"},
-  {"DEBUGLEVEL", "debug_level"},
-  {"DEPEND", "depend_mode"},
-  {"DIR", "cache_dir"},
-  {"DIRECT", "direct_mode"},
-  {"DISABLE", "disable"},
-  {"EXTENSION", "cpp_extension"},
-  {"EXTRAFILES", "extra_files_to_hash"},
-  {"FILECLONE", "file_clone"},
-  {"HARDLINK", "hard_link"},
-  {"HASHDIR", "hash_dir"},
-  {"IGNOREHEADERS", "ignore_headers_in_manifest"},
-  {"IGNOREOPTIONS", "ignore_options"},
-  {"INODECACHE", "inode_cache"},
-  {"LOGFILE", "log_file"},
-  {"MAXFILES", "max_files"},
-  {"MAXSIZE", "max_size"},
-  {"MSVC_DEP_PREFIX", "msvc_dep_prefix"},
-  {"NAMESPACE", "namespace"},
-  {"PATH", "path"},
-  {"PCH_EXTSUM", "pch_external_checksum"},
-  {"PREFIX", "prefix_command"},
-  {"PREFIX_CPP", "prefix_command_cpp"},
-  {"READONLY", "read_only"},
-  {"READONLY_DIRECT", "read_only_direct"},
-  {"RECACHE", "recache"},
-  {"REMOTE_ONLY", "remote_only"},
-  {"REMOTE_STORAGE", "remote_storage"},
-  {"RESHARE", "reshare"},
-  {"SECONDARY_STORAGE", "remote_storage"}, // Alias for CCACHE_REMOTE_STORAGE
-  {"SLOPPINESS", "sloppiness"},
-  {"STATS", "stats"},
-  {"STATSLOG", "stats_log"},
-  {"TEMPDIR", "temporary_dir"},
-  {"UMASK", "umask"},
+  {"ABSSTDERR",            "absolute_paths_in_stderr"  },
+  {"BASEDIR",              "base_dir"                  },
+  {"CC",                   "compiler"                  }, // Alias for CCACHE_COMPILER
+  {"COMMENTS",             "keep_comments_cpp"         },
+  {"COMPILER",             "compiler"                  },
+  {"COMPILERCHECK",        "compiler_check"            },
+  {"COMPILERTYPE",         "compiler_type"             },
+  {"COMPRESS",             "compression"               },
+  {"COMPRESSLEVEL",        "compression_level"         },
+  {"DEBUG",                "debug"                     },
+  {"DEBUGDIR",             "debug_dir"                 },
+  {"DEBUGLEVEL",           "debug_level"               },
+  {"DEPEND",               "depend_mode"               },
+  {"DIR",                  "cache_dir"                 },
+  {"DIRECT",               "direct_mode"               },
+  {"DISABLE",              "disable"                   },
+  {"EXTENSION",            "cpp_extension"             },
+  {"EXTRAFILES",           "extra_files_to_hash"       },
+  {"FILECLONE",            "file_clone"                },
+  {"HARDLINK",             "hard_link"                 },
+  {"HASHDIR",              "hash_dir"                  },
+  {"IGNOREHEADERS",        "ignore_headers_in_manifest"},
+  {"IGNOREOPTIONS",        "ignore_options"            },
+  {"INODECACHE",           "inode_cache"               },
+  {"LOGFILE",              "log_file"                  },
+  {"MAXFILES",             "max_files"                 },
+  {"MAXSIZE",              "max_size"                  },
+  {"MSVC_DEP_PREFIX",      "msvc_dep_prefix"           },
+  {"NAMESPACE",            "namespace"                 },
+  {"PATH",                 "path"                      },
+  {"PCH_EXTSUM",           "pch_external_checksum"     },
+  {"PREFIX",               "prefix_command"            },
+  {"PREFIX_CPP",           "prefix_command_cpp"        },
+  {"READONLY",             "read_only"                 },
+  {"READONLY_DIRECT",      "read_only_direct"          },
+  {"RECACHE",              "recache"                   },
+  {"REMOTE_ONLY",          "remote_only"               },
+  {"REMOTE_STORAGE",       "remote_storage"            },
+  {"RESHARE",              "reshare"                   },
+  {"RESPONSE_FILE_FORMAT", "response_file_format"      },
+  {"SECONDARY_STORAGE",    "remote_storage"            }, // Alias for CCACHE_REMOTE_STORAGE
+  {"SLOPPINESS",           "sloppiness"                },
+  {"STATS",                "stats"                     },
+  {"STATSLOG",             "stats_log"                 },
+  {"TEMPDIR",              "temporary_dir"             },
+  {"UMASK",                "umask"                     },
 };
+
+util::Args::ResponseFileFormat
+parse_response_file_format(const std::string& value)
+{
+  if (value == "posix") {
+    return util::Args::ResponseFileFormat::posix;
+  } else if (value == "windows") {
+    return util::Args::ResponseFileFormat::windows;
+  } else {
+    return util::Args::ResponseFileFormat::auto_guess;
+  }
+}
 
 bool
 parse_bool(const std::string& value,
@@ -274,6 +287,10 @@ parse_compiler_type(const std::string& value)
     return CompilerType::gcc;
   } else if (value == "icl") {
     return CompilerType::icl;
+  } else if (value == "icx") {
+    return CompilerType::icx;
+  } else if (value == "icx-cl") {
+    return CompilerType::icx_cl;
   } else if (value == "msvc") {
     return CompilerType::msvc;
   } else if (value == "nvcc") {
@@ -390,10 +407,12 @@ format_umask(std::optional<mode_t> umask)
 }
 
 void
-verify_absolute_path(const fs::path& value)
+verify_absolute_paths(const std::vector<fs::path>& paths)
 {
-  if (!value.is_absolute()) {
-    throw core::Error(FMT("not an absolute path: \"{}\"", value));
+  for (const auto& path : paths) {
+    if (!path.is_absolute()) {
+      throw core::Error(FMT("not an absolute path: \"{}\"", path));
+    }
   }
 }
 
@@ -426,10 +445,10 @@ using ConfigLineHandler = std::function<void(
 
 // Call `config_line_handler` for each line in `path`.
 bool
-parse_config_file(const std::string& path,
+parse_config_file(const fs::path& path,
                   const ConfigLineHandler& config_line_handler)
 {
-  std::ifstream file(path);
+  std::ifstream file(util::pstr(path).c_str());
   if (!file) {
     return false;
   }
@@ -473,43 +492,45 @@ create_cmdline_settings_map(const std::vector<std::string>& settings)
   return result;
 }
 
-} // namespace
-
 #ifndef _WIN32
-static std::string
-default_cache_dir(const std::string& home_dir)
+
+fs::path
+default_cache_dir(const fs::path& home_dir)
 {
 #  ifdef __APPLE__
-  return home_dir + "/Library/Caches/ccache";
+  return home_dir / "Library/Caches/ccache";
 #  else
-  return home_dir + "/.cache/ccache";
+  return home_dir / ".cache/ccache";
 #  endif
 }
 
-static std::string
-default_config_dir(const std::string& home_dir)
+fs::path
+default_config_dir(const fs::path& home_dir)
 {
 #  ifdef __APPLE__
-  return home_dir + "/Library/Preferences/ccache";
+  return home_dir / "Library/Preferences/ccache";
 #  else
-  return home_dir + "/.config/ccache";
+  return home_dir / ".config/ccache";
 #  endif
 }
-#endif
 
-std::string
+#endif // !_WIN32
+
+fs::path
 home_directory()
 {
 #ifdef _WIN32
-  if (const char* p = getenv("USERPROFILE")) {
-    return p;
+  auto user_profile = util::getenv_path("USERPROFILE");
+  if (user_profile) {
+    return *user_profile;
   }
   throw core::Fatal(
     "The USERPROFILE environment variable must be set to your user profile"
     " folder");
 #else
-  if (const char* p = getenv("HOME")) {
-    return p;
+  auto home = util::getenv_path("HOME");
+  if (home) {
+    return *home;
   }
 #  ifdef HAVE_GETPWUID
   {
@@ -525,6 +546,24 @@ home_directory()
 }
 
 std::string
+response_file_format_to_string(
+  util::Args::ResponseFileFormat response_file_format)
+{
+  switch (response_file_format) {
+  case util::Args::ResponseFileFormat::auto_guess:
+    return "auto";
+  case util::Args::ResponseFileFormat::posix:
+    return "posix";
+  case util::Args::ResponseFileFormat::windows:
+    return "windows";
+  }
+
+  ASSERT(false);
+}
+
+} // namespace
+
+std::string
 compiler_type_to_string(CompilerType compiler_type)
 {
 #define CASE(type)                                                             \
@@ -536,10 +575,13 @@ compiler_type_to_string(CompilerType compiler_type)
     return "auto";
   case CompilerType::clang_cl:
     return "clang-cl";
+  case CompilerType::icx_cl:
+    return "icx-cl";
 
     CASE(clang);
     CASE(gcc);
     CASE(icl);
+    CASE(icx);
     CASE(msvc);
     CASE(nvcc);
     CASE(other);
@@ -556,57 +598,55 @@ Config::read(const std::vector<std::string>& cmdline_config_settings)
     create_cmdline_settings_map(cmdline_config_settings);
 
   const fs::path home_dir = home_directory();
-  const fs::path legacy_ccache_dir = home_dir / ".ccache";
-  const bool legacy_ccache_dir_exists =
-    DirEntry(legacy_ccache_dir).is_directory();
+  const util::DirEntry legacy_ccache_dir = home_dir / ".ccache";
 #ifdef _WIN32
-  const char* const env_appdata = getenv("APPDATA");
-  const char* const env_local_appdata = getenv("LOCALAPPDATA");
+  auto env_appdata = util::getenv_path("APPDATA");
+  auto env_local_appdata = util::getenv_path("LOCALAPPDATA");
 #else
-  const char* const env_xdg_cache_home = getenv("XDG_CACHE_HOME");
-  const char* const env_xdg_config_home = getenv("XDG_CONFIG_HOME");
+  auto env_xdg_cache_home = util::getenv_path("XDG_CACHE_HOME");
+  auto env_xdg_config_home = util::getenv_path("XDG_CONFIG_HOME");
 #endif
 
-  const char* env_ccache_configpath = getenv("CCACHE_CONFIGPATH");
+  auto env_ccache_configpath = util::getenv_path("CCACHE_CONFIGPATH");
   if (env_ccache_configpath) {
-    set_config_path(env_ccache_configpath);
+    set_config_path(*env_ccache_configpath);
   } else {
     // Only used for ccache tests:
-    const char* const env_ccache_configpath2 = getenv("CCACHE_CONFIGPATH2");
+    auto env_ccache_configpath2 = util::getenv_path("CCACHE_CONFIGPATH2");
 
     fs::path sysconfdir(k_sysconfdir);
 #ifdef _WIN32
-    if (const char* program_data = getenv("ALLUSERSPROFILE"))
-      sysconfdir = fs::path(program_data) / "ccache";
+    auto program_data = util::getenv_path("ALLUSERSPROFILE");
+    if (program_data) {
+      sysconfdir = *program_data / "ccache";
+    }
 #endif
 
-    set_system_config_path(env_ccache_configpath2 ? env_ccache_configpath2
+    set_system_config_path(env_ccache_configpath2 ? *env_ccache_configpath2
                                                   : sysconfdir / "ccache.conf");
     // A missing config file in SYSCONFDIR is OK so don't check return value.
     update_from_file(system_config_path());
 
-    const char* const env_ccache_dir = getenv("CCACHE_DIR");
+    auto env_ccache_dir = util::getenv_path("CCACHE_DIR");
     auto cmdline_cache_dir = cmdline_settings_map.find("cache_dir");
 
     fs::path config_dir;
     if (cmdline_cache_dir != cmdline_settings_map.end()) {
       config_dir = cmdline_cache_dir->second;
-    } else if (env_ccache_dir && *env_ccache_dir) {
-      config_dir = env_ccache_dir;
+    } else if (env_ccache_dir && !env_ccache_dir->empty()) {
+      config_dir = *env_ccache_dir;
     } else if (!cache_dir().empty() && !env_ccache_dir) {
       config_dir = cache_dir();
-    } else if (legacy_ccache_dir_exists) {
-      config_dir = legacy_ccache_dir;
+    } else if (legacy_ccache_dir.is_directory()) {
+      config_dir = legacy_ccache_dir.path();
 #ifdef _WIN32
     } else if (env_local_appdata
-               && DirEntry(
-                 make_path(env_local_appdata, "ccache", "ccache.conf"))) {
-      config_dir = make_path(env_local_appdata, "ccache");
-    } else if (env_appdata
-               && DirEntry(make_path(env_appdata, "ccache", "ccache.conf"))) {
-      config_dir = make_path(env_appdata, "ccache");
+               && fs::exists(*env_local_appdata / "ccache/ccache.conf")) {
+      config_dir = *env_local_appdata / "ccache";
+    } else if (env_appdata && fs::exists(*env_appdata / "ccache/ccache.conf")) {
+      config_dir = make_path(*env_appdata, "ccache");
     } else if (env_local_appdata) {
-      config_dir = make_path(env_local_appdata, "ccache");
+      config_dir = *env_local_appdata / "ccache";
     } else {
       throw core::Fatal(
         "could not find configuration file and the LOCALAPPDATA environment"
@@ -614,7 +654,7 @@ Config::read(const std::vector<std::string>& cmdline_config_settings)
     }
 #else
     } else if (env_xdg_config_home) {
-      config_dir = make_path(env_xdg_config_home, "ccache");
+      config_dir = *env_xdg_config_home / "ccache";
     } else {
       config_dir = default_config_dir(home_dir);
     }
@@ -622,7 +662,7 @@ Config::read(const std::vector<std::string>& cmdline_config_settings)
     set_config_path(config_dir / "ccache.conf");
   }
 
-  const std::string& cache_dir_before_config_file_was_read = cache_dir();
+  const fs::path& cache_dir_before_config_file_was_read = cache_dir();
 
   update_from_file(config_path());
 
@@ -635,11 +675,11 @@ Config::read(const std::vector<std::string>& cmdline_config_settings)
   update_from_map(cmdline_settings_map);
 
   if (cache_dir().empty()) {
-    if (legacy_ccache_dir_exists) {
-      set_cache_dir(pstr(legacy_ccache_dir));
+    if (legacy_ccache_dir.is_directory()) {
+      set_cache_dir(legacy_ccache_dir.path());
 #ifdef _WIN32
     } else if (env_local_appdata) {
-      set_cache_dir(pstr(fs::path(env_local_appdata) / "ccache"));
+      set_cache_dir(*env_local_appdata / "ccache");
     } else {
       throw core::Fatal(
         "could not find cache directory and the LOCALAPPDATA environment"
@@ -647,7 +687,7 @@ Config::read(const std::vector<std::string>& cmdline_config_settings)
     }
 #else
     } else if (env_xdg_cache_home) {
-      set_cache_dir(make_path(env_xdg_cache_home, "ccache"));
+      set_cache_dir(*env_xdg_cache_home / "ccache");
     } else {
       set_cache_dir(default_cache_dir(home_dir));
     }
@@ -675,22 +715,22 @@ Config::system_config_path() const
 void
 Config::set_config_path(const fs::path& path)
 {
-  m_config_path = path;
+  m_config_path = util::lexically_normal(path);
 }
 
 void
 Config::set_system_config_path(const fs::path& path)
 {
-  m_system_config_path = path;
+  m_system_config_path = util::lexically_normal(path);
 }
 
 bool
 Config::update_from_file(const fs::path& path)
 {
   return parse_config_file(
-    pstr(path), [&](const auto& /*line*/, const auto& key, const auto& value) {
+    path, [&](const auto& /*line*/, const auto& key, const auto& value) {
       if (!key.empty()) {
-        set_item(key, value, std::nullopt, false, pstr(path));
+        set_item(key, value, std::nullopt, false, util::pstr(path));
       }
     });
 }
@@ -758,10 +798,10 @@ Config::get_string_value(const std::string& key) const
     return format_bool(m_absolute_paths_in_stderr);
 
   case ConfigItem::base_dir:
-    return pstr(m_base_dir).str();
+    return util::join_path_list(m_base_dirs);
 
   case ConfigItem::cache_dir:
-    return m_cache_dir;
+    return m_cache_dir.string();
 
   case ConfigItem::compiler:
     return m_compiler;
@@ -824,7 +864,7 @@ Config::get_string_value(const std::string& key) const
     return format_bool(m_keep_comments_cpp);
 
   case ConfigItem::log_file:
-    return m_log_file;
+    return m_log_file.string();
 
   case ConfigItem::max_files:
     return FMT("{}", m_max_files);
@@ -875,8 +915,8 @@ Config::get_string_value(const std::string& key) const
   case ConfigItem::reshare:
     return format_bool(m_reshare);
 
-  case ConfigItem::run_second_cpp:
-    return format_bool(m_run_second_cpp);
+  case ConfigItem::response_file_format:
+    return response_file_format_to_string(m_response_file_format);
 
   case ConfigItem::sloppiness:
     return format_sloppiness(m_sloppiness);
@@ -885,10 +925,10 @@ Config::get_string_value(const std::string& key) const
     return format_bool(m_stats);
 
   case ConfigItem::stats_log:
-    return m_stats_log;
+    return m_stats_log.string();
 
   case ConfigItem::temporary_dir:
-    return m_temporary_dir;
+    return m_temporary_dir.string();
 
   case ConfigItem::umask:
     return format_umask(m_umask);
@@ -984,11 +1024,8 @@ Config::set_item(const std::string& key,
     break;
 
   case ConfigItem::base_dir:
-    m_base_dir = value;
-    if (!m_base_dir.empty()) { // The empty string means "disable"
-      verify_absolute_path(m_base_dir);
-      m_base_dir = m_base_dir.lexically_normal();
-    }
+    set_base_dirs(util::split_path_list(value));
+    verify_absolute_paths(m_base_dirs);
     break;
 
   case ConfigItem::cache_dir:
@@ -1142,8 +1179,8 @@ Config::set_item(const std::string& key,
     m_reshare = parse_bool(value, env_var_key, negate);
     break;
 
-  case ConfigItem::run_second_cpp:
-    m_run_second_cpp = parse_bool(value, env_var_key, negate);
+  case ConfigItem::response_file_format:
+    m_response_file_format = parse_response_file_format(value);
     break;
 
   case ConfigItem::sloppiness:
@@ -1170,7 +1207,7 @@ Config::set_item(const std::string& key,
     break;
   }
 
-  const std::string canonical_key = it->second.alias ? *it->second.alias : key;
+  const std::string& canonical_key = it->second.alias.value_or(key);
   const auto& [element, inserted] = m_origins.emplace(canonical_key, origin);
   if (!inserted) {
     element->second = origin;
@@ -1190,20 +1227,20 @@ Config::check_key_tables_consistency()
   }
 }
 
-std::string
+fs::path
 Config::default_temporary_dir() const
 {
-  static const std::string run_user_tmp_dir = [] {
+  static const fs::path run_user_tmp_dir = [] {
 #ifndef _WIN32
     const char* const xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
     if (xdg_runtime_dir && DirEntry(xdg_runtime_dir).is_directory()) {
-      auto dir = FMT("{}/ccache-tmp", xdg_runtime_dir);
+      fs::path dir = FMT("{}/ccache-tmp", xdg_runtime_dir);
       if (fs::create_directories(dir) && access(dir.c_str(), W_OK) == 0) {
         return dir;
       }
     }
 #endif
-    return std::string();
+    return fs::path();
   }();
-  return !run_user_tmp_dir.empty() ? run_user_tmp_dir : m_cache_dir + "/tmp";
+  return !run_user_tmp_dir.empty() ? run_user_tmp_dir : m_cache_dir / "tmp";
 }

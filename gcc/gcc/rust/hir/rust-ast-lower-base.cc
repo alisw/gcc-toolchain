@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -20,12 +20,31 @@
 #include "rust-ast-lower-type.h"
 #include "rust-ast-lower-pattern.h"
 #include "rust-ast-lower-extern.h"
+#include "rust-ast.h"
 #include "rust-attribute-values.h"
+#include "rust-diagnostics.h"
+#include "rust-expr.h"
 #include "rust-item.h"
 #include "rust-system.h"
+#include "rust-attributes.h"
 
 namespace Rust {
 namespace HIR {
+
+void
+ASTLoweringBase::visit (AST::MacroInvocation &invoc)
+{
+  rust_fatal_error (invoc.get_locus (), "rogue macro detected during lowering");
+  rust_unreachable ();
+}
+
+void
+ASTLoweringBase::visit (AST::ErrorPropagationExpr &expr)
+{
+  rust_fatal_error (expr.get_locus (),
+		    "missing desugar for question mark operator");
+  rust_unreachable ();
+}
 
 void
 ASTLoweringBase::visit (AST::Token &)
@@ -103,9 +122,6 @@ ASTLoweringBase::visit (AST::BorrowExpr &)
 {}
 void
 ASTLoweringBase::visit (AST::DereferenceExpr &)
-{}
-void
-ASTLoweringBase::visit (AST::ErrorPropagationExpr &)
 {}
 void
 ASTLoweringBase::visit (AST::NegationExpr &)
@@ -211,6 +227,11 @@ ASTLoweringBase::visit (AST::RangeFromToInclExpr &)
 void
 ASTLoweringBase::visit (AST::RangeToInclExpr &)
 {}
+
+void
+ASTLoweringBase::visit (AST::BoxExpr &)
+{}
+
 void
 ASTLoweringBase::visit (AST::ReturnExpr &)
 {}
@@ -241,6 +262,11 @@ ASTLoweringBase::visit (AST::IfLetExpr &)
 void
 ASTLoweringBase::visit (AST::IfLetExprConseqElse &)
 {}
+
+void
+ASTLoweringBase::visit (AST::InlineAsm &)
+{}
+
 //  void ASTLoweringBase::visit(MatchCasematch_case) {}
 // void ASTLoweringBase:: (AST::MatchCaseBlockExpr &) {}
 // void ASTLoweringBase:: (AST::MatchCaseExpr &) {}
@@ -343,9 +369,6 @@ void
 ASTLoweringBase::visit (AST::ExternalStaticItem &)
 {}
 void
-ASTLoweringBase::visit (AST::ExternalFunctionItem &)
-{}
-void
 ASTLoweringBase::visit (AST::ExternBlock &)
 {}
 
@@ -361,9 +384,6 @@ ASTLoweringBase::visit (AST::MacroMatcher &)
 {}
 void
 ASTLoweringBase::visit (AST::MacroRulesDefinition &)
-{}
-void
-ASTLoweringBase::visit (AST::MacroInvocation &)
 {}
 void
 ASTLoweringBase::visit (AST::MetaItemPath &)
@@ -523,6 +543,10 @@ void
 ASTLoweringBase::visit (AST::SelfParam &param)
 {}
 
+void
+ASTLoweringBase::visit (AST::FormatArgs &fmt)
+{}
+
 HIR::Lifetime
 ASTLoweringBase::lower_lifetime (AST::Lifetime &lifetime,
 				 bool default_to_static_lifetime)
@@ -534,11 +558,11 @@ ASTLoweringBase::lower_lifetime (AST::Lifetime &lifetime,
       lifetime_type = AST::Lifetime::STATIC;
     }
 
-  auto crate_num = mappings->get_current_crate ();
+  auto crate_num = mappings.get_current_crate ();
   Analysis::NodeMapping mapping (crate_num, lifetime.get_node_id (),
-				 mappings->get_next_hir_id (crate_num),
+				 mappings.get_next_hir_id (crate_num),
 				 UNKNOWN_LOCAL_DEFID);
-  mappings->insert_node_to_hir (mapping.get_nodeid (), mapping.get_hirid ());
+  mappings.insert_node_to_hir (mapping.get_nodeid (), mapping.get_hirid ());
 
   return HIR::Lifetime (mapping, lifetime_type, lifetime.get_lifetime_name (),
 			lifetime.get_locus ());
@@ -549,11 +573,11 @@ ASTLoweringBase::lower_loop_label (AST::LoopLabel &loop_label)
 {
   HIR::Lifetime life = lower_lifetime (loop_label.get_lifetime ());
 
-  auto crate_num = mappings->get_current_crate ();
+  auto crate_num = mappings.get_current_crate ();
   Analysis::NodeMapping mapping (crate_num, loop_label.get_node_id (),
-				 mappings->get_next_hir_id (crate_num),
+				 mappings.get_next_hir_id (crate_num),
 				 UNKNOWN_LOCAL_DEFID);
-  mappings->insert_node_to_hir (mapping.get_nodeid (), mapping.get_hirid ());
+  mappings.insert_node_to_hir (mapping.get_nodeid (), mapping.get_hirid ());
 
   return HIR::LoopLabel (mapping, std::move (life), loop_label.get_locus ());
 }
@@ -565,7 +589,7 @@ ASTLoweringBase::lower_generic_params (
   std::vector<std::unique_ptr<HIR::GenericParam>> lowered;
   for (auto &ast_param : params)
     {
-      auto hir_param = ASTLowerGenericParam::translate (ast_param.get ());
+      auto hir_param = ASTLowerGenericParam::translate (*ast_param);
       lowered.push_back (std::unique_ptr<HIR::GenericParam> (hir_param));
     }
 
@@ -575,9 +599,9 @@ ASTLoweringBase::lower_generic_params (
 HIR::PathExprSegment
 ASTLoweringBase::lower_path_expr_seg (AST::PathExprSegment &s)
 {
-  auto crate_num = mappings->get_current_crate ();
+  auto crate_num = mappings.get_current_crate ();
   Analysis::NodeMapping mapping (crate_num, s.get_node_id (),
-				 mappings->get_next_hir_id (crate_num),
+				 mappings.get_next_hir_id (crate_num),
 				 UNKNOWN_LOCAL_DEFID);
 
   return HIR::PathExprSegment (
@@ -590,8 +614,7 @@ ASTLoweringBase::lower_path_expr_seg (AST::PathExprSegment &s)
 HIR::GenericArgsBinding
 ASTLoweringBase::lower_binding (AST::GenericArgsBinding &binding)
 {
-  HIR::Type *lowered_type
-    = ASTLoweringType::translate (binding.get_type ().get ());
+  HIR::Type *lowered_type = ASTLoweringType::translate (binding.get_type ());
   return HIR::GenericArgsBinding (binding.get_identifier (),
 				  std::unique_ptr<HIR::Type> (lowered_type),
 				  binding.get_locus ());
@@ -622,13 +645,12 @@ ASTLoweringBase::lower_generic_args (AST::GenericArgs &args)
       switch (arg.get_kind ())
 	{
 	  case AST::GenericArg::Kind::Type: {
-	    auto type = ASTLoweringType::translate (arg.get_type ().get ());
+	    auto type = ASTLoweringType::translate (arg.get_type ());
 	    type_args.emplace_back (std::unique_ptr<HIR::Type> (type));
 	    break;
 	  }
 	  case AST::GenericArg::Kind::Const: {
-	    auto expr
-	      = ASTLoweringExpr::translate (arg.get_expression ().get ());
+	    auto expr = ASTLoweringExpr::translate (arg.get_expression ());
 	    const_args.emplace_back (
 	      HIR::ConstGenericArg (std::unique_ptr<HIR::Expr> (expr),
 				    expr->get_locus ()));
@@ -645,41 +667,46 @@ ASTLoweringBase::lower_generic_args (AST::GenericArgs &args)
 }
 
 HIR::SelfParam
-ASTLoweringBase::lower_self (std::unique_ptr<AST::Param> &param)
+ASTLoweringBase::lower_self (AST::Param &param)
 {
-  rust_assert (param->is_self ());
+  rust_assert (param.is_self ());
 
-  auto self = static_cast<AST::SelfParam *> (param.get ());
-  auto crate_num = mappings->get_current_crate ();
-  Analysis::NodeMapping mapping (crate_num, self->get_node_id (),
-				 mappings->get_next_hir_id (crate_num),
-				 mappings->get_next_localdef_id (crate_num));
+  auto self = static_cast<AST::SelfParam &> (param);
+  auto crate_num = mappings.get_current_crate ();
+  Analysis::NodeMapping mapping (crate_num, self.get_node_id (),
+				 mappings.get_next_hir_id (crate_num),
+				 mappings.get_next_localdef_id (crate_num));
+  mappings.insert_location (mapping.get_hirid (), param.get_locus ());
 
-  if (self->has_type ())
+  if (self.has_type ())
     {
-      HIR::Type *type = ASTLoweringType::translate (self->get_type ().get ());
+      HIR::Type *type = ASTLoweringType::translate (self.get_type ());
       return HIR::SelfParam (mapping, std::unique_ptr<HIR::Type> (type),
-			     self->get_is_mut (), self->get_locus ());
+			     self.get_is_mut (), self.get_locus ());
     }
-  else if (!self->get_has_ref ())
+  else if (!self.get_has_ref ())
     {
       return HIR::SelfParam (mapping, std::unique_ptr<HIR::Type> (nullptr),
-			     self->get_is_mut (), self->get_locus ());
+			     self.get_is_mut (), self.get_locus ());
     }
 
-  AST::Lifetime l = self->get_lifetime ();
-  return HIR::SelfParam (mapping, lower_lifetime (l), self->get_is_mut (),
-			 self->get_locus ());
+  tl::optional<HIR::Lifetime> lifetime = tl::nullopt;
+
+  if (self.has_lifetime ())
+    lifetime = lower_lifetime (self.get_lifetime ());
+
+  return HIR::SelfParam (mapping, lifetime, self.get_is_mut (),
+			 self.get_locus ());
 }
 
 HIR::Type *
-ASTLoweringBase::lower_type_no_bounds (AST::TypeNoBounds *type)
+ASTLoweringBase::lower_type_no_bounds (AST::TypeNoBounds &type)
 {
   return ASTLoweringType::translate (type);
 }
 
 HIR::TypeParamBound *
-ASTLoweringBase::lower_bound (AST::TypeParamBound *bound)
+ASTLoweringBase::lower_bound (AST::TypeParamBound &bound)
 {
   return ASTLoweringTypeBounds::translate (bound);
 }
@@ -734,7 +761,7 @@ ASTLoweringBase::handle_outer_attributes (const ItemWrapper &item)
   for (const auto &attr : item.get_outer_attrs ())
     {
       const auto &str_path = attr.get_path ().as_string ();
-      if (!is_known_attribute (str_path))
+      if (!Analysis::Attributes::is_known (str_path))
 	{
 	  rust_error_at (attr.get_locus (), "unknown attribute");
 	  continue;
@@ -788,21 +815,13 @@ ASTLoweringBase::handle_lang_item_attribute (const ItemWrapper &item,
 {
   auto &literal = static_cast<AST::AttrInputLiteral &> (attr.get_attr_input ());
   const auto &lang_item_type_str = literal.get_literal ().as_string ();
-  auto lang_item_type = Analysis::RustLangItem::Parse (lang_item_type_str);
-  if (lang_item_type == Analysis::RustLangItem::ItemType::UNKNOWN)
-    {
-      rust_error_at (attr.get_locus (), "unknown lang item");
-      return;
-    }
-  mappings->insert_lang_item (lang_item_type,
-			      item.get_mappings ().get_defid ());
-}
+  auto lang_item_type = LangItem::Parse (lang_item_type_str);
 
-bool
-ASTLoweringBase::is_known_attribute (const std::string &attribute_path) const
-{
-  const auto &lookup = attr_mappings->lookup_builtin (attribute_path);
-  return !lookup.is_error ();
+  if (lang_item_type)
+    mappings.insert_lang_item (*lang_item_type,
+			       item.get_mappings ().get_defid ());
+  else
+    rust_error_at (attr.get_locus (), "unknown lang item");
 }
 
 bool
@@ -826,7 +845,7 @@ ASTLoweringBase::lower_tuple_pattern_multiple (
   std::vector<std::unique_ptr<HIR::Pattern>> patterns;
   for (auto &p : pattern.get_patterns ())
     {
-      HIR::Pattern *translated = ASTLoweringPattern::translate (p.get ());
+      HIR::Pattern *translated = ASTLoweringPattern::translate (*p);
       patterns.push_back (std::unique_ptr<HIR::Pattern> (translated));
     }
 
@@ -843,13 +862,13 @@ ASTLoweringBase::lower_tuple_pattern_ranged (
 
   for (auto &p : pattern.get_lower_patterns ())
     {
-      HIR::Pattern *translated = ASTLoweringPattern::translate (p.get ());
+      HIR::Pattern *translated = ASTLoweringPattern::translate (*p);
       lower_patterns.push_back (std::unique_ptr<HIR::Pattern> (translated));
     }
 
   for (auto &p : pattern.get_upper_patterns ())
     {
-      HIR::Pattern *translated = ASTLoweringPattern::translate (p.get ());
+      HIR::Pattern *translated = ASTLoweringPattern::translate (*p);
       upper_patterns.push_back (std::unique_ptr<HIR::Pattern> (translated));
     }
 
@@ -859,14 +878,14 @@ ASTLoweringBase::lower_tuple_pattern_ranged (
 }
 
 std::unique_ptr<HIR::RangePatternBound>
-ASTLoweringBase::lower_range_pattern_bound (AST::RangePatternBound *bound)
+ASTLoweringBase::lower_range_pattern_bound (AST::RangePatternBound &bound)
 {
   std::unique_ptr<HIR::RangePatternBound> hir_bound = nullptr;
-  switch (bound->get_bound_type ())
+  switch (bound.get_bound_type ())
     {
       case AST::RangePatternBound::RangePatternBoundType::LITERAL: {
 	AST::RangePatternBoundLiteral &ref
-	  = *static_cast<AST::RangePatternBoundLiteral *> (bound);
+	  = static_cast<AST::RangePatternBoundLiteral &> (bound);
 
 	HIR::Literal literal = lower_literal (ref.get_literal ());
 
@@ -876,23 +895,20 @@ ASTLoweringBase::lower_range_pattern_bound (AST::RangePatternBound *bound)
       }
       break;
       case AST::RangePatternBound::RangePatternBoundType::PATH: {
-	AST::RangePatternBoundPath &ref
-	  = *static_cast<AST::RangePatternBoundPath *> (bound);
+	auto &ref = static_cast<AST::RangePatternBoundPath &> (bound);
 
 	HIR::PathInExpression *path
-	  = ASTLowerPathInExpression::translate (&ref.get_path ());
+	  = ASTLowerPathInExpression::translate (ref.get_path ());
 
 	hir_bound = std::unique_ptr<HIR::RangePatternBound> (
 	  new HIR::RangePatternBoundPath (*path));
       }
       break;
       case AST::RangePatternBound::RangePatternBoundType::QUALPATH: {
-	AST::RangePatternBoundQualPath &ref
-	  = *static_cast<AST::RangePatternBoundQualPath *> (bound);
+	auto &ref = static_cast<AST::RangePatternBoundQualPath &> (bound);
 
 	HIR::QualifiedPathInExpression *qualpath
-	  = ASTLowerQualPathInExpression::translate (
-	    &ref.get_qualified_path ());
+	  = ASTLowerQualPathInExpression::translate (ref.get_qualified_path ());
 
 	hir_bound = std::unique_ptr<HIR::RangePatternBound> (
 	  new HIR::RangePatternBoundQualPath (*qualpath));
@@ -921,6 +937,9 @@ ASTLoweringBase::lower_literal (const AST::Literal &literal)
     case AST::Literal::LitType::BYTE_STRING:
       type = HIR::Literal::LitType::BYTE_STRING;
       break;
+    case AST::Literal::LitType::RAW_STRING:
+      type = HIR::Literal::LitType::STRING;
+      break;
     case AST::Literal::LitType::INT:
       type = HIR::Literal::LitType::INT;
       break;
@@ -943,10 +962,10 @@ ASTLoweringBase::lower_extern_block (AST::ExternBlock &extern_block)
 {
   HIR::Visibility vis = translate_visibility (extern_block.get_visibility ());
 
-  auto crate_num = mappings->get_current_crate ();
+  auto crate_num = mappings.get_current_crate ();
   Analysis::NodeMapping mapping (crate_num, extern_block.get_node_id (),
-				 mappings->get_next_hir_id (crate_num),
-				 mappings->get_next_localdef_id (crate_num));
+				 mappings.get_next_hir_id (crate_num),
+				 mappings.get_next_localdef_id (crate_num));
 
   std::vector<std::unique_ptr<HIR::ExternalItem>> extern_items;
   for (auto &item : extern_block.get_extern_items ())
@@ -975,7 +994,7 @@ ASTLoweringBase::lower_extern_block (AST::ExternBlock &extern_block)
 			    extern_block.get_outer_attrs (),
 			    extern_block.get_locus ());
 
-  mappings->insert_hir_extern_block (hir_extern_block);
+  mappings.insert_hir_extern_block (hir_extern_block);
 
   return hir_extern_block;
 }
@@ -990,9 +1009,9 @@ ASTLoweringBase::lower_macro_definition (AST::MacroRulesDefinition &def)
 
   if (is_export)
     {
-      mappings->insert_exported_macro (def);
-      mappings->insert_ast_item (&def);
-      mappings->insert_location (def.get_node_id (), def.get_locus ());
+      mappings.insert_exported_macro (def);
+      mappings.insert_ast_item (&def);
+      mappings.insert_location (def.get_node_id (), def.get_locus ());
     }
 }
 

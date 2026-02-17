@@ -1,6 +1,6 @@
 #!/bin/sh
 # genscripts.sh - generate the ld-emulation-target specific files
-# Copyright (C) 2004-2024 Free Software Foundation, Inc.
+# Copyright (C) 2004-2026 Free Software Foundation, Inc.
 #
 # This file is part of the Gnu Linker.
 #
@@ -64,50 +64,50 @@
 # following suffixes might be generated as well:
 #
 # xdwe:   -pie    -z combreloc -z separate-code -z relro -z now
-# xdwer:  -pie    -z combreloc -z separate-code -z relro -z now -z one-rosegment
+# xdwer:  -pie    -z combreloc -z separate-code -z relro -z now --rosegment
 # xdw:    -pie    -z combreloc                  -z relro -z now
 # xdceo:  -pie    -z combreloc -z separate-code -z relro
-# xdceor: -pie    -z combreloc -z separate-code -z relro        -z one-rosegment
+# xdceor: -pie    -z combreloc -z separate-code -z relro        --rosegment
 # xdce:   -pie    -z combreloc -z separate-code
-# xdcer:  -pie    -z combreloc -z separate-code                 -z one-rosegment
+# xdcer:  -pie    -z combreloc -z separate-code                 --rosegment
 # xdco:   -pie    -z combreloc                  -z relro
 # xdc:    -pie    -z combreloc
 # xdeo:   -pie                 -z separate-code -z relro
-# xdeor:  -pie                 -z separate-code -z relro        -z one-rosegment
+# xdeor:  -pie                 -z separate-code -z relro        --rosegment
 # xde:    -pie                 -z separate-code
-# xder:   -pie                 -z separate-code                 -z one-rosegment
+# xder:   -pie                 -z separate-code                 --rosegment
 # xdo:    -pie                                  -z relro
 # xd:     -pie
 #
 # xswe:   -shared -z combreloc -z separate-code -z relro -z now
-# xswer:  -shared -z combreloc -z separate-code -z relro -z now -z one-rosegment
+# xswer:  -shared -z combreloc -z separate-code -z relro -z now --rosegment
 # xsw:    -shared -z combreloc                  -z relro -z now
 # xsceo:  -shared -z combreloc -z separate-code -z relro
-# xsceor: -shared -z combreloc -z separate-code -z relro        -z one-rosegment
+# xsceor: -shared -z combreloc -z separate-code -z relro        --rosegment
 # xsce:   -shared -z combreloc -z separate-code
-# xscer:  -shared -z combreloc -z separate-code                 -z one-rosegment
+# xscer:  -shared -z combreloc -z separate-code                 --rosegment
 # xsco:   -shared -z combreloc                  -z relro
 # xsc:    -shared -z combreloc
 # xseo:   -shared              -z separate-code -z relro
-# xseor:  -shared              -z separate-code -z relro        -z one-rosegment
+# xseor:  -shared              -z separate-code -z relro        --rosegment
 # xse:    -shared              -z separate-code
-# xser:   -shared              -z separate-code                 -z one-rosegment
+# xser:   -shared              -z separate-code                 --rosegment
 # xso:    -shared                               -z relro
 # xs:     -shared
 #
-# xwe:            -z combreloc -z separate-code -z relro -z now -z one-rosegment
+# xwe:            -z combreloc -z separate-code -z relro -z now --rosegment
 # xwer:           -z combreloc -z separate-code -z relro -z now
 # xw:             -z combreloc                  -z relro -z now
 # xceo:           -z combreloc -z separate-code -z relro
-# xceor:          -z combreloc -z separate-code -z relro        -z one-rosegment
+# xceor:          -z combreloc -z separate-code -z relro        --rosegment
 # xce:            -z combreloc -z separate-code
-# xcer:           -z combreloc -z separate-code                 -z one-rosegment
+# xcer:           -z combreloc -z separate-code                 --rosegment
 # xco:            -z combreloc                  -z relro
 # xc:             -z combreloc
 # xeo:                         -z separate-code -z relro
-# xeor:                        -z separate-code -z relro        -z one-rosegment
+# xeor:                        -z separate-code -z relro        --rosegment
 # xe:                          -z separate-code
-# xer:                         -z separate-code                 -z one-rosegment
+# xer:                         -z separate-code                 --rosegment
 # xo:                                           -z relro
 #
 #
@@ -185,7 +185,7 @@ fi
 # Otherwise, the default is set here.
 #
 # The format is the usual list of colon-separated directories.
-# To force a logically empty LIB_PATH, do LIBPATH=":".
+# To force a logically empty LIB_PATH, do LIB_PATH=":".
 #
 # If we are using a sysroot, prefix library paths with "=" to indicate this.
 #
@@ -233,7 +233,8 @@ append_to_lib_path()
 	    fi ;;
 	esac
       done
-      if test "${skip_lib}" = "no"; then
+
+      if test "${skip_lib}" = "no" && test "${LIBPATH_SKIP_NONNATIVE}" != "yes"; then
 	case :${lib_path1}:${lib_path2}: in
 	  *:${lib}:*) ;;
 	  *::) lib_path2=${lib} ;;
@@ -245,7 +246,7 @@ append_to_lib_path()
 }
 
 # Always search $(tooldir)/lib, aka /usr/local/TARGET/lib when native
-# except when LIBPATH=":".
+# except when LIB_PATH=":".
 if [ "${LIB_PATH}" != ":" ] ; then
   libs=
   if [ "x${TOOL_LIB}" = "x" ] ; then
@@ -343,7 +344,7 @@ LD_FLAG=textonly
 ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xe
 
 LD_FLAG=rotextonly
-( echo "/* Script for -z separate-code -z one-rosegment */"
+( echo "/* Script for -z separate-code --rosegment */"
   source_sh ${CUSTOMIZER_SCRIPT}
   source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
 ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xer
@@ -364,7 +365,7 @@ if test -n "$GENERATE_RELRO_SCRIPT"; then
     ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xeo
 
     LD_FLAG=rotextonly
-    ( echo "/* Script for -z separate-code -z relro -z one-rosegment */"
+    ( echo "/* Script for -z separate-code -z relro --rosegment */"
       source_sh ${CUSTOMIZER_SCRIPT}
       source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
     ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xeor
@@ -406,7 +407,7 @@ if test -n "$GENERATE_COMBRELOC_SCRIPT"; then
 
   LD_FLAG=roctextonly
   COMBRELOC=ldscripts/${EMULATION_NAME}.xcer.tmp
-  ( echo "/* Script for -z combreloc -z separate-code -z one-rosegment */"
+  ( echo "/* Script for -z combreloc -z separate-code --rosegment */"
     source_sh ${CUSTOMIZER_SCRIPT}
     source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
   ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xcer
@@ -433,7 +434,7 @@ if test -n "$GENERATE_COMBRELOC_SCRIPT"; then
 
   LD_FLAG=rowtextonly
   COMBRELOC=ldscripts/${EMULATION_NAME}.xwer.tmp
-  ( echo "/* Script for -z combreloc -z separate-code -z relro -z now -z one-rosegment */"
+  ( echo "/* Script for -z combreloc -z separate-code -z relro -z now --rosegment */"
     source_sh ${CUSTOMIZER_SCRIPT}
     source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
   ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xwer
@@ -464,7 +465,7 @@ if test -n "$GENERATE_COMBRELOC_SCRIPT"; then
 
       LD_FLAG=roctextonly
       COMBRELOC=ldscripts/${EMULATION_NAME}.xceor.tmp
-      ( echo "/* Script for -z combreloc -z separate-code -z relro -z one-rosegment */"
+      ( echo "/* Script for -z combreloc -z separate-code -z relro --rosegment */"
 	source_sh ${CUSTOMIZER_SCRIPT}
 	source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
       ) | sed -e '/^ *$/d;s/[    ]*$//' > ldscripts/${EMULATION_NAME}.xceor
@@ -492,7 +493,7 @@ if test -n "$GENERATE_SHLIB_SCRIPT"; then
   ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xse
 
   LD_FLAG=rosharedtextonly
-  ( echo "/* Script for -shared -z separate-code -z one-rosegment */"
+  ( echo "/* Script for -shared -z separate-code --rosegment */"
     source_sh ${CUSTOMIZER_SCRIPT}
     source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
   ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xser
@@ -513,7 +514,7 @@ if test -n "$GENERATE_SHLIB_SCRIPT"; then
       ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xseo
 
       LD_FLAG=rosharedtextonly
-      ( echo "/* Script for -shared -z separate-code -z relro -z one-rosegment */"
+      ( echo "/* Script for -shared -z separate-code -z relro --rosegment */"
 	source_sh ${CUSTOMIZER_SCRIPT}
 	source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
       ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xseor
@@ -541,7 +542,7 @@ if test -n "$GENERATE_SHLIB_SCRIPT"; then
 
     LD_FLAG=rocsharedtextonly
     COMBRELOC=ldscripts/${EMULATION_NAME}.xscer.tmp
-    ( echo "/* Script for -shared -z combreloc -z separate-code -z one-rosegment */"
+    ( echo "/* Script for -shared -z combreloc -z separate-code --rosegment */"
       source_sh ${CUSTOMIZER_SCRIPT}
       source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
     ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xscer
@@ -567,7 +568,7 @@ if test -n "$GENERATE_SHLIB_SCRIPT"; then
 
     LD_FLAG=rowsharedtextonly
     COMBRELOC=ldscripts/${EMULATION_NAME}.xswe.tmp
-    ( echo "/* Script for -shared -z combreloc -z separate-code -z relro -z now -z one-rosegment */"
+    ( echo "/* Script for -shared -z combreloc -z separate-code -z relro -z now --rosegment */"
       source_sh ${CUSTOMIZER_SCRIPT}
       source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
     ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xswer
@@ -596,7 +597,7 @@ if test -n "$GENERATE_SHLIB_SCRIPT"; then
 
 	LD_FLAG=rowsharedtextonly
 	COMBRELOC=ldscripts/${EMULATION_NAME}.xsceor.tmp
-	( echo "/* Script for -shared -z combreloc -z separate-code -z relro -z one-rosegment */"
+	( echo "/* Script for -shared -z combreloc -z separate-code -z relro --rosegment */"
 	  source_sh ${CUSTOMIZER_SCRIPT}
 	  source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
 	) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xsceor
@@ -628,7 +629,7 @@ if test -n "$GENERATE_PIE_SCRIPT"; then
   ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xde
 
   LD_FLAG=ropietextonly
-  ( echo "/* Script for -pie -z separate-code -z one-rosegment */"
+  ( echo "/* Script for -pie -z separate-code --rosegment */"
     source_sh ${CUSTOMIZER_SCRIPT}
     source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
   ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xder
@@ -649,7 +650,7 @@ if test -n "$GENERATE_PIE_SCRIPT"; then
       ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xdeo
 
       LD_FLAG=ropietextonly
-      ( echo "/* Script for -pie -z separate-code -z relro -z one-rosegment */"
+      ( echo "/* Script for -pie -z separate-code -z relro --rosegment */"
 	source_sh ${CUSTOMIZER_SCRIPT}
 	source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
       ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xdeor
@@ -677,7 +678,7 @@ if test -n "$GENERATE_PIE_SCRIPT"; then
 
     LD_FLAG=rocpietextonly
     COMBRELOC=ldscripts/${EMULATION_NAME}.xdcer.tmp
-    ( echo "/* Script for -pie -z combreloc -z separate-code -z one-rosegment */"
+    ( echo "/* Script for -pie -z combreloc -z separate-code --rosegment */"
       source_sh ${CUSTOMIZER_SCRIPT}
       source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
     ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xdcer
@@ -703,7 +704,7 @@ if test -n "$GENERATE_PIE_SCRIPT"; then
 
     LD_FLAG=rowpietextonly
     COMBRELOC=ldscripts/${EMULATION_NAME}.xdwer.tmp
-    ( echo "/* Script for -pie -z combreloc -z separate-code -z relro -z now -z one-rosegment */"
+    ( echo "/* Script for -pie -z combreloc -z separate-code -z relro -z now --rosegment */"
       source_sh ${CUSTOMIZER_SCRIPT}
       source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
     ) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xdwer
@@ -732,7 +733,7 @@ if test -n "$GENERATE_PIE_SCRIPT"; then
 
 	LD_FLAG=rowpietextonly
 	COMBRELOC=ldscripts/${EMULATION_NAME}.xdceor.tmp
-	( echo "/* Script for -pie -z combreloc -z separate-code -z relro -z one-rosegment */"
+	( echo "/* Script for -pie -z combreloc -z separate-code -z relro --rosegment */"
 	  source_sh ${CUSTOMIZER_SCRIPT}
 	  source_sh ${srcdir}/scripttempl/${SCRIPT_NAME}.sc
 	) | sed -e '/^ *$/d;s/[	 ]*$//' > ldscripts/${EMULATION_NAME}.xdceor

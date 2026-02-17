@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2019-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,21 +16,22 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "AtomicFile.hpp"
+#include "atomicfile.hpp"
 
 #include <ccache/core/exceptions.hpp>
-#include <ccache/util/TemporaryFile.hpp>
 #include <ccache/util/assertions.hpp>
 #include <ccache/util/expected.hpp>
 #include <ccache/util/file.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
+#include <ccache/util/temporaryfile.hpp>
 
 namespace fs = util::filesystem;
 
 namespace core {
 
-AtomicFile::AtomicFile(const fs::path& path, Mode mode) : m_path(path)
+AtomicFile::AtomicFile(const fs::path& path, Mode mode)
+  : m_path(path)
 {
   auto tmp_file =
     util::value_or_throw<core::Error>(util::TemporaryFile::create(path));
@@ -42,8 +43,8 @@ AtomicFile::~AtomicFile()
 {
   if (m_stream) {
     // commit() was not called so remove the lingering temporary file.
-    fclose(m_stream);
-    util::remove(m_tmp_path);
+    std::ignore = fclose(m_stream);         // Not much to do if this fails
+    std::ignore = util::remove(m_tmp_path); // Or this
   }
 }
 
@@ -81,7 +82,7 @@ AtomicFile::commit()
   int retcode = fclose(m_stream);
   m_stream = nullptr;
   if (retcode == EOF) {
-    util::remove(m_tmp_path);
+    std::ignore = util::remove(m_tmp_path);
     throw core::Error(
       FMT("failed to write data to {}: {}", m_path, strerror(errno)));
   }

@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2021-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -19,12 +19,23 @@
 #include "string.hpp"
 
 #include <ccache/util/assertions.hpp>
+#include <ccache/util/expected.hpp>
+#include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
+#include <ccache/util/time.hpp>
 
 #include <algorithm>
 #include <cctype>
 
+namespace fs = util::filesystem;
+
 namespace {
+
+#ifdef _WIN32
+const char k_path_delimiter[] = ";";
+#else
+const char k_path_delimiter[] = ":";
+#endif
 
 template<typename T>
 std::vector<T>
@@ -48,14 +59,15 @@ namespace util {
 
 std::string
 format_argv_as_win32_command_string(const char* const* argv,
-                                    const std::string& prefix,
                                     bool escape_backslashes)
 {
   std::string result;
-  size_t i = 0;
-  const char* arg = prefix.empty() ? argv[i++] : prefix.c_str();
+  if (getenv("_CCACHE_TEST") && argv[0] && util::ends_with(argv[0], ".sh")) {
+    result += "sh.exe ";
+  }
 
-  do {
+  for (size_t i = 0; argv[i]; ++i) {
+    const char* arg = argv[i];
     int bs = 0;
     result += '"';
     for (size_t j = 0; arg[j]; ++j) {
@@ -85,7 +97,7 @@ format_argv_as_win32_command_string(const char* const* argv,
       --bs;
     }
     result += "\" ";
-  } while ((arg = argv[i++]));
+  }
 
   result.resize(result.length() - 1);
   return result;
@@ -184,6 +196,29 @@ format_human_readable_size(uint64_t size, SizeUnitPrefixType prefix_type)
   }
 }
 
+std::string
+format_iso8601_timestamp(const TimePoint& time, TimeZone time_zone)
+{
+  char timestamp[100];
+  const auto tm =
+    (time_zone == TimeZone::local ? util::localtime : util::gmtime)(time);
+  if (tm) {
+    (void)strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%S", &*tm);
+  } else {
+    (void)snprintf(timestamp,
+                   sizeof(timestamp),
+                   "%llu",
+                   static_cast<long long unsigned int>(time.sec()));
+  }
+  return timestamp;
+}
+
+std::string
+join_path_list(const std::vector<std::filesystem::path>& path_list)
+{
+  return join(path_list, k_path_delimiter);
+}
+
 tl::expected<double, std::string>
 parse_double(const std::string& value)
 {
@@ -224,7 +259,7 @@ parse_duration(std::string_view duration)
   auto value = parse_unsigned(duration.substr(0, duration.length() - 1));
   if (!value) {
     return value;
-  };
+  }
   return factor * *value;
 }
 
@@ -308,12 +343,8 @@ parse_size(const std::string& value)
 tl::expected<mode_t, std::string>
 parse_umask(std::string_view value)
 {
-  auto result = parse_unsigned(value, 0, 0777, "umask", 8);
-  if (result) {
-    return static_cast<mode_t>(*result);
-  } else {
-    return tl::unexpected(result.error());
-  }
+  TRY_ASSIGN(auto mode, parse_unsigned(value, 0, 0777, "umask", 8));
+  return static_cast<mode_t>(mode);
 }
 
 tl::expected<uint64_t, std::string>
@@ -399,7 +430,7 @@ replace_all(const std::string_view string,
   while (left < string.size()) {
     size_t right = string.find(from, left);
     if (right == std::string_view::npos) {
-      result.append(string.data() + left);
+      result.append(string.data() + left, string.size() - left);
       break;
     }
     result.append(string.data() + left, right - left);
@@ -421,9 +452,9 @@ replace_first(const std::string_view string,
   std::string result;
   const auto pos = string.find(from);
   if (pos != std::string_view::npos) {
-    result.append(string.data(), pos);
-    result.append(to.data(), to.length());
-    result.append(string.data() + pos + from.size());
+    result.append(string.substr(0, pos));
+    result.append(to);
+    result.append(string.substr(pos + from.size()));
   } else {
     result = std::string(string);
   }
@@ -449,25 +480,15 @@ split_into_views(std::string_view string,
     string, separators, mode, include_delimiter);
 }
 
-std::pair<std::string_view, std::optional<std::string_view>>
-split_once(const char* string, const char split_char)
-{
-  return split_once(std::string_view(string), split_char);
-}
-
 std::pair<std::string, std::optional<std::string>>
-split_once(std::string&& string, const char split_char)
+split_once(std::string_view string, char split_char)
 {
-  const auto [left, right] = split_once(std::string_view(string), split_char);
-  if (right) {
-    return std::make_pair(std::string(left), std::string(*right));
-  } else {
-    return std::make_pair(std::string(left), std::nullopt);
-  }
+  auto [left, right] = split_once_into_views(string, split_char);
+  return std::pair<std::string, std::optional<std::string>>{left, right};
 }
 
 std::pair<std::string_view, std::optional<std::string_view>>
-split_once(const std::string_view string, const char split_char)
+split_once_into_views(std::string_view string, char split_char)
 {
   const size_t sep_pos = string.find(split_char);
   if (sep_pos == std::string_view::npos) {
@@ -503,16 +524,11 @@ split_option_with_concat_path(std::string_view string)
   return std::make_pair(string.substr(0, split_pos), string.substr(split_pos));
 }
 
-std::vector<std::filesystem::path>
+std::vector<fs::path>
 split_path_list(std::string_view path_list)
 {
-#ifdef _WIN32
-  const char path_delimiter[] = ";";
-#else
-  const char path_delimiter[] = ":";
-#endif
-  auto strings = split_into_views(path_list, path_delimiter);
-  std::vector<std::filesystem::path> paths;
+  auto strings = split_into_views(path_list, k_path_delimiter);
+  std::vector<fs::path> paths;
   std::copy(strings.cbegin(), strings.cend(), std::back_inserter(paths));
   return paths;
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2019-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -18,8 +18,10 @@
 
 #pragma once
 
-#include <ccache/core/Sloppiness.hpp>
-#include <ccache/util/NonCopyable.hpp>
+#include <ccache/core/sloppiness.hpp>
+#include <ccache/util/args.hpp>
+#include <ccache/util/noncopyable.hpp>
+#include <ccache/util/path.hpp>
 #include <ccache/util/string.hpp>
 
 #include <sys/types.h>
@@ -38,6 +40,8 @@ enum class CompilerType {
   clang_cl,
   gcc,
   icl,
+  icx,
+  icx_cl,
   msvc,
   nvcc,
   other
@@ -53,8 +57,9 @@ public:
   void read(const std::vector<std::string>& cmdline_config_settings = {});
 
   bool absolute_paths_in_stderr() const;
-  const std::filesystem::path& base_dir() const;
-  const std::string& cache_dir() const;
+  util::Args::ResponseFileFormat response_file_format() const;
+  const std::vector<std::filesystem::path>& base_dirs() const;
+  const std::filesystem::path& cache_dir() const;
   const std::string& compiler() const;
   const std::string& compiler_check() const;
   CompilerType compiler_type() const;
@@ -75,7 +80,7 @@ public:
   const std::string& ignore_options() const;
   bool inode_cache() const;
   bool keep_comments_cpp() const;
-  const std::string& log_file() const;
+  const std::filesystem::path& log_file() const;
   uint64_t max_files() const;
   uint64_t max_size() const;
   const std::string& msvc_dep_prefix() const;
@@ -89,25 +94,25 @@ public:
   bool remote_only() const;
   const std::string& remote_storage() const;
   bool reshare() const;
-  bool run_second_cpp() const;
   core::Sloppiness sloppiness() const;
   bool stats() const;
-  const std::string& stats_log() const;
+  const std::filesystem::path& stats_log() const;
   const std::string& namespace_() const;
-  const std::string& temporary_dir() const;
+  const std::filesystem::path& temporary_dir() const;
   std::optional<mode_t> umask() const;
 
-  // Return true for Clang and clang-cl.
+  // Return true for Clang, clang-cl and icx (not on Windows).
   bool is_compiler_group_clang() const;
 
-  // Return true for MSVC (cl.exe), clang-cl, and icl.
+  // Return true for MSVC (cl.exe), clang-cl, icl, icx-cl, and icx (on Windows).
   bool is_compiler_group_msvc() const;
 
   util::SizeUnitPrefixType size_unit_prefix_type() const;
-  std::string default_temporary_dir() const;
+  std::filesystem::path default_temporary_dir() const;
 
   void set_base_dir(const std::filesystem::path& value);
-  void set_cache_dir(const std::string& value);
+  void set_base_dirs(const std::vector<std::filesystem::path>& value);
+  void set_cache_dir(const std::filesystem::path& value);
   void set_compiler(const std::string& value);
   void set_compiler_type(CompilerType value);
   void set_cpp_extension(const std::string& value);
@@ -120,8 +125,7 @@ public:
   void set_inode_cache(bool value);
   void set_max_files(uint64_t value);
   void set_msvc_dep_prefix(const std::string& value);
-  void set_run_second_cpp(bool value);
-  void set_temporary_dir(const std::string& value);
+  void set_temporary_dir(const std::filesystem::path& value);
 
   // Where to write configuration changes.
   const std::filesystem::path& config_path() const;
@@ -168,8 +172,10 @@ private:
   std::filesystem::path m_system_config_path;
 
   bool m_absolute_paths_in_stderr = false;
-  std::filesystem::path m_base_dir;
-  std::string m_cache_dir;
+  util::Args::ResponseFileFormat m_response_file_format =
+    util::Args::ResponseFileFormat::auto_guess;
+  std::vector<std::filesystem::path> m_base_dirs;
+  std::filesystem::path m_cache_dir;
   std::string m_compiler;
   std::string m_compiler_check = "mtime";
   CompilerType m_compiler_type = CompilerType::auto_guess;
@@ -195,7 +201,7 @@ private:
   bool m_inode_cache = false;
 #endif
   bool m_keep_comments_cpp = false;
-  std::string m_log_file;
+  std::filesystem::path m_log_file;
   uint64_t m_max_files = 0;
   uint64_t m_max_size = 5ULL * 1024 * 1024 * 1024;
   std::string m_msvc_dep_prefix = "Note: including file:";
@@ -207,14 +213,13 @@ private:
   bool m_read_only_direct = false;
   bool m_recache = false;
   bool m_reshare = false;
-  bool m_run_second_cpp = true;
   bool m_remote_only = false;
   std::string m_remote_storage;
   core::Sloppiness m_sloppiness;
   bool m_stats = true;
-  std::string m_stats_log;
+  std::filesystem::path m_stats_log;
   std::string m_namespace;
-  std::string m_temporary_dir;
+  std::filesystem::path m_temporary_dir;
   std::optional<mode_t> m_umask;
 
   bool m_temporary_dir_configured_explicitly = false;
@@ -236,13 +241,24 @@ Config::absolute_paths_in_stderr() const
   return m_absolute_paths_in_stderr;
 }
 
-inline const std::filesystem::path&
-Config::base_dir() const
+inline util::Args::ResponseFileFormat
+Config::response_file_format() const
 {
-  return m_base_dir;
+  if (m_response_file_format != util::Args::ResponseFileFormat::auto_guess) {
+    return m_response_file_format;
+  }
+
+  return is_compiler_group_msvc() ? util::Args::ResponseFileFormat::windows
+                                  : util::Args::ResponseFileFormat::posix;
 }
 
-inline const std::string&
+inline const std::vector<std::filesystem::path>&
+Config::base_dirs() const
+{
+  return m_base_dirs;
+}
+
+inline const std::filesystem::path&
 Config::cache_dir() const
 {
   return m_cache_dir;
@@ -270,6 +286,9 @@ inline bool
 Config::is_compiler_group_clang() const
 {
   return m_compiler_type == CompilerType::clang
+#ifndef _WIN32
+         || m_compiler_type == CompilerType::icx
+#endif
          || m_compiler_type == CompilerType::clang_cl;
 }
 
@@ -278,7 +297,11 @@ Config::is_compiler_group_msvc() const
 {
   return m_compiler_type == CompilerType::msvc
          || m_compiler_type == CompilerType::clang_cl
-         || m_compiler_type == CompilerType::icl;
+         || m_compiler_type == CompilerType::icl
+#ifdef _WIN32
+         || m_compiler_type == CompilerType::icx
+#endif
+         || m_compiler_type == CompilerType::icx_cl;
 }
 
 inline bool
@@ -383,7 +406,7 @@ Config::keep_comments_cpp() const
   return m_keep_comments_cpp;
 }
 
-inline const std::string&
+inline const std::filesystem::path&
 Config::log_file() const
 {
   return m_log_file;
@@ -456,12 +479,6 @@ Config::reshare() const
 }
 
 inline bool
-Config::run_second_cpp() const
-{
-  return m_run_second_cpp;
-}
-
-inline bool
 Config::remote_only() const
 {
   return m_remote_only;
@@ -485,7 +502,7 @@ Config::stats() const
   return m_stats;
 }
 
-inline const std::string&
+inline const std::filesystem::path&
 Config::stats_log() const
 {
   return m_stats_log;
@@ -497,7 +514,7 @@ Config::namespace_() const
   return m_namespace;
 }
 
-inline const std::string&
+inline const std::filesystem::path&
 Config::temporary_dir() const
 {
   return m_temporary_dir;
@@ -518,13 +535,22 @@ Config::size_unit_prefix_type() const
 inline void
 Config::set_base_dir(const std::filesystem::path& value)
 {
-  m_base_dir = value;
+  set_base_dirs({value});
 }
 
 inline void
-Config::set_cache_dir(const std::string& value)
+Config::set_base_dirs(const std::vector<std::filesystem::path>& value)
 {
-  m_cache_dir = value;
+  m_base_dirs.clear();
+  for (const auto& path : value) {
+    m_base_dirs.push_back(util::lexically_normal(path));
+  }
+}
+
+inline void
+Config::set_cache_dir(const std::filesystem::path& value)
+{
+  m_cache_dir = util::lexically_normal(value);
   if (!m_temporary_dir_configured_explicitly) {
     m_temporary_dir = default_temporary_dir();
   }
@@ -603,13 +629,7 @@ Config::set_msvc_dep_prefix(const std::string& value)
 }
 
 inline void
-Config::set_run_second_cpp(bool value)
+Config::set_temporary_dir(const std::filesystem::path& value)
 {
-  m_run_second_cpp = value;
-}
-
-inline void
-Config::set_temporary_dir(const std::string& value)
-{
-  m_temporary_dir = value;
+  m_temporary_dir = util::lexically_normal(value);
 }

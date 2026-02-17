@@ -33,7 +33,7 @@ else()
 endif()
 
 if(_download_zstd)
-  set(_zstd_version_string 1.5.6)
+  set(_zstd_version_string 1.5.7)
 
   set(ZSTD_BUILD_PROGRAMS OFF)
   set(ZSTD_BUILD_SHARED OFF)
@@ -44,17 +44,24 @@ if(_download_zstd)
   FetchContent_Declare(
     Zstd
     URL "https://github.com/facebook/zstd/releases/download/v${_zstd_version_string}/zstd-${_zstd_version_string}.tar.gz"
-    URL_HASH SHA256=8c29e06cf42aacc1eafc4077ae2ec6c6fcb96a626157e0593d5e82a34fd403c1
+    URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
     SOURCE_SUBDIR build/cmake
-    ${_zstd_patch}
+    EXCLUDE_FROM_ALL # CMake 3.28+
   )
 
-  # When it works: Use FetchContent_MakeAvailable(Zstd) instead
-  FetchContent_GetProperties(zstd)
-  if(NOT zstd_POPULATED)
-    FetchContent_Populate(Zstd)
-    add_subdirectory("${zstd_SOURCE_DIR}/build/cmake" "${zstd_BINARY_DIR}" EXCLUDE_FROM_ALL)
+  set(_saved_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
+  set(BUILD_SHARED_LIBS OFF) # avoid warning from zstd's CMake scripts.
+  if(CMAKE_VERSION VERSION_LESS "3.28")
+    FetchContent_GetProperties(zstd)
+    if(NOT zstd_POPULATED)
+      FetchContent_Populate(Zstd)
+      add_subdirectory("${zstd_SOURCE_DIR}/build/cmake" "${zstd_BINARY_DIR}" EXCLUDE_FROM_ALL)
+    endif()
+  else()
+    FetchContent_MakeAvailable(Zstd)
   endif()
+  set(BUILD_SHARED_LIBS ${_saved_BUILD_SHARED_LIBS})
+  unset(_saved_BUILD_SHARED_LIBS)
 
   unset(ZSTD_BUILD_PROGRAMS)
   unset(ZSTD_BUILD_SHARED)

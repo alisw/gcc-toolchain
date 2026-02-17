@@ -1,0 +1,297 @@
+{
+    "name": "interface_exe",
+    "id": "^interface_exe::@6890427a1f51a3e7e1df$",
+    "directorySource": "^\\.$",
+    "projectName": "codemodel-v2",
+    "type": "EXECUTABLE",
+    "imported": null,
+    "local": null,
+    "abstract": null,
+    "symbolic": null,
+    "isGeneratorProvided": null,
+    "fileSets": null,
+    "sources": [
+        {
+            "path": "^empty\\.c$",
+            "isGenerated": null,
+            "fileSetName": null,
+            "sourceGroupName": "Source Files",
+            "compileGroupLanguage": "C",
+            "backtrace": [
+                {
+                    "file": "^include_test\\.cmake$",
+                    "line": 3,
+                    "command": "add_executable",
+                    "hasParent": true
+                },
+                {
+                    "file": "^include_test\\.cmake$",
+                    "line": null,
+                    "command": null,
+                    "hasParent": true
+                },
+                {
+                    "file": "^codemodel-v2\\.cmake$",
+                    "line": 10,
+                    "command": "include",
+                    "hasParent": true
+                },
+                {
+                    "file": "^codemodel-v2\\.cmake$",
+                    "line": null,
+                    "command": null,
+                    "hasParent": true
+                },
+                {
+                    "file": "^CMakeLists\\.txt$",
+                    "line": 3,
+                    "command": "include",
+                    "hasParent": true
+                },
+                {
+                    "file": "^CMakeLists\\.txt$",
+                    "line": null,
+                    "command": null,
+                    "hasParent": false
+                }
+            ]
+        }
+    ],
+    "sourceGroups": [
+        {
+            "name": "Source Files",
+            "sourcePaths": [
+                "^empty\\.c$"
+            ]
+        }
+    ],
+    "compileGroups": [
+        {
+            "language": "C",
+            "sourcePaths": [
+                "^empty\\.c$"
+            ],
+            "includes": null,
+            "frameworks": null,
+            "defines": [
+                {
+                    "define": "_MBCS",
+                    "backtrace": null
+                },
+                {
+                    "define": "interface_exe_EXPORTS",
+                    "backtrace": null
+                },
+                {
+                    "define": "COMPILED_WITH_INTERFACE_LIB",
+                    "backtrace": [
+                        {
+                            "file": "^include_test\\.cmake$",
+                            "line": 4,
+                            "command": "target_link_libraries",
+                            "hasParent": true
+                        },
+                        {
+                            "file": "^include_test\\.cmake$",
+                            "line": null,
+                            "command": null,
+                            "hasParent": true
+                        },
+                        {
+                            "file": "^codemodel-v2\\.cmake$",
+                            "line": 10,
+                            "command": "include",
+                            "hasParent": true
+                        },
+                        {
+                            "file": "^codemodel-v2\\.cmake$",
+                            "line": null,
+                            "command": null,
+                            "hasParent": true
+                        },
+                        {
+                            "file": "^CMakeLists\\.txt$",
+                            "line": 3,
+                            "command": "include",
+                            "hasParent": true
+                        },
+                        {
+                            "file": "^CMakeLists\\.txt$",
+                            "line": null,
+                            "command": null,
+                            "hasParent": false
+                        }
+                    ]
+                }
+            ],
+            "compileCommandFragments": null
+        }
+    ],
+    "backtrace": [
+        {
+            "file": "^include_test\\.cmake$",
+            "line": 3,
+            "command": "add_executable",
+            "hasParent": true
+        },
+        {
+            "file": "^include_test\\.cmake$",
+            "line": null,
+            "command": null,
+            "hasParent": true
+        },
+        {
+            "file": "^codemodel-v2\\.cmake$",
+            "line": 10,
+            "command": "include",
+            "hasParent": true
+        },
+        {
+            "file": "^codemodel-v2\\.cmake$",
+            "line": null,
+            "command": null,
+            "hasParent": true
+        },
+        {
+            "file": "^CMakeLists\\.txt$",
+            "line": 3,
+            "command": "include",
+            "hasParent": true
+        },
+        {
+            "file": "^CMakeLists\\.txt$",
+            "line": null,
+            "command": null,
+            "hasParent": false
+        }
+    ],
+    "folder": null,
+    "nameOnDisk": "^my_interface_exe\\.myexe$",
+    "artifacts": [
+        {
+            "path": "^bin/((Debug|Release|RelWithDebInfo|MinSizeRel)/)?my_interface_exe\\.myexe$",
+            "_dllExtra": false
+        },
+        {
+            "path": "^lib/my_interface_exe\\.imp$",
+            "_aixExtra": true,
+            "_dllExtra": false
+        },
+        {
+            "path": "^lib/((Debug|Release|RelWithDebInfo|MinSizeRel)/)?(lib)?my_interface_exe\\.(dll\\.a|lib|l)$",
+            "_dllExtra": true
+        },
+        {
+            "path": "^bin/((Debug|Release|RelWithDebInfo|MinSizeRel)/)?my_interface_exe\\.pdb$",
+            "_dllExtra": true
+        }
+    ],
+    "build": "^\\.$",
+    "source": "^\\.$",
+    "install": null,
+    "link": {
+        "language": "C",
+        "lto": null,
+        "commandFragments": null
+    },
+    "archive": null,
+    "dependencies": [
+        {
+            "id": "^ZERO_CHECK::@6890427a1f51a3e7e1df$",
+            "backtrace": null
+        }
+    ],
+    "linkLibraries": [
+        {
+            "id": "^interface_lib::@6890427a1f51a3e7e1df$",
+            "fragment": null,
+            "backtrace": [
+                {
+                    "file": "^include_test\\.cmake$",
+                    "line": 4,
+                    "command": "target_link_libraries",
+                    "hasParent": true
+                },
+                {
+                    "file": "^include_test\\.cmake$",
+                    "line": null,
+                    "command": null,
+                    "hasParent": true
+                },
+                {
+                    "file": "^codemodel-v2\\.cmake$",
+                    "line": 10,
+                    "command": "include",
+                    "hasParent": true
+                },
+                {
+                    "file": "^codemodel-v2\\.cmake$",
+                    "line": null,
+                    "command": null,
+                    "hasParent": true
+                },
+                {
+                    "file": "^CMakeLists\\.txt$",
+                    "line": 3,
+                    "command": "include",
+                    "hasParent": true
+                },
+                {
+                    "file": "^CMakeLists\\.txt$",
+                    "line": null,
+                    "command": null,
+                    "hasParent": false
+                }
+            ],
+            "fromDependency": null
+        }
+    ],
+    "interfaceLinkLibraries": null,
+    "compileDependencies": [
+        {
+            "id": "^interface_lib::@6890427a1f51a3e7e1df$",
+            "backtrace": [
+                {
+                    "file": "^include_test\\.cmake$",
+                    "line": 4,
+                    "command": "target_link_libraries",
+                    "hasParent": true
+                },
+                {
+                    "file": "^include_test\\.cmake$",
+                    "line": null,
+                    "command": null,
+                    "hasParent": true
+                },
+                {
+                    "file": "^codemodel-v2\\.cmake$",
+                    "line": 10,
+                    "command": "include",
+                    "hasParent": true
+                },
+                {
+                    "file": "^codemodel-v2\\.cmake$",
+                    "line": null,
+                    "command": null,
+                    "hasParent": true
+                },
+                {
+                    "file": "^CMakeLists\\.txt$",
+                    "line": 3,
+                    "command": "include",
+                    "hasParent": true
+                },
+                {
+                    "file": "^CMakeLists\\.txt$",
+                    "line": null,
+                    "command": null,
+                    "hasParent": false
+                }
+            ],
+            "fromDependency": null
+        }
+    ],
+    "interfaceCompileDependencies": null,
+    "objectDependencies": null,
+    "orderDependencies": null
+}

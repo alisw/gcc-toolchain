@@ -20,7 +20,7 @@ Also detect Lua headers and libraries. The Lua version contained in the
 header is checked to match the Lua interpreter version exactly. When
 searching for Lua libraries, the version number is used as a suffix.
 This is done with the goal of supporting multiple Lua installs (5.1,
-5.2, and 5.3 side-by-side).
+5.2, 5.3, and 5.4 side-by-side).
 
 A note on compatibility with previous versions: This file has been
 mostly rewritten for serial 18. Most developers should be able to use
@@ -49,6 +49,16 @@ AX_PROG_LUA: Search for the Lua interpreter, and set up important Lua
 paths. Adds precious variable LUA, which may contain the path of the Lua
 interpreter. If LUA is blank, the user's path is searched for an
 suitable interpreter.
+
+Optionally a LUAJIT option may be set ahead of time to look for and
+validate a LuaJIT install instead of PUC Lua. Usage might look like:
+
+@smallexample
+  AC_ARG_WITH(luajit, [AS_HELP_STRING([--with-luajit],
+      [Prefer LuaJIT over PUC Lua, even if the latter is newer. Default: no])
+  ])
+  AM_CONDITIONAL([LUAJIT], [test "x$with_luajit" != 'xno'])
+@end smallexample
 
 If MINIMUM-VERSION is supplied, then only Lua interpreters with a
 version number greater or equal to MINIMUM-VERSION will be accepted. If
@@ -87,7 +97,7 @@ variable name minus 'dir' needs to be used as a prefix to the
 appropriate Automake primary, e.g. lua_SCRIPS or luaexec_LIBRARIES.
 
 If an acceptable Lua interpreter is found, then ACTION-IF-FOUND is
-performed, otherwise ACTION-IF-NOT-FOUND is preformed. If ACTION-IF-NOT-
+performed, otherwise ACTION-IF-NOT-FOUND is performed. If ACTION-IF-NOT-
 FOUND is blank, then it will default to printing an error. To prevent
 the default behavior, give ':' as an action.
 
@@ -167,7 +177,7 @@ macro's revision history}.
 
 @majorheading License
 
-@w{Copyright @copyright{} 2015 Reuben Thomas @email{rrt@@sc3d.org}} @* @w{Copyright @copyright{} 2014 Tim Perkins @email{tprk77@@gmail.com}}
+@w{Copyright @copyright{} 2023 Caleb Maclennan @email{caleb@@alerque.com}} @* @w{Copyright @copyright{} 2015 Reuben Thomas @email{rrt@@sc3d.org}} @* @w{Copyright @copyright{} 2014 Tim Perkins @email{tprk77@@gmail.com}}
 
 This program is free software: you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

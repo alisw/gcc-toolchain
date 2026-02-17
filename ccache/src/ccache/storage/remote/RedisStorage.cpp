@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2021-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,11 +16,11 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "RedisStorage.hpp"
+#include "redisstorage.hpp"
 
-#include <ccache/Hash.hpp>
 #include <ccache/core/exceptions.hpp>
-#include <ccache/storage/Storage.hpp>
+#include <ccache/hash.hpp>
+#include <ccache/storage/storage.hpp>
 #include <ccache/util/assertions.hpp>
 #include <ccache/util/expected.hpp>
 #include <ccache/util/format.hpp>
@@ -73,12 +73,12 @@ public:
 
   tl::expected<bool, Failure> put(const Hash::Digest& key,
                                   nonstd::span<const uint8_t> value,
-                                  bool only_if_missing) override;
+                                  Overwrite overwrite) override;
 
   tl::expected<bool, Failure> remove(const Hash::Digest& key) override;
 
 private:
-  const std::string m_prefix;
+  std::string m_prefix;
   RedisContext m_context;
 
   void
@@ -101,7 +101,7 @@ to_timeval(const uint32_t ms)
 std::pair<std::optional<std::string>, std::optional<std::string>>
 split_user_info(const std::string& user_info)
 {
-  const auto [left, right] = util::split_once(user_info, ':');
+  const auto [left, right] = util::split_once_into_views(user_info, ':');
   if (left.empty()) {
     // redis://HOST
     return {std::nullopt, std::nullopt};
@@ -173,15 +173,13 @@ RedisStorageBackend::get(const Hash::Digest& key)
 {
   const auto key_string = get_key_string(key);
   LOG("Redis GET {}", key_string);
-  const auto reply = redis_command("GET %s", key_string.c_str());
-  if (!reply) {
-    return tl::unexpected(reply.error());
-  } else if ((*reply)->type == REDIS_REPLY_STRING) {
-    return util::Bytes((*reply)->str, (*reply)->len);
-  } else if ((*reply)->type == REDIS_REPLY_NIL) {
+  TRY_ASSIGN(const auto reply, redis_command("GET %s", key_string.c_str()));
+  if (reply->type == REDIS_REPLY_STRING) {
+    return util::Bytes(reply->str, reply->len);
+  } else if (reply->type == REDIS_REPLY_NIL) {
     return std::nullopt;
   } else {
-    LOG("Unknown reply type: {}", (*reply)->type);
+    LOG("Unknown reply type: {}", reply->type);
     return tl::unexpected(Failure::error);
   }
 }
@@ -189,32 +187,30 @@ RedisStorageBackend::get(const Hash::Digest& key)
 tl::expected<bool, RemoteStorage::Backend::Failure>
 RedisStorageBackend::put(const Hash::Digest& key,
                          nonstd::span<const uint8_t> value,
-                         bool only_if_missing)
+                         Overwrite overwrite)
 {
   const auto key_string = get_key_string(key);
 
-  if (only_if_missing) {
+  if (overwrite == Overwrite::no) {
     LOG("Redis EXISTS {}", key_string);
-    const auto reply = redis_command("EXISTS %s", key_string.c_str());
-    if (!reply) {
-      return tl::unexpected(reply.error());
-    } else if ((*reply)->type != REDIS_REPLY_INTEGER) {
-      LOG("Unknown reply type: {}", (*reply)->type);
-    } else if ((*reply)->integer > 0) {
+    TRY_ASSIGN(const auto reply,
+               redis_command("EXISTS %s", key_string.c_str()));
+    if (reply->type != REDIS_REPLY_INTEGER) {
+      LOG("Unknown reply type: {}", reply->type);
+    } else if (reply->integer > 0) {
       LOG("Entry {} already in Redis", key_string);
       return false;
     }
   }
 
   LOG("Redis SET {} [{} bytes]", key_string, value.size());
-  const auto reply =
-    redis_command("SET %s %b", key_string.c_str(), value.data(), value.size());
-  if (!reply) {
-    return tl::unexpected(reply.error());
-  } else if ((*reply)->type == REDIS_REPLY_STATUS) {
+  TRY_ASSIGN(
+    const auto reply,
+    redis_command("SET %s %b", key_string.c_str(), value.data(), value.size()));
+  if (reply->type == REDIS_REPLY_STATUS) {
     return true;
   } else {
-    LOG("Unknown reply type: {}", (*reply)->type);
+    LOG("Unknown reply type: {}", reply->type);
     return tl::unexpected(Failure::error);
   }
 }
@@ -224,13 +220,11 @@ RedisStorageBackend::remove(const Hash::Digest& key)
 {
   const auto key_string = get_key_string(key);
   LOG("Redis DEL {}", key_string);
-  const auto reply = redis_command("DEL %s", key_string.c_str());
-  if (!reply) {
-    return tl::unexpected(reply.error());
-  } else if ((*reply)->type == REDIS_REPLY_INTEGER) {
-    return (*reply)->integer > 0;
+  TRY_ASSIGN(const auto reply, redis_command("DEL %s", key_string.c_str()));
+  if (reply->type == REDIS_REPLY_INTEGER) {
+    return reply->integer > 0;
   } else {
-    LOG("Unknown reply type: {}", (*reply)->type);
+    LOG("Unknown reply type: {}", reply->type);
     return tl::unexpected(Failure::error);
   }
 }
@@ -252,7 +246,7 @@ RedisStorageBackend::connect(const Url& url,
       url.port().empty()
         ? DEFAULT_PORT
         : static_cast<uint32_t>(util::value_or_throw<core::Fatal>(
-          util::parse_unsigned(url.port(), 1, 65535, "port")));
+            util::parse_unsigned(url.port(), 1, 65535, "port")));
     ASSERT(url.path().empty() || url.path()[0] == '/');
 
     LOG("Redis connecting to {}:{} (connect timeout {} ms)",
@@ -300,8 +294,8 @@ RedisStorageBackend::select_database(const Url& url)
   const uint32_t db_number =
     !db ? 0
         : static_cast<uint32_t>(
-          util::value_or_throw<core::Fatal>(util::parse_unsigned(
-            *db, 0, std::numeric_limits<uint32_t>::max(), "db number")));
+            util::value_or_throw<core::Fatal>(util::parse_unsigned(
+              *db, 0, std::numeric_limits<uint32_t>::max(), "db number")));
 
   if (db_number != 0) {
     LOG("Redis SELECT {}", db_number);

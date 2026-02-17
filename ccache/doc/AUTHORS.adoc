@@ -18,6 +18,7 @@ Ccache is a collective work with contributions from many people, including:
 * Andrea Bittau
 * Andreas Huber
 * Andreas Reischuck
+* Andrej Zhilenkov
 * André Klitzing
 * Andrew Boie
 * Andrew Hardin
@@ -26,6 +27,7 @@ Ccache is a collective work with contributions from many people, including:
 * Arne Hasselbring
 * Azat Khuzhin
 * Bernhard Bauer
+* Bernhard M. Wiedemann
 * Bin Li
 * Björn Jacke
 * Brendan Shanks
@@ -40,12 +42,15 @@ Ccache is a collective work with contributions from many people, including:
 * Cristian Adam
 * Daniel Richtmann
 * David Givone
+* Dávid Péter Jánosa
 * Deepak Yadav
 * Doug Anderson
 * Edward Z. Yang
+* Enrico Seiler
 * Enrico Sorichetti
 * Erik Flodin
 * Evangelos Foutras
+* Evgeniy Isaev
 * Florin Trofin
 * Francois Marier
 * Gabriel Scherer
@@ -55,9 +60,11 @@ Ccache is a collective work with contributions from many people, including:
 * Grigory Entin
 * Harsh Shandilya
 * Havard Graff
+* Henrique Ferreiro
 * Holger Hoffstätte
 * Hongli Lai
-* Huang Qin Jing
+* Huang Qin Jin
+* Icarus Sparry
 * Igor Pylypiv
 * Ivan Vaigult
 * Ivan Volnov
@@ -66,16 +73,19 @@ Ccache is a collective work with contributions from many people, including:
 * Jiri Hörner
 * Jiri Slaby
 * Jiulong Wang
+* J. Neuschäfer
 * Joel Galenson
 * Joel Rosdahl
 * John Basila
 * John Coiner
+* Jonathan Neuschäfer
 * Jon Bernard
 * Jonny Yu
 * Jon Petrissans
 * Jørgen P. Tjernø
 * Josh Soref
 * Josh Triplett
+* Juan Manuel Martinez Caamaño
 * Justin Lebar
 * Ka Ho Ng
 * Karl Chen
@@ -86,19 +96,25 @@ Ccache is a collective work with contributions from many people, including:
 * Kovarththanan Rajaratnam
 * Lalit Chhabra
 * Lars Gustäbel
+* Laurent Bouhier
+* Leander Schulten
 * Leanid Chaika
 * Loïc Yhuel
 * Louis Caron
 * Luboš Luňák
 * Maarten Maathuis
+* Maksym Sobolyev
 * Marius Zwicker
 * Mark Starovoytov
 * Martin Blanchard
 * Martin Ettl
 * Martin Pool
+* Martin Storsjö
 * Mathias De Maré
 * Matthias Kretz
+* Matt Johnston
 * Matt Whitlock
+* Max Winkler
 * Melven Roehrig-Zoellner
 * Michael Kruse
 * Michael Marineau
@@ -110,9 +126,11 @@ Ccache is a collective work with contributions from many people, including:
 * Mike Gulick
 * Mikhail Kolomeytsev
 * Mizuha Himuraki
+* Morten Engelhardt Olsen
 * Mostyn Bramley-Moore
 * Neil Mushell
 * Nicholas Hutchinson
+* Nick Sarnie
 * Nick Schultz
 * Norbert Lange
 * Oded Shimon

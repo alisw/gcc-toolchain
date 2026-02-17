@@ -31,7 +31,7 @@ macro's revision history}.
 
 @majorheading License
 
-@w{Copyright @copyright{} 2007,2009 Bogdan Drozdowski @email{bogdandr@@op.pl}}
+@w{Copyright @copyright{} 2007,2009,2022 Bogdan Drozdowski @email{bogdro@@users.sourceforge.net}}
 
 This program is free software: you can redistribute it and/or modify it
 under the terms of the GNU Lesser General Public License as published by

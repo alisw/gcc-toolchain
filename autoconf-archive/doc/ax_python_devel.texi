@@ -4,7 +4,7 @@
 @majorheading Synopsis
 
 @smallexample
-AX_PYTHON_DEVEL([version])
+AX_PYTHON_DEVEL([version[,optional]])
 @end smallexample
 
 @majorheading Description
@@ -23,6 +23,11 @@ note that you *have* to pass also an operator along with the version to
 match, and pay special attention to the single quotes surrounding the
 version number. Don't use "PYTHON_VERSION" for this: that environment
 variable is declared as precious and thus reserved for the end-user.
+
+By default this will fail if it does not detect a development version of
+python.  If you want it to continue, set optional to true, like
+AX_PYTHON_DEVEL([], [true]).  The ax_python_devel_found variable will be
+"no" if it fails.
 
 This macro should work for all versions of Python >= 2.1.0. As an end
 user, you can disable the check for the python version by setting the

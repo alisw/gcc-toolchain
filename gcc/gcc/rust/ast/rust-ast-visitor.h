@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -24,7 +24,9 @@
 #include "rust-ast-full-decls.h"
 #include "rust-ast.h"
 #include "rust-item.h"
+#include "rust-path.h"
 #include "rust-system.h"
+#include "rust-stacked-contexts.h"
 
 namespace Rust {
 namespace AST {
@@ -112,6 +114,7 @@ public:
   virtual void visit (RangeFromToInclExpr &expr) = 0;
   virtual void visit (RangeToInclExpr &expr) = 0;
   virtual void visit (ReturnExpr &expr) = 0;
+  virtual void visit (BoxExpr &expr) = 0;
   virtual void visit (UnsafeBlockExpr &expr) = 0;
   virtual void visit (LoopExpr &expr) = 0;
   virtual void visit (WhileLoopExpr &expr) = 0;
@@ -127,6 +130,7 @@ public:
   virtual void visit (MatchExpr &expr) = 0;
   virtual void visit (AwaitExpr &expr) = 0;
   virtual void visit (AsyncBlockExpr &expr) = 0;
+  virtual void visit (InlineAsm &expr) = 0;
 
   // rust-item.h
   virtual void visit (TypeParam &param) = 0;
@@ -164,7 +168,6 @@ public:
   // virtual void visit(ExternalItem& item) = 0;
   virtual void visit (ExternalTypeItem &type) = 0;
   virtual void visit (ExternalStaticItem &item) = 0;
-  virtual void visit (ExternalFunctionItem &item) = 0;
   virtual void visit (ExternBlock &block) = 0;
 
   // rust-macro.h
@@ -229,6 +232,9 @@ public:
   virtual void visit (InferredType &type) = 0;
   virtual void visit (BareFunctionType &type) = 0;
 
+  // special AST nodes for certain builtin macros such as `asm!()`
+  virtual void visit (FormatArgs &fmt) = 0;
+
   // TODO: rust-cond-compilation.h visiting? not currently used
 };
 
@@ -237,7 +243,6 @@ class DefaultASTVisitor : public ASTVisitor
 public:
   virtual void visit (AST::Crate &crate);
 
-protected:
   virtual void visit (AST::Token &tok) override;
   virtual void visit (AST::DelimTokenTree &delim_tok_tree) override;
   virtual void visit (AST::AttrInputMetaItemContainer &input) override;
@@ -295,6 +300,7 @@ protected:
   virtual void visit (AST::RangeFromToInclExpr &expr) override;
   virtual void visit (AST::RangeToInclExpr &expr) override;
   virtual void visit (AST::ReturnExpr &expr) override;
+  virtual void visit (AST::BoxExpr &expr) override;
   virtual void visit (AST::UnsafeBlockExpr &expr) override;
   virtual void visit (AST::LoopExpr &expr) override;
   virtual void visit (AST::WhileLoopExpr &expr) override;
@@ -307,6 +313,8 @@ protected:
   virtual void visit (AST::MatchExpr &expr) override;
   virtual void visit (AST::AwaitExpr &expr) override;
   virtual void visit (AST::AsyncBlockExpr &expr) override;
+  virtual void visit (InlineAsm &expr) override;
+
   virtual void visit (AST::TypeParam &param) override;
   virtual void visit (AST::LifetimeWhereClauseItem &item) override;
   virtual void visit (AST::TypeBoundWhereClauseItem &item) override;
@@ -335,7 +343,6 @@ protected:
   virtual void visit (AST::TraitImpl &impl) override;
   virtual void visit (AST::ExternalTypeItem &item) override;
   virtual void visit (AST::ExternalStaticItem &item) override;
-  virtual void visit (AST::ExternalFunctionItem &item) override;
   virtual void visit (AST::ExternBlock &block) override;
   virtual void visit (AST::MacroMatchFragment &match) override;
   virtual void visit (AST::MacroMatchRepetition &match) override;
@@ -390,6 +397,7 @@ protected:
   virtual void visit (AST::SelfParam &self) override;
   virtual void visit (AST::FunctionParam &param) override;
   virtual void visit (AST::VariadicParam &param) override;
+  virtual void visit (AST::FormatArgs &fmt) override;
 
   template <typename T> void visit (T &node) { node.accept_vis (*this); }
 
@@ -416,12 +424,12 @@ protected:
   virtual void visit (AST::WhereClause &where);
   virtual void visit (AST::StructField &field);
   virtual void visit (AST::TupleField &field);
-  virtual void visit (AST::NamedFunctionParam &param);
   virtual void visit (AST::MacroRule &rule);
   virtual void visit (AST::MacroInvocData &data);
   virtual void visit (AST::MacroTranscriber &transcriber);
   virtual void visit (AST::StructPatternElements &spe);
   virtual void visit (AST::MaybeNamedParam &param);
+
   void visit (AST::Attribute &attribute) {}
 
   template <typename T> void visit_outer_attrs (T &node)
@@ -440,7 +448,7 @@ protected:
 class ContextualASTVisitor : public DefaultASTVisitor
 {
 protected:
-  enum class Context
+  enum class Kind
   {
     FUNCTION,
     INHERENT_IMPL,
@@ -449,6 +457,7 @@ protected:
     MODULE,
     CRATE,
   };
+
   using DefaultASTVisitor::visit;
 
   virtual void visit (AST::Crate &crate) override;
@@ -464,11 +473,7 @@ protected:
     DefaultASTVisitor::visit (item);
   }
 
-  std::vector<Context> context;
-
-  void push_context (Context ctx) { context.push_back (ctx); }
-
-  void pop_context () { context.pop_back (); }
+  StackedContexts<Kind> ctx;
 };
 
 } // namespace AST

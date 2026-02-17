@@ -265,6 +265,14 @@
 .*Info: macro .*
 .*Warning: read-only CSR is written `csrw mconfigptr,a1'
 .*Info: macro .*
+.*Warning: invalid CSR `medelegh', needs rv32i extension
+.*Info: macro .*
+.*Warning: invalid CSR `medelegh' for the privileged spec `1.12'
+.*Info: macro .*
+.*Warning: invalid CSR `medelegh', needs rv32i extension
+.*Info: macro .*
+.*Warning: invalid CSR `medelegh' for the privileged spec `1.12'
+.*Info: macro .*
 .*Warning: invalid CSR `mstatush', needs rv32i extension
 .*Info: macro .*
 .*Warning: invalid CSR `mstatush', needs rv32i extension
@@ -440,6 +448,14 @@
 .*Warning: invalid CSR `hedeleg', needs `h' extension
 .*Info: macro .*
 .*Warning: invalid CSR `hedeleg', needs `h' extension
+.*Info: macro .*
+.*Warning: invalid CSR `hedelegh', needs rv32i extension
+.*Info: macro .*
+.*Warning: invalid CSR `hedelegh', needs `h' extension
+.*Info: macro .*
+.*Warning: invalid CSR `hedelegh', needs rv32i extension
+.*Info: macro .*
+.*Warning: invalid CSR `hedelegh', needs `h' extension
 .*Info: macro .*
 .*Warning: invalid CSR `hideleg', needs `h' extension
 .*Info: macro .*
@@ -660,6 +676,22 @@
 .*Warning: invalid CSR `minstretcfgh', needs rv32i extension
 .*Info: macro .*
 .*Warning: invalid CSR `minstretcfgh', needs `smcntrpmf' extension
+.*Info: macro .*
+.*Warning: invalid CSR `mnepc', needs `smrnmi' extension
+.*Info: macro .*
+.*Warning: invalid CSR `mnepc', needs `smrnmi' extension
+.*Info: macro .*
+.*Warning: invalid CSR `mncause', needs `smrnmi' extension
+.*Info: macro .*
+.*Warning: invalid CSR `mncause', needs `smrnmi' extension
+.*Info: macro .*
+.*Warning: invalid CSR `mnscratch', needs `smrnmi' extension
+.*Info: macro .*
+.*Warning: invalid CSR `mnscratch', needs `smrnmi' extension
+.*Info: macro .*
+.*Warning: invalid CSR `mnstatus', needs `smrnmi' extension
+.*Info: macro .*
+.*Warning: invalid CSR `mnstatus', needs `smrnmi' extension
 .*Info: macro .*
 .*Warning: invalid CSR `mstateen0', needs `smstateen' extension
 .*Info: macro .*
@@ -988,6 +1020,14 @@
 .*Warning: invalid CSR `vsiph', needs `h' extension
 .*Info: macro .*
 .*Warning: invalid CSR `vsiph', needs `ssaia' extension
+.*Info: macro .*
+.*Warning: invalid CSR `scountinhibit', needs `ssccfg' extension
+.*Info: macro .*
+.*Warning: invalid CSR `scountinhibit', needs `ssccfg' extension
+.*Info: macro .*
+.*Warning: invalid CSR `ssp', needs `zicfiss' extension
+.*Info: macro .*
+.*Warning: invalid CSR `ssp', needs `zicfiss' extension
 .*Info: macro .*
 .*Warning: invalid CSR `siselect', needs `ssaia or sscsrind' extension
 .*Info: macro .*
@@ -1343,6 +1383,26 @@
 .*Info: macro .*
 .*Warning: invalid CSR `vstimecmph', needs `sstc' extension
 .*Info: macro .*
+.*Warning: invalid CSR `sctrctl', needs `ssctr' extension
+.*Info: macro .*
+.*Warning: invalid CSR `sctrctl', needs `ssctr' extension
+.*Info: macro .*
+.*Warning: invalid CSR `sctrstatus', needs `ssctr' extension
+.*Info: macro .*
+.*Warning: invalid CSR `sctrstatus', needs `ssctr' extension
+.*Info: macro .*
+.*Warning: invalid CSR `sctrdepth', needs `ssctr' extension
+.*Info: macro .*
+.*Warning: invalid CSR `sctrdepth', needs `ssctr' extension
+.*Info: macro .*
+.*Warning: invalid CSR `vsctrctl', needs `ssctr' extension
+.*Info: macro .*
+.*Warning: invalid CSR `vsctrctl', needs `ssctr' extension
+.*Info: macro .*
+.*Warning: invalid CSR `mctrctl', needs `smctr' extension
+.*Info: macro .*
+.*Warning: invalid CSR `mctrctl', needs `smctr' extension
+.*Info: macro .*
 .*Warning: invalid CSR `ustatus' for the privileged spec `1.12'
 .*Info: macro .*
 .*Warning: invalid CSR `ustatus' for the privileged spec `1.12'
@@ -1432,4 +1492,12 @@
 .*Warning: invalid CSR `vlenb', needs `zve32x' extension
 .*Info: macro .*
 .*Warning: read-only CSR is written `csrw vlenb,a1'
+.*Info: macro .*
+.*Warning: invalid CSR `jvt', needs `zcmt' extension
+.*Info: macro .*
+.*Warning: invalid CSR `jvt', needs `zcmt' extension
+.*Info: macro .*
+.*Warning: invalid CSR `srmcfg', needs `ssqosid' extension
+.*Info: macro .*
+.*Warning: invalid CSR `srmcfg', needs `ssqosid' extension
 .*Info: macro .*

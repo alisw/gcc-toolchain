@@ -1,0 +1,12 @@
+{
+  "version": 4,
+  "include": [
+    "@RunCMake_SOURCE_DIR@/IncludeOutsideProjectInclude.json"
+  ],
+  "configurePresets": [
+    {
+      "name": "IncludeUserOutsideProject",
+      "generator": "@RunCMake_GENERATOR@"
+    }
+  ]
+}

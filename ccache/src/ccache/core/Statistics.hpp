@@ -18,9 +18,9 @@
 
 #pragma once
 
-#include <ccache/core/Statistic.hpp>
-#include <ccache/core/StatisticsCounters.hpp>
-#include <ccache/util/TimePoint.hpp>
+#include <ccache/core/statistic.hpp>
+#include <ccache/core/statisticscounters.hpp>
+#include <ccache/util/timepoint.hpp>
 
 #include <cstdint>
 #include <string>

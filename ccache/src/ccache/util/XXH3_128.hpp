@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <ccache/util/Bytes.hpp>
+#include <ccache/util/bytes.hpp>
 #include <ccache/util/conversion.hpp>
 
 #include <nonstd/span.hpp>
@@ -49,7 +49,8 @@ private:
   XXH3_state_t* m_state;
 };
 
-inline XXH3_128::XXH3_128() : m_state(XXH3_createState())
+inline XXH3_128::XXH3_128()
+  : m_state(XXH3_createState())
 {
   reset();
 }

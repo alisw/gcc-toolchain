@@ -18,10 +18,10 @@
 
 #pragma once
 
-#include <ccache/Hash.hpp>
-#include <ccache/core/Serializer.hpp>
-#include <ccache/util/Bytes.hpp>
-#include <ccache/util/TimePoint.hpp>
+#include <ccache/core/serializer.hpp>
+#include <ccache/hash.hpp>
+#include <ccache/util/bytes.hpp>
+#include <ccache/util/timepoint.hpp>
 
 #include <nonstd/span.hpp>
 

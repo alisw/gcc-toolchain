@@ -16,10 +16,10 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "TestUtil.hpp"
+#include "testutil.hpp"
 
-#include <ccache/Context.hpp>
-#include <ccache/core/MsvcShowIncludesOutput.hpp>
+#include <ccache/context.hpp>
+#include <ccache/core/msvcshowincludesoutput.hpp>
 #include <ccache/util/string.hpp>
 
 #include <doctest/doctest.h>

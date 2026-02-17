@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.18)
 
 project(ccache LANGUAGES C CXX ASM ASM_MASM)
 if(MSVC)
@@ -80,6 +80,7 @@ include(EnableCcache)
 #
 
 option(REDIS_STORAGE_BACKEND "Enable Redis remote storage" ON)
+option(HTTP_STORAGE_BACKEND "Enable HTTP remote storage" ON)
 option(ENABLE_TESTING "Enable tests" ON)
 
 include(InstallDirs)
@@ -101,11 +102,24 @@ include(CodeAnalysis)
 add_subdirectory(src/third_party)
 add_subdirectory(src/ccache)
 
+# Win32 version library
+if(WIN32)
+  add_library(ccache_win32_manifest OBJECT "${CMAKE_CURRENT_BINARY_DIR}/version.rc")
+  set_property(TARGET ccache_win32_manifest PROPERTY INCLUDE_DIRECTORIES "")
+endif()
+
+
 #
 # ccache executable
 #
 add_executable(ccache src/ccache/main.cpp)
 target_link_libraries(ccache PRIVATE standard_settings standard_warnings ccache_framework)
+if(WIN32)
+  if(MSVC)
+      target_link_options(ccache PUBLIC "/MANIFEST:NO")
+  endif()
+  target_link_libraries(ccache PRIVATE ccache_win32_manifest)
+endif()
 
 #
 # Documentation
@@ -174,7 +188,7 @@ message(STATUS)
 message(STATUS "Configuration summary:")
 message(STATUS "  Storage backends:")
 message(STATUS "    file  ON")
-message(STATUS "    http  ON")
+message(STATUS "    http  ${HTTP_STORAGE_BACKEND}")
 message(STATUS "    redis ${REDIS_STORAGE_BACKEND}")
 message(STATUS "  Dependencies:")
 print_dependency_summary("    ")

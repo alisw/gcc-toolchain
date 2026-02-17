@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -19,9 +19,11 @@
 #ifndef RUST_AST_STATEMENT_H
 #define RUST_AST_STATEMENT_H
 
+#include "optional.h"
 #include "rust-ast.h"
 #include "rust-path.h"
 #include "rust-expr.h"
+#include "rust-system.h"
 
 namespace Rust {
 namespace AST {
@@ -71,6 +73,8 @@ class LetStmt : public Stmt
   // bool has_init_expr;
   std::unique_ptr<Expr> init_expr;
 
+  tl::optional<std::unique_ptr<Expr>> else_expr;
+
   location_t locus;
 
 public:
@@ -84,15 +88,18 @@ public:
 
   // Returns whether let statement has an initialisation expression.
   bool has_init_expr () const { return init_expr != nullptr; }
+  bool has_else_expr () const { return else_expr.has_value (); }
 
   std::string as_string () const override;
 
   LetStmt (std::unique_ptr<Pattern> variables_pattern,
 	   std::unique_ptr<Expr> init_expr, std::unique_ptr<Type> type,
+	   tl::optional<std::unique_ptr<Expr>> else_expr,
 	   std::vector<Attribute> outer_attrs, location_t locus)
     : outer_attrs (std::move (outer_attrs)),
       variables_pattern (std::move (variables_pattern)),
-      type (std::move (type)), init_expr (std::move (init_expr)), locus (locus)
+      type (std::move (type)), init_expr (std::move (init_expr)),
+      else_expr (std::move (else_expr)), locus (locus)
   {}
 
   // Copy constructor with clone
@@ -106,6 +113,9 @@ public:
     // guard to prevent null dereference (always required)
     if (other.init_expr != nullptr)
       init_expr = other.init_expr->clone_expr ();
+    if (other.else_expr.has_value ())
+      else_expr = other.else_expr.value ()->clone_expr ();
+
     if (other.type != nullptr)
       type = other.type->clone_type ();
   }
@@ -127,6 +137,12 @@ public:
       init_expr = other.init_expr->clone_expr ();
     else
       init_expr = nullptr;
+
+    if (other.else_expr != nullptr)
+      else_expr = other.else_expr.value ()->clone_expr ();
+    else
+      else_expr = tl::nullopt;
+
     if (other.type != nullptr)
       type = other.type->clone_type ();
     else
@@ -155,19 +171,43 @@ public:
   const std::vector<Attribute> &get_outer_attrs () const { return outer_attrs; }
 
   // TODO: is this better? Or is a "vis_block" better?
-  std::unique_ptr<Expr> &get_init_expr ()
+  Expr &get_init_expr ()
+  {
+    rust_assert (has_init_expr ());
+    return *init_expr;
+  }
+
+  Expr &get_else_expr ()
+  {
+    rust_assert (has_else_expr ());
+    return *else_expr.value ();
+  }
+
+  std::unique_ptr<Expr> &get_init_expr_ptr ()
   {
     rust_assert (has_init_expr ());
     return init_expr;
   }
 
-  std::unique_ptr<Pattern> &get_pattern ()
+  std::unique_ptr<Expr> &get_else_expr_ptr ()
   {
-    rust_assert (variables_pattern != nullptr);
-    return variables_pattern;
+    rust_assert (has_else_expr ());
+    return else_expr.value ();
   }
 
-  std::unique_ptr<Type> &get_type ()
+  Pattern &get_pattern ()
+  {
+    rust_assert (variables_pattern != nullptr);
+    return *variables_pattern;
+  }
+
+  Type &get_type ()
+  {
+    rust_assert (has_type ());
+    return *type;
+  }
+
+  std::unique_ptr<Type> &get_type_ptr ()
   {
     rust_assert (has_type ());
     return type;
@@ -249,10 +289,22 @@ public:
   bool is_marked_for_strip () const override { return expr == nullptr; }
 
   // TODO: is this better? Or is a "vis_block" better?
-  std::unique_ptr<Expr> &get_expr ()
+  Expr &get_expr ()
+  {
+    rust_assert (expr != nullptr);
+    return *expr;
+  }
+
+  std::unique_ptr<Expr> &get_expr_ptr ()
   {
     rust_assert (expr != nullptr);
     return expr;
+  }
+
+  std::unique_ptr<Expr> take_expr ()
+  {
+    rust_assert (expr != nullptr);
+    return std::move (expr);
   }
 
   bool is_semicolon_followed () const { return semicolon_followed; }

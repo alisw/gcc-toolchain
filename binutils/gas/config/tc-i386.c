@@ -1,5 +1,5 @@
 /* tc-i386.c -- Assemble code for the Intel 80386
-   Copyright (C) 1989-2024 Free Software Foundation, Inc.
+   Copyright (C) 1989-2026 Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
 
@@ -168,10 +168,11 @@ static int i386_finalize_displacement (segT, expressionS *, i386_operand_type,
 static int i386_att_operand (char *);
 static int i386_intel_operand (char *, int);
 static int i386_intel_simplify (expressionS *);
-static int i386_intel_parse_name (const char *, expressionS *);
+static int i386_intel_parse_name (const char *, expressionS *, enum expr_mode);
 static const reg_entry *parse_register (const char *, char **);
 static const char *parse_insn (const char *, char *, enum parse_mode);
 static char *parse_operands (char *, const char *);
+static void copy_operand (unsigned int, unsigned int);
 static void swap_operands (void);
 static void swap_2_operands (unsigned int, unsigned int);
 static enum i386_flag_code i386_addressing_mode (void);
@@ -193,7 +194,7 @@ static void output_disp (fragS *, offsetT);
 #ifdef OBJ_AOUT
 static void s_bss (int);
 #endif
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
 static void handle_large_common (int small ATTRIBUTE_UNUSED);
 
 /* GNU_PROPERTY_X86_ISA_1_USED.  */
@@ -273,6 +274,32 @@ enum i386_error
     unsupported_rsp_register,
     internal_error,
   };
+
+#ifdef OBJ_ELF
+enum x86_tls_error_type
+{
+  x86_tls_error_continue,
+  x86_tls_error_none,
+  x86_tls_error_insn,
+  x86_tls_error_opcode,
+  x86_tls_error_sib,
+  x86_tls_error_no_base_reg,
+  x86_tls_error_require_no_base_index_reg,
+  x86_tls_error_base_reg,
+  x86_tls_error_index_ebx,
+  x86_tls_error_eax,
+  x86_tls_error_RegA,
+  x86_tls_error_ebx,
+  x86_tls_error_rip,
+  x86_tls_error_dest_eax,
+  x86_tls_error_dest_rdi,
+  x86_tls_error_scale_factor,
+  x86_tls_error_base_reg_size,
+  x86_tls_error_dest_32bit_reg_size,
+  x86_tls_error_dest_64bit_reg_size,
+  x86_tls_error_dest_32bit_or_64bit_reg_size
+};
+#endif
 
 struct _i386_insn
   {
@@ -364,6 +391,9 @@ struct _i386_insn
 
     /* Has GOTPC or TLS relocation.  */
     bool has_gotpc_tls_reloc;
+
+    /* Has relocation entry from the gotrel array.  */
+    bool has_gotrel;
 
     /* RM and SIB are the modrm byte and the sib byte where the
        addressing modes of this insn are encoded.  */
@@ -483,6 +513,9 @@ static struct pseudo_prefixes {
     disp_encoding_32bit
   } disp_encoding;
 
+  /* Exclude sign-extended 8bit immediate in encoding.  */
+  bool no_imm8s;
+
   /* Prefer the REX byte in encoding.  */
   bool rex_encoding;
 
@@ -535,7 +568,7 @@ const char extra_symbol_chars[] = "*%-(["
 #endif
 	;
 
-#if ((defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF))	\
+#if (defined (OBJ_ELF)					\
      && !defined (TE_GNU)				\
      && !defined (TE_LINUX)				\
      && !defined (TE_Haiku)				\
@@ -583,7 +616,6 @@ static char operand_chars[256];
 /* Lexical macros.  */
 #define is_operand_char(x) (operand_chars[(unsigned char) x])
 #define is_register_char(x) (register_chars[(unsigned char) x])
-#define is_space_char(x) ((x) == ' ')
 
 /* All non-digit non-letter characters that may occur in an operand and
    which aren't already in extra_symbol_chars[].  */
@@ -616,7 +648,7 @@ static int this_operand = -1;
 /* Are we processing a .insn directive?  */
 #define dot_insn() (i.tm.mnem_off == MN__insn)
 
-enum i386_flag_code i386_flag_code;
+static enum i386_flag_code i386_flag_code;
 #define flag_code i386_flag_code /* Permit to continue using original name.  */
 static unsigned int object_64bit;
 static unsigned int disallow_64bit_reloc;
@@ -624,7 +656,7 @@ static int use_rela_relocations = 0;
 /* __tls_get_addr/___tls_get_addr symbol for TLS.  */
 static const char *tls_get_addr;
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
 
 /* The ELF ABI to use.  */
 enum x86_elf_abi
@@ -642,14 +674,19 @@ static enum x86_elf_abi x86_elf_abi = I386_ABI;
 static int use_big_obj = 0;
 #endif
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
 /* 1 if generating code for a shared library.  */
 static int shared = 0;
 
-unsigned int x86_sframe_cfa_sp_reg;
+const unsigned int x86_sframe_cfa_sp_reg = REG_SP;
 /* The other CFA base register for SFrame stack trace info.  */
-unsigned int x86_sframe_cfa_fp_reg;
+const unsigned int x86_sframe_cfa_fp_reg = REG_FP;
+/* The return address register for SFrame stack trace info.  For AMD64, RA
+   tracking is not needed, but some directives like .cfi_undefined may use
+   RA to indicate the outermost frame.  */
+const unsigned int x86_sframe_cfa_ra_reg = REG_RA;
 
+static ginsnS *x86_ginsn_new (const symbolS *, enum ginsn_gen_mode);
 #endif
 
 /* 1 for intel syntax,
@@ -713,8 +750,20 @@ lfence_before_ret;
 
 /* 1 if the assembler should generate relax relocations.  */
 
+#ifdef TE_SOLARIS
+/* PR gas/19520: The Solaris/x86 linker cannot handle relax relocations
+   before Solaris 11.4 which cannot easily be detected in cross
+   configurations.  */
+#define DEFAULT_GENERATE_X86_RELAX_RELOCATIONS 0
+#else
+#define DEFAULT_GENERATE_X86_RELAX_RELOCATIONS 1
+#endif
+
 static int generate_relax_relocations
   = DEFAULT_GENERATE_X86_RELAX_RELOCATIONS;
+
+/* 1 if the assembler should check tls relocation.  */
+static bool tls_check = DEFAULT_X86_TLS_CHECK;
 
 static enum check_kind
   {
@@ -821,7 +870,7 @@ static const char *cpu_arch_name = NULL;
 static char *cpu_sub_arch_name = NULL;
 
 /* CPU feature flags.  */
-i386_cpu_flags cpu_arch_flags = CPU_UNKNOWN_FLAGS;
+static i386_cpu_flags cpu_arch_flags = CPU_UNKNOWN_FLAGS;
 
 /* ISA extensions available in 64-bit mode only.  */
 static const i386_cpu_flags cpu_64_flags = CPU_ANY_64_FLAGS;
@@ -830,13 +879,13 @@ static const i386_cpu_flags cpu_64_flags = CPU_ANY_64_FLAGS;
 static int cpu_arch_tune_set = 0;
 
 /* Cpu we are generating instructions for.  */
-enum processor_type cpu_arch_tune = PROCESSOR_UNKNOWN;
+static enum processor_type cpu_arch_tune = PROCESSOR_UNKNOWN;
 
 /* CPU instruction set architecture used.  */
-enum processor_type cpu_arch_isa = PROCESSOR_UNKNOWN;
+static enum processor_type cpu_arch_isa = PROCESSOR_UNKNOWN;
 
 /* CPU feature flags of instruction set architecture used.  */
-i386_cpu_flags cpu_arch_isa_flags;
+static i386_cpu_flags cpu_arch_isa_flags;
 
 /* If set, conditional jumps are not automatically promoted to handle
    larger than a byte offset.  */
@@ -1000,6 +1049,12 @@ const relax_typeS md_relax_table[] =
   { STRING_COMMA_LEN (#n), false, PROCESSOR_NONE, vsz_ ## v, \
     CPU_ ## e ## _FLAGS, CPU_ ## d ## _FLAGS }
 
+#define CPU_ANY_APX_NCI_NDD_NF_FLAGS \
+  { .bitfield = \
+    { .cpuapx_nci = true, \
+      .cpuapx_ndd = true, \
+      .cpuapx_nf = true } }
+
 static const arch_entry cpu_arch[] =
 {
   /* Do not replace the first two entries - i386_target_format() and
@@ -1042,6 +1097,7 @@ static const arch_entry cpu_arch[] =
   ARCH (znver3, ZNVER, ZNVER3, false),
   ARCH (znver4, ZNVER, ZNVER4, false),
   ARCH (znver5, ZNVER, ZNVER5, false),
+  ARCH (znver6, ZNVER, ZNVER6, false),
   ARCH (btver1, BT, BTVER1, false),
   ARCH (btver2, BT, BTVER2, false),
 
@@ -1148,12 +1204,18 @@ static const arch_entry cpu_arch[] =
   SUBARCH (amx_bf16, AMX_BF16, ANY_AMX_BF16, false),
   SUBARCH (amx_fp16, AMX_FP16, ANY_AMX_FP16, false),
   SUBARCH (amx_complex, AMX_COMPLEX, ANY_AMX_COMPLEX, false),
+  SUBARCH (amx_transpose, AMX_TRANSPOSE, ANY_AMX_TRANSPOSE, false),
+  SUBARCH (amx_tf32, AMX_TF32, ANY_AMX_TF32, false),
+  SUBARCH (amx_fp8, AMX_FP8, ANY_AMX_FP8, false),
+  SUBARCH (amx_movrs, AMX_MOVRS, ANY_AMX_MOVRS, false),
+  SUBARCH (amx_avx512, AMX_AVX512, ANY_AMX_AVX512, false),
   SUBARCH (amx_tile, AMX_TILE, ANY_AMX_TILE, false),
   SUBARCH (movdiri, MOVDIRI, MOVDIRI, false),
   SUBARCH (movdir64b, MOVDIR64B, MOVDIR64B, false),
   VECARCH (avx512_bf16, AVX512_BF16, ANY_AVX512_BF16, reset),
   VECARCH (avx512_vp2intersect, AVX512_VP2INTERSECT,
 	   ANY_AVX512_VP2INTERSECT, reset),
+  VECARCH (avx512_bmm, AVX512_BMM, ANY_AVX512_BMM, reset),
   SUBARCH (tdx, TDX, TDX, false),
   SUBARCH (enqcmd, ENQCMD, ENQCMD, false),
   SUBARCH (serialize, SERIALIZE, SERIALIZE, false),
@@ -1175,6 +1237,7 @@ static const arch_entry cpu_arch[] =
   VECARCH (avx_ne_convert, AVX_NE_CONVERT, ANY_AVX_NE_CONVERT, reset),
   SUBARCH (rao_int, RAO_INT, RAO_INT, false),
   SUBARCH (rmpquery, RMPQUERY, ANY_RMPQUERY, false),
+  SUBARCH (rmpread, RMPREAD, ANY_RMPREAD, false),
   SUBARCH (fred, FRED, ANY_FRED, false),
   SUBARCH (lkgs, LKGS, ANY_LKGS, false),
   VECARCH (avx_vnni_int16, AVX_VNNI_INT16, ANY_AVX_VNNI_INT16, reset),
@@ -1184,7 +1247,19 @@ static const arch_entry cpu_arch[] =
   SUBARCH (pbndkb, PBNDKB, PBNDKB, false),
   VECARCH (avx10.1, AVX10_1, ANY_AVX512F, set),
   SUBARCH (user_msr, USER_MSR, USER_MSR, false),
-  SUBARCH (apx_f, APX_F, APX_F, false),
+  SUBARCH (apx_f, APX_F, ANY_APX_F, false),
+  SUBARCH (apx_nci, APX_NCI, ANY_APX_NCI, false),
+  SUBARCH (apx_ndd, APX_NDD, ANY_APX_NDD, false),
+  SUBARCH (apx_nf, APX_NF, ANY_APX_NF, false),
+  SUBARCH (apx_nci_ndd_nf, APX_NCI_NDD_NF, ANY_APX_NCI_NDD_NF, false),
+  VECARCH (avx10.2, AVX10_2, ANY_AVX10_2, set),
+  SUBARCH (gmism2, GMISM2, GMISM2, false),
+  SUBARCH (gmiccs, GMICCS, GMICCS, false),
+  SUBARCH (msr_imm, MSR_IMM, MSR_IMM, false),
+  SUBARCH (padlockrng2, PADLOCKRNG2, PADLOCKRNG2, false),
+  SUBARCH (padlockphe2, PADLOCKPHE2, PADLOCKPHE2, false),
+  SUBARCH (padlockxmodx, PADLOCKXMODX, PADLOCKXMODX, false),
+  SUBARCH (movrs, MOVRS, MOVRS, false),
 };
 
 #undef SUBARCH
@@ -1270,7 +1345,7 @@ const pseudo_typeS md_pseudo_table[] =
   {"disallow_index_reg", set_allow_index_reg, 0},
   {"sse_check", set_check, 0},
   {"operand_check", set_check, 1},
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
   {"largecomm", handle_large_common, 0},
 #else
   {"file", dwarf2_directive_file, 0},
@@ -1292,6 +1367,105 @@ static htab_t op_hash;
 
 /* Hash table for register lookup.  */
 static htab_t reg_hash;
+
+#if (defined (OBJ_ELF) || defined (OBJ_MACH_O) || defined (TE_PE))
+static const struct
+{
+  const char *str;
+  unsigned int len;
+  const enum bfd_reloc_code_real rel[2];
+  const i386_operand_type types64;
+  bool need_GOT_symbol;
+}
+gotrel[] =
+{
+#define OPERAND_TYPE_IMM32_32S_DISP32 { .bitfield = \
+      { .imm32 = 1, .imm32s = 1, .disp32 = 1 } }
+#define OPERAND_TYPE_IMM32_32S_64_DISP32 { .bitfield = \
+      { .imm32 = 1, .imm32s = 1, .imm64 = 1, .disp32 = 1 } }
+#define OPERAND_TYPE_IMM32_32S_64_DISP32_64 { .bitfield = \
+      { .imm32 = 1, .imm32s = 1, .imm64 = 1, .disp32 = 1, .disp64 = 1 } }
+#define OPERAND_TYPE_IMM64_DISP64 { .bitfield = \
+      { .imm64 = 1, .disp64 = 1 } }
+
+#ifndef TE_PE
+#ifdef OBJ_ELF
+    { STRING_COMMA_LEN ("SIZE"),      { BFD_RELOC_SIZE32,
+					BFD_RELOC_SIZE32 },
+    { .bitfield = { .imm32 = 1, .imm64 = 1 } }, false },
+#endif
+    { STRING_COMMA_LEN ("PLTOFF"),   { _dummy_first_bfd_reloc_code_real,
+				       BFD_RELOC_64_PLTOFF },
+    { .bitfield = { .imm64 = 1 } }, true },
+    { STRING_COMMA_LEN ("PLT"),      { BFD_RELOC_386_PLT32,
+				       BFD_RELOC_32_PLT_PCREL },
+    OPERAND_TYPE_IMM32_32S_DISP32, false },
+    { STRING_COMMA_LEN ("GOTPLT"),   { _dummy_first_bfd_reloc_code_real,
+				       BFD_RELOC_X86_64_GOTPLT64 },
+    OPERAND_TYPE_IMM64_DISP64, true },
+    { STRING_COMMA_LEN ("GOTOFF"),   { BFD_RELOC_386_GOTOFF,
+				       BFD_RELOC_X86_64_GOTOFF64 },
+    OPERAND_TYPE_IMM64_DISP64, true },
+    { STRING_COMMA_LEN ("GOTPCREL"), { _dummy_first_bfd_reloc_code_real,
+				       BFD_RELOC_X86_64_GOTPCREL },
+    OPERAND_TYPE_IMM32_32S_DISP32, true },
+    { STRING_COMMA_LEN ("TLSGD"),    { BFD_RELOC_386_TLS_GD,
+				       BFD_RELOC_X86_64_TLSGD    },
+    OPERAND_TYPE_IMM32_32S_DISP32, true },
+    { STRING_COMMA_LEN ("TLSLDM"),   { BFD_RELOC_386_TLS_LDM,
+				       _dummy_first_bfd_reloc_code_real },
+    OPERAND_TYPE_NONE, true },
+    { STRING_COMMA_LEN ("TLSLD"),    { _dummy_first_bfd_reloc_code_real,
+				       BFD_RELOC_X86_64_TLSLD    },
+    OPERAND_TYPE_IMM32_32S_DISP32, true },
+    { STRING_COMMA_LEN ("GOTTPOFF"), { BFD_RELOC_386_TLS_IE_32,
+				       BFD_RELOC_X86_64_GOTTPOFF },
+    OPERAND_TYPE_IMM32_32S_DISP32, true },
+    { STRING_COMMA_LEN ("TPOFF"),    { BFD_RELOC_386_TLS_LE_32,
+				       BFD_RELOC_X86_64_TPOFF32  },
+    OPERAND_TYPE_IMM32_32S_64_DISP32_64, true },
+    { STRING_COMMA_LEN ("NTPOFF"),   { BFD_RELOC_386_TLS_LE,
+				       _dummy_first_bfd_reloc_code_real },
+    OPERAND_TYPE_NONE, true },
+    { STRING_COMMA_LEN ("DTPOFF"),   { BFD_RELOC_386_TLS_LDO_32,
+				       BFD_RELOC_X86_64_DTPOFF32 },
+    OPERAND_TYPE_IMM32_32S_64_DISP32_64, true },
+    { STRING_COMMA_LEN ("GOTNTPOFF"),{ BFD_RELOC_386_TLS_GOTIE,
+				       _dummy_first_bfd_reloc_code_real },
+    OPERAND_TYPE_NONE, true },
+    { STRING_COMMA_LEN ("INDNTPOFF"),{ BFD_RELOC_386_TLS_IE,
+				       _dummy_first_bfd_reloc_code_real },
+    OPERAND_TYPE_NONE, true },
+    { STRING_COMMA_LEN ("GOT"),      { BFD_RELOC_386_GOT32,
+				       BFD_RELOC_X86_64_GOT32    },
+    OPERAND_TYPE_IMM32_32S_64_DISP32, true },
+    { STRING_COMMA_LEN ("TLSDESC"),  { BFD_RELOC_386_TLS_GOTDESC,
+				       BFD_RELOC_X86_64_GOTPC32_TLSDESC },
+    OPERAND_TYPE_IMM32_32S_DISP32, true },
+    { STRING_COMMA_LEN ("TLSCALL"),  { BFD_RELOC_386_TLS_DESC_CALL,
+				       BFD_RELOC_X86_64_TLSDESC_CALL },
+    OPERAND_TYPE_IMM32_32S_DISP32, true },
+#else /* TE_PE */
+    { STRING_COMMA_LEN ("SECREL32"), { BFD_RELOC_32_SECREL,
+				       BFD_RELOC_32_SECREL },
+    OPERAND_TYPE_IMM32_32S_DISP32, false },
+    { STRING_COMMA_LEN ("SECIDX16"), { BFD_RELOC_16_SECIDX,
+				       BFD_RELOC_16_SECIDX },
+    { .bitfield = { .imm16 = 1, .disp16 = 1 } }, false },
+    { STRING_COMMA_LEN ("RVA"), { BFD_RELOC_RVA,
+				       BFD_RELOC_RVA },
+    OPERAND_TYPE_IMM32_32S_DISP32, false },
+    { STRING_COMMA_LEN ("IMGREL"), { BFD_RELOC_RVA,
+				       BFD_RELOC_RVA },
+    OPERAND_TYPE_IMM32_32S_DISP32, false },
+#endif
+
+#undef OPERAND_TYPE_IMM32_32S_DISP32
+#undef OPERAND_TYPE_IMM32_32S_64_DISP32
+#undef OPERAND_TYPE_IMM32_32S_64_DISP32_64
+#undef OPERAND_TYPE_IMM64_DISP64
+};
+#endif
 
   /* Various efficient no-op patterns for aligning code labels.
      Note: Don't try to assemble the instructions in the comments.
@@ -1394,40 +1568,6 @@ static const unsigned char *const alt64_patt[] = {
   f32_1, f32_2, alt_3, alt_4, alt_5, alt_6, alt_7, alt_8,
   alt64_9, alt64_10, alt64_11,alt64_12, alt64_13, alt64_14, alt64_15
 };
-
-/* Genenerate COUNT bytes of NOPs to WHERE from PATT with the maximum
-   size of a single NOP instruction MAX_SINGLE_NOP_SIZE.  */
-
-static void
-i386_output_nops (char *where, const unsigned char *const *patt,
-		  int count, int max_single_nop_size)
-
-{
-  /* Place the longer NOP first.  */
-  int last;
-  int offset;
-  const unsigned char *nops;
-
-  if (max_single_nop_size < 1)
-    {
-      as_fatal (_("i386_output_nops called to generate nops of at most %d bytes!"),
-		max_single_nop_size);
-      return;
-    }
-
-  nops = patt[max_single_nop_size - 1];
-  last = count % max_single_nop_size;
-
-  count -= last;
-  for (offset = 0; offset < count; offset += max_single_nop_size)
-    memcpy (where + offset, nops, max_single_nop_size);
-
-  if (last)
-    {
-      nops = patt[last - 1];
-      memcpy (where + offset, nops, last);
-    }
-}
 
 static INLINE int
 fits_in_imm7 (offsetT num)
@@ -1584,20 +1724,14 @@ i386_generate_nops (fragS *fragP, char *where, offsetT count, int limit)
   if (limit == 0)
     limit = max_single_nop_size;
 
-  if (fragP->fr_type == rs_fill_nop)
+  if (limit > max_single_nop_size || limit < 1)
     {
-      /* Output NOPs for .nop directive.  */
-      if (limit > max_single_nop_size)
-	{
-	  as_bad_where (fragP->fr_file, fragP->fr_line,
-			_("invalid single nop size: %d "
-			  "(expect within [0, %d])"),
-			limit, max_single_nop_size);
-	  return;
-	}
+      as_bad_where (fragP->fr_file, fragP->fr_line,
+		    _("invalid single nop size: %d "
+		      "(expect within [0, %d])"),
+		    limit, max_single_nop_size);
+      return;
     }
-  else if (fragP->fr_type != rs_machine_dependent)
-    fragP->fr_var = count;
 
   /* Emit a plain NOP first when the last thing we saw may not have been
      a proper instruction (e.g. a stand-alone prefix or .byte).  */
@@ -1648,8 +1782,34 @@ i386_generate_nops (fragS *fragP, char *where, offsetT count, int limit)
 	}
     }
 
-  /* Generate multiple NOPs.  */
-  i386_output_nops (where, patt, count, limit);
+  int non_repeat = count % limit;
+  if (non_repeat)
+    {
+      memcpy (where, patt[non_repeat - 1], non_repeat);
+      where += non_repeat;
+      count -= non_repeat;
+    }
+
+  if (fragP->fr_type != rs_machine_dependent)
+    {
+      /* Set up the frag so that everything we have emitted so far is
+	 included in fr_fix.  The repeating larger nop only needs to
+	 be written once to the frag memory.  */
+      fragP->fr_fix = where - fragP->fr_literal;
+      if (count != 0)
+	{
+	  fragP->fr_var = limit;
+	  count = limit;
+	}
+    }
+
+  const unsigned char *nops = patt[limit - 1];
+  while (count)
+    {
+      memcpy (where, nops, limit);
+      where += limit;
+      count -= limit;
+    }
 }
 
 static INLINE int
@@ -1731,6 +1891,8 @@ _is_cpu (const i386_cpu_attr *a, enum i386_cpu cpu)
     case CpuAVX512F:  return a->bitfield.cpuavx512f;
     case CpuAVX512VL: return a->bitfield.cpuavx512vl;
     case CpuAPX_F:    return a->bitfield.cpuapx_f;
+    case CpuAVX10_2:  return a->bitfield.cpuavx10_2;
+    case CpuAMX_TRANSPOSE:  return a->bitfield.cpuamx_transpose;
     case Cpu64:       return a->bitfield.cpu64;
     case CpuNo64:     return a->bitfield.cpuno64;
     default:
@@ -1793,6 +1955,10 @@ cpu_flags_all_zero (const union i386_cpu_flags *x)
 {
   switch (ARRAY_SIZE(x->array))
     {
+    case 6:
+      if (x->array[5])
+	return 0;
+      /* Fall through.  */
     case 5:
       if (x->array[4])
 	return 0;
@@ -1822,6 +1988,10 @@ cpu_flags_equal (const union i386_cpu_flags *x,
 {
   switch (ARRAY_SIZE(x->array))
     {
+    case 6:
+      if (x->array[5] != y->array[5])
+	return 0;
+      /* Fall through.  */
     case 5:
       if (x->array[4] != y->array[4])
 	return 0;
@@ -1859,6 +2029,9 @@ cpu_flags_and (i386_cpu_flags x, i386_cpu_flags y)
 {
   switch (ARRAY_SIZE (x.array))
     {
+    case 6:
+      x.array [5] &= y.array [5];
+      /* Fall through.  */
     case 5:
       x.array [4] &= y.array [4];
       /* Fall through.  */
@@ -1885,6 +2058,9 @@ cpu_flags_or (i386_cpu_flags x, i386_cpu_flags y)
 {
   switch (ARRAY_SIZE (x.array))
     {
+    case 6:
+      x.array [5] |= y.array [5];
+      /* Fall through.  */
     case 5:
       x.array [4] |= y.array [4];
       /* Fall through.  */
@@ -1911,6 +2087,9 @@ cpu_flags_and_not (i386_cpu_flags x, i386_cpu_flags y)
 {
   switch (ARRAY_SIZE (x.array))
     {
+    case 6:
+      x.array [5] &= ~y.array [5];
+      /* Fall through.  */
     case 5:
       x.array [4] &= ~y.array [4];
       /* Fall through.  */
@@ -1967,7 +2146,7 @@ check_Scc_OszcOperations (const char *l)
 {
   const char *suffix_string = l;
 
-  while (is_space_char (*suffix_string))
+  while (is_whitespace (*suffix_string))
     suffix_string++;
 
   /* If {oszc flags} is absent, just return.  */
@@ -1977,8 +2156,61 @@ check_Scc_OszcOperations (const char *l)
   /* Skip '{'.  */
   suffix_string++;
 
+  /* For .insn require 'scc=' as the first element.  */
+  if (dot_insn ())
+    {
+      char *copy;
+      valueT val;
+
+      while (is_whitespace (*suffix_string))
+	suffix_string++;
+
+      if (strncasecmp (suffix_string, "scc", 3) == 0)
+	suffix_string += 3;
+      else
+	{
+	  as_bad (_("unrecognized pseudo-suffix"));
+	  return -1;
+	}
+
+      while (is_whitespace (*suffix_string))
+	suffix_string++;
+
+      if (*suffix_string == '=')
+	suffix_string++;
+      else
+	{
+	  as_bad (_("unrecognized pseudo-suffix"));
+	  return -1;
+	}
+
+      copy = xstrdup (suffix_string);
+      /* No need to save/restore input_line_pointer; that's done in the
+	 caller already.  */
+      input_line_pointer = copy;
+      val = get_absolute_expression ();
+      suffix_string += input_line_pointer - copy;
+      free (copy);
+
+      if (val > 0xf)
+	{
+	  as_bad (_("scc= value must be between 0 and 15 (decimal)"));
+	  return -1;
+	}
+
+      i.scc = val;
+
+      /* Permit dfv= to be absent (implying all flag values being zero).  */
+      if (*suffix_string == '}')
+	return suffix_string + 1 - l;
+
+      if (*suffix_string != ',')
+	goto bad;
+      suffix_string++;
+    }
+
   /* Parse 'dfv='.  */
-  while (is_space_char (*suffix_string))
+  while (is_whitespace (*suffix_string))
     suffix_string++;
 
   if (strncasecmp (suffix_string, "dfv", 3) == 0)
@@ -1989,7 +2221,7 @@ check_Scc_OszcOperations (const char *l)
       return -1;
     }
 
-  while (is_space_char (*suffix_string))
+  while (is_whitespace (*suffix_string))
     suffix_string++;
 
   if (*suffix_string == '=')
@@ -2003,7 +2235,7 @@ check_Scc_OszcOperations (const char *l)
   /* Parse 'of, sf, zf, cf}'.  */
   while (*suffix_string)
     {
-      while (is_space_char (*suffix_string))
+      while (is_whitespace (*suffix_string))
 	suffix_string++;
 
       /* Return for '{dfv=}'.  */
@@ -2038,7 +2270,7 @@ check_Scc_OszcOperations (const char *l)
 
       suffix_string += 2;
 
-      while (is_space_char (*suffix_string))
+      while (is_whitespace (*suffix_string))
 	suffix_string++;
 
       if (*suffix_string == '}')
@@ -2049,6 +2281,7 @@ check_Scc_OszcOperations (const char *l)
       suffix_string ++;
     }
 
+ bad:
   as_bad (_("missing `}' or `,' in pseudo-suffix"));
   return -1;
 }
@@ -2107,12 +2340,15 @@ cpu_flags_match (const insn_template *t)
 	  && (any.bitfield.cpubmi || any.bitfield.cpubmi2
 	      || any.bitfield.cpuavx512f || any.bitfield.cpuavx512bw
 	      || any.bitfield.cpuavx512dq || any.bitfield.cpuamx_tile
-	      || any.bitfield.cpucmpccxadd || any.bitfield.cpuuser_msr))
+	      || any.bitfield.cpucmpccxadd || any.bitfield.cpuuser_msr
+	      || any.bitfield.cpumsr_imm || any.bitfield.cpuamx_transpose
+	      || any.bitfield.cpuamx_movrs))
 	{
 	  /* These checks (verifying that APX_F() was properly used in the
 	     opcode table entry) make sure there's no need for an "else" to
 	     the "if()" below.  */
 	  gas_assert (!cpu_flags_all_zero (&all));
+
 	  cpu = cpu_flags_and (all, any);
 	  gas_assert (cpu_flags_equal (&cpu, &all));
 
@@ -2121,6 +2357,17 @@ cpu_flags_match (const insn_template *t)
 
 	  memset (&any, 0, sizeof (any));
 	}
+    }
+  else if (t->opcode_modifier.evex
+	   /* Implicitly !t->opcode_modifier.vex.  */
+	   && all.bitfield.cpuapx_f
+	   && (t->opcode_modifier.nf
+	       || (all.bitfield.cpuadx && t->opcode_modifier.vexvvvv)))
+    {
+      /* APX_NDD can't be combined with other ISAs in the opcode table.
+	 Respective entries (ADCX, ADOX, LZCNT, POPCNT, and TZCNT) use APX_F
+	 instead, which are amended here.  No need to clear cpuapx_f, though. */
+      all.bitfield.cpuapx_ndd = true;
     }
 
   if (flag_code != CODE_64BIT)
@@ -2289,8 +2536,8 @@ operand_type_check (i386_operand_type t, enum operand_type c)
   return 0;
 }
 
-/* Return 1 if there is no conflict in 8bit/16bit/32bit/64bit/80bit size
-   between operand GIVEN and opeand WANTED for instruction template T.  */
+/* Return 1 if there is no conflict in 8bit/16bit/32bit/64bit size
+   between operand GIVEN and operand WANTED for instruction template T.  */
 
 static INLINE int
 match_operand_size (const insn_template *t, unsigned int wanted,
@@ -2310,14 +2557,22 @@ match_operand_size (const insn_template *t, unsigned int wanted,
 		   || (intel_syntax
 		       && flag_code != CODE_64BIT
 		       && (t->operand_types[wanted].bitfield.class == Reg
-			   || t->operand_types[wanted].bitfield.class == Accum
-			   || t->opcode_modifier.isstring))))
-	   || (i.types[given].bitfield.tbyte
-	       && !t->operand_types[wanted].bitfield.tbyte));
+			   || t->opcode_modifier.isstring)))));
+}
+
+/* Return 1 if there is no conflict in 80bit size
+   between operand GIVEN and operand WANTED for instruction template T.  */
+
+static INLINE int
+match_fp_size (const insn_template *t, unsigned int wanted,
+		    unsigned int given)
+{
+  return !i.types[given].bitfield.tbyte
+	 || t->operand_types[wanted].bitfield.tbyte;
 }
 
 /* Return 1 if there is no conflict in SIMD register between operand
-   GIVEN and opeand WANTED for instruction template T.  */
+   GIVEN and operand WANTED for instruction template T.  */
 
 static INLINE int
 match_simd_size (const insn_template *t, unsigned int wanted,
@@ -2334,13 +2589,15 @@ match_simd_size (const insn_template *t, unsigned int wanted,
 }
 
 /* Return 1 if there is no conflict in any size between operand GIVEN
-   and opeand WANTED for instruction template T.  */
+   and operand WANTED for instruction template T.  */
 
 static INLINE int
 match_mem_size (const insn_template *t, unsigned int wanted,
 		unsigned int given)
 {
   return (match_operand_size (t, wanted, given)
+	  && (!i.types[given].bitfield.tbyte
+	      || t->operand_types[wanted].bitfield.tbyte)
 	  && !((i.types[given].bitfield.unspecified
 		&& !i.broadcast.type
 		&& !i.broadcast.bytes
@@ -2381,36 +2638,61 @@ operand_size_match (const insn_template *t)
       && t->opcode_modifier.jump != JUMP_ABSOLUTE)
     return match;
 
-  /* Check memory and accumulator operand size.  */
-  for (j = 0; j < i.operands; j++)
-    {
-      if (i.types[j].bitfield.class != Reg
-	  && i.types[j].bitfield.class != RegSIMD
-	  && t->opcode_modifier.operandconstraint == ANY_SIZE)
-	continue;
+  for (j = 0; j < i.imm_operands; j++)
+    /* Instruction templates with only sign-extended 8-bit immediate
+       operand also have a second template with full-operand-size
+       immediate operand under a different opcode.  Don't match the
+       first template if sign-extended 8-bit immediate operand should
+       be excluded.  */
+    if (pp.no_imm8s
+        && !t->operand_types[j].bitfield.imm8
+        && t->operand_types[j].bitfield.imm8s)
+      {
+	gas_assert (!t->opcode_modifier.d);
+	return 0;
+      }
 
-      if (t->operand_types[j].bitfield.class == Reg
+  /* Check memory and accumulator operand size.  */
+  for (; j < i.operands; j++)
+    {
+      if (i.types[j].bitfield.class == Reg
+	  && (t->operand_types[j].bitfield.class == Reg
+	      || (t->operand_types[j].bitfield.instance == Accum
+		  && (t->operand_types[j].bitfield.byte
+		      || t->operand_types[j].bitfield.word
+		      || t->operand_types[j].bitfield.dword
+		      || t->operand_types[j].bitfield.qword)))
 	  && !match_operand_size (t, j, j))
 	{
 	  match = 0;
 	  break;
 	}
 
-      if (t->operand_types[j].bitfield.class == RegSIMD
+      if (i.types[j].bitfield.class == RegFP
+	  && (t->operand_types[j].bitfield.class == RegFP
+	      || (t->operand_types[j].bitfield.instance == Accum
+		  && t->operand_types[j].bitfield.tbyte))
+	  && !match_fp_size (t, j, j))
+	{
+	  match = 0;
+	  break;
+	}
+
+      if (i.types[j].bitfield.class == RegSIMD
+	  && (t->operand_types[j].bitfield.class == RegSIMD
+	      || (t->operand_types[j].bitfield.instance == Accum
+		  /* Note: %ymm0, %zmm0, and %tmm0 aren't marked Accum.  */
+		  && t->operand_types[j].bitfield.xmmword))
 	  && !match_simd_size (t, j, j))
 	{
 	  match = 0;
 	  break;
 	}
 
-      if (t->operand_types[j].bitfield.instance == Accum
-	  && (!match_operand_size (t, j, j) || !match_simd_size (t, j, j)))
-	{
-	  match = 0;
-	  break;
-	}
-
-      if ((i.flags[j] & Operand_Mem) && !match_mem_size (t, j, j))
+      if ((i.flags[j] & Operand_Mem)
+	  && operand_type_check (t->operand_types[j], anymem)
+	  && t->opcode_modifier.operandconstraint != ANY_SIZE
+	  && !match_mem_size (t, j, j))
 	{
 	  match = 0;
 	  break;
@@ -2423,31 +2705,45 @@ operand_size_match (const insn_template *t)
   /* Check reverse.  */
   gas_assert (i.operands >= 2);
 
-  for (j = 0; j < i.operands; j++)
+  for (j = i.imm_operands; j < i.operands; j++)
     {
       unsigned int given = i.operands - j - 1;
 
-      /* For FMA4 and XOP insns VEX.W controls just the first two
-	 register operands. And APX_F insns just swap the two source operands,
+      /* For FMA4 and XOP insns VEX.W controls just the first two register
+	 operands.  And APX_F / APX_NDD insns just swap the two source operands,
 	 with the 3rd one being the destination.  */
       if (is_cpu (t, CpuFMA4) || is_cpu (t, CpuXOP)
-	  || is_cpu (t, CpuAPX_F))
+	  || is_cpu (t, CpuAPX_F)|| is_cpu (t, CpuAPX_NDD))
 	given = j < 2 ? 1 - j : j;
 
-      if (t->operand_types[j].bitfield.class == Reg
+      if (i.types[given].bitfield.class == Reg
+	  && (t->operand_types[j].bitfield.class == Reg
+	      || (t->operand_types[j].bitfield.instance == Accum
+		  && (t->operand_types[j].bitfield.byte
+		      || t->operand_types[j].bitfield.word
+		      || t->operand_types[j].bitfield.dword
+		      || t->operand_types[j].bitfield.qword
+		      || t->operand_types[j].bitfield.tbyte)))
 	  && !match_operand_size (t, j, given))
 	return match;
 
-      if (t->operand_types[j].bitfield.class == RegSIMD
+      if (i.types[given].bitfield.class == RegFP
+	  && (t->operand_types[j].bitfield.class == RegFP
+	      || (t->operand_types[j].bitfield.instance == Accum
+		  && t->operand_types[j].bitfield.tbyte))
+	  && !match_fp_size (t, j, given))
+	return match;
+
+      /* No need to check for Accum here: There are no such templates with D
+	 set.  */
+      if (i.types[given].bitfield.class == RegSIMD
+	  && t->operand_types[j].bitfield.class == RegSIMD
 	  && !match_simd_size (t, j, given))
 	return match;
 
-      if (t->operand_types[j].bitfield.instance == Accum
-	  && (!match_operand_size (t, j, given)
-	      || !match_simd_size (t, j, given)))
-	return match;
-
-      if ((i.flags[given] & Operand_Mem) && !match_mem_size (t, j, given))
+      if ((i.flags[given] & Operand_Mem)
+	  && operand_type_check (t->operand_types[j], anymem)
+	  && !match_mem_size (t, j, given))
 	return match;
     }
 
@@ -2473,6 +2769,23 @@ operand_type_match (i386_operand_type overlap,
   temp.bitfield.tmmword = 0;
   if (operand_type_all_zero (&temp))
     goto mismatch;
+
+  /* When a (register) instance is expected, operand size needs checking
+     to disambiguate.  */
+  if (overlap.bitfield.instance != InstanceNone
+      && !overlap.bitfield.byte
+      && !overlap.bitfield.word
+      && !overlap.bitfield.dword
+      && !overlap.bitfield.qword
+      && !overlap.bitfield.tbyte
+      && !overlap.bitfield.xmmword
+      && !overlap.bitfield.ymmword
+      && !overlap.bitfield.zmmword
+      && !overlap.bitfield.tmmword)
+    {
+      gas_assert (overlap.bitfield.class == ClassNone);
+      goto mismatch;
+    }
 
   if (given.bitfield.baseindex == overlap.bitfield.baseindex)
     return 1;
@@ -2713,7 +3026,7 @@ offset_in_range (offsetT val, int size)
     default: abort ();
     }
 
-  if ((val & ~mask) != 0 && (-val & ~mask) != 0)
+  if ((val & ~mask) != 0 && (-(addressT) val & ~mask) != 0)
     as_warn (_("0x%" PRIx64 " shortened to 0x%" PRIx64),
 	     (uint64_t) val, (uint64_t) (val & mask));
 
@@ -2872,7 +3185,7 @@ set_intel_syntax (int syntax_flag)
   int ask_naked_reg = 0;
 
   SKIP_WHITESPACE ();
-  if (!is_end_of_line[(unsigned char) *input_line_pointer])
+  if (!is_end_of_stmt (*input_line_pointer))
     {
       char *string;
       int e = get_symbol_name (&string);
@@ -2927,7 +3240,7 @@ set_check (int what)
 
   SKIP_WHITESPACE ();
 
-  if (!is_end_of_line[(unsigned char) *input_line_pointer])
+  if (!is_end_of_stmt (*input_line_pointer))
     {
       char *string;
       int e = get_symbol_name (&string);
@@ -2952,12 +3265,9 @@ static void
 check_cpu_arch_compatible (const char *name ATTRIBUTE_UNUSED,
 			   i386_cpu_flags new_flag ATTRIBUTE_UNUSED)
 {
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
-  static const char *arch;
-
   /* Intel MCU is only supported on ELF.  */
-  if (!IS_ELF)
-    return;
+#ifdef OBJ_ELF
+  static const char *arch;
 
   if (!arch)
     {
@@ -3039,7 +3349,7 @@ set_cpu_arch (int dummy ATTRIBUTE_UNUSED)
 
   SKIP_WHITESPACE ();
 
-  if (is_end_of_line[(unsigned char) *input_line_pointer])
+  if (is_end_of_stmt (*input_line_pointer))
     {
       as_bad (_("missing cpu architecture"));
       input_line_pointer++;
@@ -3079,9 +3389,16 @@ set_cpu_arch (int dummy ATTRIBUTE_UNUSED)
       const arch_stack_entry *top = arch_stack_top;
 
       if (!top)
-	as_bad (_(".arch stack is empty"));
-      else if (top->flag_code != flag_code
-	       || top->stackop_size != stackop_size)
+	{
+	  as_bad (_(".arch stack is empty"));
+	restore_bad:
+	  (void) restore_line_pointer (e);
+	  ignore_rest_of_line ();
+	  return;
+	}
+
+      if (top->flag_code != flag_code
+	  || top->stackop_size != stackop_size)
 	{
 	  static const unsigned int bits[] = {
 	    [CODE_16BIT] = 16,
@@ -3092,22 +3409,21 @@ set_cpu_arch (int dummy ATTRIBUTE_UNUSED)
 	  as_bad (_("this `.arch pop' requires `.code%u%s' to be in effect"),
 		  bits[top->flag_code],
 		  top->stackop_size == LONG_MNEM_SUFFIX ? "gcc" : "");
+	  goto restore_bad;
 	}
-      else
-	{
-	  arch_stack_top = top->prev;
 
-	  cpu_arch_name = top->name;
-	  free (cpu_sub_arch_name);
-	  cpu_sub_arch_name = top->sub_name;
-	  cpu_arch_flags = top->flags;
-	  cpu_arch_isa = top->isa;
-	  cpu_arch_isa_flags = top->isa_flags;
-	  vector_size = top->vector_size;
-	  no_cond_jump_promotion = top->no_cond_jump_promotion;
+      arch_stack_top = top->prev;
 
-	  XDELETE (top);
-	}
+      cpu_arch_name = top->name;
+      free (cpu_sub_arch_name);
+      cpu_sub_arch_name = top->sub_name;
+      cpu_arch_flags = top->flags;
+      cpu_arch_isa = top->isa;
+      cpu_arch_isa_flags = top->isa_flags;
+      vector_size = top->vector_size;
+      no_cond_jump_promotion = top->no_cond_jump_promotion;
+
+      XDELETE (top);
 
       (void) restore_line_pointer (e);
       demand_empty_rest_of_line ();
@@ -3150,18 +3466,14 @@ set_cpu_arch (int dummy ATTRIBUTE_UNUSED)
 		{
 		  as_bad (_("64bit mode not supported on `%s'."),
 			  cpu_arch[j].name);
-		  (void) restore_line_pointer (e);
-		  ignore_rest_of_line ();
-		  return;
+		  goto restore_bad;
 		}
 
 	      if (flag_code == CODE_32BIT && !cpu_arch[j].enable.bitfield.cpui386)
 		{
 		  as_bad (_("32bit mode not supported on `%s'."),
 			  cpu_arch[j].name);
-		  (void) restore_line_pointer (e);
-		  ignore_rest_of_line ();
-		  return;
+		  goto restore_bad;
 		}
 
 	      cpu_arch_name = cpu_arch[j].name;
@@ -3241,24 +3553,31 @@ set_cpu_arch (int dummy ATTRIBUTE_UNUSED)
     }
 
   if (j == ARRAY_SIZE (cpu_arch))
-    as_bad (_("no such architecture: `%s'"), string);
-
-  *input_line_pointer = e;
+    {
+      as_bad (_("no such architecture: `%s'"), string);
+      goto restore_bad;
+    }
 
   no_cond_jump_promotion = 0;
-  if (*input_line_pointer == ','
-      && !is_end_of_line[(unsigned char) input_line_pointer[1]])
+  if (restore_line_pointer (e) == ','
+      && !is_end_of_stmt (input_line_pointer[1]))
     {
       ++input_line_pointer;
       e = get_symbol_name (&s);
       string = s;
 
       if (strcmp (string, "nojumps") == 0)
-	no_cond_jump_promotion = 1;
-      else if (strcmp (string, "jumps") == 0)
-	;
-      else
-	as_bad (_("no such architecture modifier: `%s'"), string);
+	{
+	  if (cpu_arch_flags.bitfield.cpui386)
+	    as_bad (_("`%s' only supported with 16-bit architectures"), string);
+	  else
+	    no_cond_jump_promotion = true;
+	}
+      else if (strcmp (string, "jumps") != 0)
+	{
+	  as_bad (_("no such architecture modifier: `%s'"), string);
+	  goto restore_bad;
+	}
 
       (void) restore_line_pointer (e);
     }
@@ -3355,14 +3674,14 @@ md_begin (void)
 		if (regtab->reg_type.bitfield.instance == Accum)
 		  reg_eax = regtab;
 	      }
-	    else if (regtab->reg_type.bitfield.tbyte)
-	      {
-		/* There's no point inserting st(<N>) in the hash table, as
-		   parentheses aren't included in register_chars[] anyway.  */
-		if (regtab->reg_type.bitfield.instance != Accum)
-		  continue;
-		reg_st0 = regtab;
-	      }
+	    break;
+
+	  case RegFP:
+	    /* There's no point inserting st(<N>) in the hash table, as
+	       parentheses aren't included in register_chars[] anyway.  */
+	    if (regtab->reg_type.bitfield.instance != Accum)
+	      continue;
+	    reg_st0 = regtab;
 	    break;
 
 	  case SReg:
@@ -3426,16 +3745,11 @@ md_begin (void)
   if (object_64bit)
     {
 #if defined (OBJ_COFF) && defined (TE_PE)
-      x86_dwarf2_return_column = (OUTPUT_FLAVOR == bfd_target_coff_flavour
-				  ? 32 : 16);
+      x86_dwarf2_return_column = 32;
 #else
-      x86_dwarf2_return_column = 16;
+      x86_dwarf2_return_column = REG_RA;
 #endif
       x86_cie_data_alignment = -8;
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
-      x86_sframe_cfa_sp_reg = REG_SP;
-      x86_sframe_cfa_fp_reg = REG_FP;
-#endif
     }
   else
     {
@@ -3461,6 +3775,7 @@ i386_md_end (void)
 {
   htab_delete (op_hash);
   htab_delete (reg_hash);
+  GOT_symbol = NULL;
 }
 
 #ifdef DEBUG386
@@ -3497,6 +3812,7 @@ pi (const char *line, i386_insn *x)
       pt (x->types[j]);
       fprintf (stdout, "\n");
       if (x->types[j].bitfield.class == Reg
+	  || x->types[j].bitfield.class == RegFP
 	  || x->types[j].bitfield.class == RegMMX
 	  || x->types[j].bitfield.class == RegSIMD
 	  || x->types[j].bitfield.class == RegMask
@@ -3605,7 +3921,7 @@ const type_names[] =
   { { .bitfield = { .class = RegCR } }, "control reg" },
   { { .bitfield = { .class = RegTR } }, "test reg" },
   { { .bitfield = { .class = RegDR } }, "debug reg" },
-  { { .bitfield = { .class = Reg, .tbyte = 1 } }, "FReg" },
+  { { .bitfield = { .class = RegFP, .tbyte = 1 } }, "FReg" },
   { { .bitfield = { .instance = Accum, .tbyte = 1 } }, "FAcc" },
   { { .bitfield = { .class = SReg } }, "SReg" },
   { { .bitfield = { .class = RegMMX } }, "rMMX" },
@@ -3634,10 +3950,13 @@ pt (i386_operand_type t)
 #endif /* DEBUG386 */
 
 static bfd_reloc_code_real_type
-reloc (unsigned int size,
-       int pcrel,
-       int sign,
-       bfd_reloc_code_real_type other)
+_reloc (unsigned int size,
+	bool pcrel,
+	int sign,
+	bfd_reloc_code_real_type other,
+	bool code64,
+	const char *file,
+	unsigned int line)
 {
   if (other != NO_RELOC)
     {
@@ -3646,15 +3965,11 @@ reloc (unsigned int size,
       if (size == 8)
 	switch (other)
 	  {
+	  case BFD_RELOC_64_PLTOFF:
+	  case BFD_RELOC_X86_64_GOTPLT64:
+	    return other;
 	  case BFD_RELOC_X86_64_GOT32:
 	    return BFD_RELOC_X86_64_GOT64;
-	    break;
-	  case BFD_RELOC_X86_64_GOTPLT64:
-	    return BFD_RELOC_X86_64_GOTPLT64;
-	    break;
-	  case BFD_RELOC_X86_64_PLTOFF64:
-	    return BFD_RELOC_X86_64_PLTOFF64;
-	    break;
 	  case BFD_RELOC_X86_64_GOTPC32:
 	    other = BFD_RELOC_X86_64_GOTPC64;
 	    break;
@@ -3671,37 +3986,40 @@ reloc (unsigned int size,
 	    break;
 	  }
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
       if (other == BFD_RELOC_SIZE32)
 	{
 	  if (size == 8)
 	    other = BFD_RELOC_SIZE64;
 	  if (pcrel)
 	    {
-	      as_bad (_("there are no pc-relative size relocations"));
+	      as_bad_where (file, line,
+			    _("there are no pc-relative size relocations"));
 	      return NO_RELOC;
 	    }
 	}
 #endif
 
       /* Sign-checking 4-byte relocations in 16-/32-bit code is pointless.  */
-      if (size == 4 && (flag_code != CODE_64BIT || disallow_64bit_reloc))
+      if (size == 4 && (!code64 || disallow_64bit_reloc))
 	sign = -1;
 
       rel = bfd_reloc_type_lookup (stdoutput, other);
       if (!rel)
-	as_bad (_("unknown relocation (%u)"), other);
+	as_bad_where (file, line, _("unknown relocation (%u)"), other);
       else if (size != bfd_get_reloc_size (rel))
-	as_bad (_("%u-byte relocation cannot be applied to %u-byte field"),
-		bfd_get_reloc_size (rel),
-		size);
+	as_bad_where (file, line,
+		      _("%u-byte relocation cannot be applied to %u-byte field"),
+		      bfd_get_reloc_size (rel), size);
       else if (pcrel && !rel->pc_relative)
-	as_bad (_("non-pc-relative relocation for pc-relative field"));
+	as_bad_where (file, line,
+		      _("non-pc-relative relocation for pc-relative field"));
       else if ((rel->complain_on_overflow == complain_overflow_signed
 		&& !sign)
 	       || (rel->complain_on_overflow == complain_overflow_unsigned
 		   && sign > 0))
-	as_bad (_("relocated field and relocation type differ in signedness"));
+	as_bad_where (file, line,
+		      _("relocated field and relocation type differ in signedness"));
       else
 	return other;
       return NO_RELOC;
@@ -3710,7 +4028,8 @@ reloc (unsigned int size,
   if (pcrel)
     {
       if (!sign)
-	as_bad (_("there are no unsigned pc-relative relocations"));
+	as_bad_where (file, line,
+		      _("there are no unsigned pc-relative relocations"));
       switch (size)
 	{
 	case 1: return BFD_RELOC_8_PCREL;
@@ -3718,7 +4037,8 @@ reloc (unsigned int size,
 	case 4: return BFD_RELOC_32_PCREL;
 	case 8: return BFD_RELOC_64_PCREL;
 	}
-      as_bad (_("cannot do %u byte pc-relative relocation"), size);
+      as_bad_where (file, line,
+		    _("cannot do %u byte pc-relative relocation"), size);
     }
   else
     {
@@ -3735,14 +4055,23 @@ reloc (unsigned int size,
 	  case 4: return BFD_RELOC_32;
 	  case 8: return BFD_RELOC_64;
 	  }
-      as_bad (_("cannot do %s %u byte relocation"),
-	      sign > 0 ? "signed" : "unsigned", size);
+      as_bad_where (file, line, _("cannot do %s %u byte relocation"),
+		    sign > 0 ? "signed" : "unsigned", size);
     }
 
   return NO_RELOC;
 }
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+static bfd_reloc_code_real_type
+reloc (unsigned int size,
+       bool pcrel,
+       int sign,
+       bfd_reloc_code_real_type other)
+{
+  return _reloc (size, pcrel, sign, other, flag_code == CODE_64BIT, NULL, 0);
+}
+
+#ifdef OBJ_ELF
 /* Here we decide which fixups can be adjusted to make them relative to
    the beginning of the section instead of the symbol.  Basically we need
    to make sure that the dynamic relocations are done correctly, so in
@@ -3751,9 +4080,6 @@ reloc (unsigned int size,
 int
 tc_i386_fix_adjustable (fixS *fixP)
 {
-  if (!IS_ELF)
-    return 1;
-
   /* Don't adjust pc-relative references to merge sections in 64-bit
      mode.  */
   if (use_rela_relocations
@@ -3789,22 +4115,33 @@ tc_i386_fix_adjustable (fixS *fixP)
       || fixP->fx_r_type == BFD_RELOC_X86_64_GOTPCRELX
       || fixP->fx_r_type == BFD_RELOC_X86_64_REX_GOTPCRELX
       || fixP->fx_r_type == BFD_RELOC_X86_64_CODE_4_GOTPCRELX
+      || fixP->fx_r_type == BFD_RELOC_X86_64_CODE_5_GOTPCRELX
+      || fixP->fx_r_type == BFD_RELOC_X86_64_CODE_6_GOTPCRELX
       || fixP->fx_r_type == BFD_RELOC_X86_64_TLSGD
       || fixP->fx_r_type == BFD_RELOC_X86_64_TLSLD
       || fixP->fx_r_type == BFD_RELOC_X86_64_DTPOFF32
       || fixP->fx_r_type == BFD_RELOC_X86_64_DTPOFF64
       || fixP->fx_r_type == BFD_RELOC_X86_64_GOTTPOFF
       || fixP->fx_r_type == BFD_RELOC_X86_64_CODE_4_GOTTPOFF
+      || fixP->fx_r_type == BFD_RELOC_X86_64_CODE_5_GOTTPOFF
       || fixP->fx_r_type == BFD_RELOC_X86_64_CODE_6_GOTTPOFF
       || fixP->fx_r_type == BFD_RELOC_X86_64_TPOFF32
       || fixP->fx_r_type == BFD_RELOC_X86_64_TPOFF64
       || fixP->fx_r_type == BFD_RELOC_X86_64_GOTOFF64
+      || fixP->fx_r_type == BFD_RELOC_X86_64_GOT64
       || fixP->fx_r_type == BFD_RELOC_X86_64_GOTPC32_TLSDESC
       || fixP->fx_r_type == BFD_RELOC_X86_64_CODE_4_GOTPC32_TLSDESC
+      || fixP->fx_r_type == BFD_RELOC_X86_64_CODE_5_GOTPC32_TLSDESC
+      || fixP->fx_r_type == BFD_RELOC_X86_64_CODE_6_GOTPC32_TLSDESC
       || fixP->fx_r_type == BFD_RELOC_X86_64_TLSDESC_CALL
       || fixP->fx_r_type == BFD_RELOC_VTABLE_INHERIT
       || fixP->fx_r_type == BFD_RELOC_VTABLE_ENTRY)
     return 0;
+  /* Resolve PLT32 relocation against local symbol to section only for
+     PC-relative relocations.  */
+  if (fixP->fx_r_type == BFD_RELOC_386_PLT32
+      || fixP->fx_r_type == BFD_RELOC_32_PLT_PCREL)
+    return fixP->fx_pcrel;
   return 1;
 }
 #endif
@@ -3818,6 +4155,13 @@ want_disp32 (const insn_template *t)
 	      || (i.tm.base_opcode == 0x8d && i.tm.opcode_space == SPACE_BASE))
 	     && (!i.types[1].bitfield.qword
 		 || t->opcode_modifier.size == SIZE32));
+}
+
+static INLINE bool is_padlock (const insn_template *t)
+{
+  /* (Ab)use the PrefixRepe attribute of PadLock insns as long as no
+     others use it.  */
+  return t->opcode_modifier.prefixok == PrefixRepe;
 }
 
 static int
@@ -3908,7 +4252,9 @@ install_template (const insn_template *t)
       if ((maybe_cpu (t, CpuCMPCCXADD) || maybe_cpu (t, CpuAMX_TILE)
 	   || maybe_cpu (t, CpuAVX512F) || maybe_cpu (t, CpuAVX512DQ)
 	   || maybe_cpu (t, CpuAVX512BW) || maybe_cpu (t, CpuBMI)
-	   || maybe_cpu (t, CpuBMI2) || maybe_cpu (t, CpuUSER_MSR))
+	   || maybe_cpu (t, CpuBMI2) || maybe_cpu (t, CpuUSER_MSR)
+	   || maybe_cpu (t, CpuMSR_IMM) || maybe_cpu (t, CpuAMX_TRANSPOSE)
+	   || maybe_cpu (t, CpuAMX_MOVRS))
 	  && maybe_cpu (t, CpuAPX_F))
 	{
 	  if (need_evex_encoding (t))
@@ -3948,7 +4294,7 @@ build_vex_prefix (const insn_template *t)
 {
   unsigned int register_specifier;
   unsigned int vector_length;
-  unsigned int w;
+  bool w;
 
   /* Check register specifier.  */
   if (i.vex.register_specifier)
@@ -4047,11 +4393,11 @@ build_vex_prefix (const insn_template *t)
 
   /* Check the REX.W bit and VEXW.  */
   if (i.tm.opcode_modifier.vexw == VEXWIG)
-    w = (vexwig == vexw1 || (i.rex & REX_W)) ? 1 : 0;
+    w = vexwig == vexw1 || (i.rex & REX_W);
   else if (i.tm.opcode_modifier.vexw && !(i.rex & REX_W))
-    w = i.tm.opcode_modifier.vexw == VEXW1 ? 1 : 0;
+    w = i.tm.opcode_modifier.vexw == VEXW1;
   else
-    w = (flag_code == CODE_64BIT ? i.rex & REX_W : vexwig == vexw1) ? 1 : 0;
+    w = flag_code == CODE_64BIT ? i.rex & REX_W : vexwig == vexw1;
 
   /* Use 2-byte VEX prefix if possible.  */
   if (w == 0
@@ -4060,13 +4406,13 @@ build_vex_prefix (const insn_template *t)
       && (i.rex & (REX_W | REX_X | REX_B)) == 0)
     {
       /* 2-byte VEX prefix.  */
-      unsigned int r;
+      bool r;
 
       i.vex.length = 2;
       i.vex.bytes[0] = 0xc5;
 
       /* Check the REX.R bit.  */
-      r = (i.rex & REX_R) ? 0 : 1;
+      r = !(i.rex & REX_R);
       i.vex.bytes[1] = (r << 7
 			| register_specifier << 3
 			| vector_length << 2
@@ -4082,7 +4428,8 @@ build_vex_prefix (const insn_template *t)
 	case SPACE_0F:
 	case SPACE_0F38:
 	case SPACE_0F3A:
-	case SPACE_VEXMAP7:
+	case SPACE_MAP5:
+	case SPACE_MAP7:
 	  i.vex.bytes[0] = 0xc4;
 	  break;
 	case SPACE_XOP08:
@@ -4117,7 +4464,7 @@ is_any_vex_encoding (const insn_template *t)
 static INLINE bool
 is_apx_evex_encoding (void)
 {
-  return i.rex2 || i.tm.opcode_space == SPACE_EVEXMAP4 || pp.has_nf
+  return i.rex2 || i.tm.opcode_space == SPACE_MAP4 || pp.has_nf
     || (i.vex.register_specifier
 	&& (i.vex.register_specifier->reg_flags & RegRex2));
 }
@@ -4204,7 +4551,8 @@ get_broadcast_bytes (const insn_template *t, bool diag)
 static void
 build_evex_prefix (void)
 {
-  unsigned int register_specifier, w;
+  unsigned int register_specifier;
+  bool w;
   rex_byte vrex_used = 0;
 
   /* Check register specifier.  */
@@ -4240,7 +4588,7 @@ build_evex_prefix (void)
   /* The high 3 bits of the second EVEX byte are 1's compliment of RXB
      bits from REX.  */
   gas_assert (i.tm.opcode_space >= SPACE_0F);
-  gas_assert (i.tm.opcode_space <= SPACE_VEXMAP7);
+  gas_assert (i.tm.opcode_space <= SPACE_MAP7);
   i.vex.bytes[1] = ((~i.rex & 7) << 5)
 		   | (!dot_insn () ? i.tm.opcode_space
 				   : i.insn_opcode_space);
@@ -4271,11 +4619,61 @@ build_evex_prefix (void)
 
   /* Check the REX.W bit and VEXW.  */
   if (i.tm.opcode_modifier.vexw == VEXWIG)
-    w = (evexwig == evexw1 || (i.rex & REX_W)) ? 1 : 0;
+    w = evexwig == evexw1 || (i.rex & REX_W);
   else if (i.tm.opcode_modifier.vexw && !(i.rex & REX_W))
-    w = i.tm.opcode_modifier.vexw == VEXW1 ? 1 : 0;
+    w = i.tm.opcode_modifier.vexw == VEXW1;
   else
-    w = (flag_code == CODE_64BIT ? i.rex & REX_W : evexwig == evexw1) ? 1 : 0;
+    w = flag_code == CODE_64BIT ? i.rex & REX_W : evexwig == evexw1;
+
+  if (i.tm.opcode_modifier.evex == EVEXDYN)
+    {
+      unsigned int op;
+
+      /* Determine vector length from the last multi-length vector operand.  */
+      for (op = i.operands; op--;)
+	if (i.tm.operand_types[op].bitfield.xmmword
+	    + i.tm.operand_types[op].bitfield.ymmword
+	    + i.tm.operand_types[op].bitfield.zmmword > 1)
+	  {
+	    if (i.types[op].bitfield.zmmword)
+	      {
+		i.tm.opcode_modifier.evex = EVEX512;
+		break;
+	      }
+	    else if (i.types[op].bitfield.ymmword)
+	      {
+		i.tm.opcode_modifier.evex = EVEX256;
+		break;
+	      }
+	    else if (i.types[op].bitfield.xmmword)
+	      {
+		i.tm.opcode_modifier.evex = EVEX128;
+		break;
+	      }
+	    else if ((i.broadcast.type || i.broadcast.bytes)
+		      && op == i.broadcast.operand)
+	      {
+		switch (get_broadcast_bytes (&i.tm, true))
+		  {
+		    case 64:
+		      i.tm.opcode_modifier.evex = EVEX512;
+		      break;
+		    case 32:
+		      i.tm.opcode_modifier.evex = EVEX256;
+		      break;
+		    case 16:
+		      i.tm.opcode_modifier.evex = EVEX128;
+		      break;
+		    default:
+		      abort ();
+		  }
+		break;
+	      }
+	  }
+
+      if (op >= MAX_OPERANDS)
+	abort ();
+    }
 
   /* The third byte of the EVEX prefix.  */
   i.vex.bytes[2] = ((w << 7)
@@ -4293,57 +4691,6 @@ build_evex_prefix (void)
     {
       /* Encode the vector length.  */
       unsigned int vec_length;
-
-      if (i.tm.opcode_modifier.evex == EVEXDYN)
-	{
-	  unsigned int op;
-
-	  /* Determine vector length from the last multi-length vector
-	     operand.  */
-	  for (op = i.operands; op--;)
-	    if (i.tm.operand_types[op].bitfield.xmmword
-		+ i.tm.operand_types[op].bitfield.ymmword
-		+ i.tm.operand_types[op].bitfield.zmmword > 1)
-	      {
-		if (i.types[op].bitfield.zmmword)
-		  {
-		    i.tm.opcode_modifier.evex = EVEX512;
-		    break;
-		  }
-		else if (i.types[op].bitfield.ymmword)
-		  {
-		    i.tm.opcode_modifier.evex = EVEX256;
-		    break;
-		  }
-		else if (i.types[op].bitfield.xmmword)
-		  {
-		    i.tm.opcode_modifier.evex = EVEX128;
-		    break;
-		  }
-		else if ((i.broadcast.type || i.broadcast.bytes)
-			 && op == i.broadcast.operand)
-		  {
-		    switch (get_broadcast_bytes (&i.tm, true))
-		      {
-			case 64:
-			  i.tm.opcode_modifier.evex = EVEX512;
-			  break;
-			case 32:
-			  i.tm.opcode_modifier.evex = EVEX256;
-			  break;
-			case 16:
-			  i.tm.opcode_modifier.evex = EVEX128;
-			  break;
-			default:
-			  abort ();
-		      }
-		    break;
-		  }
-	      }
-
-	  if (op >= MAX_OPERANDS)
-	    abort ();
-	}
 
       switch (i.tm.opcode_modifier.evex)
 	{
@@ -4397,7 +4744,8 @@ build_rex2_prefix (void)
   i.vex.bytes[0] = 0xd5;
   /* For the W R X B bits, the variables of rex prefix will be reused.  */
   i.vex.bytes[1] = ((i.tm.opcode_space << 7)
-		    | (i.rex2 << 4) | i.rex);
+		    | (i.rex2 << 4)
+		    | ((i.rex | i.prefix[REX_PREFIX]) & 0xf));
 }
 
 /* Build the EVEX prefix (4-byte) for evex insn
@@ -4407,11 +4755,11 @@ build_rex2_prefix (void)
    | z| L'L | b | `v | aaa |
 */
 static bool
-build_apx_evex_prefix (void)
+build_apx_evex_prefix (bool force_nd)
 {
   /* To mimic behavior for legacy insns, transform use of DATA16 and REX64 into
      their embedded-prefix representations.  */
-  if (i.tm.opcode_space == SPACE_EVEXMAP4)
+  if (i.tm.opcode_space == SPACE_MAP4)
     {
       if (i.prefix[DATA_PREFIX])
 	{
@@ -4453,8 +4801,9 @@ build_apx_evex_prefix (void)
 
   /* Encode the NDD bit of the instruction promoted from the legacy
      space. ZU shares the same bit with NDD.  */
-  if ((i.vex.register_specifier && i.tm.opcode_space == SPACE_EVEXMAP4)
-      || i.tm.opcode_modifier.operandconstraint == ZERO_UPPER)
+  if ((i.vex.register_specifier && i.tm.opcode_space == SPACE_MAP4)
+      || i.tm.opcode_modifier.operandconstraint == ZERO_UPPER
+      || force_nd)
     i.vex.bytes[3] |= 0x10;
 
   /* Encode SCC and oszc flags bits.  */
@@ -4486,9 +4835,9 @@ static void establish_rex (void)
   i.rex |= i.prefix[REX_PREFIX] & REX_OPCODE;
 
   /* For 8 bit RegRex64 registers without a prefix, we need an empty rex prefix.  */
-  if (((i.types[first].bitfield.class == Reg && i.types[first].bitfield.byte
+  if (((i.types[first].bitfield.class == Reg
 	&& (i.op[first].regs->reg_flags & RegRex64) != 0)
-       || (i.types[last].bitfield.class == Reg && i.types[last].bitfield.byte
+       || (i.types[last].bitfield.class == Reg
 	   && (i.op[last].regs->reg_flags & RegRex64) != 0))
       && !is_apx_rex2_encoding () && !is_any_vex_encoding (&i.tm))
     i.rex |= REX_OPCODE;
@@ -4502,9 +4851,8 @@ static void establish_rex (void)
 	{
 	  /* Look for 8 bit operand that uses old registers.  */
 	  if (i.types[x].bitfield.class == Reg && i.types[x].bitfield.byte
-	      && (i.op[x].regs->reg_flags & RegRex64) == 0)
+	      && !(i.op[x].regs->reg_flags & (RegRex | RegRex2 | RegRex64)))
 	    {
-	      gas_assert (!(i.op[x].regs->reg_flags & RegRex));
 	      /* In case it is "hi" register, give up.  */
 	      if (i.op[x].regs->reg_num > 3)
 		as_bad (_("can't encode register '%s%s' in an "
@@ -4530,10 +4878,9 @@ static void establish_rex (void)
       for (x = first; x <= last; x++)
 	if (i.types[x].bitfield.class == Reg
 	    && i.types[x].bitfield.byte
-	    && (i.op[x].regs->reg_flags & RegRex64) == 0
+	    && !(i.op[x].regs->reg_flags & (RegRex | RegRex2 | RegRex64))
 	    && i.op[x].regs->reg_num > 3)
 	  {
-	    gas_assert (!(i.op[x].regs->reg_flags & RegRex));
 	    pp.rex_encoding = false;
 	    pp.rex2_encoding = false;
 	    break;
@@ -4545,9 +4892,28 @@ static void establish_rex (void)
 
   if (is_apx_rex2_encoding ())
     {
+      /* Most prefixes are not permitted with JMPABS.  */
+      if (i.tm.mnem_off == MN_jmpabs)
+	{
+	  if (i.prefix[DATA_PREFIX] || (i.prefix[REX_PREFIX] & REX_W))
+	    {
+	      as_bad (_("size override not allowed with `%s'"),
+		      insn_name (&i.tm));
+	      i.prefix[DATA_PREFIX] = 0;
+	      i.prefix[REX_PREFIX] &= ~REX_W;
+	    }
+	  if (i.prefix[ADDR_PREFIX])
+	    {
+	      as_bad (_("address override not allowed with `%s'"),
+		      insn_name (&i.tm));
+	      i.prefix[ADDR_PREFIX] = 0;
+	    }
+	}
+
       build_rex2_prefix ();
       /* The individual REX.RXBW bits got consumed.  */
       i.rex &= REX_OPCODE;
+      i.prefix[REX_PREFIX] = 0;
     }
   else if (i.rex != 0)
     add_prefix (REX_OPCODE | i.rex);
@@ -4587,11 +4953,6 @@ check_hle (void)
   switch (i.tm.opcode_modifier.prefixok)
     {
     default:
-      abort ();
-    case PrefixLock:
-    case PrefixNone:
-    case PrefixNoTrack:
-    case PrefixRep:
       as_bad (_("invalid instruction `%s' after `%s'"),
 	      insn_name (&i.tm), i.hle_prefix);
       return 0;
@@ -4813,10 +5174,103 @@ optimize_encoding (void)
       i.seg[0] = NULL;
     }
 
+  if (((i.tm.opcode_space == SPACE_0F
+        && (i.tm.base_opcode | 1) == 0xbf
+        && (i.types[0].bitfield.byte
+	    ? i.types[1].bitfield.word
+	    : i.types[1].bitfield.dword))
+       || (i.tm.opcode_space == SPACE_BASE
+	   && i.tm.base_opcode == 0x63
+	   && i.types[1].bitfield.qword))
+      && i.reg_operands == 2
+      && i.op[0].regs->reg_type.bitfield.instance == Accum
+      && i.op[1].regs->reg_type.bitfield.instance == Accum
+      && (cpu_arch_tune != PROCESSOR_K6 || optimize_for_space))
+    {
+      /* Optimize: -O:
+	   movsb     %al, %ax    -> cbw
+	   movsw     %ax, %eax   -> cwde
+	   movsl     %eax, %rax  -> cdqe
+       */
+      i.tm.opcode_space = SPACE_BASE;
+      i.tm.base_opcode = 0x98;
+      i.tm.opcode_modifier.modrm = 0;
+      /* Leave the destination register in place for process_suffix() to take
+	 care of operand sizing.  This will end up as short_form encoding,
+	 with the register number being 0 (i.e. not altering the opcode).  */
+      i.reg_operands = 1;
+      i.op[0].regs = i.op[1].regs;
+      i.tm.operand_types[1].bitfield.class = ClassNone;
+      return;
+    }
+
+  if (optimize_for_space
+      && i.tm.opcode_space == SPACE_0F
+      && (i.tm.base_opcode | 1) == 0xb7
+      && i.reg_operands == 2
+      && !i.op[0].regs->reg_flags
+      && !i.op[1].regs->reg_flags
+      && (i.types[0].bitfield.byte
+	  ? i.types[1].bitfield.word
+	    && i.op[0].regs->reg_num < 4
+	    && i.op[1].regs->reg_num == i.op[0].regs->reg_num
+	    && (!i.suffix || i.suffix == WORD_MNEM_SUFFIX)
+	  : i.types[1].bitfield.dword
+	    && flag_code == CODE_16BIT
+	    && i.op[0].regs->reg_type.bitfield.baseindex
+	    && i.op[0].regs->reg_num != EBP_REG_NUM))
+    {
+      /* Optimize: -Os:
+	   movzb     %r8, %r16    -> mov $0, %r8h
+
+	   %r8 being one of %al, %cl, %dl, or %bl, with %r16 being the
+	   matching 16-bit reg.
+       */
+
+      i.tm.opcode_space = SPACE_BASE;
+      i.tm.opcode_modifier.w = 0;
+      i.reg_operands = 1;
+      if (i.types[0].bitfield.byte)
+	{
+	  i.tm.base_opcode = 0xb0;
+	  i.tm.opcode_modifier.modrm = 0;
+	  copy_operand (1, 0);
+	  i.op[1].regs += 4;
+
+	  im_expressions[0].X_op = O_constant;
+	  im_expressions[0].X_add_number = 0;
+	  i.op[0].imms = &im_expressions[0];
+ 	  operand_type_set (&i.types[0], 0);
+	  i.types[0].bitfield.imm8 = 1;
+	  i.tm.operand_types[0] = i.types[0];
+	  i.tm.operand_types[0].bitfield.class = ClassNone;
+	  i.imm_operands = 1;
+
+	  i.suffix = 0;
+	  return;
+	}
+
+      /* In 16-bit mode, optimize: -Os:
+	   movzw     %r16, %r32   -> lea (%r16), %r32
+
+	   %r16 being one of %bx, %si, or %di.
+       */
+      i.tm.base_opcode = 0x8d;
+
+      i.base_reg = i.op[0].regs;
+      operand_type_set (&i.types[0], 0);
+      i.types[0].bitfield.baseindex = 1;
+      i.tm.operand_types[0] = i.types[0];
+      i.op[0].disps = NULL;
+      i.flags[0] = Operand_Mem;
+      i.mem_operands = 1;
+      return;
+    }
+
   if (optimize_for_space
       && (i.tm.mnem_off == MN_test
           || (i.tm.base_opcode == 0xf6
-              && i.tm.opcode_space == SPACE_EVEXMAP4))
+              && i.tm.opcode_space == SPACE_MAP4))
       && i.reg_operands == 1
       && i.imm_operands == 1
       && !i.types[1].bitfield.byte
@@ -4838,7 +5292,7 @@ optimize_encoding (void)
 	  /* Squash the suffix.  */
 	  i.suffix = 0;
 	  /* Convert to byte registers. 8-bit registers are special,
-	     RegRex64 and non-RegRex64 each have 8 registers.  */
+	     RegRex64 and non-RegRex* each have 8 registers.  */
 	  if (i.types[1].bitfield.word)
 	    /* 32 (or 40) 8-bit registers.  */
 	    j = 32;
@@ -4984,7 +5438,7 @@ optimize_encoding (void)
 	   && i.tm.base_opcode == 0xd0
 	   && i.tm.extension_opcode == 4
 	   && (i.tm.opcode_space == SPACE_BASE
-	       || i.tm.opcode_space == SPACE_EVEXMAP4)
+	       || i.tm.opcode_space == SPACE_MAP4)
 	   && !i.mem_operands)
     {
       /* Optimize: -O:
@@ -5001,17 +5455,11 @@ optimize_encoding (void)
       i.tm.base_opcode = 0x00;
       i.tm.extension_opcode = None;
       if (i.operands >= 2)
-	{
-	  i.tm.operand_types[0] = i.tm.operand_types[1];
-	  i.op[0].regs = i.op[1].regs;
-	  i.types[0] = i.types[1];
-	}
+	copy_operand (0, 1);
       else
 	{
 	  /* Legacy form with omitted shift count operand.  */
-	  i.tm.operand_types[1] = i.tm.operand_types[0];
-	  i.op[1].regs = i.op[0].regs;
-	  i.types[1] = i.types[0];
+	  copy_operand (1, 0);
 	  i.operands = 2;
 	}
       i.reg_operands++;
@@ -5051,6 +5499,41 @@ optimize_encoding (void)
 	  if (i.op[0].imms->X_add_number < 16)
 	    i.tm.opcode_modifier.size = SIZE16;
 	  break;
+	}
+    }
+  else if (optimize > 1
+	   && (i.tm.base_opcode | 0xf) == 0x4f
+	   && i.tm.opcode_space == SPACE_MAP4
+	   && i.reg_operands == 3
+	   && i.tm.opcode_modifier.operandconstraint == EVEX_NF
+	   && !i.types[0].bitfield.word)
+    {
+      /* Optimize: -O2:
+	   cfcmov<cc> %rM, %rN, %rN -> cmov<cc> %rM, %rN
+	   cfcmov<cc> %rM, %rN, %rM -> cmov<!cc> %rN, %rM
+	   cfcmov<cc> %rN, %rN, %rN -> nop %rN
+       */
+      if (i.op[0].regs == i.op[2].regs)
+	{
+	  i.tm.base_opcode ^= 1;
+	  i.op[0].regs = i.op[1].regs;
+	  i.op[1].regs = i.op[2].regs;
+	}
+      else if (i.op[1].regs != i.op[2].regs)
+	return;
+
+      i.tm.opcode_space = SPACE_0F;
+      i.tm.opcode_modifier.evex = 0;
+      i.tm.opcode_modifier.vexvvvv = 0;
+      i.tm.opcode_modifier.operandconstraint = 0;
+      i.reg_operands = 2;
+
+      /* While at it, convert to NOP if all three regs match.  */
+      if (i.op[0].regs == i.op[1].regs)
+	{
+	  i.tm.base_opcode = 0x1f;
+	  i.tm.extension_opcode = 0;
+	  i.reg_operands = 1;
 	}
     }
   else if (i.reg_operands == 3
@@ -5262,10 +5745,7 @@ optimize_encoding (void)
 	      i.reg_operands = 3;
 	      i.tm.operands = 3;
 
-	      i.op[2].regs = i.op[0].regs;
-	      i.types[2] = i.types[0];
-	      i.flags[2] = i.flags[0];
-	      i.tm.operand_types[2] = i.tm.operand_types[0];
+	      copy_operand (2, 0);
 
 	      i.tm.opcode_modifier.sse2avx = 0;
 	    }
@@ -5309,9 +5789,7 @@ optimize_encoding (void)
       i.tm.extension_opcode = None;
       if (i.tm.opcode_modifier.vexvvvv)
 	i.tm.opcode_modifier.vexvvvv = VexVVVV_SRC1;
-      i.tm.operand_types[0] = i.tm.operand_types[1];
-      i.op[0].regs = i.op[1].regs;
-      i.types[0] = i.types[1];
+      copy_operand (0, 1);
       i.reg_operands++;
       i.imm_operands = 0;
     }
@@ -5335,11 +5813,7 @@ optimize_encoding (void)
       ++i.reg_operands;
       ++i.tm.operands;
 
-      i.op[2].regs = i.op[0].regs;
-      i.types[2] = i.types[0];
-      i.flags[2] = i.flags[0];
-      i.tm.operand_types[2] = i.tm.operand_types[0];
-
+      copy_operand (2, 0);
       swap_2_operands (1, 2);
     }
   else if (i.tm.base_opcode == 0x16
@@ -5367,17 +5841,174 @@ optimize_encoding (void)
 	    = i.tm.opcode_modifier.sse2avx ? VEXW0 : VEXWIG;
 	}
 
-      i.op[0].regs = i.op[1].regs;
-      i.types[0] = i.types[1];
-      i.flags[0] = i.flags[1];
-      i.tm.operand_types[0] = i.tm.operand_types[1];
-
-      i.op[1].regs = i.op[2].regs;
-      i.types[1] = i.types[2];
-      i.flags[1] = i.flags[2];
-      i.tm.operand_types[1] = i.tm.operand_types[2];
+      copy_operand (0, 1);
+      copy_operand (1, 2);
 
       i.operands = 2;
+      i.imm_operands = 0;
+    }
+  else if (i.tm.base_opcode == 0x17
+	   && i.tm.opcode_space == SPACE_0F3A
+	   && i.op[0].imms->X_op == O_constant
+	   && i.op[0].imms->X_add_number == 0)
+    {
+      /* Optimize: -O:
+         extractps $0, %xmmN, %rM   -> movd %xmmN, %rM
+         extractps $0, %xmmN, mem   -> movss %xmmN, mem
+         vextractps $0, %xmmN, %rM  -> vmovd %xmmN, %rM
+         vextractps $0, %xmmN, mem  -> vmovss %xmmN, mem
+       */
+      i.tm.opcode_space = SPACE_0F;
+      i.tm.opcode_modifier.vexw = VEXW0;
+
+      if (!i.mem_operands)
+	i.tm.base_opcode = 0x7e;
+      else
+	{
+	  i.tm.base_opcode = 0x11;
+	  i.tm.opcode_modifier.opcodeprefix = PREFIX_0XF3;
+	}
+
+      copy_operand (0, 1);
+      copy_operand (1, 2);
+
+      i.operands = 2;
+      i.imm_operands = 0;
+    }
+  else if ((i.tm.base_opcode | 0x22) == 0x3b
+	   && i.tm.opcode_space == SPACE_0F3A
+	   && i.op[0].imms->X_op == O_constant
+	   && i.op[0].imms->X_add_number == 0)
+    {
+      /* Optimize: -O:
+         vextractf128 $0, %ymmN, %xmmM      -> vmovaps %xmmN, %xmmM
+         vextractf128 $0, %ymmN, mem        -> vmovups %xmmN, mem
+         vextractf32x4 $0, %[yz]mmN, %xmmM  -> vmovaps %xmmN, %xmmM
+         vextractf32x4 $0, %[yz]mmN, mem    -> vmovups %xmmN, mem
+         vextractf64x2 $0, %[yz]mmN, %xmmM  -> vmovapd %xmmN, %xmmM
+         vextractf64x2 $0, %[yz]mmN, mem    -> vmovupd %xmmN, mem
+         vextractf32x8 $0, %zmmN, %ymmM     -> vmovaps %ymmN, %ymmM
+         vextractf32x8 $0, %zmmN, mem       -> vmovups %ymmN, mem
+         vextractf64x4 $0, %zmmN, %ymmM     -> vmovapd %ymmN, %ymmM
+         vextractf64x4 $0, %zmmN, mem       -> vmovupd %ymmN, mem
+         vextracti128 $0, %ymmN, %xmmM      -> vmovdqa %xmmN, %xmmM
+         vextracti128 $0, %ymmN, mem        -> vmovdqu %xmmN, mem
+         vextracti32x4 $0, %[yz]mmN, %xmmM  -> vmovdqa{,32} %xmmN, %xmmM
+         vextracti32x4 $0, %[yz]mmN, mem    -> vmovdqu{,32} %xmmN, mem
+         vextracti64x2 $0, %[yz]mmN, %xmmM  -> vmovdqa{,64} %xmmN, %xmmM
+         vextracti64x2 $0, %[yz]mmN, mem    -> vmovdqu{,64} %xmmN, mem
+         vextracti32x8 $0, %zmmN, %ymmM     -> vmovdqa{,32} %ymmN, %ymmM
+         vextracti32x8 $0, %zmmN, mem       -> vmovdqu{,32} %ymmN, mem
+         vextracti64x4 $0, %zmmN, %ymmM     -> vmovdqa{,64} %ymmN, %ymmM
+         vextracti64x4 $0, %zmmN, mem       -> vmovdqu{,64} %ymmN, mem
+       */
+      i.tm.opcode_space = SPACE_0F;
+
+      if (!i.mask.reg
+	  && (pp.encoding <= encoding_vex3
+	      || (pp.encoding == encoding_evex512
+		  && (!i.base_reg || !(i.base_reg->reg_flags & RegRex2))
+		  && (!i.index_reg || !(i.index_reg->reg_flags & RegRex2)))))
+	{
+	  i.tm.opcode_modifier.vex = i.tm.base_opcode & 2 ? VEX256 : VEX128;
+	  i.tm.opcode_modifier.evex = 0;
+	}
+      else
+	i.tm.opcode_modifier.evex = i.tm.base_opcode & 2 ? EVEX256 : EVEX128;
+
+      if (i.tm.base_opcode & 0x20)
+	{
+	  i.tm.base_opcode = 0x7f;
+	  if (i.reg_operands != 2)
+	    i.tm.opcode_modifier.opcodeprefix = PREFIX_0XF3;
+	}
+      else
+	{
+	  if (i.reg_operands == 2)
+	    i.tm.base_opcode = 0x29;
+	  else
+	    i.tm.base_opcode = 0x11;
+	  if (i.tm.opcode_modifier.vexw != VEXW1)
+	    i.tm.opcode_modifier.opcodeprefix = PREFIX_NONE;
+	}
+
+      if (i.tm.opcode_modifier.vex)
+	i.tm.opcode_modifier.vexw = VEXWIG;
+
+      copy_operand (0, 1);
+      copy_operand (1, 2);
+
+      i.operands = 2;
+      i.imm_operands = 0;
+    }
+  else if (i.tm.base_opcode == 0x21
+	   && i.tm.opcode_space == SPACE_0F3A
+	   && i.op[0].imms->X_op == O_constant
+	   && (i.operands == i.reg_operands + 1
+	       ? i.op[0].imms->X_add_number == 0
+		 || (i.op[0].imms->X_add_number & 0xf) == 0xf
+	       : (i.op[0].imms->X_add_number & 0x3f) == 0x0e
+		  && (i.reg_operands == 1 || i.op[2].regs == i.op[3].regs)))
+    {
+      /* Optimize: -O:
+         insertps $0b....1111, %xmmN, %xmmM          -> xorps %xmmM, %xmmM
+         insertps $0b00000000, %xmmN, %xmmM          -> movss %xmmN, %xmmM
+         insertps $0b..001110, mem, %xmmN            -> movss mem, %xmmN
+         vinsertps $0b....1111, %xmmN, %xmmM, %xmmK  -> vxorps %xmm?, %xmm?, %xmmK
+         vinsertps $0b00000000, %xmmN, %xmmM, %xmmK  -> vmovss %xmmN, %xmmM, %xmmK
+         vinsertps $0b..001110, mem, %xmmN, %xmmN    -> vmovss mem, %xmmN
+       */
+      i.tm.opcode_space = SPACE_0F;
+      if ((i.op[0].imms->X_add_number & 0xf) == 0xf)
+	{
+	  i.tm.base_opcode = 0x57;
+	  i.tm.opcode_modifier.opcodeprefix = PREFIX_NONE;
+
+	  --i.operands;
+
+	  copy_operand (i.operands - 1, i.operands);
+	  copy_operand (1, i.operands - 1);
+	  copy_operand (0, 1);
+
+	  /* Switch from EVEX to VEX encoding if possible.  Sadly we can't
+	     (always) tell use of the {evex} pseudo-prefix (which otherwise
+	     we'd like to respect) from use of %xmm16-%xmm31.  */
+	  if (pp.encoding == encoding_evex)
+	    pp.encoding = encoding_default;
+	  if (i.tm.opcode_modifier.evex
+	      && pp.encoding <= encoding_vex3
+	      && !(i.op[0].regs->reg_flags & RegVRex))
+	    {
+	      i.tm.opcode_modifier.evex = 0;
+	      i.tm.opcode_modifier.vex = VEX128;
+	    }
+
+	  /* Switch from VEX3 to VEX2 encoding if possible.  */
+	  if (i.tm.opcode_modifier.vex
+	      && pp.encoding <= encoding_vex
+	      && (i.op[0].regs->reg_flags & RegRex))
+	    {
+	      i.op[0].regs -= 8;
+	      i.op[1].regs = i.op[0].regs;
+	    }
+	}
+      else
+	{
+	  i.tm.base_opcode = 0x10;
+	  i.tm.opcode_modifier.opcodeprefix = PREFIX_0XF3;
+
+	  if (i.op[0].imms->X_add_number == 0)
+	    --i.operands;
+	  else
+	    {
+	      i.operands = 2;
+	      i.tm.opcode_modifier.vexvvvv = 0;
+	    }
+	  copy_operand (0, 1);
+	  copy_operand (1, 2);
+	  copy_operand (2, 3);
+	}
+
       i.imm_operands = 0;
     }
 }
@@ -5391,7 +6022,7 @@ static bool is_index (const reg_entry *r)
 
   if (r->reg_type.bitfield.byte)
     {
-      if (!(r->reg_flags & RegRex64))
+      if (!(r->reg_flags & (RegRex | RegRex2 | RegRex64)))
 	{
 	  if (r->reg_num >= 4)
 	    return false;
@@ -5468,16 +6099,8 @@ optimize_nf_encoding (void)
 	= (i.op[0].imms->X_add_number == 1) != (i.tm.extension_opcode == 0);
       i.tm.opcode_modifier.w = 1;
 
-      i.types[0] = i.types[1];
-      i.types[1] = i.types[2];
-      i.tm.operand_types[0] = i.tm.operand_types[1];
-      i.tm.operand_types[1] = i.tm.operand_types[2];
-      i.op[0] = i.op[1];
-      i.op[1] = i.op[2];
-      i.flags[0] = i.flags[1];
-      i.flags[1] = i.flags[2];
-      i.reloc[0] = i.reloc[1];
-      i.reloc[1] = NO_RELOC;
+      copy_operand (0, 1);
+      copy_operand (1, 2);
 
       i.imm_operands = 0;
       --i.operands;
@@ -5566,9 +6189,7 @@ optimize_nf_encoding (void)
 	  i.tm.opcode_modifier.vexvvvv = VexVVVV_DST;
 	  i.operands = 3;
 	  i.reg_operands = 2;
-	  i.op[2].regs = i.op[1].regs;
- 	  i.tm.operand_types[2] = i.tm.operand_types[1];
- 	  i.types[2] = i.types[1];
+	  copy_operand (2, 1);
 	}
     }
 
@@ -5760,14 +6381,117 @@ optimize_nf_encoding (void)
       i.op[0].disps = NULL;
       i.flags[0] = Operand_Mem;
 
-      i.tm.operand_types[1] = i.tm.operand_types[i.operands - 1];
-      i.op[1].regs = i.op[i.operands - 1].regs;
-      i.types[1] = i.types[i.operands - 1];
+      copy_operand (1, i.operands - 1);
 
       i.operands = 2;
       i.mem_operands = i.reg_operands = 1;
       i.imm_operands = 0;
       pp.has_nf = false;
+    }
+  else if (cpu_arch_isa_flags.bitfield.cpubmi2
+	   && pp.encoding == encoding_default
+	   && (i.operands > 2 || !i.mem_operands)
+	   && (i.types[i.operands - 1].bitfield.dword
+	       || i.types[i.operands - 1].bitfield.qword))
+    {
+      if (i.tm.base_opcode == 0xd2)
+	{
+	  /* Optimize: -O:
+	       <OP> one of sal, sar, shl, shr:
+	       {nf} <OP> %cl, %rN       -> <OP>x %{e,r}cx, %rN, %rN (N < 16)
+	       {nf} <OP> %cl, ..., %rN  -> <OP>x %{e,r}cx, ..., %rN (no eGPR used)
+	   */
+	  gas_assert (i.tm.extension_opcode & 4);
+	  i.tm.operand_types[0] = i.tm.operand_types[i.operands - 1];
+	  /* NB: i.op[0].regs specifying %cl is good enough.  */
+	  i.types[0] = i.types[i.operands - 1];
+	  if (i.operands == 2)
+	    {
+	      i.tm.operand_types[0].bitfield.baseindex = 0;
+	      i.tm.operand_types[2] = i.tm.operand_types[0];
+	      i.op[2].regs = i.op[1].regs;
+	      i.types[2] = i.types[1];
+	      i.reg_operands = i.operands = 3;
+	    }
+	  pp.has_nf = false;
+	  i.tm.opcode_modifier.w = 0;
+	  i.tm.opcode_modifier.evex = 0;
+	  i.tm.opcode_modifier.vex = VEX128;
+	  i.tm.opcode_modifier.vexvvvv = VexVVVV_SRC2;
+	  i.tm.opcode_space = SPACE_0F38;
+	  i.tm.base_opcode = 0xf7;
+	  i.tm.opcode_modifier.opcodeprefix
+	    = !(i.tm.extension_opcode & 1)
+	      ? PREFIX_0X66 /* shlx */
+	      : i.tm.extension_opcode & 2
+		? PREFIX_0XF3 /* sarx */
+		: PREFIX_0XF2 /* shrx */;
+	  i.tm.extension_opcode = None;
+	}
+      else if (i.tm.base_opcode == 0xc0
+	       && i.tm.extension_opcode <= 1
+	       && i.op[0].imms->X_op == O_constant)
+	{
+	  /* Optimize: -O:
+	       {nf} rol $I, %rN       -> rorx $osz-I, %rN, %rN (I != osz-1, N < 16)
+	       {nf} rol $I, ..., %rN  -> rorx $osz-I, ..., %rN (I != osz-1, no eGPR used)
+	       {nf} ror $I, %rN       -> rorx $I, %rN, %rN (I != 1, N < 16)
+	       {nf} ror $I, ..., %rN  -> rorx $I,..., %rN (I != 1, no eGPR used)
+	     NB: rol -> ror transformation for I == osz-1 was already handled above.
+	     NB2: ror with an immediate of 1 uses a different base opcode.
+	   */
+	  if (i.operands == 2)
+	    {
+	      copy_operand (2, 1);
+	      i.tm.operand_types[2].bitfield.baseindex = 0;
+	      i.reg_operands = 2;
+	      i.operands = 3;
+	    }
+	  pp.has_nf = false;
+	  i.tm.opcode_modifier.w = 0;
+	  i.tm.opcode_modifier.evex = 0;
+	  i.tm.opcode_modifier.vex = VEX128;
+	  i.tm.opcode_modifier.vexvvvv = 0;
+	  i.tm.opcode_space = SPACE_0F3A;
+	  i.tm.base_opcode = 0xf0;
+	  i.tm.opcode_modifier.opcodeprefix = PREFIX_0XF2;
+	  if (!i.tm.extension_opcode)
+	    i.op[0].imms->X_add_number =
+	      (i.types[i.operands - 1].bitfield.byte
+	       ? 8 : i.types[i.operands - 1].bitfield.word
+		     ? 16 : 64 >> i.types[i.operands - 1].bitfield.dword)
+	      - i.op[0].imms->X_add_number;
+	  i.tm.extension_opcode = None;
+	}
+      else if (i.tm.base_opcode == 0xf6
+	       && i.tm.extension_opcode == 4
+	       && !i.mem_operands
+	       && i.op[0].regs->reg_num == 2
+	       && !(i.op[0].regs->reg_flags & RegRex) )
+	{
+	  /* Optimize: -O:
+	       {nf} mul %edx  -> mulx %eax, %eax, %edx
+	       {nf} mul %rdx  -> mulx %rax, %rax, %rdx
+	   */
+	  i.tm.operand_types[1] = i.tm.operand_types[0];
+	  i.tm.operand_types[1].bitfield.baseindex = 0;
+	  i.tm.operand_types[2] = i.tm.operand_types[1];
+	  i.op[2].regs = i.op[0].regs;
+	  /* NB: %eax is good enough also for 64-bit operand size.  */
+	  i.op[1].regs = i.op[0].regs = reg_eax;
+	  i.types[2] = i.types[1] = i.types[0];
+	  i.reg_operands = i.operands = 3;
+
+	  pp.has_nf = false;
+	  i.tm.opcode_modifier.w = 0;
+	  i.tm.opcode_modifier.evex = 0;
+	  i.tm.opcode_modifier.vex = VEX128;
+	  i.tm.opcode_modifier.vexvvvv = VexVVVV_SRC1;
+	  i.tm.opcode_space = SPACE_0F38;
+	  i.tm.base_opcode = 0xf6;
+	  i.tm.opcode_modifier.opcodeprefix = PREFIX_0XF2;
+	  i.tm.extension_opcode = None;
+	}
     }
 }
 
@@ -6117,1110 +6841,363 @@ static INLINE bool may_need_pass2 (const insn_template *t)
 	   || (t->opcode_space == SPACE_BASE
 	       && t->base_opcode == 0x63)
 	   || (intel_syntax /* shld / shrd may mean suffixed shl / shr.  */
-	       && t->opcode_space == SPACE_EVEXMAP4
+	       && t->opcode_space == SPACE_MAP4
 	       && (t->base_opcode | 8) == 0x2c);
 }
 
-#if defined (OBJ_MAYBE_ELF) || defined (OBJ_ELF)
-
-/* DWARF register number for EFLAGS.  Used for pushf/popf insns.  */
-#define GINSN_DW2_REGNUM_EFLAGS     49
-/* DWARF register number for RSI.  Used as dummy value when RegIP/RegIZ.  */
-#define GINSN_DW2_REGNUM_RSI_DUMMY  4
-
-/* Identify the callee-saved registers in System V AMD64 ABI.  */
-
-bool
-x86_scfi_callee_saved_p (unsigned int dw2reg_num)
+#ifdef OBJ_ELF
+static enum x86_tls_error_type
+x86_check_tls_relocation (enum bfd_reloc_code_real r_type)
 {
-  if (dw2reg_num == 3 /* rbx.  */
-      || dw2reg_num == REG_FP /* rbp.  */
-      || dw2reg_num == REG_SP /* rsp.  */
-      || (dw2reg_num >= 12 && dw2reg_num <= 15) /* r12 - r15.  */)
-    return true;
-
-  return false;
-}
-
-/* Check whether an instruction prefix which affects operation size
-   accompanies.  For insns in the legacy space, setting REX.W takes precedence
-   over the operand-size prefix (66H) when both are used.
-
-   The current users of this API are in the handlers for PUSH, POP or other
-   instructions which affect the stack pointer implicitly:  the operation size
-   (16, 32, or 64 bits) determines the amount by which the stack pointer is
-   incremented / decremented (2, 4 or 8).  */
-
-static bool
-ginsn_opsize_prefix_p (void)
-{
-  return (!(i.prefix[REX_PREFIX] & REX_W) && i.prefix[DATA_PREFIX]);
-}
-
-/* Get the DWARF register number for the given register entry.
-   For specific byte/word/dword register accesses like al, cl, ah, ch, r8d,
-   r20w etc., we need to identify the DWARF register number for the
-   corresponding 8-byte GPR.
-
-   This function is a hack - it relies on relative ordering of reg entries in
-   the i386_regtab.  FIXME - it will be good to allow a more direct way to get
-   this information.  */
-
-static unsigned int
-ginsn_dw2_regnum (const reg_entry *ireg)
-{
-  const reg_entry *temp = ireg;
-  unsigned int dwarf_reg = Dw2Inval, idx = 0;
-
-  /* ginsn creation is available for AMD64 abi only ATM.  Other flag_code
-     are not expected.  */
-  gas_assert (ireg && flag_code == CODE_64BIT);
-
-  /* Watch out for RegIP, RegIZ.  These are expected to appear only with
-     base/index addressing modes.  Although creating inaccurate data
-     dependencies, using a dummy value (lets say volatile register rsi) will
-     not hurt SCFI.  TBD_GINSN_GEN_NOT_SCFI.  */
-  if (ireg->reg_num == RegIP || ireg->reg_num == RegIZ)
-    return GINSN_DW2_REGNUM_RSI_DUMMY;
-
-  dwarf_reg = ireg->dw2_regnum[object_64bit];
-
-  if (dwarf_reg == Dw2Inval)
+  switch (r_type)
     {
-      if (ireg <= &i386_regtab[3])
-	/* For al, cl, dl, bl, bump over to axl, cxl, dxl, bxl respectively by
-	   adding 8.  */
-	temp = ireg + 8;
-      else if (ireg <= &i386_regtab[7])
-	/* For ah, ch, dh, bh, bump over to axl, cxl, dxl, bxl respectively by
-	   adding 4.  */
-	temp = ireg + 4;
-      else
-	{
-	  /* The code relies on the relative ordering of the reg entries in
-	     i386_regtab.  There are 32 register entries between axl-r31b,
-	     ax-r31w etc.  The assertions here ensures the code does not
-	     recurse indefinitely.  */
-	  gas_assert ((temp - &i386_regtab[0]) >= 0);
-	  idx = temp - &i386_regtab[0];
-	  gas_assert (idx + 32 < i386_regtab_size - 1);
-
-	  temp = temp + 32;
-	}
-
-      dwarf_reg = ginsn_dw2_regnum (temp);
-    }
-
-  /* Sanity check - failure may indicate state corruption, bad ginsn or
-     perhaps the i386-reg table and the current function got out of sync.  */
-  gas_assert (dwarf_reg < Dw2Inval);
-
-  return dwarf_reg;
-}
-
-static ginsnS *
-x86_ginsn_addsub_reg_mem (const symbolS *insn_end_sym)
-{
-  unsigned int dw2_regnum;
-  unsigned int src1_dw2_regnum;
-  ginsnS *ginsn = NULL;
-  ginsnS * (*ginsn_func) (const symbolS *, bool,
-			  enum ginsn_src_type, unsigned int, offsetT,
-			  enum ginsn_src_type, unsigned int, offsetT,
-			  enum ginsn_dst_type, unsigned int, offsetT);
-  uint16_t opcode = i.tm.base_opcode;
-
-  gas_assert (i.tm.opcode_space == SPACE_BASE
-	      && (opcode == 0x1 || opcode == 0x29));
-  ginsn_func = (opcode == 0x1) ? ginsn_new_add : ginsn_new_sub;
-
-  /* op %reg, symbol or even other cases where destination involves indirect
-     access are unnecessary for SCFI correctness.  TBD_GINSN_GEN_NOT_SCFI.  */
-  if (i.mem_operands)
-    return ginsn;
-
-  /* Skip detection of 8/16/32-bit op size; 'add/sub reg, reg/mem' ops always
-     make the dest reg untraceable for SCFI.  */
-
-  /* op reg, reg/mem.  */
-  src1_dw2_regnum = ginsn_dw2_regnum (i.op[0].regs);
-  /* Of interest only when second opnd is not memory.  */
-  if (i.reg_operands == 2)
-    {
-      dw2_regnum = ginsn_dw2_regnum (i.op[1].regs);
-      ginsn = ginsn_func (insn_end_sym, true,
-			  GINSN_SRC_REG, src1_dw2_regnum, 0,
-			  GINSN_SRC_REG, dw2_regnum, 0,
-			  GINSN_DST_REG, dw2_regnum, 0);
-      ginsn_set_where (ginsn);
-    }
-
-  return ginsn;
-}
-
-static ginsnS *
-x86_ginsn_addsub_mem_reg (const symbolS *insn_end_sym)
-{
-  unsigned int dw2_regnum;
-  unsigned int src1_dw2_regnum;
-  const reg_entry *mem_reg;
-  int32_t gdisp = 0;
-  ginsnS *ginsn = NULL;
-  ginsnS * (*ginsn_func) (const symbolS *, bool,
-			  enum ginsn_src_type, unsigned int, offsetT,
-			  enum ginsn_src_type, unsigned int, offsetT,
-			  enum ginsn_dst_type, unsigned int, offsetT);
-  uint16_t opcode = i.tm.base_opcode;
-
-  gas_assert (i.tm.opcode_space == SPACE_BASE
-	      && (opcode == 0x3 || opcode == 0x2b));
-  ginsn_func = (opcode == 0x3) ? ginsn_new_add : ginsn_new_sub;
-
-  /* op symbol, %reg.  */
-  if (i.mem_operands && !i.base_reg && !i.index_reg)
-    return ginsn;
-
-  /* Skip detection of 8/16/32-bit op size; 'add/sub reg/mem, reg' ops always
-     make the dest reg untraceable for SCFI.  */
-
-  /* op reg/mem, %reg.  */
-  dw2_regnum = ginsn_dw2_regnum (i.op[1].regs);
-
-  if (i.reg_operands == 2)
-    {
-      src1_dw2_regnum = ginsn_dw2_regnum (i.op[0].regs);
-      ginsn = ginsn_func (insn_end_sym, true,
-			  GINSN_SRC_REG, src1_dw2_regnum, 0,
-			  GINSN_SRC_REG, dw2_regnum, 0,
-			  GINSN_DST_REG, dw2_regnum, 0);
-      ginsn_set_where (ginsn);
-    }
-  else if (i.mem_operands)
-    {
-      mem_reg = (i.base_reg) ? i.base_reg : i.index_reg;
-      src1_dw2_regnum = ginsn_dw2_regnum (mem_reg);
-      if (i.disp_operands == 1)
-	gdisp = i.op[0].disps->X_add_number;
-      ginsn = ginsn_func (insn_end_sym, true,
-			  GINSN_SRC_INDIRECT, src1_dw2_regnum, gdisp,
-			  GINSN_SRC_REG, dw2_regnum, 0,
-			  GINSN_DST_REG, dw2_regnum, 0);
-      ginsn_set_where (ginsn);
-    }
-
-  return ginsn;
-}
-
-static ginsnS *
-x86_ginsn_alu_imm (const symbolS *insn_end_sym)
-{
-  offsetT src_imm;
-  unsigned int dw2_regnum;
-  ginsnS *ginsn = NULL;
-  enum ginsn_src_type src_type = GINSN_SRC_REG;
-  enum ginsn_dst_type dst_type = GINSN_DST_REG;
-
-  ginsnS * (*ginsn_func) (const symbolS *, bool,
-			  enum ginsn_src_type, unsigned int, offsetT,
-			  enum ginsn_src_type, unsigned int, offsetT,
-			  enum ginsn_dst_type, unsigned int, offsetT);
-
-  /* FIXME - create ginsn where dest is REG_SP / REG_FP only ? */
-  /* Map for insn.tm.extension_opcode
-     000 ADD    100 AND
-     001 OR     101 SUB
-     010 ADC    110 XOR
-     011 SBB    111 CMP  */
-
-  /* add/sub/and imm, %reg only at this time for SCFI.
-     Although all three ('and', 'or' , 'xor') make the destination reg
-     untraceable, 'and' op is handled but not 'or' / 'xor' because we will look
-     into supporting the DRAP pattern at some point.  Other opcodes ('adc',
-     'sbb' and 'cmp') are not generated here either.  The ginsn representation
-     does not have support for the latter three opcodes;  GINSN_TYPE_OTHER may
-     be added for these after x86_ginsn_unhandled () invocation if the
-     destination register is REG_SP or REG_FP.  */
-  if (i.tm.extension_opcode == 5)
-    ginsn_func = ginsn_new_sub;
-  else if (i.tm.extension_opcode == 4)
-    ginsn_func = ginsn_new_and;
-  else if (i.tm.extension_opcode == 0)
-    ginsn_func = ginsn_new_add;
-  else
-    return ginsn;
-
-  /* TBD_GINSN_REPRESENTATION_LIMIT: There is no representation for when a
-     symbol is used as an operand, like so:
-	  addq    $simd_cmp_op+8, %rdx
-     Skip generating any ginsn for this.  */
-  if (i.imm_operands == 1
-      && i.op[0].imms->X_op != O_constant)
-    return ginsn;
-
-  /* addq    $1, symbol
-     addq    $1, -16(%rbp)
-     These are not of interest for SCFI.  Also, TBD_GINSN_GEN_NOT_SCFI.  */
-  if (i.mem_operands == 1)
-    return ginsn;
-
-  /* 8/16/32-bit op size makes the destination reg untraceable for SCFI.
-     Deal with this via the x86_ginsn_unhandled () code path.  */
-  if (i.suffix != QWORD_MNEM_SUFFIX)
-    return ginsn;
-
-  gas_assert (i.imm_operands == 1);
-  src_imm = i.op[0].imms->X_add_number;
-  /* The second operand may be a register or indirect access.  For SCFI, only
-     the case when the second opnd is a register is interesting.  Revisit this
-     if generating ginsns for a different gen mode TBD_GINSN_GEN_NOT_SCFI.  */
-  if (i.reg_operands == 1)
-    {
-      dw2_regnum = ginsn_dw2_regnum (i.op[1].regs);
-      /* For ginsn, keep the imm as second src operand.  */
-      ginsn = ginsn_func (insn_end_sym, true,
-			  src_type, dw2_regnum, 0,
-			  GINSN_SRC_IMM, 0, src_imm,
-			  dst_type, dw2_regnum, 0);
-
-      ginsn_set_where (ginsn);
-    }
-
-  return ginsn;
-}
-
-/* Create ginsn(s) for MOV operations.
-
-   The generated ginsns corresponding to mov with indirect access to memory
-   (src or dest) suffer with loss of information: when both index and base
-   registers are at play, only base register gets conveyed in ginsn.  Note
-   this TBD_GINSN_GEN_NOT_SCFI.  */
-
-static ginsnS *
-x86_ginsn_move (const symbolS *insn_end_sym)
-{
-  ginsnS *ginsn = NULL;
-  unsigned int dst_reg;
-  unsigned int src_reg;
-  offsetT src_disp = 0;
-  offsetT dst_disp = 0;
-  const reg_entry *dst = NULL;
-  const reg_entry *src = NULL;
-  uint16_t opcode = i.tm.base_opcode;
-  enum ginsn_src_type src_type = GINSN_SRC_REG;
-  enum ginsn_dst_type dst_type = GINSN_DST_REG;
-
-  /* mov %reg, symbol or mov symbol, %reg.
-     Not of interest for SCFI.  Also, TBD_GINSN_GEN_NOT_SCFI.  */
-  if (i.mem_operands == 1 && !i.base_reg && !i.index_reg)
-    return ginsn;
-
-  /* 8/16/32-bit op size makes the destination reg untraceable for SCFI.
-     Handle mov reg, reg only.  mov to or from a memory operand will make
-     dest reg, when present, untraceable, irrespective of the op size.  */
-  if (i.reg_operands == 2 && i.suffix != QWORD_MNEM_SUFFIX)
-    return ginsn;
-
-  gas_assert (i.tm.opcode_space == SPACE_BASE);
-  if (opcode == 0x8b || opcode == 0x8a)
-    {
-      /* mov  disp(%reg), %reg.  */
-      if (i.mem_operands)
-	{
-	  src = (i.base_reg) ? i.base_reg : i.index_reg;
-	  if (i.disp_operands == 1)
-	    src_disp = i.op[0].disps->X_add_number;
-	  src_type = GINSN_SRC_INDIRECT;
-	}
-      else
-	src = i.op[0].regs;
-
-      dst = i.op[1].regs;
-    }
-  else if (opcode == 0x89 || opcode == 0x88)
-    {
-      /* mov %reg, disp(%reg).  */
-      src = i.op[0].regs;
-      if (i.mem_operands)
-	{
-	  dst = (i.base_reg) ? i.base_reg : i.index_reg;
-	  if (i.disp_operands == 1)
-	    dst_disp = i.op[1].disps->X_add_number;
-	  dst_type = GINSN_DST_INDIRECT;
-	}
-      else
-	dst = i.op[1].regs;
-    }
-
-  src_reg = ginsn_dw2_regnum (src);
-  dst_reg = ginsn_dw2_regnum (dst);
-
-  ginsn = ginsn_new_mov (insn_end_sym, true,
-			 src_type, src_reg, src_disp,
-			 dst_type, dst_reg, dst_disp);
-  ginsn_set_where (ginsn);
-
-  return ginsn;
-}
-
-/* Generate appropriate ginsn for lea.
-
-   Unhandled sub-cases (marked with TBD_GINSN_GEN_NOT_SCFI) also suffer with
-   some loss of information in the final ginsn chosen eventually (type
-   GINSN_TYPE_OTHER).  But this is fine for now for GINSN_GEN_SCFI generation
-   mode.  */
-
-static ginsnS *
-x86_ginsn_lea (const symbolS *insn_end_sym)
-{
-  offsetT src_disp = 0;
-  ginsnS *ginsn = NULL;
-  unsigned int src1_reg;
-  const reg_entry *src1;
-  offsetT index_scale;
-  unsigned int dst_reg;
-  bool index_regiz_p;
-
-  if ((!i.base_reg) != (!i.index_reg || i.index_reg->reg_num == RegIZ))
-    {
-      /* lea disp(%base), %dst    or    lea disp(,%index,imm), %dst.
-	 Either index_reg or base_reg exists, but not both.  Further, as per
-	 above, the case when just %index exists but is equal to RegIZ is
-	 excluded.  If not excluded, a GINSN_TYPE_MOV of %rsi
-	 (GINSN_DW2_REGNUM_RSI_DUMMY) to %dst will be generated by this block.
-	 Such a mov ginsn is imprecise; so, exclude now and generate
-	 GINSN_TYPE_OTHER instead later via the x86_ginsn_unhandled ().
-	 Excluding other cases is required due to
-	 TBD_GINSN_REPRESENTATION_LIMIT.  */
-
-      index_scale = i.log2_scale_factor;
-      index_regiz_p = i.index_reg && i.index_reg->reg_num == RegIZ;
-      src1 = i.base_reg ? i.base_reg : i.index_reg;
-      src1_reg = ginsn_dw2_regnum (src1);
-      dst_reg = ginsn_dw2_regnum (i.op[1].regs);
-      /* It makes sense to represent a scale factor of 1 precisely here
-	 (i.e., not using GINSN_TYPE_OTHER, but rather similar to the
-	 base-without-index case).  A non-zero scale factor is still OK if
-	 the index reg is zero reg.
-	 However, skip from here the case when disp has a symbol instead.
-	 TBD_GINSN_REPRESENTATION_LIMIT.  */
-      if ((!index_scale || index_regiz_p)
-	  && (!i.disp_operands || i.op[0].disps->X_op == O_constant))
-	{
-	  if (i.disp_operands)
-	    src_disp = i.op[0].disps->X_add_number;
-
-	  if (src_disp)
-	    /* Generate an ADD ginsn.  */
-	    ginsn = ginsn_new_add (insn_end_sym, true,
-				   GINSN_SRC_REG, src1_reg, 0,
-				   GINSN_SRC_IMM, 0, src_disp,
-				   GINSN_DST_REG, dst_reg, 0);
-	  else
-	    /* Generate a MOV ginsn.  */
-	    ginsn = ginsn_new_mov (insn_end_sym, true,
-				   GINSN_SRC_REG, src1_reg, 0,
-				   GINSN_DST_REG, dst_reg, 0);
-
-	  ginsn_set_where (ginsn);
-	}
-    }
-  /* Skip handling other cases here,
-     - when (i.index_reg && i.base_reg) is true,
-       e.g., lea disp(%base,%index,imm), %dst
-       We do not have a ginsn representation for multiply.
-     - or, when (!i.index_reg && !i.base_reg) is true,
-       e.g., lea symbol, %dst
-       Not a frequent pattern.  If %dst is a register of interest, the user is
-       likely to use a MOV op anyway.
-     Deal with these via the x86_ginsn_unhandled () code path to generate
-     GINSN_TYPE_OTHER when necessary.  TBD_GINSN_GEN_NOT_SCFI.  */
-
-  return ginsn;
-}
-
-static ginsnS *
-x86_ginsn_jump (const symbolS *insn_end_sym, bool cond_p)
-{
-  ginsnS *ginsn = NULL;
-  const symbolS *src_symbol;
-  ginsnS * (*ginsn_func) (const symbolS *sym, bool real_p,
-			  enum ginsn_src_type src_type, unsigned int src_reg,
-			  const symbolS *src_ginsn_sym);
-
-  gas_assert (i.disp_operands == 1);
-
-  ginsn_func = cond_p ? ginsn_new_jump_cond : ginsn_new_jump;
-  if (i.op[0].disps->X_op == O_symbol && !i.op[0].disps->X_add_number)
-    {
-      src_symbol = i.op[0].disps->X_add_symbol;
-      ginsn = ginsn_func (insn_end_sym, true,
-			  GINSN_SRC_SYMBOL, 0, src_symbol);
-
-      ginsn_set_where (ginsn);
-    }
-  else
-    {
-      /* A non-zero addend in jump/JCC target makes control-flow tracking
-	 difficult.  Skip SCFI for now.  */
-      as_bad (_("SCFI: `%s' insn with non-zero addend to sym not supported"),
-	      cond_p ? "JCC" : "jmp");
-      return ginsn;
-    }
-
-  return ginsn;
-}
-
-static ginsnS *
-x86_ginsn_enter (const symbolS *insn_end_sym)
-{
-  ginsnS *ginsn = NULL;
-  ginsnS *ginsn_next = NULL;
-  ginsnS *ginsn_last = NULL;
-  /* In 64-bit mode, the default stack update size is 8 bytes.  */
-  int stack_opnd_size = 8;
-
-  gas_assert (i.imm_operands == 2);
-
-  /* For non-zero size operands, bail out as untraceable for SCFI.  */
-  if (i.op[0].imms->X_op != O_constant || i.op[0].imms->X_add_symbol != 0
-      || i.op[1].imms->X_op != O_constant || i.op[1].imms->X_add_symbol != 0)
-    {
-      as_bad ("SCFI: enter insn with non-zero operand not supported");
-      return ginsn;
-    }
-
-  /* Check if this is a 16-bit op.  */
-  if (ginsn_opsize_prefix_p ())
-    stack_opnd_size = 2;
-
-  /* If the nesting level is 0, the processor pushes the frame pointer from
-     the BP/EBP/RBP register onto the stack, copies the current stack
-     pointer from the SP/ESP/RSP register into the BP/EBP/RBP register, and
-     loads the SP/ESP/RSP register with the current stack-pointer value
-     minus the value in the size operand.  */
-  ginsn = ginsn_new_sub (insn_end_sym, false,
-			 GINSN_SRC_REG, REG_SP, 0,
-			 GINSN_SRC_IMM, 0, stack_opnd_size,
-			 GINSN_DST_REG, REG_SP, 0);
-  ginsn_set_where (ginsn);
-  ginsn_next = ginsn_new_store (insn_end_sym, false,
-				GINSN_SRC_REG, REG_FP,
-				GINSN_DST_INDIRECT, REG_SP, 0);
-  ginsn_set_where (ginsn_next);
-  gas_assert (!ginsn_link_next (ginsn, ginsn_next));
-  ginsn_last = ginsn_new_mov (insn_end_sym, false,
-			      GINSN_SRC_REG, REG_SP, 0,
-			      GINSN_DST_REG, REG_FP, 0);
-  ginsn_set_where (ginsn_last);
-  gas_assert (!ginsn_link_next (ginsn_next, ginsn_last));
-
-  return ginsn;
-}
-
-static ginsnS *
-x86_ginsn_leave (const symbolS *insn_end_sym)
-{
-  ginsnS *ginsn = NULL;
-  ginsnS *ginsn_next = NULL;
-  ginsnS *ginsn_last = NULL;
-  /* In 64-bit mode, the default stack update size is 8 bytes.  */
-  int stack_opnd_size = 8;
-
-  /* Check if this is a 16-bit op.  */
-  if (ginsn_opsize_prefix_p ())
-    stack_opnd_size = 2;
-
-  /* The 'leave' instruction copies the contents of the RBP register
-     into the RSP register to release all stack space allocated to the
-     procedure.  */
-  ginsn = ginsn_new_mov (insn_end_sym, false,
-			 GINSN_SRC_REG, REG_FP, 0,
-			 GINSN_DST_REG, REG_SP, 0);
-  ginsn_set_where (ginsn);
-  /* Then it restores the old value of the RBP register from the stack.  */
-  ginsn_next = ginsn_new_load (insn_end_sym, false,
-			       GINSN_SRC_INDIRECT, REG_SP, 0,
-			       GINSN_DST_REG, REG_FP);
-  ginsn_set_where (ginsn_next);
-  gas_assert (!ginsn_link_next (ginsn, ginsn_next));
-  ginsn_last = ginsn_new_add (insn_end_sym, false,
-			      GINSN_SRC_REG, REG_SP, 0,
-			      GINSN_SRC_IMM, 0, stack_opnd_size,
-			      GINSN_DST_REG, REG_SP, 0);
-  ginsn_set_where (ginsn_next);
-  gas_assert (!ginsn_link_next (ginsn_next, ginsn_last));
-
-  return ginsn;
-}
-
-/* Check if an instruction is whitelisted.
-
-   Some instructions may appear with REG_SP or REG_FP as destination, because
-   which they are deemed 'interesting' for SCFI.  Whitelist them here if they
-   do not affect SCFI correctness.  */
-
-static bool
-x86_ginsn_safe_to_skip_p (void)
-{
-  bool skip_p = false;
-  uint16_t opcode = i.tm.base_opcode;
-
-  switch (opcode)
-    {
-    case 0x80:
-    case 0x81:
-    case 0x83:
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* cmp imm, reg/rem.  */
-      if (i.tm.extension_opcode == 7)
-	skip_p = true;
+    case BFD_RELOC_386_TLS_GOTDESC:
+      /* Check GDesc access model:
+
+	 leal x@tlsdesc(%ebx), %reg32 --> Memory reg must be %ebx and
+					  SIB is not supported.
+       */
+      if (i.tm.mnem_off != MN_lea)
+	return x86_tls_error_insn;
+      if (i.index_reg)
+	return x86_tls_error_sib;
+      if (!i.base_reg)
+	return x86_tls_error_no_base_reg;
+      if (i.base_reg->reg_type.bitfield.instance != RegB)
+	return x86_tls_error_ebx;
+      if (!i.op[1].regs->reg_type.bitfield.dword)
+	return x86_tls_error_dest_32bit_reg_size;
       break;
 
-    case 0x38:
-    case 0x39:
-    case 0x3a:
-    case 0x3b:
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* cmp imm/reg/mem, reg/rem.  */
-      skip_p = true;
+    case BFD_RELOC_386_TLS_GD:
+      /* Check GD access model:
+
+	 leal foo@tlsgd(,%ebx,1), %eax   --> Only this fixed format is supported.
+	 leal foo@tlsgd(%reg32), %eax    --> Dest reg must be '%eax'
+					     Memory reg can't be %eax.
+       */
+      if (i.tm.mnem_off != MN_lea)
+	return x86_tls_error_insn;
+      if (i.op[1].regs->reg_type.bitfield.instance != Accum)
+	return x86_tls_error_dest_eax;
+      if (!i.op[1].regs->reg_type.bitfield.dword)
+	return x86_tls_error_dest_32bit_reg_size;
+      if (i.index_reg)
+	{
+	  if (i.base_reg)
+	    return x86_tls_error_base_reg;
+	  if (i.index_reg->reg_type.bitfield.instance != RegB)
+	    return x86_tls_error_index_ebx;
+	  if (i.log2_scale_factor)
+	    return x86_tls_error_scale_factor;
+	}
+      else
+	{
+	  if (!i.base_reg)
+	    return x86_tls_error_no_base_reg;
+	  if (i.base_reg->reg_type.bitfield.instance == Accum)
+	    return x86_tls_error_eax;
+	}
       break;
 
-    case 0xf6:
-    case 0xf7:
-    case 0x84:
-    case 0x85:
-      /* test imm/reg/mem, reg/mem.  */
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      skip_p = true;
+    case BFD_RELOC_386_TLS_LDM:
+      /*  Check LDM access model:
+
+	  leal foo@tlsldm(%reg32), %eax --> Dest reg must be '%eax'
+				            Memory reg can't be %eax and SIB
+					    is not supported.
+       */
+      if (i.tm.mnem_off != MN_lea)
+	return x86_tls_error_insn;
+      if (i.index_reg)
+	return x86_tls_error_sib;
+      if (!i.base_reg)
+	return x86_tls_error_no_base_reg;
+      if (i.base_reg->reg_type.bitfield.instance == Accum)
+	return x86_tls_error_eax;
+      if (i.op[1].regs->reg_type.bitfield.instance != Accum)
+	return x86_tls_error_dest_eax;
+      if (!i.op[1].regs->reg_type.bitfield.dword)
+	return x86_tls_error_dest_32bit_reg_size;
       break;
+
+    case BFD_RELOC_X86_64_GOTPC32_TLSDESC:
+      /* Check GOTPC32 TLSDESC access model:
+
+	 --- LP64 mode ---
+	 leaq x@tlsdesc(%rip), %reg64 --> Memory reg must be %rip.
+
+	 --- X32 mode ---
+	 rex/rex2 leal x@tlsdesc(%rip), %reg32 --> Memory reg must be %rip.
+
+	 In X32 mode, gas will add rex/rex2 for it later, no need to check
+	 here.
+       */
+      if (i.tm.mnem_off != MN_lea)
+	return x86_tls_error_insn;
+      if (!i.base_reg)
+	return x86_tls_error_no_base_reg;
+      if (i.base_reg->reg_num != RegIP
+	  || !i.base_reg->reg_type.bitfield.qword)
+	return x86_tls_error_rip;
+      if (x86_elf_abi == X86_64_ABI)
+	{
+	  if (!i.op[1].regs->reg_type.bitfield.qword)
+	    return x86_tls_error_dest_64bit_reg_size;
+	}
+      else if (!i.op[1].regs->reg_type.bitfield.dword
+	       && !i.op[1].regs->reg_type.bitfield.qword)
+	return x86_tls_error_dest_32bit_or_64bit_reg_size;
+	  break;
+
+    case BFD_RELOC_X86_64_TLSGD:
+      /* Check GD access model:
+
+	 leaq foo@tlsgd(%rip), %rdi --> Only this fixed format is supported.
+       */
+    case BFD_RELOC_X86_64_TLSLD:
+      /* Check LD access model:
+
+	 leaq foo@tlsld(%rip), %rdi --> Only this fixed format is supported.
+       */
+      if (i.tm.mnem_off != MN_lea)
+	return x86_tls_error_insn;
+      if (!i.base_reg)
+	return x86_tls_error_no_base_reg;
+      if (i.base_reg->reg_num != RegIP
+	  || !i.base_reg->reg_type.bitfield.qword)
+	return x86_tls_error_rip;
+      if (!i.op[1].regs->reg_type.bitfield.qword
+	  || i.op[1].regs->reg_num != EDI_REG_NUM
+	  || i.op[1].regs->reg_flags)
+	return x86_tls_error_dest_rdi;
+      break;
+
+    case BFD_RELOC_386_TLS_GOTIE:
+      /* Check GOTIE access model:
+
+	 subl foo@gotntpoff(%reg1), %reg2
+	 movl foo@gotntpoff(%reg1), %reg2
+	 addl foo@gotntpoff(%reg1), %reg2
+
+	 Memory operand: SIB is not supported.
+       */
+    case BFD_RELOC_386_TLS_IE_32:
+      /* Check IE_32 access model:
+
+	 subl foo@gottpoff(%reg1), %reg2
+	 movl foo@gottpoff(%reg1), %reg2
+	 addl foo@gottpoff(%reg1), %reg2
+
+	 Memory operand: SIB is not supported.
+       */
+      if (i.tm.mnem_off != MN_sub
+	  && i.tm.mnem_off != MN_add
+	  && i.tm.mnem_off != MN_mov)
+	return x86_tls_error_insn;
+      if (i.imm_operands
+	  || i.disp_operands != 1
+	  || i.reg_operands != 1
+	  || i.types[1].bitfield.class != Reg)
+	return x86_tls_error_opcode;
+      if (!i.base_reg)
+	return x86_tls_error_no_base_reg;
+      if (i.index_reg)
+	return x86_tls_error_sib;
+      if (!i.base_reg->reg_type.bitfield.dword)
+	return x86_tls_error_base_reg_size;
+      if (!i.op[1].regs->reg_type.bitfield.dword)
+	return x86_tls_error_dest_32bit_reg_size;
+      break;
+
+    case BFD_RELOC_386_TLS_IE:
+      /* Check IE access model:
+
+	 movl foo@indntpoff, %reg32 --> Mod == 00 && r/m == 5
+	 addl foo@indntpoff, %reg32 --> Mod == 00 && r/m == 5
+       */
+      if (i.tm.mnem_off != MN_add && i.tm.mnem_off != MN_mov)
+	return x86_tls_error_insn;
+      if (i.imm_operands
+	  || i.disp_operands != 1
+	  || i.reg_operands != 1
+	  || i.types[1].bitfield.class != Reg)
+	return x86_tls_error_opcode;
+      if (i.base_reg || i.index_reg)
+	return x86_tls_error_require_no_base_index_reg;
+      if (!i.op[1].regs->reg_type.bitfield.dword)
+	return x86_tls_error_dest_32bit_reg_size;
+      break;
+
+    case BFD_RELOC_X86_64_GOTTPOFF:
+      /* Check GOTTPOFF access model:
+
+	 mov foo@gottpoff(%rip), %reg --> Memory Reg must be %rip.
+	 movrs foo@gottpoff(%rip), %reg --> Memory Reg must be %rip.
+	 add foo@gottpoff(%rip), %reg --> Memory Reg must be %rip.
+	 add %reg1, foo@gottpoff(%rip), %reg2 --> Memory Reg must be %rip.
+	 add foo@gottpoff(%rip), %reg1, %reg2 --> Memory Reg must be %rip.
+       */
+      if (i.tm.mnem_off != MN_add && i.tm.mnem_off != MN_mov
+	  && i.tm.mnem_off != MN_movrs)
+	return x86_tls_error_insn;
+      if (i.imm_operands
+	  || i.disp_operands != 1
+	  || i.types[i.operands - 1].bitfield.class != Reg)
+	return x86_tls_error_opcode;
+      if (!i.base_reg)
+	return x86_tls_error_no_base_reg;
+      if (i.base_reg->reg_num != RegIP
+	  || !i.base_reg->reg_type.bitfield.qword)
+	return x86_tls_error_rip;
+      if (x86_elf_abi == X86_64_ABI)
+	{
+	  if (!i.op[i.operands - 1].regs->reg_type.bitfield.qword)
+	    return x86_tls_error_dest_64bit_reg_size;
+	}
+      else if (!i.op[i.operands - 1].regs->reg_type.bitfield.dword
+	       && !i.op[i.operands - 1].regs->reg_type.bitfield.qword)
+	return x86_tls_error_dest_32bit_or_64bit_reg_size;
+      break;
+
+    case BFD_RELOC_386_TLS_DESC_CALL:
+      /* Check GDesc access model:
+
+	 call *x@tlscall(%eax) --> Memory reg must be %eax and
+				   SIB is not supported.
+       */
+    case BFD_RELOC_X86_64_TLSDESC_CALL:
+      /* Check GDesc access model:
+
+	 call *x@tlscall(%rax) <--- LP64 mode.
+	 call *x@tlscall(%eax) <--- X32 mode.
+
+	 Only these fixed formats are supported.
+       */
+      if (i.tm.mnem_off != MN_call)
+	return x86_tls_error_insn;
+      if (i.index_reg)
+	return x86_tls_error_sib;
+      if (!i.base_reg)
+	return x86_tls_error_no_base_reg;
+      if (i.base_reg->reg_type.bitfield.instance != Accum)
+	return x86_tls_error_RegA;
+      break;
+
+    case BFD_RELOC_NONE:
+      /* This isn't a relocation.  */
+      return x86_tls_error_continue;
 
     default:
       break;
     }
 
-  return skip_p;
+  /* This relocation is OK.  */
+  return x86_tls_error_none;
 }
 
-#define X86_GINSN_UNHANDLED_NONE        0
-#define X86_GINSN_UNHANDLED_DEST_REG    1
-#define X86_GINSN_UNHANDLED_CFG         2
-#define X86_GINSN_UNHANDLED_STACKOP     3
-#define X86_GINSN_UNHANDLED_UNEXPECTED  4
-
-/* Check the input insn for its impact on the correctness of the synthesized
-   CFI.  Returns an error code to the caller.  */
-
-static int
-x86_ginsn_unhandled (void)
+static void
+x86_report_tls_error (enum x86_tls_error_type tls_error,
+		      enum bfd_reloc_code_real r_type)
 {
-  int err = X86_GINSN_UNHANDLED_NONE;
-  const reg_entry *reg_op;
-  unsigned int dw2_regnum;
+  unsigned int k;
+  for (k = 0; k < ARRAY_SIZE (gotrel); k++)
+    if (gotrel[k].rel[object_64bit] == r_type)
+      break;
 
-  /* Keep an eye out for instructions affecting control flow.  */
-  if (i.tm.opcode_modifier.jump)
-    err = X86_GINSN_UNHANDLED_CFG;
-  /* Also, for any instructions involving an implicit update to the stack
-     pointer.  */
-  else if (i.tm.opcode_modifier.operandconstraint == IMPLICIT_STACK_OP)
-    err = X86_GINSN_UNHANDLED_STACKOP;
-  /* Finally, also check if the missed instructions are affecting REG_SP or
-     REG_FP.  The destination operand is the last at all stages of assembly
-     (due to following AT&T syntax layout in the internal representation).  In
-     case of Intel syntax input, this still remains true as swap_operands ()
-     is done by now.
-     PS: These checks do not involve index / base reg, as indirect memory
-     accesses via REG_SP or REG_FP do not affect SCFI correctness.
-     (Also note these instructions are candidates for other ginsn generation
-     modes in future.  TBD_GINSN_GEN_NOT_SCFI.)  */
-  else if (i.operands && i.reg_operands
-	   && !(i.flags[i.operands - 1] & Operand_Mem))
+  switch (tls_error)
     {
-      reg_op = i.op[i.operands - 1].regs;
-      if (reg_op)
-	{
-	  dw2_regnum = ginsn_dw2_regnum (reg_op);
-	  if (dw2_regnum == REG_SP || dw2_regnum == REG_FP)
-	    err = X86_GINSN_UNHANDLED_DEST_REG;
-	}
-      else
-	/* Something unexpected.  Indicate to caller.  */
-	err = X86_GINSN_UNHANDLED_UNEXPECTED;
-    }
+    case x86_tls_error_insn:
+      as_bad (_("@%s operator cannot be used with `%s'"),
+	      gotrel[k].str, insn_name (&i.tm));
+      return;
 
-  return err;
-}
+    case x86_tls_error_opcode:
+      as_bad (_("@%s operator can be used with `%s', but format is wrong"),
+	      gotrel[k].str, insn_name (&i.tm));
+      return;
 
-/* Generate one or more generic GAS instructions, a.k.a, ginsns for the current
-   machine instruction.
+    case x86_tls_error_sib:
+      as_bad (_("@%s operator requires no SIB"), gotrel[k].str);
+      return;
 
-   Returns the head of linked list of ginsn(s) added, if success; Returns NULL
-   if failure.
+    case x86_tls_error_no_base_reg:
+      as_bad (_("@%s operator requires base register"), gotrel[k].str);
+      return;
 
-   The input ginsn_gen_mode GMODE determines the set of minimal necessary
-   ginsns necessary for correctness of any passes applicable for that mode.
-   For supporting the GINSN_GEN_SCFI generation mode, following is the list of
-   machine instructions that must be translated into the corresponding ginsns
-   to ensure correctness of SCFI:
-     - All instructions affecting the two registers that could potentially
-       be used as the base register for CFA tracking.  For SCFI, the base
-       register for CFA tracking is limited to REG_SP and REG_FP only for
-       now.
-     - All change of flow instructions: conditional and unconditional branches,
-       call and return from functions.
-     - All instructions that can potentially be a register save / restore
-       operation.
-     - All instructions that perform stack manipulation implicitly: the CALL,
-       RET, PUSH, POP, ENTER, and LEAVE instructions.
+    case x86_tls_error_require_no_base_index_reg:
+      as_bad (_("@%s operator requires no base/index register"),
+	      gotrel[k].str);
+      return;
 
-   The function currently supports GINSN_GEN_SCFI ginsn generation mode only.
-   To support other generation modes will require work on this target-specific
-   process of creation of ginsns:
-     - Some of such places are tagged with TBD_GINSN_GEN_NOT_SCFI to serve as
-       possible starting points.
-     - Also note that ginsn representation may need enhancements.  Specifically,
-       note some TBD_GINSN_INFO_LOSS and TBD_GINSN_REPRESENTATION_LIMIT markers.
-   */
+    case x86_tls_error_base_reg:
+      as_bad (_("@%s operator requires no base register"), gotrel[k].str);
+      return;
 
-static ginsnS *
-x86_ginsn_new (const symbolS *insn_end_sym, enum ginsn_gen_mode gmode)
-{
-  int err = 0;
-  uint16_t opcode;
-  unsigned int dw2_regnum;
-  const reg_entry *mem_reg;
-  ginsnS *ginsn = NULL;
-  ginsnS *ginsn_next = NULL;
-  /* In 64-bit mode, the default stack update size is 8 bytes.  */
-  int stack_opnd_size = 8;
+    case x86_tls_error_index_ebx:
+      as_bad (_("@%s operator requires `%sebx' as index register"),
+	      gotrel[k].str, register_prefix);
+      return;
 
-  /* Currently supports generation of selected ginsns, sufficient for
-     the use-case of SCFI only.  */
-  if (gmode != GINSN_GEN_SCFI)
-    return ginsn;
+    case x86_tls_error_eax:
+      as_bad (_("@%s operator requires `%seax' as base register"),
+	      gotrel[k].str, register_prefix);
+      return;
 
-  opcode = i.tm.base_opcode;
+    case x86_tls_error_RegA:
+      as_bad (_("@%s operator requires `%seax/%srax' as base register"),
+	      gotrel[k].str, register_prefix, register_prefix);
+      return;
 
-  /* Until it is clear how to handle APX NDD and other new opcodes, disallow
-     them from SCFI.  */
-  if (is_apx_rex2_encoding ()
-      || (i.tm.opcode_modifier.evex && is_apx_evex_encoding ()))
-    {
-      as_bad (_("SCFI: unsupported APX op %#x may cause incorrect CFI"),
-	      opcode);
-      return ginsn;
-    }
+    case x86_tls_error_ebx:
+      as_bad (_("@%s operator requires `%sebx' as base register"),
+	      gotrel[k].str, register_prefix);
+      return;
 
-  switch (opcode)
-    {
+    case x86_tls_error_rip:
+      as_bad (_("@%s operator requires `%srip' as base register"),
+	      gotrel[k].str, register_prefix);
+      return;
 
-    /* Add opcodes 0x0/0x2 and sub opcodes 0x28/0x2a (with opcode_space
-       SPACE_BASE) are 8-bit ops.  While they are relevant for SCFI
-       correctness,  skip handling them here and use the x86_ginsn_unhandled
-       code path to generate GINSN_TYPE_OTHER when necessary.  */
+    case x86_tls_error_dest_eax:
+      as_bad (_("@%s operator requires `%seax' as dest register"),
+	      gotrel[k].str, register_prefix);
+      return;
 
-    case 0x1:  /* add reg, reg/mem.  */
-    case 0x29: /* sub reg, reg/mem.  */
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      ginsn = x86_ginsn_addsub_reg_mem (insn_end_sym);
-      break;
+    case x86_tls_error_dest_rdi:
+      as_bad (_("@%s operator requires `%srdi' as dest register"),
+	      gotrel[k].str, register_prefix);
+      return;
 
-    case 0x3:  /* add reg/mem, reg.  */
-    case 0x2b: /* sub reg/mem, reg.  */
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      ginsn = x86_ginsn_addsub_mem_reg (insn_end_sym);
-      break;
+    case x86_tls_error_scale_factor:
+      as_bad (_("@%s operator requires scale factor of 1"),
+	      gotrel[k].str);
+      return;
 
-    case 0xa0: /* push fs.  */
-    case 0xa8: /* push gs.  */
-      /* push fs / push gs have opcode_space == SPACE_0F.  */
-      if (i.tm.opcode_space != SPACE_0F)
-	break;
-      dw2_regnum = ginsn_dw2_regnum (i.op[0].regs);
-      /* Check if operation size is 16-bit.  */
-      if (ginsn_opsize_prefix_p ())
-	stack_opnd_size = 2;
-      ginsn = ginsn_new_sub (insn_end_sym, false,
-			     GINSN_SRC_REG, REG_SP, 0,
-			     GINSN_SRC_IMM, 0, stack_opnd_size,
-			     GINSN_DST_REG, REG_SP, 0);
-      ginsn_set_where (ginsn);
-      ginsn_next = ginsn_new_store (insn_end_sym, false,
-				    GINSN_SRC_REG, dw2_regnum,
-				    GINSN_DST_INDIRECT, REG_SP, 0);
-      ginsn_set_where (ginsn_next);
-      gas_assert (!ginsn_link_next (ginsn, ginsn_next));
-      break;
+    case x86_tls_error_base_reg_size:
+      as_bad (_("@%s operator requires 32-bit base register"),
+	      gotrel[k].str);
+      return;
 
-    case 0xa1: /* pop fs.  */
-    case 0xa9: /* pop gs.  */
-      /* pop fs / pop gs have opcode_space == SPACE_0F.  */
-      if (i.tm.opcode_space != SPACE_0F)
-	break;
-      dw2_regnum = ginsn_dw2_regnum (i.op[0].regs);
-      /* Check if operation size is 16-bit.  */
-      if (ginsn_opsize_prefix_p ())
-	stack_opnd_size = 2;
-      ginsn = ginsn_new_load (insn_end_sym, false,
-			      GINSN_SRC_INDIRECT, REG_SP, 0,
-			      GINSN_DST_REG, dw2_regnum);
-      ginsn_set_where (ginsn);
-      ginsn_next = ginsn_new_add (insn_end_sym, false,
-				  GINSN_SRC_REG, REG_SP, 0,
-				  GINSN_SRC_IMM, 0, stack_opnd_size,
-				  GINSN_DST_REG, REG_SP, 0);
-      ginsn_set_where (ginsn_next);
-      gas_assert (!ginsn_link_next (ginsn, ginsn_next));
-      break;
+    case x86_tls_error_dest_32bit_reg_size:
+      as_bad (_("@%s operator requires 32-bit dest register"),
+	      gotrel[k].str);
+      return;
 
-    case 0x50 ... 0x57:
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* push reg.  */
-      dw2_regnum = ginsn_dw2_regnum (i.op[0].regs);
-      /* Check if operation size is 16-bit.  */
-      if (ginsn_opsize_prefix_p ())
-	stack_opnd_size = 2;
-      ginsn = ginsn_new_sub (insn_end_sym, false,
-			     GINSN_SRC_REG, REG_SP, 0,
-			     GINSN_SRC_IMM, 0, stack_opnd_size,
-			     GINSN_DST_REG, REG_SP, 0);
-      ginsn_set_where (ginsn);
-      ginsn_next = ginsn_new_store (insn_end_sym, false,
-				    GINSN_SRC_REG, dw2_regnum,
-				    GINSN_DST_INDIRECT, REG_SP, 0);
-      ginsn_set_where (ginsn_next);
-      gas_assert (!ginsn_link_next (ginsn, ginsn_next));
-      break;
+    case x86_tls_error_dest_64bit_reg_size:
+      as_bad (_("@%s operator requires 64-bit dest register"),
+	      gotrel[k].str);
+      return;
 
-    case 0x58 ... 0x5f:
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* pop reg.  */
-      dw2_regnum = ginsn_dw2_regnum (i.op[0].regs);
-      ginsn = ginsn_new_load (insn_end_sym, false,
-			      GINSN_SRC_INDIRECT, REG_SP, 0,
-			      GINSN_DST_REG, dw2_regnum);
-      ginsn_set_where (ginsn);
-      /* Check if operation size is 16-bit.  */
-      if (ginsn_opsize_prefix_p ())
-	stack_opnd_size = 2;
-      ginsn_next = ginsn_new_add (insn_end_sym, false,
-				  GINSN_SRC_REG, REG_SP, 0,
-				  GINSN_SRC_IMM, 0, stack_opnd_size,
-				  GINSN_DST_REG, REG_SP, 0);
-      ginsn_set_where (ginsn_next);
-      gas_assert (!ginsn_link_next (ginsn, ginsn_next));
-      break;
-
-    case 0x6a: /* push imm8.  */
-    case 0x68: /* push imm16/imm32.  */
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* Check if operation size is 16-bit.  */
-      if (ginsn_opsize_prefix_p ())
-	stack_opnd_size = 2;
-      /* Skip getting the value of imm from machine instruction
-	 because this is not important for SCFI.  */
-      ginsn = ginsn_new_sub (insn_end_sym, false,
-			     GINSN_SRC_REG, REG_SP, 0,
-			     GINSN_SRC_IMM, 0, stack_opnd_size,
-			     GINSN_DST_REG, REG_SP, 0);
-      ginsn_set_where (ginsn);
-      ginsn_next = ginsn_new_store (insn_end_sym, false,
-				    GINSN_SRC_IMM, 0,
-				    GINSN_DST_INDIRECT, REG_SP, 0);
-      ginsn_set_where (ginsn_next);
-      gas_assert (!ginsn_link_next (ginsn, ginsn_next));
-      break;
-
-    /* PS: Opcodes 0x80 ... 0x8f with opcode_space SPACE_0F are present
-       only after relaxation.  They do not need to be handled for ginsn
-       creation.  */
-    case 0x70 ... 0x7f:
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      ginsn = x86_ginsn_jump (insn_end_sym, true);
-      break;
-
-    case 0x80:
-    case 0x81:
-    case 0x83:
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      ginsn = x86_ginsn_alu_imm (insn_end_sym);
-      break;
-
-    case 0x8a: /* mov r/m8, r8.  */
-    case 0x8b: /* mov r/m(16/32/64), r(16/32/64).  */
-    case 0x88: /* mov r8, r/m8.  */
-    case 0x89: /* mov r(16/32/64), r/m(16/32/64).  */
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      ginsn = x86_ginsn_move (insn_end_sym);
-      break;
-
-    case 0x8d:
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* lea disp(%base,%index,imm), %dst.  */
-      ginsn = x86_ginsn_lea (insn_end_sym);
-      break;
-
-    case 0x8f:
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* pop to reg/mem.  */
-      if (i.mem_operands)
-	{
-	  mem_reg = (i.base_reg) ? i.base_reg : i.index_reg;
-	  /* Use dummy register if no base or index.  Unlike other opcodes,
-	     ginsns must be generated as this affect stack pointer.  */
-	  dw2_regnum = (mem_reg
-			? ginsn_dw2_regnum (mem_reg)
-			: GINSN_DW2_REGNUM_RSI_DUMMY);
-	}
-      else
-	dw2_regnum = ginsn_dw2_regnum (i.op[0].regs);
-      ginsn = ginsn_new_load (insn_end_sym, false,
-			      GINSN_SRC_INDIRECT, REG_SP, 0,
-			      GINSN_DST_INDIRECT, dw2_regnum);
-      ginsn_set_where (ginsn);
-      /* Check if operation size is 16-bit.  */
-      if (ginsn_opsize_prefix_p ())
-	stack_opnd_size = 2;
-      ginsn_next = ginsn_new_add (insn_end_sym, false,
-				  GINSN_SRC_REG, REG_SP, 0,
-				  GINSN_SRC_IMM, 0, stack_opnd_size,
-				  GINSN_DST_REG, REG_SP, 0);
-      ginsn_set_where (ginsn_next);
-      gas_assert (!ginsn_link_next (ginsn, ginsn_next));
-      break;
-
-    case 0x9c:
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* pushf / pushfq.  */
-      /* Check if operation size is 16-bit.  */
-      if (ginsn_opsize_prefix_p ())
-	stack_opnd_size = 2;
-      ginsn = ginsn_new_sub (insn_end_sym, false,
-			     GINSN_SRC_REG, REG_SP, 0,
-			     GINSN_SRC_IMM, 0, stack_opnd_size,
-			     GINSN_DST_REG, REG_SP, 0);
-      ginsn_set_where (ginsn);
-      /* FIXME - hardcode the actual DWARF reg number value.  As for SCFI
-	 correctness, although this behaves simply a placeholder value; its
-	 just clearer if the value is correct.  */
-      dw2_regnum = GINSN_DW2_REGNUM_EFLAGS;
-      ginsn_next = ginsn_new_store (insn_end_sym, false,
-				    GINSN_SRC_REG, dw2_regnum,
-				    GINSN_DST_INDIRECT, REG_SP, 0);
-      ginsn_set_where (ginsn_next);
-      gas_assert (!ginsn_link_next (ginsn, ginsn_next));
-      break;
-
-    case 0x9d:
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* popf / popfq.  */
-      /* Check if operation size is 16-bit.  */
-      if (ginsn_opsize_prefix_p ())
-	stack_opnd_size = 2;
-      /* FIXME - hardcode the actual DWARF reg number value.  As for SCFI
-	 correctness, although this behaves simply a placeholder value; its
-	 just clearer if the value is correct.  */
-      dw2_regnum = GINSN_DW2_REGNUM_EFLAGS;
-      ginsn = ginsn_new_load (insn_end_sym, false,
-			      GINSN_SRC_INDIRECT, REG_SP, 0,
-			      GINSN_DST_REG, dw2_regnum);
-      ginsn_set_where (ginsn);
-      ginsn_next = ginsn_new_add (insn_end_sym, false,
-				  GINSN_SRC_REG, REG_SP, 0,
-				  GINSN_SRC_IMM, 0, stack_opnd_size,
-				  GINSN_DST_REG, REG_SP, 0);
-      ginsn_set_where (ginsn_next);
-      gas_assert (!ginsn_link_next (ginsn, ginsn_next));
-      break;
-
-    case 0xff:
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* push from reg/mem.  */
-      if (i.tm.extension_opcode == 6)
-	{
-	  /* Check if operation size is 16-bit.  */
-	  if (ginsn_opsize_prefix_p ())
-	    stack_opnd_size = 2;
-	  ginsn = ginsn_new_sub (insn_end_sym, false,
-				 GINSN_SRC_REG, REG_SP, 0,
-				 GINSN_SRC_IMM, 0, stack_opnd_size,
-				 GINSN_DST_REG, REG_SP, 0);
-	  ginsn_set_where (ginsn);
-	  if (i.mem_operands)
-	    {
-	      mem_reg = (i.base_reg) ? i.base_reg : i.index_reg;
-	      /* Use dummy register if no base or index.  Unlike other opcodes,
-		 ginsns must be generated as this affect stack pointer.  */
-	      dw2_regnum = (mem_reg
-			    ? ginsn_dw2_regnum (mem_reg)
-			    : GINSN_DW2_REGNUM_RSI_DUMMY);
-	    }
-	  else
-	    dw2_regnum = ginsn_dw2_regnum (i.op[0].regs);
-	  ginsn_next = ginsn_new_store (insn_end_sym, false,
-					GINSN_SRC_INDIRECT, dw2_regnum,
-					GINSN_DST_INDIRECT, REG_SP, 0);
-	  ginsn_set_where (ginsn_next);
-	  gas_assert (!ginsn_link_next (ginsn, ginsn_next));
-	}
-      else if (i.tm.extension_opcode == 4)
-	{
-	  /* jmp r/m.  E.g., notrack jmp *%rax.  */
-	  if (i.reg_operands)
-	    {
-	      dw2_regnum = ginsn_dw2_regnum (i.op[0].regs);
-	      ginsn = ginsn_new_jump (insn_end_sym, true,
-				      GINSN_SRC_REG, dw2_regnum, NULL);
-	      ginsn_set_where (ginsn);
-	    }
-	  else if (i.mem_operands && i.index_reg)
-	    {
-	      /* jmp    *0x0(,%rax,8).  */
-	      dw2_regnum = ginsn_dw2_regnum (i.index_reg);
-	      ginsn = ginsn_new_jump (insn_end_sym, true,
-				      GINSN_SRC_REG, dw2_regnum, NULL);
-	      ginsn_set_where (ginsn);
-	    }
-	  else if (i.mem_operands && i.base_reg)
-	    {
-	      dw2_regnum = ginsn_dw2_regnum (i.base_reg);
-	      ginsn = ginsn_new_jump (insn_end_sym, true,
-				      GINSN_SRC_REG, dw2_regnum, NULL);
-	      ginsn_set_where (ginsn);
-	    }
-	}
-      else if (i.tm.extension_opcode == 2)
-	{
-	  /* 0xFF /2 (call).  */
-	  if (i.reg_operands)
-	    {
-	      dw2_regnum = ginsn_dw2_regnum (i.op[0].regs);
-	      ginsn = ginsn_new_call (insn_end_sym, true,
-				      GINSN_SRC_REG, dw2_regnum, NULL);
-	      ginsn_set_where (ginsn);
-	    }
-	  else if (i.mem_operands && i.base_reg)
-	    {
-	      dw2_regnum = ginsn_dw2_regnum (i.base_reg);
-	      ginsn = ginsn_new_call (insn_end_sym, true,
-				      GINSN_SRC_REG, dw2_regnum, NULL);
-	      ginsn_set_where (ginsn);
-	    }
-	}
-      break;
-
-    case 0xc2: /* ret imm16.  */
-    case 0xc3: /* ret.  */
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* Near ret.  */
-      ginsn = ginsn_new_return (insn_end_sym, true);
-      ginsn_set_where (ginsn);
-      break;
-
-    case 0xc8:
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* enter.  */
-      ginsn = x86_ginsn_enter (insn_end_sym);
-      break;
-
-    case 0xc9:
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* leave.  */
-      ginsn = x86_ginsn_leave (insn_end_sym);
-      break;
-
-    case 0xe0 ... 0xe2: /* loop / loope / loopne.  */
-    case 0xe3:          /* jecxz / jrcxz.  */
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      ginsn = x86_ginsn_jump (insn_end_sym, true);
-      ginsn_set_where (ginsn);
-      break;
-
-    case 0xe8:
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* PS: SCFI machinery does not care about which func is being
-	 called.  OK to skip that info.  */
-      ginsn = ginsn_new_call (insn_end_sym, true,
-			      GINSN_SRC_SYMBOL, 0, NULL);
-      ginsn_set_where (ginsn);
-      break;
-
-    /* PS: opcode 0xe9 appears only after relaxation.  Skip here.  */
-    case 0xeb:
-      /* If opcode_space != SPACE_BASE, this is not a jmp insn.  Skip it
-	 for GINSN_GEN_SCFI.  */
-      if (i.tm.opcode_space != SPACE_BASE)
-	break;
-      /* Unconditional jmp.  */
-      ginsn = x86_ginsn_jump (insn_end_sym, false);
-      ginsn_set_where (ginsn);
-      break;
+    case x86_tls_error_dest_32bit_or_64bit_reg_size:
+      as_bad (_("@%s operator requires 32-bit or 64-bit dest register"),
+	      gotrel[k].str);
+      return;
 
     default:
-      /* TBD_GINSN_GEN_NOT_SCFI: Skip all other opcodes uninteresting for
-	 GINSN_GEN_SCFI mode.  */
-      break;
+      abort ();
     }
-
-  if (!ginsn && !x86_ginsn_safe_to_skip_p ())
-    {
-      /* For all unhandled insns that are not whitelisted, check that they do
-	 not impact SCFI correctness.  */
-      err = x86_ginsn_unhandled ();
-      switch (err)
-	{
-	case X86_GINSN_UNHANDLED_NONE:
-	  break;
-	case X86_GINSN_UNHANDLED_DEST_REG:
-	  /* Not all writes to REG_FP are harmful in context of SCFI.  Simply
-	     generate a GINSN_TYPE_OTHER with destination set to the
-	     appropriate register.  The SCFI machinery will bail out if this
-	     ginsn affects SCFI correctness.  */
-	  dw2_regnum = ginsn_dw2_regnum (i.op[i.operands - 1].regs);
-	  ginsn = ginsn_new_other (insn_end_sym, true,
-				   GINSN_SRC_IMM, 0,
-				   GINSN_SRC_IMM, 0,
-				   GINSN_DST_REG, dw2_regnum);
-	  ginsn_set_where (ginsn);
-	  break;
-	case X86_GINSN_UNHANDLED_CFG:
-	case X86_GINSN_UNHANDLED_STACKOP:
-	  as_bad (_("SCFI: unhandled op %#x may cause incorrect CFI"), opcode);
-	  break;
-	case X86_GINSN_UNHANDLED_UNEXPECTED:
-	  as_bad (_("SCFI: unexpected op %#x may cause incorrect CFI"),
-		  opcode);
-	  break;
-	default:
-	  abort ();
-	  break;
-	}
-    }
-
-  return ginsn;
 }
-
 #endif
 
 /* This is the guts of the machine-dependent assembler.  LINE points to a
@@ -7295,10 +7272,10 @@ i386_assemble (char *line)
 
   /* All Intel opcodes have reversed operands except for "bound", "enter",
      "invlpg*", "monitor*", "mwait*", "tpause", "umwait", "pvalidate",
-     "rmpadjust", "rmpupdate", and "rmpquery".  We also don't reverse
-     intersegment "jmp" and "call" instructions with 2 immediate operands so
-     that the immediate segment precedes the offset consistently in Intel and
-     AT&T modes.  */
+     "rmpadjust", "rmpquery", and deprecated forms of "rmpupdate".
+     We also don't reverse intersegment "jmp" and "call" instructions with
+     2 immediate operands so that the immediate segment precedes the offset
+     consistently in Intel and AT&T modes.  */
   if (intel_syntax
       && i.operands > 1
       && (t->mnem_off != MN_bound)
@@ -7306,7 +7283,7 @@ i386_assemble (char *line)
       && !startswith (mnemonic, "monitor")
       && !startswith (mnemonic, "mwait")
       && (t->mnem_off != MN_pvalidate)
-      && !startswith (mnemonic, "rmp")
+      && (!startswith (mnemonic, "rmp") || i.mem_operands)
       && (t->mnem_off != MN_tpause)
       && (t->mnem_off != MN_umwait)
       && !(i.operands == 2
@@ -7315,29 +7292,30 @@ i386_assemble (char *line)
     swap_operands ();
 
   /* The order of the immediates should be reversed for 2-immediates EXTRQ
-     and INSERTQ instructions.  Also UWRMSR wants its immediate to be in the
-     "canonical" place (first), despite it appearing last (in AT&T syntax, or
-     because of the swapping above) in the incoming set of operands.  */
+     and INSERTQ instructions.  Also OUT, UWRMSR, and WRMSRNS want their
+     immediate to be in the "canonical" place (first), despite it appearing
+     last (in AT&T syntax, or because of the swapping above) in the incoming
+     set of operands.  */
   if ((i.imm_operands == 2
        && (t->mnem_off == MN_extrq || t->mnem_off == MN_insertq))
-      || (t->mnem_off == MN_uwrmsr && i.imm_operands
-	  && i.operands > i.imm_operands))
+      || ((t->mnem_off == MN_out || t->mnem_off == MN_uwrmsr
+	   || t->mnem_off == MN_wrmsrns)
+	  && i.imm_operands && i.operands > i.imm_operands))
       swap_2_operands (0, 1);
 
   if (i.imm_operands)
     {
-      /* For USER_MSR instructions, imm32 stands for the name of an model specific
-	 register (MSR). That's an unsigned quantity, whereas all other insns with
-	 32-bit immediate and 64-bit operand size use sign-extended
-	 immediates (imm32s). Therefore these insns are special-cased, bypassing
-	 the normal handling of immediates here.  */
-      if (is_cpu(current_templates.start, CpuUSER_MSR))
+      /* For USER_MSR and MSR_IMM instructions, imm32 stands for the name of a
+	 model specific register (MSR). That's an unsigned quantity, whereas all
+	 other insns with 32-bit immediate and 64-bit operand size use
+	 sign-extended immediates (imm32s). Therefore these insns are
+	 special-cased, bypassing the normal handling of immediates here.  */
+      if (is_cpu(current_templates.start, CpuUSER_MSR)
+	  || t->mnem_off == MN_rdmsr
+	  || t->mnem_off == MN_wrmsrns)
 	{
-	  for (j = 0; j < i.operands; j++)
-	    {
-	      if (operand_type_check(i.types[j], imm))
-		i.types[j] = smallest_imm_type (i.op[j].imms->X_add_number);
-	    }
+	  for (j = 0; j < i.imm_operands; j++)
+	    i.types[j] = smallest_imm_type (i.op[j].imms->X_add_number);
 	}
       else
 	optimize_imm ();
@@ -7536,7 +7514,9 @@ i386_assemble (char *line)
       return;
 
   /* Check if REP prefix is OK.  */
-  if (i.rep_prefix && i.tm.opcode_modifier.prefixok != PrefixRep)
+  if (i.rep_prefix && i.tm.opcode_modifier.prefixok != PrefixRep
+      && (i.prefix[REP_PREFIX] != REPE_PREFIX_OPCODE
+	  || i.tm.opcode_modifier.prefixok != PrefixRepe))
     {
       as_bad (_("invalid instruction `%s' after `%s'"),
 		insn_name (&i.tm), i.rep_prefix);
@@ -7561,30 +7541,35 @@ i386_assemble (char *line)
 	i.prefix[LOCK_PREFIX] = 0;
     }
 
-  if ((is_any_vex_encoding (&i.tm) && i.tm.opcode_space != SPACE_EVEXMAP4)
-      || i.tm.operand_types[i.imm_operands].bitfield.class >= RegMMX
-      || i.tm.operand_types[i.imm_operands + 1].bitfield.class >= RegMMX)
+#ifdef OBJ_ELF
+  if (i.has_gotrel && tls_check)
     {
-      /* Check for data size prefix on VEX/XOP/EVEX encoded and SIMD insns.  */
+      enum x86_tls_error_type tls_error;
+      for (j = 0; j < i.operands; ++j)
+	{
+	  tls_error = x86_check_tls_relocation (i.reloc[j]);
+	  if (tls_error == x86_tls_error_continue)
+	    continue;
+
+	  if (tls_error != x86_tls_error_none)
+	    x86_report_tls_error (tls_error, i.reloc[j]);
+	  break;
+	}
+    }
+#endif
+
+  if ((is_any_vex_encoding (&i.tm) && i.tm.opcode_space != SPACE_MAP4)
+      || i.tm.operand_types[i.imm_operands].bitfield.class >= RegMMX
+      || i.tm.operand_types[i.imm_operands + 1].bitfield.class >= RegMMX
+      || is_padlock(&i.tm))
+    {
+      /* Check for data size prefix on VEX/XOP/EVEX encoded, SIMD, and
+	 PadLock insns.  */
       if (i.prefix[DATA_PREFIX])
 	{
 	  as_bad (_("data size prefix invalid with `%s'"), insn_name (&i.tm));
 	  return;
 	}
-
-      /* Don't allow e.g. KMOV in TLS code sequences.  */
-      for (j = i.imm_operands; j < i.operands; ++j)
-	switch (i.reloc[j])
-	  {
-	  case BFD_RELOC_X86_64_GOTTPOFF:
-	  case BFD_RELOC_386_TLS_GOTIE:
-	  case BFD_RELOC_386_TLS_LE_32:
-	  case BFD_RELOC_X86_64_TLSLD:
-	    as_bad (_("TLS relocation cannot be used with `%s'"), insn_name (&i.tm));
-	    return;
-	  default:
-	    break;
-	  }
     }
 
   /* Check if HLE prefix is OK.  */
@@ -7674,6 +7659,8 @@ i386_assemble (char *line)
   /* Update operand types and check extended states.  */
   for (j = 0; j < i.operands; j++)
     {
+      enum operand_class class = i.types[j].bitfield.class;
+
       i.types[j] = operand_type_and (i.types[j], i.tm.operand_types[j]);
       switch (i.tm.operand_types[j].bitfield.class)
 	{
@@ -7697,6 +7684,9 @@ i386_assemble (char *line)
 	    i.xstate |= xstate_ymm;
 	  else if (i.tm.operand_types[j].bitfield.xmmword)
 	    i.xstate |= xstate_xmm;
+	  break;
+	case ClassNone:
+	  i.types[j].bitfield.class = class;
 	  break;
 	}
     }
@@ -7732,7 +7722,7 @@ i386_assemble (char *line)
 
       /* Check for explicit REX prefix.  */
       if ((i.prefix[REX_PREFIX]
-	   && (i.tm.opcode_space != SPACE_EVEXMAP4
+	   && (i.tm.opcode_space != SPACE_MAP4
 	       /* To mimic behavior for legacy insns, permit use of REX64 for promoted
 		  legacy instructions.  */
 	       || i.prefix[REX_PREFIX] != (REX_OPCODE | REX_W)))
@@ -7751,7 +7741,7 @@ i386_assemble (char *line)
 
       if (is_apx_evex_encoding ())
 	{
-	  if (!build_apx_evex_prefix ())
+	  if (!build_apx_evex_prefix (false))
 	    return;
 	}
       else if (i.tm.opcode_modifier.vex)
@@ -7793,10 +7783,10 @@ i386_assemble (char *line)
   /* We are ready to output the insn.  */
   output_insn (last_insn);
 
-#if defined (OBJ_MAYBE_ELF) || defined (OBJ_ELF)
+#ifdef OBJ_ELF
   /* PS: SCFI is enabled only for System V AMD64 ABI.  The ABI check has been
      performed in i386_target_format.  */
-  if (IS_ELF && flag_synth_cfi)
+  if (flag_synth_cfi)
     {
       ginsnS *ginsn;
       ginsn = x86_ginsn_new (symbol_temp_new_now (), frch_ginsn_gen_mode ());
@@ -7850,13 +7840,15 @@ parse_insn (const char *line, char *mnemonic, enum parse_mode mode)
 
   while (1)
     {
+      const char *split;
+
       mnem_p = mnemonic;
       /* Pseudo-prefixes start with an opening figure brace.  */
       if ((*mnem_p = *l) == '{')
 	{
 	  ++mnem_p;
 	  ++l;
-	  if (is_space_char (*l))
+	  if (is_whitespace (*l))
 	    ++l;
 	}
       else if (mode == parse_pseudo_prefix)
@@ -7874,9 +7866,10 @@ parse_insn (const char *line, char *mnemonic, enum parse_mode mode)
 	    }
 	  l++;
 	}
-      /* Pseudo-prefixes end with a closing figure brace.  */
-      if (*mnemonic == '{' && is_space_char (*l))
+      split = l;
+      if (is_whitespace (*l))
 	++l;
+      /* Pseudo-prefixes end with a closing figure brace.  */
       if (*mnemonic == '{' && *l == '}')
 	{
 	  *mnem_p++ = *l++;
@@ -7884,12 +7877,10 @@ parse_insn (const char *line, char *mnemonic, enum parse_mode mode)
 	    goto too_long;
 	  *mnem_p = '\0';
 
-	  /* Point l at the closing brace if there's no other separator.  */
-	  if (*l != END_OF_INSN && !is_space_char (*l)
-	      && *l != PREFIX_SEPARATOR)
-	    --l;
+	  if (is_whitespace (*l))
+	    ++l;
 	}
-      else if (!is_space_char (*l)
+      else if (l == split
 	       && *l != END_OF_INSN
 	       && (intel_syntax
 		   || (*l != PREFIX_SEPARATOR && *l != ',')))
@@ -7897,7 +7888,7 @@ parse_insn (const char *line, char *mnemonic, enum parse_mode mode)
 	  if (mode != parse_all)
 	    break;
 	  as_bad (_("invalid character %s in mnemonic"),
-		  output_invalid (*l));
+		  output_invalid (*split));
 	  return NULL;
 	}
       if (token_start == l)
@@ -7913,7 +7904,6 @@ parse_insn (const char *line, char *mnemonic, enum parse_mode mode)
       op_lookup (mnemonic);
 
       if (*l != END_OF_INSN
-	  && (!is_space_char (*l) || l[1] != END_OF_INSN)
 	  && current_templates.start
 	  && current_templates.start->opcode_modifier.isprefix)
 	{
@@ -8000,6 +7990,10 @@ parse_insn (const char *line, char *mnemonic, enum parse_mode mode)
 		  /* {nooptimize} */
 		  pp.no_optimize = true;
 		  break;
+		case Prefix_NoImm8s:
+		  /* {noimm8s} */
+		  pp.no_imm8s = true;
+		  break;
 		default:
 		  abort ();
 		}
@@ -8035,7 +8029,10 @@ parse_insn (const char *line, char *mnemonic, enum parse_mode mode)
 		}
 	    }
 	  /* Skip past PREFIX_SEPARATOR and reset token_start.  */
-	  token_start = ++l;
+	  l += (!intel_syntax && *l == PREFIX_SEPARATOR);
+	  if (is_whitespace (*l))
+	    ++l;
+	  token_start = l;
 	}
       else
 	break;
@@ -8046,6 +8043,32 @@ parse_insn (const char *line, char *mnemonic, enum parse_mode mode)
 
   if (!current_templates.start)
     {
+#ifdef TE_SOLARIS
+      /* Sun specifies an alternative form for CMOVcc: Size suffix (if any)
+	 first, then a dot, then the condition code mnemonic.  */
+      if ((mnemonic + 4 == dot_p && !memcmp (mnemonic, "cmov", 4))
+	  /* While doc doesn't say so, gcc assumes it: Same for FCMOVcc,
+	     except that there's no size suffix to care about.  */
+	  || (mnemonic + 5 == dot_p && !memcmp (mnemonic, "fcmov", 5)))
+	{
+	  /* Simply strip the dot.  */
+	  memmove (dot_p, dot_p + 1, mnem_p - dot_p);
+	  dot_p = mnem_p - 1;
+	}
+      else if (!intel_syntax
+	       && mnemonic + 5 == dot_p
+	       && !memcmp (mnemonic, "cmov", 4)
+	       && strchr ("lqw", TOLOWER (dot_p[-1])))
+	{
+	  /* Strip the dot, while moving the suffix.  */
+	  char suffix = dot_p[-1];
+
+	  memmove (dot_p - 1, dot_p + 1, mnem_p - dot_p);
+	  mnem_p[-2] = suffix;
+	  dot_p = mnem_p - 1;
+	}
+      else
+#endif
       /* Deprecated functionality (new code should use pseudo-prefixes instead):
 	 Check if we should swap operand or force 32bit displacement in
 	 encoding.  */
@@ -8127,8 +8150,7 @@ parse_insn (const char *line, char *mnemonic, enum parse_mode mode)
 		}
 	      /* For compatibility reasons accept MOVSD and CMPSD without
 	         operands even in AT&T mode.  */
-	      else if (*l == END_OF_INSN
-		       || (is_space_char (*l) && l[1] == END_OF_INSN))
+	      else if (*l == END_OF_INSN)
 		{
 		  mnem_p[-1] = '\0';
 		  op_lookup (mnemonic);
@@ -8170,8 +8192,9 @@ parse_insn (const char *line, char *mnemonic, enum parse_mode mode)
       l += length;
     }
 
-  if (current_templates.start->opcode_modifier.jump == JUMP
-      || current_templates.start->opcode_modifier.jump == JUMP_BYTE)
+  if ((current_templates.start->opcode_modifier.jump == JUMP
+       || current_templates.start->opcode_modifier.jump == JUMP_BYTE)
+      && *l == ',')
     {
       /* Check for a branch hint.  We allow ",pt" and ",pn" for
 	 predict taken and predict not taken respectively.
@@ -8179,21 +8202,29 @@ parse_insn (const char *line, char *mnemonic, enum parse_mode mode)
 	 and jcxz insns (JumpByte) for current Pentium4 chips.  They
 	 may work in the future and it doesn't hurt to accept them
 	 now.  */
-      if (l[0] == ',' && l[1] == 'p')
+      token_start = l++;
+      if (is_whitespace (*l))
+	++l;
+      if (TOLOWER (*l) == 'p' && ISALPHA (l[1])
+	  && (l[2] == END_OF_INSN || is_whitespace (l[2])))
 	{
-	  if (l[2] == 't')
+	  if (TOLOWER (l[1]) == 't')
 	    {
 	      if (!add_prefix (DS_PREFIX_OPCODE))
 		return NULL;
-	      l += 3;
+	      l += 2;
 	    }
-	  else if (l[2] == 'n')
+	  else if (TOLOWER (l[1]) == 'n')
 	    {
 	      if (!add_prefix (CS_PREFIX_OPCODE))
 		return NULL;
-	      l += 3;
+	      l += 2;
 	    }
+	  else
+	    l = token_start;
 	}
+      else
+	l = token_start;
     }
   /* Any other comma loses.  */
   if (*l == ',')
@@ -8243,7 +8274,7 @@ parse_operands (char *l, const char *mnemonic)
       bool in_quotes = false;
 
       /* Skip optional white space before operand.  */
-      if (is_space_char (*l))
+      if (is_whitespace (*l))
 	++l;
       if (!is_operand_char (*l) && *l != END_OF_INSN && *l != '"')
 	{
@@ -8277,7 +8308,7 @@ parse_operands (char *l, const char *mnemonic)
 	    ++l;
 	  else if (*l == '"')
 	    in_quotes = !in_quotes;
-	  else if (!in_quotes && !is_operand_char (*l) && !is_space_char (*l))
+	  else if (!in_quotes && !is_operand_char (*l) && !is_whitespace (*l))
 	    {
 	      as_bad (_("invalid character %s in operand %d"),
 		      output_invalid (*l),
@@ -8352,6 +8383,19 @@ parse_operands (char *l, const char *mnemonic)
 	}
     }
   return l;
+}
+
+static void
+copy_operand (unsigned int to, unsigned int from)
+{
+  i.types[to] = i.types[from];
+  i.tm.operand_types[to] = i.tm.operand_types[from];
+  i.flags[to] = i.flags[from];
+  i.op[to] = i.op[from];
+  i.reloc[to] = i.reloc[from];
+  i.imm_bits[to] = i.imm_bits[from];
+  /* Note: i.mask and i.broadcast aren't handled here, as what (if
+     anything) to do there depends on context.  */
 }
 
 static void
@@ -8472,7 +8516,8 @@ optimize_imm (void)
 	       /* A more generic (but also more involved) way of dealing
 		  with the special case(s) would be to go look for
 		  DefaultSize attributes on any of the templates.  */
-	       && current_templates.start->mnem_off != MN_push))
+	       && current_templates.start->mnem_off != MN_push
+	       && current_templates.start->mnem_off != MN_jmpabs))
     guess_suffix = LONG_MNEM_SUFFIX;
 
   for (op = i.operands; --op >= 0;)
@@ -8593,7 +8638,7 @@ optimize_disp (const insn_template *t)
       && (!t->opcode_modifier.jump
 	  || i.jumpabsolute || i.types[0].bitfield.baseindex))
     {
-      for (op = 0; op < i.operands; ++op)
+      for (op = i.imm_operands; op < i.operands; ++op)
 	{
 	  const expressionS *exp = i.op[op].disps;
 
@@ -8618,10 +8663,10 @@ optimize_disp (const insn_template *t)
 	}
     }
 
-  /* Don't optimize displacement for movabs since it only takes 64bit
-     displacement.  */
+  /* Don't optimize displacement for movabs / jmpabs since they only take
+     64-bit displacement.  */
   if (pp.disp_encoding > disp_encoding_8bit
-      || (flag_code == CODE_64BIT && t->mnem_off == MN_movabs))
+      || t->mnem_off == MN_movabs || t->mnem_off == MN_jmpabs)
     return true;
 
   for (op = i.operands; op-- > 0;)
@@ -8934,7 +8979,7 @@ check_VecOperands (const insn_template *t)
 	  unsigned int j;
 
 	  type.bitfield.baseindex = 1;
-	  for (j = 0; j < i.operands; ++j)
+	  for (j = i.imm_operands; j < i.operands; ++j)
 	    {
 	      if (j != op
 		  && !operand_type_register_match(i.types[j],
@@ -8950,7 +8995,7 @@ check_VecOperands (const insn_template *t)
   else if (t->opcode_modifier.broadcast && i.mem_operands)
     {
       /* Find memory operand.  */
-      for (op = 0; op < i.operands; op++)
+      for (op = i.imm_operands; op < i.operands; op++)
 	if (i.flags[op] & Operand_Mem)
 	  break;
       gas_assert (op < i.operands);
@@ -9007,18 +9052,17 @@ check_VecOperands (const insn_template *t)
 	  return 1;
 	}
 
-      /* Non-EVEX.LIG forms need to have a ZMM register as at least one
-	 operand.  */
-      if (t->opcode_modifier.evex != EVEXLIG)
+      /* Non-EVEX.{LIG,512} forms need to have a ZMM or YMM register as at
+	 least one operand.  There's no need to check all operands, though:
+	 Either of the last two operands will be of the right size in all
+	 relevant templates.  */
+      if (t->opcode_modifier.evex != EVEXLIG
+	  && t->opcode_modifier.evex != EVEX512
+	  && !i.types[t->operands - 1].bitfield.zmmword
+	  && !i.types[t->operands - 2].bitfield.zmmword)
 	{
-	  for (op = 0; op < t->operands; ++op)
-	    if (i.types[op].bitfield.zmmword)
-	      break;
-	  if (op >= t->operands)
-	    {
-	      i.error = operand_size_mismatch;
-	      return 1;
-	    }
+	  i.error = operand_size_mismatch;
+	  return 1;
 	}
     }
 
@@ -9060,7 +9104,7 @@ check_VecOperands (const insn_template *t)
 	  const i386_operand_type *type = NULL, *fallback = NULL;
 
 	  i.memshift = 0;
-	  for (op = 0; op < i.operands; op++)
+	  for (op = i.imm_operands; op < i.operands; op++)
 	    if (i.flags[op] & Operand_Mem)
 	      {
 		if (t->opcode_modifier.evex == EVEXLIG)
@@ -9102,7 +9146,7 @@ check_VecOperands (const insn_template *t)
 	    i.memshift = -1;
 	}
 
-      for (op = 0; op < i.operands; op++)
+      for (op = i.imm_operands; op < i.operands; op++)
 	if (operand_type_check (i.types[op], disp)
 	    && i.op[op].disps->X_op == O_constant)
 	  {
@@ -9196,7 +9240,7 @@ check_EgprOperands (const insn_template *t)
   if (!t->opcode_modifier.noegpr)
     return false;
 
-  for (unsigned int op = 0; op < i.operands; op++)
+  for (unsigned int op = i.imm_operands; op < i.operands; op++)
     {
       if (i.types[op].bitfield.class != Reg)
 	continue;
@@ -9258,7 +9302,7 @@ check_APX_operands (const insn_template *t)
 static bool
 check_Rex_required (void)
 {
-  for (unsigned int op = 0; op < i.operands; op++)
+  for (unsigned int op = i.imm_operands; op < i.operands; op++)
     {
       if (i.types[op].bitfield.class != Reg)
 	continue;
@@ -9530,7 +9574,10 @@ match_template (char mnem_suffix)
 	{
 	case 1:
 	  if (!operand_type_match (overlap0, i.types[0]))
-	    continue;
+	    {
+	      specific_error = progress (i.error);
+	      continue;
+	    }
 
 	  /* Allow the ModR/M encoding to be requested by using the {load} or
 	     {store} pseudo prefix on an applicable insn.  */
@@ -9623,7 +9670,7 @@ match_template (char mnem_suffix)
 	     - the non-default (swapped) form is requested.  */
 	  overlap1 = operand_type_and (operand_types[0], operand_types[1]);
 
-	  j = i.operands - 1 - (t->opcode_space == SPACE_EVEXMAP4
+	  j = i.operands - 1 - (t->opcode_space == SPACE_MAP4
 				&& t->opcode_modifier.vexvvvv);
 
 	  if (t->opcode_modifier.d && i.reg_operands == i.operands
@@ -9679,12 +9726,13 @@ match_template (char mnem_suffix)
 	      /* Try reversing direction of operands.  */
 	      j = is_cpu (t, CpuFMA4)
 		  || is_cpu (t, CpuXOP)
-		  || is_cpu (t, CpuAPX_F) ? 1 : i.operands - 1;
+		  || is_cpu (t, CpuAPX_F)
+		  || is_cpu (t, CpuAPX_NDD) ? 1 : i.operands - 1;
 	      overlap0 = operand_type_and (i.types[0], operand_types[j]);
 	      overlap1 = operand_type_and (i.types[j], operand_types[0]);
 	      overlap2 = operand_type_and (i.types[1], operand_types[1]);
 	      gas_assert (t->operands != 3 || !check_register
-			  || is_cpu (t, CpuAPX_F));
+			  || is_cpu (t, CpuAPX_F) || is_cpu (t, CpuAPX_NDD));
 	      if (!operand_type_match (overlap0, i.types[0])
 		  || !operand_type_match (overlap1, i.types[j])
 		  || (t->operands == 3
@@ -9719,16 +9767,19 @@ match_template (char mnem_suffix)
 		  found_reverse_match = Opcode_VexW;
 		  goto check_operands_345;
 		}
-	      else if (t->opcode_space == SPACE_EVEXMAP4
+	      else if (t->opcode_space == SPACE_MAP4
 		       && t->operands >= 3)
 		{
 		  found_reverse_match = Opcode_D;
 		  goto check_operands_345;
 		}
-	      else if (t->opcode_modifier.commutative)
+	      else if (t->opcode_modifier.commutative
+		       /* CFCMOVcc also wants its major opcode unaltered.  */
+		       || (t->opcode_space == SPACE_MAP4
+			   && (t->base_opcode | 0xf) == 0x4f))
 		found_reverse_match = ~0;
 	      else if (t->opcode_space != SPACE_BASE
-		       && (t->opcode_space != SPACE_EVEXMAP4
+		       && (t->opcode_space != SPACE_MAP4
 			   /* MOVBE, originating from SPACE_0F38, also
 			      belongs here.  */
 			   || t->mnem_off == MN_movbe)
@@ -9987,7 +10038,7 @@ match_template (char mnem_suffix)
 
   /* APX insns acting on byte operands are WIG, yet that can't be expressed
      in the templates (they're also covering word/dword/qword operands).  */
-  if (t->opcode_space == SPACE_EVEXMAP4 && !t->opcode_modifier.vexw &&
+  if (t->opcode_space == SPACE_MAP4 && !t->opcode_modifier.vexw &&
       i.types[i.operands - 1].bitfield.byte)
     {
       gas_assert (t->opcode_modifier.w);
@@ -10012,7 +10063,7 @@ match_template (char mnem_suffix)
 
       i.tm.base_opcode ^= found_reverse_match;
 
-      if (i.tm.opcode_space == SPACE_EVEXMAP4)
+      if (i.tm.opcode_space == SPACE_MAP4)
 	goto swap_first_2;
 
       /* Certain SIMD insns have their load forms specified in the opcode
@@ -10025,6 +10076,9 @@ match_template (char mnem_suffix)
 
       /* Fall through.  */
     case ~0:
+      if (i.tm.opcode_space == SPACE_MAP4
+	  && !t->opcode_modifier.commutative)
+	i.tm.opcode_modifier.operandconstraint = EVEX_NF;
       i.tm.operand_types[0] = operand_types[i.operands - 1];
       i.tm.operand_types[i.operands - 1] = operand_types[0];
       break;
@@ -10462,7 +10516,7 @@ process_suffix (const insn_template *t)
       if (i.tm.opcode_modifier.mnemonicsize != IGNORESIZE
 	  && !i.tm.opcode_modifier.floatmf
 	  && (!is_any_vex_encoding (&i.tm)
-	      || i.tm.opcode_space == SPACE_EVEXMAP4)
+	      || i.tm.opcode_space == SPACE_MAP4)
 	  && ((i.suffix == LONG_MNEM_SUFFIX) == (flag_code == CODE_16BIT)
 	      || (flag_code == CODE_64BIT
 		  && i.tm.opcode_modifier.jump == JUMP_BYTE)))
@@ -10474,7 +10528,7 @@ process_suffix (const insn_template *t)
 
 	  /* The DATA PREFIX of EVEX promoted from legacy APX instructions
 	     needs to be adjusted.  */
-	  if (i.tm.opcode_space == SPACE_EVEXMAP4)
+	  if (i.tm.opcode_space == SPACE_MAP4)
 	    {
 	      gas_assert (!i.tm.opcode_modifier.opcodeprefix);
 	      i.tm.opcode_modifier.opcodeprefix = PREFIX_0X66;
@@ -10544,7 +10598,7 @@ process_suffix (const insn_template *t)
 		  ? i.op[1].regs->reg_type.bitfield.word
 		  : i.op[1].regs->reg_type.bitfield.dword)
 	      && ((i.base_reg == NULL && i.index_reg == NULL)
-#if defined (OBJ_MAYBE_ELF) || defined (OBJ_ELF)
+#ifdef OBJ_ELF
 		  || (x86_elf_abi == X86_64_X32_ABI
 		      && i.base_reg
 		      && i.base_reg->reg_num == RegIP
@@ -10562,7 +10616,7 @@ process_suffix (const insn_template *t)
 	  else
 	    need = flag_code == CODE_64BIT ? need_qword : need_word;
 
-	  for (op = 0; op < i.operands; op++)
+	  for (op = i.imm_operands; op < i.operands; op++)
 	    {
 	      if (i.types[op].bitfield.class != Reg)
 		continue;
@@ -10894,7 +10948,7 @@ process_operands (void)
      unnecessary segment overrides.  */
   const reg_entry *default_seg = NULL;
 
-  for (unsigned int j = 0; j < i.operands; j++)
+  for (unsigned int j = i.imm_operands; j < i.operands; j++)
     if (i.types[j].bitfield.instance != InstanceNone)
       i.reg_operands--;
 
@@ -10917,11 +10971,8 @@ process_operands (void)
      number 0.  */
   if (i.tm.mnem_off == MN_tilezero)
     {
-      i.op[1].regs = i.op[0].regs;
+      copy_operand (1, 0);
       i.op[0].regs -= i.op[0].regs->reg_num;
-      i.types[1] = i.types[0];
-      i.tm.operand_types[1] = i.tm.operand_types[0];
-      i.flags[1] = i.flags[0];
       i.operands++;
       i.reg_operands++;
       i.tm.operands++;
@@ -10959,14 +11010,8 @@ process_operands (void)
 	  /* Add the implicit xmm0 for instructions with VEX prefix
 	     and 3 sources.  */
 	  for (j = i.operands; j > 0; j--)
-	    {
-	      i.op[j] = i.op[j - 1];
-	      i.types[j] = i.types[j - 1];
-	      i.tm.operand_types[j] = i.tm.operand_types[j - 1];
-	      i.flags[j] = i.flags[j - 1];
-	    }
-	  i.op[0].regs
-	    = (const reg_entry *) str_hash_find (reg_hash, "xmm0");
+	    copy_operand (j, j - 1);
+	  i.op[0].regs = str_hash_find (reg_hash, "xmm0");
 	  i.types[0] = regxmm;
 	  i.tm.operand_types[0] = regxmm;
 
@@ -10976,10 +11021,6 @@ process_operands (void)
 
 	  dupl++;
 	  dest++;
-	  i.op[dupl] = i.op[dest];
-	  i.types[dupl] = i.types[dest];
-	  i.tm.operand_types[dupl] = i.tm.operand_types[dest];
-	  i.flags[dupl] = i.flags[dest];
 	}
       else
 	{
@@ -10987,15 +11028,12 @@ process_operands (void)
 	  i.operands++;
 	  i.reg_operands++;
 	  i.tm.operands++;
-
-	  i.op[dupl] = i.op[dest];
-	  i.types[dupl] = i.types[dest];
-	  i.tm.operand_types[dupl] = i.tm.operand_types[dest];
-	  i.flags[dupl] = i.flags[dest];
 	}
 
-       if (i.tm.opcode_modifier.immext)
-	 process_immext ();
+      copy_operand (dupl, dest);
+
+      if (i.tm.opcode_modifier.immext)
+	process_immext ();
     }
   else if (i.tm.operand_types[0].bitfield.instance == Accum
 	   && i.tm.opcode_modifier.modrm)
@@ -11003,37 +11041,56 @@ process_operands (void)
       unsigned int j;
 
       for (j = 1; j < i.operands; j++)
-	{
-	  i.op[j - 1] = i.op[j];
-	  i.types[j - 1] = i.types[j];
-
-	  /* We need to adjust fields in i.tm since they are used by
-	     build_modrm_byte.  */
-	  i.tm.operand_types [j - 1] = i.tm.operand_types [j];
-
-	  i.flags[j - 1] = i.flags[j];
-	}
+	copy_operand (j - 1, j);
 
       /* No adjustment to i.reg_operands: This was already done at the top
 	 of the function.  */
       i.operands--;
       i.tm.operands--;
     }
-  else if (i.tm.opcode_modifier.operandconstraint == IMPLICIT_QUAD_GROUP)
+  else if (i.tm.opcode_modifier.operandconstraint == IMPLICIT_GROUP)
     {
-      unsigned int regnum, first_reg_in_group, last_reg_in_group;
+      unsigned int op, extra;
+      const reg_entry *first;
 
-      /* The second operand must be {x,y,z}mmN, where N is a multiple of 4. */
-      gas_assert (i.operands >= 2 && i.types[1].bitfield.class == RegSIMD);
-      regnum = register_number (i.op[1].regs);
-      first_reg_in_group = regnum & ~3;
-      last_reg_in_group = first_reg_in_group + 3;
-      if (regnum != first_reg_in_group)
-	as_warn (_("source register `%s%s' implicitly denotes"
-		   " `%s%.3s%u' to `%s%.3s%u' source group in `%s'"),
-		 register_prefix, i.op[1].regs->reg_name,
-		 register_prefix, i.op[1].regs->reg_name, first_reg_in_group,
-		 register_prefix, i.op[1].regs->reg_name, last_reg_in_group,
+      /* The second operand must be {x,y,z,t}mmN.  */
+      gas_assert ((i.operands == 2 || i.operands == 3)
+		  && i.types[1].bitfield.class == RegSIMD);
+
+      switch (i.types[i.operands - 1].bitfield.class)
+	{
+	case RegSIMD:
+	  op = 1;
+	  if (i.operands == 2)
+	    {
+	      /* AMX-TRANSPOSE operand 2: N must be a multiple of 2. */
+	      extra = 1;
+	    }
+	  else
+	    {
+	      /* AVX512-{4FMAPS,4VNNIW} operand 2: N must be a multiple of 4. */
+	      extra = 3;
+	    }
+	  break;
+
+	case RegMask:
+	  /* AVX512-VP2INTERSECT operand 3: N must be a multiple of 2. */
+	  op = 2;
+	  extra = 1;
+	  break;
+
+	default:
+	  abort ();
+	}
+
+      first = i.op[op].regs - (register_number (i.op[op].regs) & extra);
+      if (i.op[op].regs != first)
+	as_warn (_("operand %u `%s%s' implicitly denotes"
+		   " `%s%s' to `%s%s' group in `%s'"),
+		 intel_syntax ? i.operands - op : op + 1,
+		 register_prefix, i.op[op].regs->reg_name,
+		 register_prefix, first[0].reg_name,
+		 register_prefix, first[extra].reg_name,
 		 insn_name (&i.tm));
     }
   else if (i.tm.opcode_modifier.operandconstraint == REG_KLUDGE)
@@ -11196,7 +11253,8 @@ build_modrm_byte (void)
     if (i.tm.operand_types[op].bitfield.baseindex)
       break;
 
-  if (i.reg_operands + i.mem_operands + (i.tm.extension_opcode != None) == 4)
+  if (i.reg_operands + i.mem_operands + (i.tm.extension_opcode != None)
+      + (i.tm.opcode_modifier.operandconstraint == SCC) == 4)
     {
       expressionS *exp;
 
@@ -11208,10 +11266,12 @@ build_modrm_byte (void)
 	 2. 4 operands: 4 register operands or 3 register operands
 	 plus 1 memory operand, with VexXDS.
 	 3. Other equivalent combinations when coming from s_insn().  */
-      gas_assert (i.tm.opcode_modifier.vexvvvv
-		  && i.tm.opcode_modifier.vexw);
-      gas_assert (dot_insn ()
-		  || i.tm.operand_types[dest].bitfield.class == RegSIMD);
+      if (!dot_insn ())
+	{
+	  gas_assert (i.tm.opcode_modifier.vexvvvv
+		      && i.tm.opcode_modifier.vexw);
+	  gas_assert (i.tm.operand_types[dest].bitfield.class == RegSIMD);
+	}
 
       /* Of the first two non-immediate operands the one with the template
 	 not allowing for a memory one is encoded in the immediate operand.  */
@@ -11515,8 +11575,8 @@ build_modrm_byte (void)
 	      i.op[op].disps = exp;
 	      exp->X_op = O_constant;
 	      exp->X_add_number = 0;
-	      exp->X_add_symbol = (symbolS *) 0;
-	      exp->X_op_symbol = (symbolS *) 0;
+	      exp->X_add_symbol = NULL;
+	      exp->X_op_symbol = NULL;
 	    }
 	}
     else
@@ -11690,17 +11750,14 @@ output_branch (void)
   frag_var (rs_machine_dependent, 5, i.reloc[0], subtype, sym, off, p);
 }
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+/* PLT32 relocation is ELF only.  */
+#ifdef OBJ_ELF
 /* Return TRUE iff PLT32 relocation should be used for branching to
    symbol S.  */
 
 static bool
 need_plt32_p (symbolS *s)
 {
-  /* PLT32 relocation is ELF only.  */
-  if (!IS_ELF)
-    return false;
-
 #ifdef TE_SOLARIS
   /* Don't emit PLT32 relocation on Solaris: neither native linker nor
      krtld support it.  */
@@ -11812,11 +11869,11 @@ output_jump (void)
       abort ();
     }
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
   if (flag_code == CODE_64BIT && size == 4
       && jump_reloc == NO_RELOC && i.op[0].disps->X_add_number == 0
       && need_plt32_p (i.op[0].disps->X_add_symbol))
-    jump_reloc = BFD_RELOC_X86_64_PLT32;
+    jump_reloc = BFD_RELOC_32_PLT_PCREL;
 #endif
 
   jump_reloc = reloc (size, 1, 1, jump_reloc);
@@ -11975,7 +12032,7 @@ i386_unrecognized_line (int ch)
   return 1;
 }
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
 void
 x86_cleanup (void)
 {
@@ -11988,7 +12045,7 @@ x86_cleanup (void)
   unsigned int isa_1_descsz_raw, feature_2_descsz_raw;
   unsigned int padding;
 
-  if (!IS_ELF || !x86_used_note)
+  if (!x86_used_note)
     return;
 
   x86_feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_X86;
@@ -12095,22 +12152,14 @@ x86_cleanup (void)
     subseg_set (seg, subseg);
 }
 
+#include "tc-i386-ginsn.c"
+
 /* Whether SFrame stack trace info is supported.  */
 bool
 x86_support_sframe_p (void)
 {
   /* At this time, SFrame stack trace is supported for AMD64 ABI only.  */
   return (x86_elf_abi == X86_64_ABI);
-}
-
-/* Whether SFrame return address tracking is needed.  */
-bool
-x86_sframe_ra_tracking_p (void)
-{
-  /* In AMD64, return address is always stored on the stack at a fixed offset
-     from the CFA (provided via x86_sframe_cfa_ra_offset ()).
-     Do not track explicitly via an SFrame Frame Row Entry.  */
-  return false;
 }
 
 /* The fixed offset from CFA for SFrame to recover the return address.
@@ -12122,7 +12171,7 @@ x86_sframe_cfa_ra_offset (void)
   return (offsetT) -8;
 }
 
-/* The abi/arch indentifier for SFrame.  */
+/* The abi/arch identifier for SFrame.  */
 unsigned char
 x86_sframe_get_abi_arch (void)
 {
@@ -12272,7 +12321,7 @@ add_branch_prefix_frag_p (const struct last_insn *last_insn)
   if (!align_branch_power
       || !align_branch_prefix_size
       || now_seg == absolute_section
-      || is_cpu (&i.tm, CpuPadLock)
+      || is_padlock (&i.tm)
       || !cpu_arch_flags.bitfield.cpui386)
     return 0;
 
@@ -12395,24 +12444,26 @@ output_insn (const struct last_insn *last_insn)
      or never be used.  */
   enum mf_jcc_kind mf_jcc = mf_jcc_jo;
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
-  if (IS_ELF && x86_used_note && now_seg != absolute_section)
+#ifdef OBJ_ELF
+  if (x86_used_note && now_seg != absolute_section)
     {
+      unsigned int feature_2_used = 0;
+
       if ((i.xstate & xstate_tmm) == xstate_tmm
 	  || is_cpu (&i.tm, CpuAMX_TILE))
-	x86_feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_TMM;
+	feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_TMM;
 
       if (is_cpu (&i.tm, Cpu8087)
 	  || is_cpu (&i.tm, Cpu287)
 	  || is_cpu (&i.tm, Cpu387)
 	  || is_cpu (&i.tm, Cpu687)
 	  || is_cpu (&i.tm, CpuFISTTP))
-	x86_feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_X87;
+	feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_X87;
 
       if ((i.xstate & xstate_mmx)
 	  || i.tm.mnem_off == MN_emms
 	  || i.tm.mnem_off == MN_femms)
-	x86_feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_MMX;
+	feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_MMX;
 
       if (i.index_reg)
 	{
@@ -12435,24 +12486,29 @@ output_insn (const struct last_insn *last_insn)
 		  || is_cpu (&i.tm, CpuAVX)))
 	  || is_cpu (&i.tm, CpuWideKL)
 	  || is_cpu (&i.tm, CpuKL))
-	x86_feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_XMM;
+	feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_XMM;
 
       if ((i.xstate & xstate_ymm) == xstate_ymm)
-	x86_feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_YMM;
+	feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_YMM;
       if ((i.xstate & xstate_zmm) == xstate_zmm)
-	x86_feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_ZMM;
+	feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_ZMM;
       if (i.mask.reg || (i.xstate & xstate_mask) == xstate_mask)
-	x86_feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_MASK;
+	feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_MASK;
       if (is_cpu (&i.tm, CpuFXSR))
-	x86_feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_FXSR;
+	feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_FXSR;
       if (is_cpu (&i.tm, CpuXsave))
-	x86_feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_XSAVE;
+	feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_XSAVE;
       if (is_cpu (&i.tm, CpuXsaveopt))
-	x86_feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_XSAVEOPT;
+	feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_XSAVEOPT;
       if (is_cpu (&i.tm, CpuXSAVEC))
-	x86_feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_XSAVEC;
+	feature_2_used |= GNU_PROPERTY_X86_FEATURE_2_XSAVEC;
 
-      if (x86_feature_2_used
+      x86_feature_2_used |= feature_2_used;
+
+      if (object_64bit
+	  || (feature_2_used
+	      & (GNU_PROPERTY_X86_FEATURE_2_XMM
+		 | GNU_PROPERTY_X86_FEATURE_2_FXSR)) != 0
 	  || is_cpu (&i.tm, CpuCMOV)
 	  || is_cpu (&i.tm, CpuSYSCALL)
 	  || i.tm.mnem_off == MN_cmpxchg8b)
@@ -12480,13 +12536,11 @@ output_insn (const struct last_insn *last_insn)
 	      && !is_cpu (&i.tm, CpuFMA4)
 	      && !is_cpu (&i.tm, CpuLWP)
 	      && !is_cpu (&i.tm, CpuTBM)
-	      && !(x86_feature_2_used & GNU_PROPERTY_X86_FEATURE_2_TMM))
-	  || is_cpu (&i.tm, CpuF16C)
-	  || is_cpu (&i.tm, CpuFMA)
+	      && !(feature_2_used & GNU_PROPERTY_X86_FEATURE_2_TMM))
 	  || is_cpu (&i.tm, CpuLZCNT)
 	  || is_cpu (&i.tm, CpuMovbe)
 	  || is_cpu (&i.tm, CpuXSAVES)
-	  || (x86_feature_2_used
+	  || (feature_2_used
 	      & (GNU_PROPERTY_X86_FEATURE_2_XSAVE
 		 | GNU_PROPERTY_X86_FEATURE_2_XSAVEOPT
 		 | GNU_PROPERTY_X86_FEATURE_2_XSAVEC)) != 0)
@@ -12646,7 +12700,7 @@ output_insn (const struct last_insn *last_insn)
 	      add_prefix (0xf2);
 	      break;
 	    case PREFIX_0XF3:
-	      if (!is_cpu (&i.tm, CpuPadLock)
+	      if (!is_padlock (&i.tm)
 		  || (i.prefix[REP_PREFIX] != 0xf3))
 		add_prefix (0xf3);
 	      break;
@@ -12671,7 +12725,7 @@ output_insn (const struct last_insn *last_insn)
 	      abort ();
 	    }
 
-#if defined (OBJ_MAYBE_ELF) || defined (OBJ_ELF)
+#ifdef OBJ_ELF
 	  /* For x32, add a dummy REX_OPCODE prefix for mov/add with
 	     R_X86_64_GOTTPOFF relocation so that linker can safely
 	     perform IE->LE optimization.  A dummy REX_OPCODE prefix
@@ -12679,6 +12733,8 @@ output_insn (const struct last_insn *last_insn)
 	     relocation for GDesc -> IE/LE optimization.  */
 	  if (x86_elf_abi == X86_64_X32_ABI
 	      && !is_apx_rex2_encoding ()
+	      && (dot_insn () ? i.insn_opcode_space
+			      : i.tm.opcode_space) == SPACE_BASE
 	      && i.operands == 2
 	      && (i.reloc[0] == BFD_RELOC_X86_64_GOTTPOFF
 		  || i.reloc[0] == BFD_RELOC_X86_64_GOTPC32_TLSDESC)
@@ -13051,9 +13107,12 @@ output_disp (fragS *insn_start_frag, offsetT insn_start_off)
 		    case BFD_RELOC_X86_64_TLSLD:
 		    case BFD_RELOC_X86_64_GOTTPOFF:
 		    case BFD_RELOC_X86_64_CODE_4_GOTTPOFF:
+		    case BFD_RELOC_X86_64_CODE_5_GOTTPOFF:
 		    case BFD_RELOC_X86_64_CODE_6_GOTTPOFF:
 		    case BFD_RELOC_X86_64_GOTPC32_TLSDESC:
 		    case BFD_RELOC_X86_64_CODE_4_GOTPC32_TLSDESC:
+		    case BFD_RELOC_X86_64_CODE_5_GOTPC32_TLSDESC:
+		    case BFD_RELOC_X86_64_CODE_6_GOTPC32_TLSDESC:
 		    case BFD_RELOC_X86_64_TLSDESC_CALL:
 		      i.has_gotpc_tls_reloc = true;
 		    default:
@@ -13067,16 +13126,6 @@ output_disp (fragS *insn_start_frag, offsetT insn_start_off)
 	      if (flag_code == CODE_64BIT && size == 4 && pcrel
 		  && !i.prefix[ADDR_PREFIX])
 		fixP->fx_signed = 1;
-
-	      if (reloc_type == BFD_RELOC_X86_64_GOTTPOFF
-		  && i.tm.opcode_space == SPACE_EVEXMAP4)
-		{
-		  /* Only "add %reg1, foo@gottpoff(%rip), %reg2" is
-		     allowed in md_assemble.  Set fx_tcbit2 for EVEX
-		     prefix.  */
-		  fixP->fx_tcbit2 = 1;
-		  continue;
-		}
 
 	      if (i.base_reg && i.base_reg->reg_num == RegIP)
 		{
@@ -13093,35 +13142,61 @@ output_disp (fragS *insn_start_frag, offsetT insn_start_off)
 	      else if (object_64bit)
 		continue;
 
-	      /* Check for "call/jmp *mem", "mov mem, %reg",
-		 "test %reg, mem" and "binop mem, %reg" where binop
-		 is one of adc, add, and, cmp, or, sbb, sub, xor
+#ifdef OBJ_ELF
+	      /* Check for "call/jmp *mem", "push mem", "mov mem, %reg",
+		 "movrs mem, %reg", "test %reg, mem" and "binop mem, %reg" where
+		 binop is one of adc, add, and, cmp, or, sbb, sub, xor, or imul
 		 instructions without data prefix.  Always generate
 		 R_386_GOT32X for "sym*GOT" operand in 32-bit mode.  */
+	      unsigned int space = dot_insn () ? i.insn_opcode_space
+					       : i.tm.opcode_space;
 	      if (i.prefix[DATA_PREFIX] == 0
 		  && (i.rm.mode == 2
 		      || (i.rm.mode == 0 && i.rm.regmem == 5))
-		  && i.tm.opcode_space == SPACE_BASE
-		  && ((i.operands == 1
+		  && ((space == SPACE_BASE
 		       && i.tm.base_opcode == 0xff
-		       && (i.rm.reg == 2 || i.rm.reg == 4))
-		      || (i.operands == 2
-			  && (i.tm.base_opcode == 0x8b
-			      || i.tm.base_opcode == 0x85
-			      || (i.tm.base_opcode & ~0x38) == 0x03))))
+		       && (i.rm.reg == 2 || i.rm.reg == 4 || i.rm.reg == 6))
+		      || ((space == SPACE_BASE
+			   || space == SPACE_0F38
+			   || space == SPACE_MAP4)
+			  && i.tm.base_opcode == 0x8b)
+		      || ((space == SPACE_BASE
+			   || space == SPACE_MAP4)
+			  && (i.tm.base_opcode == 0x85
+			      || (i.tm.base_opcode
+				  | (i.operands > 2 ? 0x3a : 0x38)) == 0x3b))
+		      || (((space == SPACE_0F
+			    /* Because of the 0F prefix, no suitable relocation
+			       exists for this unless it's REX2-encoded.  */
+			    && is_apx_rex2_encoding ())
+			   || space == SPACE_MAP4)
+			  && i.tm.base_opcode == 0xaf)))
 		{
 		  if (object_64bit)
 		    {
 		      if (reloc_type == BFD_RELOC_X86_64_GOTTPOFF)
 			{
-			  /* Set fx_tcbit for REX2 prefix.  */
-			  if (is_apx_rex2_encoding ())
+			  if (space == SPACE_MAP4)
+			    fixP->fx_tcbit3 = 1;
+			  else if (space == SPACE_0F38 && i.rex)
+			    fixP->fx_tcbit2 = 1;
+			  else if (space == SPACE_0F38 || is_apx_rex2_encoding ())
 			    fixP->fx_tcbit = 1;
 			}
 		      else if (generate_relax_relocations)
 			{
-			  /* Set fx_tcbit3 for REX2 prefix.  */
-			  if (is_apx_rex2_encoding ())
+			  if (space == SPACE_MAP4)
+			    {
+			      fixP->fx_tcbit3 = 1;
+			      fixP->fx_tcbit2 = 1;
+			    }
+			  else if (space == SPACE_0F38)
+			    {
+			      fixP->fx_tcbit3 = 1;
+			      if (i.rex)
+				fixP->fx_tcbit = 1;
+			    }
+			  else if (is_apx_rex2_encoding ())
 			    fixP->fx_tcbit3 = 1;
 			  else if (i.rex)
 			    fixP->fx_tcbit2 = 1;
@@ -13130,9 +13205,11 @@ output_disp (fragS *insn_start_frag, offsetT insn_start_off)
 			}
 		    }
 		  else if (generate_relax_relocations
-			   || (i.rm.mode == 0 && i.rm.regmem == 5))
+			   ? (!shared || i.rm.mode != 0 || i.rm.regmem != 5)
+			   : (!shared && i.rm.mode == 0 && i.rm.regmem == 5))
 		    fixP->fx_tcbit2 = 1;
 		}
+#endif
 	    }
 	}
     }
@@ -13286,10 +13363,7 @@ x86_address_bytes (void)
   return stdoutput->arch_info->bits_per_address / 8;
 }
 
-#if (!(defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF) || defined (OBJ_MACH_O)) \
-     || defined (LEX_AT)) && !defined (TE_PE)
-# define lex_got(reloc, adjust, types) NULL
-#else
+#if (defined (OBJ_ELF) || defined (OBJ_MACH_O) || defined (TE_PE))
 /* Parse operands of the form
    <symbol>@GOTOFF+<nnn>
    and similar .plt or .got references.
@@ -13309,105 +13383,11 @@ lex_got (enum bfd_reloc_code_real *rel,
      we don't yet know the operand size (this will be set by insn
      matching).  Hence we record the word32 relocation here,
      and adjust the reloc according to the real size in reloc().  */
-  static const struct
-  {
-    const char *str;
-    int len;
-    const enum bfd_reloc_code_real rel[2];
-    const i386_operand_type types64;
-    bool need_GOT_symbol;
-  }
-    gotrel[] =
-  {
-
-#define OPERAND_TYPE_IMM32_32S_DISP32 { .bitfield = \
-  { .imm32 = 1, .imm32s = 1, .disp32 = 1 } }
-#define OPERAND_TYPE_IMM32_32S_64_DISP32 { .bitfield = \
-  { .imm32 = 1, .imm32s = 1, .imm64 = 1, .disp32 = 1 } }
-#define OPERAND_TYPE_IMM32_32S_64_DISP32_64 { .bitfield = \
-  { .imm32 = 1, .imm32s = 1, .imm64 = 1, .disp32 = 1, .disp64 = 1 } }
-#define OPERAND_TYPE_IMM64_DISP64 { .bitfield = \
-  { .imm64 = 1, .disp64 = 1 } }
-
-#ifndef TE_PE
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
-    { STRING_COMMA_LEN ("SIZE"),      { BFD_RELOC_SIZE32,
-					BFD_RELOC_SIZE32 },
-      { .bitfield = { .imm32 = 1, .imm64 = 1 } }, false },
-#endif
-    { STRING_COMMA_LEN ("PLTOFF"),   { _dummy_first_bfd_reloc_code_real,
-				       BFD_RELOC_X86_64_PLTOFF64 },
-      { .bitfield = { .imm64 = 1 } }, true },
-    { STRING_COMMA_LEN ("PLT"),      { BFD_RELOC_386_PLT32,
-				       BFD_RELOC_X86_64_PLT32    },
-      OPERAND_TYPE_IMM32_32S_DISP32, false },
-    { STRING_COMMA_LEN ("GOTPLT"),   { _dummy_first_bfd_reloc_code_real,
-				       BFD_RELOC_X86_64_GOTPLT64 },
-      OPERAND_TYPE_IMM64_DISP64, true },
-    { STRING_COMMA_LEN ("GOTOFF"),   { BFD_RELOC_386_GOTOFF,
-				       BFD_RELOC_X86_64_GOTOFF64 },
-      OPERAND_TYPE_IMM64_DISP64, true },
-    { STRING_COMMA_LEN ("GOTPCREL"), { _dummy_first_bfd_reloc_code_real,
-				       BFD_RELOC_X86_64_GOTPCREL },
-      OPERAND_TYPE_IMM32_32S_DISP32, true },
-    { STRING_COMMA_LEN ("TLSGD"),    { BFD_RELOC_386_TLS_GD,
-				       BFD_RELOC_X86_64_TLSGD    },
-      OPERAND_TYPE_IMM32_32S_DISP32, true },
-    { STRING_COMMA_LEN ("TLSLDM"),   { BFD_RELOC_386_TLS_LDM,
-				       _dummy_first_bfd_reloc_code_real },
-      OPERAND_TYPE_NONE, true },
-    { STRING_COMMA_LEN ("TLSLD"),    { _dummy_first_bfd_reloc_code_real,
-				       BFD_RELOC_X86_64_TLSLD    },
-      OPERAND_TYPE_IMM32_32S_DISP32, true },
-    { STRING_COMMA_LEN ("GOTTPOFF"), { BFD_RELOC_386_TLS_IE_32,
-				       BFD_RELOC_X86_64_GOTTPOFF },
-      OPERAND_TYPE_IMM32_32S_DISP32, true },
-    { STRING_COMMA_LEN ("TPOFF"),    { BFD_RELOC_386_TLS_LE_32,
-				       BFD_RELOC_X86_64_TPOFF32  },
-      OPERAND_TYPE_IMM32_32S_64_DISP32_64, true },
-    { STRING_COMMA_LEN ("NTPOFF"),   { BFD_RELOC_386_TLS_LE,
-				       _dummy_first_bfd_reloc_code_real },
-      OPERAND_TYPE_NONE, true },
-    { STRING_COMMA_LEN ("DTPOFF"),   { BFD_RELOC_386_TLS_LDO_32,
-				       BFD_RELOC_X86_64_DTPOFF32 },
-      OPERAND_TYPE_IMM32_32S_64_DISP32_64, true },
-    { STRING_COMMA_LEN ("GOTNTPOFF"),{ BFD_RELOC_386_TLS_GOTIE,
-				       _dummy_first_bfd_reloc_code_real },
-      OPERAND_TYPE_NONE, true },
-    { STRING_COMMA_LEN ("INDNTPOFF"),{ BFD_RELOC_386_TLS_IE,
-				       _dummy_first_bfd_reloc_code_real },
-      OPERAND_TYPE_NONE, true },
-    { STRING_COMMA_LEN ("GOT"),      { BFD_RELOC_386_GOT32,
-				       BFD_RELOC_X86_64_GOT32    },
-      OPERAND_TYPE_IMM32_32S_64_DISP32, true },
-    { STRING_COMMA_LEN ("TLSDESC"),  { BFD_RELOC_386_TLS_GOTDESC,
-				       BFD_RELOC_X86_64_GOTPC32_TLSDESC },
-      OPERAND_TYPE_IMM32_32S_DISP32, true },
-    { STRING_COMMA_LEN ("TLSCALL"),  { BFD_RELOC_386_TLS_DESC_CALL,
-				       BFD_RELOC_X86_64_TLSDESC_CALL },
-      OPERAND_TYPE_IMM32_32S_DISP32, true },
-#else /* TE_PE */
-    { STRING_COMMA_LEN ("SECREL32"), { BFD_RELOC_32_SECREL,
-				       BFD_RELOC_32_SECREL },
-      OPERAND_TYPE_IMM32_32S_64_DISP32_64, false },
-#endif
-
-#undef OPERAND_TYPE_IMM32_32S_DISP32
-#undef OPERAND_TYPE_IMM32_32S_64_DISP32
-#undef OPERAND_TYPE_IMM32_32S_64_DISP32_64
-#undef OPERAND_TYPE_IMM64_DISP64
-
-  };
   char *cp;
   unsigned int j;
 
-#if defined (OBJ_MAYBE_ELF) && !defined (TE_PE)
-  if (!IS_ELF)
-    return NULL;
-#endif
-
   for (cp = input_line_pointer; *cp != '@'; cp++)
-    if (is_end_of_line[(unsigned char) *cp] || *cp == ',')
+    if (is_end_of_stmt (*cp) || *cp == ',')
       return NULL;
 
   for (j = 0; j < ARRAY_SIZE (gotrel); j++)
@@ -13420,6 +13400,7 @@ lex_got (enum bfd_reloc_code_real *rel,
 	      int first, second;
 	      char *tmpbuf, *past_reloc;
 
+	      i.has_gotrel = true;
 	      *rel = gotrel[j].rel[object_64bit];
 
 	      if (types)
@@ -13443,7 +13424,7 @@ lex_got (enum bfd_reloc_code_real *rel,
 		 (and including) an end_of_line char or comma.  */
 	      past_reloc = cp + 1 + len;
 	      cp = past_reloc;
-	      while (!is_end_of_line[(unsigned char) *cp] && *cp != ',')
+	      while (!is_end_of_stmt (*cp) && *cp != ',')
 		++cp;
 	      second = cp + 1 - past_reloc;
 
@@ -13451,7 +13432,7 @@ lex_got (enum bfd_reloc_code_real *rel,
 		 be necessary, but be safe.  */
 	      tmpbuf = XNEWVEC (char, first + second + 2);
 	      memcpy (tmpbuf, input_line_pointer, first);
-	      if (second != 0 && *past_reloc != ' ')
+	      if (second != 0 && !is_whitespace (*past_reloc))
 		/* Replace the relocation token with ' ', so that
 		   errors like foo@GOTOFF1 will be detected.  */
 		tmpbuf[first++] = ' ';
@@ -13475,6 +13456,8 @@ lex_got (enum bfd_reloc_code_real *rel,
   /* Might be a symbol version string.  Don't as_bad here.  */
   return NULL;
 }
+#else
+# define lex_got(reloc, adjust, types) NULL
 #endif
 
 bfd_reloc_code_real_type
@@ -13486,10 +13469,12 @@ x86_cons (expressionS *exp, int size)
   exp->X_md = 0;
   expr_mode = expr_operator_none;
 
-#if ((defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)) \
-      && !defined (LEX_AT)) \
-    || defined (TE_PE)
-  if (size == 4 || (object_64bit && size == 8))
+#if defined (OBJ_ELF) || defined (TE_PE)
+  if (size == 4
+# ifdef TE_PE
+      || (size == 2)
+# endif
+      || (object_64bit && size == 8))
     {
       /* Handle @GOTOFF and the like in an expression.  */
       char *save;
@@ -13524,7 +13509,7 @@ x86_cons (expressionS *exp, int size)
 	      *input_line_pointer = c;
 	    }
 	  else if ((got_reloc == BFD_RELOC_386_PLT32
-		    || got_reloc == BFD_RELOC_X86_64_PLT32)
+		    || got_reloc == BFD_RELOC_32_PLT_PCREL)
 		   && exp->X_op != O_symbol)
 	    {
 	      char c = *input_line_pointer;
@@ -13568,7 +13553,8 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
   const char *end;
   unsigned int j;
   valueT val;
-  bool vex = false, xop = false, evex = false;
+  bool vex = false, xop = false;
+  enum { evex_none, evex_basic, evex_nd } evex = evex_none;
   struct last_insn *last_insn;
 
   init_globals ();
@@ -13594,7 +13580,7 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
   i.tm.extension_opcode = None;
 
   if (startswith (line, "VEX")
-      && (line[3] == '.' || is_space_char (line[3])))
+      && (line[3] == '.' || is_whitespace (line[3])))
     {
       vex = true;
       line += 3;
@@ -13605,7 +13591,7 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
       unsigned long n = strtoul (line + 3, &e, 16);
 
       if (e == line + 5 && n >= 0x08 && n <= 0x1f
-	  && (*e == '.' || is_space_char (*e)))
+	  && (*e == '.' || is_whitespace (*e)))
 	{
 	  xop = true;
 	  /* Arrange for build_vex_prefix() to emit 0x8f.  */
@@ -13615,9 +13601,9 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
 	}
     }
   else if (startswith (line, "EVEX")
-	   && (line[4] == '.' || is_space_char (line[4])))
+	   && (line[4] == '.' || is_whitespace (line[4])))
     {
-      evex = true;
+      evex = evex_basic;
       line += 4;
     }
 
@@ -13779,14 +13765,14 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
 	case '0':
 	  if (TOUPPER (line[2]) != 'F')
 	    break;
-	  if (line[3] == '.' || is_space_char (line[3]))
+	  if (line[3] == '.' || is_whitespace (line[3]))
 	    {
 	      i.insn_opcode_space = SPACE_0F;
 	      line += 3;
 	    }
 	  else if (line[3] == '3'
 		   && (line[4] == '8' || TOUPPER (line[4]) == 'A')
-		   && (line[5] == '.' || is_space_char (line[5])))
+		   && (line[5] == '.' || is_whitespace (line[5])))
 	    {
 	      i.insn_opcode_space = line[4] == '8' ? SPACE_0F38 : SPACE_0F3A;
 	      line += 5;
@@ -13800,7 +13786,7 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
 	      unsigned long n = strtoul (line + 2, &e, 10);
 
 	      if (n <= (evex ? 15 : 31)
-		  && (*e == '.' || is_space_char (*e)))
+		  && (*e == '.' || is_whitespace (*e)))
 		{
 		  i.insn_opcode_space = n;
 		  line = e;
@@ -13836,10 +13822,24 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
 	line += 3;
     }
 
-  if (line > end && *line && !is_space_char (*line))
+  if (line > end && evex && *line == '.')
+    {
+      if (line[1] == 'N' && line[2] == 'D')
+	{
+	  evex = evex_nd;
+	  line += 3;
+	}
+      else if (line[1] == 'Z' && line[2] == 'U')
+	{
+	  i.tm.opcode_modifier.operandconstraint = ZERO_UPPER;
+	  line += 3;
+	}
+    }
+
+  if (line > end && *line && !is_whitespace (*line))
     {
       /* Improve diagnostic a little.  */
-      if (*line == '.' && line[1] && !is_space_char (line[1]))
+      if (*line == '.' && line[1] && !is_whitespace (line[1]))
 	++line;
       goto done;
     }
@@ -13856,7 +13856,7 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
 	break;
 
       if (*ptr == '+' && ptr[1] == 'r'
-	  && (ptr[2] == ',' || (is_space_char (ptr[2]) && ptr[3] == ',')))
+	  && (ptr[2] == ',' || (is_whitespace (ptr[2]) && ptr[3] == ',')))
 	{
 	  *ptr = ' ';
 	  ptr[1] = ' ';
@@ -13867,7 +13867,7 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
       if (*ptr == '/' && ISDIGIT (ptr[1])
 	  && (n = strtoul (ptr + 1, &e, 8)) < 8
 	  && e == ptr + 2
-	  && (ptr[2] == ',' || (is_space_char (ptr[2]) && ptr[3] == ',')))
+	  && (ptr[2] == ',' || (is_whitespace (ptr[2]) && ptr[3] == ',')))
 	{
 	  *ptr = ' ';
 	  ptr[1] = ' ';
@@ -13902,6 +13902,25 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
 	    goto bad;
 	  val &= ((uint64_t)1 << (--j * 8)) - 1;
 	  break;
+	}
+    }
+
+  if (evex == evex_basic && *line == '{')
+    {
+      int length = check_Scc_OszcOperations (line);
+
+      if (length > 0)
+	{
+	  line += length;
+	  if (is_whitespace (*line))
+	    ++line;
+
+	  if (i.tm.opcode_modifier.operandconstraint)
+	    {
+	      as_bad (_("SCC/OSZC specifier cannot be used here"));
+	      goto bad;
+	    }
+	  i.tm.opcode_modifier.operandconstraint = SCC;
 	}
     }
 
@@ -14006,7 +14025,8 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
 
       /* Enforce certain constraints on operands.  */
       switch (i.reg_operands + i.mem_operands
-	      + (i.tm.extension_opcode != None))
+	      + (i.tm.extension_opcode != None)
+	      + (i.tm.opcode_modifier.operandconstraint == SCC))
 	{
 	case 0:
 	  if (i.short_form)
@@ -14021,9 +14041,13 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
 	      as_bad (_("too few register/memory operands"));
 	      goto done;
 	    }
-	  break;
-
+	  /* Fall through.  */
 	case 2:
+	  if (evex == evex_nd)
+	    {
+	      as_bad (_("too few register/memory operands"));
+	      goto done;
+	    }
 	  break;
 
 	case 4:
@@ -14036,9 +14060,13 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
 	    }
 	  /* Fall through.  */
 	case 3:
+	  if (i.tm.opcode_modifier.operandconstraint == SCC)
+	    break;
 	  if (pp.encoding != encoding_default)
 	    {
-	      i.tm.opcode_modifier.vexvvvv = VexVVVV_SRC1;
+	      i.tm.opcode_modifier.vexvvvv = (i.tm.extension_opcode == None
+					      && evex != evex_nd)
+					     ? VexVVVV_SRC1 : VexVVVV_DST;
 	      break;
 	    }
 	  /* Fall through.  */
@@ -14122,7 +14150,7 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
 	      && flag_code == CODE_64BIT
 	      && i.types[j].bitfield.class == Reg
 	      && i.types[j].bitfield.byte
-	      && !(i.op[j].regs->reg_flags & RegRex64)
+	      && !(i.op[j].regs->reg_flags & (RegRex | RegRex2 | RegRex64))
 	      && i.op[j].regs->reg_num > 3)
 	    as_bad (_("can't encode register '%s%s' with VEX/XOP/EVEX"),
 		    register_prefix, i.op[j].regs->reg_name);
@@ -14215,7 +14243,7 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
 	  if (!i.tm.opcode_modifier.evex)
 	    {
 	      /* Do _not_ consider AVX512VL here.  */
-	      if (i.rounding.type != rc_none || combined.bitfield.zmmword)
+	      if (combined.bitfield.zmmword)
 	        i.tm.opcode_modifier.evex = EVEX512;
 	      else if (combined.bitfield.ymmword)
 	        i.tm.opcode_modifier.evex = EVEX256;
@@ -14335,6 +14363,13 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
 
   if (vex || xop)
     {
+      if (is_apx_evex_encoding ())
+	{
+	  as_bad (_("APX functionality cannot be used with %s encodings"),
+		  vex ? "VEX" : "XOP");
+	  goto done;
+	}
+
       if (!i.tm.opcode_modifier.vex)
 	i.tm.opcode_modifier.vex = VEXScalar; /* LIG */
 
@@ -14346,7 +14381,36 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
       if (!i.tm.opcode_modifier.evex)
 	i.tm.opcode_modifier.evex = EVEXLIG;
 
-      build_evex_prefix ();
+      /* To keep earlier .insn uses working as far as possible, take the
+	 legacy path when opcode space is 4 bits wide (impossible to encode in
+	 extended EVEX), and when no "extended" syntax elements are used.  */
+      if ((!is_apx_evex_encoding () || i.insn_opcode_space > 7)
+	  && evex == evex_basic
+	  && !i.tm.opcode_modifier.operandconstraint)
+	build_evex_prefix ();
+      else if (i.insn_opcode_space > 7)
+	{
+	  as_bad (_("opcode space cannot be larger than 7"));
+	  goto done;
+	}
+      else if (evex == evex_nd && (i.broadcast.type || i.broadcast.bytes))
+	{
+	  as_bad (_("ND and broadcast cannot be used at the same time"));
+	  goto done;
+	}
+      else if (pp.has_nf && i.mask.reg)
+	{
+	  as_bad (_("{nf} and masking cannot be used at the same time"));
+	  goto done;
+	}
+      else if (i.tm.opcode_modifier.operandconstraint == SCC
+	       && (pp.has_nf || i.mask.reg))
+	{
+	  as_bad (_("SCC cannot be used at the same time {nf} / masking"));
+	  goto done;
+	}
+      else if (!build_apx_evex_prefix (evex == evex_nd))
+	goto done;
       i.rex &= REX_OPCODE;
     }
   else
@@ -14358,10 +14422,10 @@ s_insn (int dummy ATTRIBUTE_UNUSED)
   last_insn->name = ".insn directive";
   last_insn->file = as_where (&last_insn->line);
 
-#if defined (OBJ_MAYBE_ELF) || defined (OBJ_ELF)
+#ifdef OBJ_ELF
   /* PS: SCFI is enabled only for System V AMD64 ABI.  The ABI check has been
      performed in i386_target_format.  */
-  if (IS_ELF && flag_synth_cfi)
+  if (flag_synth_cfi)
     as_bad (_("SCFI: hand-crafting instructions not supported"));
 #endif
 
@@ -14472,7 +14536,7 @@ check_VecOperations (char *op_string)
       if (*op_string == '{')
 	{
 	  op_string++;
-	  if (is_space_char (*op_string))
+	  if (is_whitespace (*op_string))
 	    op_string++;
 
 	  /* Check broadcasts.  */
@@ -14644,7 +14708,7 @@ check_VecOperations (char *op_string)
 	  else
 	    goto unknown_vec_op;
 
-	  if (is_space_char (*op_string))
+	  if (is_whitespace (*op_string))
 	    op_string++;
 	  if (*op_string != '}')
 	    {
@@ -14653,7 +14717,7 @@ check_VecOperations (char *op_string)
 	    }
 	  op_string++;
 
-	  if (is_space_char (*op_string))
+	  if (is_whitespace (*op_string))
 	    ++op_string;
 
 	  continue;
@@ -14694,7 +14758,7 @@ i386_immediate (char *imm_start)
   exp = &im_expressions[i.imm_operands++];
   i.op[this_operand].imms = exp;
 
-  if (is_space_char (*imm_start))
+  if (is_whitespace (*imm_start))
     ++imm_start;
 
   save_input_line_pointer = input_line_pointer;
@@ -14767,9 +14831,8 @@ i386_finalize_immediate (segT exp_seg ATTRIBUTE_UNUSED, expressionS *exp,
 	  && flag_code != CODE_64BIT && !object_64bit)
 	exp->X_add_number = extend_to_32bit_address (exp->X_add_number);
     }
-#if (defined (OBJ_AOUT) || defined (OBJ_MAYBE_AOUT))
-  else if (OUTPUT_FLAVOR == bfd_target_aout_flavour
-	   && exp_seg != absolute_section
+#ifdef OBJ_AOUT
+  else if (exp_seg != absolute_section
 	   && exp_seg != text_section
 	   && exp_seg != data_section
 	   && exp_seg != bss_section
@@ -15056,9 +15119,8 @@ i386_finalize_displacement (segT exp_seg ATTRIBUTE_UNUSED, expressionS *exp,
 	exp->X_add_number = extend_to_32bit_address (exp->X_add_number);
     }
 
-#if (defined (OBJ_AOUT) || defined (OBJ_MAYBE_AOUT))
-  else if (OUTPUT_FLAVOR == bfd_target_aout_flavour
-	   && exp_seg != absolute_section
+#ifdef OBJ_AOUT
+  else if (exp_seg != absolute_section
 	   && exp_seg != text_section
 	   && exp_seg != data_section
 	   && exp_seg != bss_section
@@ -15172,7 +15234,7 @@ i386_index_check (const char *operand_string)
   if (t->opcode_modifier.isstring)
     {
       /* Memory operands of string insns are special in that they only allow
-	 a single register (rDI, rSI, or rBX) as their memory address.  */
+	 a single register (rDI or rSI) as their memory address.  */
       const reg_entry *expected_reg;
       static const char di_si[][2][4] =
 	{
@@ -15180,7 +15242,14 @@ i386_index_check (const char *operand_string)
 	  { "si", "di" },
 	  { "rsi", "rdi" }
 	};
-      static const char bx[][4] = { "ebx", "bx", "rbx" };
+      /* For a few other insns with fixed register addressing we (ab)use the
+	 IsString attribute as well.  */
+      static const char loregs[][4][4] =
+	{
+	  { "eax", "ecx", "edx", "ebx" },
+	  {  "ax",  "cx",  "dx",  "bx" },
+	  { "rax", "rcx", "rdx", "rbx" }
+	};
 
       kind = "string address";
 
@@ -15193,13 +15262,20 @@ i386_index_check (const char *operand_string)
 	      || ((!i.mem_operands != !intel_syntax)
 		  && t->operand_types[1].bitfield.baseindex))
 	    op = 1;
-	  expected_reg
-	    = (const reg_entry *) str_hash_find (reg_hash,
-						 di_si[addr_mode][op == es_op]);
+	  expected_reg = str_hash_find (reg_hash,
+					di_si[addr_mode][op == es_op]);
 	}
       else
-	expected_reg
-	  = (const reg_entry *)str_hash_find (reg_hash, bx[addr_mode]);
+	{
+	  unsigned int op = t->operand_types[0].bitfield.baseindex ? 0 : 1;
+
+	  if (!t->operand_types[op].bitfield.instance)
+	    return 1; /* Operand mismatch will be detected elsewhere.  */
+	  expected_reg
+	    = str_hash_find (reg_hash,
+			     loregs[addr_mode][t->operand_types[op]
+					       .bitfield.instance - 1]);
+	}
 
       if (i.base_reg != expected_reg
 	  || i.index_reg
@@ -15315,14 +15391,14 @@ RC_SAE_immediate (const char *imm_start)
     return 0;
 
   pstr++;
-  if (is_space_char (*pstr))
+  if (is_whitespace (*pstr))
     pstr++;
 
   pstr = RC_SAE_specifier (pstr);
   if (pstr == NULL)
     return 0;
 
-  if (is_space_char (*pstr))
+  if (is_whitespace (*pstr))
     pstr++;
 
   if (*pstr++ != '}')
@@ -15360,7 +15436,7 @@ i386_att_operand (char *operand_string)
   char *end_op;
   char *op_string = operand_string;
 
-  if (is_space_char (*op_string))
+  if (is_whitespace (*op_string))
     ++op_string;
 
   /* We check for an absolute prefix (differentiating,
@@ -15369,7 +15445,7 @@ i386_att_operand (char *operand_string)
       && current_templates.start->opcode_modifier.jump)
     {
       ++op_string;
-      if (is_space_char (*op_string))
+      if (is_whitespace (*op_string))
 	++op_string;
       i.jumpabsolute = true;
     }
@@ -15385,7 +15461,7 @@ i386_att_operand (char *operand_string)
       /* Check for a segment override by searching for ':' after a
 	 segment register.  */
       op_string = end_op;
-      if (is_space_char (*op_string))
+      if (is_whitespace (*op_string))
 	++op_string;
       if (*op_string == ':' && r->reg_type.bitfield.class == SReg)
 	{
@@ -15393,7 +15469,7 @@ i386_att_operand (char *operand_string)
 
 	  /* Skip the ':' and whitespace.  */
 	  ++op_string;
-	  if (is_space_char (*op_string))
+	  if (is_whitespace (*op_string))
 	    ++op_string;
 
 	  /* Handle case of %es:*foo.  */
@@ -15401,7 +15477,7 @@ i386_att_operand (char *operand_string)
 	      && current_templates.start->opcode_modifier.jump)
 	    {
 	      ++op_string;
-	      if (is_space_char (*op_string))
+	      if (is_whitespace (*op_string))
 		++op_string;
 	      i.jumpabsolute = true;
 	    }
@@ -15512,7 +15588,7 @@ i386_att_operand (char *operand_string)
 
       /* Handle vector operations.  */
       --base_string;
-      if (is_space_char (*base_string))
+      if (is_whitespace (*base_string))
 	--base_string;
 
       if (*base_string == '}')
@@ -15529,7 +15605,7 @@ i386_att_operand (char *operand_string)
 	      vop_start = base_string;
 
 	      --base_string;
-	      if (is_space_char (*base_string))
+	      if (is_whitespace (*base_string))
 		--base_string;
 
 	      if (*base_string != '}')
@@ -15581,7 +15657,7 @@ i386_att_operand (char *operand_string)
 	  /* Skip past '(' and whitespace.  */
 	  gas_assert (*base_string == '(');
 	  ++base_string;
-	  if (is_space_char (*base_string))
+	  if (is_whitespace (*base_string))
 	    ++base_string;
 
 	  if (*base_string == ','
@@ -15597,7 +15673,7 @@ i386_att_operand (char *operand_string)
 		  if (i.base_reg == &bad_reg)
 		    return 0;
 		  base_string = end_op;
-		  if (is_space_char (*base_string))
+		  if (is_whitespace (*base_string))
 		    ++base_string;
 		}
 
@@ -15605,7 +15681,7 @@ i386_att_operand (char *operand_string)
 	      if (*base_string == ',')
 		{
 		  ++base_string;
-		  if (is_space_char (*base_string))
+		  if (is_whitespace (*base_string))
 		    ++base_string;
 
 		  if ((i.index_reg = parse_register (base_string, &end_op))
@@ -15614,12 +15690,12 @@ i386_att_operand (char *operand_string)
 		      if (i.index_reg == &bad_reg)
 			return 0;
 		      base_string = end_op;
-		      if (is_space_char (*base_string))
+		      if (is_whitespace (*base_string))
 			++base_string;
 		      if (*base_string == ',')
 			{
 			  ++base_string;
-			  if (is_space_char (*base_string))
+			  if (is_whitespace (*base_string))
 			    ++base_string;
 			}
 		      else if (*base_string != ')')
@@ -15648,7 +15724,7 @@ i386_att_operand (char *operand_string)
 			return 0;
 
 		      base_string = end_scale;
-		      if (is_space_char (*base_string))
+		      if (is_whitespace (*base_string))
 			++base_string;
 		      if (*base_string != ')')
 			{
@@ -15727,6 +15803,23 @@ i386_att_operand (char *operand_string)
   return 1;			/* Normal return.  */
 }
 
+/* Initialize the tc_frag_data field of a fragment.  */
+
+void i386_frag_init (fragS *fragP, size_t max_bytes)
+{
+  memset (&fragP->tc_frag_data, 0, sizeof (fragP->tc_frag_data));
+  fragP->tc_frag_data.isa = cpu_arch_isa;
+  fragP->tc_frag_data.tune = cpu_arch_tune;
+  fragP->tc_frag_data.cpunop = cpu_arch_flags.bitfield.cpunop;
+  fragP->tc_frag_data.isanop = cpu_arch_isa_flags.bitfield.cpunop;
+  fragP->tc_frag_data.code = i386_flag_code;
+  fragP->tc_frag_data.max_bytes = max_bytes;
+  fragP->tc_frag_data.last_insn_normal
+    = (seg_info(now_seg)->tc_segment_info_data.last_insn.kind
+       == last_insn_other);
+  fragP->tc_frag_data.no_cond_jump_promotion = no_cond_jump_promotion;
+}
+
 /* Calculate the maximum variable size (i.e., excluding fr_fix)
    that an rs_machine_dependent frag may reach.  */
 
@@ -15739,7 +15832,7 @@ i386_frag_max_var (fragS *frag)
   return TYPE_FROM_RELAX_STATE (frag->fr_subtype) == UNCOND_JUMP ? 4 : 5;
 }
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
 static int
 elf_symbol_resolved_in_segment_p (symbolS *fr_symbol, offsetT fr_var)
 {
@@ -15760,7 +15853,7 @@ elf_symbol_resolved_in_segment_p (symbolS *fr_symbol, offsetT fr_var)
     switch ((enum bfd_reloc_code_real) fr_var)
       {
       case BFD_RELOC_386_PLT32:
-      case BFD_RELOC_X86_64_PLT32:
+      case BFD_RELOC_32_PLT_PCREL:
 	/* Symbol with PLT relocation may be preempted. */
 	return 0;
       default:
@@ -16197,14 +16290,12 @@ md_estimate_size_before_relax (fragS *fragP, segT segment)
      an externally visible symbol, because it may be overridden by a
      shared library.  */
   if (S_GET_SEGMENT (fragP->fr_symbol) != segment
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
-      || (IS_ELF
-	  && !elf_symbol_resolved_in_segment_p (fragP->fr_symbol,
-						fragP->fr_var))
+#ifdef OBJ_ELF
+      || !elf_symbol_resolved_in_segment_p (fragP->fr_symbol,
+					    fragP->fr_var)
 #endif
 #if defined (OBJ_COFF) && defined (TE_PE)
-      || (OUTPUT_FLAVOR == bfd_target_coff_flavour
-	  && S_IS_WEAK (fragP->fr_symbol))
+      || S_IS_WEAK (fragP->fr_symbol)
 #endif
       )
     {
@@ -16216,18 +16307,15 @@ md_estimate_size_before_relax (fragS *fragP, segT segment)
       int old_fr_fix;
       fixS *fixP = NULL;
 
-      if (fragP->fr_var != NO_RELOC)
-	reloc_type = (enum bfd_reloc_code_real) fragP->fr_var;
-      else if (size == 2)
-	reloc_type = BFD_RELOC_16_PCREL;
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
-      else if (fragP->tc_frag_data.code == CODE_64BIT
-	       && fragP->fr_offset == 0
-	       && need_plt32_p (fragP->fr_symbol))
-	reloc_type = BFD_RELOC_X86_64_PLT32;
+      reloc_type = (enum bfd_reloc_code_real) fragP->fr_var;
+#ifdef OBJ_ELF
+      if (reloc_type == NO_RELOC
+	  && size != 2
+	  && fragP->tc_frag_data.code == CODE_64BIT
+	  && fragP->fr_offset == 0
+	  && need_plt32_p (fragP->fr_symbol))
+	reloc_type = BFD_RELOC_32_PLT_PCREL;
 #endif
-      else
-	reloc_type = BFD_RELOC_32_PCREL;
 
       old_fr_fix = fragP->fr_fix;
       opcode = (unsigned char *) fragP->fr_opcode;
@@ -16241,12 +16329,25 @@ md_estimate_size_before_relax (fragS *fragP, segT segment)
 	  fixP = fix_new (fragP, old_fr_fix, size,
 			  fragP->fr_symbol,
 			  fragP->fr_offset, 1,
-			  reloc_type);
+			  _reloc (size, 1, 1, reloc_type,
+				  fragP->tc_frag_data.code == CODE_64BIT,
+				  fragP->fr_file, fragP->fr_line));
 	  break;
 
 	case COND_JUMP86:
-	  if (size == 2
-	      && (!no_cond_jump_promotion || fragP->fr_var != NO_RELOC))
+	  if (fragP->tc_frag_data.no_cond_jump_promotion
+	      && fragP->fr_var == NO_RELOC)
+	    {
+	      fragP->fr_fix += 1;
+	      fixP = fix_new (fragP, old_fr_fix, 1,
+			      fragP->fr_symbol,
+			      fragP->fr_offset, 1,
+			      BFD_RELOC_8_PCREL);
+	      fixP->fx_signed = 1;
+	      break;
+	    }
+
+	  if (size == 2)
 	    {
 	      /* Negate the condition, and branch past an
 		 unconditional jump.  */
@@ -16260,23 +16361,14 @@ md_estimate_size_before_relax (fragS *fragP, segT segment)
 	      fix_new (fragP, old_fr_fix + 2, 2,
 		       fragP->fr_symbol,
 		       fragP->fr_offset, 1,
-		       reloc_type);
+		       _reloc (size, 1, 1, reloc_type,
+			       fragP->tc_frag_data.code == CODE_64BIT,
+			       fragP->fr_file, fragP->fr_line));
 	      break;
 	    }
 	  /* Fall through.  */
 
 	case COND_JUMP:
-	  if (no_cond_jump_promotion && fragP->fr_var == NO_RELOC)
-	    {
-	      fragP->fr_fix += 1;
-	      fixP = fix_new (fragP, old_fr_fix, 1,
-			      fragP->fr_symbol,
-			      fragP->fr_offset, 1,
-			      BFD_RELOC_8_PCREL);
-	      fixP->fx_signed = 1;
-	      break;
-	    }
-
 	  /* This changes the byte-displacement jump 0x7N
 	     to the (d)word-displacement jump 0x0f,0x8N.  */
 	  opcode[1] = opcode[0] + 0x10;
@@ -16286,7 +16378,9 @@ md_estimate_size_before_relax (fragS *fragP, segT segment)
 	  fixP = fix_new (fragP, old_fr_fix + 1, size,
 			  fragP->fr_symbol,
 			  fragP->fr_offset, 1,
-			  reloc_type);
+			  _reloc (size, 1, 1, reloc_type,
+				  fragP->tc_frag_data.code == CODE_64BIT,
+				  fragP->fr_file, fragP->fr_line));
 	  break;
 
 	default:
@@ -16452,7 +16546,7 @@ md_convert_frag (bfd *abfd ATTRIBUTE_UNUSED, segT sec ATTRIBUTE_UNUSED,
     }
   else
     {
-      if (no_cond_jump_promotion
+      if (fragP->tc_frag_data.no_cond_jump_promotion
 	  && TYPE_FROM_RELAX_STATE (fragP->fr_subtype) != UNCOND_JUMP)
 	as_warn_where (fragP->fr_file, fragP->fr_line,
 		       _("long jump required"));
@@ -16516,7 +16610,7 @@ md_convert_frag (bfd *abfd ATTRIBUTE_UNUSED, segT sec ATTRIBUTE_UNUSED,
     }
   /* Now put displacement after opcode.  */
   md_number_to_chars ((char *) where_to_put_displacement,
-		      (valueT) (displacement_from_opcode_start - extension),
+		      displacement_from_opcode_start - extension,
 		      DISP_SIZE_FROM_RELAX_STATE (fragP->fr_subtype));
   fragP->fr_fix += extension;
 }
@@ -16571,30 +16665,22 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 	 This covers for the fact that bfd_install_relocation will
 	 subtract the current location (for partial_inplace, PC relative
 	 relocations); see more below.  */
-#ifndef OBJ_AOUT
-      if (IS_ELF
-#ifdef TE_PE
-	  || OUTPUT_FLAVOR == bfd_target_coff_flavour
+#if defined (OBJ_ELF) || defined (TE_PE)
+      value += fixP->fx_where + fixP->fx_frag->fr_address;
 #endif
-	  )
-	value += fixP->fx_where + fixP->fx_frag->fr_address;
-#endif
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
-      if (IS_ELF)
-	{
-	  segT sym_seg = S_GET_SEGMENT (fixP->fx_addsy);
+#ifdef OBJ_ELF
+      segT sym_seg = S_GET_SEGMENT (fixP->fx_addsy);
 
-	  if ((sym_seg == seg
-	       || (symbol_section_p (fixP->fx_addsy)
-		   && sym_seg != absolute_section))
-	      && !generic_force_reloc (fixP))
-	    {
-	      /* Yes, we add the values in twice.  This is because
-		 bfd_install_relocation subtracts them out again.  I think
-		 bfd_install_relocation is broken, but I don't dare change
-		 it.  FIXME.  */
-	      value += fixP->fx_where + fixP->fx_frag->fr_address;
-	    }
+      if ((sym_seg == seg
+	   || (symbol_section_p (fixP->fx_addsy)
+	       && sym_seg != absolute_section))
+	  && !generic_force_reloc (fixP))
+	{
+	  /* Yes, we add the values in twice.  This is because
+	     bfd_install_relocation subtracts them out again.  I think
+	     bfd_install_relocation is broken, but I don't dare change
+	     it.  FIXME.  */
+	  value += fixP->fx_where + fixP->fx_frag->fr_address;
 	}
 #endif
 #if defined (OBJ_COFF) && defined (TE_PE)
@@ -16627,12 +16713,12 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 
   /* Fix a few things - the dynamic linker expects certain values here,
      and we must not disappoint it.  */
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
-  if (IS_ELF && fixP->fx_addsy)
+#ifdef OBJ_ELF
+  if (fixP->fx_addsy)
     switch (fixP->fx_r_type)
       {
       case BFD_RELOC_386_PLT32:
-      case BFD_RELOC_X86_64_PLT32:
+      case BFD_RELOC_32_PLT_PCREL:
 	/* Make the jump instruction point to the address of the operand.
 	   At runtime we merely add the offset to the actual PLT entry.
 	   NB: Subtract the offset size only for jump instructions.  */
@@ -16650,9 +16736,12 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
       case BFD_RELOC_X86_64_TLSLD:
       case BFD_RELOC_X86_64_GOTTPOFF:
       case BFD_RELOC_X86_64_CODE_4_GOTTPOFF:
+      case BFD_RELOC_X86_64_CODE_5_GOTTPOFF:
       case BFD_RELOC_X86_64_CODE_6_GOTTPOFF:
       case BFD_RELOC_X86_64_GOTPC32_TLSDESC:
       case BFD_RELOC_X86_64_CODE_4_GOTPC32_TLSDESC:
+      case BFD_RELOC_X86_64_CODE_5_GOTPC32_TLSDESC:
+      case BFD_RELOC_X86_64_CODE_6_GOTPC32_TLSDESC:
 	value = 0; /* Fully resolved at runtime.  No addend.  */
 	/* Fallthrough */
       case BFD_RELOC_386_TLS_LE:
@@ -16680,7 +16769,7 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
       default:
 	break;
       }
-#endif /* defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)  */
+#endif /* OBJ_ELF  */
 
   /* If not 64bit, massage value, to account for wraparound when !BFD64.  */
   if (!object_64bit)
@@ -16900,23 +16989,23 @@ parse_real_register (const char *reg_string, char **end_op)
   if (*s == REGISTER_PREFIX)
     ++s;
 
-  if (is_space_char (*s))
+  if (is_whitespace (*s))
     ++s;
 
   p = reg_name_given;
   while ((*p++ = register_chars[(unsigned char) *s]) != '\0')
     {
       if (p >= reg_name_given + MAX_REG_NAME_SIZE)
-	return (const reg_entry *) NULL;
+	return NULL;
       s++;
     }
 
   if (is_part_of_name (*s))
-    return (const reg_entry *) NULL;
+    return NULL;
 
   *end_op = (char *) s;
 
-  r = (const reg_entry *) str_hash_find (reg_hash, reg_name_given);
+  r = str_hash_find (reg_hash, reg_name_given);
 
   /* Handle floating point regs, allowing spaces in the (i) part.  */
   if (r == reg_st0)
@@ -16925,20 +17014,20 @@ parse_real_register (const char *reg_string, char **end_op)
 	  && !cpu_arch_flags.bitfield.cpu287
 	  && !cpu_arch_flags.bitfield.cpu387
 	  && !allow_pseudo_reg)
-	return (const reg_entry *) NULL;
+	return NULL;
 
-      if (is_space_char (*s))
+      if (is_whitespace (*s))
 	++s;
       if (*s == '(')
 	{
 	  ++s;
-	  if (is_space_char (*s))
+	  if (is_whitespace (*s))
 	    ++s;
 	  if (*s >= '0' && *s <= '7')
 	    {
 	      int fpr = *s - '0';
 	      ++s;
-	      if (is_space_char (*s))
+	      if (is_whitespace (*s))
 		++s;
 	      if (*s == ')')
 		{
@@ -16948,7 +17037,7 @@ parse_real_register (const char *reg_string, char **end_op)
 		}
 	    }
 	  /* We have "%st(" then garbage.  */
-	  return (const reg_entry *) NULL;
+	  return NULL;
 	}
     }
 
@@ -16989,8 +17078,7 @@ parse_register (const char *reg_string, char **end_op)
 
 	  if (e->X_op == O_register)
 	    {
-	      know (e->X_add_number >= 0
-		    && (valueT) e->X_add_number < i386_regtab_size);
+	      know ((valueT) e->X_add_number < i386_regtab_size);
 	      r = i386_regtab + e->X_add_number;
 	      *end_op = (char *) reg_string + (input_line_pointer - buf);
 	    }
@@ -17008,7 +17096,10 @@ parse_register (const char *reg_string, char **end_op)
 }
 
 int
-i386_parse_name (char *name, expressionS *e, char *nextcharP)
+i386_parse_name (char *name,
+		 expressionS *e,
+		 enum expr_mode mode,
+		 char *nextcharP)
 {
   const reg_entry *r = NULL;
   char *end = input_line_pointer;
@@ -17033,7 +17124,7 @@ i386_parse_name (char *name, expressionS *e, char *nextcharP)
     }
   input_line_pointer = end;
   *end = 0;
-  return intel_syntax ? i386_intel_parse_name (name, e) : 0;
+  return intel_syntax ? i386_intel_parse_name (name, e, mode) : 0;
 }
 
 void
@@ -17111,11 +17202,14 @@ bool i386_record_operator (operatorT op,
 }
 #endif
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
-const char *md_shortopts = "kVQ:sqnO::";
-#else
-const char *md_shortopts = "qnO::";
+const char md_shortopts[] =
+#ifdef OBJ_ELF
+  "kVQ:"
+# ifdef TE_SOLARIS
+  "s"
+# endif
 #endif
+  "qnO::";
 
 #define OPTION_32 (OPTION_MD_BASE + 0)
 #define OPTION_64 (OPTION_MD_BASE + 1)
@@ -17152,16 +17246,19 @@ const char *md_shortopts = "qnO::";
 #define OPTION_MLFENCE_BEFORE_INDIRECT_BRANCH (OPTION_MD_BASE + 32)
 #define OPTION_MLFENCE_BEFORE_RET (OPTION_MD_BASE + 33)
 #define OPTION_MUSE_UNALIGNED_VECTOR_MOVE (OPTION_MD_BASE + 34)
+#define OPTION_MTLS_CHECK (OPTION_MD_BASE + 35)
 
-struct option md_longopts[] =
+const struct option md_longopts[] =
 {
   {"32", no_argument, NULL, OPTION_32},
-#if (defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF) \
-     || defined (TE_PE) || defined (TE_PEP) || defined (OBJ_MACH_O))
+#if (defined (OBJ_ELF) || defined (TE_PE) || defined (OBJ_MACH_O)) \
+    && defined (BFD64)
   {"64", no_argument, NULL, OPTION_64},
 #endif
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
+# ifdef BFD64
   {"x32", no_argument, NULL, OPTION_X32},
+# endif
   {"mshared", no_argument, NULL, OPTION_MSHARED},
   {"mx86-used-note", required_argument, NULL, OPTION_X86_USED_NOTE},
 #endif
@@ -17198,9 +17295,10 @@ struct option md_longopts[] =
   {"mlfence-before-ret", required_argument, NULL, OPTION_MLFENCE_BEFORE_RET},
   {"mamd64", no_argument, NULL, OPTION_MAMD64},
   {"mintel64", no_argument, NULL, OPTION_MINTEL64},
+  {"mtls-check", required_argument, NULL, OPTION_MTLS_CHECK},
   {NULL, no_argument, NULL, 0}
 };
-size_t md_longopts_size = sizeof (md_longopts);
+const size_t md_longopts_size = sizeof (md_longopts);
 
 int
 md_parse_option (int c, const char *arg)
@@ -17218,7 +17316,7 @@ md_parse_option (int c, const char *arg)
       quiet_warnings = 1;
       break;
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
       /* -Qy, -Qn: SVR4 arguments controlling whether a .comment section
 	 should be emitted or not.  FIXME: Not implemented.  */
     case 'Q':
@@ -17235,10 +17333,12 @@ md_parse_option (int c, const char *arg)
     case 'k':
       break;
 
+# ifdef TE_SOLARIS
     case 's':
       /* -s: On i386 Solaris, this tells the native assembler to use
 	 .stab instead of .stab.excl.  We always use .stab anyhow.  */
       break;
+# endif
 
     case OPTION_MSHARED:
       shared = 1;
@@ -17252,22 +17352,24 @@ md_parse_option (int c, const char *arg)
       else
         as_fatal (_("invalid -mx86-used-note= option: `%s'"), arg);
       break;
-
-
 #endif
-#if (defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF) \
-     || defined (TE_PE) || defined (TE_PEP) || defined (OBJ_MACH_O))
+
+#ifdef BFD64
+
+#if (defined (OBJ_ELF) || defined (TE_PE) || defined (OBJ_MACH_O))
     case OPTION_64:
       {
 	const char **list, **l;
 
 	list = bfd_target_list ();
 	for (l = list; *l != NULL; l++)
-	  if (startswith (*l, "elf64-x86-64")
-	      || strcmp (*l, "coff-x86-64") == 0
-	      || strcmp (*l, "pe-x86-64") == 0
-	      || strcmp (*l, "pei-x86-64") == 0
-	      || strcmp (*l, "mach-o-x86-64") == 0)
+#if defined (OBJ_ELF)
+	  if (strcmp (*l, ELF_TARGET_FORMAT64) == 0)
+#elif defined (TE_PE)
+	  if (strcmp (*l, "pe-x86-64") == 0)
+#else
+	  if (strcmp (*l, "mach-o-x86-64") == 0)
+#endif
 	    {
 	      default_arch = "x86_64";
 	      break;
@@ -17279,27 +17381,26 @@ md_parse_option (int c, const char *arg)
       break;
 #endif
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
     case OPTION_X32:
-      if (IS_ELF)
-	{
-	  const char **list, **l;
+      {
+	const char **list, **l;
 
-	  list = bfd_target_list ();
-	  for (l = list; *l != NULL; l++)
-	    if (startswith (*l, "elf32-x86-64"))
-	      {
-		default_arch = "x86_64:32";
-		break;
-	      }
-	  if (*l == NULL)
-	    as_fatal (_("no compiled in support for 32bit x86_64"));
-	  free (list);
-	}
-      else
-	as_fatal (_("32bit x86_64 is only supported for ELF"));
+	list = bfd_target_list ();
+	for (l = list; *l != NULL; l++)
+	  if (strcmp (*l, ELF_TARGET_FORMAT32) == 0)
+	    {
+	      default_arch = "x86_64:32";
+	      break;
+	    }
+	if (*l == NULL)
+	  as_fatal (_("no compiled in support for 32bit x86_64"));
+	free (list);
+      }
       break;
 #endif
+
+#endif /* BFD64 */
 
     case OPTION_32:
       {
@@ -17754,6 +17855,14 @@ md_parse_option (int c, const char *arg)
 	  optimize_for_space = 0;
 	}
       break;
+    case OPTION_MTLS_CHECK:
+      if (strcasecmp (arg, "yes") == 0)
+	tls_check = true;
+      else if (strcasecmp (arg, "no") == 0)
+	tls_check = false;
+      else
+	as_fatal (_("invalid -mtls-check= option: `%s'"), arg);
+      break;
 
     default:
       return 0;
@@ -17877,7 +17986,7 @@ show_arch (FILE *stream, int ext, int check)
 void
 md_show_usage (FILE *stream)
 {
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
   fprintf (stream, _("\
   -Qy, -Qn                ignored\n\
   -V                      print assembler version number\n\
@@ -17887,12 +17996,12 @@ md_show_usage (FILE *stream)
   -n                      do not optimize code alignment\n\
   -O{012s}                attempt some code optimizations\n\
   -q                      quieten some warnings\n"));
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
   fprintf (stream, _("\
   -s                      ignored\n"));
 #endif
 #ifdef BFD64
-# if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+# ifdef OBJ_ELF
   fprintf (stream, _("\
   --32/--64/--x32         generate 32bit/64bit/x32 object\n"));
 # elif defined (TE_PE) || defined (TE_PEP) || defined (OBJ_MACH_O)
@@ -17965,7 +18074,7 @@ md_show_usage (FILE *stream)
   -mnaked-reg             don't require `%%' prefix for registers\n"));
   fprintf (stream, _("\
   -madd-bnd-prefix        add BND prefix for all valid branches\n"));
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
   fprintf (stream, _("\
   -mshared                disable branch optimization for shared code\n"));
   fprintf (stream, _("\
@@ -17996,6 +18105,16 @@ md_show_usage (FILE *stream)
     fprintf (stream, _("(default: no)\n"));
   fprintf (stream, _("\
                           generate relax relocations\n"));
+#ifdef OBJ_ELF
+  fprintf (stream, _("\
+  -mtls-check=[no|yes] "));
+  if (DEFAULT_X86_TLS_CHECK)
+    fprintf (stream, _("(default: yes)\n"));
+  else
+    fprintf (stream, _("(default: no)\n"));
+  fprintf (stream, _("\
+                          check TLS relocation\n"));
+#endif
   fprintf (stream, _("\
   -malign-branch-boundary=NUM (default: 0)\n\
                           align branches within NUM byte boundary\n"));
@@ -18025,9 +18144,7 @@ md_show_usage (FILE *stream)
   -mintel64               accept only Intel64 ISA\n"));
 }
 
-#if ((defined (OBJ_MAYBE_COFF) && defined (OBJ_MAYBE_AOUT)) \
-     || defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF) \
-     || defined (TE_PE) || defined (TE_PEP) || defined (OBJ_MACH_O))
+#if (defined (OBJ_ELF) || defined (TE_PE) || defined (OBJ_MACH_O))
 
 /* Pick the target format to use.  */
 
@@ -18037,7 +18154,7 @@ i386_target_format (void)
   if (startswith (default_arch, "x86_64"))
     {
       update_code_flag (CODE_64BIT, 1);
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
       if (default_arch[6] == '\0')
 	x86_elf_abi = X86_64_ABI;
       else
@@ -18068,8 +18185,8 @@ i386_target_format (void)
   else
     as_fatal (_("unknown architecture"));
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
-  if (IS_ELF && flag_synth_cfi && x86_elf_abi != X86_64_ABI)
+#ifdef OBJ_ELF
+  if (flag_synth_cfi && x86_elf_abi != X86_64_ABI)
     as_fatal (_("SCFI is not supported for this ABI"));
 #endif
 
@@ -18078,12 +18195,7 @@ i386_target_format (void)
 
   switch (OUTPUT_FLAVOR)
     {
-#if defined (OBJ_MAYBE_AOUT) || defined (OBJ_AOUT)
-    case bfd_target_aout_flavour:
-      return AOUT_TARGET_FORMAT;
-#endif
-#if defined (OBJ_MAYBE_COFF) || defined (OBJ_COFF)
-# if defined (TE_PE) || defined (TE_PEP)
+#ifdef TE_PE
     case bfd_target_coff_flavour:
       if (flag_code == CODE_64BIT)
 	{
@@ -18091,15 +18203,8 @@ i386_target_format (void)
 	  return use_big_obj ? "pe-bigobj-x86-64" : "pe-x86-64";
 	}
       return use_big_obj ? "pe-bigobj-i386" : "pe-i386";
-# elif defined (TE_GO32)
-    case bfd_target_coff_flavour:
-      return "coff-go32";
-# else
-    case bfd_target_coff_flavour:
-      return "coff-i386";
-# endif
 #endif
-#if defined (OBJ_MAYBE_ELF) || defined (OBJ_ELF)
+#ifdef OBJ_ELF
     case bfd_target_elf_flavour:
       {
 	const char *format;
@@ -18157,8 +18262,9 @@ i386_target_format (void)
     }
 }
 
-#endif /* OBJ_MAYBE_ more than one  */
+#endif /* ELF / PE / MACH_O  */
 
+#ifdef OBJ_ELF
 symbolS *
 md_undefined_symbol (char *name)
 {
@@ -18176,29 +18282,24 @@ md_undefined_symbol (char *name)
 	};
       return GOT_symbol;
     }
-  return 0;
+  return NULL;
 }
+#endif
 
-#if defined (OBJ_AOUT) || defined (OBJ_MAYBE_AOUT)
+#ifdef OBJ_AOUT
 /* Round up a section size to the appropriate boundary.  */
 
 valueT
 md_section_align (segT segment, valueT size)
 {
-  if (OUTPUT_FLAVOR == bfd_target_aout_flavour)
-    {
-      /* For a.out, force the section size to be aligned.  If we don't do
-	 this, BFD will align it for us, but it will not write out the
-	 final bytes of the section.  This may be a bug in BFD, but it is
-	 easier to fix it here since that is how the other a.out targets
-	 work.  */
-      int align;
+  /* For a.out, force the section size to be aligned.  If we don't do
+     this, BFD will align it for us, but it will not write out the
+     final bytes of the section.  This may be a bug in BFD, but it is
+     easier to fix it here since that is how the other a.out targets
+     work.  */
+  int align = bfd_section_alignment (segment);
 
-      align = bfd_section_alignment (segment);
-      size = ((size + (1 << align) - 1) & (-((valueT) 1 << align)));
-    }
-
-  return size;
+  return (size + ((valueT) 1 << align) - 1) & -((valueT) 1 << align);
 }
 #endif
 
@@ -18220,7 +18321,7 @@ s_bss (int ignore ATTRIBUTE_UNUSED)
   int temp;
 
   temp = get_absolute_expression ();
-  subseg_set (bss_section, (subsegT) temp);
+  subseg_set (bss_section, temp);
   demand_empty_rest_of_line ();
 }
 
@@ -18256,29 +18357,34 @@ i386_validate_fix (fixS *fixp)
       return 0;
     }
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
   if (fixp->fx_r_type == BFD_RELOC_SIZE32
       || fixp->fx_r_type == BFD_RELOC_SIZE64)
-    return IS_ELF && fixp->fx_addsy
+    return fixp->fx_addsy
 	   && (!S_IS_DEFINED (fixp->fx_addsy)
 	       || S_IS_EXTERNAL (fixp->fx_addsy));
 
   /* BFD_RELOC_X86_64_GOTTPOFF:
       1. fx_tcbit -> BFD_RELOC_X86_64_CODE_4_GOTTPOFF
-      2. fx_tcbit2 -> BFD_RELOC_X86_64_CODE_6_GOTTPOFF
+      2. fx_tcbit2 -> BFD_RELOC_X86_64_CODE_5_GOTTPOFF
+      3. fx_tcbit3 -> BFD_RELOC_X86_64_CODE_6_GOTTPOFF
     BFD_RELOC_X86_64_GOTPC32_TLSDESC:
       1. fx_tcbit -> BFD_RELOC_X86_64_CODE_4_GOTPC32_TLSDESC
     BFD_RELOC_32_PCREL:
-      1. fx_tcbit -> BFD_RELOC_X86_64_GOTPCRELX
-      2. fx_tcbit2 -> BFD_RELOC_X86_64_REX_GOTPCRELX
-      3. fx_tcbit3 -> BFD_RELOC_X86_64_CODE_4_GOTPCRELX
-      4. else -> BFD_RELOC_X86_64_GOTPCREL
+      1. fx_tcbit && fx_tcbit3 -> BFD_RELOC_X86_64_CODE_5_GOTPCRELX
+      2. fx_tcbit -> BFD_RELOC_X86_64_GOTPCRELX
+      3. fx_tcbit2 && fx_tcbit3 -> BFD_RELOC_X86_64_CODE_6_GOTPCRELX
+      4. fx_tcbit2 -> BFD_RELOC_X86_64_REX_GOTPCRELX
+      5. fx_tcbit3 -> BFD_RELOC_X86_64_CODE_4_GOTPCRELX
+      6. else -> BFD_RELOC_X86_64_GOTPCREL
    */
   if (fixp->fx_r_type == BFD_RELOC_X86_64_GOTTPOFF)
     {
       if (fixp->fx_tcbit)
 	fixp->fx_r_type = BFD_RELOC_X86_64_CODE_4_GOTTPOFF;
       else if (fixp->fx_tcbit2)
+	fixp->fx_r_type = BFD_RELOC_X86_64_CODE_5_GOTTPOFF;
+      else if (fixp->fx_tcbit3)
 	fixp->fx_r_type = BFD_RELOC_X86_64_CODE_6_GOTTPOFF;
     }
   else if (fixp->fx_r_type == BFD_RELOC_X86_64_GOTPC32_TLSDESC
@@ -18294,11 +18400,15 @@ i386_validate_fix (fixS *fixp)
 	    {
 	      if (!object_64bit)
 		abort ();
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
 	      if (fixp->fx_tcbit)
-		fixp->fx_r_type = BFD_RELOC_X86_64_GOTPCRELX;
+		fixp->fx_r_type = fixp->fx_tcbit3
+				  ? BFD_RELOC_X86_64_CODE_5_GOTPCRELX
+				  : BFD_RELOC_X86_64_GOTPCRELX;
 	      else if (fixp->fx_tcbit2)
-		fixp->fx_r_type = BFD_RELOC_X86_64_REX_GOTPCRELX;
+		fixp->fx_r_type = fixp->fx_tcbit3
+				  ? BFD_RELOC_X86_64_CODE_6_GOTPCRELX
+				  : BFD_RELOC_X86_64_REX_GOTPCRELX;
 	      else if (fixp->fx_tcbit3)
 		fixp->fx_r_type = BFD_RELOC_X86_64_CODE_4_GOTPCRELX;
 	      else
@@ -18315,15 +18425,19 @@ i386_validate_fix (fixS *fixp)
 	  fixp->fx_subsy = 0;
 	}
     }
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
   else
     {
       /* NB: Commit 292676c1 resolved PLT32 reloc aganst local symbol
 	 to section.  Since PLT32 relocation must be against symbols,
-	 turn such PLT32 relocation into PC32 relocation.  */
+	 turn such PLT32 relocation into PC32 relocation.  NB: We can
+	 turn PLT32 relocation into PC32 relocation only for PC-relative
+	 relocations since non-PC-relative relocations need PLT entries.
+       */
       if (fixp->fx_addsy
+	  && fixp->fx_pcrel
 	  && (fixp->fx_r_type == BFD_RELOC_386_PLT32
-	      || fixp->fx_r_type == BFD_RELOC_X86_64_PLT32)
+	      || fixp->fx_r_type == BFD_RELOC_32_PLT_PCREL)
 	  && symbol_section_p (fixp->fx_addsy))
 	fixp->fx_r_type = BFD_RELOC_32_PCREL;
       if (!object_64bit)
@@ -18346,7 +18460,7 @@ tc_gen_reloc (asection *section ATTRIBUTE_UNUSED, fixS *fixp)
 
   switch (fixp->fx_r_type)
     {
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
       symbolS *sym;
 
     case BFD_RELOC_SIZE32:
@@ -18363,7 +18477,7 @@ tc_gen_reloc (asection *section ATTRIBUTE_UNUSED, fixS *fixp)
 	sym = fixp->fx_subsy;
       else
 	sym = NULL;
-      if (IS_ELF && sym && S_IS_DEFINED (sym) && !S_IS_EXTERNAL (sym))
+      if (sym && S_IS_DEFINED (sym) && !S_IS_EXTERNAL (sym))
 	{
 	  /* Resolve size relocation against local symbol to size of
 	     the symbol plus addend.  */
@@ -18387,7 +18501,7 @@ tc_gen_reloc (asection *section ATTRIBUTE_UNUSED, fixS *fixp)
 			  _("symbol size computation overflow"));
 	  fixp->fx_addsy = NULL;
 	  fixp->fx_subsy = NULL;
-	  md_apply_fix (fixp, (valueT *) &value, NULL);
+	  md_apply_fix (fixp, &value, NULL);
 	  return NULL;
 	}
       if (!fixp->fx_addsy || fixp->fx_subsy)
@@ -18399,12 +18513,14 @@ tc_gen_reloc (asection *section ATTRIBUTE_UNUSED, fixS *fixp)
 #endif
       /* Fall through.  */
 
-    case BFD_RELOC_X86_64_PLT32:
+    case BFD_RELOC_32_PLT_PCREL:
     case BFD_RELOC_X86_64_GOT32:
     case BFD_RELOC_X86_64_GOTPCREL:
     case BFD_RELOC_X86_64_GOTPCRELX:
     case BFD_RELOC_X86_64_REX_GOTPCRELX:
     case BFD_RELOC_X86_64_CODE_4_GOTPCRELX:
+    case BFD_RELOC_X86_64_CODE_5_GOTPCRELX:
+    case BFD_RELOC_X86_64_CODE_6_GOTPCRELX:
     case BFD_RELOC_386_PLT32:
     case BFD_RELOC_386_GOT32:
     case BFD_RELOC_386_GOT32X:
@@ -18426,6 +18542,7 @@ tc_gen_reloc (asection *section ATTRIBUTE_UNUSED, fixS *fixp)
     case BFD_RELOC_X86_64_DTPOFF64:
     case BFD_RELOC_X86_64_GOTTPOFF:
     case BFD_RELOC_X86_64_CODE_4_GOTTPOFF:
+    case BFD_RELOC_X86_64_CODE_5_GOTTPOFF:
     case BFD_RELOC_X86_64_CODE_6_GOTTPOFF:
     case BFD_RELOC_X86_64_TPOFF32:
     case BFD_RELOC_X86_64_TPOFF64:
@@ -18435,9 +18552,11 @@ tc_gen_reloc (asection *section ATTRIBUTE_UNUSED, fixS *fixp)
     case BFD_RELOC_X86_64_GOTPCREL64:
     case BFD_RELOC_X86_64_GOTPC64:
     case BFD_RELOC_X86_64_GOTPLT64:
-    case BFD_RELOC_X86_64_PLTOFF64:
+    case BFD_RELOC_64_PLTOFF:
     case BFD_RELOC_X86_64_GOTPC32_TLSDESC:
     case BFD_RELOC_X86_64_CODE_4_GOTPC32_TLSDESC:
+    case BFD_RELOC_X86_64_CODE_5_GOTPC32_TLSDESC:
+    case BFD_RELOC_X86_64_CODE_6_GOTPC32_TLSDESC:
     case BFD_RELOC_X86_64_TLSDESC_CALL:
     case BFD_RELOC_RVA:
     case BFD_RELOC_VTABLE_ENTRY:
@@ -18514,8 +18633,8 @@ tc_gen_reloc (asection *section ATTRIBUTE_UNUSED, fixS *fixp)
       code = BFD_RELOC_X86_64_GOTPC64;
     }
 
-  rel = XNEW (arelent);
-  rel->sym_ptr_ptr = XNEW (asymbol *);
+  rel = notes_alloc (sizeof (arelent));
+  rel->sym_ptr_ptr = notes_alloc (sizeof (asymbol *));
   *rel->sym_ptr_ptr = symbol_get_bfdsym (fixp->fx_addsy);
 
   rel->address = fixp->fx_frag->fr_address + fixp->fx_where;
@@ -18547,7 +18666,7 @@ tc_gen_reloc (asection *section ATTRIBUTE_UNUSED, fixS *fixp)
 	  case BFD_RELOC_X86_64_GOTPCREL64:
 	  case BFD_RELOC_X86_64_GOTPC64:
 	  case BFD_RELOC_X86_64_GOTPLT64:
-	  case BFD_RELOC_X86_64_PLTOFF64:
+	  case BFD_RELOC_64_PLTOFF:
 	    as_bad_where (fixp->fx_file, fixp->fx_line,
 			  _("cannot represent relocation type %s in x32 mode"),
 			  bfd_get_reloc_code_name (code));
@@ -18561,19 +18680,24 @@ tc_gen_reloc (asection *section ATTRIBUTE_UNUSED, fixS *fixp)
       else
 	switch (code)
 	  {
-	  case BFD_RELOC_X86_64_PLT32:
+	  case BFD_RELOC_32_PLT_PCREL:
 	  case BFD_RELOC_X86_64_GOT32:
 	  case BFD_RELOC_X86_64_GOTPCREL:
 	  case BFD_RELOC_X86_64_GOTPCRELX:
 	  case BFD_RELOC_X86_64_REX_GOTPCRELX:
 	  case BFD_RELOC_X86_64_CODE_4_GOTPCRELX:
+	  case BFD_RELOC_X86_64_CODE_5_GOTPCRELX:
+	  case BFD_RELOC_X86_64_CODE_6_GOTPCRELX:
 	  case BFD_RELOC_X86_64_TLSGD:
 	  case BFD_RELOC_X86_64_TLSLD:
 	  case BFD_RELOC_X86_64_GOTTPOFF:
 	  case BFD_RELOC_X86_64_CODE_4_GOTTPOFF:
+	  case BFD_RELOC_X86_64_CODE_5_GOTTPOFF:
 	  case BFD_RELOC_X86_64_CODE_6_GOTTPOFF:
 	  case BFD_RELOC_X86_64_GOTPC32_TLSDESC:
 	  case BFD_RELOC_X86_64_CODE_4_GOTPC32_TLSDESC:
+	  case BFD_RELOC_X86_64_CODE_5_GOTPC32_TLSDESC:
+	  case BFD_RELOC_X86_64_CODE_6_GOTPC32_TLSDESC:
 	  case BFD_RELOC_X86_64_TLSDESC_CALL:
 	    rel->addend = fixp->fx_offset - fixp->fx_size;
 	    break;
@@ -18641,7 +18765,7 @@ tc_x86_frame_initial_instructions (void)
 int
 x86_dwarf2_addr_size (void)
 {
-#if defined (OBJ_MAYBE_ELF) || defined (OBJ_ELF)
+#ifdef OBJ_ELF
   if (x86_elf_abi == X86_64_X32_ABI)
     return 4;
 #endif
@@ -18661,7 +18785,7 @@ tc_pe_dwarf2_emit_offset (symbolS *symbol, unsigned int size)
 }
 #endif
 
-#if defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)
+#ifdef OBJ_ELF
 int
 i386_elf_section_type (const char *str, size_t len)
 {
@@ -18718,17 +18842,15 @@ i386_solaris_fix_up_eh_frame (segT sec)
 /* For ELF on x86-64, add support for SHF_X86_64_LARGE.  */
 
 bfd_vma
-x86_64_section_letter (int letter, const char **ptr_msg)
+x86_64_section_letter (int letter, const char **extra)
 {
   if (flag_code == CODE_64BIT)
     {
       if (letter == 'l')
 	return SHF_X86_64_LARGE;
 
-      *ptr_msg = _("bad .section directive: want a,l,w,x,M,S,G,T in string");
+      *extra = "l";
     }
-  else
-    *ptr_msg = _("bad .section directive: want a,w,x,M,S,G,T in string");
   return -1;
 }
 
@@ -18761,7 +18883,7 @@ handle_large_common (int small ATTRIBUTE_UNUSED)
 	  subseg_set (seg, subseg);
 	}
 
-      elf_com_section_ptr = &_bfd_elf_large_com_section;
+      elf_com_section_ptr = &bfd_elf_large_com_section;
       bss_section = lbss_section;
 
       s_comm_internal (0, elf_common_parse);
@@ -18770,4 +18892,4 @@ handle_large_common (int small ATTRIBUTE_UNUSED)
       bss_section = saved_bss_section;
     }
 }
-#endif /* OBJ_ELF || OBJ_MAYBE_ELF */
+#endif /* OBJ_ELF */

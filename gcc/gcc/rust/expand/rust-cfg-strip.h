@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
+#ifndef RUST_CFG_STRIP_H
+#define RUST_CFG_STRIP_H
 
 #include "rust-ast-visitor.h"
 #include "rust-ast.h"
@@ -34,6 +36,8 @@ public:
   void go (AST::Crate &crate);
 
   void maybe_strip_struct_fields (std::vector<AST::StructField> &fields);
+  void maybe_strip_struct_expr_fields (
+    std::vector<std::unique_ptr<AST::StructExprField>> &fields);
   void maybe_strip_tuple_fields (std::vector<AST::TupleField> &fields);
   void maybe_strip_function_params (
     std::vector<std::unique_ptr<AST::Param>> &params);
@@ -150,7 +154,6 @@ public:
   void visit (AST::TraitImpl &impl) override;
   void visit (AST::ExternalTypeItem &item) override;
   void visit (AST::ExternalStaticItem &item) override;
-  void visit (AST::ExternalFunctionItem &item) override;
   void visit (AST::ExternBlock &block) override;
 
   // I don't think it would be possible to strip macros without expansion
@@ -191,3 +194,5 @@ public:
   }
 };
 } // namespace Rust
+
+#endif // RUST_CFG_STRIP_Hs

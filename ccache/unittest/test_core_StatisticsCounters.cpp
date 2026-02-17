@@ -16,10 +16,10 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "TestUtil.hpp"
+#include "testutil.hpp"
 
-#include <ccache/core/Statistic.hpp>
-#include <ccache/core/StatisticsCounters.hpp>
+#include <ccache/core/statistic.hpp>
+#include <ccache/core/statisticscounters.hpp>
 
 #include <doctest/doctest.h>
 

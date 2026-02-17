@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2021-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -19,6 +19,7 @@
 #pragma once
 
 #include <ccache/util/format.hpp>
+#include <ccache/util/macro.hpp>
 
 #include <tl/expected.hpp>
 
@@ -50,13 +51,20 @@ template<typename E, typename T> void throw_on_error(const T& value);
 template<typename E, typename T>
 void throw_on_error(const T& value, std::string_view prefix);
 
-#define TRY(x_)                                                                \
+#define TRY(expression_)                                                       \
   do {                                                                         \
-    const auto result = x_;                                                    \
-    if (!result) {                                                             \
-      return tl::unexpected(result.error());                                   \
+    auto result_ = (expression_);                                              \
+    if (!result_) {                                                            \
+      return tl::unexpected(std::move(result_.error()));                       \
     }                                                                          \
   } while (false)
+
+#define TRY_ASSIGN(var_, expression_)                                          \
+  auto UNIQUE_VARNAME(_result_) = (expression_);                               \
+  if (!UNIQUE_VARNAME(_result_)) {                                             \
+    return tl::unexpected(std::move(UNIQUE_VARNAME(_result_).error()));        \
+  }                                                                            \
+  var_ = std::move(*UNIQUE_VARNAME(_result_))
 
 // --- Inline implementations ---
 

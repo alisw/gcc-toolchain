@@ -183,7 +183,8 @@ documentation.
 *-s*, *--show-stats*::
 
     Print a summary of configuration and statistics counters in human-readable
-    format. Use `-v`/`--verbose` once or twice for more details.
+    format. Use `-v`/`--verbose` once or twice for more details. See
+    <<_cache_statistics,Cache statistics>> for more information.
 
 *-v*, *--verbose*::
 
@@ -410,7 +411,7 @@ is whitespace surrounding keys and values. Example:
 
 -------------------------------------------------------------------------------
 # Set maximum cache size to 10 GB:
-max_size = 10G
+max_size = 10GB
 -------------------------------------------------------------------------------
 
 === Boolean values
@@ -439,22 +440,23 @@ option key.
 *absolute_paths_in_stderr* (*CCACHE_ABSSTDERR*)::
 
     This option specifies whether ccache should rewrite relative paths in the
-    compiler's standard error output to absolute paths. This can be useful if
-    you use <<config_base_dir,*base_dir*>> with a build system (e.g. CMake with
-    the "Unix Makefiles" generator) that executes the compiler in a different
-    working directory, which makes relative paths in compiler errors or
-    warnings incorrect. The default is false.
+    compiler's textual output (standard error and standard output) to absolute
+    paths. This can be useful if you use <<config_base_dir,*base_dir*>> with a
+    build system (e.g. CMake with the "Unix Makefiles" generator) that executes
+    the compiler in a different working directory, which makes relative paths in
+    compiler errors or warnings incorrect. The default is false.
 
 [#config_base_dir]
 *base_dir* (*CCACHE_BASEDIR*)::
 
-    This option should be an absolute path to a directory. If set, ccache will
+    This option is a list of absolute directory paths. The list separator is
+    semicolon on Windows systems and colon on other systems. If set, ccache will
     rewrite absolute paths into paths relative to the current working directory,
-    but only absolute paths that begin with *base_dir*. Cache results can then
-    be shared for compilations in different directories even if the project uses
-    absolute paths in the compiler command line. See also the discussion under
-    _<<Compiling in different directories>>_. If set to the empty string (which
-    is the default), no rewriting is done.
+    but only absolute paths that begin with one of the *base_dir* paths. Cache
+    results can then be shared for compilations in different directories even if
+    the project uses absolute paths in the compiler command line. See also the
+    discussion under _<<Compiling in different directories>>_. If set to the
+    empty string (which is the default), no rewriting is done.
 +
 A typical path to use as *base_dir* is your home directory or another directory
 that is a parent of your project directories. Don't use `/` as the base
@@ -505,7 +507,7 @@ WARNING: Rewriting absolute paths to relative is kind of a brittle hack. It
 works OK in many cases, but there might be cases where things break. One known
 issue is that absolute paths are not reproduced in dependency files, which can
 mess up dependency detection in tools like Make and Ninja. If possible, use
-relative paths in the first place instead instead of using *base_dir*.
+relative paths in the first place instead of using *base_dir*.
 
 [#config_cache_dir]
 *cache_dir* (*CCACHE_DIR*)::
@@ -514,7 +516,7 @@ relative paths in the first place instead instead of using *base_dir*.
 +
 On non-Windows systems, the default is `$HOME/.ccache` if such a directory
 exists, otherwise `$XDG_CACHE_HOME/ccache` if `XDG_CACHE_HOME` is set, otherwise
-`$HOME/Library/Caches/ccache` (macOS) or `$HOME/.config/ccache` (other systems).
+`$HOME/Library/Caches/ccache` (macOS) or `$HOME/.cache/ccache` (other systems).
 +
 On Windows, the default is `%USERPROFILE%\.ccache` if such a directory exists,
 otherwise `%LOCALAPPDATA%\ccache`.
@@ -612,6 +614,10 @@ _<<Using ccache with other compiler wrappers>>_.
     GCC-based compiler.
 *icl*::
     Intel compiler on Windows.
+*icx*::
+    Intel LLVM-based compiler.
+*icx-cl*::
+    Intel LLVM-based MSVC-compatible compiler.
 *msvc*::
     Microsoft Visual C++ (MSVC).
 *nvcc*::
@@ -670,7 +676,7 @@ Semantics of *compression_level*:
     *1*.
 --
 +
-See the http://zstd.net[Zstandard documentation] for more information.
+See the https://facebook.github.io/zstd/[Zstandard documentation] for more information.
 
 [#config_cpp_extension]
 *cpp_extension* (*CCACHE_EXTENSION*)::
@@ -792,9 +798,9 @@ WARNING: Do not enable this option unless you are aware of these caveats:
     If true (which is the default), ccache will include the current working
     directory (CWD) in the hash that is used to distinguish two compilations
     when generating debug info (compiler option `-g` with variations).
-    Exception: The CWD will not be included in the hash if
-    <<config_base_dir,*base_dir*>> is set (and matches the CWD) and the
-    compiler option `-fdebug-prefix-map` is used. See also the discussion under
+    Exception: The CWD will not be included in the hash if the
+    compiler options `-fdebug-prefix-map` or `-fdebug-compilation-dir` are used
+    appropriately. See also the discussion under
     _<<Compiling in different directories>>_.
 +
 The reason for including the CWD in the hash by default is to prevent a problem
@@ -873,8 +879,8 @@ file in `/etc/rsyslog.d`:
 *max_size* (*CCACHE_MAXSIZE*)::
 
     This option specifies the maximum size of the cache. Use 0 for no limit. The
-    default value is 5G. Available suffixes: k, M, G, T (decimal) and Ki, Mi,
-    Gi, Ti (binary). The default suffix is G. See also
+    default value is 5GiB. Available suffixes: kB, MB, GB, TB (decimal) and KiB,
+    MiB, GiB, TiB (binary). The default suffix is GiB. See also
     _<<Cache size management>>_.
 
 [#config_msvc_dep_prefix]
@@ -991,40 +997,32 @@ NOTE: In previous ccache versions this option was called *secondary_storage*
     If true, ccache will write results to remote storage even for local storage
     cache hits. The default is false.
 
-[#config_run_second_cpp]
-*run_second_cpp* (*CCACHE_CPP2* or *CCACHE_NOCPP2*, see _<<Boolean values>>_ above)::
+[#config_response_file_format]
+*response_file_format* (*CCACHE_RESPONSE_FILE_FORMAT*)::
 
-    If true, ccache will first run the preprocessor to preprocess the source
-    code (see _<<The preprocessor mode>>_) and then on a cache miss run the
-    compiler on the source code to get hold of the object file. This is the
+    Ccache normally guesses the response file format based on the compiler type.
+    The *response_file_format* option lets you force the response file quoting
+    behavior. This can be useful if the compiler supports both POSIX and Windows
+    response file quoting. Possible values are:
++
+--
+*auto*::
+    Guess one of the formats below based on the compiler type. This is the
     default.
-+
-If false, ccache will first run preprocessor to preprocess the source code and
-then on a cache miss run the compiler on the _preprocessed source code_ instead
-of the original source code. This makes cache misses slightly faster since the
-source code only has to be preprocessed once. The downside is that some
-compilers won't produce the same result (for instance diagnostics warnings)
-when compiling preprocessed source code.
-+
-A solution to the above mentioned downside is to set *run_second_cpp* to false
-and pass `-fdirectives-only` (for GCC) or `-frewrite-includes` (for Clang) to
-the compiler. This will cause the compiler to leave the macros and other
-preprocessor information, and only process the *#include* directives. When run
-in this way, the preprocessor arguments will be passed to the compiler since it
-still has to do _some_ preprocessing (like macros).
-+
-This option is ignored with MSVC, as there is no way to make it compile without
-preprocessing first.
+*posix*::
+    POSIX quoting behavior.
+*windows*::
+    Windows quoting behavior.
+--
 
 [#config_sloppiness]
 *sloppiness* (*CCACHE_SLOPPINESS*)::
 
     By default, ccache tries to give as few false cache hits as possible.
     However, in certain situations it's possible that you know things that
-    ccache can't take for granted. This option makes it possible to tell
-    ccache to relax some checks in order to increase the hit rate. The value
-    should be a comma-separated string with one or several of the following
-    values:
+    ccache can't take for granted. This option makes it possible to tell ccache
+    to relax some checks in order to increase the hit rate. Available values
+    (separated by whitespace or comma):
 +
 --
 *clang_index_store*::
@@ -1090,9 +1088,9 @@ included in the input hash.
     hash. This is useful if your build system generates different seeds between
     builds and you are OK with reusing cached results.
 *system_headers*::
-    Only check non-system headers in direct mode.
-    This can be useful if e.g. your system headers tend to change but you know that
-    the changes don't matter. Notes:
+    Only check non-system headers in direct mode. This can be useful if e.g.
+    your system headers tend to change but you know that the changes don't
+    matter. Notes:
 +
 * This sloppiness is only supported for GCC-like compilers, not MSVC.
 * System headers are still taken into account for preprocessed lookup.
@@ -1309,6 +1307,9 @@ values.
 --
 +
 The default is *subdirs*.
+* *header*: Add the key=value pair to the HTTP headers of the request. For example:
+   `+header=Content-Type=application/octet-stream+` adds
+   "Content-Type: application/octet-stream" to the http headers of the request.
 * *operation-timeout*: Timeout (in ms) for HTTP requests. The default is 10000.
 
 
@@ -1363,9 +1364,15 @@ Cleanup can be triggered in two different ways: automatic and manual.
 After a new compilation result has been written to the local cache, ccache will
 trigger an automatic cleanup if <<config_max_size,*max_size*>> or
 <<config_max_files,*max_files*>> is exceeded. The cleanup removes cache entries
-in LRU (least recently used) order based on the modification time (mtime) of
-files in the cache. For this reason, ccache updates mtime of the cache files
-read on a cache hit to mark them as recently used.
+in approximate LRU (least recently used) order based on the modification time
+(mtime) of files in the cache. For this reason, ccache updates mtime of the
+cache files read on a cache hit to mark them as recently used.
+
+For performance reasons only entries in a subset of the cache are considered
+when automatic cleanup is triggered. This means that there is no guarantee that
+the oldest entries of the whole cache are evicted on each individual cleanup,
+but over time the cache as a whole will have "approximate LRU eviction"
+behavior.
 
 
 === Manual cleanup
@@ -1374,6 +1381,10 @@ You can run `ccache -c/--cleanup` to force cleanup of the whole cache. This will
 recalculate the cache size information and also make sure that the cache size
 does not exceed <<config_max_size,*max_size*>> and
 <<config_max_files,*max_files*>>.
+
+Note that there is no guarantee that only the oldest entries are evicted, as
+discussed in _<<Automatic cleanup>>_ above. To evict based on age you can use
+`ccache --evict-older-than AGE`.
 
 
 == Cache compression
@@ -1428,6 +1439,18 @@ cleanups (number of performed cleanups, either implicitly due to a cache size
 limit being reached or due to explicit `ccache -c` calls), overall hit rate, hit
 rate for <<The direct mode,direct>>/<<The preprocessor mode,preprocessed>> modes
 and hit rate for local and <<config_remote_storage,remote storage>>.
+
+The statistics counters are not used by ccache itself during builds. This means
+that you can safely reset them at any time using `ccache --zero-stats` without
+affecting the build process. For example, you might reset them before a build so
+that `ccache --show-stats` will only summarize the results from that specific
+build. Alternatively, you can set <<config_stats_log,*stats_log*> before
+starting the build and then run `ccache --show-log-stats` afterward to view
+build-specific statistics. This approach allows the statistics counters to
+continue tracking the entire lifetime of the cache while still giving you
+detailed information for individual builds. Another advantage of *stats_log* is
+that it collects statistics without interference from other concurrent builds
+that access the same cache.
 
 The summary also includes counters called "`Errors`" and "`Uncacheable`", which
 are sums of more detailed counters. To see those detailed counters, use the
@@ -1529,6 +1552,10 @@ A compiler option not supported by ccache was found.
 | Unsupported environment variable |
 An environment variable not supported by ccache was set.
 
+| Unsupported source encoding |
+Source file (or an included header) has unsupported encoding. ccache currently
+requires UTF-8-encoded source code for MSVC.
+
 | Unsupported source language |
 A source language e.g. specified with `-x` was unsupported by ccache.
 
@@ -1619,10 +1646,12 @@ result.
 
 There is a catch with the direct mode: header files that were used by the
 compiler are recorded, but header files that were *not* used, but would have
-been used if they existed, are not. So, when ccache checks if a result can be
-taken from the cache, it currently can't check if the existence of a new header
-file should invalidate the result. In practice, the direct mode is safe to use
-in the absolute majority of cases.
+been used if they existed, are not. To mitigate this problem, ccache records
+whether directories specified with `-I` and similar exist at the time of
+compilation, which handles most cases. Still, when ccache checks if a result can
+be taken from the cache, it currently can't check with 100% accuracy if the
+existence of a new header file should invalidate the result. In practice, the
+direct mode is safe to use in the absolute majority of cases.
 
 The direct mode will be disabled if any of the following holds:
 
@@ -1666,7 +1695,6 @@ Disadvantages:
 The depend mode will be disabled if any of the following holds:
 
 * <<config_depend_mode,*depend_mode*>> is false.
-* <<config_run_second_cpp,*run_second_cpp*>> is false.
 * The compiler is not generating dependencies using `-MD` or `-MMD` (for MSVC,
   `/showIncludes` is added automatically if not specified by the user).
 
@@ -1777,8 +1805,10 @@ directories:
 
 * If you build with `-g` (or similar) to add debug information to the object
   file, you must either:
-** use the compiler option `-fdebug-prefix-map=<old>=<new>` for relocating
-   debug info to a common prefix (e.g. `-fdebug-prefix-map=$PWD=.`); or
+** use the compiler options `-fdebug-prefix-map=<old>=<new>` or
+   `-fdebug-compilation-dir` for relocating
+   debug info to a common prefix (e.g. `-fdebug-prefix-map=$PWD=.` or
+   `-fdebug-compilation-dir=.`); or
 ** set *hash_dir = false*.
 * If you use absolute paths anywhere on the command line (e.g. the source code
   file path or an argument to compiler options like `-I` and `-MF`), you must
@@ -1789,7 +1819,7 @@ directories:
 
 == Precompiled headers
 
-Ccache has support for precompiled headers with GCC and Clang. However, you have
+Ccache has limited support for precompiled headers with GCC and Clang. You have
 to do some things to make it work properly:
 
 * You must set <<config_sloppiness,*sloppiness*>> to *pch_defines,time_macros*.
@@ -1819,6 +1849,9 @@ If you don't do this, either the non-precompiled version of the header file will
 be used (if available) or ccache will fall back to running the real compiler and
 increase the statistics counter "`Preprocessing failed`" (if the non-precompiled
 header file is not available).
+
+Also, you might get into trouble if header files use `#pragma once` instead of
+include guards.
 
 
 == C++ modules

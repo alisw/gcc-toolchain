@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -61,7 +61,7 @@ class PathIdentSegment;
 struct GenericArgsBinding;
 struct GenericArgs;
 class PathExprSegment;
-class PathPattern;
+class Path;
 class PathInExpression;
 class TypePathSegment;
 class TypePathSegmentGeneric;
@@ -145,10 +145,10 @@ struct MatchCase;
 class MatchExpr;
 class AwaitExpr;
 class AsyncBlockExpr;
-enum class InlineAsmOptions;
+enum class InlineAsmOption;
 struct AnonConst;
 struct InlineAsmRegOrRegClass;
-struct InlineAsmOperand;
+class InlineAsmOperand;
 struct InlineAsmPlaceHolder;
 struct InlineAsmTemplatePiece;
 struct TupleClobber;
@@ -202,8 +202,6 @@ class TraitImpl;
 class ExternalItem;
 class ExternalTypeItem;
 class ExternalStaticItem;
-class NamedFunctionParam;
-class ExternalFunctionItem;
 class ExternBlock;
 
 // rust-macro.h
@@ -267,6 +265,9 @@ class SliceType;
 class InferredType;
 struct MaybeNamedParam;
 class BareFunctionType;
+
+// rust-builtin-ast-nodes.h
+class FormatArgs;
 } // namespace AST
 } // namespace Rust
 

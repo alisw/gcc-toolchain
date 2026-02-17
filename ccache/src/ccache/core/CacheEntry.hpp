@@ -18,9 +18,9 @@
 
 #pragma once
 
-#include <ccache/core/Serializer.hpp>
+#include <ccache/core/serializer.hpp>
 #include <ccache/core/types.hpp>
-#include <ccache/util/Bytes.hpp>
+#include <ccache/util/bytes.hpp>
 
 #include <nonstd/span.hpp>
 

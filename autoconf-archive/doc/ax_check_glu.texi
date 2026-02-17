@@ -52,7 +52,7 @@ X11/Xquartz GLU implementation instead of the system built in GLU
 framework.
 
 Some implementations (in particular, some versions of Mac OS X) are
-known to treat the GLU tesselator callback function type as "GLvoid
+known to treat the GLU tessellator callback function type as "GLvoid
 (*)(...)" rather than the standard "GLvoid (*)()". If the former
 condition is detected, this macro defines "HAVE_VARARGS_GLU_TESSCB".
 

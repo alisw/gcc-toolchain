@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -17,7 +17,12 @@
 // <http://www.gnu.org/licenses/>.
 
 #include "rust-session-manager.h"
+#include "rust-collect-lang-items.h"
+#include "rust-desugar-for-loops.h"
+#include "rust-desugar-question-mark.h"
 #include "rust-diagnostics.h"
+#include "rust-hir-pattern-analysis.h"
+#include "rust-immutable-name-resolution-context.h"
 #include "rust-unsafe-checker.h"
 #include "rust-lex.h"
 #include "rust-parse.h"
@@ -42,12 +47,14 @@
 #include "rust-early-name-resolver.h"
 #include "rust-name-resolution-context.h"
 #include "rust-early-name-resolver-2.0.h"
+#include "rust-late-name-resolver-2.0.h"
 #include "rust-cfg-strip.h"
 #include "rust-expand-visitor.h"
 #include "rust-unicode.h"
 #include "rust-attribute-values.h"
 #include "rust-borrow-checker.h"
 #include "rust-ast-validation.h"
+#include "rust-tyty-variance-analysis.h"
 
 #include "input.h"
 #include "selftest.h"
@@ -67,6 +74,10 @@ const char *kASTDumpFile = "gccrs.ast.dump";
 const char *kASTPrettyDumpFile = "gccrs.ast-pretty.dump";
 const char *kASTPrettyDumpFileExpanded = "gccrs.ast-pretty-expanded.dump";
 const char *kASTExpandedDumpFile = "gccrs.ast-expanded.dump";
+const char *kASTmacroResolutionDumpFile = "gccrs.ast-macro-resolution.dump";
+const char *kASTlabelResolutionDumpFile = "gccrs.ast-label-resolution.dump";
+const char *kASTtypeResolutionDumpFile = "gccrs.ast-type-resolution.dump";
+const char *kASTvalueResolutionDumpFile = "gccrs.ast-value-resolution.dump";
 const char *kHIRDumpFile = "gccrs.hir.dump";
 const char *kHIRPrettyDumpFile = "gccrs.hir-pretty.dump";
 const char *kHIRTypeResolutionDumpFile = "gccrs.type-resolution.dump";
@@ -78,12 +89,13 @@ const size_t kMaxNameLength = 64;
 Session &
 Session::get_instance ()
 {
-  static Session instance;
+  static Session instance{};
   return instance;
 }
 
 static std::string
 infer_crate_name (const std::string &filename)
+
 {
   if (filename == "-")
     return kDefaultCrateName;
@@ -139,7 +151,7 @@ validate_crate_name (const std::string &crate_name, Error &error)
       if (!(is_alphabetic (c.value) || is_numeric (c.value) || c.value == '_'))
 	{
 	  error = Error (UNDEF_LOCATION,
-			 "invalid character %<%s%> in crate name: %<%s%>",
+			 "invalid character %qs in crate name: %qs",
 			 c.as_string ().c_str (), crate_name.c_str ());
 	  return false;
 	}
@@ -255,6 +267,9 @@ Session::handle_option (
       break;
     case OPT_frust_metadata_output_:
       options.set_metadata_output (arg);
+      break;
+    case OPT_frust_panic_:
+      options.set_panic_strategy (flag_rust_panic);
       break;
 
     default:
@@ -388,31 +403,16 @@ Session::handle_input_files (int num_files, const char **files)
 
   const auto &file = files[0];
 
-  if (options.crate_name.empty ())
-    {
-      auto filename = "-";
-      if (num_files > 0)
-	filename = files[0];
-
-      auto crate_name = infer_crate_name (filename);
-      rust_debug ("inferred crate name: %s", crate_name.c_str ());
-      // set the preliminary crate name here
-      // we will figure out the real crate name in `handle_crate_name`
-      options.set_crate_name (crate_name);
-    }
-
-  CrateNum crate_num = mappings->get_next_crate_num (options.get_crate_name ());
-  mappings->set_current_crate (crate_num);
-
   rust_debug ("Attempting to parse file: %s", file);
   compile_crate (file);
 }
 
 void
-Session::handle_crate_name (const AST::Crate &parsed_crate)
+Session::handle_crate_name (const char *filename,
+			    const AST::Crate &parsed_crate)
 {
-  auto mappings = Analysis::Mappings::get ();
-  auto crate_name_changed = false;
+  auto &mappings = Analysis::Mappings::get ();
+  auto crate_name_found = false;
   auto error = Error (UNDEF_LOCATION, std::string ());
 
   for (const auto &attr : parsed_crate.inner_attrs)
@@ -436,7 +436,6 @@ Session::handle_crate_name (const AST::Crate &parsed_crate)
 	  continue;
 	}
 
-      auto options = Session::get_instance ().options;
       if (options.crate_name_set_manually && (options.crate_name != msg_str))
 	{
 	  rust_error_at (attr.get_locus (),
@@ -444,19 +443,39 @@ Session::handle_crate_name (const AST::Crate &parsed_crate)
 			 "required to match, but %qs does not match %qs",
 			 options.crate_name.c_str (), msg_str.c_str ());
 	}
-      crate_name_changed = true;
+      crate_name_found = true;
       options.set_crate_name (msg_str);
-      mappings->set_crate_name (mappings->get_current_crate (), msg_str);
     }
 
-  options.crate_name_set_manually |= crate_name_changed;
-  if (!options.crate_name_set_manually
-      && !validate_crate_name (options.crate_name, error))
+  options.crate_name_set_manually |= crate_name_found;
+  if (!options.crate_name_set_manually)
     {
-      error.emit ();
-      rust_inform (linemap_position_for_column (line_table, 0),
-		   "crate name inferred from this file");
+      auto crate_name = infer_crate_name (filename);
+      if (crate_name.empty ())
+	{
+	  rust_error_at (UNDEF_LOCATION, "crate name is empty");
+	  rust_inform (linemap_position_for_column (line_table, 0),
+		       "crate name inferred from this file");
+	  return;
+	}
+
+      rust_debug ("inferred crate name: %s", crate_name.c_str ());
+      options.set_crate_name (crate_name);
+
+      if (!validate_crate_name (options.get_crate_name (), error))
+	{
+	  error.emit ();
+	  rust_inform (linemap_position_for_column (line_table, 0),
+		       "crate name inferred from this file");
+	  return;
+	}
     }
+
+  if (saw_errors ())
+    return;
+
+  CrateNum crate_num = mappings.get_next_crate_num (options.get_crate_name ());
+  mappings.set_current_crate (crate_num);
 }
 
 // Parses a single file with filename filename.
@@ -468,10 +487,11 @@ Session::compile_crate (const char *filename)
     rust_fatal_error (
       UNDEF_LOCATION, "%s",
       "gccrs is not yet able to compile Rust code "
-      "properly. Most of the errors produced will be gccrs' fault and not the "
-      "crate you are trying to compile. Because of this, please reports issues "
-      "to us directly instead of opening issues on said crate's "
-      "repository.\n\nOur github repository: "
+      "properly. Most of the errors produced will be the fault of gccrs and "
+      "not the crate you are trying to compile. Because of this, please report "
+      "errors directly to us instead of opening issues on said crate's "
+      "repository.\n\n"
+      "Our github repository: "
       "https://github.com/rust-gcc/gccrs\nOur bugzilla tracker: "
       "https://gcc.gnu.org/bugzilla/"
       "buglist.cgi?bug_status=__open__&component=rust&product=gcc\n\n"
@@ -525,7 +545,7 @@ Session::compile_crate (const char *filename)
   std::unique_ptr<AST::Crate> ast_crate = parser.parse_crate ();
 
   // handle crate name
-  handle_crate_name (*ast_crate.get ());
+  handle_crate_name (filename, *ast_crate.get ());
 
   // dump options except lexer dump
   if (options.dump_option_enabled (CompileOptions::AST_DUMP_PRETTY))
@@ -541,9 +561,9 @@ Session::compile_crate (const char *filename)
     return;
 
   // setup the mappings for this AST
-  CrateNum current_crate = mappings->get_current_crate ();
+  CrateNum current_crate = mappings.get_current_crate ();
   AST::Crate &parsed_crate
-    = mappings->insert_ast_crate (std::move (ast_crate), current_crate);
+    = mappings.insert_ast_crate (std::move (ast_crate), current_crate);
 
   /* basic pipeline:
    *  - lex
@@ -590,8 +610,16 @@ Session::compile_crate (const char *filename)
   if (last_step == CompileOptions::CompileStep::Expansion)
     return;
 
+  AST::CollectLangItems ().go (parsed_crate);
+
+  auto name_resolution_ctx = Resolver2_0::NameResolutionContext ();
   // expansion pipeline stage
-  expansion (parsed_crate);
+
+  expansion (parsed_crate, name_resolution_ctx);
+
+  AST::DesugarForLoops ().go (parsed_crate);
+  AST::DesugarQuestionMark ().go (parsed_crate);
+
   rust_debug ("\033[0;31mSUCCESSFULLY FINISHED EXPANSION \033[0m");
   if (options.dump_option_enabled (CompileOptions::EXPANSION_DUMP))
     {
@@ -616,12 +644,13 @@ Session::compile_crate (const char *filename)
     return;
 
   // resolution pipeline stage
-  Resolver::NameResolution::Resolve (parsed_crate);
+  if (flag_name_resolution_2_0)
+    Resolver2_0::Late (name_resolution_ctx).go (parsed_crate);
+  else
+    Resolver::NameResolution::Resolve (parsed_crate);
 
   if (options.dump_option_enabled (CompileOptions::RESOLUTION_DUMP))
-    {
-      // TODO: what do I dump here? resolved names? AST with resolved names?
-    }
+    dump_name_resolution (name_resolution_ctx);
 
   if (saw_errors ())
     return;
@@ -636,7 +665,7 @@ Session::compile_crate (const char *filename)
     return;
 
   // add the mappings to it
-  HIR::Crate &hir = mappings->insert_hir_crate (std::move (lowered));
+  HIR::Crate &hir = mappings.insert_hir_crate (std::move (lowered));
   if (options.dump_option_enabled (CompileOptions::HIR_DUMP))
     {
       dump_hir (hir);
@@ -649,8 +678,18 @@ Session::compile_crate (const char *filename)
   if (last_step == CompileOptions::CompileStep::TypeCheck)
     return;
 
+  // name resolution is done, we now freeze the name resolver for type checking
+  Resolver2_0::ImmutableNameResolutionContext::init (name_resolution_ctx);
+
   // type resolve
   Resolver::TypeResolution::Resolve (hir);
+
+  Resolver::TypeCheckContext::get ()->get_variance_analysis_ctx ().solve ();
+
+  if (saw_errors ())
+    return;
+
+  Analysis::PatternChecker ().go (hir);
 
   if (saw_errors ())
     return;
@@ -878,7 +917,7 @@ Session::injection (AST::Crate &crate)
 }
 
 void
-Session::expansion (AST::Crate &crate)
+Session::expansion (AST::Crate &crate, Resolver2_0::NameResolutionContext &ctx)
 {
   rust_debug ("started expansion");
 
@@ -902,23 +941,24 @@ Session::expansion (AST::Crate &crate)
     {
       CfgStrip ().go (crate);
       // Errors might happen during cfg strip pass
-      if (saw_errors ())
-	break;
-
-      auto ctx = Resolver2_0::NameResolutionContext ();
+      bool visitor_dirty = false;
 
       if (flag_name_resolution_2_0)
 	{
 	  Resolver2_0::Early early (ctx);
 	  early.go (crate);
 	  macro_errors = early.get_macro_resolve_errors ();
+	  visitor_dirty = early.is_dirty ();
 	}
       else
 	Resolver::EarlyNameResolver ().go (crate);
 
+      if (saw_errors ())
+	break;
+
       ExpandVisitor (expander).go (crate);
 
-      fixed_point_reached = !expander.has_changed ();
+      fixed_point_reached = !expander.has_changed () && !visitor_dirty;
       expander.reset_changed_state ();
       iterations++;
 
@@ -976,6 +1016,27 @@ Session::dump_ast_pretty (AST::Crate &crate, bool expanded) const
 }
 
 void
+Session::dump_name_resolution (Resolver2_0::NameResolutionContext &ctx) const
+{
+  // YES this is ugly but NO GCC 4.8 does not allow us to make it fancier :(
+  std::string types_content = ctx.types.as_debug_string ();
+  std::ofstream types_stream{kASTtypeResolutionDumpFile};
+  types_stream << types_content;
+
+  std::string macros_content = ctx.macros.as_debug_string ();
+  std::ofstream macros_stream{kASTmacroResolutionDumpFile};
+  macros_stream << macros_content;
+
+  std::string labels_content = ctx.labels.as_debug_string ();
+  std::ofstream labels_stream{kASTlabelResolutionDumpFile};
+  labels_stream << labels_content;
+
+  std::string values_content = ctx.values.as_debug_string ();
+  std::ofstream values_stream{kASTvalueResolutionDumpFile};
+  values_stream << values_content;
+}
+
+void
 Session::dump_hir (HIR::Crate &crate) const
 {
   std::ofstream out;
@@ -1013,16 +1074,12 @@ NodeId
 Session::load_extern_crate (const std::string &crate_name, location_t locus)
 {
   // has it already been loaded?
-  CrateNum found_crate_num = UNKNOWN_CRATENUM;
-  bool found = mappings->lookup_crate_name (crate_name, found_crate_num);
-  if (found)
+  if (auto crate_num = mappings.lookup_crate_name (crate_name))
     {
-      NodeId resolved_node_id = UNKNOWN_NODEID;
-      bool resolved
-	= mappings->crate_num_to_nodeid (found_crate_num, resolved_node_id);
-      rust_assert (resolved);
+      auto resolved_node_id = mappings.crate_num_to_nodeid (*crate_num);
+      rust_assert (resolved_node_id);
 
-      return resolved_node_id;
+      return *resolved_node_id;
     }
 
   std::string relative_import_path = "";
@@ -1051,7 +1108,7 @@ Session::load_extern_crate (const std::string &crate_name, location_t locus)
   if (stream == NULL	       // No stream and
       && proc_macros.empty ()) // no proc macros
     {
-      rust_error_at (locus, "failed to locate crate %<%s%>",
+      rust_error_at (locus, "failed to locate crate %qs",
 		     import_name.c_str ());
       return UNKNOWN_NODEID;
     }
@@ -1072,19 +1129,19 @@ Session::load_extern_crate (const std::string &crate_name, location_t locus)
     }
 
   // ensure the current vs this crate name don't collide
-  const std::string current_crate_name = mappings->get_current_crate_name ();
+  const std::string current_crate_name = mappings.get_current_crate_name ();
   if (current_crate_name.compare (extern_crate.get_crate_name ()) == 0)
     {
-      rust_error_at (locus, "current crate name %<%s%> collides with this",
+      rust_error_at (locus, "current crate name %qs collides with this",
 		     current_crate_name.c_str ());
       return UNKNOWN_NODEID;
     }
 
   // setup mappings
-  CrateNum saved_crate_num = mappings->get_current_crate ();
+  CrateNum saved_crate_num = mappings.get_current_crate ();
   CrateNum crate_num
-    = mappings->get_next_crate_num (extern_crate.get_crate_name ());
-  mappings->set_current_crate (crate_num);
+    = mappings.get_next_crate_num (extern_crate.get_crate_name ());
+  mappings.set_current_crate (crate_num);
 
   // then lets parse this as a 2nd crate
   Lexer lex (extern_crate.get_metadata (), linemap);
@@ -1092,7 +1149,7 @@ Session::load_extern_crate (const std::string &crate_name, location_t locus)
   std::unique_ptr<AST::Crate> metadata_crate = parser.parse_crate ();
 
   AST::Crate &parsed_crate
-    = mappings->insert_ast_crate (std::move (metadata_crate), crate_num);
+    = mappings.insert_ast_crate (std::move (metadata_crate), crate_num);
 
   std::vector<AttributeProcMacro> attribute_macros;
   std::vector<CustomDeriveProcMacro> derive_macros;
@@ -1116,9 +1173,9 @@ Session::load_extern_crate (const std::string &crate_name, location_t locus)
 	}
     }
 
-  mappings->insert_attribute_proc_macros (crate_num, attribute_macros);
-  mappings->insert_bang_proc_macros (crate_num, bang_macros);
-  mappings->insert_derive_proc_macros (crate_num, derive_macros);
+  mappings.insert_attribute_proc_macros (crate_num, attribute_macros);
+  mappings.insert_bang_proc_macros (crate_num, bang_macros);
+  mappings.insert_derive_proc_macros (crate_num, derive_macros);
 
   // name resolve it
   Resolver::NameResolution::Resolve (parsed_crate);
@@ -1126,13 +1183,13 @@ Session::load_extern_crate (const std::string &crate_name, location_t locus)
   // perform hir lowering
   std::unique_ptr<HIR::Crate> lowered
     = HIR::ASTLowering::Resolve (parsed_crate);
-  HIR::Crate &hir = mappings->insert_hir_crate (std::move (lowered));
+  HIR::Crate &hir = mappings.insert_hir_crate (std::move (lowered));
 
   // perform type resolution
   Resolver::TypeResolution::Resolve (hir);
 
   // always restore the crate_num
-  mappings->set_current_crate (saved_crate_num);
+  mappings.set_current_crate (saved_crate_num);
 
   return parsed_crate.get_node_id ();
 }
@@ -1353,6 +1410,7 @@ rust_crate_name_validation_test (void)
   ASSERT_FALSE (Rust::validate_crate_name ("∀", error));
 
   /* Tests for crate name inference */
+  ASSERT_EQ (Rust::infer_crate_name (".rs"), "");
   ASSERT_EQ (Rust::infer_crate_name ("c.rs"), "c");
   // NOTE: ... but - is allowed when in the filename
   ASSERT_EQ (Rust::infer_crate_name ("a-b.rs"), "a_b");

@@ -1,4 +1,4 @@
-# Copyright 2023-2024 Free Software Foundation, Inc.
+# Copyright 2023-2025 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,10 +15,8 @@
 
 import os
 
-import gdb
-
 from .server import capability, request
-from .startup import DAPException, in_gdb_thread
+from .startup import DAPException, exec_mi_and_log, in_gdb_thread
 
 # The next available source reference ID.  Must be greater than 0.
 _next_source = 1
@@ -39,7 +37,6 @@ def make_source(fullname, filename=None):
     FILENAME is the base name; if None (the default), then it is
     computed from FULLNAME.
     """
-    global _source_map
     if fullname in _source_map:
         result = _source_map[fullname]
     else:
@@ -55,7 +52,6 @@ def make_source(fullname, filename=None):
             global _next_source
             result["sourceReference"] = _next_source
 
-            global _id_map
             _id_map[_next_source] = result
             _next_source += 1
 
@@ -68,12 +64,11 @@ def decode_source(source):
     """Decode a Source object.
 
     Finds and returns the filename of a given Source object."""
-    if "path" in source:
-        return source["path"]
-    if "sourceReference" not in source:
+    if "sourceReference" not in source or source["sourceReference"] <= 0:
+        if "path" in source:
+            return source["path"]
         raise DAPException("either 'path' or 'sourceReference' must appear in Source")
     ref = source["sourceReference"]
-    global _id_map
     if ref not in _id_map:
         raise DAPException("no sourceReference " + str(ref))
     return _id_map[ref]["path"]
@@ -83,7 +78,7 @@ def decode_source(source):
 @capability("supportsLoadedSourcesRequest")
 def loaded_sources(**extra):
     result = []
-    for elt in gdb.execute_mi("-file-list-exec-source-files")["files"]:
+    for elt in exec_mi_and_log("-file-list-exec-source-files")["files"]:
         result.append(make_source(elt["fullname"], elt["file"]))
     return {
         "sources": result,

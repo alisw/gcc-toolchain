@@ -1,5 +1,5 @@
 /* General AST-related method implementations for Rust frontend.
-   Copyright (C) 2009-2024 Free Software Foundation, Inc.
+   Copyright (C) 2009-2025 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -19,6 +19,9 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "rust-ast.h"
 #include "optional.h"
+#include "rust-builtin-ast-nodes.h"
+#include "rust-common.h"
+#include "rust-expr.h"
 #include "rust-system.h"
 #include "rust-ast-full.h"
 #include "rust-diagnostics.h"
@@ -269,8 +272,8 @@ Attribute::get_traits_to_derive ()
 		      case AST::MetaItem::ItemKind::Word: {
 			auto word = static_cast<AST::MetaWord *> (meta_item);
 			// Convert current word to path
-			current
-			  = make_unique<AST::MetaItemPath> (AST::MetaItemPath (
+			current = std::make_unique<AST::MetaItemPath> (
+			  AST::MetaItemPath (
 			    AST::SimplePath (word->get_ident ())));
 			auto path
 			  = static_cast<AST::MetaItemPath *> (current.get ());
@@ -308,7 +311,8 @@ Attribute::get_traits_to_derive ()
 
 // Copy constructor must deep copy attr_input as unique pointer
 Attribute::Attribute (Attribute const &other)
-  : path (other.path), locus (other.locus)
+  : path (other.path), locus (other.locus),
+    inner_attribute (other.inner_attribute)
 {
   // guard to protect from null pointer dereference
   if (other.attr_input != nullptr)
@@ -321,6 +325,7 @@ Attribute::operator= (Attribute const &other)
 {
   path = other.path;
   locus = other.locus;
+  inner_attribute = other.inner_attribute;
   // guard to protect from null pointer dereference
   if (other.attr_input != nullptr)
     attr_input = other.attr_input->clone_attr_input ();
@@ -1060,9 +1065,11 @@ Union::as_string () const
 }
 
 Function::Function (Function const &other)
-  : VisItem (other), qualifiers (other.qualifiers),
-    function_name (other.function_name), where_clause (other.where_clause),
-    locus (other.locus), is_default (other.is_default)
+  : VisItem (other), ExternalItem (other.get_node_id ()),
+    qualifiers (other.qualifiers), function_name (other.function_name),
+    where_clause (other.where_clause), locus (other.locus),
+    has_default (other.has_default),
+    is_external_function (other.is_external_function)
 {
   // guard to prevent null dereference (always required)
   if (other.return_type != nullptr)
@@ -1093,7 +1100,8 @@ Function::operator= (Function const &other)
   // visibility = other.visibility->clone_visibility();
   // outer_attrs = other.outer_attrs;
   locus = other.locus;
-  is_default = other.is_default;
+  has_default = other.has_default;
+  is_external_function = other.is_external_function;
 
   // guard to prevent null dereference (always required)
   if (other.return_type != nullptr)
@@ -1566,15 +1574,34 @@ BorrowExpr::as_string () const
 
   std::string str ("&");
 
-  if (double_borrow)
-    str += "&";
+  if (raw_borrow)
+    {
+      str += "raw ";
+      str += get_is_mut () ? "const " : "mut ";
+    }
+  else
+    {
+      if (double_borrow)
+	str += "&";
 
-  if (is_mut)
-    str += "mut ";
-
+      if (get_is_mut ())
+	str += "mut ";
+    }
   str += main_or_left_expr->as_string ();
 
   return str;
+}
+
+std::string
+BoxExpr::as_string () const
+{
+  return "box " + expr->as_string ();
+}
+
+void
+BoxExpr::accept_vis (ASTVisitor &vis)
+{
+  vis.visit (*this);
 }
 
 std::string
@@ -1604,7 +1631,7 @@ ContinueExpr::as_string () const
   std::string str ("continue ");
 
   if (has_label ())
-    str += label.as_string ();
+    str += get_label_unchecked ().as_string ();
 
   return str;
 }
@@ -2068,7 +2095,7 @@ WhileLoopExpr::as_string () const
   if (!has_loop_label ())
     str += "none";
   else
-    str += loop_label.as_string ();
+    str += get_loop_label ().as_string ();
 
   str += "\n Conditional expr: " + condition->as_string ();
 
@@ -2088,7 +2115,7 @@ WhileLetLoopExpr::as_string () const
   if (!has_loop_label ())
     str += "none";
   else
-    str += loop_label.as_string ();
+    str += get_loop_label ().as_string ();
 
   str += "\n Match arm patterns: ";
   if (match_arm_patterns.empty ())
@@ -2119,7 +2146,7 @@ LoopExpr::as_string () const
   if (!has_loop_label ())
     str += "none";
   else
-    str += loop_label.as_string ();
+    str += get_loop_label ().as_string ();
 
   str += "\n Loop block: " + loop_block->as_string ();
 
@@ -2156,7 +2183,7 @@ BreakExpr::as_string () const
   std::string str ("break ");
 
   if (has_label ())
-    str += label.as_string () + " ";
+    str += get_label_unchecked ().as_string () + " ";
 
   if (has_break_expr ())
     str += break_expr->as_string ();
@@ -2287,7 +2314,7 @@ std::string
 VariadicParam::as_string () const
 {
   if (has_pattern ())
-    return get_pattern ()->as_string () + " : ...";
+    return get_pattern ().as_string () + " : ...";
   else
     return "...";
 }
@@ -2383,11 +2410,11 @@ LifetimeParam::as_string () const
 {
   std::string str ("LifetimeParam: ");
 
-  str += "\n Outer attribute: ";
+  str += "\n Outer attribute:";
   if (!has_outer_attribute ())
     str += "none";
-  else
-    str += outer_attr.as_string ();
+  for (auto &attr : outer_attrs)
+    str += " " + attr.as_string ();
 
   str += "\n Lifetime: " + lifetime.as_string ();
 
@@ -2458,9 +2485,6 @@ MacroMatchRepetition::as_string () const
 std::string
 Lifetime::as_string () const
 {
-  if (is_error ())
-    return "error lifetime";
-
   switch (lifetime_type)
     {
     case NAMED:
@@ -2479,11 +2503,11 @@ TypeParam::as_string () const
 {
   std::string str ("TypeParam: ");
 
-  str += "\n Outer attribute: ";
+  str += "\n Outer attribute:";
   if (!has_outer_attribute ())
     str += "none";
-  else
-    str += outer_attr.as_string ();
+  for (auto &attr : outer_attrs)
+    str += " " + attr.as_string ();
 
   str += "\n Identifier: " + type_representation.as_string ();
 
@@ -2518,7 +2542,7 @@ ForLoopExpr::as_string () const
   if (!has_loop_label ())
     str += "none";
   else
-    str += loop_label.as_string ();
+    str += get_loop_label ().as_string ();
 
   str += "\n Pattern: " + pattern->as_string ();
 
@@ -2585,7 +2609,7 @@ ReferenceType::as_string () const
   std::string str ("&");
 
   if (has_lifetime ())
-    str += lifetime.as_string () + " ";
+    str += get_lifetime ().as_string () + " ";
 
   if (has_mut)
     str += "mut ";
@@ -2971,85 +2995,6 @@ ExternalStaticItem::as_string () const
 }
 
 std::string
-ExternalFunctionItem::as_string () const
-{
-  // outer attributes
-  std::string str = append_attributes (outer_attrs, OUTER);
-
-  // start visibility on new line and with a space
-  str += "\n" + visibility.as_string () + " ";
-
-  str += "fn ";
-
-  // add name
-  str += item_name.as_string ();
-
-  // generic params
-  str += "\n Generic params: ";
-  if (generic_params.empty ())
-    {
-      str += "none";
-    }
-  else
-    {
-      for (const auto &param : generic_params)
-	{
-	  // DEBUG: null pointer check
-	  if (param == nullptr)
-	    {
-	      rust_debug (
-		"something really terrible has gone wrong - null pointer "
-		"generic param in external function item.");
-	      return "NULL_POINTER_MARK";
-	    }
-
-	  str += "\n  " + param->as_string ();
-	}
-    }
-
-  // function params
-  str += "\n Function params: ";
-  if (function_params.empty ())
-    {
-      str += "none";
-    }
-  else
-    {
-      for (const auto &param : function_params)
-	str += "\n  " + param.as_string ();
-    }
-
-  // add type on new line
-  str += "\n (return) Type: "
-	 + (has_return_type () ? return_type->as_string () : "()");
-
-  // where clause
-  str += "\n Where clause: ";
-  if (has_where_clause ())
-    str += where_clause.as_string ();
-  else
-    str += "none";
-
-  return str;
-}
-
-std::string
-NamedFunctionParam::as_string () const
-{
-  std::string str = append_attributes (outer_attrs, OUTER);
-
-  if (has_name ())
-    str += "\n" + name;
-
-  if (is_variadic ())
-    str += "...";
-  else
-    str += "\n Type: " + param_type->as_string ();
-
-  return str;
-}
-
-std::string
 TraitItemConst::as_string () const
 {
   // TODO: rewrite to work with non-linearisable exprs
@@ -3122,7 +3067,7 @@ SelfParam::as_string () const
       else if (has_lifetime ())
 	{
 	  // ref and lifetime
-	  std::string str = "&" + lifetime.as_string () + " ";
+	  std::string str = "&" + get_lifetime ().as_string () + " ";
 
 	  if (is_mut)
 	    str += "mut ";
@@ -3544,6 +3489,7 @@ AttributeParser::parse_meta_item_inner ()
 	case STRING_LITERAL:
 	case BYTE_CHAR_LITERAL:
 	case BYTE_STRING_LITERAL:
+	case RAW_STRING_LITERAL:
 	case INT_LITERAL:
 	case FLOAT_LITERAL:
 	case TRUE_LITERAL:
@@ -3825,6 +3771,10 @@ AttributeParser::parse_literal ()
     case BYTE_STRING_LITERAL:
       skip_token ();
       return Literal (tok->as_string (), Literal::BYTE_STRING,
+		      tok->get_type_hint ());
+    case RAW_STRING_LITERAL:
+      skip_token ();
+      return Literal (tok->as_string (), Literal::RAW_STRING,
 		      tok->get_type_hint ());
     case INT_LITERAL:
       skip_token ();
@@ -4317,7 +4267,7 @@ BlockExpr::normalize_tail_expr ()
 
 	  if (!stmt.is_semicolon_followed ())
 	    {
-	      expr = std::move (stmt.get_expr ());
+	      expr = stmt.take_expr ();
 	      statements.pop_back ();
 	    }
 	}
@@ -4695,6 +4645,12 @@ AsyncBlockExpr::accept_vis (ASTVisitor &vis)
 }
 
 void
+InlineAsm::accept_vis (ASTVisitor &vis)
+{
+  vis.visit (*this);
+}
+
+void
 TypeParam::accept_vis (ASTVisitor &vis)
 {
   vis.visit (*this);
@@ -4858,12 +4814,6 @@ ExternalTypeItem::accept_vis (ASTVisitor &vis)
 
 void
 ExternalStaticItem::accept_vis (ASTVisitor &vis)
-{
-  vis.visit (*this);
-}
-
-void
-ExternalFunctionItem::accept_vis (ASTVisitor &vis)
 {
   vis.visit (*this);
 }
@@ -5046,6 +4996,62 @@ void
 MetaWord::accept_vis (ASTVisitor &vis)
 {
   vis.visit (*this);
+}
+
+void
+FormatArgs::accept_vis (ASTVisitor &vis)
+{
+  vis.visit (*this);
+}
+
+std::string
+FormatArgs::as_string () const
+{
+  // FIXME(Arthur): Improve
+  return "FormatArgs";
+}
+
+location_t
+FormatArgs::get_locus () const
+{
+  return loc;
+}
+
+bool
+FormatArgs::is_expr_without_block () const
+{
+  return false;
+}
+
+void
+FormatArgs::mark_for_strip ()
+{
+  marked_for_strip = true;
+}
+
+bool
+FormatArgs::is_marked_for_strip () const
+{
+  return marked_for_strip;
+}
+
+std::vector<Attribute> &
+FormatArgs::get_outer_attrs ()
+{
+  rust_unreachable ();
+}
+
+void FormatArgs::set_outer_attrs (std::vector<Attribute>)
+{
+  rust_unreachable ();
+}
+
+Expr *
+FormatArgs::clone_expr_impl () const
+{
+  std::cerr << "[ARTHUR] cloning FormatArgs! " << std::endl;
+
+  return new FormatArgs (*this);
 }
 
 } // namespace AST

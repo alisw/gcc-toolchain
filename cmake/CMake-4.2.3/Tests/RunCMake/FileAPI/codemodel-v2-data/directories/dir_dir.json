@@ -1,0 +1,12 @@
+{
+    "source": "^dir/dir$",
+    "build": "^dir/dir$",
+    "parentSource": "^dir$",
+    "childSources": null,
+    "targetIds": null,
+    "abstractTargetIds": null,
+    "projectName": "codemodel-v2",
+    "minimumCMakeVersion": "3.13",
+    "hasInstallRule": null,
+    "installers": []
+}

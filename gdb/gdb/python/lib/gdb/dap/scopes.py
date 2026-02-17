@@ -1,4 +1,4 @@
-# Copyright 2022-2024 Free Software Foundation, Inc.
+# Copyright 2022-2025 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,11 +16,13 @@
 import gdb
 
 from .frames import frame_for_id
-from .server import request
+from .globalvars import get_global_scope
+from .server import export_line, request
+from .sources import make_source
 from .startup import in_gdb_thread
 from .varref import BaseReference
 
-# Map DAP frame IDs to scopes.  This ensures that scopes are re-used.
+# Map DAP frame IDs to scopes.  This ensures that scopes are reused.
 frame_to_scope = {}
 
 
@@ -74,73 +76,74 @@ def symbol_value(sym, frame):
 
 
 class _ScopeReference(BaseReference):
-    def __init__(self, name, hint, frame, var_list):
+    def __init__(self, name, hint, frameId: int, var_list):
         super().__init__(name)
-        self.hint = hint
-        self.frame = frame
-        self.inf_frame = frame.inferior_frame()
-        self.func = frame.function()
-        self.line = frame.line()
+        self._hint = hint
+        self._frameId = frameId
         # VAR_LIST might be any kind of iterator, but it's convenient
         # here if it is just a collection.
-        self.var_list = tuple(var_list)
+        self._var_list = tuple(var_list)
 
     def to_object(self):
         result = super().to_object()
-        result["presentationHint"] = self.hint
+        result["presentationHint"] = self._hint
         # How would we know?
         result["expensive"] = False
         result["namedVariables"] = self.child_count()
-        if self.line is not None:
-            result["line"] = self.line
-            # FIXME construct a Source object
+        frame = frame_for_id(self._frameId)
+        if frame.line() is not None:
+            result["line"] = export_line(frame.line())
+        filename = frame.filename()
+        if filename is not None:
+            result["source"] = make_source(filename)
         return result
 
     def has_children(self):
         return True
 
     def child_count(self):
-        return len(self.var_list)
+        return len(self._var_list)
 
     @in_gdb_thread
     def fetch_one_child(self, idx):
-        return symbol_value(self.var_list[idx], self.frame)
+        return symbol_value(self._var_list[idx], frame_for_id(self._frameId))
 
 
-# A _ScopeReference that prepends the most recent return value.  Note
-# that this object is only created if such a value actually exists.
+# A _ScopeReference that wraps the 'finish' value.  Note that this
+# object is only created if such a value actually exists.
 class _FinishScopeReference(_ScopeReference):
-    def __init__(self, *args):
-        super().__init__(*args)
+    def __init__(self, frameId):
+        super().__init__("Return", "returnValue", frameId, ())
 
     def child_count(self):
-        return super().child_count() + 1
+        return 1
 
     def fetch_one_child(self, idx):
-        if idx == 0:
-            global _last_return_value
-            return ("(return)", _last_return_value)
-        return super().fetch_one_child(idx - 1)
+        assert idx == 0
+        return ("(return)", _last_return_value)
 
 
 class _RegisterReference(_ScopeReference):
-    def __init__(self, name, frame):
+    def __init__(self, name, frameId):
         super().__init__(
-            name, "registers", frame, frame.inferior_frame().architecture().registers()
+            name,
+            "registers",
+            frameId,
+            frame_for_id(frameId).inferior_frame().architecture().registers(),
         )
 
     @in_gdb_thread
     def fetch_one_child(self, idx):
         return (
-            self.var_list[idx].name,
-            self.inf_frame.read_register(self.var_list[idx]),
+            self._var_list[idx].name,
+            frame_for_id(self._frameId)
+            .inferior_frame()
+            .read_register(self._var_list[idx]),
         )
 
 
 @request("scopes")
 def scopes(*, frameId: int, **extra):
-    global _last_return_value
-    global frame_to_scope
     if frameId in frame_to_scope:
         scopes = frame_to_scope[frameId]
     else:
@@ -150,15 +153,18 @@ def scopes(*, frameId: int, **extra):
         # iterator case.
         args = tuple(frame.frame_args() or ())
         if args:
-            scopes.append(_ScopeReference("Arguments", "arguments", frame, args))
+            scopes.append(_ScopeReference("Arguments", "arguments", frameId, args))
         has_return_value = frameId == 0 and _last_return_value is not None
         # Make sure to handle the None case as well as the empty
         # iterator case.
         locs = tuple(frame.frame_locals() or ())
+        if locs:
+            scopes.append(_ScopeReference("Locals", "locals", frameId, locs))
+        scopes.append(_RegisterReference("Registers", frameId))
         if has_return_value:
-            scopes.append(_FinishScopeReference("Locals", "locals", frame, locs))
-        elif locs:
-            scopes.append(_ScopeReference("Locals", "locals", frame, locs))
-        scopes.append(_RegisterReference("Registers", frame))
+            scopes.append(_FinishScopeReference(frameId))
         frame_to_scope[frameId] = scopes
+        global_scope = get_global_scope(frame)
+        if global_scope is not None:
+            scopes.append(global_scope)
     return {"scopes": [x.to_object() for x in scopes]}

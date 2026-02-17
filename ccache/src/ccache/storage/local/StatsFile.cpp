@@ -16,18 +16,22 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "StatsFile.hpp"
+#include "statsfile.hpp"
 
-#include <ccache/core/AtomicFile.hpp>
+#include <ccache/core/atomicfile.hpp>
 #include <ccache/core/exceptions.hpp>
-#include <ccache/util/LockFile.hpp>
 #include <ccache/util/file.hpp>
+#include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
+#include <ccache/util/lockfile.hpp>
 #include <ccache/util/logging.hpp>
+
+namespace fs = util::filesystem;
 
 namespace storage::local {
 
-StatsFile::StatsFile(const std::string& path) : m_path(path)
+StatsFile::StatsFile(const fs::path& path)
+  : m_path(path)
 {
 }
 

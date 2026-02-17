@@ -1,5 +1,5 @@
 /* Definitions of target machine for GNU compiler.  LoongArch version.
-   Copyright (C) 2021-2024 Free Software Foundation, Inc.
+   Copyright (C) 2021-2025 Free Software Foundation, Inc.
    Contributed by Loongson Ltd.
    Based on MIPS and RISC-V target for GNU compiler.
 
@@ -25,6 +25,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "config/loongarch/loongarch-evolution.h"
 
 #define SWITCHABLE_TARGET 1
+
+#define REGISTER_TARGET_PRAGMAS() loongarch_register_pragmas ()
 
 #define TARGET_SUPPORTS_WIDE_INT 1
 
@@ -155,9 +157,8 @@ along with GCC; see the file COPYING3.  If not see
 #define LONG_TYPE_SIZE (TARGET_64BIT ? 64 : 32)
 #define LONG_LONG_TYPE_SIZE 64
 
-#define FLOAT_TYPE_SIZE 32
-#define DOUBLE_TYPE_SIZE 64
-#define LONG_DOUBLE_TYPE_SIZE (TARGET_64BIT ? 128 : 64)
+/* LONG_DOUBLE_TYPE_SIZE get poisoned, so add LA_ prefix.  */
+#define LA_LONG_DOUBLE_TYPE_SIZE (TARGET_64BIT ? 128 : 64)
 
 /* Define the sizes of fixed-point types.  */
 #define SHORT_FRACT_TYPE_SIZE 8
@@ -172,7 +173,7 @@ along with GCC; see the file COPYING3.  If not see
 
 /* long double is not a fixed mode, but the idea is that, if we
    support long double, we also want a 128-bit integer type.  */
-#define MAX_FIXED_MODE_SIZE LONG_DOUBLE_TYPE_SIZE
+#define MAX_FIXED_MODE_SIZE LA_LONG_DOUBLE_TYPE_SIZE
 
 /* Width in bits of a pointer.  */
 #ifndef POINTER_SIZE
@@ -193,11 +194,11 @@ along with GCC; see the file COPYING3.  If not see
 #define STRUCTURE_SIZE_BOUNDARY 8
 
 /* There is no point aligning anything to a rounder boundary than
-   LONG_DOUBLE_TYPE_SIZE, unless under LSX/LASX the bigggest alignment is
+   LA_LONG_DOUBLE_TYPE_SIZE, unless under LSX/LASX the bigggest alignment is
    BITS_PER_LSX_REG/BITS_PER_LASX_REG/..  */
 #define BIGGEST_ALIGNMENT \
   (ISA_HAS_LASX? BITS_PER_LASX_REG \
-   : (ISA_HAS_LSX ? BITS_PER_LSX_REG : LONG_DOUBLE_TYPE_SIZE))
+   : (ISA_HAS_LSX ? BITS_PER_LSX_REG : LA_LONG_DOUBLE_TYPE_SIZE))
 
 /* All accesses must be aligned.  */
 #define STRICT_ALIGNMENT (TARGET_STRICT_ALIGN)
@@ -940,6 +941,38 @@ typedef struct {
   { "s6",	29 + GP_REG_FIRST },					\
   { "s7",	30 + GP_REG_FIRST },					\
   { "s8",	31 + GP_REG_FIRST },					\
+  { "fa0",	 0 + FP_REG_FIRST },					\
+  { "fa1",	 1 + FP_REG_FIRST },					\
+  { "fa2",	 2 + FP_REG_FIRST },					\
+  { "fa3",	 3 + FP_REG_FIRST },					\
+  { "fa4",	 4 + FP_REG_FIRST },					\
+  { "fa5",	 5 + FP_REG_FIRST },					\
+  { "fa6",	 6 + FP_REG_FIRST },					\
+  { "fa7",	 7 + FP_REG_FIRST },					\
+  { "ft0",	 8 + FP_REG_FIRST },					\
+  { "ft1",	 9 + FP_REG_FIRST },					\
+  { "ft2",	10 + FP_REG_FIRST },					\
+  { "ft3",	11 + FP_REG_FIRST },					\
+  { "ft4",	12 + FP_REG_FIRST },					\
+  { "ft5",	13 + FP_REG_FIRST },					\
+  { "ft6",	14 + FP_REG_FIRST },					\
+  { "ft7",	15 + FP_REG_FIRST },					\
+  { "ft8",	16 + FP_REG_FIRST },					\
+  { "ft9",	17 + FP_REG_FIRST },					\
+  { "ft10",	18 + FP_REG_FIRST },					\
+  { "ft11",	19 + FP_REG_FIRST },					\
+  { "ft12",	20 + FP_REG_FIRST },					\
+  { "ft13",	21 + FP_REG_FIRST },					\
+  { "ft14",	22 + FP_REG_FIRST },					\
+  { "ft15",	23 + FP_REG_FIRST },					\
+  { "fs0",	24 + FP_REG_FIRST },					\
+  { "fs1",	25 + FP_REG_FIRST },					\
+  { "fs2",	26 + FP_REG_FIRST },					\
+  { "fs3",	27 + FP_REG_FIRST },					\
+  { "fs4",	28 + FP_REG_FIRST },					\
+  { "fs5",	29 + FP_REG_FIRST },					\
+  { "fs6",	30 + FP_REG_FIRST },					\
+  { "fs7",	31 + FP_REG_FIRST },					\
   { "v0",	 4 + GP_REG_FIRST },					\
   { "v1",	 5 + GP_REG_FIRST },					\
   { "vr0",	 0 + FP_REG_FIRST },					\

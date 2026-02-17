@@ -57,14 +57,14 @@
 /* Define if llvm/Option/Arg.h exists */
 #undef HAVE_LLVM_OPTION_ARG_H
 
-/* Define to 1 if you have the <memory.h> header file. */
-#undef HAVE_MEMORY_H
-
 /* Define if SourceManager has a setMainFileID method */
 #undef HAVE_SETMAINFILEID
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <stdio.h> header file. */
+#undef HAVE_STDIO_H
 
 /* Define to 1 if you have the <stdlib.h> header file. */
 #undef HAVE_STDLIB_H
@@ -80,6 +80,9 @@
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
+
+/* Define if llvm/TargetParser/Host.h exists */
+#undef HAVE_TARGETPARSER_HOST_H
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
@@ -120,10 +123,15 @@
 /* Defined if CompilerInstance::setInvocation takes a shared_ptr */
 #undef SETINVOCATION_TAKES_SHARED_PTR
 
+/* Define to class with setLangDefaults method */
+#undef SETLANGDEFAULTS
+
 /* Define if CompilerInvocation::setLangDefaults takes 5 arguments */
 #undef SETLANGDEFAULTS_TAKES_5_ARGUMENTS
 
-/* Define to 1 if you have the ANSI C header files. */
+/* Define to 1 if all of the C90 standard headers exist (not just the ones
+   required in a freestanding environment). This macro is provided for
+   backward compatibility; new code need not use it. */
 #undef STDC_HEADERS
 
 /* Define if Driver::BuildCompilation takes ArrayRef */

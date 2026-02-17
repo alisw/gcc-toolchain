@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -53,7 +53,7 @@ public:
   const std::string &get_interface_buffer () const;
 
 private:
-  Analysis::Mappings *mappings;
+  Analysis::Mappings &mappings;
 
   std::vector<std::reference_wrapper<const HIR::Module>> module_stack;
   std::string public_interface_buffer;

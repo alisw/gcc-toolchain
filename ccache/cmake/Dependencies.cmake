@@ -11,7 +11,7 @@ if(OFFLINE)
 endif()
 
 # How to locate/retrieve dependencies. See the Dependencies section in
-# doc/INSTALL.md.
+# doc/install.md.
 set(DEPS AUTO CACHE STRING "How to retrieve third party dependencies")
 set_property(CACHE DEPS PROPERTY STRINGS AUTO DOWNLOAD LOCAL)
 
@@ -21,7 +21,9 @@ if(FETCHCONTENT_FULLY_DISCONNECTED)
 endif()
 
 find_package(Blake3 1.4.0 MODULE REQUIRED)
-find_package(CppHttplib 0.10.6 MODULE REQUIRED)
+if(HTTP_STORAGE_BACKEND)
+  find_package(CppHttplib 0.10.6 MODULE REQUIRED)
+endif()
 find_package(Fmt 8.0.0 MODULE REQUIRED)
 find_package(NonstdSpan 0.10.3 MODULE REQUIRED)
 find_package(TlExpected 1.1.0 MODULE REQUIRED)

@@ -1,0 +1,297 @@
+/* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
+/* clang-format off */
+#include "cmGeneratorTarget.h"
+/* clang-format on */
+
+#include <map>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+#include <cm/memory>
+#include <cm/optional>
+#include <cm/string_view>
+#include <cmext/string_view>
+
+#include "cmGenExContext.h"
+#include "cmGenExEvaluation.h"
+#include "cmGeneratorExpression.h"
+#include "cmGeneratorExpressionDAGChecker.h"
+#include "cmGeneratorExpressionNode.h"
+#include "cmLinkItem.h"
+#include "cmList.h"
+#include "cmListFileCache.h"
+#include "cmLocalGenerator.h"
+#include "cmPolicies.h"
+#include "cmStringAlgorithms.h"
+#include "cmValue.h"
+
+namespace {
+using UseTo = cmGeneratorTarget::UseTo;
+using TransitiveProperty = cmGeneratorTarget::TransitiveProperty;
+
+bool ComputingLinkLibraries(cmGeneratorExpressionDAGChecker const* dagChecker)
+{
+  return dagChecker && dagChecker->IsComputingLinkLibraries();
+}
+}
+
+std::map<cm::string_view, TransitiveProperty> const
+  cmGeneratorTarget::BuiltinTransitiveProperties = {
+    { "AUTOMOC_MACRO_NAMES"_s,
+      { "INTERFACE_AUTOMOC_MACRO_NAMES"_s, UseTo::Compile } },
+    { "AUTOUIC_OPTIONS"_s, { "INTERFACE_AUTOUIC_OPTIONS"_s, UseTo::Compile } },
+    { "COMPILE_DEFINITIONS"_s,
+      { "INTERFACE_COMPILE_DEFINITIONS"_s, UseTo::Compile } },
+    { "COMPILE_FEATURES"_s,
+      { "INTERFACE_COMPILE_FEATURES"_s, UseTo::Compile } },
+    { "COMPILE_OPTIONS"_s, { "INTERFACE_COMPILE_OPTIONS"_s, UseTo::Compile } },
+    { "INCLUDE_DIRECTORIES"_s,
+      { "INTERFACE_INCLUDE_DIRECTORIES"_s, UseTo::Compile } },
+    { "LINK_DEPENDS"_s, { "INTERFACE_LINK_DEPENDS"_s, UseTo::Link } },
+    { "LINK_DIRECTORIES"_s, { "INTERFACE_LINK_DIRECTORIES"_s, UseTo::Link } },
+    { "LINK_LIBRARIES"_s, { "INTERFACE_LINK_LIBRARIES"_s, UseTo::Link } },
+    { "LINK_OPTIONS"_s, { "INTERFACE_LINK_OPTIONS"_s, UseTo::Link } },
+    { "PRECOMPILE_HEADERS"_s,
+      { "INTERFACE_PRECOMPILE_HEADERS"_s, UseTo::Compile } },
+    { "SOURCES"_s, { "INTERFACE_SOURCES"_s, UseTo::Compile } },
+    { "SYSTEM_INCLUDE_DIRECTORIES"_s,
+      { "INTERFACE_SYSTEM_INCLUDE_DIRECTORIES"_s, UseTo::Compile } },
+  };
+
+bool cmGeneratorTarget::MaybeHaveInterfaceProperty(std::string const& prop,
+                                                   cm::GenEx::Evaluation* eval,
+                                                   UseTo usage) const
+{
+  std::string const key = prop + '@' + eval->Context.Config;
+  auto i = this->MaybeInterfacePropertyExists.find(key);
+  if (i == this->MaybeInterfacePropertyExists.end()) {
+    // Insert an entry now in case there is a cycle.
+    i = this->MaybeInterfacePropertyExists.emplace(key, false).first;
+    bool& maybeInterfaceProp = i->second;
+
+    // If this target itself has a non-empty property value, we are done.
+    maybeInterfaceProp = cmNonempty(this->GetProperty(prop));
+
+    // Otherwise, recurse to interface dependencies.
+    if (!maybeInterfaceProp) {
+      cmGeneratorTarget const* headTarget =
+        eval->HeadTarget ? eval->HeadTarget : this;
+      if (cmLinkInterfaceLibraries const* iface =
+            this->GetLinkInterfaceLibraries(eval->Context.Config, headTarget,
+                                            usage)) {
+        if (iface->HadHeadSensitiveCondition) {
+          // With a different head target we may get to a library with
+          // this interface property.
+          maybeInterfaceProp = true;
+        } else {
+          // The transitive interface libraries do not depend on the
+          // head target, so we can follow them.
+          for (cmLinkItem const& lib : iface->Libraries) {
+            if (lib.Target &&
+                lib.Target->MaybeHaveInterfaceProperty(prop, eval, usage)) {
+              maybeInterfaceProp = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+  return i->second;
+}
+
+std::string cmGeneratorTarget::EvaluateInterfaceProperty(
+  std::string const& prop, cm::GenEx::Evaluation* eval,
+  cmGeneratorExpressionDAGChecker* dagCheckerParent, UseTo usage) const
+{
+  std::string result;
+
+  // If the property does not appear transitively at all, we are done.
+  if (!this->MaybeHaveInterfaceProperty(prop, eval, usage)) {
+    return result;
+  }
+
+  // Evaluate $<TARGET_PROPERTY:this,prop> as if it were compiled.  This is
+  // a subset of TargetPropertyNode::Evaluate without stringify/parse steps
+  // but sufficient for transitive interface properties.
+  cmGeneratorExpressionDAGChecker dagChecker{
+    this, prop, nullptr, dagCheckerParent, eval->Context, eval->Backtrace,
+  };
+  switch (dagChecker.Check()) {
+    case cmGeneratorExpressionDAGChecker::SELF_REFERENCE:
+      dagChecker.ReportError(
+        eval, "$<TARGET_PROPERTY:" + this->GetName() + "," + prop + ">");
+      return result;
+    case cmGeneratorExpressionDAGChecker::CYCLIC_REFERENCE:
+      // No error. We just skip cyclic references.
+    case cmGeneratorExpressionDAGChecker::ALREADY_SEEN:
+      // No error. We have already seen this transitive property.
+      return result;
+    case cmGeneratorExpressionDAGChecker::DAG:
+      break;
+  }
+
+  cmGeneratorTarget const* headTarget =
+    eval->HeadTarget ? eval->HeadTarget : this;
+
+  if (cmValue p = this->GetProperty(prop)) {
+    result = cmGeneratorExpressionNode::EvaluateDependentExpression(
+      *p, eval, headTarget, &dagChecker, this);
+  }
+
+  if (cmLinkInterfaceLibraries const* iface = this->GetLinkInterfaceLibraries(
+        eval->Context.Config, headTarget, usage)) {
+    eval->HadContextSensitiveCondition = eval->HadContextSensitiveCondition ||
+      iface->HadContextSensitiveCondition;
+    for (cmLinkItem const& lib : iface->Libraries) {
+      // Broken code can have a target in its own link interface.
+      // Don't follow such link interface entries so as not to create a
+      // self-referencing loop.
+      if (lib.Target && lib.Target != this) {
+        // Pretend $<TARGET_PROPERTY:lib.Target,prop> appeared in the
+        // above property and hand-evaluate it as if it were compiled.
+        // Create a context as cmCompiledGeneratorExpression::Evaluate does.
+        cm::GenEx::Evaluation libEval(eval->Context, eval->Quiet, headTarget,
+                                      this, eval->EvaluateForBuildsystem,
+                                      eval->Backtrace);
+        std::string libResult = cmGeneratorExpression::StripEmptyListElements(
+          lib.Target->EvaluateInterfaceProperty(prop, &libEval, &dagChecker,
+                                                usage));
+        if (!libResult.empty()) {
+          if (result.empty()) {
+            result = std::move(libResult);
+          } else {
+            result.reserve(result.size() + 1 + libResult.size());
+            result += ";";
+            result += libResult;
+          }
+        }
+        eval->HadContextSensitiveCondition =
+          eval->HadContextSensitiveCondition ||
+          libEval.HadContextSensitiveCondition;
+        eval->HadHeadSensitiveCondition =
+          eval->HadHeadSensitiveCondition || libEval.HadHeadSensitiveCondition;
+      }
+    }
+  }
+
+  return result;
+}
+
+cm::optional<cmGeneratorTarget::TransitiveProperty>
+cmGeneratorTarget::IsTransitiveProperty(
+  cm::string_view prop, cm::GenEx::Context const& context,
+  cmGeneratorExpressionDAGChecker const* dagChecker) const
+{
+  cm::optional<TransitiveProperty> result;
+  static cm::string_view const kINTERFACE_ = "INTERFACE_"_s;
+  PropertyFor const propertyFor = cmHasPrefix(prop, kINTERFACE_)
+    ? PropertyFor::Interface
+    : PropertyFor::Build;
+  if (propertyFor == PropertyFor::Interface) {
+    prop = prop.substr(kINTERFACE_.length());
+  }
+  auto i = BuiltinTransitiveProperties.find(prop);
+  if (i != BuiltinTransitiveProperties.end() &&
+      // Look up CMP0189 in the context where evaluation occurs,
+      // not where the target was created.
+      context.GetCMP0189() != cmPolicies::NEW && prop == "LINK_LIBRARIES"_s) {
+    i = BuiltinTransitiveProperties.end();
+  }
+  if (i != BuiltinTransitiveProperties.end()) {
+    result = i->second;
+    if (result->Usage != cmGeneratorTarget::UseTo::Compile) {
+      cmPolicies::PolicyStatus cmp0166 =
+        context.LG->GetPolicyStatus(cmPolicies::CMP0166);
+      if ((cmp0166 == cmPolicies::WARN || cmp0166 == cmPolicies::OLD) &&
+          (prop == "LINK_DIRECTORIES"_s || prop == "LINK_DEPENDS"_s ||
+           prop == "LINK_OPTIONS"_s)) {
+        result->Usage = cmGeneratorTarget::UseTo::Compile;
+      }
+    }
+  } else if (!ComputingLinkLibraries(dagChecker)) {
+    // Honor TRANSITIVE_COMPILE_PROPERTIES and TRANSITIVE_LINK_PROPERTIES
+    // from the link closure when we are not evaluating the closure itself.
+    CustomTransitiveProperties const& ctp =
+      this->GetCustomTransitiveProperties(context.Config, propertyFor);
+    auto ci = ctp.find(std::string(prop));
+    if (ci != ctp.end()) {
+      result = ci->second;
+    }
+  }
+  return result;
+}
+
+cmGeneratorTarget::CustomTransitiveProperty::CustomTransitiveProperty(
+  std::string interfaceName, UseTo usage)
+  : CustomTransitiveProperty(
+      cm::make_unique<std::string>(std::move(interfaceName)), usage)
+{
+}
+cmGeneratorTarget::CustomTransitiveProperty::CustomTransitiveProperty(
+  std::unique_ptr<std::string> interfaceNameBuf, UseTo usage)
+  : TransitiveProperty{ *interfaceNameBuf, usage }
+  , InterfaceNameBuf(std::move(interfaceNameBuf))
+{
+}
+
+void cmGeneratorTarget::CustomTransitiveProperties::Add(cmValue props,
+                                                        UseTo usage)
+{
+  if (props) {
+    cmList propsList(*props);
+    for (std::string p : propsList) {
+      std::string ip;
+      static cm::string_view const kINTERFACE_ = "INTERFACE_"_s;
+      if (cmHasPrefix(p, kINTERFACE_)) {
+        ip = std::move(p);
+        p = ip.substr(kINTERFACE_.length());
+      } else {
+        ip = cmStrCat(kINTERFACE_, p);
+      }
+      this->emplace(std::move(p),
+                    CustomTransitiveProperty(std::move(ip), usage));
+    }
+  }
+}
+
+cmGeneratorTarget::CustomTransitiveProperties const&
+cmGeneratorTarget::GetCustomTransitiveProperties(std::string const& config,
+                                                 PropertyFor propertyFor) const
+{
+  std::map<std::string, CustomTransitiveProperties>& ctpm =
+    propertyFor == PropertyFor::Build
+    ? this->CustomTransitiveBuildPropertiesMap
+    : this->CustomTransitiveInterfacePropertiesMap;
+  auto i = ctpm.find(config);
+  if (i == ctpm.end()) {
+    CustomTransitiveProperties ctp;
+    auto addTransitiveProperties = [this, &config, propertyFor,
+                                    &ctp](std::string const& tp, UseTo usage) {
+      // Add transitive properties named by the target itself.
+      ctp.Add(this->GetProperty(tp), usage);
+      // Add transitive properties named by the target's link dependencies.
+      if (propertyFor == PropertyFor::Build) {
+        for (cmGeneratorTarget const* gt :
+             this->GetLinkImplementationClosure(config, usage)) {
+          ctp.Add(gt->GetProperty(tp), usage);
+        }
+      } else {
+        // The set of custom transitive INTERFACE_ properties does not
+        // depend on the consumer.  Use the target as its own head.
+        cmGeneratorTarget const* headTarget = this;
+        for (cmGeneratorTarget const* gt :
+             this->GetLinkInterfaceClosure(config, headTarget, usage)) {
+          ctp.Add(gt->GetProperty(tp), usage);
+        }
+      }
+    };
+    addTransitiveProperties("TRANSITIVE_LINK_PROPERTIES", UseTo::Link);
+    addTransitiveProperties("TRANSITIVE_COMPILE_PROPERTIES", UseTo::Compile);
+    i = ctpm.emplace(config, std::move(ctp)).first;
+  }
+  return i->second;
+}

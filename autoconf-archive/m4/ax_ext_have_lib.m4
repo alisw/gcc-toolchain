@@ -13,7 +13,7 @@
 #   each directory.
 #
 #   Any required -L<directory> flags are added to LDFLAGS and located
-#   libraies are added to LIBS
+#   libraries are added to LIBS
 #
 #   Some libraries are unlinkable without other extra libraries, which can
 #   be specified in the 4th argument. The mysql client library needs -lz,
@@ -38,7 +38,7 @@
 #   and this notice are preserved. This file is offered as-is, without any
 #   warranty.
 
-#serial 13
+#serial 15
 
 AC_DEFUN([AX_EXT_HAVE_LIB],
 [

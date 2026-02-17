@@ -1,5 +1,5 @@
 /* tc-s390.c -- Assemble for the S390
-   Copyright (C) 2000-2024 Free Software Foundation, Inc.
+   Copyright (C) 2000-2026 Free Software Foundation, Inc.
    Contributed by Martin Schwidefsky (schwidefsky@de.ibm.com).
 
    This file is part of GAS, the GNU Assembler.
@@ -24,6 +24,8 @@
 #include "subsegs.h"
 #include "dwarf2dbg.h"
 #include "dw2gencfi.h"
+#include "sframe.h"
+#include "gen-sframe.h"
 
 #include "opcode/s390.h"
 #include "elf/s390.h"
@@ -96,6 +98,17 @@ const char FLT_CHARS[] = "dD";
 
 /* The dwarf2 data alignment, adjusted for 32 or 64 bit.  */
 int s390_cie_data_alignment;
+
+/* Register numbers used for SFrame stack trace info.  */
+
+/* Designated stack pointer DWARF register number according to s390x ELF ABI.  */
+const unsigned int s390_sframe_cfa_sp_reg = 15;
+
+/* Preferred frame pointer DWARF register number according to s390x ELF ABI.  */
+const unsigned int s390_sframe_cfa_fp_reg = 11;
+
+/* Designated return address DWARF register number according to s390x ELF ABI.  */
+const unsigned int s390_sframe_cfa_ra_reg = DWARF2_DEFAULT_RETURN_COLUMN;
 
 /* The target specific pseudo-ops which we support.  */
 
@@ -254,11 +267,11 @@ int md_short_jump_size = 4;
 int md_long_jump_size = 4;
 #endif
 
-const char *md_shortopts = "A:m:kVQ:";
-struct option md_longopts[] = {
+const char md_shortopts[] = "A:m:kVQ:";
+const struct option md_longopts[] = {
   {NULL, no_argument, NULL, 0}
 };
-size_t md_longopts_size = sizeof (md_longopts);
+const size_t md_longopts_size = sizeof (md_longopts);
 
 /* Initialize the default opcode arch and word size from the default
    architecture name if not specified by an option.  */
@@ -342,6 +355,8 @@ s390_parse_cpu (const char *arg,
     { STRING_COMMA_LEN ("z15"), STRING_COMMA_LEN ("arch13"),
       S390_INSTR_FLAG_HTM | S390_INSTR_FLAG_VX },
     { STRING_COMMA_LEN ("z16"), STRING_COMMA_LEN ("arch14"),
+      S390_INSTR_FLAG_HTM | S390_INSTR_FLAG_VX },
+    { STRING_COMMA_LEN ("z17"), STRING_COMMA_LEN ("arch15"),
       S390_INSTR_FLAG_HTM | S390_INSTR_FLAG_VX }
   };
   static struct
@@ -725,9 +740,9 @@ s390_insert_operand (unsigned char *insn,
 	{
 	  if (operand->flags & S390_OPERAND_PCREL)
 	    {
-	      val = (offsetT) ((addressT) val << 1);
-	      min = (offsetT) ((addressT) min << 1);
-	      max = (offsetT) ((addressT) max << 1);
+	      val = (addressT) val << 1;
+	      min = (addressT) min << 1;
+	      max = (addressT) max << 1;
 	    }
 
 	  s390_bad_operand_out_of_range (operand_number, val, min, max,
@@ -736,7 +751,7 @@ s390_insert_operand (unsigned char *insn,
 	  return;
 	}
       /* val is ok, now restrict it to operand->bits bits.  */
-      uval = (addressT) val & ((((addressT) 1 << (operand->bits-1)) << 1) - 1);
+      uval = val & ((((addressT) 1 << (operand->bits-1)) << 1) - 1);
       /* val is restrict, now check for special case.  */
       if (operand->bits == 20 && operand->shift == 20)
         uval = (uval >> 12) | ((uval & 0xfff) << 8);
@@ -746,8 +761,8 @@ s390_insert_operand (unsigned char *insn,
       addressT min, max;
 
       max = (((addressT) 1 << (operand->bits - 1)) << 1) - 1;
-      min = (offsetT) 0;
-      uval = (addressT) val;
+      min = 0;
+      uval = val;
 
       /* Vector register operands have an additional bit in the RXB
 	 field.  */
@@ -794,13 +809,6 @@ s390_insert_operand (unsigned char *insn,
 	}
       uval &= 0xf;
     }
-
-  if (operand->flags & S390_OPERAND_OR1)
-    uval |= 1;
-  if (operand->flags & S390_OPERAND_OR2)
-    uval |= 2;
-  if (operand->flags & S390_OPERAND_OR8)
-    uval |= 8;
 
   /* Duplicate the GPR/VR operand at bit pos 12 to 16.  */
   if (operand->flags & S390_OPERAND_CP16)
@@ -1106,9 +1114,9 @@ s390_lit_suffix (char **str_p, expressionS *exp_p, elf_suffix_type suffix)
   else if (suffix == ELF_SUFFIX_PLT)
     {
       if (nbytes == 4)
-	reloc = BFD_RELOC_390_PLT32;
+	reloc = BFD_RELOC_32_PLT_PCREL;
       else if (nbytes == 8)
-	reloc = BFD_RELOC_390_PLT64;
+	reloc = BFD_RELOC_64_PLT_PCREL;
     }
 
   if (suffix != ELF_SUFFIX_NONE && reloc == BFD_RELOC_UNUSED)
@@ -1264,7 +1272,7 @@ s390_elf_cons (int nbytes /* 1=.byte, 2=.word, 4=.long */)
 		{
 		  BFD_RELOC_UNUSED, 		/* ELF_SUFFIX_NONE  */
 		  BFD_RELOC_32_GOT_PCREL,	/* ELF_SUFFIX_GOT  */
-		  BFD_RELOC_390_PLT32,		/* ELF_SUFFIX_PLT  */
+		  BFD_RELOC_32_PLT_PCREL,	/* ELF_SUFFIX_PLT  */
 		  BFD_RELOC_UNUSED,		/* ELF_SUFFIX_GOTENT  */
 		  BFD_RELOC_32_GOTOFF,		/* ELF_SUFFIX_GOTOFF  */
 		  BFD_RELOC_390_GOTPLT32,	/* ELF_SUFFIX_GOTPLT  */
@@ -1284,7 +1292,7 @@ s390_elf_cons (int nbytes /* 1=.byte, 2=.word, 4=.long */)
 		{
 		  BFD_RELOC_UNUSED, 		/* ELF_SUFFIX_NONE  */
 		  BFD_RELOC_390_GOT64,		/* ELF_SUFFIX_GOT  */
-		  BFD_RELOC_390_PLT64,		/* ELF_SUFFIX_PLT  */
+		  BFD_RELOC_64_PLT_PCREL,	/* ELF_SUFFIX_PLT  */
 		  BFD_RELOC_UNUSED,		/* ELF_SUFFIX_GOTENT  */
 		  BFD_RELOC_390_GOTOFF64,	/* ELF_SUFFIX_GOTOFF  */
 		  BFD_RELOC_390_GOTPLT64,	/* ELF_SUFFIX_GOTPLT  */
@@ -1321,7 +1329,7 @@ s390_elf_cons (int nbytes /* 1=.byte, 2=.word, 4=.long */)
 	    as_bad (_("relocation not applicable"));
 	}
       else
-	emit_expr (&exp, (unsigned int) nbytes);
+	emit_expr (&exp, nbytes);
     }
   while (*input_line_pointer++ == ',');
 
@@ -1364,21 +1372,42 @@ operand_type_str(const struct s390_operand * operand)
     }
 }
 
-/* Return true if all remaining operands in the opcode with
-   OPCODE_FLAGS can be skipped.  */
+/* Return remaining operand count.  */
+
+static unsigned int
+operand_count (const unsigned char *opindex_ptr)
+{
+  unsigned int count = 0;
+
+  for (; *opindex_ptr != 0; opindex_ptr++)
+    {
+      /* Count D(X,B), D(B), and D(L,B) as one operand.  Assuming correct
+	 instruction operand definitions simply do not count D, X, and L.  */
+      if (!(s390_operands[*opindex_ptr].flags & (S390_OPERAND_DISP
+						| S390_OPERAND_INDEX
+						| S390_OPERAND_LENGTH)))
+	count++;
+    }
+
+  return count;
+}
+
+/* Return true if all remaining instruction operands are optional.  */
+
 static bool
 skip_optargs_p (unsigned int opcode_flags, const unsigned char *opindex_ptr)
 {
-  if ((opcode_flags & (S390_INSTR_FLAG_OPTPARM | S390_INSTR_FLAG_OPTPARM2))
-      && opindex_ptr[0] != '\0'
-      && opindex_ptr[1] == '\0')
-    return true;
+  if ((opcode_flags & (S390_INSTR_FLAG_OPTPARM | S390_INSTR_FLAG_OPTPARM2)))
+    {
+      unsigned int opcount = operand_count (opindex_ptr);
 
-  if ((opcode_flags & S390_INSTR_FLAG_OPTPARM2)
-      && opindex_ptr[0] != '\0'
-      && opindex_ptr[1] != '\0'
-      && opindex_ptr[2] == '\0')
-    return true;
+      if (opcount == 1)
+	return true;
+
+      if ((opcode_flags & S390_INSTR_FLAG_OPTPARM2) && opcount == 2)
+	return true;
+    }
+
   return false;
 }
 
@@ -1408,16 +1437,16 @@ md_gather_operands (char *str,
   expressionS ex;
   elf_suffix_type suffix;
   bfd_reloc_code_real_type reloc;
-  int omitted_base_or_index;
+  int omitted_index;
   int operand_number;
   char *f;
   int fc, i;
 
-  while (ISSPACE (*str))
+  while (is_whitespace (*str))
     str++;
 
   /* Gather the operands.  */
-  omitted_base_or_index = 0;	/* Whether B in D(L,B) or X in D(X,B) were omitted.  */
+  omitted_index = 0;		/* Whether X in D(X,B) was omitted.  */
   operand_number = 1;		/* Current operand number in e.g. R1,I2,M3,D4(B4).  */
   fc = 0;
   for (opindex_ptr = opcode->operands; *opindex_ptr != 0; opindex_ptr++)
@@ -1426,8 +1455,7 @@ md_gather_operands (char *str,
 
       operand = s390_operands + *opindex_ptr;
 
-      if ((opcode->flags & (S390_INSTR_FLAG_OPTPARM | S390_INSTR_FLAG_OPTPARM2))
-	  && *str == '\0')
+      if (*str == '\0' && skip_optargs_p (opcode->flags, opindex_ptr))
 	{
 	  /* Optional parameters might need to be ORed with a
 	     value so calling s390_insert_operand is needed.  */
@@ -1435,13 +1463,18 @@ md_gather_operands (char *str,
 	  break;
 	}
 
-      if (omitted_base_or_index && (operand->flags & S390_OPERAND_INDEX))
+      if (omitted_index && (operand->flags & S390_OPERAND_INDEX))
 	{
+	  /* Do not skip an omitted vector index register in D(VX,B).  */
+	  if (operand->flags & S390_OPERAND_VR)
+	    as_bad (_("operand %d: missing vector index register operand"),
+		    operand_number);
+
 	  /* Skip omitted optional index register operand in D(X,B) due to
 	     D(,B) or D(B). Skip comma, if D(,B).  */
 	  if (*str == ',')
 	    str++;
-	  omitted_base_or_index = 0;
+	  omitted_index = 0;
 	  continue;
 	}
 
@@ -1491,6 +1524,7 @@ md_gather_operands (char *str,
 		as_bad (_("operand %d: invalid length field specified"),
 			operand_number);
 	      if ((operand->flags & S390_OPERAND_INDEX)
+		  && !(operand->flags & S390_OPERAND_VR)
 		  && ex.X_add_number == 0
 		  && warn_areg_zero)
 		as_warn (_("operand %d: index register specified but zero"),
@@ -1659,9 +1693,12 @@ md_gather_operands (char *str,
 	      /* There is no opening parentheses. Check if operands of
 		 parenthesized block can be skipped. Only index and base
 		 register operands as well as optional operands may be
-		 skipped. A length operand may not be skipped.  */
+		 skipped. Neither vector index nor length operands may
+		 be skipped.  */
 	      operand = s390_operands + *(++opindex_ptr);
-	      if (!(operand->flags & (S390_OPERAND_INDEX|S390_OPERAND_BASE)))
+	      if (!(((operand->flags & S390_OPERAND_INDEX) &&
+		     !(operand->flags & S390_OPERAND_VR))
+		    || (operand->flags & S390_OPERAND_BASE)))
 		as_bad (_("operand %d: syntax error; missing '(' after displacement"),
 			operand_number);
 
@@ -1705,17 +1742,9 @@ md_gather_operands (char *str,
 		  break;
 	      /* If there is no comma until the closing parenthesis ')' or
 		 there is a comma right after the opening parenthesis '(',
-		 we have to skip the omitted optional index or base register
-		 operand:
-		 - Index X in D(X,B), when D(,B) or D(B)
-		 - Base B in D(L,B), when D(L)  */
-	      if (*f == ',' && f == str)
-		{
-		  /* Comma directly after opening parenthesis '(' ? */
-		  omitted_base_or_index = 1;
-		}
-	      else
-		omitted_base_or_index = (*f != ',');
+		 we have to skip an omitted optional index register
+		 operand X in D(X,B), when D(,B) or D(B).  */
+	      omitted_index = ((*f == ',' && f == str) || (*f == ')'));
 	    }
 	}
       else if (operand->flags & S390_OPERAND_BASE)
@@ -1726,7 +1755,7 @@ md_gather_operands (char *str,
 		    operand_number);
 	  else
 	    str++;
-	  omitted_base_or_index = 0;
+	  omitted_index = 0;
 
 	  /* If there is no further input and the remaining operands are
 	     optional then have these optional operands processed.  */
@@ -1804,7 +1833,7 @@ md_gather_operands (char *str,
 	}
     }
 
-  while (ISSPACE (*str))
+  while (is_whitespace (*str))
     str++;
 
   /* Check for tls instruction marker.  */
@@ -1890,8 +1919,7 @@ md_gather_operands (char *str,
 	fixP = fix_new_exp (frag_now, f - frag_now->fr_literal, 4,
 			    &fixups[i].exp,
 			    (operand->flags & S390_OPERAND_PCREL) != 0,
-			    ((bfd_reloc_code_real_type)
-			     (fixups[i].opindex + (int) BFD_RELOC_UNUSED)));
+			    fixups[i].opindex + BFD_RELOC_UNUSED);
       /* s390_insert_operand () does the range checking.  */
       if (operand->flags & S390_OPERAND_PCREL)
 	fixP->fx_no_overflow = 1;
@@ -1909,14 +1937,14 @@ md_assemble (char *str)
   char *s;
 
   /* Get the opcode.  */
-  for (s = str; *s != '\0' && ! ISSPACE (*s); s++)
+  for (s = str; ! is_end_of_stmt (*s) && ! is_whitespace (*s); s++)
     ;
   if (*s != '\0')
     *s++ = '\0';
 
   /* Look up the opcode in the hash table.  */
-  opcode = (struct s390_opcode *) str_hash_find (s390_opcode_hash, str);
-  if (opcode == (const struct s390_opcode *) NULL)
+  opcode = str_hash_find (s390_opcode_hash, str);
+  if (opcode == NULL)
     {
       as_bad (_("Unrecognized opcode: `%s'"), str);
       return;
@@ -1965,16 +1993,15 @@ s390_insn (int ignore ATTRIBUTE_UNUSED)
 
   /* Get the opcode format.  */
   s = input_line_pointer;
-  while (*s != '\0' && *s != ',' && ! ISSPACE (*s))
+  while (! is_end_of_stmt (*s) && *s != ',' && ! is_whitespace (*s))
     s++;
   if (*s != ',')
     as_bad (_("Invalid .insn format\n"));
   *s++ = '\0';
 
   /* Look up the opcode in the hash table.  */
-  opformat = (struct s390_opcode *)
-    str_hash_find (s390_opformat_hash, input_line_pointer);
-  if (opformat == (const struct s390_opcode *) NULL)
+  opformat = str_hash_find (s390_opformat_hash, input_line_pointer);
+  if (opformat == NULL)
     {
       as_bad (_("Unrecognized opcode format: `%s'"), input_line_pointer);
       return;
@@ -2069,7 +2096,7 @@ s390_literals (int ignore ATTRIBUTE_UNUSED)
 
   /* Emit symbol for start of literal pool.  */
   S_SET_SEGMENT (lp_sym, now_seg);
-  S_SET_VALUE (lp_sym, (valueT) frag_now_fix ());
+  S_SET_VALUE (lp_sym, frag_now_fix ());
   symbol_set_frag (lp_sym, frag_now);
 
   while (lpe_list)
@@ -2077,7 +2104,7 @@ s390_literals (int ignore ATTRIBUTE_UNUSED)
       lpe = lpe_list;
       lpe_list = lpe_list->next;
       S_SET_SEGMENT (lpe->sym, now_seg);
-      S_SET_VALUE (lpe->sym, (valueT) frag_now_fix ());
+      S_SET_VALUE (lpe->sym, frag_now_fix ());
       symbol_set_frag (lpe->sym, frag_now);
 
       /* Emit literal pool entry.  */
@@ -2139,32 +2166,21 @@ s390_machine (int ignore ATTRIBUTE_UNUSED)
 
   SKIP_WHITESPACE ();
 
-  if (*input_line_pointer == '"')
-    {
-      int len;
-      cpu_string = demand_copy_C_string (&len);
-    }
-  else
-    {
-      char c;
+  {
+    char c;
 
-      cpu_string = input_line_pointer;
-      do
-	{
-	  char * str;
+    c = get_symbol_name (&cpu_string);
+    while (c == '+')
+      {
+	char *str;
 
-	  c = get_symbol_name (&str);
-	  c = restore_line_pointer (c);
-	  if (c == '+')
-	    ++ input_line_pointer;
-	}
-      while (c == '+');
-
-      c = *input_line_pointer;
-      *input_line_pointer = 0;
-      cpu_string = xstrdup (cpu_string);
-      (void) restore_line_pointer (c);
-    }
+	c = restore_line_pointer (c);
+	input_line_pointer++;
+	c = get_symbol_name (&str);
+      }
+    cpu_string = xstrdup (cpu_string);
+    (void) restore_line_pointer (c);
+  }
 
   if (cpu_string != NULL)
     {
@@ -2210,6 +2226,7 @@ s390_machine (int ignore ATTRIBUTE_UNUSED)
 	}
     }
 
+  xfree (cpu_string);
   demand_empty_rest_of_line ();
 }
 
@@ -2280,6 +2297,7 @@ s390_machinemode (int ignore ATTRIBUTE_UNUSED)
 	s390_setup_opcodes ();
     }
 
+  xfree (mode_string);
   demand_empty_rest_of_line ();
 }
 
@@ -2372,9 +2390,9 @@ tc_s390_fix_adjustable (fixS *fixP)
       || fixP->fx_r_type == BFD_RELOC_390_PLT12DBL
       || fixP->fx_r_type == BFD_RELOC_390_PLT16DBL
       || fixP->fx_r_type == BFD_RELOC_390_PLT24DBL
-      || fixP->fx_r_type == BFD_RELOC_390_PLT32
+      || fixP->fx_r_type == BFD_RELOC_32_PLT_PCREL
       || fixP->fx_r_type == BFD_RELOC_390_PLT32DBL
-      || fixP->fx_r_type == BFD_RELOC_390_PLT64
+      || fixP->fx_r_type == BFD_RELOC_64_PLT_PCREL
       || fixP->fx_r_type == BFD_RELOC_390_GOT12
       || fixP->fx_r_type == BFD_RELOC_390_GOT20
       || fixP->fx_r_type == BFD_RELOC_390_GOT16
@@ -2436,12 +2454,12 @@ tc_s390_force_relocation (struct fix *fixp)
     case BFD_RELOC_390_GOTPCDBL:
     case BFD_RELOC_390_GOT64:
     case BFD_RELOC_390_GOTENT:
-    case BFD_RELOC_390_PLT32:
+    case BFD_RELOC_32_PLT_PCREL:
     case BFD_RELOC_390_PLT12DBL:
     case BFD_RELOC_390_PLT16DBL:
     case BFD_RELOC_390_PLT24DBL:
     case BFD_RELOC_390_PLT32DBL:
-    case BFD_RELOC_390_PLT64:
+    case BFD_RELOC_64_PLT_PCREL:
     case BFD_RELOC_390_GOTPLT12:
     case BFD_RELOC_390_GOTPLT16:
     case BFD_RELOC_390_GOTPLT20:
@@ -2484,19 +2502,19 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
   else
     fixP->fx_done = 1;
 
-  if ((int) fixP->fx_r_type >= (int) BFD_RELOC_UNUSED)
+  if (fixP->fx_r_type >= BFD_RELOC_UNUSED)
     {
       const struct s390_operand *operand;
       int opindex;
 
-      opindex = (int) fixP->fx_r_type - (int) BFD_RELOC_UNUSED;
+      opindex = fixP->fx_r_type - BFD_RELOC_UNUSED;
       operand = &s390_operands[opindex];
 
       if (fixP->fx_done)
 	{
 	  /* Insert the fully resolved operand value.  */
 	  s390_insert_operand ((unsigned char *) where, operand,
-			       (offsetT) value, fixP->fx_file, fixP->fx_line, 0);
+			       value, fixP->fx_file, fixP->fx_line, 0);
 	  return;
 	}
 
@@ -2574,14 +2592,24 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 	  fixP->fx_pcrel_adjust = 3;
 	  fixP->fx_r_type = BFD_RELOC_390_PC24DBL;
 	}
-      else if (operand->bits == 32 && operand->shift == 16
-	       && (operand->flags & S390_OPERAND_PCREL))
+      else if (operand->bits == 32 && operand->shift == 16)
 	{
 	  fixP->fx_size = 4;
 	  fixP->fx_where += 2;
-	  fixP->fx_offset += 2;
-	  fixP->fx_pcrel_adjust = 2;
-	  fixP->fx_r_type = BFD_RELOC_390_PC32DBL;
+	  if (operand->flags & S390_OPERAND_PCREL)
+	    {
+	      fixP->fx_offset += 2;
+	      fixP->fx_pcrel_adjust = 2;
+	      fixP->fx_r_type = BFD_RELOC_390_PC32DBL;
+	    }
+	  else if (fixP->fx_pcrel)
+	    {
+	      fixP->fx_offset += 2;
+	      fixP->fx_pcrel_adjust = 2;
+	      fixP->fx_r_type = BFD_RELOC_32_PCREL;
+	    }
+	  else
+	    fixP->fx_r_type = BFD_RELOC_32;
 	}
       else
 	{
@@ -2625,9 +2653,9 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 	      if (fixP->fx_pcrel)
 		value >>= 1;
 
-	      mop = bfd_getb16 ((unsigned char *) where);
-	      mop |= (unsigned short) (value & 0xfff);
-	      bfd_putb16 ((bfd_vma) mop, (unsigned char *) where);
+	      mop = bfd_getb16 (where);
+	      mop |= value & 0xfff;
+	      bfd_putb16 (mop, where);
 	    }
 	  break;
 
@@ -2637,10 +2665,10 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 	  if (fixP->fx_done)
 	    {
 	      unsigned int mop;
-	      mop = bfd_getb32 ((unsigned char *) where);
-	      mop |= (unsigned int) ((value & 0xfff) << 8 |
-				     (value & 0xff000) >> 12);
-	      bfd_putb32 ((bfd_vma) mop, (unsigned char *) where);
+	      mop = bfd_getb32 (where);
+	      mop |= ((value & 0xfff) << 8
+		      | (value & 0xff000) >> 12);
+	      bfd_putb32 (mop, where);
 	    }
 	  break;
 
@@ -2680,9 +2708,9 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 	      unsigned int mop;
 	      value >>= 1;
 
-	      mop = bfd_getb32 ((unsigned char *) where - 1);
-	      mop |= (unsigned int) (value & 0xffffff);
-	      bfd_putb32 ((bfd_vma) mop, (unsigned char *) where - 1);
+	      mop = bfd_getb32 (where - 1);
+	      mop |= value & 0xffffff;
+	      bfd_putb32 (mop, where - 1);
 	    }
 	  break;
 
@@ -2702,7 +2730,7 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 	  break;
 	case BFD_RELOC_32_GOT_PCREL:
 	case BFD_RELOC_390_PLTOFF32:
-	case BFD_RELOC_390_PLT32:
+	case BFD_RELOC_32_PLT_PCREL:
 	case BFD_RELOC_390_GOTPLT32:
 	  if (fixP->fx_done)
 	    md_number_to_chars (where, value, 4);
@@ -2729,7 +2757,7 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 
 	case BFD_RELOC_390_GOT64:
 	case BFD_RELOC_390_PLTOFF64:
-	case BFD_RELOC_390_PLT64:
+	case BFD_RELOC_64_PLT_PCREL:
 	case BFD_RELOC_390_GOTPLT64:
 	  if (fixP->fx_done)
 	    md_number_to_chars (where, value, 8);
@@ -2817,8 +2845,8 @@ tc_gen_reloc (asection *seg ATTRIBUTE_UNUSED, fixS *fixp)
 	code = BFD_RELOC_390_GOTPCDBL;
     }
 
-  reloc = XNEW (arelent);
-  reloc->sym_ptr_ptr = XNEW (asymbol *);
+  reloc = notes_alloc (sizeof (arelent));
+  reloc->sym_ptr_ptr = notes_alloc (sizeof (asymbol *));
   *reloc->sym_ptr_ptr = symbol_get_bfdsym (fixp->fx_addsy);
   reloc->address = fixp->fx_frag->fr_address + fixp->fx_where;
   reloc->howto = bfd_reloc_type_lookup (stdoutput, code);
@@ -2847,17 +2875,63 @@ tc_s390_regname_to_dw2regnum (char *regname)
 {
   int regnum = -1;
 
-  if (regname[0] != 'c' && regname[0] != 'a')
+  if (regname[0] != 'c')
     {
       regnum = reg_name_search (regname);
-      if (regname[0] == 'f' && regnum != -1)
-        regnum += 16;
+      if ((regname[0] == 'f' || regname[0] == 'v') && regnum != -1)
+	{
+	  /* Convert from floating-point register number (0..15) and
+	   * vector register number (0..31) to DWARF register number
+	   * (15..31, 68..83):  Right rotate the least significant
+	   * three bits.  For floating-point registers add 16.  For
+	   * vector registers 0..15 add 16 and for 16..31 add 86.  */
+	  int dw2_regnum;
+	  dw2_regnum = (regnum & 0b110) >> 1;
+	  dw2_regnum |= (regnum & 0b1) << 2;
+	  dw2_regnum |= (regnum & 0b1000);
+	  dw2_regnum += (regnum < 16) ? 16 : 68;
+	  regnum = dw2_regnum;
+	}
+      else if (regname[0] == 'a' && regnum != -1)
+	{
+	  regnum += 48;
+	}
     }
-  else if (strcmp (regname, "ap") == 0)
-    regnum = 32;
-  else if (strcmp (regname, "cc") == 0)
-    regnum = 33;
   return regnum;
+}
+
+/* Whether SFrame stack trace info is supported.  */
+
+bool
+s390_support_sframe_p (void)
+{
+  /* At this time, SFrame is supported for s390x (64-bit) only.  */
+  return (s390_arch_size == 64);
+}
+
+/* Specify the fixed offset to recover RA from CFA.
+   (useful only when RA tracking is not needed).  */
+
+offsetT
+s390_sframe_cfa_ra_offset (void)
+{
+  return (offsetT) SFRAME_CFA_FIXED_RA_INVALID;
+}
+
+/* Get the abi/arch identifier for SFrame.  */
+
+unsigned char
+s390_sframe_get_abi_arch (void)
+{
+  unsigned char sframe_abi_arch = 0;
+
+  if (s390_support_sframe_p ())
+    {
+      gas_assert (target_big_endian);
+      sframe_abi_arch = SFRAME_ABI_S390X_ENDIAN_BIG;
+    }
+
+  return sframe_abi_arch;
 }
 
 void

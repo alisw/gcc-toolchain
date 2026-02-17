@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -143,6 +143,8 @@ grs_langhook_init_options_struct (struct gcc_options *opts)
   opts->x_warn_unused_result = 1;
   /* lets warn for infinite recursion*/
   opts->x_warn_infinite_recursion = 1;
+  /* Enable exception handling (aka `panic!` in Rust) */
+  opts->x_flag_exceptions = 1;
 
   // nothing yet - used by frontends to change specific options for the language
   Rust::Session::get_instance ().init_options ();
@@ -169,38 +171,29 @@ static tree
 grs_langhook_type_for_mode (machine_mode mode, int unsignedp)
 {
   // TODO: change all this later to match rustc types
+  if (mode == QImode)
+    return unsignedp ? unsigned_intQI_type_node : intQI_type_node;
+
+  if (mode == HImode)
+    return unsignedp ? unsigned_intHI_type_node : intHI_type_node;
+
+  if (mode == SImode)
+    return unsignedp ? unsigned_intSI_type_node : intSI_type_node;
+
+  if (mode == DImode)
+    return unsignedp ? unsigned_intDI_type_node : intDI_type_node;
+
+  if (mode == TYPE_MODE (intTI_type_node))
+    return unsignedp ? unsigned_intTI_type_node : intTI_type_node;
+
   if (mode == TYPE_MODE (float_type_node))
     return float_type_node;
 
   if (mode == TYPE_MODE (double_type_node))
     return double_type_node;
 
-  if (mode == TYPE_MODE (intQI_type_node)) // quarter integer mode - single byte
-					   // treated as integer
-    return unsignedp ? unsigned_intQI_type_node : intQI_type_node;
-  if (mode
-      == TYPE_MODE (intHI_type_node)) // half integer mode - two-byte integer
-    return unsignedp ? unsigned_intHI_type_node : intHI_type_node;
-  if (mode
-      == TYPE_MODE (intSI_type_node)) // single integer mode - four-byte integer
-    return unsignedp ? unsigned_intSI_type_node : intSI_type_node;
-  if (mode
-      == TYPE_MODE (
-	intDI_type_node)) // double integer mode - eight-byte integer
-    return unsignedp ? unsigned_intDI_type_node : intDI_type_node;
-  if (mode
-      == TYPE_MODE (intTI_type_node)) // tetra integer mode - 16-byte integer
-    return unsignedp ? unsigned_intTI_type_node : intTI_type_node;
-
-  if (mode == TYPE_MODE (integer_type_node))
-    return unsignedp ? unsigned_type_node : integer_type_node;
-
-  if (mode == TYPE_MODE (long_integer_type_node))
-    return unsignedp ? long_unsigned_type_node : long_integer_type_node;
-
-  if (mode == TYPE_MODE (long_long_integer_type_node))
-    return unsignedp ? long_long_unsigned_type_node
-		     : long_long_integer_type_node;
+  if (mode == TYPE_MODE (long_double_type_node))
+    return long_double_type_node;
 
   if (COMPLEX_MODE_P (mode))
     {

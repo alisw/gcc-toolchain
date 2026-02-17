@@ -26,7 +26,7 @@ in your source code (which this macro is really made up for):
 @end smallexample
 
 @smallexample
- int f() @{
+ int f(void) @{
   char buffer[1024];
   fgets(buffer, 1024, stdin);
   ___ int i; int ii = strlen(buffer);

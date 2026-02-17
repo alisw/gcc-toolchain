@@ -1,4 +1,4 @@
-// Copyright (C) 2009-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2009-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,18 +16,18 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "Manifest.hpp"
+#include "manifest.hpp"
 
-#include <ccache/Context.hpp>
-#include <ccache/Hash.hpp>
-#include <ccache/core/CacheEntryDataReader.hpp>
-#include <ccache/core/CacheEntryDataWriter.hpp>
+#include <ccache/context.hpp>
+#include <ccache/core/cacheentrydatareader.hpp>
+#include <ccache/core/cacheentrydatawriter.hpp>
 #include <ccache/core/exceptions.hpp>
+#include <ccache/hash.hpp>
 #include <ccache/hashutil.hpp>
-#include <ccache/util/XXH3_64.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/logging.hpp>
 #include <ccache/util/string.hpp>
+#include <ccache/util/xxh3_64.hpp>
 
 // Manifest data format
 // ====================
@@ -102,6 +102,7 @@ Manifest::read(nonstd::span<const uint8_t> data)
   }
 
   const auto file_count = reader.read_int<uint32_t>();
+  files.reserve(file_count);
   for (uint32_t i = 0; i < file_count; ++i) {
     files.emplace_back(reader.read_str(reader.read_int<uint16_t>()));
   }
@@ -161,7 +162,11 @@ Manifest::look_up_result_digest(const Context& ctx) const
   // Check newest result first since it's more likely to match.
   for (size_t i = m_results.size(); i > 0; i--) {
     const auto& result = m_results[i - 1];
+    LOG("Considering result entry {} ({})",
+        i - 1,
+        util::format_digest(result.key));
     if (result_matches(ctx, result, stated_files, hashed_files)) {
+      LOG("Result entry {} matched in manifest", i - 1);
       return result.key;
     }
   }
@@ -365,7 +370,7 @@ Manifest::result_matches(
     if (stated_files_iter == stated_files.end()) {
       util::DirEntry entry(path);
       if (!entry) {
-        LOG("Info: {} is mentioned in a manifest entry but can't be read ({})",
+        LOG("{} is mentioned in a manifest entry but can't be read ({})",
             path,
             strerror(entry.error_number()));
         return false;
@@ -378,7 +383,8 @@ Manifest::result_matches(
     }
     const FileStats& fs = stated_files_iter->second;
 
-    if (fi.fsize != fs.size) {
+    if (fs.size != fi.fsize) {
+      LOG("Mismatch for {}: size {} != {}", path, fs.size, fi.fsize);
       return false;
     }
 
@@ -420,13 +426,18 @@ Manifest::result_matches(
         return false;
       }
       if (ret.contains(HashSourceCode::found_time)) {
+        // hash_source_code_file has already logged.
         return false;
       }
 
       hashed_files_iter = hashed_files.emplace(path, actual_digest).first;
     }
 
-    if (fi.digest != hashed_files_iter->second) {
+    if (hashed_files_iter->second != fi.digest) {
+      LOG("Mismatch for {}: hash {} != {}",
+          path,
+          util::format_digest(hashed_files_iter->second),
+          util::format_digest(fi.digest));
       return false;
     }
   }

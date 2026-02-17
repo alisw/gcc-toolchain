@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2020-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,18 +16,17 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "TestUtil.hpp"
+#include "testutil.hpp"
 
-#include <ccache/Config.hpp>
-#include <ccache/Context.hpp>
-#include <ccache/Hash.hpp>
-#include <ccache/InodeCache.hpp>
-#include <ccache/util/Fd.hpp>
-#include <ccache/util/PathString.hpp>
-#include <ccache/util/TemporaryFile.hpp>
+#include <ccache/config.hpp>
+#include <ccache/context.hpp>
+#include <ccache/hash.hpp>
+#include <ccache/inodecache.hpp>
+#include <ccache/util/fd.hpp>
 #include <ccache/util/file.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/path.hpp>
+#include <ccache/util/temporaryfile.hpp>
 
 #include <doctest/doctest.h>
 
@@ -38,7 +37,6 @@
 namespace fs = util::filesystem;
 
 using TestUtil::TestContext;
-using pstr = util::PathString;
 
 namespace {
 
@@ -51,7 +49,7 @@ inode_cache_available()
     return false;
   }
   bool available = tmp_file->fd && InodeCache::available(*tmp_file->fd);
-  fs::remove(tmp_file->path);
+  std::ignore = fs::remove(tmp_file->path);
   return available;
 }
 
@@ -60,7 +58,7 @@ init(Config& config)
 {
   config.set_debug(true);
   config.set_inode_cache(true);
-  config.set_temporary_dir(pstr(*fs::current_path()).str());
+  config.set_temporary_dir(*fs::current_path());
 }
 
 bool
@@ -107,7 +105,7 @@ TEST_CASE("Test lookup nonexistent")
   init(config);
 
   InodeCache inode_cache(config, util::Duration(0));
-  util::write_file("a", "");
+  REQUIRE(util::write_file("a", ""));
 
   CHECK(!inode_cache.get("a",
                          InodeCache::ContentType::checked_for_temporal_macros));
@@ -124,7 +122,7 @@ TEST_CASE("Test put and lookup")
   init(config);
 
   InodeCache inode_cache(config, util::Duration(0));
-  util::write_file("a", "a text");
+  REQUIRE(util::write_file("a", "a text"));
 
   HashSourceCodeResult result;
   result.insert(HashSourceCode::found_date);
@@ -140,7 +138,7 @@ TEST_CASE("Test put and lookup")
   CHECK(inode_cache.get_misses() == 0);
   CHECK(inode_cache.get_errors() == 0);
 
-  util::write_file("a", "something else");
+  REQUIRE(util::write_file("a", "something else"));
 
   CHECK(!inode_cache.get("a",
                          InodeCache::ContentType::checked_for_temporal_macros));
@@ -174,9 +172,9 @@ TEST_CASE("Drop file")
   InodeCache inode_cache(config, util::Duration(0));
 
   inode_cache.get("a", InodeCache::ContentType::raw);
-  CHECK(util::DirEntry(inode_cache.get_file()));
+  CHECK(util::DirEntry(inode_cache.get_path()));
   CHECK(inode_cache.drop());
-  CHECK(!util::DirEntry(inode_cache.get_file()));
+  CHECK(!util::DirEntry(inode_cache.get_path()));
   CHECK(inode_cache.drop());
 }
 
@@ -188,7 +186,7 @@ TEST_CASE("Test content type")
   init(config);
 
   InodeCache inode_cache(config, util::Duration(0));
-  util::write_file("a", "a text");
+  REQUIRE(util::write_file("a", "a text"));
   auto binary_digest = Hash().hash("binary").digest();
   auto code_digest = Hash().hash("code").digest();
 

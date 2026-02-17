@@ -1,0 +1,7 @@
+#!/bin/sh
+
+set -eux
+
+dir=build
+cmake -B "${dir}"
+DESTDIR=$(pwd)/install ninja -C "${dir}" doc/install

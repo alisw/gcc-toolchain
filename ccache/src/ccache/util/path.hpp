@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2021-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -18,20 +18,27 @@
 
 #pragma once
 
-#include <filesystem>
-#include <string>
-#include <string_view>
+#include <ccache/util/pathstring.hpp>
 #ifdef _WIN32
 #  include <ccache/util/string.hpp>
 #endif
+
+#include <filesystem>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace util {
 
 // --- Interface ---
 
-// Add ".exe" suffix to `program` if it doesn't already end with ".exe", ".bat"
-// or ".sh".
+// Add ".exe" suffix to `program` if it doesn't already have an extension.
 std::string add_exe_suffix(const std::string& program);
+
+// Return a new path with `extension` added to `path` (keeping any existing
+// extension).
+std::filesystem::path add_extension(const std::filesystem::path& path,
+                                    std::string_view extension);
 
 // Return current working directory (CWD) by reading the environment variable
 // PWD (thus keeping any symlink parts in the path and potentially ".." or "//"
@@ -40,6 +47,9 @@ std::string add_exe_suffix(const std::string& program);
 std::filesystem::path apparent_cwd(const std::filesystem::path& actual_cwd);
 
 const char* get_dev_null_path();
+
+// Return lexically normal `path` without trailing slash.
+std::filesystem::path lexically_normal(const std::filesystem::path& path);
 
 // Return whether `path` is /dev/null or (on Windows) NUL.
 bool is_dev_null_path(const std::filesystem::path& path);
@@ -71,7 +81,29 @@ make_path(const T&... args)
 bool path_starts_with(const std::filesystem::path& path,
                       const std::filesystem::path& prefix);
 
+// Return whether `path` starts with any of `prefixes` considering path
+// specifics on Windows.
+bool path_starts_with(const std::filesystem::path& path,
+                      const std::vector<std::filesystem::path>& prefixes);
+
+// Access the underlying path string without having to copy it if
+// std::filesystem::path::value_type is char (that is, not wchar_t).
+using pstr = PathString;
+
+// Return a new path with `extension` added to `path` (removing any existing
+// extension).
+std::filesystem::path with_extension(const std::filesystem::path& path,
+                                     std::string_view extension);
+
 // --- Inline implementations ---
+
+inline std::filesystem::path
+add_extension(const std::filesystem::path& path, std::string_view extension)
+{
+  std::filesystem::path result(path);
+  result += std::filesystem::path(extension);
+  return result;
+}
 
 inline bool
 is_dev_null_path(const std::filesystem::path& path)
@@ -92,6 +124,14 @@ is_full_path(const std::string_view path)
   }
 #endif
   return path.find('/') != std::string_view::npos;
+}
+
+inline std::filesystem::path
+with_extension(const std::filesystem::path& path, std::string_view extension)
+{
+  std::filesystem::path result(path);
+  result.replace_extension(extension);
+  return result;
 }
 
 } // namespace util

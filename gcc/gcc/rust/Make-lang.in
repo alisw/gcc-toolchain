@@ -1,6 +1,6 @@
 # Make-lang.in -- Top level -*- makefile -*- fragment for GCC Rust frontend.
 
-# Copyright (C) 2009-2024 Free Software Foundation, Inc.
+# Copyright (C) 2009-2025 Free Software Foundation, Inc.
 
 # This file is part of GCC.
 
@@ -92,14 +92,31 @@ GRS_OBJS = \
     rust/rust-cfg-strip.o \
     rust/rust-expand-visitor.o \
     rust/rust-ast-builder.o \
+    rust/rust-ast-builder-type.o \
     rust/rust-derive.o \
     rust/rust-derive-clone.o \
     rust/rust-derive-copy.o \
+    rust/rust-derive-debug.o \
+    rust/rust-derive-default.o \
+    rust/rust-derive-partial-eq.o \
+    rust/rust-derive-eq.o \
+    rust/rust-derive-hash.o \
     rust/rust-proc-macro.o \
     rust/rust-macro-invoc-lexer.o \
     rust/rust-proc-macro-invoc-lexer.o \
     rust/rust-macro-substitute-ctx.o \
     rust/rust-macro-builtins.o \
+    rust/rust-macro-builtins-helpers.o \
+    rust/rust-macro-builtins-asm.o \
+    rust/rust-macro-builtins-trait.o \
+    rust/rust-macro-builtins-utility.o \
+    rust/rust-macro-builtins-log-debug.o \
+    rust/rust-macro-builtins-test-bench.o \
+    rust/rust-macro-builtins-format-args.o \
+    rust/rust-macro-builtins-location.o \
+    rust/rust-macro-builtins-include.o \
+    rust/rust-token-tree-desugar.o \
+	rust/rust-fmt.o \
     rust/rust-hir.o \
     rust/rust-hir-map.o \
     rust/rust-attributes.o \
@@ -115,12 +132,16 @@ GRS_OBJS = \
     rust/rust-ast-lower-expr.o \
     rust/rust-ast-lower-type.o \
     rust/rust-ast-lower-stmt.o \
+    rust/rust-ast-lower-format-args.o \
     rust/rust-rib.o \
     rust/rust-name-resolution-context.o \
     rust/rust-default-resolver.o \
     rust/rust-toplevel-name-resolver-2.0.o \
     rust/rust-early-name-resolver-2.0.o \
+	rust/rust-finalize-imports-2.0.o \
+	rust/rust-ice-finalizer.o \
     rust/rust-late-name-resolver-2.0.o \
+	rust/rust-immutable-name-resolution-context.o \
     rust/rust-early-name-resolver.o \
     rust/rust-name-resolver.o \
     rust/rust-ast-resolve.o \
@@ -132,6 +153,7 @@ GRS_OBJS = \
     rust/rust-ast-resolve-path.o \
     rust/rust-ast-resolve-stmt.o \
     rust/rust-ast-resolve-struct-expr-field.o \
+    rust/rust-forever-stack.o \
     rust/rust-hir-type-check.o \
     rust/rust-privacy-check.o \
     rust/rust-privacy-ctx.o \
@@ -143,6 +165,7 @@ GRS_OBJS = \
     rust/rust-tyty-util.o \
     rust/rust-tyty-call.o \
     rust/rust-tyty-subst.o \
+    rust/rust-tyty-variance-analysis.o \
     rust/rust-typecheck-context.o \
     rust/rust-tyty-bounds.o \
     rust/rust-hir-trait-resolve.o \
@@ -156,10 +179,20 @@ GRS_OBJS = \
     rust/rust-hir-type-check-enumitem.o \
     rust/rust-hir-type-check-implitem.o \
     rust/rust-borrow-checker.o \
+    rust/rust-borrow-checker-diagnostics.o\
     rust/rust-bir-builder-expr-stmt.o \
+    rust/rust-bir-builder-pattern.o \
     rust/rust-bir-dump.o \
+    rust/rust-polonius.o\
     rust/rust-hir-dot-operator.o \
     rust/rust-hir-path-probe.o \
+    rust/rust-hir-path.o \
+    rust/rust-hir-type.o \
+    rust/rust-hir-expr.o \
+    rust/rust-hir-type-abstract.o \
+    rust/rust-hir-item.o \
+    rust/rust-hir-stmt.o \
+    rust/rust-hir-generic-param.o \
     rust/rust-type-util.o \
     rust/rust-coercion.o \
     rust/rust-casts.o \
@@ -173,6 +206,7 @@ GRS_OBJS = \
     rust/rust-readonly-check.o \
     rust/rust-hir-type-check-path.o \
     rust/rust-unsafe-checker.o \
+    rust/rust-hir-pattern-analysis.o \
     rust/rust-compile-intrinsic.o \
     rust/rust-compile-pattern.o \
     rust/rust-compile-fnparam.o \
@@ -181,6 +215,7 @@ GRS_OBJS = \
     rust/rust-compile-item.o \
     rust/rust-compile-implitem.o \
     rust/rust-compile-stmt.o \
+    rust/rust-compile-asm.o \
     rust/rust-compile-expr.o \
     rust/rust-compile-type.o \
     rust/rust-compile-block.o \
@@ -200,6 +235,13 @@ GRS_OBJS = \
     rust/rust-dir-owner.o \
     rust/rust-unicode.o \
     rust/rust-punycode.o \
+    rust/rust-unwrap-segment.o \
+    rust/rust-edition.o \
+	rust/rust-expand-format-args.o \
+	rust/rust-lang-item.o \
+	rust/rust-collect-lang-items.o \
+	rust/rust-desugar-for-loops.o \
+	rust/rust-desugar-question-mark.o \
     $(END)
 # removed object files from here
 
@@ -209,12 +251,16 @@ RUST_ALL_OBJS = $(GRS_OBJS) $(RUST_TARGET_OBJS)
 rust_OBJS = $(RUST_ALL_OBJS) rust/rustspec.o
 
 LIBPROC_MACRO_INTERNAL = ../libgrust/libproc_macro_internal/libproc_macro_internal.a
+LIBFORMAT_PARSER = ../libgrust/libformat_parser/debug/liblibformat_parser.a
+LIBFFI_POLONIUS = rust/libffi_polonius.a
 
 # The compiler itself is called crab1
-crab1$(exeext): $(RUST_ALL_OBJS) attribs.o $(BACKEND) $(LIBDEPS) $(LIBPROC_MACRO_INTERNAL) $(rust.prev)
+crab1$(exeext): $(RUST_ALL_OBJS) attribs.o $(BACKEND) $(LIBDEPS) $(LIBPROC_MACRO_INTERNAL) $(LIBFORMAT_PARSER) $(LIBFFI_POLONIUS) $(rust.prev)
 	@$(call LINK_PROGRESS,$(INDEX.rust),start)
 	+$(LLINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
-	      $(RUST_ALL_OBJS) attribs.o $(BACKEND) $(LIBS) $(LIBPROC_MACRO_INTERNAL) $(BACKENDLIBS)
+	      $(RUST_ALL_OBJS) attribs.o $(BACKEND) \
+	      $(LIBS) $(CRAB1_LIBS) $(LIBPROC_MACRO_INTERNAL) $(LIBFORMAT_PARSER) $(LIBFFI_POLONIUS) \
+ 		  $(BACKENDLIBS)
 	@$(call LINK_PROGRESS,$(INDEX.rust),end)
 
 # Build hooks.
@@ -248,6 +294,7 @@ rust.srcman:
 # Clean hooks.
 
 rust.mostlyclean:
+	rm -rf rust/ffi-polonius/release libffi_polonius.a
 #	cd $(srcdir)/rust; rm -f *.o y.tab.h y.tab.c lex.yy.c
 
 rust.clean: rust.mostlyclean
@@ -322,19 +369,19 @@ RUST_SELFTEST_DEPS = crab1$(exeext) $(SELFTEST_DEPS)
 
 # Run the rust selftests
 s-selftest-rust: $(RUST_SELFTEST_DEPS)
-	$(GCC_FOR_TARGET) $(RUST_SELFTEST_FLAGS)
+	$(GCC_FOR_SELFTESTS) $(RUST_SELFTEST_FLAGS)
 	$(STAMP) $@
 
 # Convenience methods for running rust selftests under gdb:
 .PHONY: selftest-rust-gdb
 selftest-rust-gdb: $(RUST_SELFTEST_DEPS)
-	$(GCC_FOR_TARGET) $(RUST_SELFTEST_FLAGS) \
+	$(GCC_FOR_SELFTESTS) $(RUST_SELFTEST_FLAGS) \
 	  -wrapper gdb,--args
 
 # Convenience methods for running rust selftests under valgrind:
 .PHONY: selftest-rust-valgrind
 selftest-rust-valgrind: $(RUST_SELFTEST_DEPS)
-	$(GCC_FOR_TARGET) $(RUST_SELFTEST_FLAGS) \
+	$(GCC_FOR_SELFTESTS) $(RUST_SELFTEST_FLAGS) \
 	  -wrapper valgrind,--leak-check=full
 
 # Install info documentation for the front end, if it is present in the source directory. This target
@@ -467,7 +514,19 @@ rust/%.o: rust/checks/errors/borrowck/%.cc
 	$(COMPILE) $(RUST_CXXFLAGS) $(RUST_INCLUDES) $<
 	$(POSTCOMPILE)
 
+
+# build borrow checking pass polonius files in rust folder
+rust/%.o: rust/checks/errors/borrowck/polonius/%.cc
+	$(COMPILE) $(RUST_CXXFLAGS) $(RUST_INCLUDES) $<
+	$(POSTCOMPILE)
+
 # build rust/metadata files in rust folder
 rust/%.o: rust/metadata/%.cc
 	$(COMPILE) $(RUST_CXXFLAGS) $(RUST_INCLUDES) $<
 	$(POSTCOMPILE)
+
+rust/libffi_polonius.a: \
+	rust/checks/errors/borrowck/ffi-polonius/Cargo.toml \
+	$(wildcard $(srcdir)/rust/checks/errors/borrowck/ffi-polonius/src/*)
+	cd $(srcdir)/rust/checks/errors/borrowck/ffi-polonius/ && cargo build --offline --release --target-dir $(objdir)/rust/ffi-polonius
+	cp rust/ffi-polonius/release/libffi_polonius.a rust/libffi_polonius.a

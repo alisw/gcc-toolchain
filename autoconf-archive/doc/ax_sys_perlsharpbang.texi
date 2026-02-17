@@ -22,7 +22,7 @@ argument like:
 @smallexample
   --with-perl-shebang='#! /my/funky/perlpath' # OR
   --with-perl-shebang='/my/funky/perlpath'  # we just throw away the #! anyway
-                                            # bec it must be absent in Makefile
+                                            # as it must not appear in Makefile
 @end smallexample
 
 Rationale: The are various ways of starting an interpreter on different

@@ -16,9 +16,9 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "MsvcShowIncludesOutput.hpp"
+#include "msvcshowincludesoutput.hpp"
 
-#include <ccache/Context.hpp>
+#include <ccache/context.hpp>
 #include <ccache/util/string.hpp>
 
 namespace core::MsvcShowIncludesOutput {

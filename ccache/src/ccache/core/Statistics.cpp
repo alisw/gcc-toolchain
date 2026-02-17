@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2021-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,21 +16,20 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "Statistics.hpp"
+#include "statistics.hpp"
 
-#include <ccache/Config.hpp>
-#include <ccache/util/PathString.hpp>
-#include <ccache/util/TextTable.hpp>
+#include <ccache/config.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/logging.hpp>
+#include <ccache/util/path.hpp>
 #include <ccache/util/string.hpp>
+#include <ccache/util/texttable.hpp>
 #include <ccache/util/time.hpp>
 
 #include <algorithm>
 
 namespace core {
 
-using pstr = util::PathString;
 using core::Statistic;
 
 const unsigned FLAG_NOZERO = 1U << 0;      // don't zero with --zero-stats
@@ -53,10 +52,10 @@ struct StatisticsField
   {
   }
 
-  const Statistic statistic;
-  const char* const id;          // for --print-stats
-  const char* const description; // for --show-stats --verbose
-  const unsigned flags;          // bitmask of FLAG_* values
+  Statistic statistic;
+  const char* id;          // for --print-stats
+  const char* description; // for --show-stats --verbose
+  unsigned flags;          // bitmask of FLAG_* values
 };
 
 } // namespace
@@ -253,6 +252,12 @@ const StatisticsField k_statistics_fields[] = {
         "Unsupported environment variable",
         FLAG_UNCACHEABLE),
 
+  // Source file (or an included header) has unsupported encoding. ccache
+  // currently requires UTF-8-encoded source code for MSVC.
+  FIELD(unsupported_source_encoding,
+        "Unsupported source encoding",
+        FLAG_UNCACHEABLE),
+
   // A source language e.g. specified with -x was unsupported by ccache.
   FIELD(unsupported_source_language,
         "Unsupported source language",
@@ -275,7 +280,7 @@ format_timestamp(const util::TimePoint& value)
     const auto tm = util::localtime(value);
     char buffer[100] = "?";
     if (tm) {
-      strftime(buffer, sizeof(buffer), "%c", &*tm);
+      (void)strftime(buffer, sizeof(buffer), "%c", &*tm);
     }
     return buffer;
   }
@@ -390,11 +395,12 @@ Statistics::format_human_readable(const Config& config,
   };
 
   if (verbosity > 0 && !from_log) {
-    table.add_row({"Cache directory:", C(config.cache_dir()).colspan(4)});
     table.add_row(
-      {"Config file:", C(pstr(config.config_path()).str()).colspan(4)});
+      {"Cache directory:", C(util::pstr(config.cache_dir())).colspan(4)});
+    table.add_row(
+      {"Config file:", C(util::pstr(config.config_path())).colspan(4)});
     table.add_row({"System config file:",
-                   C(pstr(config.system_config_path()).str()).colspan(4)});
+                   C(util::pstr(config.system_config_path())).colspan(4)});
     table.add_row(
       {"Stats updated:", C(format_timestamp(last_updated)).colspan(4)});
     if (verbosity > 1) {

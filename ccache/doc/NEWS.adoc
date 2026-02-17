@@ -1,5 +1,463 @@
 = Ccache news
 
+== Ccache 4.12.3
+
+Release date: 2026-02-07
+
+
+=== Bug fixes
+
+- Fixed hashing of CWD parts of `-march=native` expansion for Clang. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed lookup of `-march=native` expansion line for GCC on Windows. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed rewriting of "`inlined from`" messages when `absolute_paths_in_stderr`
+  is enabled. +
+  [small]#_[contributed by Enrico Seiler]_#
+
+- Added support for NVCC long option alternatives to
+  `-M`/`-MD`/`-MF`/`-MM`/`-MMD`/`-MT`. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed setting of `UNCACHED_ERR_FD` environment variable so that it is only set
+  when executing the compiler. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed leaking of inode cache file descriptor to executed programs. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed errno check for some system calls. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
+=== Documentation improvements
+
+- Fixed links to installation guide in README. +
+  [small]#_[contributed by Evgeniy Isaev]_#
+
+
+== Ccache 4.12.2
+
+Release date: 2025-11-26
+
+
+=== Bug fixes
+
+- Improved robustness against filesystem path encoding problems on Windows. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed removal of mismatching manifest file. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
+=== Build fixes
+
+- Fixed build of BLAKE3 for little-endian aarch64 with CMake 3.18/3.19. +
+  [small]#_[contributed by J. Neuschäfer]_#
+
+- Added linking with libsocket on SunOS/Illumos. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
+=== Test improvements
+
+- Fixed profiling_clang test. +
+  [small]#_[contributed by Evgeniy Isaev]_#
+
+
+=== Documentation improvements
+
+- Reconciled max-size suffixes in documentation. +
+  [small]#_[contributed by Andrej Zhilenkov]_#
+
+- Improved documentation on statistics counters and --zero-stats. +
+  [small]#_[contributed by Joel Rosdahl and Otto Kekäläinen]_#
+
+- Added note that sloppiness values can be whitespace-separated. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Updated URLs in manual and news. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
+=== Other
+
+- Fixed default sysconf dir in Linux binary releases. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed typo in CcacheVersion.cmake. +
+  [small]#_[contributed by Andrej Zhilenkov]_#
+
+- Updated C++ standard in .clang-format. +
+  [small]#_[contributed by Evgeniy Isaev]_#
+
+
+== Ccache 4.12.1
+
+Release date: 2025-10-01
+
+
+=== Bug fixes
+
+- Fixed handling of `-Xarch_host`/`-Xarch_device` options. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed saving of current position in fallocate fallback code. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed handling of `ENOENT`  when trying to break a lockfile lock. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
+=== Build fixes
+
+- Added missing `return` in `copy_file_impl` fallback code, fixing a compilation
+  error with tl::expected ≥ 1.2.0 on non-Apple platforms where `sendfile(2)` is
+  unavailable. +
+  [small]#_[contributed by an anonymous user]_#
+
+
+=== Other
+
+- Added missing documentation files to Linux/macOS binary releases. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
+== Ccache 4.12
+
+Release date: 2025-09-14
+
+
+=== Upgrade notes
+
+- CMake version 3.18 or higher is now needed to build ccache.
+
+
+=== New deliverables
+
+- Added binary releases for Linux aarch64 and Windows aarch64. +
+  [small]#_[contributed by Joel Rosdahl and Martin Storsjö]_#
+
+
+=== New features and improvements
+
+- Enabled awareness of long paths and wide characters on Windows by embedding an
+  application manifest in `ccache.exe`. +
+  [small]#_[contributed by Morten Engelhardt Olsen and Joel Rosdahl]_#
+
+- Added support for multiple directories in `base_dir`/`CCACHE_BASEDIR`. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Added support for Clang compiling CUDA code. +
+  [small]#_[contributed by an anonymous user]_#
+
+- Added support `-x cu` and `-x cuda` in Clang CUDA mode. +
+  [small]#_[contributed by an anonymous user]_#
+
+- Added support for Clang's `--config=` option. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Added logging of process exit. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Added logging of mtime for files removed from the internal temporary
+  directory. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Added logging of URLs requested by the http storage backend. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Improved logging of manifest lookup.  +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Improved logging of executed processes. +
+  [small]#_[contributed by Joel Rosdahl with a fix by Leander Schulten]_#
+
+
+=== Removed features
+
+- Removed support for avoiding the second preprocessor call
+  (`run_second_cpp=false`/`CCACHE_NOCPP2`). This feature added complexity while
+  offering little practical value, as it was rarely used and modern compilers
+  have increasingly poor support for compiling preprocessed source code. The
+  maintenance cost therefore outweighed the benefit of keeping it. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
+=== Bug fixes
+
+- Fixed handling of compiler arguments so that ccache now preserves their
+  original order, resolving issues where order-sensitive options such as
+  `-Werror` could be reordered. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Implemented expansion of system-dependent `-m{arch,cpu,tune}=native` options
+  to prevent false cache hits when compiling on different hardware. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed rewriting of absolute paths to relative (with `base_dir` in effect) so
+  that paths with dereferenced symlinks are no longer considered as
+  candidates. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed compiler detection to check Clang before GCC for `cc`/`c++` hard links. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed hashing of GCC specs file. Previously specs files located in system
+  directories could not be found. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Added MSVC variables `INCLUDE` and `EXTERNAL_INCLUDE` to the input hash since
+  they affect compilation. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed bad conversion from UTF-16 when reading files on Windows. +
+  [small]#_[contributed by Leander Schulten]_#
+
+- Removed misleading logging of failure to remove output file in hard link
+  mode. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
+=== Build improvements
+
+- Made ccache link statically with libatomic when STATIC_LINK is set. +
+  [small]#_[contributed by Maksym Sobolyev]_#
+
+- Made ccache buildable with tl-expected 1.2.0. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- The bundled copy of libfmt is now used as documented if `DEPS=DOWNLOAD`. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Switched to use `FetchContent_MakeAvailable` instead of
+  `FetchContent_Populate` to avoid warnings with newer CMake versions. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Set variables to avoid a warning from downloaded zstd's CMake scripts. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Added CMake toolchain file for (cross) compilation to aarch64-w64-mingw32. +
+  [small]#_[contributed by Martin Storsjö]_#
+
+- Disabled use of BLAKE3 NEON code on big-endian aarch64 since only
+  little-endian is supported. +
+  [small]#_[contributed by Jontathan Neuschäfer]_#
+
+
+=== Test improvements
+
+- Added test for tricky preprocessed cache hit case. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed calculation of root directory to avoid crashes on some Windows
+  systems. +
+  [small]#_[contributed by Leander Schulten]_#
+
+
+=== Documentation improvements
+
+- Documented that the direct mode has now (since ccache 4.10) less risk to read
+  headers from incorrect locations. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Documented that `#pragma once` can be problematic with precompiler headers
+  (PCH). +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Added missing documentation of `"Unsupported source encoding"` statistics
+  counter. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
+== Ccache 4.11.3
+
+Release date: 2025-05-03
+
+
+=== Bug fixes
+
+- Fixed handling of Apple Clang `-Xpreprocessor -fopenmp` options (regression in
+  ccache 4.10). +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
+=== Build improvements
+
+- Adapted unit test code to compile with doctest 2.4.12. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
+=== Test improvements
+
+- Silenced benign compiler warning in the profiling_gcc_10+ suite. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
+== Ccache 4.11.2
+
+Release date: 2025-03-22
+
+
+=== Bug fixes
+
+- Reset signal mask and signal defaults when executing compiler. This fixes a
+  problem where interrupting the compilation (e.g. with Ctrl+C) wouldn't kill
+  the compiler (regression in ccache 4.11). +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
+== Ccache 4.11.1
+
+Release date: 2025-03-17
+
+
+=== Bug fixes
+
+- Fixed erroneous log file locking on Windows (regression in ccache 4.11). +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
+== Ccache 4.11
+
+Release date: 2025-03-09
+
+
+=== New features and improvements
+
+- Added ability to send arbitrary HTTP headers to HTTP storage. +
+  [small]#_[contributed by an anonymous user]_#
+
+- Added support for MSVC's `/TC` and `/TP` options. +
+  [small]#_[contributed by Huang Qin Jin]_#
+
+- Made the `absolute_paths_in_stderr` feature also handle MSVC diagnostics
+  messages. +
+  [small]#_[contributed by Huang Qin Jin]_#
+
+- Absolute paths in MSVC diagnostics messages are now rewritten to relative if
+  `base_dir` is in effect. +
+  [small]#_[contributed by Huang Qin Jin]_#
+
+- Added support for NVCC's `--compile` option. +
+  [small]#_[contributed by Laurent Bouhier]_#
+
+- `posix_spawn` is now used instead `execv` to execute the compiler on POSIX
+  systems. +
+  [small]#_[contributed by Brendan Shanks]_#
+
+- Added support for GCC's `-fprofile-prefix-path` option. +
+  [small]#_[contributed by Dávid Péter Jánosa]_#
+
+- Added `response_file_format` config option to control response file format. +
+  [small]#_[contributed by Max Winkler]_#
+
+- Added support for Clang `-frandomize-layout-seed-file` option. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Improved `absolute_paths_in_stderr` to recognize more paths patterns. +
+  [small]#_[contributed by an anonymous user]_#
+
+- Added support for the clang-cl option `/showIncludes:user`. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Added support for Intel's LLVM-based compilers `icx` and `icx-cl`. +
+  [small]#_[contributed by Nick Sarnie]_#
+
+- A stat call for `~/.ccache` is now avoided if `CCACHE_DIR` is set. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Added Support for `.bat` and `.cmd` scripts as the compiler on Windows. +
+  [small]#_[contributed by an anonymous user]_#
+
+- Added support for Clang's `-f{debug,file}-compilation-dir` options. +
+  [small]#_[contributed by Henrique Ferreiro]_#
+
+- Added knowledge about Clang's `--offload-compress` option. This will avoid
+  errors when ccache runs the compiler in preprocessor mode. +
+  [small]#_[contributed by Icarus Sparry]_#
+
+- Added knowledge about Clang options `-fmodules-cache-path`,
+  `-fmodule-map-file` and `-fbuild-session-file`. +
+  [small]#_[contributed by an anonymous user]_#
+
+
+=== Bug fixes
+
+- Improved handling of paths internally, thereby fixing some issues on Windows
+  (for example when using non-ASCII paths). +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed interpretation of non-ASCII paths in environment variables on Windows. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Made sure that remote storage `keep-alive` can be overridden as expected. +
+  [small]#_[contributed by an anonymous user]_#
+
+- Fixed detection of compiler type for hard-linked generic compiler name. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed problems with matching a path with `base_dir` if either ends with a
+  slash. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- The `-fprofile-abs-path` option is now correctly passed through to GCC. +
+  [small]#_[contributed by Matt Johnston]_#
+
+- Writes to the log file are now synchronized. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Command line config options ending with "`/ccache`" are now handled properly. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Made `--trim-method mtime` actually use mtime instead of atime. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed a bug where ccache failed to rename raw files correctly for large caches
+  that have more than two cache levels. +
+  [small]#_[contributed by Oded Shimon]_#
+
+
+=== Build improvements
+
+- Instructed MSVC to accept UTF-8 characters in ccache's own source code. +
+  [small]#_[contributed by Huang Qin Jin]_#
+
+- Fixed binary patching of `sysconfdir` for the prebuilt Linux binary. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Added an `HTTP_STORAGE_BACKEND` build option to make it possible to turn off
+  the http storage backend. +
+  [small]#_[contributed by Maksym Sobolyev]_#
+
+- Fixed call to `sha256sum` on macOS. +
+  [small]#_[contributed by Henrique Ferreiro]_#
+
+
+=== Test improvements
+
+- Made tests pass in year 2038. +
+  [small]#_[contributed by Bernhard M. Wiedemann]_#
+
+- Refreshed some Dockerfiles. +
+  [small]#_[contributed by Maksym Sobolyev]_#
+
+
+=== Documentation improvements
+
+- Added documentation saying that `absolute_paths_in_stderr` also applies to
+  stdout. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Fixed description of `default cache_dir` on non-macOS POSIX systems. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+- Clarified how ccache's LRU cleanup works. +
+  [small]#_[contributed by Joel Rosdahl]_#
+
+
 == Ccache 4.10.2
 
 Release date: 2024-07-22
@@ -53,7 +511,7 @@ Release date: 2024-06-30
 
 === Documentation improvements
 
-- Clarified that `--set`-config writes to the configuration file. +
+- Clarified that `--set-config` writes to the configuration file. +
   [small]#_[contributed by Joel Rosdahl]_#
 
 
@@ -249,7 +707,7 @@ Release date: 2023-12-30
   [small]#_[contributed by Joel Rosdahl]_#
 
 - MSVC options `/Fd`, `/FS` and `/MP` are no longer included in the input hash. +
-  [small]#_[contributed by Huang Qin Jing]_#
+  [small]#_[contributed by Huang Qin Jin]_#
 
 - Made ccache terminate an ongoing compiler subprocess when terminated on all
   platforms, not only on Unix. +
@@ -354,6 +812,12 @@ Release date: 2023-12-30
 
 - Fixed regex in direct.bash. +
   [small]#_[contributed by Viktor Szépe]_#
+
+
+=== Other improvements
+
+- Remove duplicated call to `posix_spawn_file_actions_init`. +
+  [small]#_[contributed by Juan Manuel Martinez Caamaño]_#
 
 
 == Ccache 4.8.3
@@ -2105,17 +2569,17 @@ Release date: 2020-10-18
   locality.
 
 - Added compression of result and manifest files using the
-  http://zstd.net[Zstandard] algorithm. Compression is enabled by default with
-  compression level 1. This makes ccache able to store more data in the cache.
-  Previously compression using Deflate (zlib) was available but disabled by
-  default. Files can be recompressed with another compression level later with
-  the `-X/--recompress` option described further below.
+  https://facebook.github.io/zstd/[Zstandard] algorithm. Compression is enabled
+  by default with compression level 1. This makes ccache able to store more data
+  in the cache. Previously compression using Deflate (zlib) was available but
+  disabled by default. Files can be recompressed with another compression level
+  later with the `-X/--recompress` option described further below.
 
 - Changed from MD4 to https://blake3.io[BLAKE3] for hashing input. This
   improves performance and reduces the risk of hash collisions.
 
 - Added checksumming of result and manifest files using the
-  http://xxhash.com[XXH3] algorithm to detect data corruption.
+  https://xxhash.com[XXH3] algorithm to detect data corruption.
 
 - Ccache now follows the
   https://specifications.freedesktop.org/basedir-spec/[XDG base directory
@@ -3350,8 +3814,8 @@ Release date: 2014-11-17
 - Compiler options `-fprofile-generate`, `-fprofile-arcs`, `-fprofile-use` and
   `-fbranch-probabilities` are now handled without bailing.
 
-- Added support for Clang's `--serialize-diagnostic` option, storing the
-  diagnostic file (`.dia`) in the cache.
+- Added support for Clang's `--serialize-diagnostics` option, storing the
+  diagnostics file (`.dia`) in the cache.
 
 - Added support for precompiled headers when using Clang.
 
@@ -3893,7 +4357,7 @@ General
 - Added support for long command-line options.
 
 - A `CACHEDIR.TAG` file is now created in the cache directory. See
-  <http://www.brynosaurus.com/cachedir/>.
+  <https://bford.info/cachedir>.
 
 - Messages printed to the debug log (specified by `CCACHE_LOGFILE`) have been
   improved.

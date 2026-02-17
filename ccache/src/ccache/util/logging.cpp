@@ -1,5 +1,5 @@
 // Copyright (C) 2002 Andrew Tridgell
-// Copyright (C) 2009-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2009-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -17,12 +17,16 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include <ccache/Config.hpp>
-#include <ccache/util/FileStream.hpp>
+#include <ccache/config.hpp>
 #include <ccache/util/file.hpp>
+#include <ccache/util/filestream.hpp>
+#include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/logging.hpp>
+#include <ccache/util/string.hpp>
 #include <ccache/util/time.hpp>
+
+#include <string>
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
@@ -38,10 +42,12 @@
 #  endif
 #endif
 
+namespace fs = util::filesystem;
+
 namespace {
 
 // Logfile path and file handle, read from Config::log_file().
-std::string logfile_path;
+fs::path logfile_path;
 util::FileStream logfile;
 
 // Whether to use syslog() instead.
@@ -64,7 +70,7 @@ print_fatal_error_and_exit()
           "ccache: error: Failed to write to {}: {}\n",
           logfile_path,
           strerror(errno));
-  } catch (std::runtime_error&) {
+  } catch (std::runtime_error&) { // NOLINT: this is deliberate
     // Ignore since we can't do anything about it.
   }
   exit(EXIT_FAILURE);
@@ -75,32 +81,26 @@ do_log(std::string_view message, bool bulk)
 {
   static char prefix[200];
 
-  if (!bulk) {
-    char timestamp[100];
-    auto now = util::TimePoint::now();
-    auto tm = util::localtime(now);
-    if (tm) {
-      strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%S", &*tm);
-    } else {
-      snprintf(timestamp,
-               sizeof(timestamp),
-               "%llu",
-               static_cast<long long unsigned int>(now.sec()));
-    }
-    snprintf(prefix,
-             sizeof(prefix),
-             "[%s.%06u %-5d] ",
-             timestamp,
-             static_cast<unsigned int>(now.nsec_decimal_part() / 1000),
-             static_cast<int>(getpid()));
+  if (!bulk || prefix[0] == '\0') {
+    const auto now = util::TimePoint::now();
+    (void)snprintf(prefix,
+                   sizeof(prefix),
+                   "[%s.%06u %-5d] ",
+                   util::format_iso8601_timestamp(now).c_str(),
+                   static_cast<unsigned int>(now.nsec_decimal_part() / 1000),
+                   static_cast<int>(getpid()));
   }
 
-  if (logfile
-      && (fputs(prefix, *logfile) == EOF
-          || fwrite(message.data(), message.length(), 1, *logfile) != 1
-          || fputc('\n', *logfile) == EOF
-          || (!bulk && fflush(*logfile) == EOF))) {
-    print_fatal_error_and_exit();
+  if (logfile) {
+    util::FileLock lock(fileno(*logfile));
+    if (!bulk) {
+      std::ignore = lock.acquire(); // Garbled logs are better than no logs
+    }
+    if (fputs(prefix, *logfile) == EOF
+        || fwrite(message.data(), message.length(), 1, *logfile) != 1
+        || fputc('\n', *logfile) == EOF || fflush(*logfile) == EOF) {
+      print_fatal_error_and_exit();
+    }
   }
 #ifdef HAVE_SYSLOG
   if (use_syslog) {
@@ -123,7 +123,7 @@ namespace util::logging {
 
 // Initialize logging. Call only once.
 void
-init(bool debug, const std::string& log_file)
+init(bool debug, const fs::path& log_file)
 {
   debug_log_enabled = debug;
 
@@ -162,16 +162,7 @@ log(std::string_view message)
 }
 
 void
-bulk_log(std::string_view message)
-{
-  if (!enabled()) {
-    return;
-  }
-  do_log(message, true);
-}
-
-void
-dump_log(const std::string& path)
+dump_log(const fs::path& path)
 {
   if (!enabled()) {
     return;
@@ -182,6 +173,23 @@ dump_log(const std::string& path)
   } else {
     LOG("Failed to open {}: {}", path, strerror(errno));
   }
+}
+
+BulkLogger::BulkLogger()
+  : m_file_lock(logfile ? fileno(*logfile) : -1)
+{
+  if (logfile) {
+    std::ignore = m_file_lock.acquire(); // Garbled logs are better than no logs
+  }
+}
+
+void
+BulkLogger::log(std::string_view message)
+{
+  if (!enabled()) {
+    return;
+  }
+  do_log(message, true);
 }
 
 } // namespace util::logging

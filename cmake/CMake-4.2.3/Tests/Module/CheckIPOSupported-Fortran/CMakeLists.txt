@@ -1,0 +1,29 @@
+cmake_minimum_required(VERSION 3.10)
+project(CheckIPOSupported-Fortran LANGUAGES Fortran)
+
+cmake_policy(SET CMP0069 NEW)
+
+if(CMAKE_Fortran_COMPILER_ID STREQUAL "LFortran")
+  if(CMAKE_Fortran_COMPILER_VERSION VERSION_GREATER_EQUAL "0.55")
+    set(_LFORTRAN_SC_FLAG --separate-compilation)
+  else()
+    set(_LFORTRAN_SC_FLAG --generate-object-code)
+  endif()
+  add_compile_options(--implicit-interface ${_LFORTRAN_SC_FLAG})
+endif()
+
+include(CheckIPOSupported)
+check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
+if(ipo_supported)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+elseif(CMake_TEST_IPO_WORKS_Fortran)
+  string(REPLACE "\n" "\n  " ipo_output "${ipo_output}")
+  message(FATAL_ERROR "IPO expected to work, but the check failed:\n  ${ipo_output}")
+endif()
+
+add_library(foo foo.f)
+add_executable(CheckIPOSupported-Fortran main.f)
+target_link_libraries(CheckIPOSupported-Fortran PUBLIC foo)
+
+enable_testing()
+add_test(NAME CheckIPOSupported-Fortran COMMAND CheckIPOSupported-Fortran)

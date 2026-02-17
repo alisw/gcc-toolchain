@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -191,7 +191,7 @@ Token::get_str () const
   if (str == NULL)
     {
       rust_error_at (get_locus (),
-		     "attempted to get string for %<%s%>, which has no string. "
+		     "attempted to get string for %qs, which has no string. "
 		     "returning empty string instead",
 		     get_token_description ());
       return empty;
@@ -246,6 +246,9 @@ Token::as_string () const
 		 + "\"";
 	case BYTE_STRING_LITERAL:
 	  return "b\"" + escape_special_chars (get_str (), Context::String)
+		 + "\"";
+	case RAW_STRING_LITERAL:
+	  return "r\"" + escape_special_chars (get_str (), Context::String)
 		 + "\"";
 	case CHAR_LITERAL:
 	  return "'" + escape_special_chars (get_str (), Context::Char) + "'";

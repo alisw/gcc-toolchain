@@ -89,7 +89,7 @@
 #   and this notice are preserved. This file is offered as-is, without any
 #   warranty.
 
-#serial 2
+#serial 4
 
 AC_DEFUN([AX_LIB_NETCDF4], [
 
@@ -231,8 +231,11 @@ parallel NetCDF4 is not supported (while it was requested)
         LDFLAGS=$ax_lib_hdf5_save_LDFLAGS
 
 
+        AC_PATH_PROGS([NF_CONFIG], [nf-config], [])
         AC_MSG_CHECKING([for matching NetCDF4 Fortran libraries])
-        NF_CONFIG="${NETCDF4_PREFIX}/bin/nf-config"
+        if test -z "$NF_CONFIG"; then
+           NF_CONFIG="${NETCDF4_PREFIX}/bin/nf-config"
+        fi
         if test ! -f "$NF_CONFIG" || test ! -x "$NF_CONFIG"; then
             AC_MSG_RESULT([no])
             with_netcdf4_fortran="no"
@@ -244,10 +247,10 @@ parallel NetCDF4 is not supported (while it was requested)
                 NETCDF4_FC=$(eval $NF_CONFIG --fc | $AWK '{print $[]2}')
             fi
             dnl Look for the FFLAGS
-            NETCDF4_FFLAGS=$(eval $NC_CONFIG --fflags)
+            NETCDF4_FFLAGS=$(eval $NF_CONFIG --fflags)
 
             dnl Look for the FLIBS and LDFLAGS
-            NETCDF4_tmp_flibs=$(eval $NC_CONFIG --flibs)
+            NETCDF4_tmp_flibs=$(eval $NF_CONFIG --flibs)
 
             dnl Sort out the tmp libs based on their prefixes
             for arg in $NETCDF4_tmp_flibs ; do

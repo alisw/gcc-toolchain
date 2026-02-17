@@ -1,6 +1,6 @@
 /* m2options.h header file for M2Options.mod.
 
-Copyright (C) 2012-2024 Free Software Foundation, Inc.
+Copyright (C) 2012-2025 Free Software Foundation, Inc.
 Contributed by Gaius Mulley <gaius@glam.ac.uk>.
 
 This file is part of GNU Modula-2.
@@ -99,6 +99,8 @@ EXTERN void M2Options_SetSwig (bool value);
 EXTERN void M2Options_SetForcedLocation (location_t location);
 EXTERN location_t M2Options_OverrideLocation (location_t location);
 EXTERN void M2Options_SetStatistics (bool on);
+EXTERN bool M2Options_SetFileOffsetBits (bool value, unsigned int bits);
+EXTERN unsigned int M2Options_GetFileOffsetBits (void);
 EXTERN void M2Options_CppProg (const char *program);
 EXTERN void M2Options_CppArg (const char *opt, const char *arg, bool joined);
 EXTERN void M2Options_SetWholeProgram (bool value);
@@ -166,6 +168,8 @@ EXTERN char *M2Options_GetM2DumpFilter (void);
 EXTERN void M2Options_SetM2DebugTraceFilter (bool value, const char *arg);
 EXTERN bool M2Options_SetM2Dump (bool value, const char *arg);
 EXTERN bool M2Options_GetDumpGimple (void);
+EXTERN void M2Options_SetStrictTypeAssignment (bool value);
+EXTERN void M2Options_SetStrictTypeReason (bool value);
 
 #undef EXTERN
 #endif /* m2options_h.  */

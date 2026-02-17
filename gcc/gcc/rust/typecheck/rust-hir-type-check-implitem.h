@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -29,11 +29,12 @@ class TypeCheckTopLevelExternItem : public TypeCheckBase,
 				    public HIR::HIRExternalItemVisitor
 {
 public:
-  static TyTy::BaseType *Resolve (HIR::ExternalItem *item,
+  static TyTy::BaseType *Resolve (HIR::ExternalItem &item,
 				  const HIR::ExternBlock &parent);
 
   void visit (HIR::ExternalStaticItem &item) override;
   void visit (HIR::ExternalFunctionItem &function) override;
+  void visit (HIR::ExternalTypeItem &type) override;
 
 private:
   TypeCheckTopLevelExternItem (const HIR::ExternBlock &parent);
@@ -46,7 +47,7 @@ class TypeCheckImplItem : public TypeCheckBase, public HIR::HIRImplVisitor
 {
 public:
   static TyTy::BaseType *
-  Resolve (HIR::ImplBlock *parent, HIR::ImplItem *item, TyTy::BaseType *self,
+  Resolve (HIR::ImplBlock &parent, HIR::ImplItem &item, TyTy::BaseType *self,
 	   std::vector<TyTy::SubstitutionParamMapping> substitutions);
 
   void visit (HIR::Function &function) override;
@@ -54,10 +55,10 @@ public:
   void visit (HIR::TypeAlias &type_alias) override;
 
 protected:
-  TypeCheckImplItem (HIR::ImplBlock *parent, TyTy::BaseType *self,
+  TypeCheckImplItem (HIR::ImplBlock &parent, TyTy::BaseType *self,
 		     std::vector<TyTy::SubstitutionParamMapping> substitutions);
 
-  HIR::ImplBlock *parent;
+  HIR::ImplBlock &parent;
   TyTy::BaseType *self;
   std::vector<TyTy::SubstitutionParamMapping> substitutions;
 
@@ -69,7 +70,7 @@ class TypeCheckImplItemWithTrait : public TypeCheckBase,
 {
 public:
   static TyTy::TypeBoundPredicateItem
-  Resolve (HIR::ImplBlock *parent, HIR::ImplItem *item, TyTy::BaseType *self,
+  Resolve (HIR::ImplBlock &parent, HIR::ImplItem &item, TyTy::BaseType *self,
 	   TyTy::TypeBoundPredicate &trait_reference,
 	   std::vector<TyTy::SubstitutionParamMapping> substitutions);
 
@@ -85,7 +86,7 @@ protected:
 
 private:
   TypeCheckImplItemWithTrait (
-    HIR::ImplBlock *parent, TyTy::BaseType *self,
+    HIR::ImplBlock &parent, TyTy::BaseType *self,
     TyTy::TypeBoundPredicate &trait_reference,
     std::vector<TyTy::SubstitutionParamMapping> substitutions);
 
@@ -94,7 +95,7 @@ private:
   TyTy::TypeBoundPredicate &trait_reference;
   TyTy::TypeBoundPredicateItem resolved_trait_item;
 
-  HIR::ImplBlock *parent;
+  HIR::ImplBlock &parent;
   TyTy::BaseType *self;
   std::vector<TyTy::SubstitutionParamMapping> substitutions;
   TyTy::RegionConstraints region_constraints;

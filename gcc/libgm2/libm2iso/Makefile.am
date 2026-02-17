@@ -104,6 +104,7 @@ M2DEFS = ChanConsts.def  CharClass.def \
          ConvTypes.def  COROUTINES.def \
          ErrnoCategory.def  EXCEPTIONS.def \
          GeneralUserExceptions.def  IOChan.def \
+         IOChanUtils.def \
          IOConsts.def  IOLink.def \
          IOResult.def  LongComplexMath.def \
          LongConv.def  LongIO.def \
@@ -149,7 +150,8 @@ M2MODS = ChanConsts.mod  CharClass.mod \
          ConvStringShort.mod \
          ConvTypes.mod  COROUTINES.mod \
          EXCEPTIONS.mod  GeneralUserExceptions.mod \
-         IOChan.mod  IOConsts.mod \
+         IOChan.mod  IOChanUtils.mod \
+         IOConsts.mod \
          IOLink.mod  IOResult.mod \
          LongComplexMath.mod  LongConv.mod \
          LongIO.mod  LongMath.mod \
@@ -215,7 +217,7 @@ if ENABLE_DARWIN_AT_RPATH
 libm2iso_la_link_flags += -nodefaultrpaths -Wl,-rpath,@loader_path/
 endif
 
-libm2iso_la_LINK = $(LINK) -version-info $(libtool_VERSION) $(libm2iso_la_link_flags)
+libm2iso_la_LINK = $(LINK) -version-info $(libtool_VERSION) $(libm2iso_la_link_flags) -lm
 CLEANFILES = SYSTEM.def
 BUILT_SOURCES = SYSTEM.def
 

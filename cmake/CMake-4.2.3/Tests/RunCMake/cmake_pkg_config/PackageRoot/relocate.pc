@@ -1,0 +1,6 @@
+Name: Relocate
+Description: For testing relocation and flag mangling
+Version: 1.0.0
+
+Cflags: -I/Alpha -I/Alpha/sub Beta -I/Gamma
+Libs: -L/Delta -L/Delta/sub Epsilon -L/Zeta

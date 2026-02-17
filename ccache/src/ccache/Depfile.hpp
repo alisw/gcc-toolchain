@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2020-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -20,19 +20,22 @@
 
 class Context;
 
+#include <tl/expected.hpp>
+
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
-namespace Depfile {
+namespace depfile {
 
 std::string escape_filename(std::string_view filename);
 
 std::optional<std::string> rewrite_source_paths(const Context& ctx,
                                                 std::string_view file_content);
 
-void make_paths_relative_in_output_dep(const Context& ctx);
+tl::expected<void, std::string>
+make_paths_relative_in_output_dep(const Context& ctx);
 
 // Split `text` into tokens. A colon token delimits the target tokens from
 // dependency tokens. An empty token marks the end of an entry.
@@ -41,4 +44,4 @@ std::vector<std::string> tokenize(std::string_view text);
 // Return text from `tokens` that originate from `tokenize`.
 std::string untokenize(const std::vector<std::string>& tokens);
 
-} // namespace Depfile
+} // namespace depfile

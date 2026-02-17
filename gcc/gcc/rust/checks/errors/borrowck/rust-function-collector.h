@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -22,8 +22,7 @@
 #include "rust-hir-item.h"
 #include "rust-hir-visitor.h"
 #include "rust-hir.h"
-
-#include <vector>
+#include "rust-system.h"
 
 namespace Rust {
 
@@ -51,21 +50,19 @@ protected:
   template <typename T> void visit_all (std::vector<std::unique_ptr<T>> &items)
   {
     for (std::unique_ptr<T> &item : items)
-      {
-	item->accept_vis (*this);
-      }
+      item->accept_vis (*this);
   }
 
   void visit (HIR::Function &function) override
   {
     functions.push_back (&function);
-    function.get_definition ()->accept_vis (*this);
+    function.get_definition ().accept_vis (*this);
   }
 
   void visit (HIR::ClosureExpr &closure) override
   {
     closures.push_back (&closure);
-    closure.get_expr ()->accept_vis (*this);
+    closure.get_expr ().accept_vis (*this);
   }
 
   // TODO: recurse for nested closures and functions.
@@ -122,11 +119,10 @@ public:
   void visit (HIR::WhileLetLoopExpr &expr) override {}
   void visit (HIR::IfExpr &expr) override {}
   void visit (HIR::IfExprConseqElse &expr) override {}
-  void visit (HIR::IfLetExpr &expr) override {}
-  void visit (HIR::IfLetExprConseqElse &expr) override {}
   void visit (HIR::MatchExpr &expr) override {}
   void visit (HIR::AwaitExpr &expr) override {}
   void visit (HIR::AsyncBlockExpr &expr) override {}
+  void visit (HIR::InlineAsm &expr) override {}
   void visit (HIR::TypeParam &param) override {}
   void visit (HIR::ConstGenericParam &param) override {}
   void visit (HIR::LifetimeWhereClauseItem &item) override {}
@@ -155,6 +151,7 @@ public:
   void visit (HIR::ImplBlock &impl) override {}
   void visit (HIR::ExternalStaticItem &item) override {}
   void visit (HIR::ExternalFunctionItem &item) override {}
+  void visit (HIR::ExternalTypeItem &item) override {}
   void visit (HIR::ExternBlock &block) override {}
   void visit (HIR::LiteralPattern &pattern) override {}
   void visit (HIR::IdentifierPattern &pattern) override {}
@@ -183,7 +180,6 @@ public:
   void visit (HIR::ImplTraitType &type) override {}
   void visit (HIR::TraitObjectType &type) override {}
   void visit (HIR::ParenthesisedType &type) override {}
-  void visit (HIR::ImplTraitTypeOneBound &type) override {}
   void visit (HIR::TupleType &type) override {}
   void visit (HIR::NeverType &type) override {}
   void visit (HIR::RawPointerType &type) override {}

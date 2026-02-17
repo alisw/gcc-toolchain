@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -21,7 +21,6 @@
 #include "rust-unicode.h"
 #include "rust-diagnostics.h"
 #include "rust-system.h"
-#include <sstream>
 
 namespace Rust {
 namespace Compile {

@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2021-2026 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -18,39 +18,39 @@
 
 #include "mainoptions.hpp"
 
-#include <ccache/Config.hpp>
-#include <ccache/Hash.hpp>
-#include <ccache/InodeCache.hpp>
-#include <ccache/ProgressBar.hpp>
 #include <ccache/ccache.hpp>
-#include <ccache/core/CacheEntry.hpp>
-#include <ccache/core/FileRecompressor.hpp>
-#include <ccache/core/Manifest.hpp>
-#include <ccache/core/Result.hpp>
-#include <ccache/core/ResultExtractor.hpp>
-#include <ccache/core/ResultInspector.hpp>
-#include <ccache/core/Statistics.hpp>
-#include <ccache/core/StatsLog.hpp>
+#include <ccache/config.hpp>
+#include <ccache/core/cacheentry.hpp>
 #include <ccache/core/exceptions.hpp>
-#include <ccache/storage/Storage.hpp>
-#include <ccache/storage/local/LocalStorage.hpp>
-#include <ccache/util/Fd.hpp>
-#include <ccache/util/FileStream.hpp>
-#include <ccache/util/PathString.hpp>
-#include <ccache/util/TemporaryFile.hpp>
-#include <ccache/util/TextTable.hpp>
-#include <ccache/util/ThreadPool.hpp>
-#include <ccache/util/UmaskScope.hpp>
-#include <ccache/util/XXH3_128.hpp>
+#include <ccache/core/filerecompressor.hpp>
+#include <ccache/core/manifest.hpp>
+#include <ccache/core/result.hpp>
+#include <ccache/core/resultextractor.hpp>
+#include <ccache/core/resultinspector.hpp>
+#include <ccache/core/statistics.hpp>
+#include <ccache/core/statslog.hpp>
+#include <ccache/hash.hpp>
+#include <ccache/inodecache.hpp>
+#include <ccache/progressbar.hpp>
+#include <ccache/storage/local/localstorage.hpp>
+#include <ccache/storage/storage.hpp>
 #include <ccache/util/assertions.hpp>
 #include <ccache/util/cpu.hpp>
 #include <ccache/util/environment.hpp>
 #include <ccache/util/expected.hpp>
+#include <ccache/util/fd.hpp>
 #include <ccache/util/file.hpp>
+#include <ccache/util/filestream.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/logging.hpp>
+#include <ccache/util/path.hpp>
 #include <ccache/util/string.hpp>
+#include <ccache/util/temporaryfile.hpp>
+#include <ccache/util/texttable.hpp>
+#include <ccache/util/threadpool.hpp>
+#include <ccache/util/umaskscope.hpp>
+#include <ccache/util/xxh3_128.hpp>
 
 #include <fcntl.h>
 
@@ -76,7 +76,6 @@
 namespace fs = util::filesystem;
 
 using util::DirEntry;
-using pstr = util::PathString;
 
 namespace core {
 
@@ -85,7 +84,7 @@ constexpr const char VERSION_TEXT[] =
 Features: {2}
 
 Copyright (C) 2002-2007 Andrew Tridgell
-Copyright (C) 2009-2024 Joel Rosdahl and other contributors
+Copyright (C) 2009-2026 Joel Rosdahl and other contributors
 
 See <https://ccache.dev/credits.html> for a complete list of contributors.
 
@@ -195,7 +194,7 @@ configuration_printer(const std::string& key,
 }
 
 static tl::expected<util::Bytes, std::string>
-read_from_path_or_stdin(const std::string& path)
+read_from_path_or_stdin(const fs::path& path)
 {
   if (path == "-") {
     return util::read_fd(STDIN_FILENO).transform_error([&](auto error) {
@@ -208,7 +207,7 @@ read_from_path_or_stdin(const std::string& path)
 }
 
 static int
-inspect_path(const std::string& path)
+inspect_path(const fs::path& path)
 {
   std::optional<util::DirEntry> orig_dir_entry;
   if (path != "-") {
@@ -227,7 +226,7 @@ inspect_path(const std::string& path)
   }
 
   core::CacheEntry cache_entry(*cache_entry_data);
-  fputs(cache_entry.header().inspect().c_str(), stdout);
+  std::ignore = fputs(cache_entry.header().inspect().c_str(), stdout);
 
   const auto payload = cache_entry.payload();
 
@@ -239,7 +238,7 @@ inspect_path(const std::string& path)
     break;
   }
   case core::CacheEntryType::result:
-    Result::Deserializer result_deserializer(payload);
+    result::Deserializer result_deserializer(payload);
     ResultInspector result_inspector(stdout);
     result_deserializer.visit(result_inspector);
     break;
@@ -434,7 +433,7 @@ get_usage_text(const std::string_view ccache_name)
   return FMT(USAGE_TEXT, ccache_name);
 }
 
-enum {
+enum : uint8_t {
   CHECKSUM_FILE,
   CONFIG_PATH,
   DUMP_MANIFEST,
@@ -454,51 +453,49 @@ enum {
   TRIM_MAX_SIZE,
   TRIM_METHOD,
   TRIM_RECOMPRESS,
-  TRIM_RECOMPRESS_THREADS,
+  TRIM_RECOMP_THREADS,
 };
 
 const char options_string[] = "cCd:k:hF:M:po:svVxX:z";
 const option long_options[] = {
-  {"checksum-file", required_argument, nullptr, CHECKSUM_FILE},
-  {"cleanup", no_argument, nullptr, 'c'},
-  {"clear", no_argument, nullptr, 'C'},
-  {"config-path", required_argument, nullptr, CONFIG_PATH},
-  {"dir", required_argument, nullptr, 'd'},
-  {"directory", required_argument, nullptr, 'd'},               // bwd compat
-  {"dump-manifest", required_argument, nullptr, DUMP_MANIFEST}, // bwd compat
-  {"dump-result", required_argument, nullptr, DUMP_RESULT},     // bwd compat
-  {"evict-namespace", required_argument, nullptr, EVICT_NAMESPACE},
-  {"evict-older-than", required_argument, nullptr, EVICT_OLDER_THAN},
-  {"extract-result", required_argument, nullptr, EXTRACT_RESULT},
-  {"format", required_argument, nullptr, FORMAT},
-  {"get-config", required_argument, nullptr, 'k'},
-  {"hash-file", required_argument, nullptr, HASH_FILE},
-  {"help", no_argument, nullptr, 'h'},
-  {"inspect", required_argument, nullptr, INSPECT},
-  {"max-files", required_argument, nullptr, 'F'},
-  {"max-size", required_argument, nullptr, 'M'},
-  {"print-log-stats", no_argument, nullptr, PRINT_LOG_STATS},
-  {"print-stats", no_argument, nullptr, PRINT_STATS},
-  {"print-version", no_argument, nullptr, PRINT_VERSION},
-  {"recompress", required_argument, nullptr, 'X'},
-  {"recompress-threads", required_argument, nullptr, RECOMPRESS_THREADS},
-  {"set-config", required_argument, nullptr, 'o'},
-  {"show-compression", no_argument, nullptr, 'x'},
-  {"show-config", no_argument, nullptr, 'p'},
-  {"show-log-stats", no_argument, nullptr, SHOW_LOG_STATS},
-  {"show-stats", no_argument, nullptr, 's'},
-  {"trim-dir", required_argument, nullptr, TRIM_DIR},
-  {"trim-max-size", required_argument, nullptr, TRIM_MAX_SIZE},
-  {"trim-method", required_argument, nullptr, TRIM_METHOD},
-  {"trim-recompress", required_argument, nullptr, TRIM_RECOMPRESS},
-  {"trim-recompress-threads",
-   required_argument,
-   nullptr,
-   TRIM_RECOMPRESS_THREADS},
-  {"verbose", no_argument, nullptr, 'v'},
-  {"version", no_argument, nullptr, 'V'},
-  {"zero-stats", no_argument, nullptr, 'z'},
-  {nullptr, 0, nullptr, 0}};
+  {"checksum-file",           required_argument, nullptr, CHECKSUM_FILE      },
+  {"cleanup",                 no_argument,       nullptr, 'c'                },
+  {"clear",                   no_argument,       nullptr, 'C'                },
+  {"config-path",             required_argument, nullptr, CONFIG_PATH        },
+  {"dir",                     required_argument, nullptr, 'd'                },
+  {"directory",               required_argument, nullptr, 'd'                }, // bwd compat
+  {"dump-manifest",           required_argument, nullptr, DUMP_MANIFEST      }, // bwd compat
+  {"dump-result",             required_argument, nullptr, DUMP_RESULT        }, // bwd compat
+  {"evict-namespace",         required_argument, nullptr, EVICT_NAMESPACE    },
+  {"evict-older-than",        required_argument, nullptr, EVICT_OLDER_THAN   },
+  {"extract-result",          required_argument, nullptr, EXTRACT_RESULT     },
+  {"format",                  required_argument, nullptr, FORMAT             },
+  {"get-config",              required_argument, nullptr, 'k'                },
+  {"hash-file",               required_argument, nullptr, HASH_FILE          },
+  {"help",                    no_argument,       nullptr, 'h'                },
+  {"inspect",                 required_argument, nullptr, INSPECT            },
+  {"max-files",               required_argument, nullptr, 'F'                },
+  {"max-size",                required_argument, nullptr, 'M'                },
+  {"print-log-stats",         no_argument,       nullptr, PRINT_LOG_STATS    },
+  {"print-stats",             no_argument,       nullptr, PRINT_STATS        },
+  {"print-version",           no_argument,       nullptr, PRINT_VERSION      },
+  {"recompress",              required_argument, nullptr, 'X'                },
+  {"recompress-threads",      required_argument, nullptr, RECOMPRESS_THREADS },
+  {"set-config",              required_argument, nullptr, 'o'                },
+  {"show-compression",        no_argument,       nullptr, 'x'                },
+  {"show-config",             no_argument,       nullptr, 'p'                },
+  {"show-log-stats",          no_argument,       nullptr, SHOW_LOG_STATS     },
+  {"show-stats",              no_argument,       nullptr, 's'                },
+  {"trim-dir",                required_argument, nullptr, TRIM_DIR           },
+  {"trim-max-size",           required_argument, nullptr, TRIM_MAX_SIZE      },
+  {"trim-method",             required_argument, nullptr, TRIM_METHOD        },
+  {"trim-recompress",         required_argument, nullptr, TRIM_RECOMPRESS    },
+  {"trim-recompress-threads", required_argument, nullptr, TRIM_RECOMP_THREADS},
+  {"verbose",                 no_argument,       nullptr, 'v'                },
+  {"version",                 no_argument,       nullptr, 'V'                },
+  {"zero-stats",              no_argument,       nullptr, 'z'                },
+  {nullptr,                   0,                 nullptr, 0                  }
+};
 
 int
 process_main_options(int argc, const char* const* argv)
@@ -562,14 +559,14 @@ process_main_options(int argc, const char* const* argv)
     }
 
     case TRIM_METHOD:
-      trim_lru_mtime = (arg == "ctime");
+      trim_lru_mtime = (arg == "mtime");
       break;
 
     case TRIM_RECOMPRESS:
       trim_recompress = parse_compression_level(arg);
       break;
 
-    case TRIM_RECOMPRESS_THREADS:
+    case TRIM_RECOMP_THREADS:
       trim_recompress_threads =
         static_cast<uint32_t>(util::value_or_throw<Error>(util::parse_unsigned(
           arg, 1, std::numeric_limits<uint32_t>::max(), "threads")));
@@ -608,7 +605,7 @@ process_main_options(int argc, const char* const* argv)
     case TRIM_MAX_SIZE:
     case TRIM_METHOD:
     case TRIM_RECOMPRESS:
-    case TRIM_RECOMPRESS_THREADS:
+    case TRIM_RECOMP_THREADS:
     case 'v': // --verbose
       // Already handled in the first pass.
       break;
@@ -617,11 +614,17 @@ process_main_options(int argc, const char* const* argv)
       util::XXH3_128 checksum;
       util::Fd fd(arg == "-" ? STDIN_FILENO : open(arg.c_str(), O_RDONLY));
       if (fd) {
-        util::read_fd(*fd, [&checksum](auto data) { checksum.update(data); });
+        auto r =
+          util::read_fd(*fd, [&checksum](auto data) { checksum.update(data); });
+        if (!r) {
+          PRINT(stderr, "Error: Failed to checksum {}: {}\n", arg, r.error());
+          return EXIT_FAILURE;
+        }
         const auto digest = checksum.digest();
         PRINT(stdout, "{}\n", util::format_base16(digest));
       } else {
         PRINT(stderr, "Error: Failed to checksum {}\n", arg);
+        return EXIT_FAILURE;
       }
       break;
     }
@@ -654,7 +657,7 @@ process_main_options(int argc, const char* const* argv)
       core::CacheEntry cache_entry(*cache_entry_data);
       const auto payload = cache_entry.payload();
 
-      Result::Deserializer result_deserializer(payload);
+      result::Deserializer result_deserializer(payload);
       result_deserializer.visit(result_extractor);
       cache_entry.verify_checksum();
       return EXIT_SUCCESS;
@@ -721,7 +724,7 @@ process_main_options(int argc, const char* const* argv)
     case 'F': { // --max-files
       auto files = util::value_or_throw<Error>(util::parse_unsigned(arg));
       config.set_value_in_file(
-        pstr(config.config_path()).str(), "max_files", arg);
+        util::pstr(config.config_path()), "max_files", arg);
       if (files == 0) {
         PRINT_RAW(stdout, "Unset cache file limit\n");
       } else {
@@ -735,7 +738,7 @@ process_main_options(int argc, const char* const* argv)
         util::value_or_throw<Error>(util::parse_size(arg));
       uint64_t max_size = size;
       config.set_value_in_file(
-        pstr(config.config_path()).str(), "max_size", arg);
+        util::pstr(config.config_path()), "max_size", arg);
       if (max_size == 0) {
         PRINT_RAW(stdout, "Unset cache size limit\n");
       } else {
@@ -755,7 +758,7 @@ process_main_options(int argc, const char* const* argv)
       }
       std::string key = arg.substr(0, eq_pos);
       std::string value = arg.substr(eq_pos + 1);
-      config.set_value_in_file(pstr(config.config_path()).str(), key, value);
+      config.set_value_in_file(util::pstr(config.config_path()), key, value);
       break;
     }
 
@@ -812,7 +815,8 @@ process_main_options(int argc, const char* const* argv)
 
     case 'V': // --version
     {
-      PRINT_RAW(stdout, get_version_text(pstr(fs::path(argv[0]).stem()).str()));
+      PRINT_RAW(stdout,
+                get_version_text(util::pstr(fs::path(argv[0]).stem()).str()));
       break;
     }
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2021-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2021-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -18,8 +18,7 @@
 
 #include "path.hpp"
 
-#include <ccache/util/DirEntry.hpp>
-#include <ccache/util/PathString.hpp>
+#include <ccache/util/direntry.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
 #include <ccache/util/string.hpp>
@@ -32,19 +31,12 @@ const char k_dev_null_path[] = "/dev/null";
 
 namespace fs = util::filesystem;
 
-using pstr = util::PathString;
-
 namespace util {
 
 std::string
 add_exe_suffix(const std::string& program)
 {
-  std::string ext = util::to_lowercase(fs::path(program).extension().string());
-  if (ext == ".exe" || ext == ".bat" || ext == ".sh") {
-    return program;
-  } else {
-    return program + ".exe";
-  }
+  return fs::path(program).has_extension() ? program : program + ".exe";
 }
 
 fs::path
@@ -70,7 +62,14 @@ get_dev_null_path()
   return k_dev_null_path;
 }
 
-std::filesystem::path
+fs::path
+lexically_normal(const fs::path& path)
+{
+  auto result = path.lexically_normal();
+  return result.has_filename() ? result : result.parent_path();
+}
+
+fs::path
 make_relative_path(const fs::path& actual_cwd,
                    const fs::path& apparent_cwd,
                    const fs::path& path)
@@ -79,7 +78,7 @@ make_relative_path(const fs::path& actual_cwd,
   DEBUG_ASSERT(apparent_cwd.is_absolute());
   DEBUG_ASSERT(path.is_absolute());
 
-  fs::path normalized_path = path.lexically_normal();
+  fs::path normalized_path = util::lexically_normal(path);
   fs::path closest_existing_path = normalized_path;
   std::vector<fs::path> relpath_candidates;
   fs::path path_suffix;
@@ -92,25 +91,19 @@ make_relative_path(const fs::path& actual_cwd,
     closest_existing_path = closest_existing_path.parent_path();
   }
 
-  const auto add_relpath_candidates = [&](auto p) {
-    relpath_candidates.push_back(p.lexically_relative(actual_cwd));
-    if (apparent_cwd != actual_cwd) {
-      relpath_candidates.emplace_back(p.lexically_relative(apparent_cwd));
-    }
-  };
-
-  add_relpath_candidates(closest_existing_path);
-  const fs::path real_closest_existing_path =
-    fs::canonical(closest_existing_path).value_or(closest_existing_path);
-  if (real_closest_existing_path != closest_existing_path) {
-    add_relpath_candidates(real_closest_existing_path);
+  relpath_candidates.push_back(
+    closest_existing_path.lexically_relative(actual_cwd));
+  if (apparent_cwd != actual_cwd) {
+    relpath_candidates.emplace_back(
+      closest_existing_path.lexically_relative(apparent_cwd));
   }
 
   // Find best (i.e. shortest existing) match:
   std::sort(relpath_candidates.begin(),
             relpath_candidates.end(),
             [](const auto& path1, const auto& path2) {
-              return pstr(path1).str().length() < pstr(path2).str().length();
+              return util::pstr(path1).str().length()
+                     < util::pstr(path2).str().length();
             });
   for (const auto& relpath : relpath_candidates) {
     if (fs::equivalent(relpath, closest_existing_path)) {
@@ -130,14 +123,34 @@ path_starts_with(const fs::path& path, const fs::path& prefix)
   // Note: Not all paths on Windows are case insensitive, but for our purposes
   // (checking whether a path is below the base directory) users will expect
   // them to be.
-  fs::path p1 = util::to_lowercase(path.string());
-  fs::path p2 = util::to_lowercase(prefix.string());
+  fs::path p1 = util::to_lowercase(util::lexically_normal(path).string());
+  fs::path p2 = util::to_lowercase(util::lexically_normal(prefix).string());
 #else
   const fs::path& p1 = path;
   const fs::path& p2 = prefix;
 #endif
-  return std::mismatch(p1.begin(), p1.end(), p2.begin(), p2.end()).second
-         == p2.end();
+
+  // Skip empty part at the end that originates from a trailing slash.
+  auto p2_end = p2.end();
+  if (!p2.empty()) {
+    --p2_end;
+    if (!p2_end->empty()) {
+      ++p2_end;
+    }
+  }
+
+  return std::mismatch(p1.begin(), p1.end(), p2.begin(), p2_end).second
+         == p2_end;
+}
+
+bool
+path_starts_with(const std::filesystem::path& path,
+                 const std::vector<std::filesystem::path>& prefixes)
+{
+  return std::any_of(
+    std::begin(prefixes), std::end(prefixes), [&](const fs::path& prefix) {
+      return path_starts_with(path, prefix);
+    });
 }
 
 } // namespace util

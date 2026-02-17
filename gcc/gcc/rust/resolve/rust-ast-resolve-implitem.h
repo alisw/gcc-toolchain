@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -31,13 +31,13 @@ class ResolveToplevelImplItem : public ResolverBase
   using Rust::Resolver::ResolverBase::visit;
 
 public:
-  static void go (AST::AssociatedItem *item, const CanonicalPath &prefix)
+  static void go (AST::AssociatedItem &item, const CanonicalPath &prefix)
   {
-    if (item->is_marked_for_strip ())
+    if (item.is_marked_for_strip ())
       return;
 
     ResolveToplevelImplItem resolver (prefix);
-    item->accept_vis (resolver);
+    item.accept_vis (resolver);
   }
 
   void visit (AST::TypeAlias &type) override
@@ -51,7 +51,7 @@ public:
       [&] (const CanonicalPath &, NodeId, location_t locus) -> void {
 	rich_location r (line_table, type.get_locus ());
 	r.add_range (locus);
-	rust_error_at (r, "redefined multiple times");
+	redefined_error (r);
       });
   }
 
@@ -67,7 +67,7 @@ public:
       [&] (const CanonicalPath &, NodeId, location_t locus) -> void {
 	rich_location r (line_table, constant.get_locus ());
 	r.add_range (locus);
-	rust_error_at (r, "redefined multiple times");
+	redefined_error (r);
       });
   }
 
@@ -84,7 +84,7 @@ public:
       [&] (const CanonicalPath &, NodeId, location_t locus) -> void {
 	rich_location r (line_table, function.get_locus ());
 	r.add_range (locus);
-	rust_error_at (r, "redefined multiple times");
+	redefined_error (r);
       });
   }
 
@@ -124,10 +124,10 @@ public:
       [&] (const CanonicalPath &, NodeId, location_t locus) -> void {
 	rich_location r (line_table, function.get_locus ());
 	r.add_range (locus);
-	rust_error_at (r, "redefined multiple times");
+	redefined_error (r);
       });
 
-    mappings->insert_canonical_path (function.get_node_id (), cpath);
+    mappings.insert_canonical_path (function.get_node_id (), cpath);
   }
 
   void visit (AST::TraitItemConst &constant) override
@@ -144,10 +144,10 @@ public:
       [&] (const CanonicalPath &, NodeId, location_t locus) -> void {
 	rich_location r (line_table, constant.get_locus ());
 	r.add_range (locus);
-	rust_error_at (r, "redefined multiple times");
+	redefined_error (r);
       });
 
-    mappings->insert_canonical_path (constant.get_node_id (), cpath);
+    mappings.insert_canonical_path (constant.get_node_id (), cpath);
   }
 
   void visit (AST::TraitItemType &type) override
@@ -162,10 +162,10 @@ public:
       [&] (const CanonicalPath &, NodeId, location_t locus) -> void {
 	rich_location r (line_table, type.get_locus ());
 	r.add_range (locus);
-	rust_error_at (r, "redefined multiple times");
+	redefined_error (r);
       });
 
-    mappings->insert_canonical_path (type.get_node_id (), cpath);
+    mappings.insert_canonical_path (type.get_node_id (), cpath);
   }
 
 private:
@@ -183,17 +183,17 @@ class ResolveToplevelExternItem : public ResolverBase
   using Rust::Resolver::ResolverBase::visit;
 
 public:
-  static void go (AST::ExternalItem *item, const CanonicalPath &prefix)
+  static void go (AST::ExternalItem &item, const CanonicalPath &prefix)
   {
     ResolveToplevelExternItem resolver (prefix);
-    item->accept_vis (resolver);
+    item.accept_vis (resolver);
   };
 
-  void visit (AST::ExternalFunctionItem &function) override
+  void visit (AST::Function &function) override
   {
     auto decl
       = CanonicalPath::new_seg (function.get_node_id (),
-				function.get_identifier ().as_string ());
+				function.get_function_name ().as_string ());
     auto path = prefix.append (decl);
 
     resolver->get_name_scope ().insert (
@@ -202,11 +202,11 @@ public:
       [&] (const CanonicalPath &, NodeId, location_t locus) -> void {
 	rich_location r (line_table, function.get_locus ());
 	r.add_range (locus);
-	rust_error_at (r, "redefined multiple times");
+	redefined_error (r);
       });
 
     NodeId current_module = resolver->peek_current_module_scope ();
-    mappings->insert_module_child_item (current_module, decl);
+    mappings.insert_module_child_item (current_module, decl);
   }
 
   void visit (AST::ExternalStaticItem &item) override
@@ -221,11 +221,29 @@ public:
       [&] (const CanonicalPath &, NodeId, location_t locus) -> void {
 	rich_location r (line_table, item.get_locus ());
 	r.add_range (locus);
-	rust_error_at (r, "redefined multiple times");
+	redefined_error (r);
       });
 
     NodeId current_module = resolver->peek_current_module_scope ();
-    mappings->insert_module_child_item (current_module, decl);
+    mappings.insert_module_child_item (current_module, decl);
+  }
+
+  void visit (AST::ExternalTypeItem &type) override
+  {
+    auto decl = CanonicalPath::new_seg (type.get_node_id (),
+					type.get_identifier ().as_string ());
+    auto path = prefix.append (decl);
+
+    resolver->get_type_scope ().insert (
+      path, type.get_node_id (), type.get_locus (), false, Rib::ItemType::Type,
+      [&] (const CanonicalPath &, NodeId, location_t locus) -> void {
+	rich_location r (line_table, type.get_locus ());
+	r.add_range (locus);
+	redefined_error (r);
+      });
+
+    NodeId current_module = resolver->peek_current_module_scope ();
+    mappings.insert_module_child_item (current_module, decl);
   }
 
 private:

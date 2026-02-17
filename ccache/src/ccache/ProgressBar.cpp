@@ -16,7 +16,7 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "ProgressBar.hpp"
+#include "progressbar.hpp"
 
 #include <ccache/util/assertions.hpp>
 #include <ccache/util/format.hpp>
@@ -103,5 +103,5 @@ ProgressBar::update(double value)
           unfilled_bar_width);
   }
 
-  fflush(stdout);
+  std::ignore = fflush(stdout);
 }

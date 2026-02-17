@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -28,8 +28,7 @@ namespace Resolver {
 
 static bool
 resolve_operator_overload_fn (
-  Analysis::RustLangItem::ItemType lang_item_type, TyTy::BaseType *ty,
-  TyTy::FnType **resolved_fn,
+  LangItem::Kind lang_item_type, TyTy::BaseType *ty, TyTy::FnType **resolved_fn,
   Adjustment::AdjustmentType *requires_ref_adjustment);
 
 TyTy::BaseType *
@@ -42,8 +41,7 @@ Adjuster::adjust_type (const std::vector<Adjustment> &adjustments)
 }
 
 Adjustment
-Adjuster::try_deref_type (TyTy::BaseType *ty,
-			  Analysis::RustLangItem::ItemType deref_lang_item)
+Adjuster::try_deref_type (TyTy::BaseType *ty, LangItem::Kind deref_lang_item)
 {
   TyTy::FnType *fn = nullptr;
   Adjustment::AdjustmentType requires_ref_adjustment
@@ -68,11 +66,11 @@ Adjuster::try_deref_type (TyTy::BaseType *ty,
     = Adjustment::AdjustmentType::ERROR;
   switch (deref_lang_item)
     {
-    case Analysis::RustLangItem::ItemType::DEREF:
+    case LangItem::Kind::DEREF:
       adjustment_type = Adjustment::AdjustmentType::DEREF;
       break;
 
-    case Analysis::RustLangItem::ItemType::DEREF_MUT:
+    case LangItem::Kind::DEREF_MUT:
       adjustment_type = Adjustment::AdjustmentType::DEREF_MUT;
       break;
 
@@ -106,38 +104,36 @@ Adjuster::try_unsize_type (TyTy::BaseType *ty)
   if (!is_valid_type)
     return Adjustment::get_error ();
 
-  auto mappings = Analysis::Mappings::get ();
+  auto &mappings = Analysis::Mappings::get ();
   auto context = TypeCheckContext::get ();
 
   const auto ref_base = static_cast<const TyTy::ArrayType *> (ty);
   auto slice_elem = ref_base->get_element_type ();
 
   auto slice
-    = new TyTy::SliceType (mappings->get_next_hir_id (), ty->get_ident ().locus,
+    = new TyTy::SliceType (mappings.get_next_hir_id (), ty->get_ident ().locus,
 			   TyTy::TyVar (slice_elem->get_ref ()));
-  context->insert_implicit_type (slice);
+  context->insert_implicit_type (slice->get_ref (), slice);
 
   return Adjustment (Adjustment::AdjustmentType::UNSIZE, ty, slice);
 }
 
 static bool
 resolve_operator_overload_fn (
-  Analysis::RustLangItem::ItemType lang_item_type, TyTy::BaseType *lhs,
+  LangItem::Kind lang_item_type, TyTy::BaseType *lhs,
   TyTy::FnType **resolved_fn,
   Adjustment::AdjustmentType *requires_ref_adjustment)
 {
   auto context = TypeCheckContext::get ();
-  auto mappings = Analysis::Mappings::get ();
+  auto &mappings = Analysis::Mappings::get ();
 
   // look up lang item for arithmetic type
-  std::string associated_item_name
-    = Analysis::RustLangItem::ToString (lang_item_type);
-  DefId respective_lang_item_id = UNKNOWN_DEFID;
-  bool lang_item_defined
-    = mappings->lookup_lang_item (lang_item_type, &respective_lang_item_id);
+  std::string associated_item_name = LangItem::ToString (lang_item_type);
+  auto lang_item_defined = mappings.lookup_lang_item (lang_item_type);
 
   if (!lang_item_defined)
     return false;
+  DefId &respective_lang_item_id = lang_item_defined.value ();
 
   // we might be in a static or const context and unknown is fine
   TypeCheckContextItem current_context = TypeCheckContextItem::get_error ();
@@ -213,7 +209,7 @@ resolve_operator_overload_fn (
 	       == 0)
 	{
 	  TraitReference *trait_reference
-	    = TraitResolver::Lookup (*parent->get_trait_ref ().get ());
+	    = TraitResolver::Lookup (parent->get_trait_ref ());
 	  if (!trait_reference->is_error ())
 	    {
 	      TyTy::BaseType *lookup = nullptr;
@@ -296,7 +292,7 @@ resolve_operator_overload_fn (
 	  rust_assert (lookup->get_kind () == TyTy::TypeKind::FNDEF);
 	  fn = static_cast<TyTy::FnType *> (lookup);
 
-	  location_t unify_locus = mappings->lookup_location (lhs->get_ref ());
+	  location_t unify_locus = mappings.lookup_location (lhs->get_ref ());
 	  unify_site (lhs->get_ref (),
 		      TyTy::TyWithLocation (fn->get_self_type ()),
 		      TyTy::TyWithLocation (adjusted_self), unify_locus);
@@ -359,8 +355,7 @@ AutoderefCycle::cycle (TyTy::BaseType *receiver)
 	  return false;
 	}
 
-      Adjustment deref
-	= Adjuster::try_deref_type (r, Analysis::RustLangItem::ItemType::DEREF);
+      Adjustment deref = Adjuster::try_deref_type (r, LangItem::Kind::DEREF);
       if (!deref.is_error ())
 	{
 	  auto deref_r = deref.get_expected ();
@@ -374,8 +369,8 @@ AutoderefCycle::cycle (TyTy::BaseType *receiver)
 	  adjustments.pop_back ();
 	}
 
-      Adjustment deref_mut = Adjuster::try_deref_type (
-	r, Analysis::RustLangItem::ItemType::DEREF_MUT);
+      Adjustment deref_mut
+	= Adjuster::try_deref_type (r, LangItem::Kind::DEREF_MUT);
       if (!deref_mut.is_error ())
 	{
 	  auto deref_r = deref_mut.get_expected ();

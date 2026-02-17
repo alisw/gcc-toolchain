@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2020-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -16,10 +16,10 @@
 // this program; if not, write to the Free Software Foundation, Inc., 51
 // Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-#include "TestUtil.hpp"
+#include "testutil.hpp"
 
-#include <ccache/Context.hpp>
 #include <ccache/ccache.hpp>
+#include <ccache/context.hpp>
 #include <ccache/util/file.hpp>
 #include <ccache/util/filesystem.hpp>
 #include <ccache/util/format.hpp>
@@ -38,6 +38,7 @@
 
 namespace fs = util::filesystem;
 using TestUtil::TestContext;
+using util::Args;
 
 TEST_SUITE_BEGIN("ccache");
 
@@ -107,6 +108,15 @@ TEST_CASE("split_argv")
     CHECK(!argv_parts.masquerading_as_compiler);
     CHECK(argv_parts.config_settings
           == std::vector<std::string>{"a=b", "c = d"});
+    CHECK(argv_parts.compiler_and_args == Args::from_string("/usr/bin/gcc"));
+  }
+
+  SUBCASE("compilation with config option ending with /ccache")
+  {
+    const char* const argv[] = {"ccache", "a=b/ccache", "/usr/bin/gcc"};
+    argv_parts = split_argv(std::size(argv), argv);
+    CHECK(!argv_parts.masquerading_as_compiler);
+    CHECK(argv_parts.config_settings == std::vector<std::string>{"a=b/ccache"});
     CHECK(argv_parts.compiler_and_args == Args::from_string("/usr/bin/gcc"));
   }
 }
@@ -196,7 +206,7 @@ TEST_CASE("guess_compiler")
   SUBCASE("Follow symlink to actual compiler")
   {
     const auto cwd = *fs::current_path();
-    util::write_file(cwd / "gcc", "");
+    REQUIRE(util::write_file(cwd / "gcc", ""));
     CHECK(fs::create_symlink("gcc", cwd / "intermediate"));
     const auto cc = cwd / "cc";
     CHECK(fs::create_symlink("intermediate", cc));
@@ -207,11 +217,46 @@ TEST_CASE("guess_compiler")
   SUBCASE("Classify clang-cl symlink to clang")
   {
     const auto cwd = *fs::current_path();
-    util::write_file(cwd / "clang", "");
+    REQUIRE(util::write_file(cwd / "clang", ""));
     const auto clang_cl = cwd / "clang-cl";
     CHECK(fs::create_symlink("clang", clang_cl));
 
     CHECK(guess_compiler(clang_cl) == CompilerType::clang_cl);
+  }
+
+  SUBCASE("Probe hardlink for actual compiler, gcc")
+  {
+    const auto cwd = *fs::current_path();
+    const auto cc = cwd / "cc";
+    const auto gcc = cwd / "gcc";
+    REQUIRE(util::write_file(cwd / "cc", ""));
+    CHECK(fs::create_hard_link(cc, gcc));
+
+    CHECK(guess_compiler(cc) == CompilerType::gcc);
+  }
+
+  SUBCASE("Probe hardlink for actual compiler, clang")
+  {
+    const auto cwd = *fs::current_path();
+    const auto cc = cwd / "cc";
+    const auto clang = cwd / "clang";
+    REQUIRE(util::write_file(cwd / "cc", ""));
+    CHECK(fs::create_hard_link(cc, clang));
+
+    CHECK(guess_compiler(cc) == CompilerType::clang);
+  }
+
+  SUBCASE("Probe hardlink for actual compiler, gcc+clang")
+  {
+    const auto cwd = *fs::current_path();
+    const auto cc = cwd / "cc";
+    const auto gcc = cwd / "gcc";
+    const auto clang = cwd / "clang";
+    REQUIRE(util::write_file(cwd / "cc", ""));
+    CHECK(fs::create_hard_link(cc, gcc));
+    CHECK(fs::create_hard_link(cc, clang));
+
+    CHECK(guess_compiler(cc) == CompilerType::clang);
   }
 #endif
 }

@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2024 Free Software Foundation, Inc.
+# Copyright (C) 2012-2026 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ run_dump_test test3
 if { ![istarget *c54x*-*-*] && ![istarget *c4x*-*-*] && ![istarget "nds32*-*-*"] } {
     run_dump_test irp
     run_dump_test rept
+    run_list_test rept "-almn"
     run_dump_test repeat
     run_dump_test vararg
 }
@@ -71,6 +72,11 @@ run_dump_test app3
 remote_download host "$srcdir/$subdir/app4b.s"
 run_dump_test app4
 run_dump_test app5
+if { ![istarget tic30-*-*] } {
+    run_list_test app6 ""
+}
+
+run_dump_test arg1
 
 run_list_test badarg ""
 
@@ -106,3 +112,6 @@ run_list_test count
 run_list_test irp-count
 run_list_test irpc-quote
 run_list_test rept-count
+run_dump_test nesting1
+run_dump_test nesting2
+run_dump_test nesting3

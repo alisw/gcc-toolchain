@@ -1,4 +1,4 @@
-# Copyright 2023-2024 Free Software Foundation, Inc.
+# Copyright 2023-2025 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,8 +42,12 @@ lassign [gdbserver_start "" $target_exec] protocol port
 gdb_assert {$protocol == "remote"}
 
 # We just want to test that attaching works at all.
-if {[dap_target_remote $port] != ""} {
-    dap_shutdown true
-}
+set attach_id [dap_target_remote $port]
+
+dap_check_request_and_response "configurationDone" configurationDone
+
+dap_check_response "attach response" attach $attach_id
+
+dap_shutdown true
 
 close_gdbserver

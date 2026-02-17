@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -48,11 +48,16 @@ public:
 
   std::vector<LifetimeParam> &get_for_lifetimes () { return for_lifetimes; }
 
+  const std::vector<LifetimeParam> &get_for_lifetimes () const
+  {
+    return for_lifetimes;
+  }
+
   TraitBound (TypePath type_path, location_t locus, bool in_parens = false,
 	      bool opening_question_mark = false,
 	      std::vector<LifetimeParam> for_lifetimes
 	      = std::vector<LifetimeParam> ())
-    : TypeParamBound (Analysis::Mappings::get ()->get_next_node_id ()),
+    : TypeParamBound (Analysis::Mappings::get ().get_next_node_id ()),
       in_parens (in_parens), opening_question_mark (opening_question_mark),
       for_lifetimes (std::move (for_lifetimes)),
       type_path (std::move (type_path)), locus (locus)
@@ -80,6 +85,11 @@ public:
 
   bool is_in_parens () const { return in_parens; }
   bool has_opening_question_mark () const { return opening_question_mark; }
+
+  TypeParamBoundType get_bound_type () const override
+  {
+    return TypeParamBound::TypeParamBoundType::TRAIT;
+  }
 
 protected:
   /* Use covariance to implement clone function as returning this object rather
@@ -513,10 +523,10 @@ public:
   void accept_vis (ASTVisitor &vis) override;
 
   // TODO: would a "vis_type" be better?
-  std::unique_ptr<TypeNoBounds> &get_type_pointed_to ()
+  TypeNoBounds &get_type_pointed_to ()
   {
     rust_assert (type != nullptr);
-    return type;
+    return *type;
   }
 
 protected:
@@ -532,7 +542,7 @@ protected:
 class ReferenceType : public TypeNoBounds
 {
   // bool has_lifetime; // TODO: handle in lifetime or something?
-  Lifetime lifetime;
+  tl::optional<Lifetime> lifetime;
 
   bool has_mut;
   std::unique_ptr<TypeNoBounds> type;
@@ -543,11 +553,12 @@ public:
   bool is_mut () const { return has_mut; }
 
   // Returns whether the reference has a lifetime.
-  bool has_lifetime () const { return !lifetime.is_error (); }
+  bool has_lifetime () const { return lifetime.has_value (); }
 
   // Constructor
   ReferenceType (bool is_mut, std::unique_ptr<TypeNoBounds> type_no_bounds,
-		 location_t locus, Lifetime lifetime = Lifetime::elided ())
+		 location_t locus,
+		 tl::optional<Lifetime> lifetime = Lifetime::elided ())
     : lifetime (std::move (lifetime)), has_mut (is_mut),
       type (std::move (type_no_bounds)), locus (locus)
   {}
@@ -580,17 +591,18 @@ public:
   void accept_vis (ASTVisitor &vis) override;
 
   // TODO: would a "vis_type" be better?
-  std::unique_ptr<TypeNoBounds> &get_type_referenced ()
+  TypeNoBounds &get_type_referenced ()
   {
     rust_assert (type != nullptr);
-    return type;
+    return *type;
   }
 
   bool get_has_mut () const { return has_mut; }
 
-  Lifetime &get_lifetime () { return lifetime; }
+  Lifetime &get_lifetime () { return lifetime.value (); }
+  const Lifetime &get_lifetime () const { return lifetime.value (); }
 
-  std::unique_ptr<TypeNoBounds> &get_base_type () { return type; }
+  TypeNoBounds &get_base_type () { return *type; }
 
 protected:
   /* Use covariance to implement clone function as returning this object rather
@@ -641,17 +653,17 @@ public:
   void accept_vis (ASTVisitor &vis) override;
 
   // TODO: would a "vis_type" be better?
-  std::unique_ptr<Type> &get_elem_type ()
+  Type &get_elem_type ()
   {
     rust_assert (elem_type != nullptr);
-    return elem_type;
+    return *elem_type;
   }
 
   // TODO: would a "vis_expr" be better?
-  std::unique_ptr<Expr> &get_size_expr ()
+  Expr &get_size_expr ()
   {
     rust_assert (size != nullptr);
-    return size;
+    return *size;
   }
 
 protected:
@@ -701,10 +713,10 @@ public:
   void accept_vis (ASTVisitor &vis) override;
 
   // TODO: would a "vis_type" be better?
-  std::unique_ptr<Type> &get_elem_type ()
+  Type &get_elem_type ()
   {
     rust_assert (elem_type != nullptr);
-    return elem_type;
+    return *elem_type;
   }
 
 protected:
@@ -824,7 +836,13 @@ public:
   const std::vector<Attribute> &get_outer_attrs () const { return outer_attrs; }
 
   // TODO: would a "vis_type" be better?
-  std::unique_ptr<Type> &get_type ()
+  Type &get_type ()
+  {
+    rust_assert (param_type != nullptr);
+    return *param_type;
+  }
+
+  std::unique_ptr<Type> &get_type_ptr ()
   {
     rust_assert (param_type != nullptr);
     return param_type;
@@ -935,10 +953,10 @@ public:
   }
 
   // TODO: would a "vis_type" be better?
-  std::unique_ptr<TypeNoBounds> &get_return_type ()
+  TypeNoBounds &get_return_type ()
   {
     rust_assert (has_return_type ());
-    return return_type;
+    return *return_type;
   }
 
   FunctionQualifiers &get_function_qualifiers () { return function_qualifiers; }

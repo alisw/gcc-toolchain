@@ -15,25 +15,25 @@ if [ -n "${CLANG_FORMAT:-}" ]; then
     exec "$CLANG_FORMAT" "$@"
 fi
 
-top_dir="$(dirname "$0")"
-clang_format_exe="$top_dir/.clang-format-exe"
-clang_format_version=11
-clang_format_release=master-1d7ec53d
+misc_dir="$(dirname "$0")"
+clang_format_exe="${misc_dir}/.clang-format-exe"
+clang_format_version=18
+clang_format_release=master-609f1513
 url_prefix="https://github.com/muttleyxd/clang-tools-static-binaries/releases/download/${clang_format_release}/clang-format-${clang_format_version}_"
 
 if [ ! -x "$clang_format_exe" ]; then
     case "$(uname -s | tr '[:upper:]' '[:lower:]')" in
         *mingw*|*cygwin*|*msys*)
             url_suffix=windows-amd64.exe
-            checksum=7167f201acbd8ff06a7327d14db0d8a169393384bbc42873bb8277b788cc4469
+            checksum=d8c788f0d983177ae2ebcac6cb32d0e9bd79f93bae5aab5197b1d5998be4f90b
             ;;
         *darwin*)
             url_suffix=macosx-amd64
-            checksum=0cab857e66aa9ed9ea00eee3c94bfc91a2d72ab440327e15784852cf94b1814b
+            checksum=de1a6affc3253af8cf48130d2940375b284025bedbb2b812d55e85cfdff69e83
             ;;
         *linux*)
             url_suffix=linux-amd64
-            checksum=a9d76e3275823ea308bc2e4d2a6e3cc693f38c29d891f1d74cb0e1553e698dea
+            checksum=2a6cd633f85e96a32f68cca3f1ac2ef63c677cae0f2b2a7f2a0c3f81a36a2353
             ;;
         *)
             echo "Error: Please set CLANG_FORMAT to clang-format version $clang_format_version" >&2
@@ -54,8 +54,8 @@ if [ ! -x "$clang_format_exe" ]; then
 
     if ! command -v sha256sum >/dev/null; then
         echo "Warning: sha256sum not found, not verifying clang-format integrity" >&2
-    elif ! echo "$checksum $clang_format_exe.tmp" | sha256sum --status -c; then
-        echo "Error: Bad checksum of downloaded clang-format" >&2
+    elif ! echo "$checksum $clang_format_exe.tmp" | sha256sum --status -c -; then
+        echo "Error: Bad checksum of downloaded clang-format: expected ${checksum}, actual $(sha256sum ${clang_format_exe}.tmp | awk '{print $1}')" >&2
         exit 1
     fi
 

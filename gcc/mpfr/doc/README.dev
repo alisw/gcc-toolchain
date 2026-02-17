@@ -1,5 +1,5 @@
-Copyright 2002-2023 Free Software Foundation, Inc.
-Contributed by the AriC and Caramba projects, INRIA.
+Copyright 2002-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -14,9 +14,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>.
 
 
 Notes for the MPFR developers and Git users
@@ -180,8 +179,11 @@ To make a release (for the MPFR team):
      c) configure MPFR with
           --disable-shared --with-gmp-build=/path/to/gmp-x.y.z
      d) go into the "tune" directory and run "make tune"
-     e) put the resulting mparam.h file into mparam_h.in (please include
-        the version of GMP and the compiler used)
+     e) put the resulting ../src/mparam.h file in some subdirectory for the
+        concerned architecture (see src/*/mparam.h for the current ones);
+        please include the version of GMP and the compiler used
+     f) update mparam_h.in to conditionally include this mparam.h file
+        (see the existing architectures as examples)
 
      You can produce time graphs to check the thresholds are correct (and
      compare to the corresponding mpf functions) with mbench. For example
@@ -287,7 +289,7 @@ To make a release (for the MPFR team):
      platform supports that (e.g. under Linux/x86, with GCC and its -mpc64
      option to simulate the FreeBSD / NetBSD 6- behavior, where by default,
      the x87 FPU is configured to round on 53 bits), and in various locales
-     (LC_ALL=tr_TR in particular, if installed).
+     (LC_ALL=tr_TR and LC_ALL=ps_AF in particular, if installed).
      On x86, test with -m96bit-long-double and -m128bit-long-double.
      Try also with gcc's -fno-common option.
      Check also with "-Wformat=2", but without logging support (in order
@@ -306,8 +308,11 @@ To make a release (for the MPFR team):
      ./configure CC=g++ (MPFR 2.3.2 did not).
      Also test --enable-gmp-internals with it.
 
-     Try different compilers, e.g., icc, opencc (x86_64 machines),
-     tcc <https://bellard.org/tcc/>, llvm-gcc, clang.
+     Try different compilers, e.g., tcc <https://bellard.org/tcc/>,
+     Clang and Intel's compiler, with and without optimizations.
+     Note that optimizations may also hide bugs, even with "gcc -O0"
+     (which transforms "-X >= 0" to "X <= 0", changing the behavior
+     on LONG_MIN); as an example, see tstrtofr.c, bug20230606().
 
      On 64-bit PowerPC, test against GMP built with the different ABI's:
      32, mode32 and mode64 (in particular mode32, where long's have
@@ -334,21 +339,15 @@ To make a release (for the MPFR team):
        LOG_COMPILER="valgrind -q --error-exitcode=1 --leak-check=full"
      See below for more information about valgrind.
 
-     Test with "clang -fsanitize=undefined" (available as of Clang 3.3),
-     e.g.: ./configure CC=clang CFLAGS='-fsanitize=undefined'
-     The -fno-sanitize-recover option can give more visibility by making
-     the corresponding tests fail (useful for automated tests). However,
-     clang unconditionally regards the floating-point division by zero
+     Test with an UB sanitizer, e.g. with Clang's or GCC's options
+     "-fsanitize=undefined -fno-sanitize-recover" in CFLAGS. However,
+     Clang unconditionally regards the floating-point division by zero
      as an error with "-fsanitize=undefined"; this is detected by a
      configure test, which sets MPFR_ERRDIVZERO to disable the tests
      involving a floating-point division by zero. Alternatively, on systems
      supporting IEC 60559 / IEEE 754 division by zero, one can also provide
      the -fno-sanitize=float-cast-overflow,float-divide-by-zero option
      *after* the -fsanitize=undefined one.
-
-     GCC 4.9 also supports "-fsanitize=undefined", but it just gives
-     diagnostic messages at run time, not a failure; GCC 5 supports
-     -fno-sanitize-recover like clang.
 
      Test with GCC's AddressSanitizer (-fsanitize=address). Optimizations
      should not be enabled, otherwise they can make some errors disappear.
@@ -498,11 +497,12 @@ List of macros used for building MPFR (also used for checking):
 
 Format of long double.
 + HAVE_LDOUBLE_IS_DOUBLE:               IEEE double.
-+ HAVE_LDOUBLE_IEEE_EXT_BIG:            IEEE extended, big endian.
++ HAVE_LDOUBLE_IEEE_EXT_BIG:            IEEE extended, big endian (m68k).
 + HAVE_LDOUBLE_IEEE_EXT_LITTLE:         IEEE extended, little endian.
 + HAVE_LDOUBLE_IEEE_QUAD_BIG:           IEEE quad, big endian.
 + HAVE_LDOUBLE_IEEE_QUAD_LITTLE:        IEEE quad, little endian.
 + HAVE_LDOUBLE_MAYBE_DOUBLE_DOUBLE:     Double-double (a.k.a. IBM).
+Note that emin(m68k) = emin(x86) - 1.
 
 + MPFR_DISABLE_IEEE_FLOATS:
                         Related to the native floating-point types (e.g.
@@ -542,6 +542,10 @@ Format of long double.
 
 + MPFR_WANT_FLOAT128:   Define to build conversion functions from/to
                         binary128 floats (_Float128 or __float128).
+                        Define it to 1 if constants have the f128 suffix.
+                        Define it to 2 if constants have the q suffix; in
+                        this case, the mpfr_float128 macro may have to be
+                        defined as __float128 (a.k.a. __float128 fallback).
 
 + MPFR_ALLOCA_MAX:      Maximum size for the use of alloca() by temporary
                         allocations (default: 16384); if set to 0, alloca()
@@ -618,6 +622,13 @@ List of macros used for checking MPFR:
                         with the MPFR_TESTS_TIMEOUT environment variable.
 + MPFR_TESTS_ABORT:     Define to replace exit(1) by abort(), thus with a
                         core dump.
++ MPFR_TESTS_SKIP_CHECK_NULL:
+                        Define to skip the check_null() tests in
+                        tfprintf.c and tsprintf.c, in case of failure
+                        due to a bug in GMP's vsnprintf replacement
+                        (see INSTALL file). The goal is just to avoid
+                        a failure of the MPFR testsuite; there is no
+                        workaround for the bug in GMP's vsnprintf!
 + MPFR_COV_CHECK:       Define to enable value coverage checking (must not
                         be used in production). This macro is for the MPFR
                         developers, in order to improve the test suite.
@@ -692,10 +703,10 @@ ISO C Names and corresponding headers:
   http://www.schweikhardt.net/identifiers.html
 
 The C language:
-  https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1256.pdf (C99)
+  https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1256.pdf (C99 + TC3)
   https://www.open-std.org/jtc1/sc22/wg14/www/C99RationaleV5.10.pdf
   https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf (C11 draft)
-  https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3054.pdf (C2x draft)
+  https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3220.pdf (≈ C23)
   http://home.datacomm.ch/t_wolf/tw/c/c9x_changes.html
 
 About undefined behavior:
@@ -704,6 +715,7 @@ About undefined behavior:
   https://blog.regehr.org/archives/232
   https://blog.regehr.org/archives/1520
   https://blog.llvm.org/posts/2011-05-13-what-every-c-programmer-should-know/
+  https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3128.pdf
 
 Type punning, strict aliasing, and optimization:
   https://blog.regehr.org/archives/959
@@ -733,10 +745,16 @@ with code like MPFR_EXP_MIN/n).
 
    =====================================================================
 
-Don't use "near" and "far" as variable names since they are "Keywords"
-for some C compiler (Old DOS compiler). Also don't use "pm", which is used
-by the C compiler 'sharp' to design variables that should be stored in the
-flash memory. Don't use "new", which is reserved in C++.
+Don't use the following identifiers since they are keywords for some
+compilers:
+  - "bool", "true" and "false": keywords in ISO C23.
+  - "near" and "far": keywords in some old DOS compiler.
+  - "pm", which is used by the C compiler 'sharp' to design variables
+    that should be stored in the flash memory.
+  - "new", which is reserved in C++.
+
+Note: This list is not exhaustive; these are just the simplest keywords,
+which are likely to be used by mistake.
 
 Check C++ reserved keywords, e.g. from
 
@@ -833,13 +851,6 @@ does not conform to the C standard by default. References:
   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=85957
 
 [*] https://stackoverflow.com/questions/4331200/what-do-f-and-d-mean-at-the-end-of-numeric-literals
-
-   =====================================================================
-
-In MPFR, _Float128 may be defined as __float128 if the latter is provided
-by the compiler, but not the former. In such a case, do not assume that
-_Float128 and long double are necessarily different types (as required by
-the WG14 N2579 draft "IEC 60559 interchange and extended types").
 
    =====================================================================
 
@@ -970,6 +981,30 @@ for undefined preprocessing identifier").
 
 ===========================================================================
 
+Make sure that if code may appear in a function or macro argument, any
+comma is inside parentheses (this must be parentheses, not brackets),
+so that the comma is not interpreted as separating arguments.
+
+For instance, do not write
+  bp[MPFR_ASSERTD (k >= 0), k]
+but
+  bp[(MPFR_ASSERTD (k >= 0), k)]
+because
+  MPFR_UNLIKELY (bp[MPFR_ASSERTD (k >= 0), k] == 0)
+would be invalid (it may also be better to put the assertion earlier
+to improve the readability of the code, if possible).
+
+This mainly concerns the MPFR_ASSERT* macros (which are likely to be
+followed by a comma operator) and macros that can take non-expression
+code (such as MPFR_RNDRAW_GEN and MPFR_FAST_COMPUTE_IF_SMALL_INPUT).
+
+A really misused comma should generally yield a compilation error,
+thus would easily be detected. But this might not be the case if the
+occurrence is in conditionally compiled code or if this is combined
+with some other mistake.
+
+===========================================================================
+
 If you want to use the logging of MPFR, you need to enable it:
   make distclean
   ./configure --enable-logging
@@ -1035,13 +1070,13 @@ after the format string.
 Example:
  int dodo (mpfr_t x, mpfr_t op, int cnt, mpfr_rnd_t rnd) {
   [decl]
-  MPFR_LOG_BEGIN (("op[%Pu]=%.*Rg rnd=%s",
+  MPFR_LOG_BEGIN (("op[%Pd]=%.*Rg rnd=%s",
                     mpfr_get_prec(op), mpfr_log_prec, op, RND2STR(rnd)));
 
 +++ MPFR_LOG_END(x)
  Add this macro at the end of a function.
 Example:
- MPFR_LOG_END (("x[%Pu]=%.*Rg i=%d", mpfr_get_prec (x), mpfr_log_prec, x, i));
+ MPFR_LOG_END (("x[%Pd]=%.*Rg i=%d", mpfr_get_prec (x), mpfr_log_prec, x, i));
  return i;
 }
 
@@ -1051,8 +1086,8 @@ the same job as MPFR_LOG_BEGIN and MPFR_LOG_END but it is smatter
 since it intercepts the return itself to put the end statement.
 Example
  MPFR_LOG_FUNC (
-    ("op[%Pu]=%.*Rg rnd=%d", op, mpfr_get_prec (op), mpfr_log_prec, op),
-    ("x[%Pu]=%.*Rg inexact=%d", mpfr_get_prec (x), mpfr_log_prec, x, i));
+    ("op[%Pd]=%.*Rg rnd=%d", op, mpfr_get_prec (op), mpfr_log_prec, op),
+    ("x[%Pd]=%.*Rg inexact=%d", mpfr_get_prec (x), mpfr_log_prec, x, i));
 
 
 The double brackets "((" and "))" are needed since MPFR must still
@@ -1098,8 +1133,8 @@ mpfr_toto (mpfr_ptr rop, mpfr_srcptr op, mpfr_rnd_t rnd)
 
   /* Log it if requested */
   MPFR_LOG_BEGIN
-    (("op[%Pu]=%.*Rg rnd=%d", mpfr_get_prec (op), mpfr_log_prec, op, rnd),
-     ("rop[%Pu]=%.*Rg inexact=%d",
+    (("op[%Pd]=%.*Rg rnd=%d", mpfr_get_prec (op), mpfr_log_prec, op, rnd),
+     ("rop[%Pd]=%.*Rg inexact=%d",
        mpfr_get_prec (rop), mpfr_log_prec, rop, inexact));
 
   /* First deal with particular cases */
@@ -1455,10 +1490,12 @@ in the MPFR shared library when the encoding is BID:
 When using GNU extensions (based on the value of the __GNUC_* macros), check
 whether they work with ICC. The following paper can give useful information:
 "Intel® Compilers for Linux*: Compatibility with GNU Compilers" at
-<https://software.intel.com/articles/intel-compilers-for-linux-compatibility-with-gnu-compilers>.
+  https://www.intel.com/content/www/us/en/content-details/686146/intel-c-compiler-compatibility-with-gnu-gcc-compiler-for-linux.html
+
+Direct link to the PDF file:
+  https://cdrdv2.intel.com/v1/dl/getContent/686146?fileName=gnu-icc-compatibility-v03.pdf
 
 To detect compilers, see
-
   https://sourceforge.net/p/predef/wiki/Compilers/
 
 ===========================================================================
@@ -1476,6 +1513,7 @@ a #if, e.g. in add1sp.c:
 
 which implies that the #define's in add1sp1_extracted.c
 
+#define int32_t int
 #define int64_t long
 #define uint32_t unsigned int
 #define uint64_t mp_limb_t
@@ -1526,6 +1564,39 @@ In particular:
 
 ===========================================================================
 
+Makefile portability
+--------------------
+
+Due to the various "make" implementations, the "make" rules must follow
+the POSIX standard:
+  https://pubs.opengroup.org/onlinepubs/9799919799/utilities/make.html
+
+The GNU Autoconf manual has a chapter "Portable Make Programming".
+
+The Makefile.am files in the directories distributed with MPFR have
+a .POSIX special target to ensure POSIX behavior. However, Automake
+(at least for versions up to 1.16.5) adds non-comment lines before
+this target in the generated Makefile files; it is not clear whether
+this matters for any "make" implementation, though. About this issue,
+see <https://debbugs.gnu.org/cgi/bugreport.cgi?bug=55025>.
+
+Note: This .POSIX special target is needed for "GNU make". But because of
+the Automake issue, it might also break rules (e.g. if "make" redefines
+variables when it reaches the .POSIX special target). The AIX "make"
+command outputs a warning
+  warning: .POSIX directive is not first non-comment line.
+but it behaves as wanted.
+
+Be careful with "make" bugs related to errors in shell commands:
+  https://debbugs.gnu.org/cgi/bugreport.cgi?bug=55025#24
+
+Corresponding bug report for GNU make:
+  https://savannah.gnu.org/bugs/index.php?63667
+
+So, do not use the '-' prefix or the .IGNORE special target.
+
+===========================================================================
+
 About the test suite
 --------------------
 
@@ -1546,8 +1617,8 @@ of the tests/Makefile.am file.
 
 /* Test file for mpfr_func.
 
-Copyright 2023 Free Software Foundation, Inc.
-Contributed by the AriC and Caramba projects, INRIA.
+Copyright 2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -1562,9 +1633,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #include "mpfr-test.h"
 
@@ -1860,6 +1930,19 @@ In the MPFR source directory:
 $ ./configure --host=i686-w64-mingw32 --disable-shared --with-gmp=...
 $ make
 $ make check LOG_COMPILER=wine
+
+In case of "module:import_dll Library ....dll ... not found" error, locate
+the dll file and set the WINEPATH environment variable to its directory.
+
+For instance, to use POSIX threads instead of win32 threads:
+$ ./configure --host=i686-w64-mingw32 --disable-shared --with-gmp=... \
+    CC=i686-w64-mingw32-gcc-posix
+$ make
+$ make check LOG_COMPILER="env WINEPATH=/usr/i686-w64-mingw32/lib wine"
+
+When abort() is called, wine returns with exit status 3. Since this value
+is not used by the MPFR tests, such an exit status probably means that an
+abort() was called somewhere.
 
 Note: Due to bugs in autoconf[1] and dash[2], the configure script
 may create files with a binary filename or have any other arbitrary

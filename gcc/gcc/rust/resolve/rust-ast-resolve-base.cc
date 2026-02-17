@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -20,6 +20,7 @@
 #include "rust-ast-resolve-expr.h"
 #include "rust-ast-resolve-path.h"
 #include "rust-item.h"
+#include "rust-path.h"
 
 namespace Rust {
 namespace Resolver {
@@ -30,7 +31,7 @@ ResolverBase::resolve_visibility (const AST::Visibility &vis)
   if (vis.has_path ())
     {
       auto path = vis.get_path ();
-      ResolvePath::go (&path);
+      ResolvePath::go (path);
 
       // Do we need to lookup something here?
       // Is it just about resolving the names correctly so we can look them up
@@ -267,6 +268,10 @@ ResolverBase::visit (AST::RangeToInclExpr &)
 {}
 
 void
+ResolverBase::visit (AST::BoxExpr &)
+{}
+
+void
 ResolverBase::visit (AST::ReturnExpr &)
 {}
 
@@ -316,6 +321,10 @@ ResolverBase::visit (AST::AwaitExpr &)
 
 void
 ResolverBase::visit (AST::AsyncBlockExpr &)
+{}
+
+void
+ResolverBase::visit (AST::InlineAsm &)
 {}
 
 void
@@ -428,10 +437,6 @@ ResolverBase::visit (AST::ExternalTypeItem &)
 
 void
 ResolverBase::visit (AST::ExternalStaticItem &)
-{}
-
-void
-ResolverBase::visit (AST::ExternalFunctionItem &)
 {}
 
 void
@@ -648,6 +653,10 @@ ResolverBase::visit (AST::VariadicParam &)
 
 void
 ResolverBase::visit (AST::FunctionParam &)
+{}
+
+void
+ResolverBase::visit (AST::FormatArgs &fmt)
 {}
 
 } // namespace Resolver

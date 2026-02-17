@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -132,12 +132,6 @@
 /* Nonzero if this class has a virtual function table pointer.  */
 #define TYPE_CONTAINS_VPTR_P(NODE)                                             \
   (TYPE_POLYMORPHIC_P (NODE) || CLASSTYPE_VBASECLASSES (NODE))
-
-/* A vector of BINFOs for the direct and indirect virtual base classes
-   that this type uses in a post-order depth-first left-to-right
-   order.  (In other words, these bases appear in the order that they
-   should be initialized.)  */
-#define CLASSTYPE_VBASECLASSES(NODE) (LANG_TYPE_CLASS_CHECK (NODE)->vbases)
 
 /* A vector of BINFOs for the direct and indirect virtual base classes
    that this type uses in a post-order depth-first left-to-right
@@ -782,12 +776,6 @@ extern GTY (()) tree cp_global_trees[CPTI_MAX];
    for this class.  */
 #define CLASSTYPE_PRIMARY_BINFO(NODE)                                          \
   (LANG_TYPE_CLASS_CHECK (NODE)->primary_base)
-
-/* A vector of BINFOs for the direct and indirect virtual base classes
-   that this type uses in a post-order depth-first left-to-right
-   order.  (In other words, these bases appear in the order that they
-   should be initialized.)  */
-#define CLASSTYPE_VBASECLASSES(NODE) (LANG_TYPE_CLASS_CHECK (NODE)->vbases)
 
 /* The type corresponding to NODE when NODE is used as a base class,
    i.e., NODE without virtual base classes or tail padding.  */
@@ -2992,8 +2980,6 @@ extern location_t rs_expr_location (const_tree);
 
 extern int
 is_empty_class (tree type);
-
-extern tree array_type_nelts_top (tree);
 
 extern bool
 is_really_empty_class (tree, bool);

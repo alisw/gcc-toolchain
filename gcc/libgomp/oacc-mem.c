@@ -1,6 +1,6 @@
 /* OpenACC Runtime initialization routines
 
-   Copyright (C) 2013-2024 Free Software Foundation, Inc.
+   Copyright (C) 2013-2025 Free Software Foundation, Inc.
 
    Contributed by Mentor Embedded.
 
@@ -480,7 +480,7 @@ acc_unmap_data (void *h)
   tgt->tgt_end = 0;
   tgt->to_free = NULL;
 
-  bool is_tgt_unmapped = gomp_remove_var (acc_dev, n);
+  bool is_tgt_unmapped __attribute__((unused)) = gomp_remove_var (acc_dev, n);
   assert (is_tgt_unmapped);
 
   gomp_mutex_unlock (&acc_dev->lock);
@@ -743,7 +743,8 @@ goacc_exit_datum_1 (struct gomp_device_descr *acc_dev, void *h, size_t s,
 	    if (n->tgt->list[l_i].key
 		&& !n->tgt->list[l_i].is_attach)
 	      ++num_mappings;
-	  bool is_tgt_unmapped = gomp_remove_var (acc_dev, n);
+	  bool is_tgt_unmapped __attribute__((unused))
+	    = gomp_remove_var (acc_dev, n);
 	  assert (is_tgt_unmapped || num_mappings > 1);
 	}
     }
@@ -950,7 +951,7 @@ acc_attach_async (void **hostaddr, int async)
     }
 
   gomp_attach_pointer (acc_dev, aq, &acc_dev->mem_map, n, (uintptr_t) hostaddr,
-		       0, NULL, false);
+		       0, NULL, false, true);
 
   gomp_mutex_unlock (&acc_dev->lock);
 }
@@ -1023,7 +1024,7 @@ static int
 find_group_last (int pos, size_t mapnum, size_t *sizes, unsigned short *kinds)
 {
   unsigned char kind0 = kinds[pos] & 0xff;
-  int first_pos = pos;
+  int first_pos __attribute__((unused)) = pos;
 
   switch (kind0)
     {
@@ -1157,7 +1158,7 @@ goacc_enter_data_internal (struct gomp_device_descr *acc_dev, size_t mapnum,
 	  if ((kinds[i] & 0xff) == GOMP_MAP_ATTACH)
 	    {
 	      gomp_attach_pointer (acc_dev, aq, &acc_dev->mem_map, n,
-				   (uintptr_t) h, s, NULL, false);
+				   (uintptr_t) h, s, NULL, false, true);
 	      /* OpenACC 'attach'/'detach' doesn't affect structured/dynamic
 		 reference counts ('n->refcount', 'n->dynamic_refcount').  */
 	    }
@@ -1175,7 +1176,7 @@ goacc_enter_data_internal (struct gomp_device_descr *acc_dev, size_t mapnum,
 		  = lookup_host (acc_dev, hostaddrs[j], sizeof (void *));
 		gomp_attach_pointer (acc_dev, aq, &acc_dev->mem_map, m,
 				     (uintptr_t) hostaddrs[j], sizes[j], NULL,
-				     false);
+				     false, true);
 	      }
 
 	  bool processed = false;
@@ -1203,7 +1204,7 @@ goacc_enter_data_internal (struct gomp_device_descr *acc_dev, size_t mapnum,
 	      /* Let 'goacc_map_vars' -> 'gomp_map_vars_internal' handle
 		 this.  */
 	      gomp_mutex_unlock (&acc_dev->lock);
-	      struct target_mem_desc *tgt_
+	      struct target_mem_desc *tgt_ __attribute__((unused))
 		= goacc_map_vars (acc_dev, aq, groupnum, &hostaddrs[i], NULL,
 				  &sizes[i], &kinds[i], true,
 				  GOMP_MAP_VARS_ENTER_DATA);

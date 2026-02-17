@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2020-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -18,11 +18,12 @@
 
 #pragma once
 
-#include <ccache/core/Result.hpp>
+#include <ccache/core/result.hpp>
 
 #include <nonstd/span.hpp>
 
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <optional>
 #include <string>
@@ -30,26 +31,26 @@
 namespace core {
 
 // This class extracts the parts of a result entry to a directory.
-class ResultExtractor : public Result::Deserializer::Visitor
+class ResultExtractor : public result::Deserializer::Visitor
 {
 public:
-  using GetRawFilePathFunction = std::function<std::string(uint8_t)>;
+  using GetRawFilePathFunction = std::function<std::filesystem::path(uint8_t)>;
 
   //`result_path` should be the path to the local result entry file if the
   // result comes from local storage.
   ResultExtractor(
-    const std::string& output_directory,
+    const std::filesystem::path& output_directory,
     std::optional<GetRawFilePathFunction> get_raw_file_path = std::nullopt);
 
   void on_embedded_file(uint8_t file_number,
-                        Result::FileType file_type,
+                        result::FileType file_type,
                         nonstd::span<const uint8_t> data) override;
   void on_raw_file(uint8_t file_number,
-                   Result::FileType file_type,
+                   result::FileType file_type,
                    uint64_t file_size) override;
 
 private:
-  std::string m_output_directory;
+  std::filesystem::path m_output_directory;
   std::optional<GetRawFilePathFunction> m_get_raw_file_path;
 };
 

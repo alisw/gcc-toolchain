@@ -1,4 +1,4 @@
-# Copyright 2022-2024 Free Software Foundation, Inc.
+# Copyright 2022-2025 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ from .startup import exec_and_log, in_gdb_thread, log
 
 # True when the inferior is thought to be running, False otherwise.
 # This may be accessed from any thread, which can be racy.  However,
-# this unimportant because this global is only used for the
+# this is unimportant because this global is only used for the
 # 'notStopped' response, which itself is inherently racy.
 inferior_running = False
 
@@ -161,7 +161,7 @@ _expected_pause = False
 
 
 @in_gdb_thread
-def exec_and_expect_stop(cmd, expected_pause=False):
+def exec_and_expect_stop(cmd, expected_pause=False, propagate_exception=False):
     """A wrapper for exec_and_log that sets the continue-suppression flag.
 
     When EXPECTED_PAUSE is True, a stop that looks like a pause (e.g.,
@@ -174,7 +174,7 @@ def exec_and_expect_stop(cmd, expected_pause=False):
     # continuing.
     _suppress_cont = not expected_pause
     # FIXME if the call fails should we clear _suppress_cont?
-    exec_and_log(cmd)
+    exec_and_log(cmd, propagate_exception)
 
 
 # Map from gdb stop reasons to DAP stop reasons.  Some of these can't
@@ -238,7 +238,6 @@ def _on_stop(event):
     ):
         obj["reason"] = "pause"
     else:
-        global stop_reason_map
         obj["reason"] = stop_reason_map[event.details["reason"]]
     _expected_pause = False
     send_event("stopped", obj)

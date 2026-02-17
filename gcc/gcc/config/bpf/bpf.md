@@ -1,5 +1,5 @@
 ;; Machine description for eBPF.
-;; Copyright (C) 2019-2024 Free Software Foundation, Inc.
+;; Copyright (C) 2019-2025 Free Software Foundation, Inc.
 
 ;; This file is part of GCC.
 
@@ -121,12 +121,11 @@
   [(match_operand:DI 0 "general_operand" "")
    (match_operand:DI 1 "general_operand" "")]
   ""
-  "
 {
-  error (\"BPF does not support dynamic stack allocation\");
+  sorry ("dynamic stack allocation not supported");
   emit_insn (gen_nop ());
   DONE;
-}")
+})
 
 ;;;; Arithmetic/Logical
 
@@ -282,7 +281,7 @@
   "@
    {and\t%0,0xffff|%0 &= 0xffff}
    *return bpf_output_move (operands, \"{mov\t%0,%1\;and\t%0,0xffff|%0 = %1;%0 &= 0xffff}\");
-   *return bpf_output_move (operands, \"{ldxh\t%0,%1|%0 = *(u16 *) (%1)}\");"
+   *return bpf_output_move (operands, \"{ldxh\t%0,%1|%0 = *(u16 *) %1}\");"
   [(set_attr "type" "alu,alu,ldx")])
 
 (define_insn "zero_extendqidi2"
@@ -292,7 +291,7 @@
   "@
    {and\t%0,0xff|%0 &= 0xff}
    *return bpf_output_move (operands, \"{mov\t%0,%1\;and\t%0,0xff|%0 = %1;%0 &= 0xff}\");
-   *return bpf_output_move (operands, \"{ldxb\t%0,%1|%0 = *(u8 *) (%1)}\");"
+   *return bpf_output_move (operands, \"{ldxb\t%0,%1|%0 = *(u8 *) %1}\");"
   [(set_attr "type" "alu,alu,ldx")])
 
 (define_insn "zero_extendsidi2"
@@ -302,7 +301,7 @@
   ""
   "@
    *return bpf_output_move (operands, bpf_has_alu32 ? \"{mov32\t%0,%1|%0 = %1}\" : \"{mov\t%0,%1\;and\t%0,0xffffffff|%0 = %1;%0 &= 0xffffffff}\");
-   *return bpf_output_move (operands, \"{ldxw\t%0,%1|%0 = *(u32 *) (%1)}\");"
+   *return bpf_output_move (operands, \"{ldxw\t%0,%1|%0 = *(u32 *) %1}\");"
   [(set_attr "type" "alu,ldx")])
 
 ;;; Sign-extension
@@ -329,7 +328,7 @@
   "bpf_has_smov"
   "@
    *return bpf_output_move (operands, \"{movs\t%0,%1,32|%0 = (s32) %1}\");
-   *return bpf_output_move (operands, \"{ldxsw\t%0,%1|%0 = *(s32 *) (%1)}\");"
+   *return bpf_output_move (operands, \"{ldxsw\t%0,%1|%0 = *(s32 *) %1}\");"
   [(set_attr "type" "alu,ldx")])
 
 (define_insn "extendhidi2"
@@ -338,7 +337,7 @@
   "bpf_has_smov"
   "@
    *return bpf_output_move (operands, \"{movs\t%0,%1,16|%0 = (s16) %1}\");
-   *return bpf_output_move (operands, \"{ldxsh\t%0,%1|%0 = *(s16 *) (%1)}\");"
+   *return bpf_output_move (operands, \"{ldxsh\t%0,%1|%0 = *(s16 *) %1}\");"
   [(set_attr "type" "alu,ldx")])
 
 (define_insn "extendqidi2"
@@ -347,7 +346,7 @@
   "bpf_has_smov"
   "@
    *return bpf_output_move (operands, \"{movs\t%0,%1,8|%0 = (s8) %1}\");
-   *return bpf_output_move (operands, \"{ldxsb\t%0,%1|%0 = *(s8 *) (%1)}\");"
+   *return bpf_output_move (operands, \"{ldxsb\t%0,%1|%0 = *(s8 *) %1}\");"
   [(set_attr "type" "alu,ldx")])
 
 (define_insn "extendhisi2"
@@ -384,11 +383,11 @@
         (match_operand:MM 1 "mov_src_operand"      " q,rIc,BC,r,I"))]
   ""
   "@
-   *return bpf_output_move (operands, \"{ldx<mop>\t%0,%1|%0 = *(<smop> *) (%1)}\");
+   *return bpf_output_move (operands, \"{ldx<mop>\t%0,%1|%0 = *(<smop> *) %1}\");
    *return bpf_output_move (operands, \"{mov\t%0,%1|%0 = %1}\");
    *return bpf_output_move (operands, \"{lddw\t%0,%1|%0 = %1 ll}\");
-   *return bpf_output_move (operands, \"{stx<mop>\t%0,%1|*(<smop> *) (%0) = %1}\");
-   *return bpf_output_move (operands, \"{st<mop>\t%0,%1|*(<smop> *) (%0) = %1}\");"
+   *return bpf_output_move (operands, \"{stx<mop>\t%0,%1|*(<smop> *) %0 = %1}\");
+   *return bpf_output_move (operands, \"{st<mop>\t%0,%1|*(<smop> *) %0 = %1}\");"
 [(set_attr "type" "ldx,alu,alu,stx,st")])
 
 ;;;; Shifts

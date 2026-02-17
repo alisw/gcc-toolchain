@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -52,12 +52,12 @@ public:
   }
   void visit (HIR::StructExprFieldIdentifierValue &field) override
   {
-    auto value = ExprStmtBuilder (ctx).build (*field.get_value ());
+    auto value = ExprStmtBuilder (ctx).build (field.get_value ());
     handle_named_field (field, value);
   }
   void visit (HIR::StructExprFieldIndexValue &field) override
   {
-    auto value = ExprStmtBuilder (ctx).build (*field.get_value ());
+    auto value = ExprStmtBuilder (ctx).build (field.get_value ());
     coercion_site (value,
 		   struct_ty->get_field_at_index (field.get_tuple_index ())
 		     ->get_field_type ());
@@ -149,11 +149,10 @@ protected:
   void visit (HIR::WhileLetLoopExpr &expr) override { rust_unreachable (); }
   void visit (HIR::IfExpr &expr) override { rust_unreachable (); }
   void visit (HIR::IfExprConseqElse &expr) override { rust_unreachable (); }
-  void visit (HIR::IfLetExpr &expr) override { rust_unreachable (); }
-  void visit (HIR::IfLetExprConseqElse &expr) override { rust_unreachable (); }
   void visit (HIR::MatchExpr &expr) override { rust_unreachable (); }
   void visit (HIR::AwaitExpr &expr) override { rust_unreachable (); }
   void visit (HIR::AsyncBlockExpr &expr) override { rust_unreachable (); }
+  void visit (HIR::InlineAsm &expr) override { rust_unreachable (); }
   void visit (HIR::TypeParam &param) override { rust_unreachable (); }
   void visit (HIR::ConstGenericParam &param) override { rust_unreachable (); }
   void visit (HIR::LifetimeWhereClauseItem &item) override
@@ -189,6 +188,7 @@ protected:
   void visit (HIR::ImplBlock &impl) override { rust_unreachable (); }
   void visit (HIR::ExternalStaticItem &item) override { rust_unreachable (); }
   void visit (HIR::ExternalFunctionItem &item) override { rust_unreachable (); }
+  void visit (HIR::ExternalTypeItem &item) override { rust_unreachable (); }
   void visit (HIR::ExternBlock &block) override { rust_unreachable (); }
   void visit (HIR::LiteralPattern &pattern) override { rust_unreachable (); }
   void visit (HIR::IdentifierPattern &pattern) override { rust_unreachable (); }
@@ -250,10 +250,6 @@ protected:
   void visit (HIR::ImplTraitType &type) override { rust_unreachable (); }
   void visit (HIR::TraitObjectType &type) override { rust_unreachable (); }
   void visit (HIR::ParenthesisedType &type) override { rust_unreachable (); }
-  void visit (HIR::ImplTraitTypeOneBound &type) override
-  {
-    rust_unreachable ();
-  }
   void visit (HIR::TupleType &type) override { rust_unreachable (); }
   void visit (HIR::NeverType &type) override { rust_unreachable (); }
   void visit (HIR::RawPointerType &type) override { rust_unreachable (); }

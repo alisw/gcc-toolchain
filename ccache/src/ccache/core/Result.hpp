@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2024 Joel Rosdahl and other contributors
+// Copyright (C) 2019-2025 Joel Rosdahl and other contributors
 //
 // See doc/AUTHORS.adoc for a complete list of contributors.
 //
@@ -18,12 +18,13 @@
 
 #pragma once
 
-#include <ccache/core/Serializer.hpp>
-#include <ccache/util/Bytes.hpp>
+#include <ccache/core/serializer.hpp>
+#include <ccache/util/bytes.hpp>
 
 #include <nonstd/span.hpp>
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <variant>
 #include <vector>
@@ -35,7 +36,7 @@ namespace core {
 
 class CacheEntryDataParser;
 
-namespace Result {
+namespace result {
 
 extern const uint8_t k_format_version;
 
@@ -96,8 +97,8 @@ enum class FileType : UnderlyingFileTypeInt {
 
 const char* file_type_to_string(FileType type);
 
-std::string gcno_file_in_mangled_form(const Context& ctx);
-std::string gcno_file_in_unmangled_form(const Context& ctx);
+std::filesystem::path gcno_file_in_mangled_form(const Context& ctx);
+std::filesystem::path gcno_file_in_unmangled_form(const Context& ctx);
 
 // This class knows how to deserializer a result cache entry.
 class Deserializer
@@ -153,7 +154,8 @@ public:
   void add_data(FileType file_type, nonstd::span<const uint8_t> data);
 
   // Register a file path whose content should be included in the result.
-  [[nodiscard]] bool add_file(FileType file_type, const std::string& path);
+  [[nodiscard]] bool add_file(FileType file_type,
+                              const std::filesystem::path& path);
 
   // core::Serializer
   uint32_t serialized_size() const override;
@@ -164,7 +166,7 @@ public:
   struct RawFile
   {
     uint8_t file_number;
-    std::string path;
+    std::filesystem::path path;
   };
 
   // Get raw files to store in local storage.
@@ -184,6 +186,6 @@ private:
   std::vector<RawFile> m_raw_files;
 };
 
-} // namespace Result
+} // namespace result
 
 } // namespace core
