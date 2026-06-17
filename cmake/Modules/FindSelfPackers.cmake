@@ -1,19 +1,55 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindSelfPackers
 ---------------
 
-Find upx
+Finds `UPX <https://upx.github.io/>`_, the Ultimate Packer for eXecutables:
 
-This module looks for some executable packers (i.e.  software that
-compress executables or shared libs into on-the-fly self-extracting
-executables or shared libs.  Examples:
+.. code-block:: cmake
 
-::
+  find_package(SelfPackers [...])
 
-  UPX: http://wildsau.idv.uni-linz.ac.at/mfx/upx.html
+This module searches for executable packers-tools that compress executables or
+shared libraries into on-the-fly, self-extracting versions.  It currently
+supports ``UPX``.
+
+Result Variables
+^^^^^^^^^^^^^^^^
+
+This module defines the following variables:
+
+``SelfPackers_FOUND``
+  .. versionadded:: 4.2
+
+  Boolean indicating whether packer tools were found.
+
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may also be set:
+
+``SELF_PACKER_FOR_EXECUTABLE``
+  Path to the executable packer for compressing executables.
+
+``SELF_PACKER_FOR_SHARED_LIB``
+  Path to the executable packer for compressing shared libraries.
+
+``SELF_PACKER_FOR_EXECUTABLE_FLAGS``
+  Command-line options to use when compressing executables.
+
+``SELF_PACKER_FOR_SHARED_LIB_FLAGS``
+  Command-line options to use when compressing shared libraries.
+
+Examples
+^^^^^^^^
+
+Finding UPX:
+
+.. code-block:: cmake
+
+  find_package(SelfPackers)
 #]=======================================================================]
 
 include(${CMAKE_CURRENT_LIST_DIR}/FindCygwin.cmake)
@@ -59,3 +95,9 @@ mark_as_advanced(
   SELF_PACKER_FOR_EXECUTABLE_FLAGS
   SELF_PACKER_FOR_SHARED_LIB_FLAGS
 )
+
+if(SELF_PACKER_FOR_EXECUTABLE AND SELF_PACKER_FOR_SHARED_LIB)
+  set(SelfPackers_FOUND TRUE)
+else()
+  set(SelfPackers_FOUND FALSE)
+endif()

@@ -1,12 +1,13 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmWIXFeaturesSourceWriter.h"
 
 #include "cmStringAlgorithms.h"
 
 cmWIXFeaturesSourceWriter::cmWIXFeaturesSourceWriter(
-  cmCPackLog* logger, std::string const& filename, GuidType componentGuidType)
-  : cmWIXSourceWriter(logger, filename, componentGuidType)
+  unsigned long wixVersion, cmCPackLog* logger, std::string const& filename,
+  GuidType componentGuidType)
+  : cmWIXSourceWriter(wixVersion, logger, filename, componentGuidType)
 {
 }
 
@@ -69,7 +70,11 @@ void cmWIXFeaturesSourceWriter::EmitFeatureForComponent(
   AddAttributeUnlessEmpty("Description", component.Description);
 
   if (component.IsRequired) {
-    AddAttribute("Absent", "disallow");
+    if (this->WixVersion >= 4) {
+      AddAttribute("AllowAbsent", "no");
+    } else {
+      AddAttribute("Absent", "disallow");
+    }
   }
 
   if (component.IsHidden) {

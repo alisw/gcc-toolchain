@@ -1,7 +1,7 @@
 #
 # Testing
 #
-cmake_minimum_required (VERSION 2.7)
+cmake_minimum_required(VERSION 3.10)
 project (Testing)
 
 include (CTest)
@@ -30,7 +30,6 @@ endif ()
 # Extra coverage
 #
 build_command(BUILD_COMMAND_VAR ${CMAKE_MAKE_PROGRAM})
-build_name(BUILD_NAME_VAR)
 site_name(SITE_NAME_VAR)
 
 #

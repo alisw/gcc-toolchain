@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 # This file sets the basic flags for the C# language in CMake.
 # It also loads the available platform file for the system-compiler
@@ -64,4 +64,7 @@ set(CMAKE_CSharp_CREATE_SHARED_MODULE "CSharp_NO_CREATE_SHARED_MODULE")
 set(CMAKE_CSharp_LINK_EXECUTABLE "CSharp_NO_LINK_EXECUTABLE")
 
 set(CMAKE_CSharp_USE_RESPONSE_FILE_FOR_OBJECTS 1)
+
+set(CMAKE_CSharp_USE_LINKER_INFORMATION FALSE)
+
 set(CMAKE_CSharp_INFORMATION_LOADED 1)

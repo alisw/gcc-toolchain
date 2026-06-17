@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmDebuggerStackFrame.h"
 
 #include <utility>
@@ -23,6 +23,12 @@ cmDebuggerStackFrame::cmDebuggerStackFrame(cmMakefile* mf,
 int64_t cmDebuggerStackFrame::GetLine() const noexcept
 {
   return this->Function.Line();
+}
+
+std::vector<cmListFileArgument> const& cmDebuggerStackFrame::GetArguments()
+  const noexcept
+{
+  return this->Function.Arguments();
 }
 
 } // namespace cmDebugger

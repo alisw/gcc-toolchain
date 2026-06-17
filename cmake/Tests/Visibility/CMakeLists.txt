@@ -1,6 +1,4 @@
-cmake_minimum_required(VERSION 3.2)
-cmake_policy(SET CMP0063 NEW)
-
+cmake_minimum_required(VERSION 3.10)
 project(Visibility)
 
 add_library(hidden1 SHARED hidden.c)

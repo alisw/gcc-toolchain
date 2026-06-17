@@ -1,10 +1,7 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 # Author: Eric Noulard with the help of Alexander Neundorf.
-
-cmake_policy(PUSH)
-cmake_policy(SET CMP0057 NEW) # if IN_LIST
 
 function(set_spec_script_if_enabled TYPE PACKAGE_NAME VAR)
   if(NOT "${VAR}" STREQUAL "" AND NOT "${VAR}" STREQUAL "\n")
@@ -188,12 +185,12 @@ function(cpack_rpm_prepare_relocation_paths)
       string(SUBSTRING "${REL_PATH_}" 0 2 PREFIX_)
 
       if(NOT "${PREFIX_}" STREQUAL "..")
-        set(TPM_PATH_FOUND_ TRUE)
+        set(TMP_PATH_FOUND_ TRUE)
         break()
       endif()
     endforeach()
 
-    if(NOT TPM_PATH_FOUND_)
+    if(NOT TMP_PATH_FOUND_)
       message(AUTHOR_WARNING "CPackRPM:Warning: Path ${TMP_PATH} is not on one of the relocatable paths! Package will be partially relocatable.")
     endif()
   endforeach()
@@ -448,13 +445,13 @@ function(cpack_rpm_symlink_create_relocation_script PACKAGE_PREFIXES)
 endfunction()
 
 function(cpack_rpm_symlink_add_for_relocation_script PACKAGE_PREFIXES SYMLINK SYMLINK_RELOCATION_PATHS POINT POINT_RELOCATION_PATHS)
-  list(LENGTH SYMLINK_RELOCATION_PATHS SYMLINK_PATHS_COUTN)
+  list(LENGTH SYMLINK_RELOCATION_PATHS SYMLINK_PATHS_COUNT)
   list(LENGTH POINT_RELOCATION_PATHS POINT_PATHS_COUNT)
 
   list(APPEND _RPM_RELOCATION_SCRIPT_PAIRS "${SYMLINK}:${POINT}")
   list(LENGTH _RPM_RELOCATION_SCRIPT_PAIRS PAIR_NO)
 
-  if(SYMLINK_PATHS_COUTN)
+  if(SYMLINK_PATHS_COUNT)
     foreach(SYMLINK_RELOC_PATH IN LISTS SYMLINK_RELOCATION_PATHS)
       list(FIND PACKAGE_PREFIXES "${SYMLINK_RELOC_PATH}" SYMLINK_INDEX)
 
@@ -711,7 +708,7 @@ function(cpack_rpm_debugsymbol_check INSTALL_FILES WORKING_DIR)
       endif()
 
       get_file_permissions("${WORKING_DIR}/${F}" permissions_)
-      if(NOT "USER_EXECUTE" IN_LIST permissions_ AND
+      if(NOT "OWNER_EXECUTE" IN_LIST permissions_ AND
          NOT "GROUP_EXECUTE" IN_LIST permissions_ AND
          NOT "WORLD_EXECUTE" IN_LIST permissions_)
         if(CPACK_RPM_INSTALL_WITH_EXEC)
@@ -811,25 +808,26 @@ function(cpack_rpm_generate_package)
   # rpmbuild is the basic command for building RPM package
   # it may be a simple (symbolic) link to rpm command.
   find_program(RPMBUILD_EXECUTABLE rpmbuild)
+  if(NOT RPMBUILD_EXECUTABLE)
+    message(FATAL_ERROR "RPM package requires rpmbuild executable")
+  endif()
+
+  # rpm is used for fallback queries in some older versions,
+  # but is not required in general.
+  find_program(RPM_EXECUTABLE rpm)
 
   # Check version of the rpmbuild tool this would be easier to
   # track bugs with users and CPackRPM debug mode.
   # We may use RPM version in order to check for available version dependent features
-  if(RPMBUILD_EXECUTABLE)
-    execute_process(COMMAND ${RPMBUILD_EXECUTABLE} --version
-                    OUTPUT_VARIABLE _TMP_VERSION
-                    ERROR_QUIET
-                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-    string(REGEX REPLACE "^.* " ""
-           RPMBUILD_EXECUTABLE_VERSION
-           ${_TMP_VERSION})
-    if(CPACK_RPM_PACKAGE_DEBUG)
-      message("CPackRPM:Debug: rpmbuild version is <${RPMBUILD_EXECUTABLE_VERSION}>")
-    endif()
-  endif()
-
-  if(NOT RPMBUILD_EXECUTABLE)
-    message(FATAL_ERROR "RPM package requires rpmbuild executable")
+  execute_process(COMMAND ${RPMBUILD_EXECUTABLE} --version
+                  OUTPUT_VARIABLE _TMP_VERSION
+                  ERROR_QUIET
+                  OUTPUT_STRIP_TRAILING_WHITESPACE)
+  string(REGEX REPLACE "^.* " ""
+         RPMBUILD_EXECUTABLE_VERSION
+         ${_TMP_VERSION})
+  if(CPACK_RPM_PACKAGE_DEBUG)
+    message("CPackRPM:Debug: rpmbuild version is <${RPMBUILD_EXECUTABLE_VERSION}>")
   endif()
 
   # Display lsb_release output if DEBUG mode enable
@@ -857,16 +855,6 @@ function(cpack_rpm_generate_package)
   # not checked [yet].
   if(CPACK_TOPLEVEL_DIRECTORY MATCHES ".* .*")
     message(FATAL_ERROR "${RPMBUILD_EXECUTABLE} can't handle paths with spaces, use a build directory without spaces for building RPMs.")
-  endif()
-
-  # If rpmbuild is found
-  # we try to discover alien since we may be on non RPM distro like Debian.
-  # In this case we may try to use more advanced features
-  # like generating RPM directly from DEB using alien.
-  # FIXME feature not finished (yet)
-  find_program(ALIEN_EXECUTABLE alien)
-  if(ALIEN_EXECUTABLE)
-    message(STATUS "alien found, we may be on a Debian based distro.")
   endif()
 
   # Are we packaging components ?
@@ -916,7 +904,7 @@ function(cpack_rpm_generate_package)
       CPACK_RPM_MAIN_COMPONENT_UPPER)
 
     if(NOT CPACK_RPM_MAIN_COMPONENT_UPPER STREQUAL CPACK_RPM_PACKAGE_COMPONENT_UPPER)
-      string(APPEND CPACK_RPM_PACKAGE_NAME "-${CPACK_RPM_PACKAGE_COMPONENT}")
+      string(APPEND CPACK_RPM_PACKAGE_NAME "-${CPACK_RPM_PACKAGE_COMPONENT_PART_NAME}")
 
       cpack_rpm_variable_fallback("CPACK_RPM_PACKAGE_NAME"
         "CPACK_RPM_${CPACK_RPM_PACKAGE_COMPONENT}_PACKAGE_NAME"
@@ -1034,27 +1022,32 @@ function(cpack_rpm_generate_package)
   # CPACK_RPM_COMPRESSION_TYPE
   #
   if (CPACK_RPM_COMPRESSION_TYPE)
-     if(CPACK_RPM_PACKAGE_DEBUG)
-       message("CPackRPM:Debug: User Specified RPM compression type: ${CPACK_RPM_COMPRESSION_TYPE}")
-     endif()
-     if(CPACK_RPM_COMPRESSION_TYPE STREQUAL "lzma")
-       set(CPACK_RPM_COMPRESSION_TYPE_TMP "%define _binary_payload w9.lzdio")
-     endif()
-     if(CPACK_RPM_COMPRESSION_TYPE STREQUAL "xz")
-       if(CPACK_THREADS GREATER "0")
-         set(CPACK_RPM_COMPRESSION_TYPE_TMP "%define _binary_payload w7T${CPACK_THREADS}.xzdio")
-       else()
-         set(CPACK_RPM_COMPRESSION_TYPE_TMP "%define _binary_payload w7T.xzdio")
-       endif()
-     endif()
-     if(CPACK_RPM_COMPRESSION_TYPE STREQUAL "bzip2")
-       set(CPACK_RPM_COMPRESSION_TYPE_TMP "%define _binary_payload w9.bzdio")
-     endif()
-     if(CPACK_RPM_COMPRESSION_TYPE STREQUAL "gzip")
-       set(CPACK_RPM_COMPRESSION_TYPE_TMP "%define _binary_payload w9.gzdio")
-     endif()
+    if(CPACK_RPM_PACKAGE_DEBUG)
+      message("CPackRPM:Debug: User Specified RPM compression type: ${CPACK_RPM_COMPRESSION_TYPE}")
+    endif()
+    if(CPACK_RPM_COMPRESSION_TYPE STREQUAL "lzma")
+      set(CPACK_RPM_COMPRESSION_TYPE_TMP "%define _binary_payload w9.lzdio")
+    elseif(CPACK_RPM_COMPRESSION_TYPE STREQUAL "xz")
+      if(CPACK_THREADS GREATER "0")
+        set(CPACK_RPM_COMPRESSION_TYPE_TMP "%define _binary_payload w7T${CPACK_THREADS}.xzdio")
+      else()
+        set(CPACK_RPM_COMPRESSION_TYPE_TMP "%define _binary_payload w7T.xzdio")
+      endif()
+    elseif(CPACK_RPM_COMPRESSION_TYPE STREQUAL "bzip2")
+      set(CPACK_RPM_COMPRESSION_TYPE_TMP "%define _binary_payload w9.bzdio")
+    elseif(CPACK_RPM_COMPRESSION_TYPE STREQUAL "gzip")
+      set(CPACK_RPM_COMPRESSION_TYPE_TMP "%define _binary_payload w9.gzdio")
+    elseif(CPACK_RPM_COMPRESSION_TYPE STREQUAL "zstd")
+      if(CPACK_THREADS GREATER "0")
+        set(CPACK_RPM_COMPRESSION_TYPE_TMP "%define _binary_payload w19T${CPACK_THREADS}.zstdio")
+      else()
+        set(CPACK_RPM_COMPRESSION_TYPE_TMP "%define _binary_payload w19T0.zstdio")
+      endif()
+    else()
+      message(FATAL_ERROR "Specified CPACK_RPM_COMPRESSION_TYPE value is not supported: ${CPACK_RPM_COMPRESSION_TYPE}")
+    endif()
   else()
-     set(CPACK_RPM_COMPRESSION_TYPE_TMP "")
+    set(CPACK_RPM_COMPRESSION_TYPE_TMP "")
   endif()
 
   if(NOT CPACK_RPM_PACKAGE_SOURCES)
@@ -1083,22 +1076,32 @@ function(cpack_rpm_generate_package)
   execute_process(
     COMMAND "${RPMBUILD_EXECUTABLE}" --querytags
     OUTPUT_VARIABLE RPMBUILD_TAG_LIST
+    RESULT_VARIABLE RPMBUILD_QUERYTAGS_SUCCESS
+    ERROR_QUIET
     OUTPUT_STRIP_TRAILING_WHITESPACE)
+  # In some versions of RPM, rpmbuild does not understand --querytags parameter,
+  # but rpm does.
+  if(NOT RPMBUILD_QUERYTAGS_SUCCESS EQUAL 0 AND RPM_EXECUTABLE)
+    execute_process(
+      COMMAND "${RPM_EXECUTABLE}" --querytags
+      OUTPUT_VARIABLE RPMBUILD_TAG_LIST
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+  endif()
   string(REPLACE "\n" ";" RPMBUILD_TAG_LIST "${RPMBUILD_TAG_LIST}")
 
   # In some versions of RPM, weak dependency tags are present in the --querytags
   # list, but unsupported by rpmbuild. A different method must be used to check
   # if they are supported.
-
-  execute_process(
-    COMMAND ${RPM_EXECUTABLE} --suggests
-    ERROR_QUIET
-    RESULT_VARIABLE RPMBUILD_SUGGESTS_RESULT)
-
-  if(NOT RPMBUILD_SUGGESTS_RESULT EQUAL 0)
-    foreach(_WEAK_DEP SUGGESTS RECOMMENDS SUPPLEMENTS ENHANCES)
-      list(REMOVE_ITEM RPMBUILD_TAG_LIST ${_WEAK_DEP})
-    endforeach()
+  if(RPM_EXECUTABLE)
+    execute_process(
+      COMMAND "${RPM_EXECUTABLE}" --suggests
+      ERROR_QUIET
+      RESULT_VARIABLE RPM_SUGGESTS_RESULT)
+    if(NOT RPM_SUGGESTS_RESULT EQUAL 0)
+      foreach(_WEAK_DEP SUGGESTS RECOMMENDS SUPPLEMENTS ENHANCES)
+        list(REMOVE_ITEM RPMBUILD_TAG_LIST ${_WEAK_DEP})
+      endforeach()
+    endif()
   endif()
 
   if(CPACK_RPM_PACKAGE_EPOCH)
@@ -1109,7 +1112,7 @@ function(cpack_rpm_generate_package)
   # There may be some COMPONENT specific variables as well
   # If component specific var is not provided we use the global one
   # for each component
-  foreach(_RPM_SPEC_HEADER URL REQUIRES SUGGESTS PROVIDES OBSOLETES PREFIX CONFLICTS AUTOPROV AUTOREQ AUTOREQPROV REQUIRES_PRE REQUIRES_POST REQUIRES_PREUN REQUIRES_POSTUN)
+  foreach(_RPM_SPEC_HEADER URL REQUIRES SUGGESTS RECOMMENDS SUPPLEMENTS ENHANCES PROVIDES OBSOLETES PREFIX CONFLICTS AUTOPROV AUTOREQ AUTOREQPROV REQUIRES_PRE REQUIRES_POST REQUIRES_PREUN REQUIRES_POSTUN)
 
     if(CPACK_RPM_PACKAGE_DEBUG)
       message("CPackRPM:Debug: processing ${_RPM_SPEC_HEADER}")
@@ -1727,7 +1730,10 @@ Vendor:         \@CPACK_RPM_PACKAGE_VENDOR\@
 \@TMP_RPM_PROVIDES\@
 \@TMP_RPM_OBSOLETES\@
 \@TMP_RPM_CONFLICTS\@
+\@TMP_RPM_RECOMMENDS\@
 \@TMP_RPM_SUGGESTS\@
+\@TMP_RPM_SUPPLEMENTS\@
+\@TMP_RPM_ENHANCES\@
 \@TMP_RPM_AUTOPROV\@
 \@TMP_RPM_AUTOREQ\@
 \@TMP_RPM_AUTOREQPROV\@
@@ -1796,7 +1802,10 @@ Vendor:         \@CPACK_RPM_PACKAGE_VENDOR\@
 \@TMP_RPM_PROVIDES\@
 \@TMP_RPM_OBSOLETES\@
 \@TMP_RPM_CONFLICTS\@
+\@TMP_RPM_RECOMMENDS\@
 \@TMP_RPM_SUGGESTS\@
+\@TMP_RPM_SUPPLEMENTS\@
+\@TMP_RPM_ENHANCES\@
 \@TMP_RPM_AUTOPROV\@
 \@TMP_RPM_AUTOREQ\@
 \@TMP_RPM_AUTOREQPROV\@
@@ -1880,31 +1889,25 @@ mv %_topdir/tmpBBroot $RPM_BUILD_ROOT
   endif()
 
   if(NOT GENERATE_SPEC_PARTS) # generate package
-    if(RPMBUILD_EXECUTABLE)
-      # Now call rpmbuild using the SPECFILE
-      execute_process(
-        COMMAND "${RPMBUILD_EXECUTABLE}" ${RPMBUILD_FLAGS}
-                --define "_topdir ${CPACK_RPM_DIRECTORY}"
-                --buildroot "%_topdir/${CPACK_PACKAGE_FILE_NAME}${CPACK_RPM_PACKAGE_COMPONENT_PART_PATH}"
-                --target "${CPACK_RPM_PACKAGE_ARCHITECTURE}"
-                "${CPACK_RPM_BINARY_SPECFILE}"
-        WORKING_DIRECTORY "${CPACK_TOPLEVEL_DIRECTORY}/${CPACK_PACKAGE_FILE_NAME}${CPACK_RPM_PACKAGE_COMPONENT_PART_PATH}"
-        RESULT_VARIABLE CPACK_RPMBUILD_EXEC_RESULT
-        ERROR_FILE "${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_NAME}.err"
-        OUTPUT_FILE "${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_NAME}.out")
-      if(CPACK_RPM_PACKAGE_DEBUG OR CPACK_RPMBUILD_EXEC_RESULT)
-        file(READ ${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_NAME}.err RPMBUILDERR)
-        file(READ ${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_NAME}.out RPMBUILDOUT)
-        message("CPackRPM:Debug: You may consult rpmbuild logs in: ")
-        message("CPackRPM:Debug:    - ${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_NAME}.err")
-        message("CPackRPM:Debug: *** ${RPMBUILDERR} ***")
-        message("CPackRPM:Debug:    - ${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_NAME}.out")
-        message("CPackRPM:Debug: *** ${RPMBUILDOUT} ***")
-      endif()
-    else()
-      if(ALIEN_EXECUTABLE)
-        message(FATAL_ERROR "RPM packaging through alien not done (yet)")
-      endif()
+    # Now call rpmbuild using the SPECFILE
+    execute_process(
+      COMMAND "${RPMBUILD_EXECUTABLE}" ${RPMBUILD_FLAGS}
+              --define "_topdir ${CPACK_RPM_DIRECTORY}"
+              --buildroot "%_topdir/${CPACK_PACKAGE_FILE_NAME}${CPACK_RPM_PACKAGE_COMPONENT_PART_PATH}"
+              --target "${CPACK_RPM_PACKAGE_ARCHITECTURE}"
+              "${CPACK_RPM_BINARY_SPECFILE}"
+      WORKING_DIRECTORY "${CPACK_TOPLEVEL_DIRECTORY}/${CPACK_PACKAGE_FILE_NAME}${CPACK_RPM_PACKAGE_COMPONENT_PART_PATH}"
+      RESULT_VARIABLE CPACK_RPMBUILD_EXEC_RESULT
+      ERROR_FILE "${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_NAME}.err"
+      OUTPUT_FILE "${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_NAME}.out")
+    if(CPACK_RPM_PACKAGE_DEBUG OR CPACK_RPMBUILD_EXEC_RESULT)
+      file(READ ${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_NAME}.err RPMBUILDERR)
+      file(READ ${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_NAME}.out RPMBUILDOUT)
+      message("CPackRPM:Debug: You may consult rpmbuild logs in: ")
+      message("CPackRPM:Debug:    - ${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_NAME}.err")
+      message("CPackRPM:Debug: *** ${RPMBUILDERR} ***")
+      message("CPackRPM:Debug:    - ${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_NAME}.out")
+      message("CPackRPM:Debug: *** ${RPMBUILDOUT} ***")
     endif()
 
     # find generated rpm files and take their names
@@ -1984,5 +1987,3 @@ mv %_topdir/tmpBBroot $RPM_BUILD_ROOT
 endfunction()
 
 cpack_rpm_generate_package()
-
-cmake_policy(POP)

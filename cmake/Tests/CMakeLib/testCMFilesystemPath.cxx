@@ -1,13 +1,14 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 
 #include <algorithm>
-#include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 
 #include <cm/filesystem>
+
+#include "testCommon.h"
 
 namespace {
 
@@ -873,7 +874,7 @@ bool testIterators()
       result = false;
     }
     res.clear();
-    for (const auto& e : p) {
+    for (auto const& e : p) {
       res.push_back(e);
     }
     if (res != ref) {
@@ -971,38 +972,9 @@ bool testNonMemberFunctions()
 
 int testCMFilesystemPath(int /*unused*/, char* /*unused*/[])
 {
-  int result = 0;
-
-  if (!testConstructors()) {
-    result = 1;
-  }
-  if (!testConcatenation()) {
-    result = 1;
-  }
-  if (!testModifiers()) {
-    result = 1;
-  }
-  if (!testObservers()) {
-    result = 1;
-  }
-  if (!testCompare()) {
-    result = 1;
-  }
-  if (!testGeneration()) {
-    result = 1;
-  }
-  if (!testDecomposition()) {
-    result = 1;
-  }
-  if (!testQueries()) {
-    result = 1;
-  }
-  if (!testIterators()) {
-    result = 1;
-  }
-  if (!testNonMemberFunctions()) {
-    result = 1;
-  }
-
-  return result;
+  return runTests({ testConstructors, testConcatenation, testModifiers,
+                    testObservers, testCompare, testGeneration,
+                    testDecomposition, testQueries, testIterators,
+                    testNonMemberFunctions },
+                  false);
 }

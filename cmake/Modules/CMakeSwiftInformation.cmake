@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 if(UNIX)
   set(CMAKE_Swift_OUTPUT_EXTENSION .o)
@@ -57,6 +57,8 @@ set(CMAKE_Swift_LINK_LIBRARY_FLAG "-l")
 set(CMAKE_Swift_LINKER_WRAPPER_FLAG "-Xlinker" " ")
 set(CMAKE_Swift_RESPONSE_FILE_LINK_FLAG @)
 set(CMAKE_Swift_RESPONSE_FILE_FLAG @)
+set(CMAKE_Swift_COMPILE_OPTIONS_COLOR_DIAGNOSTICS -color-diagnostics)
+set(CMAKE_Swift_COMPILE_OPTIONS_COLOR_DIAGNOSTICS_OFF -no-color-diagnostics)
 
 set(CMAKE_Swift_LINKER_PREFERENCE 50)
 set(CMAKE_Swift_LINKER_PREFERENCE_PROPAGATES 1)
@@ -106,15 +108,6 @@ else()
 endif()
 unset(__SWIFT_COMP_MODE_CMP0157)
 
-if(CMAKE_EXECUTABLE_FORMAT STREQUAL "ELF")
-  if(NOT DEFINED CMAKE_Swift_LINK_WHAT_YOU_USE_FLAG)
-    set(CMAKE_Swift_LINK_WHAT_YOU_USE_FLAG "LINKER:--no-as-needed")
-  endif()
-  if(NOT DEFINED CMAKE_LINK_WHAT_YOU_USE_CHECK)
-    set(CMAKE_LINK_WHAT_YOU_USE_CHECK ldd -u -r)
-  endif()
-endif()
-
 cmake_initialize_per_config_variable(CMAKE_Swift_FLAGS "Swift Compiler Flags")
 
 if(NOT CMAKE_Swift_NUM_THREADS MATCHES "^[0-9]+$")
@@ -132,11 +125,11 @@ if(CMAKE_Swift_COMPILATION_MODE_DEFAULT)
   endif()
 
   if(NOT CMAKE_Swift_CREATE_SHARED_LIBRARY)
-    set(CMAKE_Swift_CREATE_SHARED_LIBRARY "<CMAKE_Swift_COMPILER> ${CMAKE_Swift_PARALLEL_FLAGS} -emit-library <CMAKE_SHARED_LIBRARY_Swift_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> ${CMAKE_Swift_IMPLIB_LINKER_FLAGS} <SONAME_FLAG> <TARGET_SONAME> -o <TARGET> <OBJECTS> <LINK_LIBRARIES>")
+    set(CMAKE_Swift_CREATE_SHARED_LIBRARY "<CMAKE_Swift_COMPILER> ${CMAKE_Swift_PARALLEL_FLAGS} -emit-library <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> ${CMAKE_Swift_IMPLIB_LINKER_FLAGS} <SONAME_FLAG> <TARGET_INSTALLNAME_DIR><TARGET_SONAME> -o <TARGET> <OBJECTS> <LINK_LIBRARIES>")
   endif()
 
   if(NOT CMAKE_Swift_CREATE_SHARED_MODULE)
-    set(CMAKE_Swift_CREATE_SHARED_MODULE ${CMAKE_Swift_CREATE_SHARED_LIBRARY})
+    set(CMAKE_Swift_CREATE_SHARED_MODULE "${CMAKE_Swift_CREATE_SHARED_LIBRARY}")
   endif()
 
   if(NOT CMAKE_Swift_LINK_EXECUTABLE)
@@ -160,7 +153,7 @@ else()
   endif()
 
   if(NOT CMAKE_Swift_CREATE_SHARED_MODULE)
-    set(CMAKE_Swift_CREATE_SHARED_MODULE ${CMAKE_Swift_CREATE_SHARED_LIBRARY})
+    set(CMAKE_Swift_CREATE_SHARED_MODULE "${CMAKE_Swift_CREATE_SHARED_LIBRARY}")
   endif()
 
   if(NOT CMAKE_Swift_LINK_EXECUTABLE)
@@ -178,5 +171,7 @@ else()
     set(CMAKE_Swift_ARCHIVE_FINISH "")
   endif()
 endif()
+
+set(CMAKE_Swift_USE_LINKER_INFORMATION TRUE)
 
 set(CMAKE_Swift_INFORMATION_LOADED 1)

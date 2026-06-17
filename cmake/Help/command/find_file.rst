@@ -4,7 +4,7 @@ find_file
 .. |FIND_XXX| replace:: find_file
 .. |NAMES| replace:: NAMES name1 [name2 ...]
 .. |SEARCH_XXX| replace:: full path to a file
-.. |SEARCH_XXX_DESC| replace:: full path to named file
+.. |SEARCH_XXX_DESC| replace:: full path to a named file
 .. |prefix_XXX_SUBDIR| replace:: ``<prefix>/include``
 .. |entry_XXX_SUBDIR| replace:: ``<entry>/include``
 
@@ -45,4 +45,4 @@ find_file
 .. |CMAKE_FIND_ROOT_PATH_MODE_XXX| replace::
    :variable:`CMAKE_FIND_ROOT_PATH_MODE_INCLUDE`
 
-.. include:: FIND_XXX.txt
+.. include:: include/FIND_XXX.rst

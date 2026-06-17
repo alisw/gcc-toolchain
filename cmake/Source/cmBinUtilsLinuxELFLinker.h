@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 
 #pragma once
 
@@ -34,8 +34,7 @@ private:
   std::vector<std::string> LDConfigPaths;
   std::uint16_t Machine = 0;
 
-  bool ScanDependencies(std::string const& file,
-                        std::vector<std::string> const& parentRpaths);
+  bool ScanDependencies(std::string const& mainFile);
 
   bool ResolveDependency(std::string const& name,
                          std::vector<std::string> const& searchPaths,

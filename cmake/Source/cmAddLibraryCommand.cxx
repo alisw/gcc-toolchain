@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmAddLibraryCommand.h"
 
 #include "cmExecutionStatus.h"
@@ -11,6 +11,7 @@
 #include "cmState.h"
 #include "cmStateTypes.h"
 #include "cmStringAlgorithms.h"
+#include "cmSystemTools.h"
 #include "cmTarget.h"
 #include "cmValue.h"
 
@@ -26,12 +27,13 @@ bool cmAddLibraryCommand(std::vector<std::string> const& args,
   // Library type defaults to value of BUILD_SHARED_LIBS, if it exists,
   // otherwise it defaults to static library.
   cmStateEnums::TargetType type = cmStateEnums::SHARED_LIBRARY;
-  if (cmIsOff(mf.GetDefinition("BUILD_SHARED_LIBS"))) {
+  if (mf.GetDefinition("BUILD_SHARED_LIBS").IsOff()) {
     type = cmStateEnums::STATIC_LIBRARY;
   }
   bool excludeFromAll = false;
   bool importTarget = false;
   bool importGlobal = false;
+  bool symbolicTarget = false;
 
   auto s = args.begin();
 
@@ -116,6 +118,9 @@ bool cmAddLibraryCommand(std::vector<std::string> const& args,
     } else if (*s == "EXCLUDE_FROM_ALL") {
       ++s;
       excludeFromAll = true;
+    } else if (*s == "SYMBOLIC") {
+      ++s;
+      symbolicTarget = true;
     } else if (*s == "IMPORTED") {
       ++s;
       importTarget = true;
@@ -149,7 +154,8 @@ bool cmAddLibraryCommand(std::vector<std::string> const& args,
   if (nameOk && !importTarget && !isAlias) {
     nameOk = libName.find(':') == std::string::npos;
   }
-  if (!nameOk && !mf.CheckCMP0037(libName, type)) {
+  if (!nameOk) {
+    mf.IssueInvalidTargetNameError(libName);
     return false;
   }
 
@@ -188,7 +194,8 @@ bool cmAddLibraryCommand(std::vector<std::string> const& args,
                                "\" is itself an ALIAS."));
       return false;
     }
-    cmTarget* aliasedTarget = mf.FindTargetToUse(aliasedName, true);
+    cmTarget* aliasedTarget =
+      mf.FindTargetToUse(aliasedName, { cmStateEnums::TargetDomain::NATIVE });
     if (!aliasedTarget) {
       status.SetError(cmStrCat("cannot create ALIAS target \"", libName,
                                "\" because target \"", aliasedName,
@@ -220,20 +227,39 @@ bool cmAddLibraryCommand(std::vector<std::string> const& args,
   }
 
   /* ideally we should check whether for the linker language of the target
-    CMAKE_${LANG}_CREATE_SHARED_LIBRARY is defined and if not default to
-    STATIC. But at this point we know only the name of the target, but not
-    yet its linker language. */
+     CMAKE_${LANG}_CREATE_SHARED_LIBRARY is defined and if not default to
+     STATIC. But at this point we know only the name of the target, but not
+     yet its linker language. */
   if ((type == cmStateEnums::SHARED_LIBRARY ||
        type == cmStateEnums::MODULE_LIBRARY) &&
       !mf.GetState()->GetGlobalPropertyAsBool("TARGET_SUPPORTS_SHARED_LIBS")) {
-    mf.IssueMessage(
-      MessageType::AUTHOR_WARNING,
-      cmStrCat(
-        "ADD_LIBRARY called with ",
-        (type == cmStateEnums::SHARED_LIBRARY ? "SHARED" : "MODULE"),
-        " option but the target platform does not support dynamic linking. ",
-        "Building a STATIC library instead. This may lead to problems."));
-    type = cmStateEnums::STATIC_LIBRARY;
+    switch (status.GetMakefile().GetPolicyStatus(cmPolicies::CMP0164)) {
+      case cmPolicies::WARN:
+        mf.IssueMessage(
+          MessageType::AUTHOR_WARNING,
+          cmStrCat(
+            "ADD_LIBRARY called with ",
+            (type == cmStateEnums::SHARED_LIBRARY ? "SHARED" : "MODULE"),
+            " option but the target platform does not support dynamic "
+            "linking. "
+            "Building a STATIC library instead. This may lead to problems."));
+        CM_FALLTHROUGH;
+      case cmPolicies::OLD:
+        type = cmStateEnums::STATIC_LIBRARY;
+        break;
+      case cmPolicies::NEW:
+        mf.IssueMessage(
+          MessageType::FATAL_ERROR,
+          cmStrCat(
+            "ADD_LIBRARY called with ",
+            (type == cmStateEnums::SHARED_LIBRARY ? "SHARED" : "MODULE"),
+            " option but the target platform does not support dynamic "
+            "linking."));
+        cmSystemTools::SetFatalErrorOccurred();
+        return false;
+      default:
+        break;
+    }
   }
 
   // Handle imported target creation.
@@ -260,7 +286,8 @@ bool cmAddLibraryCommand(std::vector<std::string> const& args,
     }
 
     // Create the imported target.
-    mf.AddImportedTarget(libName, type, importGlobal);
+    cmTarget* target = mf.AddImportedTarget(libName, type, importGlobal);
+    target->SetSymbolic(symbolicTarget);
     return true;
   }
 
@@ -290,8 +317,15 @@ bool cmAddLibraryCommand(std::vector<std::string> const& args,
     }
   }
 
+  if (symbolicTarget && type != cmStateEnums::INTERFACE_LIBRARY) {
+    status.SetError(
+      "SYMBOLIC option may only be used with INTERFACE libraries");
+    return false;
+  }
+
   std::vector<std::string> srcs(s, args.end());
-  mf.AddLibrary(libName, type, srcs, excludeFromAll);
+  cmTarget* target = mf.AddLibrary(libName, type, srcs, excludeFromAll);
+  target->SetSymbolic(symbolicTarget);
 
   return true;
 }

@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -13,7 +13,6 @@
 #include "cmListFileCache.h"
 
 class cmGeneratorTarget;
-class cmLocalGenerator;
 
 /** \class cmInstallTargetGenerator
  * \brief Generate target installation rules.
@@ -43,7 +42,7 @@ public:
     this->ImportlinkMode = mode;
   }
 
-  std::string GetInstallFilename(const std::string& config) const;
+  std::string GetInstallFilename(std::string const& config) const;
 
   void GetInstallObjectNames(std::string const& config,
                              std::vector<std::string>& objects) const;
@@ -57,8 +56,8 @@ public:
     NameImplibReal
   };
 
-  static std::string GetInstallFilename(const cmGeneratorTarget* target,
-                                        const std::string& config,
+  static std::string GetInstallFilename(cmGeneratorTarget const* target,
+                                        std::string const& config,
                                         NameType nameType = NameNormal);
 
   bool Compute(cmLocalGenerator* lg) override;
@@ -86,6 +85,7 @@ public:
     std::string ToDir;
 
     NamelinkModeType NamelinkMode = NamelinkModeNone;
+    bool Rename = false;
     bool NoTweak = false;
     bool UseSourcePermissions = false;
     cmInstallType Type = cmInstallType();
@@ -95,31 +95,31 @@ public:
   bool GetOptional() const { return this->Optional; }
 
 protected:
-  void GenerateScriptForConfig(std::ostream& os, const std::string& config,
+  void GenerateScriptForConfig(std::ostream& os, std::string const& config,
                                Indent indent) override;
   void PreReplacementTweaks(std::ostream& os, Indent indent,
-                            const std::string& config,
+                            std::string const& config,
                             std::string const& file);
   void PostReplacementTweaks(std::ostream& os, Indent indent,
-                             const std::string& config,
+                             std::string const& config,
                              std::string const& file);
   void AddInstallNamePatchRule(std::ostream& os, Indent indent,
-                               const std::string& config,
-                               const std::string& toDestDirPath);
+                               std::string const& config,
+                               std::string const& toDestDirPath);
   void AddChrpathPatchRule(std::ostream& os, Indent indent,
-                           const std::string& config,
+                           std::string const& config,
                            std::string const& toDestDirPath);
   void AddRPathCheckRule(std::ostream& os, Indent indent,
-                         const std::string& config,
+                         std::string const& config,
                          std::string const& toDestDirPath);
 
   void AddStripRule(std::ostream& os, Indent indent,
-                    const std::string& toDestDirPath);
+                    std::string const& toDestDirPath);
   void AddRanlibRule(std::ostream& os, Indent indent,
-                     const std::string& toDestDirPath);
+                     std::string const& toDestDirPath);
   void AddUniversalInstallRule(std::ostream& os, Indent indent,
-                               const std::string& toDestDirPath);
-  void IssueCMP0095Warning(const std::string& unescapedRpath);
+                               std::string const& toDestDirPath);
+  void IssueCMP0095Warning(std::string const& unescapedRpath);
 
   std::string const TargetName;
   cmGeneratorTarget* Target = nullptr;

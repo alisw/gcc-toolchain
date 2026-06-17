@@ -1,41 +1,118 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 CheckIncludeFile
 ----------------
 
-Provides a macro to check if a header file can be included in ``C``.
+This module provides a command to check C header file.
 
-.. command:: CHECK_INCLUDE_FILE
+Load this module in a CMake project with:
+
+.. code-block:: cmake
+
+  include(CheckIncludeFile)
+
+Commands
+^^^^^^^^
+
+This module provides the following command:
+
+.. command:: check_include_file
+
+  Checks once whether a header file exists and can be included in C code:
 
   .. code-block:: cmake
 
-    CHECK_INCLUDE_FILE(<include> <variable> [<flags>])
+    check_include_file(<include> <variable> [<flags>])
 
-  Check if the given ``<include>`` file may be included in a ``C``
-  source file and store the result in an internal cache entry named
-  ``<variable>``.  The optional third argument may be used to add
-  compilation flags to the check (or use ``CMAKE_REQUIRED_FLAGS`` below).
+  .. rubric:: The arguments are:
 
-The following variables may be set before calling this macro to modify
-the way the check is run:
+  ``<include>``
+    A header file to be checked.
 
-.. include:: /module/CMAKE_REQUIRED_FLAGS.txt
+  ``<variable>``
+    The name of the variable to store the result of the check.  This
+    variable will be created as an internal cache variable.
 
-.. include:: /module/CMAKE_REQUIRED_DEFINITIONS.txt
+  ``<flags>``
+    (Optional) A :ref:`semicolon-separated list <CMake Language Lists>` of
+    additional compilation flags to be added to the check.  Alternatively,
+    flags can be also specified with the ``CMAKE_REQUIRED_FLAGS`` variable
+    below.
 
-.. include:: /module/CMAKE_REQUIRED_INCLUDES.txt
+  .. rubric:: Variables Affecting the Check
 
-.. include:: /module/CMAKE_REQUIRED_LINK_OPTIONS.txt
+  The following variables may be set before calling this command to modify
+  the way the check is run:
 
-.. include:: /module/CMAKE_REQUIRED_LIBRARIES.txt
+  .. include:: /module/include/CMAKE_REQUIRED_FLAGS.rst
 
-.. include:: /module/CMAKE_REQUIRED_QUIET.txt
+  .. include:: /module/include/CMAKE_REQUIRED_DEFINITIONS.rst
 
-See the :module:`CheckIncludeFiles` module to check for multiple headers
-at once.  See the :module:`CheckIncludeFileCXX` module to check for headers
-using the ``CXX`` language.
+  .. include:: /module/include/CMAKE_REQUIRED_INCLUDES.rst
+
+  .. include:: /module/include/CMAKE_REQUIRED_LINK_OPTIONS.rst
+
+  .. include:: /module/include/CMAKE_REQUIRED_LIBRARIES.rst
+
+  .. include:: /module/include/CMAKE_REQUIRED_LINK_DIRECTORIES.rst
+
+  .. include:: /module/include/CMAKE_REQUIRED_QUIET.rst
+
+  .. versionadded:: 3.12
+    The ``CMAKE_REQUIRED_LIBRARIES`` variable, if policy :policy:`CMP0075` is
+    set to ``NEW``.
+
+Examples
+^^^^^^^^
+
+Example: Checking C Header
+""""""""""""""""""""""""""
+
+Checking whether the C header ``<unistd.h>`` exists and storing the check
+result in the ``HAVE_UNISTD_H`` cache variable:
+
+.. code-block:: cmake
+
+  include(CheckIncludeFile)
+
+  check_include_file(unistd.h HAVE_UNISTD_H)
+
+Example: Isolated Check
+"""""""""""""""""""""""
+
+In the following example, this module is used in combination with the
+:module:`CMakePushCheckState` module to temporarily modify the required
+compile definitions (via ``CMAKE_REQUIRED_DEFINITIONS``) and verify whether
+the C header ``<ucontext.h>`` is available.  The result is stored
+in the internal cache variable ``HAVE_UCONTEXT_H``.
+
+For example, on macOS, the ``ucontext`` API is deprecated, and headers may
+be hidden unless certain feature macros are defined.  In particular,
+defining ``_XOPEN_SOURCE`` (without a value) can expose the necessary
+symbols without enabling broader POSIX or SUS (Single Unix Specification)
+features (values 500 or greater).
+
+.. code-block:: cmake
+
+  include(CheckIncludeFile)
+  include(CMakePushCheckState)
+
+  cmake_push_check_state(RESET)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+      set(CMAKE_REQUIRED_DEFINITIONS -D_XOPEN_SOURCE)
+    endif()
+
+    check_include_file(ucontext.h HAVE_UCONTEXT_H)
+  cmake_pop_check_state()
+
+See Also
+^^^^^^^^
+
+* The :module:`CheckIncludeFileCXX` module to check for single C++ header.
+* The :module:`CheckIncludeFiles` module to check for one or more C or
+  C++ headers at once.
 #]=======================================================================]
 
 include_guard(GLOBAL)
@@ -87,6 +164,13 @@ macro(CHECK_INCLUDE_FILE INCLUDE VARIABLE)
       unset(_CIF_CMP0075)
     endif()
 
+    if(CMAKE_REQUIRED_LINK_DIRECTORIES)
+      set(_CIF_LINK_DIRECTORIES
+        "-DLINK_DIRECTORIES:STRING=${CMAKE_REQUIRED_LINK_DIRECTORIES}")
+    else()
+      set(_CIF_LINK_DIRECTORIES)
+    endif()
+
     try_compile(${VARIABLE}
       SOURCE_FROM_VAR CheckIncludeFile.c _CIF_SOURCE_CONTENT
       COMPILE_DEFINITIONS ${CMAKE_REQUIRED_DEFINITIONS}
@@ -95,9 +179,11 @@ macro(CHECK_INCLUDE_FILE INCLUDE VARIABLE)
       CMAKE_FLAGS
       -DCOMPILE_DEFINITIONS:STRING=${MACRO_CHECK_INCLUDE_FILE_FLAGS}
       "${CHECK_INCLUDE_FILE_C_INCLUDE_DIRS}"
+      "${_CIF_LINK_DIRECTORIES}"
       )
     unset(_CIF_LINK_OPTIONS)
     unset(_CIF_LINK_LIBRARIES)
+    unset(_CIF_LINK_DIRECTORIES)
 
     if(${ARGC} EQUAL 3)
       set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS_SAVE})

@@ -1,4 +1,4 @@
-This is as.info, produced by makeinfo version 7.2 from as.texi.
+This is as.info, produced by makeinfo version 7.3 from as.texi.
 
 This file documents the GNU Assembler "as".
 
@@ -24,7 +24,7 @@ Using as
 ********
 
 This file is a user guide to the GNU assembler ‘as’ (GNU Binutils)
-version 2.46.0.
+version 2.46.1.
 
    This document is distributed under the terms of the GNU Free
 Documentation License.  A copy of the license is included in the section
@@ -30061,7 +30061,7 @@ AS Index
 * OpenRISC registers:                    OpenRISC-Regs.      (line    6)
 * OpenRISC relocations:                  OpenRISC-Relocs.    (line    6)
 * OPENRISC support:                      OpenRISC-Dependent. (line    6)
-* OPENRISC syntax:                       OpenRISC-Dependent. (line   13)
+* OPENRISC syntax:                       OpenRISC-Dependent. (line   12)
 * operand delimiters, i386:              i386-Variations.    (line   15)
 * operand delimiters, x86-64:            i386-Variations.    (line   15)
 * operand notation, VAX:                 VAX-operands.       (line    6)
@@ -30332,7 +30332,7 @@ AS Index
                                                              (line   41)
 * S12Z options:                          S12Z Options.       (line    6)
 * S12Z support:                          S12Z-Dependent.     (line    8)
-* S12Z syntax:                           S12Z Syntax.        (line   12)
+* S12Z syntax:                           S12Z Syntax.        (line   11)
 * s390 floating point:                   s390 Floating Point.
                                                              (line    6)
 * s390 instruction aliases:              s390 Aliases.       (line    6)
@@ -30449,7 +30449,7 @@ AS Index
 * Sparc size translations:               Sparc-Size-Translations.
                                                              (line    6)
 * SPARC support:                         Sparc-Dependent.    (line    6)
-* SPARC syntax:                          Sparc-Aligned-Data. (line   21)
+* SPARC syntax:                          Sparc-Aligned-Data. (line   20)
 * special characters, M680x0:            M68K-Chars.         (line    6)
 * special purpose registers, MSP 430:    MSP430-Regs.        (line   11)
 * sslist directive, TIC54X:              TIC54X-Directives.  (line  201)
@@ -30791,7 +30791,7 @@ AS Index
 * XGATE floating point:                  XGATE-Float.        (line    6)
 * XGATE line comment character:          XGATE-Syntax.       (line   16)
 * XGATE line separator:                  XGATE-Syntax.       (line   25)
-* XGATE opcodes:                         XGATE-opcodes.      (line    6)
+* XGATE opcodes:                         XGATE-opcodes.      (line    5)
 * XGATE options:                         XGATE-Opts.         (line    6)
 * XGATE support:                         XGATE-Dependent.    (line    6)
 * XGATE syntax:                          XGATE-Syntax.       (line    6)

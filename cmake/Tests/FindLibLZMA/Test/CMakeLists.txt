@@ -1,8 +1,10 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(TestFindLZMA C)
 include(CTest)
 
 find_package(LibLZMA REQUIRED)
+
+add_definitions(-DCMAKE_EXPECTED_LIBLZMA_VERSION="${LibLZMA_VERSION}")
 
 add_executable(test_tgt main.c)
 target_link_libraries(test_tgt LibLZMA::LibLZMA)

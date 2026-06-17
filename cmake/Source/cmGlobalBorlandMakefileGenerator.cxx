@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmGlobalBorlandMakefileGenerator.h"
 
 #include <ostream>
@@ -24,6 +24,7 @@ cmGlobalBorlandMakefileGenerator::cmGlobalBorlandMakefileGenerator(cmake* cm)
   this->ToolSupportsColor = true;
   this->UseLinkScript = false;
   cm->GetState()->SetWindowsShell(true);
+  cm->GetState()->SetBorlandMake(true);
   this->IncludeDirective = "!include";
   this->DefineWindowsNULL = true;
   this->PassMakeflags = true;
@@ -68,15 +69,20 @@ cmDocumentationEntry cmGlobalBorlandMakefileGenerator::GetDocumentation()
 
 std::vector<cmGlobalGenerator::GeneratedMakeCommand>
 cmGlobalBorlandMakefileGenerator::GenerateBuildCommand(
-  const std::string& makeProgram, const std::string& projectName,
-  const std::string& projectDir, std::vector<std::string> const& targetNames,
-  const std::string& config, int /*jobs*/, bool verbose,
-  const cmBuildOptions& buildOptions,
-  std::vector<std::string> const& makeOptions)
+  std::string const& makeProgram, std::string const& projectName,
+  std::string const& projectDir, std::vector<std::string> const& targetNames,
+  std::string const& config, int /*jobs*/, bool verbose,
+  cmBuildOptions buildOptions, std::vector<std::string> const& makeOptions,
+  BuildTryCompile /*isInTryCompile*/)
 {
   return this->cmGlobalUnixMakefileGenerator3::GenerateBuildCommand(
     makeProgram, projectName, projectDir, targetNames, config,
     cmake::NO_BUILD_PARALLEL_LEVEL, verbose, buildOptions, makeOptions);
+}
+
+std::string cmGlobalBorlandMakefileGenerator::GetShortBinaryOutputDir() const
+{
+  return "_o";
 }
 
 void cmGlobalBorlandMakefileGenerator::PrintBuildCommandAdvice(

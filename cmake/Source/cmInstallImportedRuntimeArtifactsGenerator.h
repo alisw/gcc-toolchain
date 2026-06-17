@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include <iosfwd>
@@ -10,7 +10,6 @@
 #include "cmListFileCache.h"
 
 class cmGeneratorTarget;
-class cmLocalGenerator;
 
 class cmInstallImportedRuntimeArtifactsGenerator : public cmInstallGenerator
 {
@@ -32,7 +31,7 @@ public:
   std::string GetDestination(std::string const& config) const;
 
 protected:
-  void GenerateScriptForConfig(std::ostream& os, const std::string& config,
+  void GenerateScriptForConfig(std::ostream& os, std::string const& config,
                                Indent indent) override;
 
 private:

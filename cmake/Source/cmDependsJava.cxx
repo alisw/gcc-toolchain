@@ -1,6 +1,8 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmDependsJava.h"
+
+#include <set>
 
 #include "cmSystemTools.h"
 
@@ -8,8 +10,8 @@ cmDependsJava::cmDependsJava() = default;
 
 cmDependsJava::~cmDependsJava() = default;
 
-bool cmDependsJava::WriteDependencies(const std::set<std::string>& sources,
-                                      const std::string& /*obj*/,
+bool cmDependsJava::WriteDependencies(std::set<std::string> const& sources,
+                                      std::string const& /*obj*/,
                                       std::ostream& /*makeDepends*/,
                                       std::ostream& /*internalDepends*/)
 {
@@ -24,7 +26,7 @@ bool cmDependsJava::WriteDependencies(const std::set<std::string>& sources,
 
 bool cmDependsJava::CheckDependencies(
   std::istream& /*internalDepends*/,
-  const std::string& /*internalDependsFileName*/, DependencyMap& /*validDeps*/)
+  std::string const& /*internalDependsFileName*/, DependencyMap& /*validDeps*/)
 {
   return true;
 }

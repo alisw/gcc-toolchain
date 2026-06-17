@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 
 # determine the compiler to use for Fortran programs
@@ -60,6 +60,7 @@ else()
       #  ifx: Intel Fortran LLVM-based compiler
       #  ifort: Intel Classic Fortran compiler
       #  nagfor: NAG Fortran compiler
+      #  lfortran: LFortran Fortran Compiler
       #
       #  GNU is last to be searched,
       #  so if you paid for a compiler it is picked by default.
@@ -108,6 +109,9 @@ else()
 
     # Intel on windows does not preprocess by default.
     "-fpp"
+
+    # LFortran does not preprocess by default.
+    "--cpp-infer"
     )
 endif()
 
@@ -321,13 +325,6 @@ if(CMAKE_Fortran_COMPILER_SYSROOT)
     "set(CMAKE_COMPILER_SYSROOT \"${CMAKE_Fortran_COMPILER_SYSROOT}\")")
 else()
   set(_SET_CMAKE_Fortran_COMPILER_SYSROOT "")
-endif()
-
-if(CMAKE_Fortran_COMPILER_ARCHITECTURE_ID)
-  set(_SET_CMAKE_Fortran_COMPILER_ARCHITECTURE_ID
-    "set(CMAKE_Fortran_COMPILER_ARCHITECTURE_ID ${CMAKE_Fortran_COMPILER_ARCHITECTURE_ID})")
-else()
-  set(_SET_CMAKE_Fortran_COMPILER_ARCHITECTURE_ID "")
 endif()
 
 if(MSVC_Fortran_ARCHITECTURE_ID)

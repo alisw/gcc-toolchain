@@ -1,6 +1,6 @@
 /* read_line.c -- Read line of test data in file.
 
-Copyright (C) 2012, 2013, 2014 INRIA
+Copyright (C) 2012, 2013, 2014, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -45,7 +45,7 @@ read_param  (mpc_datafile_context_t* datafile_context,
 
     case NATIVE_DC:
     case NATIVE_LDC:
-#ifdef _Complex_I
+#ifdef _MPC_HAVE_COMPLEX_H
       /* TODO */
       fprintf (stderr, "read_param: type not implemented.\n");
       exit (1);

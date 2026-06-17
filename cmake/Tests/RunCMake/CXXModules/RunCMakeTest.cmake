@@ -1,9 +1,12 @@
 include(RunCMake)
 
-# For `if (IN_LIST)`
-cmake_policy(SET CMP0057 NEW)
+set(stdlib_custom_json)
+if (CMake_TEST_CXX_STDLIB_MODULES_JSON)
+  list(APPEND stdlib_custom_json
+    -DCMAKE_CXX_STDLIB_MODULES_JSON=${CMake_TEST_CXX_STDLIB_MODULES_JSON})
+endif ()
 
-run_cmake(Inspect)
+run_cmake(Inspect ${stdlib_custom_json})
 include("${RunCMake_BINARY_DIR}/Inspect-build/info.cmake")
 
 # Test negative cases where C++20 modules do not work.
@@ -71,9 +74,15 @@ set(scopes
   Interface
   Private
   Public)
+set(target_types
+  Interface
+  Static
+  )
 foreach (fileset_type IN LISTS fileset_types)
   foreach (scope IN LISTS scopes)
-    run_cmake("FileSet${fileset_type}${scope}")
+    foreach (target_type IN LISTS target_types)
+      run_cmake("FileSet${fileset_type}${scope}On${target_type}")
+    endforeach ()
   endforeach ()
   run_cmake("FileSet${fileset_type}InterfaceImported")
 
@@ -82,6 +91,27 @@ foreach (fileset_type IN LISTS fileset_types)
   run_cmake("NotCompiledSource${fileset_type}")
   run_cmake("NotCXXSource${fileset_type}")
 endforeach ()
+
+if ("cxx_std_23" IN_LIST CMAKE_CXX_COMPILE_FEATURES)
+  run_cmake(CXXImportStdConfig)
+  run_cmake(CXXImportStdHeadTarget)
+  run_cmake(CXXImportStdLinkLanguage)
+  run_cmake(CXXImportStdInvalidGenex)
+endif ()
+
+if ("cxx_std_23" IN_LIST CMAKE_CXX_COMPILE_FEATURES AND
+    NOT have_cxx23_import_std)
+  run_cmake(NoCXX23TargetUnset)
+  run_cmake(NoCXX23TargetNotRequired)
+  run_cmake(NoCXX23TargetRequired)
+endif ()
+
+if ("cxx_std_26" IN_LIST CMAKE_CXX_COMPILE_FEATURES AND
+    NOT have_cxx26_import_std)
+  run_cmake(NoCXX26TargetUnset)
+  run_cmake(NoCXX26TargetNotRequired)
+  run_cmake(NoCXX26TargetRequired)
+endif ()
 
 run_cmake(InstallBMI)
 run_cmake(InstallBMIGenericArgs)
@@ -95,8 +125,10 @@ run_cmake(ExportInstallCxxModules)
 if (RunCMake_GENERATOR MATCHES "Ninja")
   run_cmake(NinjaDependInfoFileSet)
   run_cmake(NinjaDependInfoExport)
+  run_cmake(NinjaDependInfoExportFilesystemSafe)
   run_cmake(NinjaDependInfoBMIInstall)
   run_cmake(NinjaForceResponseFile) # issue#25367
+  run_cmake(NinjaDependInfoCompileDatabase)
 elseif (RunCMake_GENERATOR MATCHES "Visual Studio")
   run_cmake(VisualStudioNoSyntheticTargets)
 else ()
@@ -123,6 +155,10 @@ function (run_cxx_module_test directory)
   else ()
     set(RunCMake_TEST_OPTIONS -DCMAKE_BUILD_TYPE=Debug)
   endif ()
+  if (directory MATCHES "import-std")
+    list(APPEND RunCMake_TEST_OPTIONS
+      ${stdlib_custom_json})
+  endif ()
 
   if (RunCMake_CXXModules_INSTALL)
     set(prefix "${RunCMake_BINARY_DIR}/examples/${test_name}-install")
@@ -140,6 +176,16 @@ function (run_cxx_module_test directory)
     run_cmake_command("examples/${test_name}-build" "${CMAKE_COMMAND}" --build . --config Debug --target "${RunCMake_CXXModules_TARGET}")
   else ()
     run_cmake_command("examples/${test_name}-build" "${CMAKE_COMMAND}" --build . --config Debug)
+    foreach (RunCMake_CXXModules_TARGET IN LISTS RunCMake_CXXModules_TARGETS)
+      set(RunCMake_CXXModules_CONFIG "Debug")
+      set(RunCMake_CXXModules_NAME_SUFFIX "")
+      if (RunCMake_CXXModules_TARGET MATCHES "(.*)@(.*)")
+        set(RunCMake_CXXModules_TARGET "${CMAKE_MATCH_1}")
+        set(RunCMake_CXXModules_CONFIG "${CMAKE_MATCH_2}")
+        set(RunCMake_CXXModules_NAME_SUFFIX "-${RunCMake_CXXModules_CONFIG}")
+      endif ()
+      run_cmake_command("examples/${test_name}-target-${RunCMake_CXXModules_TARGET}${RunCMake_CXXModules_NAME_SUFFIX}" "${CMAKE_COMMAND}" --build . --target "${RunCMake_CXXModules_TARGET}" --config "${RunCMake_CXXModules_CONFIG}")
+    endforeach ()
   endif ()
   if (RunCMake_CXXModules_INSTALL)
     run_cmake_command("examples/${test_name}-install" "${CMAKE_COMMAND}" --build . --target install --config Debug)
@@ -175,6 +221,7 @@ endfunction ()
 # - `partitions`: module partitions are supported
 # - `internal_partitions`: internal module partitions are supported
 # - `bmionly`: the compiler supports BMI-only builds
+# - `import_std23`: the compiler supports `import std` for C++23
 #
 # Generator-based:
 # - `compile_commands`: the generator supports `compile_commands.json`
@@ -221,6 +268,31 @@ if ("named" IN_LIST CMake_TEST_MODULE_COMPILATION)
   run_cxx_module_test(same-src-name)
   run_cxx_module_test(scan_properties)
   run_cxx_module_test(target-objects)
+
+  if ("cxx_std_23" IN_LIST CMAKE_CXX_COMPILE_FEATURES AND
+      "import_std23" IN_LIST CMake_TEST_MODULE_COMPILATION)
+    run_cxx_module_test(import-std)
+    set(RunCMake_CXXModules_NO_TEST 1)
+    run_cxx_module_test(import-std-no-std-property)
+    unset(RunCMake_CXXModules_NO_TEST)
+    run_cxx_module_test(import-std-export-no-std-build)
+    set(RunCMake_CXXModules_INSTALL 1)
+    run_cxx_module_test(import-std-export-no-std-install)
+    unset(RunCMake_CXXModules_INSTALL)
+
+    if ("collation" IN_LIST CMake_TEST_MODULE_COMPILATION)
+      run_cxx_module_test(import-std-not-in-export-build)
+      run_cxx_module_test(import-std-transitive import-std-transitive-not-in-export-build "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/import-std-not-in-export-build-build")
+
+      set(RunCMake_CXXModules_INSTALL 1)
+      run_cxx_module_test(import-std-not-in-export-install)
+      unset(RunCMake_CXXModules_INSTALL)
+      run_cxx_module_test(import-std-transitive import-std-transitive-not-in-export-install "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/import-std-not-in-export-install-install")
+
+      run_cxx_module_test(import-std-transitive import-std-transitive-export-no-std-build "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/import-std-export-no-std-build-build" -DEXPORT_NO_STD=1)
+      run_cxx_module_test(import-std-transitive import-std-transitive-export-no-std-install "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/import-std-export-no-std-install-install" -DEXPORT_NO_STD=1)
+    endif ()
+  endif ()
 endif ()
 
 # Tests which require compile commands support.
@@ -228,8 +300,35 @@ if ("compile_commands" IN_LIST CMake_TEST_MODULE_COMPILATION)
   run_cxx_module_test(export-compile-commands)
 endif ()
 
+macro (setup_export_build_database_targets)
+  set(RunCMake_CXXModules_TARGETS
+    cmake_build_database-CXX
+    cmake_build_database)
+
+  if (RunCMake_GENERATOR_IS_MULTI_CONFIG)
+    list(INSERT RunCMake_CXXModules_TARGETS 0
+      cmake_build_database-CXX-Debug
+      cmake_build_database-Debug
+      # Other config targets.
+      cmake_build_database-CXX-Release@Release
+      cmake_build_database-Release@Release)
+  endif ()
+endmacro ()
+
+# Tests which require build database support.
+if ("build_database" IN_LIST CMake_TEST_MODULE_COMPILATION)
+  setup_export_build_database_targets()
+  set(RunCMake_CXXModules_NO_TEST 1)
+
+  run_cxx_module_test(export-build-database)
+
+  unset(RunCMake_CXXModules_NO_TEST)
+  unset(RunCMake_CXXModules_TARGETS)
+endif ()
+
 # Tests which require collation work.
 if ("collation" IN_LIST CMake_TEST_MODULE_COMPILATION)
+  run_cxx_module_test(duplicate-sources)
   run_cxx_module_test(public-req-private)
   set(RunCMake_CXXModules_NO_TEST 1)
   run_cxx_module_test(req-private-other-target)
@@ -256,6 +355,17 @@ if ("internal_partitions" IN_LIST CMake_TEST_MODULE_COMPILATION)
   run_cxx_module_test(internal-partitions)
 endif ()
 
+function (run_cxx_module_import_test type name)
+  set(RunCMake_CXXModules_INSTALL 0)
+
+  if ("EXPORT_BUILD_DATABASE" IN_LIST ARGN)
+    list(REMOVE_ITEM ARGN EXPORT_BUILD_DATABASE)
+    list(APPEND ARGN -DCMAKE_EXPORT_BUILD_DATABASE=1)
+  endif ()
+
+  run_cxx_module_test(import-modules "import-modules-${name}" "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/${name}-${type}" ${ARGN})
+endfunction ()
+
 # Tests which install BMIs
 if ("export_bmi" IN_LIST CMake_TEST_MODULE_COMPILATION)
   run_cxx_module_test(export-interface-no-properties-build)
@@ -264,29 +374,30 @@ if ("export_bmi" IN_LIST CMake_TEST_MODULE_COMPILATION)
   run_cxx_module_test(export-include-directories-old-cmake-build)
   run_cxx_module_test(export-usage-build)
   run_cxx_module_test(export-bmi-and-interface-build)
+  run_cxx_module_test(export-command-sepdir-build)
   run_cxx_module_test(export-transitive-targets-build)
   run_cxx_module_test(export-transitive-modules1-build)
   run_cxx_module_test(export-transitive-modules-build export-transitive-modules-build "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/export-transitive-modules1-build-build" )
+  run_cxx_module_test(export-with-headers-build)
 
   if ("collation" IN_LIST CMake_TEST_MODULE_COMPILATION AND
       "bmionly" IN_LIST CMake_TEST_MODULE_COMPILATION)
-    set(test_suffix export-interface-build)
-    run_cxx_module_test(import-modules "import-modules-${test_suffix}" "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/${test_suffix}-build")
+    run_cxx_module_import_test(build export-interface-build)
+    run_cxx_module_import_test(build export-interface-no-properties-build -DNO_PROPERTIES=1)
+    run_cxx_module_import_test(build export-include-directories-build -DINCLUDE_PROPERTIES=1)
+    run_cxx_module_import_test(build export-bmi-and-interface-build -DWITH_BMIS=1)
+    run_cxx_module_import_test(build export-command-sepdir-build -DEXPORT_COMMAND_SEPDIR=1)
+    run_cxx_module_import_test(build export-transitive-targets-build -DTRANSITIVE_TARGETS=1)
+    run_cxx_module_import_test(build export-transitive-modules-build -DTRANSITIVE_MODULES=1)
+    run_cxx_module_import_test(build export-with-headers-build -DWITH_HEADERS=1)
 
-    set(test_suffix export-interface-no-properties-build)
-    run_cxx_module_test(import-modules "import-modules-${test_suffix}" "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/${test_suffix}-build" -DNO_PROPERTIES=1)
+    if ("build_database" IN_LIST CMake_TEST_MODULE_COMPILATION)
+      setup_export_build_database_targets()
 
-    set(test_suffix export-include-directories-build)
-    run_cxx_module_test(import-modules "import-modules-${test_suffix}" "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/${test_suffix}-build" -DINCLUDE_PROPERTIES=1)
+      run_cxx_module_import_test(build export-build-database -DBUILD_DATABASE=1 EXPORT_BUILD_DATABASE)
 
-    set(test_suffix export-bmi-and-interface-build)
-    run_cxx_module_test(import-modules "import-modules-${test_suffix}" "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/${test_suffix}-build" -DWITH_BMIS=1)
-
-    set(test_suffix export-transitive-targets-build)
-    run_cxx_module_test(import-modules "import-modules-${test_suffix}" "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/${test_suffix}-build" -DTRANSITIVE_TARGETS=1)
-
-    set(test_suffix export-transitive-modules-build)
-    run_cxx_module_test(import-modules "import-modules-${test_suffix}" "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/${test_suffix}-build" -DTRANSITIVE_MODULES=1)
+      unset(RunCMake_CXXModules_TARGETS)
+    endif ()
   endif ()
 endif ()
 
@@ -305,31 +416,22 @@ if ("install_bmi" IN_LIST CMake_TEST_MODULE_COMPILATION)
     run_cxx_module_test(export-include-directories-old-cmake-install)
     run_cxx_module_test(export-usage-install)
     run_cxx_module_test(export-bmi-and-interface-install)
+    run_cxx_module_test(export-command-sepdir-install)
     run_cxx_module_test(export-transitive-targets-install)
     run_cxx_module_test(export-transitive-modules1-install)
     run_cxx_module_test(export-transitive-modules-install export-transitive-modules-install "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/export-transitive-modules1-install-install" )
+    run_cxx_module_test(export-with-headers-install)
 
     if ("collation" IN_LIST CMake_TEST_MODULE_COMPILATION AND
         "bmionly" IN_LIST CMake_TEST_MODULE_COMPILATION)
-      set(RunCMake_CXXModules_INSTALL 0)
-      set(test_suffix export-interface-install)
-      run_cxx_module_test(import-modules "import-modules-${test_suffix}" "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/${test_suffix}-install")
-
-      set(test_suffix export-interface-no-properties-install)
-      run_cxx_module_test(import-modules "import-modules-${test_suffix}" "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/${test_suffix}-install" -DNO_PROPERTIES=1)
-
-      set(test_suffix export-include-directories-install)
-      run_cxx_module_test(import-modules "import-modules-${test_suffix}" "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/${test_suffix}-install" -DINCLUDE_PROPERTIES=1)
-
-      set(test_suffix export-bmi-and-interface-install)
-      run_cxx_module_test(import-modules "import-modules-${test_suffix}" "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/${test_suffix}-install" -DWITH_BMIS=1)
-
-      set(test_suffix export-transitive-targets-install)
-      run_cxx_module_test(import-modules "import-modules-${test_suffix}" "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/${test_suffix}-install" -DTRANSITIVE_TARGETS=1)
-
-      set(test_suffix export-transitive-modules-install)
-      run_cxx_module_test(import-modules "import-modules-${test_suffix}" "-DCMAKE_PREFIX_PATH=${RunCMake_BINARY_DIR}/examples/${test_suffix}-install" -DTRANSITIVE_MODULES=1)
-      set(RunCMake_CXXModules_INSTALL 1)
+      run_cxx_module_import_test(install export-interface-install)
+      run_cxx_module_import_test(install export-interface-no-properties-install -DNO_PROPERTIES=1)
+      run_cxx_module_import_test(install export-include-directories-install -DINCLUDE_PROPERTIES=1)
+      run_cxx_module_import_test(install export-bmi-and-interface-install -DWITH_BMIS=1)
+      run_cxx_module_import_test(install export-command-sepdir-install -DEXPORT_COMMAND_SEPDIR=1)
+      run_cxx_module_import_test(install export-transitive-targets-install -DTRANSITIVE_TARGETS=1)
+      run_cxx_module_import_test(install export-transitive-modules-install -DTRANSITIVE_MODULES=1)
+      run_cxx_module_import_test(install export-with-headers-install -DWITH_HEADERS=1)
     endif ()
   endif ()
 endif ()

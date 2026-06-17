@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 #include "cmConfigure.h" // IWYU pragma: keep
 
@@ -29,6 +29,20 @@
 #endif
 
 namespace cm {
+
+/** Whether to call uv_update_time before starting a timer.
+ *
+ * uv_loop_t caches a "now" time that uv_loop_init initializes and
+ * uv_run updates on each event loop iteration.  uv_timer_start
+ * computes timer expiry relative to the loop's cached "now" time.
+ * For short timeouts started before the event loop, we may need to
+ * update the "now" time when starting the timer.
+ */
+enum class uv_update_time
+{
+  no,
+  yes,
+};
 
 /***
  * RAII class to simplify and ensure the safe usage of uv_loop_t. This includes
@@ -158,10 +172,10 @@ public:
 };
 
 template <typename T>
-inline uv_handle_ptr_base_<T>::uv_handle_ptr_base_(
+uv_handle_ptr_base_<T>::uv_handle_ptr_base_(
   uv_handle_ptr_base_<T>&&) noexcept = default;
 template <typename T>
-inline uv_handle_ptr_base_<T>& uv_handle_ptr_base_<T>::operator=(
+uv_handle_ptr_base_<T>& uv_handle_ptr_base_<T>::operator=(
   uv_handle_ptr_base_<T>&&) noexcept = default;
 
 /**
@@ -251,7 +265,8 @@ struct uv_timer_ptr : public uv_handle_ptr_<uv_timer_t>
 
   int init(uv_loop_t& loop, void* data = nullptr);
 
-  int start(uv_timer_cb cb, uint64_t timeout, uint64_t repeat);
+  int start(uv_timer_cb cb, uint64_t timeout, uint64_t repeat,
+            uv_update_time update_time);
 
   void stop();
 };
@@ -316,6 +331,6 @@ UV_HANDLE_PTR_INSTANTIATE_EXTERN(tty)
  * referenced by the uv_buf_t values must remain alive until the callback
  * is made or the stream is closed.
  */
-int uv_write(uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs,
+int uv_write(uv_stream_t* handle, uv_buf_t const bufs[], unsigned int nbufs,
              std::weak_ptr<std::function<void(int)>> cb);
 }

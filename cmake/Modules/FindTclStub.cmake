@@ -1,48 +1,71 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindTclStub
 -----------
 
-TCL_STUB_LIBRARY_DEBUG and TK_STUB_LIBRARY_DEBUG were removed.
+Finds the Tcl Stub Library, which is used for building version-independent Tcl
+extensions:
 
-This module finds Tcl stub libraries.  It first finds Tcl include
-files and libraries by calling FindTCL.cmake.  How to Use the Tcl
-Stubs Library:
+.. code-block:: cmake
 
-::
+  find_package(TclStub [...])
 
-   http://tcl.activestate.com/doc/howto/stubs.html
+Tcl (Tool Command Language) is a dynamic programming language, and the Tcl Stub
+Library provides a mechanism to allow Tcl extensions to be compiled in a way
+that they can work across multiple Tcl versions, without requiring
+recompilation.
 
-Using Stub Libraries:
+This module is typically used in conjunction with Tcl development projects that
+aim to be portable across different Tcl releases.  It first calls the
+:module:`FindTCL` module to locate Tcl installation and then attempts to find
+the stub libraries corresponding to the located Tcl version.
 
-::
+Result Variables
+^^^^^^^^^^^^^^^^
 
-   http://safari.oreilly.com/0130385603/ch48lev1sec3
+This module defines the following variables:
 
-This code sets the following variables:
+``TclStub_FOUND``
+  .. versionadded:: 4.2
 
-::
+  Boolean indicating whether the Tcl Stub Library was found.
 
-  TCL_STUB_LIBRARY       = path to Tcl stub library
-  TK_STUB_LIBRARY        = path to Tk stub library
-  TTK_STUB_LIBRARY       = path to ttk stub library
+Cache Variables
+^^^^^^^^^^^^^^^
 
+The following cache variables may also be set:
 
+``TCL_STUB_LIBRARY``
+  The path to the Tcl stub library.
+``TK_STUB_LIBRARY``
+  The path to the Tk stub library.
+``TTK_STUB_LIBRARY``
+  The path to the ttk stub library.
 
-In an effort to remove some clutter and clear up some issues for
-people who are not necessarily Tcl/Tk gurus/developers, some
-variables were moved or removed.  Changes compared to CMake 2.4 are:
+Examples
+^^^^^^^^
 
-::
+Finding Tcl Stubs Library:
 
-   => these libs are not packaged by default with Tcl/Tk distributions.
-      Even when Tcl/Tk is built from source, several flavors of debug libs
-      are created and there is no real reason to pick a single one
-      specifically (say, amongst tclstub84g, tclstub84gs, or tclstub84sgx).
-      Let's leave that choice to the user by allowing him to assign
-      TCL_STUB_LIBRARY to any Tcl library, debug or not.
+.. code-block:: cmake
+
+  find_package(TclStub)
+
+See Also
+^^^^^^^^
+
+* The :module:`FindTCL` module to find the Tcl installation.
+* The :module:`FindTclsh` module to find the Tcl shell command-line executable.
+
+Online references:
+
+* `How to Use the Tcl Stubs Library
+  <https://www.tcl-lang.org/doc/howto/stubs.html>`_
+
+* `Practical Programming in Tcl and Tk
+  <https://www.oreilly.com/library/view/practical-programming-in/0130385603/>`_
 #]=======================================================================]
 
 include(${CMAKE_CURRENT_LIST_DIR}/FindTCL.cmake)
@@ -141,3 +164,9 @@ mark_as_advanced(
   TCL_STUB_LIBRARY
   TK_STUB_LIBRARY
   )
+
+if(TCL_STUB_LIBRARY AND TK_STUB_LIBRARY AND TTK_STUB_LIBRARY)
+  set(TclStub_FOUND TRUE)
+else()
+  set(TclStub_FOUND FALSE)
+endif()

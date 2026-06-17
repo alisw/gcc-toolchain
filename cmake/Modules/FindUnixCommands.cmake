@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindUnixCommands
@@ -9,11 +9,45 @@ FindUnixCommands
 
   Use :option:`${CMAKE_COMMAND} -E <cmake -E>` subcommands instead.
 
-Find Unix commands, including the ones from Cygwin
+Finds Unix commands ``bash``, ``cp``, ``gzip``, ``mv``, ``rm``, and
+``tar``, including the ones from Cygwin or MSYS:
 
-This module looks for the Unix commands ``bash``, ``cp``, ``gzip``,
-``mv``, ``rm``, and ``tar`` and stores the result in the variables
-``BASH``, ``CP``, ``GZIP``, ``MV``, ``RM``, and ``TAR``.
+.. code-block:: cmake
+
+  find_package(UnixCommands [...])
+
+Result Variables
+^^^^^^^^^^^^^^^^
+
+This module defines the following variables:
+
+``UnixCommands_FOUND``
+  .. versionadded:: 3.3
+
+  Boolean indicating whether Unix commands were found.
+
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may also be set:
+
+``BASH``
+  The path to the ``bash`` command-line executable.
+
+``CP``
+  The path to the ``cp`` command-line executable.
+
+``GZIP``
+  The path to the ``gzip`` command-line executable.
+
+``MV``
+  The path to the ``mv`` command-line executable.
+
+``RM``
+  The path to the ``rm`` command-line executable.
+
+``TAR``
+  The path to the ``tar`` command-line executable.
 #]=======================================================================]
 
 include(${CMAKE_CURRENT_LIST_DIR}/FindCygwin.cmake)
@@ -76,7 +110,7 @@ mark_as_advanced(
   TAR
 )
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
+include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(UnixCommands
   REQUIRED_VARS BASH CP GZIP MV RM TAR
 )

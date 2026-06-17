@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 
 # search for additional tools required for C/C++ (and other languages ?)
@@ -15,13 +15,11 @@
 #   CMAKE_RANLIB
 #   CMAKE_LINKER
 #   CMAKE_MT
+#   CMAKE_OBJDUMP
 #   CMAKE_STRIP
 #   CMAKE_INSTALL_NAME_TOOL
 
 # on UNIX, cygwin and mingw
-
-cmake_policy(PUSH)
-cmake_policy(SET CMP0057 NEW) # if IN_LIST
 
 # Resolve full path of CMAKE_TOOL from user-defined name and SEARCH_PATH.
 function(__resolve_tool_path CMAKE_TOOL SEARCH_PATH DOCSTRING)
@@ -89,8 +87,9 @@ if(("x${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_SIMULATE_ID}" STREQUAL "xMSVC" AND
   if("x${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_ID}" MATCHES "^x(Clang|LLVMFlang)$")
     set(_CMAKE_NM_NAMES "llvm-nm" "nm")
     list(PREPEND _CMAKE_AR_NAMES "llvm-lib")
-    # llvm-mt is not ready to be used as a replacement for mt.exe
-    # list(PREPEND _CMAKE_MT_NAMES "llvm-mt")
+    if("${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_VERSION}" VERSION_GREATER_EQUAL 14.0.2)
+      list(PREPEND _CMAKE_MT_NAMES "llvm-mt")
+    endif()
     list(PREPEND _CMAKE_LINKER_NAMES "lld-link")
     list(APPEND _CMAKE_TOOL_VARS NM)
   elseif("x${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_ID}" STREQUAL "xIntel")
@@ -110,56 +109,60 @@ elseif("x${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_ID}" MATCHES "^x(Open)?W
   list(APPEND _CMAKE_TOOL_VARS LINKER AR)
 
 elseif("x${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_ID}" MATCHES "^xIAR$")
-  # Small helper declaring an IAR tool (e.g. linker) to avoid repeating the same idiom every time
-  macro(__append_IAR_tool TOOL_VAR NAME)
-    set(_CMAKE_${TOOL_VAR}_NAMES "${NAME}" "${NAME}.exe")
-    list(APPEND _CMAKE_TOOL_VARS ${TOOL_VAR})
-  endmacro()
-
-  # Resolve hint path from an IAR compiler
-  function(__resolve_IAR_hints COMPILER RESULT)
-    get_filename_component(_CMAKE_IAR_HINT "${COMPILER}" REALPATH)
-    get_filename_component(_CMAKE_IAR_HINT "${_CMAKE_IAR_HINT}" DIRECTORY)
-    list(APPEND _IAR_HINTS "${_CMAKE_IAR_HINT}")
-
-    get_filename_component(_CMAKE_IAR_HINT "${COMPILER}" DIRECTORY)
-    list(APPEND _IAR_HINTS "${_CMAKE_IAR_HINT}")
-
-    set(${RESULT} "${_IAR_HINTS}" PARENT_SCOPE)
-  endfunction()
-
-  __resolve_IAR_hints("${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER}" _CMAKE_TOOLCHAIN_LOCATION)
-  set(_CMAKE_IAR_ITOOLS "ARM" "RX" "RH850" "RL78" "RISCV" "RISC-V" "STM8")
-  set(_CMAKE_IAR_XTOOLS "AVR" "MSP430" "V850" "8051")
-
-  string(TOLOWER "${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_ARCHITECTURE_ID}" _CMAKE_IAR_LOWER_ARCHITECTURE_ID)
-
-  if("${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_ARCHITECTURE_ID}" IN_LIST _CMAKE_IAR_ITOOLS)
-    __append_IAR_tool(AR "iarchive")
-    __append_IAR_tool(LINKER "ilink${_CMAKE_IAR_LOWER_ARCHITECTURE_ID}")
-
-    __append_IAR_tool(IAR_ELFDUMP "ielfdump${_CMAKE_IAR_LOWER_ARCHITECTURE_ID}")
-    __append_IAR_tool(IAR_ELFTOOL "ielftool")
-    __append_IAR_tool(IAR_OBJMANIP "iobjmanip")
-    __append_IAR_tool(IAR_SYMEXPORT "isymexport")
-
-  elseif("${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_ARCHITECTURE_ID}" IN_LIST _CMAKE_IAR_XTOOLS)
-    __append_IAR_tool(AR "xar")
-    if("${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_ARCHITECTURE_ID}" STREQUAL "AVR" AND
-      (CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_VERSION VERSION_GREATER_EQUAL 8))
-      # IAR UBROF Linker V8.10+ for Microchip AVR is `xlinkavr`
-      __append_IAR_tool(LINKER "xlink${_CMAKE_IAR_LOWER_ARCHITECTURE_ID}")
-    else()
-      __append_IAR_tool(LINKER "xlink")
-    endif()
-
-  else()
-    message(FATAL_ERROR "Failed to find linker and librarian for ${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_ID} on ${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_ARCHITECTURE_ID}.")
-  endif()
-
-  unset(_CMAKE_IAR_LOWER_ARCHITECTURE_ID)
-  unset(_CMAKE_IAR_ITOOLS)
-  unset(_CMAKE_IAR_XTOOLS)
+  # Detect the `<lang>` compiler name
+  get_filename_component(__iar_selected_compiler "${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER}" NAME)
+  # Strip out the `icc`,`iasm`,`a` prefixes and other `_suffixes leaving only the `<target>`
+  string(TOLOWER "${__iar_selected_compiler}" __iar_arch_id)
+  string(REGEX REPLACE "^x(icc|iasm|a)|(_.*)$" "" __iar_arch_id "x${__iar_arch_id}")
+  # IAR Archive Tool
+  set(_CMAKE_AR_NAMES
+    "iarchive" "iarchive.exe"
+    "xar" "xar.exe"
+  )
+  # IAR Linker
+  set(_CMAKE_LINKER_NAMES
+    "ilink${__iar_arch_id}" "ilink${__iar_arch_id}.exe"
+    "xlink${__iar_arch_id}" "xlink${__iar_arch_id}.exe"
+    "xlink" "xlink.exe"
+  )
+  # IAR ELF Dumper
+  set(_CMAKE_IAR_ELFDUMP_NAMES
+    "ielfdump${__iar_arch_id}" "ielfdump${__iar_arch_id}.exe"
+  )
+  # IAR ELF Tool
+  set(_CMAKE_IAR_ELFTOOL_NAMES
+    "ielftool" "ielftool.exe"
+  )
+  # IAR ELF Exe to Object Tool
+  set(_CMAKE_IAR_EXE2OBJ_NAMES
+    "iexe2obj" "iexe2obj.exe"
+  )
+  # IAR Object File Manipulator
+  set(_CMAKE_IAR_OBJMANIP_NAMES
+    "iobjmanip" "iobjmanip.exe"
+  )
+  # IAR Absolute Symbol Exporter
+  set(_CMAKE_IAR_SYMEXPORT_NAMES
+    "isymexport" "isymexport.exe"
+  )
+  # IAR C-STAT Command Line Interface
+  set(_CMAKE_IAR_CSTAT_NAMES
+    "icstat" "icstat.exe"
+  )
+  # IAR C-STAT Checks Manifest Handler
+  set(_CMAKE_IAR_CHECKS_NAMES
+    "ichecks" "ichecks.exe"
+  )
+  # IAR C-STAT Report Generator
+  set(_CMAKE_IAR_REPORT_NAMES
+    "ireport" "ireport.exe"
+  )
+  list(APPEND _CMAKE_TOOL_VARS
+    AR LINKER IAR_ELFDUMP IAR_ELFTOOL IAR_EXE2OBJ IAR_OBJMANIP IAR_SYMEXPORT
+    IAR_CSTAT IAR_CHECKS IAR_REPORT
+  )
+  unset(__iar_selected_compiler)
+  unset(__iar_arch_id)
 
 # in all other cases search for ar, ranlib, etc.
 else()
@@ -184,7 +187,7 @@ else()
   set(_CMAKE_TAPI_NAMES "tapi")
 
   # Prepend toolchain-specific names.
-  if("${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_ID}" STREQUAL Clang)
+  if("x${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_ID}" MATCHES "^x(Clang|IntelLLVM|LLVMFlang)$")
     if("x${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_SIMULATE_ID}" STREQUAL "xMSVC")
       list(PREPEND _CMAKE_LINKER_NAMES "lld-link")
     elseif(NOT APPLE)
@@ -214,6 +217,11 @@ else()
   elseif("${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_ID}" STREQUAL ARMClang)
     list(PREPEND _CMAKE_AR_NAMES "armar")
     list(PREPEND _CMAKE_LINKER_NAMES "armlink")
+  endif()
+
+  if(EMSCRIPTEN)
+    list(PREPEND _CMAKE_AR_NAMES "emar")
+    list(PREPEND _CMAKE_RANLIB_NAMES "emranlib")
   endif()
 
   list(APPEND _CMAKE_TOOL_VARS AR RANLIB STRIP LINKER NM OBJDUMP OBJCOPY READELF DLLTOOL ADDR2LINE TAPI)
@@ -256,8 +264,7 @@ endif()
 
 
 if(CMAKE_PLATFORM_HAS_INSTALLNAME)
-  find_program(CMAKE_INSTALL_NAME_TOOL NAMES ${_CMAKE_TOOLCHAIN_PREFIX}install_name_tool HINTS ${_CMAKE_TOOLCHAIN_LOCATION} NO_CMAKE_PATH NO_CMAKE_ENVIRONMENT_PATH)
-
+  find_program(CMAKE_INSTALL_NAME_TOOL NAMES ${_CMAKE_TOOLCHAIN_PREFIX}install_name_tool llvm-install-name-tool HINTS ${_CMAKE_TOOLCHAIN_LOCATION} NO_CMAKE_PATH NO_CMAKE_ENVIRONMENT_PATH)
   if(NOT CMAKE_INSTALL_NAME_TOOL)
     message(FATAL_ERROR "Could not find install_name_tool, please check your installation.")
   endif()
@@ -284,5 +291,3 @@ if("x${CMAKE_${_CMAKE_PROCESSING_LANGUAGE}_COMPILER_ID}" MATCHES "^xIAR$")
   set(CMAKE_IAR_LINKER "${CMAKE_LINKER}" CACHE FILEPATH "The IAR ILINK linker")
   mark_as_advanced(CMAKE_IAR_LINKER CMAKE_IAR_AR)
 endif()
-
-cmake_policy(POP)

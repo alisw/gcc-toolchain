@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include <map>
@@ -12,10 +12,15 @@
 
 #include "cmListFileCache.h"
 
+namespace cm {
+namespace GenEx {
+struct Context;
+}
+}
+
 class cmCompiledGeneratorExpression;
 struct cmGeneratorExpressionDAGChecker;
 class cmGeneratorTarget;
-class cmLocalGenerator;
 class cmMakefile;
 class cmake;
 
@@ -39,22 +44,22 @@ public:
   cmFileSet(cmake& cmakeInstance, std::string name, std::string type,
             cmFileSetVisibility visibility);
 
-  const std::string& GetName() const { return this->Name; }
-  const std::string& GetType() const { return this->Type; }
+  std::string const& GetName() const { return this->Name; }
+  std::string const& GetType() const { return this->Type; }
   cmFileSetVisibility GetVisibility() const { return this->Visibility; }
 
   void CopyEntries(cmFileSet const* fs);
 
   void ClearDirectoryEntries();
   void AddDirectoryEntry(BT<std::string> directories);
-  const std::vector<BT<std::string>>& GetDirectoryEntries() const
+  std::vector<BT<std::string>> const& GetDirectoryEntries() const
   {
     return this->DirectoryEntries;
   }
 
   void ClearFileEntries();
   void AddFileEntry(BT<std::string> files);
-  const std::vector<BT<std::string>>& GetFileEntries() const
+  std::vector<BT<std::string>> const& GetFileEntries() const
   {
     return this->FileEntries;
   }
@@ -66,20 +71,18 @@ public:
   CompileDirectoryEntries() const;
 
   std::vector<std::string> EvaluateDirectoryEntries(
-    const std::vector<std::unique_ptr<cmCompiledGeneratorExpression>>& cges,
-    cmLocalGenerator* lg, const std::string& config,
-    const cmGeneratorTarget* target,
+    std::vector<std::unique_ptr<cmCompiledGeneratorExpression>> const& cges,
+    cm::GenEx::Context const& context, cmGeneratorTarget const* target,
     cmGeneratorExpressionDAGChecker* dagChecker = nullptr) const;
 
   void EvaluateFileEntry(
-    const std::vector<std::string>& dirs,
+    std::vector<std::string> const& dirs,
     std::map<std::string, std::vector<std::string>>& filesPerDir,
-    const std::unique_ptr<cmCompiledGeneratorExpression>& cge,
-    cmLocalGenerator* lg, const std::string& config,
-    const cmGeneratorTarget* target,
+    std::unique_ptr<cmCompiledGeneratorExpression> const& cge,
+    cm::GenEx::Context const& context, cmGeneratorTarget const* target,
     cmGeneratorExpressionDAGChecker* dagChecker = nullptr) const;
 
-  static bool IsValidName(const std::string& name);
+  static bool IsValidName(std::string const& name);
 
 private:
   cmake& CMakeInstance;

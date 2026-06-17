@@ -70,12 +70,7 @@ function(getMissingShlibsErrorExtra FILE RESULT_VAR)
     if(err_)
       set(error_extra " Extra: Could not unpack package content: '${err}'")
     else()
-      cmake_policy(PUSH)
-        # Tell file(GLOB_RECURSE) not to follow directory symlinks
-        # even if the project does not set this policy to NEW.
-        cmake_policy(SET CMP0009 NEW)
-        file(GLOB_RECURSE FILE_PATHS_ LIST_DIRECTORIES false "${CMAKE_CURRENT_BINARY_DIR}/data_${PREFIX}/*")
-      cmake_policy(POP)
+      file(GLOB_RECURSE FILE_PATHS_ LIST_DIRECTORIES false "${CMAKE_CURRENT_BINARY_DIR}/data_${PREFIX}/*")
 
       # get file info so that we can determine if file is executable or not
       foreach(FILE_ IN LISTS FILE_PATHS_)
@@ -101,7 +96,7 @@ function(getMissingShlibsErrorExtra FILE RESULT_VAR)
         string(APPEND error_extra "; readelf \"\n")
 
         # Only dynamically linked ELF files are included
-        # Extract only file name infront of ":"
+        # Extract only file name in front of ":"
         foreach(_FILE IN LISTS deb_install_files)
           if(_FILE MATCHES "ELF.*shared object")
             string(REGEX MATCH "(^.*):" _FILE_NAME "${_FILE}")

@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 
 # This module is shared by multiple languages; use include blocker.
@@ -39,6 +39,8 @@ macro(__compiler_gnu lang)
   set(CMAKE_${lang}_LINKER_WRAPPER_FLAG "-Wl,")
   set(CMAKE_${lang}_LINKER_WRAPPER_FLAG_SEP ",")
 
+  set(CMAKE_${lang}_LINK_MODE DRIVER)
+
   # Older versions of gcc (< 4.5) contain a bug causing them to report a missing
   # header file as a warning if depfiles are enabled, causing check_header_file
   # tests to always succeed.  Work around this by disabling dependency tracking
@@ -50,60 +52,6 @@ macro(__compiler_gnu lang)
     # internally, as it ought to.  Work around this bug by setting -MT here
     # even though it isn't strictly necessary.
     set(CMAKE_DEPFILE_FLAGS_${lang} "-MD -MT <DEP_TARGET> -MF <DEP_FILE>")
-  endif()
-
-  # define flags for linker depfile generation
-  set(CMAKE_${lang}_LINKER_DEPFILE_FLAGS "LINKER:--dependency-file,<DEP_FILE>")
-  set(CMAKE_${lang}_LINKER_DEPFILE_FORMAT gcc)
-
-  if(NOT DEFINED CMAKE_${lang}_LINKER_DEPFILE_SUPPORTED)
-    ## Ensure ninja tool is recent enough...
-    if(CMAKE_GENERATOR MATCHES "^Ninja")
-      # Ninja 1.10 or upper is required
-      execute_process(COMMAND "${CMAKE_MAKE_PROGRAM}" --version
-        OUTPUT_VARIABLE _ninja_version
-        ERROR_VARIABLE _ninja_version)
-      if (_ninja_version MATCHES "[0-9]+(\\.[0-9]+)*")
-        set (_ninja_version "${CMAKE_MATCH_0}")
-      endif()
-      if (_ninja_version VERSION_LESS "1.10")
-        set(CMAKE_${lang}_LINKER_DEPFILE_SUPPORTED FALSE)
-      endif()
-      unset(_ninja_version)
-    endif()
-
-    if (NOT DEFINED CMAKE_${lang}_LINKER_DEPFILE_SUPPORTED)
-      ## check if this feature is supported by the linker
-      if (CMAKE_${lang}_COMPILER_LINKER AND CMAKE_${lang}_COMPILER_LINKER_ID MATCHES "GNU|LLD")
-        execute_process(COMMAND "${CMAKE_${lang}_COMPILER_LINKER}" --help
-                        OUTPUT_VARIABLE _linker_capabilities
-                        ERROR_VARIABLE _linker_capabilities)
-        if(_linker_capabilities MATCHES "--dependency-file")
-          set(CMAKE_${lang}_LINKER_DEPFILE_SUPPORTED TRUE)
-        else()
-          set(CMAKE_${lang}_LINKER_DEPFILE_SUPPORTED FALSE)
-        endif()
-        unset(_linker_capabilities)
-      else()
-        set(CMAKE_${lang}_LINKER_DEPFILE_SUPPORTED FALSE)
-      endif()
-    endif()
-  endif()
-  if (CMAKE_${lang}_LINKER_DEPFILE_SUPPORTED)
-    set(CMAKE_${lang}_LINK_DEPENDS_USE_LINKER TRUE)
-  else()
-    set(CMAKE_${lang}_LINK_DEPENDS_USE_LINKER FALSE)
-  endif()
-
-  # Due to GNU binutils ld bug when LTO is enabled (see GNU bug
-  # `30568 <https://sourceware.org/bugzilla/show_bug.cgi?id=30568>`_),
-  # deactivate this feature if the version is less than 2.41.
-  # For now, all known versions of gold linker have also this bug.
-  if (CMAKE_${lang}_COMPILER_LINKER_ID
-      AND (CMAKE_${lang}_COMPILER_LINKER_ID STREQUAL "GNUgold"
-           OR (CMAKE_${lang}_COMPILER_LINKER_ID STREQUAL "GNU"
-               AND CMAKE_${lang}_COMPILER_LINKER_VERSION VERSION_LESS "2.41")))
-    set(CMAKE_${lang}_LINK_DEPENDS_USE_LINKER FALSE)
   endif()
 
   # Initial configuration flags.
@@ -151,7 +99,7 @@ macro(__compiler_gnu lang)
       list(APPEND __lto_flags -flto)
     endif()
 
-    if(NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 4.7)
+    if(NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 4.7 AND NOT APPLE)
       # '-ffat-lto-objects' introduced since GCC 4.7:
       # * https://gcc.gnu.org/onlinedocs/gcc-4.6.4/gcc/Option-Summary.html (no)
       # * https://gcc.gnu.org/onlinedocs/gcc-4.7.4/gcc/Option-Summary.html (yes)
@@ -187,7 +135,7 @@ macro(__compiler_gnu lang)
       list(APPEND CMAKE_${lang}_COMPILER_PREDEFINES_COMMAND ${_COMPILER_ARGS})
       unset(_COMPILER_ARGS)
     endif()
-    list(APPEND CMAKE_${lang}_COMPILER_PREDEFINES_COMMAND "-dM" "-E" "-c" "${CMAKE_ROOT}/Modules/CMakeCXXCompilerABI.cpp")
+    list(APPEND CMAKE_${lang}_COMPILER_PREDEFINES_COMMAND "-w" "-dM" "-E" "${CMAKE_ROOT}/Modules/CMakeCXXCompilerABI.cpp")
   endif()
 
   if(NOT "x${lang}" STREQUAL "xFortran")
@@ -205,5 +153,114 @@ macro(__compiler_gnu lang)
   if(CMAKE_${lang}_COMPILER_VERSION VERSION_GREATER_EQUAL 4.9)
     set(CMAKE_${lang}_COMPILE_OPTIONS_COLOR_DIAGNOSTICS "-fdiagnostics-color=always")
     set(CMAKE_${lang}_COMPILE_OPTIONS_COLOR_DIAGNOSTICS_OFF "-fno-diagnostics-color")
+  endif()
+endmacro()
+
+macro(__compiler_gnu_c_standards lang)
+  if (NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 4.5)
+    set(CMAKE_${lang}90_STANDARD_COMPILE_OPTION "-std=c90")
+    set(CMAKE_${lang}90_EXTENSION_COMPILE_OPTION "-std=gnu90")
+    set(CMAKE_${lang}_STANDARD_LATEST 90)
+  elseif (NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 3.4)
+    set(CMAKE_${lang}90_STANDARD_COMPILE_OPTION "-std=c89")
+    set(CMAKE_${lang}90_EXTENSION_COMPILE_OPTION "-std=gnu89")
+    set(CMAKE_${lang}_STANDARD_LATEST 90)
+  endif()
+
+  if (NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 3.4)
+    set(CMAKE_${lang}90_STANDARD__HAS_FULL_SUPPORT ON)
+    set(CMAKE_${lang}99_STANDARD_COMPILE_OPTION "-std=c99")
+    set(CMAKE_${lang}99_EXTENSION_COMPILE_OPTION "-std=gnu99")
+    set(CMAKE_${lang}99_STANDARD__HAS_FULL_SUPPORT ON)
+    set(CMAKE_${lang}_STANDARD_LATEST 99)
+  endif()
+
+  if (NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 4.7)
+    set(CMAKE_${lang}11_STANDARD_COMPILE_OPTION "-std=c11")
+    set(CMAKE_${lang}11_EXTENSION_COMPILE_OPTION "-std=gnu11")
+    set(CMAKE_${lang}11_STANDARD__HAS_FULL_SUPPORT ON)
+    set(CMAKE_${lang}_STANDARD_LATEST 11)
+  elseif (NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 4.6)
+    set(CMAKE_${lang}11_STANDARD_COMPILE_OPTION "-std=c1x")
+    set(CMAKE_${lang}11_EXTENSION_COMPILE_OPTION "-std=gnu1x")
+    set(CMAKE_${lang}_STANDARD_LATEST 11)
+  endif()
+
+  if(CMAKE_${lang}_COMPILER_VERSION VERSION_GREATER_EQUAL 8.1)
+    set(CMAKE_${lang}17_STANDARD_COMPILE_OPTION "-std=c17")
+    set(CMAKE_${lang}17_EXTENSION_COMPILE_OPTION "-std=gnu17")
+    set(CMAKE_${lang}_STANDARD_LATEST 17)
+  endif()
+
+  if(CMAKE_${lang}_COMPILER_VERSION VERSION_GREATER_EQUAL 9.1)
+    set(CMAKE_${lang}23_STANDARD_COMPILE_OPTION "-std=c2x")
+    set(CMAKE_${lang}23_EXTENSION_COMPILE_OPTION "-std=gnu2x")
+    set(CMAKE_${lang}_STANDARD_LATEST 23)
+  endif()
+endmacro()
+
+macro(__compiler_gnu_cxx_standards lang)
+  if(NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 3.4)
+    set(CMAKE_${lang}98_STANDARD_COMPILE_OPTION "-std=c++98")
+    set(CMAKE_${lang}98_EXTENSION_COMPILE_OPTION "-std=gnu++98")
+    set(CMAKE_${lang}_STANDARD_LATEST 98)
+  endif()
+
+  if (NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 4.7)
+    set(CMAKE_${lang}98_STANDARD__HAS_FULL_SUPPORT ON)
+    set(CMAKE_${lang}11_STANDARD_COMPILE_OPTION "-std=c++11")
+    set(CMAKE_${lang}11_EXTENSION_COMPILE_OPTION "-std=gnu++11")
+    set(CMAKE_${lang}_STANDARD_LATEST 11)
+  elseif (NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 4.4)
+    # 4.3 supports 0x variants
+    set(CMAKE_${lang}11_STANDARD_COMPILE_OPTION "-std=c++0x")
+    set(CMAKE_${lang}11_EXTENSION_COMPILE_OPTION "-std=gnu++0x")
+    set(CMAKE_${lang}_STANDARD_LATEST 11)
+  endif()
+
+  if (NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 4.8.1)
+    set(CMAKE_${lang}11_STANDARD__HAS_FULL_SUPPORT ON)
+  endif()
+
+  if (NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 4.9)
+    set(CMAKE_${lang}14_STANDARD_COMPILE_OPTION "-std=c++14")
+    set(CMAKE_${lang}14_EXTENSION_COMPILE_OPTION "-std=gnu++14")
+    set(CMAKE_${lang}_STANDARD_LATEST 14)
+  elseif (NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 4.8)
+    set(CMAKE_${lang}14_STANDARD_COMPILE_OPTION "-std=c++1y")
+    set(CMAKE_${lang}14_EXTENSION_COMPILE_OPTION "-std=gnu++1y")
+    set(CMAKE_${lang}_STANDARD_LATEST 14)
+  endif()
+
+  if (NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 5.0)
+    set(CMAKE_${lang}14_STANDARD__HAS_FULL_SUPPORT ON)
+  endif()
+
+  if (NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 8.0)
+    set(CMAKE_${lang}17_STANDARD_COMPILE_OPTION "-std=c++17")
+    set(CMAKE_${lang}17_EXTENSION_COMPILE_OPTION "-std=gnu++17")
+    set(CMAKE_${lang}_STANDARD_LATEST 17)
+  elseif (NOT CMAKE_${lang}_COMPILER_VERSION VERSION_LESS 5.1)
+    set(CMAKE_${lang}17_STANDARD_COMPILE_OPTION "-std=c++1z")
+    set(CMAKE_${lang}17_EXTENSION_COMPILE_OPTION "-std=gnu++1z")
+    set(CMAKE_${lang}_STANDARD_LATEST 17)
+  endif()
+
+  if(CMAKE_${lang}_COMPILER_VERSION VERSION_GREATER_EQUAL 11.1)
+    set(CMAKE_${lang}20_STANDARD_COMPILE_OPTION "-std=c++20")
+    set(CMAKE_${lang}20_EXTENSION_COMPILE_OPTION "-std=gnu++20")
+    set(CMAKE_${lang}23_STANDARD_COMPILE_OPTION "-std=c++23")
+    set(CMAKE_${lang}23_EXTENSION_COMPILE_OPTION "-std=gnu++23")
+    set(CMAKE_${lang}_STANDARD_LATEST 23)
+  elseif(CMAKE_${lang}_COMPILER_VERSION VERSION_GREATER_EQUAL 8.0)
+    set(CMAKE_${lang}20_STANDARD_COMPILE_OPTION "-std=c++2a")
+    set(CMAKE_${lang}20_EXTENSION_COMPILE_OPTION "-std=gnu++2a")
+    set(CMAKE_${lang}_STANDARD_LATEST 20)
+  endif()
+
+  if(CMAKE_${lang}_COMPILER_VERSION VERSION_GREATER_EQUAL 14.0)
+    set(CMAKE_${lang}26_STANDARD_COMPILE_OPTION "-std=c++26")
+    set(CMAKE_${lang}26_EXTENSION_COMPILE_OPTION "-std=gnu++26")
+    set(CMAKE_${lang}_STANDARD_LATEST 26)
   endif()
 endmacro()

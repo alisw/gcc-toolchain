@@ -1,14 +1,15 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmExportInstallAndroidMKGenerator.h"
 
 #include <cstddef>
+#include <functional>
 #include <memory>
-#include <ostream>
+#include <sstream>
 #include <vector>
 
-#include "cmExportBuildAndroidMKGenerator.h"
 #include "cmExportSet.h"
+#include "cmGeneratorExpression.h"
 #include "cmGeneratorTarget.h"
 #include "cmInstallExportGenerator.h"
 #include "cmInstallTargetGenerator.h"
@@ -24,8 +25,50 @@ cmExportInstallAndroidMKGenerator::cmExportInstallAndroidMKGenerator(
 {
 }
 
+void cmExportInstallAndroidMKGenerator::ReportDuplicateTarget(
+  std::string const& targetName) const
+{
+  std::ostringstream e;
+  e << "install(EXPORT_ANDROID_MK \"" << this->GetExportSet()->GetName()
+    << "\" ...) "
+    << "includes target \"" << targetName
+    << "\" more than once in the export set.";
+  this->ReportError(e.str());
+}
+
+bool cmExportInstallAndroidMKGenerator::GenerateMainFile(std::ostream& os)
+{
+  std::vector<cmTargetExport const*> allTargets;
+  {
+    auto visitor = [&](cmTargetExport const* te) { allTargets.push_back(te); };
+
+    if (!this->CollectExports(visitor)) {
+      return false;
+    }
+  }
+
+  // Create all the imported targets.
+  for (cmTargetExport const* te : allTargets) {
+    cmGeneratorTarget const* gt = te->Target;
+
+    this->GenerateImportTargetCode(os, gt, this->GetExportTargetType(te));
+
+    ImportPropertyMap properties;
+    if (!this->PopulateInterfaceProperties(te, properties)) {
+      return false;
+    }
+
+    this->PopulateInterfaceLinkLibrariesProperty(
+      gt, cmGeneratorExpression::InstallInterface, properties);
+
+    this->GenerateInterfaceProperties(gt, os, properties);
+  }
+
+  return true;
+}
+
 void cmExportInstallAndroidMKGenerator::GenerateImportHeaderCode(
-  std::ostream& os, const std::string&)
+  std::ostream& os, std::string const&)
 {
   std::string installDir = this->IEGen->GetDestination();
   os << "LOCAL_PATH := $(call my-dir)\n";
@@ -53,10 +96,6 @@ void cmExportInstallAndroidMKGenerator::GenerateImportHeaderCode(
   }
 }
 
-void cmExportInstallAndroidMKGenerator::GenerateImportFooterCode(std::ostream&)
-{
-}
-
 void cmExportInstallAndroidMKGenerator::GenerateImportTargetCode(
   std::ostream& os, cmGeneratorTarget const* target,
   cmStateEnums::TargetType /*targetType*/)
@@ -72,62 +111,4 @@ void cmExportInstallAndroidMKGenerator::GenerateImportTargetCode(
     config = this->Configurations[0];
   }
   os << target->GetFullName(config) << "\n";
-}
-
-void cmExportInstallAndroidMKGenerator::GenerateExpectedTargetsCode(
-  std::ostream&, const std::string&)
-{
-}
-
-void cmExportInstallAndroidMKGenerator::GenerateImportPropertyCode(
-  std::ostream&, const std::string&, const std::string&,
-  cmGeneratorTarget const*, ImportPropertyMap const&, const std::string&)
-{
-}
-
-void cmExportInstallAndroidMKGenerator::GenerateMissingTargetsCheckCode(
-  std::ostream&)
-{
-}
-
-void cmExportInstallAndroidMKGenerator::GenerateInterfaceProperties(
-  cmGeneratorTarget const* target, std::ostream& os,
-  const ImportPropertyMap& properties)
-{
-  std::string config;
-  if (!this->Configurations.empty()) {
-    config = this->Configurations[0];
-  }
-  cmExportBuildAndroidMKGenerator::GenerateInterfaceProperties(
-    target, os, properties, cmExportBuildAndroidMKGenerator::INSTALL, config);
-}
-
-void cmExportInstallAndroidMKGenerator::LoadConfigFiles(std::ostream&)
-{
-}
-
-void cmExportInstallAndroidMKGenerator::GenerateImportPrefix(std::ostream&)
-{
-}
-
-void cmExportInstallAndroidMKGenerator::CleanupTemporaryVariables(
-  std::ostream&)
-{
-}
-
-void cmExportInstallAndroidMKGenerator::GenerateImportedFileCheckLoop(
-  std::ostream&)
-{
-}
-
-void cmExportInstallAndroidMKGenerator::GenerateImportedFileChecksCode(
-  std::ostream&, cmGeneratorTarget*, ImportPropertyMap const&,
-  const std::set<std::string>&, const std::string&)
-{
-}
-
-bool cmExportInstallAndroidMKGenerator::GenerateImportFileConfig(
-  const std::string&)
-{
-  return true;
 }

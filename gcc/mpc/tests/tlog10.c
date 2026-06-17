@@ -28,9 +28,37 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 #include "data_check.tpl"
 #include "tgeneric.tpl"
 
+static void
+check_divby0_exc (void)
+{
+  mpc_t z;
+  struct {
+    double re, im;
+  } data[] = {{+0.0, +0.0},
+              {+0.0, -0.0},
+              {-0.0, +0.0},
+              {-0.0, -0.0}};
+
+  mpc_init2 (z, 53);
+  for (size_t i = 0; i < 4; i++) {
+    mpc_set_d_d (z, data[i].re, data[i].im, MPC_RNDNN);
+    mpfr_clear_flags ();
+    mpc_log10 (z, z, MPC_RNDNN);
+    if (!mpfr_divby0_p ()) {
+      printf ("Missing division-by-zero exception for (%la,%la)\n",
+              data[i].re, data[i].im);
+      exit (1);
+    }
+  }
+  mpfr_clear_flags ();
+  mpc_clear (z);
+}
+
 int
 main (void)
 {
+  check_divby0_exc ();
+
   test_start ();
 
   data_check_template ("log10.dsc", "log10.dat");

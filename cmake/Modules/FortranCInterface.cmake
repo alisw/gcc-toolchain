@@ -1,29 +1,43 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FortranCInterface
 -----------------
 
-Fortran/C Interface Detection
+This module provides variables and commands to detect Fortran/C Interface.
 
-This module automatically detects the API by which C and Fortran
-languages interact.
+Load this module in a CMake project with:
 
-Module Variables
-^^^^^^^^^^^^^^^^
+.. code-block:: cmake
 
-Variables that indicate if the mangling is found:
+  include(FortranCInterface)
+
+This module automatically detects the API by which C and Fortran languages
+interact.
+
+Variables
+^^^^^^^^^
+
+Result Variables
+""""""""""""""""
+
+Including this module defines the following variables that indicate if the
+mangling is found:
 
 ``FortranCInterface_GLOBAL_FOUND``
-  Global subroutines and functions.
+  Boolean indicating whether global subroutines and functions are available.
 
 ``FortranCInterface_MODULE_FOUND``
-  Module subroutines and functions (declared by "MODULE PROCEDURE").
+  Boolean indicating whether module subroutines and functions (declared by
+  ``MODULE PROCEDURE``) are available.
+
+Input Variables
+"""""""""""""""
 
 This module also provides the following variables to specify
 the detected mangling, though a typical use case does not need
-to reference them and can use the `Module Functions`_ below.
+to reference them and can use the `Commands`_ below.
 
 ``FortranCInterface_GLOBAL_PREFIX``
   Prefix for a global symbol without an underscore.
@@ -59,6 +73,19 @@ to reference them and can use the `Module Functions`_ below.
   The case for a module symbol without an underscore,
   either ``UPPER`` or ``LOWER``.
 
+``FortranCInterface_MODULE_ORDER``
+  .. versionadded:: 4.1
+
+  Order of components for module symbols without an underscore:
+
+  ``MODULE_THEN_SYMBOL``
+    The module name appears *before* the symbol name, i.e.,
+    ``<PREFIX><module><MIDDLE><symbol><SUFFIX>``.
+
+  ``SYMBOL_THEN_MODULE``
+    The module name appears *after* the symbol name, i.e.,
+    ``<PREFIX><symbol><MIDDLE><module><SUFFIX>``.
+
 ``FortranCInterface_MODULE__PREFIX``
   Prefix for a module symbol with an underscore.
 
@@ -73,25 +100,61 @@ to reference them and can use the `Module Functions`_ below.
   The case for a module symbol with an underscore,
   either ``UPPER`` or ``LOWER``.
 
-Module Functions
-^^^^^^^^^^^^^^^^
+``FortranCInterface_MODULE__ORDER``
+  .. versionadded:: 4.1
+
+  Order of components for module symbols with an underscore:
+
+  ``MODULE_THEN_SYMBOL``
+    The module name appears *before* the symbol name, i.e.,
+    ``<PREFIX><module><MIDDLE><symbol><SUFFIX>``.
+
+  ``SYMBOL_THEN_MODULE``
+    The module name appears *after* the symbol name, i.e.,
+    ``<PREFIX><symbol><MIDDLE><module><SUFFIX>``.
+
+Variables For Additional Manglings
+""""""""""""""""""""""""""""""""""
+
+This module is aware of possible ``GLOBAL`` and ``MODULE`` manglings for
+many Fortran compilers, but it also provides an interface to specify
+new possible manglings.  The following variables can be set before including
+this module to specify additional manglings:
+
+``FortranCInterface_GLOBAL_SYMBOLS``
+
+``FortranCInterface_MODULE_SYMBOLS``
+
+before including this module to specify manglings of the symbols
+``MySub``, ``My_Sub``, ``MyModule:MySub``, and ``My_Module:My_Sub``.
+
+Commands
+^^^^^^^^
+
+This module provides the following commands:
 
 .. command:: FortranCInterface_HEADER
 
-  The ``FortranCInterface_HEADER`` function is provided to generate a
-  C header file containing macros to mangle symbol names::
+  Generates a C header file containing macros to mangle symbol names:
 
-    FortranCInterface_HEADER(<file>
-                             [MACRO_NAMESPACE <macro-ns>]
-                             [SYMBOL_NAMESPACE <ns>]
-                             [SYMBOLS [<module>:]<function> ...])
+  .. code-block:: cmake
 
-  It generates in ``<file>`` definitions of the following macros::
+    FortranCInterface_HEADER(
+      <file>
+      [MACRO_NAMESPACE <macro-ns>]
+      [SYMBOL_NAMESPACE <ns>]
+      [SYMBOLS [<module>:]<function> ...]
+    )
 
-     #define FortranCInterface_GLOBAL (name,NAME) ...
-     #define FortranCInterface_GLOBAL_(name,NAME) ...
-     #define FortranCInterface_MODULE (mod,name, MOD,NAME) ...
-     #define FortranCInterface_MODULE_(mod,name, MOD,NAME) ...
+  This command generates a ``<file>`` with definitions of the following
+  macros:
+
+  .. code-block:: c
+
+    #define FortranCInterface_GLOBAL (name,NAME) ...
+    #define FortranCInterface_GLOBAL_(name,NAME) ...
+    #define FortranCInterface_MODULE (mod,name, MOD,NAME) ...
+    #define FortranCInterface_MODULE_(mod,name, MOD,NAME) ...
 
   These macros mangle four categories of Fortran symbols, respectively:
 
@@ -109,6 +172,10 @@ Module Functions
     Replace the default ``FortranCInterface_`` prefix with a given
     namespace ``<macro-ns>``.
 
+  ``SYMBOL_NAMESPACE``
+    Prefix all preprocessor definitions generated by the ``SYMBOLS``
+    option with a given namespace ``<ns>``.
+
   ``SYMBOLS``
     List symbols to mangle automatically with C preprocessor definitions::
 
@@ -118,75 +185,71 @@ Module Functions
     If the mangling for some symbol is not known then no preprocessor
     definition is created, and a warning is displayed.
 
-  ``SYMBOL_NAMESPACE``
-    Prefix all preprocessor definitions generated by the ``SYMBOLS``
-    option with a given namespace ``<ns>``.
-
 .. command:: FortranCInterface_VERIFY
 
-  The ``FortranCInterface_VERIFY`` function is provided to verify
-  that the Fortran and C/C++ compilers work together::
+  Verifies that the Fortran and C/C++ compilers work together:
+
+  .. code-block:: cmake
 
     FortranCInterface_VERIFY([CXX] [QUIET])
 
-  It tests whether a simple test executable using Fortran and C (and C++
-  when the CXX option is given) compiles and links successfully.  The
-  result is stored in the cache entry ``FortranCInterface_VERIFIED_C``
+  This command tests whether a simple test executable using Fortran and C
+  (and C++ when the ``CXX`` option is given) compiles and links successfully.
+  The result is stored in the cache entry ``FortranCInterface_VERIFIED_C``
   (or ``FortranCInterface_VERIFIED_CXX`` if ``CXX`` is given) as a boolean.
-  If the check fails and ``QUIET`` is not given the function terminates with a
+  If the check fails and ``QUIET`` is not given the command terminates with a
   fatal error message describing the problem.  The purpose of this check
   is to stop a build early for incompatible compiler combinations.  The
   test is built in the ``Release`` configuration.
 
-Example Usage
-^^^^^^^^^^^^^
+Examples
+^^^^^^^^
+
+Examples: Basic Usage
+"""""""""""""""""""""
+
+The following example creates a ``FC.h`` header that defines mangling macros
+``FC_GLOBAL()``, ``FC_GLOBAL_()``, ``FC_MODULE()``, and ``FC_MODULE_()``:
 
 .. code-block:: cmake
 
-   include(FortranCInterface)
-   FortranCInterface_HEADER(FC.h MACRO_NAMESPACE "FC_")
+  include(FortranCInterface)
+  FortranCInterface_HEADER(FC.h MACRO_NAMESPACE "FC_")
 
-This creates a "FC.h" header that defines mangling macros ``FC_GLOBAL()``,
-``FC_GLOBAL_()``, ``FC_MODULE()``, and ``FC_MODULE_()``.
+The next example creates a ``FCMangle.h`` header that defines the same
+``FC_*()`` mangling macros as the previous example plus preprocessor symbols
+``FC_mysub`` and ``FC_mymod_my_sub``:
 
 .. code-block:: cmake
 
-   include(FortranCInterface)
-   FortranCInterface_HEADER(FCMangle.h
-                            MACRO_NAMESPACE "FC_"
-                            SYMBOL_NAMESPACE "FC_"
-                            SYMBOLS mysub mymod:my_sub)
+  include(FortranCInterface)
+  FortranCInterface_HEADER(
+    FCMangle.h
+    MACRO_NAMESPACE "FC_"
+    SYMBOL_NAMESPACE "FC_"
+    SYMBOLS mysub mymod:my_sub
+  )
 
-This creates a "FCMangle.h" header that defines the same ``FC_*()``
-mangling macros as the previous example plus preprocessor symbols
-``FC_mysub`` and ``FC_mymod_my_sub``.
+Example: Additional Manglings
+"""""""""""""""""""""""""""""
 
-Additional Manglings
-^^^^^^^^^^^^^^^^^^^^
-
-FortranCInterface is aware of possible ``GLOBAL`` and ``MODULE`` manglings
-for many Fortran compilers, but it also provides an interface to specify
-new possible manglings.  Set the variables::
-
-   FortranCInterface_GLOBAL_SYMBOLS
-   FortranCInterface_MODULE_SYMBOLS
-
-before including FortranCInterface to specify manglings of the symbols
+The following example shows how to specify manglings of the symbols
 ``MySub``, ``My_Sub``, ``MyModule:MySub``, and ``My_Module:My_Sub``.
-For example, the code:
+The following code tells this module to try given ``GLOBAL`` and ``MODULE``
+manglings.  (The carets point at raw symbol names for clarity in this
+example but are not needed.)
 
 .. code-block:: cmake
 
-   set(FortranCInterface_GLOBAL_SYMBOLS mysub_ my_sub__ MYSUB_)
-     #                                  ^^^^^  ^^^^^^   ^^^^^
-   set(FortranCInterface_MODULE_SYMBOLS
-       __mymodule_MOD_mysub __my_module_MOD_my_sub)
-     #   ^^^^^^^^     ^^^^^   ^^^^^^^^^     ^^^^^^
-   include(FortranCInterface)
+  set(FortranCInterface_GLOBAL_SYMBOLS mysub_ my_sub__ MYSUB_)
+    #                                  ^^^^^  ^^^^^^   ^^^^^
+  set(FortranCInterface_MODULE_SYMBOLS
+      __mymodule_MOD_mysub __my_module_MOD_my_sub)
+    #   ^^^^^^^^     ^^^^^   ^^^^^^^^^     ^^^^^^
 
-tells FortranCInterface to try given ``GLOBAL`` and ``MODULE`` manglings.
-(The carets point at raw symbol names for clarity in this example but
-are not needed.)
+  include(FortranCInterface)
+
+  # ...
 #]=======================================================================]
 
 #-----------------------------------------------------------------------------
@@ -194,9 +257,6 @@ are not needed.)
 if(FortranCInterface_SOURCE_DIR)
   return()
 endif()
-
-cmake_policy(PUSH)
-cmake_policy(SET CMP0007 NEW)
 
 #-----------------------------------------------------------------------------
 # Verify that C and Fortran are available.
@@ -351,12 +411,7 @@ function(FortranCInterface_VERIFY)
       set(_FortranCInterface_OSX_ARCH "")
     endif()
 
-    cmake_policy(GET CMP0056 _FortranCInterface_CMP0056)
-    if(_FortranCInterface_CMP0056 STREQUAL "NEW")
-      set(_FortranCInterface_EXE_LINKER_FLAGS "-DCMAKE_EXE_LINKER_FLAGS:STRING=${CMAKE_EXE_LINKER_FLAGS}")
-    else()
-      set(_FortranCInterface_EXE_LINKER_FLAGS "")
-    endif()
+    set(_FortranCInterface_EXE_LINKER_FLAGS "-DCMAKE_EXE_LINKER_FLAGS:STRING=${CMAKE_EXE_LINKER_FLAGS}")
 
     # Build a sample project which reports symbols.
     set(CMAKE_TRY_COMPILE_CONFIGURATION Release)
@@ -402,6 +457,3 @@ function(FortranCInterface_VERIFY)
       "The output was:\n  ${_output}")
   endif()
 endfunction()
-
-# Restore including context policies.
-cmake_policy(POP)

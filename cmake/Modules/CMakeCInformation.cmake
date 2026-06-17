@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 
 # This file sets the basic flags for the C language in CMake.
@@ -27,7 +27,7 @@ endif()
 
 set(CMAKE_BASE_NAME)
 get_filename_component(CMAKE_BASE_NAME "${CMAKE_C_COMPILER}" NAME_WE)
-if(CMAKE_COMPILER_IS_GNUCC)
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
   set(CMAKE_BASE_NAME gcc)
 endif()
 
@@ -91,23 +91,6 @@ if(CMAKE_USER_MAKE_RULES_OVERRIDE_C)
   set(CMAKE_USER_MAKE_RULES_OVERRIDE_C "${_override}")
 endif()
 
-if(CMAKE_EXECUTABLE_FORMAT STREQUAL "ELF")
-  if(NOT DEFINED CMAKE_C_LINK_WHAT_YOU_USE_FLAG)
-    set(CMAKE_C_LINK_WHAT_YOU_USE_FLAG "LINKER:--no-as-needed")
-  endif()
-  if(NOT DEFINED CMAKE_LINK_WHAT_YOU_USE_CHECK)
-    set(CMAKE_LINK_WHAT_YOU_USE_CHECK ldd -u -r)
-  endif()
-endif()
-
-# for most systems a module is the same as a shared library
-# so unless the variable CMAKE_MODULE_EXISTS is set just
-# copy the values from the LIBRARY variables
-if(NOT CMAKE_MODULE_EXISTS)
-  set(CMAKE_SHARED_MODULE_C_FLAGS ${CMAKE_SHARED_LIBRARY_C_FLAGS})
-  set(CMAKE_SHARED_MODULE_CREATE_C_FLAGS ${CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS})
-endif()
-
 set(CMAKE_C_FLAGS_INIT "$ENV{CFLAGS} ${CMAKE_C_FLAGS_INIT}")
 
 cmake_initialize_per_config_variable(CMAKE_C_FLAGS "Flags used by the C compiler")
@@ -129,6 +112,7 @@ if(NOT CMAKE_C_LINKER_LAUNCHER AND DEFINED ENV{CMAKE_C_LINKER_LAUNCHER})
 endif()
 
 include(CMakeCommonLanguageInclude)
+_cmake_common_language_platform_flags(C)
 
 # now define the following rule variables
 
@@ -148,9 +132,6 @@ include(CMakeCommonLanguageInclude)
 
 # C compiler information
 # <CMAKE_C_COMPILER>
-# <CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS>
-# <CMAKE_SHARED_MODULE_CREATE_C_FLAGS>
-# <CMAKE_C_LINK_FLAGS>
 
 # Static library tools
 # <CMAKE_AR>
@@ -160,7 +141,7 @@ include(CMakeCommonLanguageInclude)
 # create a C shared library
 if(NOT CMAKE_C_CREATE_SHARED_LIBRARY)
   set(CMAKE_C_CREATE_SHARED_LIBRARY
-      "<CMAKE_C_COMPILER> <CMAKE_SHARED_LIBRARY_C_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> <CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS> <SONAME_FLAG><TARGET_SONAME> -o <TARGET> <OBJECTS> <LINK_LIBRARIES>")
+      "<CMAKE_C_COMPILER> <CMAKE_SHARED_LIBRARY_C_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> <SONAME_FLAG><TARGET_SONAME> -o <TARGET> <OBJECTS> <LINK_LIBRARIES>")
 endif()
 
 # create a C shared module just copy the shared library rule
@@ -188,19 +169,9 @@ endif()
 
 if(NOT CMAKE_C_LINK_EXECUTABLE)
   set(CMAKE_C_LINK_EXECUTABLE
-    "<CMAKE_C_COMPILER> <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
+    "<CMAKE_C_COMPILER> <FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
 endif()
 
-if(NOT CMAKE_EXECUTABLE_RUNTIME_C_FLAG)
-  set(CMAKE_EXECUTABLE_RUNTIME_C_FLAG ${CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG})
-endif()
-
-if(NOT CMAKE_EXECUTABLE_RUNTIME_C_FLAG_SEP)
-  set(CMAKE_EXECUTABLE_RUNTIME_C_FLAG_SEP ${CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG_SEP})
-endif()
-
-if(NOT CMAKE_EXECUTABLE_RPATH_LINK_C_FLAG)
-  set(CMAKE_EXECUTABLE_RPATH_LINK_C_FLAG ${CMAKE_SHARED_LIBRARY_RPATH_LINK_C_FLAG})
-endif()
+set(CMAKE_C_USE_LINKER_INFORMATION TRUE)
 
 set(CMAKE_C_INFORMATION_LOADED 1)

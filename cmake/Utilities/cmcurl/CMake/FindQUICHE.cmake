@@ -21,50 +21,51 @@
 # SPDX-License-Identifier: curl
 #
 ###########################################################################
+# Find the quiche library
+#
+# Input variables:
+#
+# - `QUICHE_INCLUDE_DIR`:   Absolute path to quiche include directory.
+# - `QUICHE_LIBRARY`:       Absolute path to `quiche` library.
+#
+# Result variables:
+#
+# - `QUICHE_FOUND`:         System has quiche.
+# - `QUICHE_INCLUDE_DIRS`:  The quiche include directories.
+# - `QUICHE_LIBRARIES`:     The quiche library names.
+# - `QUICHE_LIBRARY_DIRS`:  The quiche library directories.
+# - `QUICHE_PC_REQUIRES`:   The quiche pkg-config packages.
+# - `QUICHE_CFLAGS`:        Required compiler flags.
+# - `QUICHE_VERSION`:       Version of quiche.
 
-#[=======================================================================[.rst:
-FindQUICHE
-----------
+set(QUICHE_PC_REQUIRES "quiche")
 
-Find the quiche library
-
-Result Variables
-^^^^^^^^^^^^^^^^
-
-``QUICHE_FOUND``
-  System has quiche
-``QUICHE_INCLUDE_DIRS``
-  The quiche include directories.
-``QUICHE_LIBRARIES``
-  The libraries needed to use quiche
-#]=======================================================================]
-if(UNIX)
+if(CURL_USE_PKGCONFIG AND
+   NOT DEFINED QUICHE_INCLUDE_DIR AND
+   NOT DEFINED QUICHE_LIBRARY)
   find_package(PkgConfig QUIET)
-  pkg_search_module(PC_QUICHE quiche)
+  pkg_check_modules(QUICHE ${QUICHE_PC_REQUIRES})
 endif()
-
-find_path(QUICHE_INCLUDE_DIR quiche.h
-  HINTS
-    ${PC_QUICHE_INCLUDEDIR}
-    ${PC_QUICHE_INCLUDE_DIRS}
-)
-
-find_library(QUICHE_LIBRARY NAMES quiche
-  HINTS
-    ${PC_QUICHE_LIBDIR}
-    ${PC_QUICHE_LIBRARY_DIRS}
-)
-
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(QUICHE
-  REQUIRED_VARS
-    QUICHE_LIBRARY
-    QUICHE_INCLUDE_DIR
-)
 
 if(QUICHE_FOUND)
-  set(QUICHE_LIBRARIES    ${QUICHE_LIBRARY})
-  set(QUICHE_INCLUDE_DIRS ${QUICHE_INCLUDE_DIR})
-endif()
+  set(Quiche_FOUND TRUE)
+  string(REPLACE ";" " " QUICHE_CFLAGS "${QUICHE_CFLAGS}")
+  message(STATUS "Found Quiche (via pkg-config): ${QUICHE_INCLUDE_DIRS} (found version \"${QUICHE_VERSION}\")")
+else()
+  find_path(QUICHE_INCLUDE_DIR NAMES "quiche.h")
+  find_library(QUICHE_LIBRARY NAMES "quiche")
 
-mark_as_advanced(QUICHE_INCLUDE_DIRS QUICHE_LIBRARIES)
+  include(FindPackageHandleStandardArgs)
+  find_package_handle_standard_args(Quiche
+    REQUIRED_VARS
+      QUICHE_INCLUDE_DIR
+      QUICHE_LIBRARY
+  )
+
+  if(QUICHE_FOUND)
+    set(QUICHE_INCLUDE_DIRS ${QUICHE_INCLUDE_DIR})
+    set(QUICHE_LIBRARIES    ${QUICHE_LIBRARY})
+  endif()
+
+  mark_as_advanced(QUICHE_INCLUDE_DIR QUICHE_LIBRARY)
+endif()

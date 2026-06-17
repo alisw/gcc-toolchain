@@ -17,7 +17,7 @@ function(check_files dir)
   list(SORT expected)
 
   file(GLOB_RECURSE actual "${dir}/*")
-  list(FILTER actual EXCLUDE REGEX "/CMakeFiles/|\\.ninja$|/CMakeCache\\.txt$|/target_files[^/]*\\.cmake$|/\\.ninja_[^/]*$|/cmake_install\\.cmake$|\\.ilk$|\\.manifest$|\\.odx$|\\.pdb$|\\.exp$|/install_manifest\\.txt$|/\\.qt/QtDeploySupport[^/]*\\.cmake$")
+  list(FILTER actual EXCLUDE REGEX "/CMakeFiles/|\\.ninja$|/CMakeCache\\.txt$|/target_files[^/]*\\.cmake$|/\\.ninja_[^/]*$|/cmake_install\\.cmake$|\\.ilk$|\\.manifest$|\\.odx$|\\.pdb$|\\.exp$|/install_manifest\\.txt$|/\\.qt/(QtDeploySupport|QtDeployTargets)[^/]*\\.cmake$")
   foreach(f IN LISTS _check_files_INCLUDE _check_files_EXCLUDE)
     if(EXISTS ${f})
       list(APPEND actual ${f})
@@ -469,6 +469,19 @@ run_cmake_command(OutputPathPrefix-all-ninja "${RunCMake_MAKE_PROGRAM}" -f Outpu
 run_cmake_command(OutputPathPrefix-clean-ninja "${RunCMake_MAKE_PROGRAM}" -f OutputPathPrefix-build/build.ninja OutputPathPrefix-build/clean)
 unset(RunCMake_TEST_NO_CLEAN)
 unset(RunCMake_TEST_BINARY_DIR)
+
+# cmake --install test
+block()
+  set(RunCMake_TEST_BINARY_DIR ${RunCMake_BINARY_DIR}/cmake--install-build)
+  run_cmake_with_options(cmake--install
+    -DCMAKE_INSTALL_PREFIX=${RunCMake_TEST_BINARY_DIR}/install
+    -DCMAKE_CROSS_CONFIGS=all
+    -DCMAKE_DEFAULT_CONFIGS=Debug\\\\;Release
+    )
+  set(RunCMake_TEST_NO_CLEAN 1)
+  run_cmake_command(cmake--install-build ${CMAKE_COMMAND} --build .)
+  run_cmake_command(cmake--install-install ${CMAKE_COMMAND} --install .)
+endblock()
 
 # CudaSimple uses separable compilation, which is currently only supported on NVCC.
 if(CMake_TEST_CUDA)

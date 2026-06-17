@@ -92,7 +92,7 @@ unsigned long Directory::GetNumberOfFiles() const
   return static_cast<unsigned long>(this->Internal->Files.size());
 }
 
-const char* Directory::GetFile(unsigned long dindex) const
+char const* Directory::GetFile(unsigned long dindex) const
 {
   return this->Internal->Files[dindex].Name.c_str();
 }
@@ -135,7 +135,7 @@ bool Directory::FileIsSymlink(std::size_t i) const
 #endif
 }
 
-const char* Directory::GetPath() const
+char const* Directory::GetPath() const
 {
   return this->Internal->Path.c_str();
 }
@@ -207,7 +207,7 @@ Status Directory::Load(std::string const& name, std::string* errorMessage)
   return Status::Success();
 }
 
-unsigned long Directory::GetNumberOfFilesInDirectory(const std::string& name,
+unsigned long Directory::GetNumberOfFilesInDirectory(std::string const& name,
                                                      std::string* errorMessage)
 {
   HANDLE srchHandle;
@@ -269,7 +269,7 @@ unsigned long Directory::GetNumberOfFilesInDirectory(const std::string& name,
 #  include <string.h>
 
 // PGI with glibc has trouble with dirent and large file support:
-//  http://www.pgroup.com/userforum/viewtopic.php?
+//  https://www.pgroup.com/userforum/viewtopic.php?
 //  p=1992&sid=f16167f51964f1a68fe5041b8eb213b6
 // Work around the problem by mapping dirent the same way as readdir.
 #  if defined(__PGI) && defined(__GLIBC__)
@@ -292,7 +292,7 @@ Status Directory::Load(std::string const& name, std::string* errorMessage)
   DIR* dir = opendir(name.c_str());
 
   if (!dir) {
-    if (errorMessage != nullptr) {
+    if (errorMessage) {
       *errorMessage = std::string(strerror(errno));
     }
     return Status::POSIX_errno();
@@ -303,7 +303,7 @@ Status Directory::Load(std::string const& name, std::string* errorMessage)
     this->Internal->Files.emplace_back(d->d_name);
   }
   if (errno != 0) {
-    if (errorMessage != nullptr) {
+    if (errorMessage) {
       *errorMessage = std::string(strerror(errno));
     }
     return Status::POSIX_errno();
@@ -314,14 +314,14 @@ Status Directory::Load(std::string const& name, std::string* errorMessage)
   return Status::Success();
 }
 
-unsigned long Directory::GetNumberOfFilesInDirectory(const std::string& name,
+unsigned long Directory::GetNumberOfFilesInDirectory(std::string const& name,
                                                      std::string* errorMessage)
 {
   errno = 0;
   DIR* dir = opendir(name.c_str());
 
   if (!dir) {
-    if (errorMessage != nullptr) {
+    if (errorMessage) {
       *errorMessage = std::string(strerror(errno));
     }
     return 0;
@@ -332,7 +332,7 @@ unsigned long Directory::GetNumberOfFilesInDirectory(const std::string& name,
     count++;
   }
   if (errno != 0) {
-    if (errorMessage != nullptr) {
+    if (errorMessage) {
       *errorMessage = std::string(strerror(errno));
     }
     return false;

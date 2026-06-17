@@ -12,6 +12,8 @@ Organization
 
 CMake input files are written in the "CMake Language" in source files
 named ``CMakeLists.txt`` or ending in a ``.cmake`` file name extension.
+The term *listfile* is a general name for any such source file containing
+CMake commands that the tool processes.
 
 CMake Language source files in a project are organized into:
 
@@ -572,7 +574,7 @@ The :manual:`cmake-variables(7)` manual documents the many variables
 that are provided by CMake or have meaning to CMake when set
 by project code.
 
-.. include:: ID_RESERVE.txt
+.. include:: include/ID_RESERVE.rst
 
 .. _`CMake Language Environment Variables`:
 

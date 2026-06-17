@@ -1,11 +1,17 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 CPack
 -----
 
-Configure generators for binary installers and source packages.
+This module configures generators for binary installers and source packages.
+
+Load this module in a CMake project with:
+
+.. code-block:: cmake
+
+  include(CPack)
 
 Introduction
 ^^^^^^^^^^^^
@@ -176,7 +182,9 @@ installers.  The most commonly-used variables are:
 
   The name of the package file to generate, not including the
   extension.  For example, ``cmake-2.6.1-Linux-i686``.  The default value
-  is::
+  is:
+
+  .. code-block:: cmake
 
     ${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}
 
@@ -196,13 +204,18 @@ installers.  The most commonly-used variables are:
 
   .. versionadded:: 3.7
 
-  An algorithm that will be used to generate an additional file with the
-  checksum of the package.  The output file name will be::
+  One or multiple algorithms that will be used to generate additional files with
+  the checksum of the package.  The output file names will be:
+
+  .. code-block:: cmake
 
     ${CPACK_PACKAGE_FILE_NAME}.${CPACK_PACKAGE_CHECKSUM}
 
   Supported algorithms are those listed by the
   :ref:`string(\<HASH\>) <Supported Hash Algorithms>` command.
+
+  .. versionchanged:: 4.2
+    The variable accepts a list of algorithms.
 
 .. variable:: CPACK_PROJECT_CONFIG_FILE
 
@@ -478,27 +491,30 @@ The following variables are for advanced uses of CPack:
   .. versionadded:: 3.25
 
   Specify the ``readelf`` executable path used by CPack.
-  The default value will be ``CMAKE_READELF`` when set.  Otherwise,
-  the default value will be empty and CPack will use :command:`find_program`
-  to determine the ``readelf`` path when needed.
+  The default value will be taken from the ``CMAKE_READELF`` variable, if set,
+  which may be populated CMake when enabling languages.  If ``CMAKE_READELF``
+  is not set, CPack will use :command:`find_program` to determine the
+  ``readelf`` path when needed.
 
 .. variable:: CPACK_OBJCOPY_EXECUTABLE
 
   .. versionadded:: 3.25
 
   Specify the ``objcopy`` executable path used by CPack.
-  The default value will be ``CMAKE_OBJCOPY`` when set.  Otherwise,
-  the default value will be empty and CPack will use :command:`find_program`
-  to determine the ``objcopy`` path when needed.
+  The default value will be taken from the ``CMAKE_OBJCOPY`` variable, if set,
+  which may be populated by CMake when enabling languages.  If ``CMAKE_OBJCOPY``
+  is not set, CPack will use :command:`find_program` to determine the
+  ``objcopy`` path when needed.
 
 .. variable:: CPACK_OBJDUMP_EXECUTABLE
 
   .. versionadded:: 3.25
 
   Specify the ``objdump`` executable path used by CPack.
-  The default value will be ``CMAKE_OBJDUMP`` when set.  Otherwise,
-  the default value will be empty and CPack will use :command:`find_program`
-  to determine the ``objdump`` path when needed.
+  The default value will be taken from the :variable:`CMAKE_OBJDUMP` variable,
+  which may be populated by CMake when enabling languages.  If ``CMAKE_OBJDUMP``
+  is not set, CPack will use :command:`find_program` to determine the
+  ``objdump`` path when needed.
 
 #]=======================================================================]
 
@@ -564,6 +580,11 @@ function(_cpack_escape_for_cmake var value)
   string(REGEX REPLACE "([\\\$\"])" "\\\\\\1" escaped "${value}")
   set("${var}" "${escaped}" PARENT_SCOPE)
 endfunction()
+
+# Resolve CPACK_PROJECT_CONFIG_FILE relative to the source directory
+if(DEFINED CPACK_PROJECT_CONFIG_FILE)
+  cmake_path(ABSOLUTE_PATH CPACK_PROJECT_CONFIG_FILE)
+endif()
 
 # Set the package name
 _cpack_set_default(CPACK_PACKAGE_NAME "${CMAKE_PROJECT_NAME}")
@@ -882,6 +903,20 @@ endif()
 
 # WiX specific variables
 _cpack_set_default(CPACK_WIX_SIZEOF_VOID_P "${CMAKE_SIZEOF_VOID_P}")
+if(NOT DEFINED CPACK_WIX_INSTALL_SCOPE)
+  cmake_policy(GET CMP0172 _CPack_CMP0172)
+  if("x${_CPack_CMP0172}x" STREQUAL "xNEWx")
+    _cpack_set_default(CPACK_WIX_INSTALL_SCOPE perMachine)
+  elseif(NOT "x${_CPack_CMP0172}x" STREQUAL "xOLDx" AND CMAKE_POLICY_WARNING_CMP0172)
+    cmake_policy(GET_WARNING CMP0172 _CMP0172_warning)
+    message(AUTHOR_WARNING
+      "${_CMP0172_warning}\n"
+      "For compatibility, CMake will not enable per-machine installation by default in the CPack WIX Generator."
+      )
+    unset(_CMP0172_warning)
+  endif()
+  unset(_CPack_CMP0172)
+endif()
 
 # productbuild specific variables
 cmake_policy(GET CMP0161 _CPack_CMP0161)

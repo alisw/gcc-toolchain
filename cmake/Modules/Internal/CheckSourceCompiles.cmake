@@ -1,11 +1,7 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 include_guard(GLOBAL)
-
-block(SCOPE_FOR POLICIES)
-cmake_policy(SET CMP0054 NEW) # if() quoted variables not dereferenced
-cmake_policy(SET CMP0057 NEW) # if() supports IN_LIST
 
 function(CMAKE_CHECK_SOURCE_COMPILES _lang _source _var)
   if(NOT DEFINED "${_var}")
@@ -87,6 +83,13 @@ function(CMAKE_CHECK_SOURCE_COMPILES _lang _source _var)
     else()
       set(CHECK_${LANG}_SOURCE_COMPILES_ADD_LIBRARIES)
     endif()
+    if(CMAKE_REQUIRED_LINK_DIRECTORIES)
+      set(_CSC_LINK_DIRECTORIES
+        "-DLINK_DIRECTORIES:STRING=${CMAKE_REQUIRED_LINK_DIRECTORIES}")
+    else()
+      set(_CSC_LINK_DIRECTORIES)
+    endif()
+
     if(CMAKE_REQUIRED_INCLUDES)
       set(CHECK_${LANG}_SOURCE_COMPILES_ADD_INCLUDES
         "-DINCLUDE_DIRECTORIES:STRING=${CMAKE_REQUIRED_INCLUDES}")
@@ -105,7 +108,9 @@ function(CMAKE_CHECK_SOURCE_COMPILES _lang _source _var)
       ${CHECK_${LANG}_SOURCE_COMPILES_ADD_LIBRARIES}
       CMAKE_FLAGS -DCOMPILE_DEFINITIONS:STRING=${CMAKE_REQUIRED_FLAGS}
       "${CHECK_${LANG}_SOURCE_COMPILES_ADD_INCLUDES}"
+      "${_CSC_LINK_DIRECTORIES}"
       OUTPUT_VARIABLE OUTPUT)
+    unset(_CSC_LINK_DIRECTORIES)
 
     foreach(_regex ${_FAIL_REGEX})
       if("${OUTPUT}" MATCHES "${_regex}")
@@ -130,5 +135,3 @@ function(CMAKE_CHECK_SOURCE_COMPILES _lang _source _var)
     endif()
   endif()
 endfunction()
-
-endblock()

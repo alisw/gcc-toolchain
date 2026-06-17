@@ -1,6 +1,6 @@
 /* mpc_sqrt -- Take the square root of a complex number.
 
-Copyright (C) 2002, 2008, 2009, 2010, 2011, 2012, 2020 INRIA
+Copyright (C) 2002, 2008, 2009, 2010, 2011, 2012, 2020, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -30,7 +30,7 @@ mpc_sqrt (mpc_ptr a, mpc_srcptr b, mpc_rnd_t rnd)
   /* the rounding mode and the precision required for w and t, which can */
   /* be either the real or the imaginary part of a */
   mpfr_prec_t prec;
-  int inex_w, inex_t = 1, inex_re, inex_im, loops = 0;
+  int inex_w, inex_t = 1, inex_re, inex_im, loop = 0;
   const int re_cmp = mpfr_cmp_ui (mpc_realref (b), 0),
             im_cmp = mpfr_cmp_ui (mpc_imagref (b), 0);
      /* comparison of the real/imaginary part of b with 0 */
@@ -209,8 +209,8 @@ mpc_sqrt (mpc_ptr a, mpc_srcptr b, mpc_rnd_t rnd)
 
   do
     {
-      loops ++;
-      prec += (loops <= 2) ? mpc_ceil_log2 (prec) + 4 : prec / 2;
+      MPC_LOOP_NEXT(loop, b, a);
+      prec += (loop <= 2) ? mpc_ceil_log2 (prec) + 4 : prec / 2;
       mpfr_set_prec (w, prec);
       mpfr_set_prec (t, prec);
       /* let b = x + iy */
@@ -227,6 +227,7 @@ mpc_sqrt (mpc_ptr a, mpc_srcptr b, mpc_rnd_t rnd)
       inex_w |= mpfr_div_2ui (w, w, 1, MPFR_RNDD);
       inex_w |= mpfr_sqrt (w, w, MPFR_RNDD);
 
+      /* is w representable in the target precision? */
       repr_w = mpfr_min_prec (w) <= prec_w;
       if (!repr_w)
          /* use the usual trick for obtaining the ternary value */

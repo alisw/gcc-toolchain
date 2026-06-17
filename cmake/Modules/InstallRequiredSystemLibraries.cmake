@@ -1,13 +1,21 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 InstallRequiredSystemLibraries
 ------------------------------
 
-Include this module to search for compiler-provided system runtime
-libraries and add install rules for them.  Some optional variables
-may be set prior to including the module to adjust behavior:
+This module searches for compiler-provided system runtime libraries and adds
+installation rules for them.
+
+Load this module in a CMake project with:
+
+.. code-block:: cmake
+
+  include(InstallRequiredSystemLibraries)
+
+Some optional variables may be set prior to including this module to adjust
+behavior:
 
 ``CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS``
   Specify additional runtime libraries that may not be detected.
@@ -64,9 +72,6 @@ may be set prior to including the module to adjust behavior:
 .. versionadded:: 3.10
   Support for installing Intel compiler runtimes.
 #]=======================================================================]
-
-cmake_policy(PUSH)
-cmake_policy(SET CMP0054 NEW) # if() quoted variables not dereferenced
 
 set(_IRSL_HAVE_Intel FALSE)
 set(_IRSL_HAVE_MSVC FALSE)
@@ -242,8 +247,12 @@ if(MSVC)
   set(_MSVC_IDE_VERSION "")
   if(MSVC_VERSION GREATER_EQUAL 2000)
     message(WARNING "MSVC ${MSVC_VERSION} not yet supported.")
-  elseif(MSVC_TOOLSET_VERSION GREATER_EQUAL 144)
+  elseif(MSVC_TOOLSET_VERSION GREATER_EQUAL 146)
     message(WARNING "MSVC toolset v${MSVC_TOOLSET_VERSION} not yet supported.")
+  elseif(MSVC_TOOLSET_VERSION EQUAL 145)
+    set(MSVC_REDIST_NAME VC145)
+    set(_MSVC_DLL_VERSION 140)
+    set(_MSVC_IDE_VERSION 18)
   elseif(MSVC_TOOLSET_VERSION EQUAL 143)
     set(MSVC_REDIST_NAME VC143)
     set(_MSVC_DLL_VERSION 140)
@@ -288,7 +297,7 @@ if(MSVC)
     if(NOT vs VERSION_LESS 15)
       set(_vs_redist_paths "")
       # The toolset and its redistributables may come with any VS version 15 or newer.
-      set(_MSVC_IDE_VERSIONS 17 16 15)
+      set(_MSVC_IDE_VERSIONS 18 17 16 15)
       foreach(_vs_ver ${_MSVC_IDE_VERSIONS})
         set(_vs_glob_redist_paths "")
         cmake_host_system_information(RESULT _vs_dir QUERY VS_${_vs_ver}_DIR) # undocumented query
@@ -806,5 +815,3 @@ if(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS)
       )
   endif()
 endif()
-
-cmake_policy(POP)

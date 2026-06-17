@@ -1,7 +1,7 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 
-#include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -10,6 +10,8 @@
 #include <cmext/string_view>
 
 #include "cmList.h"
+
+#include "testCommon.h"
 
 namespace {
 
@@ -572,7 +574,7 @@ bool testFilter()
       if (list.size() != 1) {
         result = false;
       }
-    } catch (const std::invalid_argument&) {
+    } catch (std::invalid_argument const&) {
     }
   }
 
@@ -739,7 +741,7 @@ bool testTransform()
     cmList list({ "ABC", "BBCB", "BCCCBC", "BCBCDD", "EBCBCEBC" });
 
     list.transform(cmList::TransformAction::REPLACE, "^BC|BC$", "X");
-    if (list.to_string() != "AX;BBCB;XCCX;XXDD;EBCBCEX") {
+    if (list.to_string() != "AX;BBCB;XCCX;XBCDD;EBCBCEX") {
       result = false;
     }
   }
@@ -951,44 +953,9 @@ bool testStaticModifiers()
 
 int testList(int /*unused*/, char* /*unused*/[])
 {
-  int result = 0;
-
-  if (!testConstructors()) {
-    result = 1;
-  }
-  if (!testAssign()) {
-    result = 1;
-  }
-  if (!testConversions()) {
-    result = 1;
-  }
-  if (!testAccess()) {
-    result = 1;
-  }
-  if (!testModifiers()) {
-    result = 1;
-  }
-  if (!testRemoveItems()) {
-    result = 1;
-  }
-  if (!testRemoveDuplicates()) {
-    result = 1;
-  }
-  if (!testFilter()) {
-    result = 1;
-  }
-  if (!testReverse()) {
-    result = 1;
-  }
-  if (!testSort()) {
-    result = 1;
-  }
-  if (!testTransform()) {
-    result = 1;
-  }
-  if (!testStaticModifiers()) {
-    result = 1;
-  }
-
-  return result;
+  return runTests({ testConstructors, testAssign, testConversions, testAccess,
+                    testModifiers, testRemoveItems, testRemoveDuplicates,
+                    testFilter, testReverse, testSort, testTransform,
+                    testStaticModifiers },
+                  false);
 }

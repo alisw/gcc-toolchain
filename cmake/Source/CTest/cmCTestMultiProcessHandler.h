@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <cm/optional>
+#include <cm/string_view>
 
 #include "cmCTest.h"
 #include "cmCTestResourceAllocator.h"
@@ -61,7 +62,7 @@ public:
   cmCTestMultiProcessHandler(cmCTest* ctest, cmCTestTestHandler* handler);
   virtual ~cmCTestMultiProcessHandler();
   // Set the tests
-  void SetTests(TestMap tests, PropertiesMap properties);
+  bool SetTests(TestMap tests, PropertiesMap properties);
   // Set the max number of tests that can be run at the same time.
   void SetParallelLevel(cm::optional<size_t> level);
   void SetTestLoad(unsigned long load);
@@ -89,7 +90,7 @@ public:
     this->RepeatCount = count;
   }
 
-  void SetResourceSpecFile(const std::string& resourceSpecFile)
+  void SetResourceSpecFile(std::string const& resourceSpecFile)
   {
     this->ResourceSpecFile = resourceSpecFile;
   }
@@ -110,7 +111,7 @@ protected:
   void UpdateCostData();
   void ReadCostData();
   // Return index of a test based on its name
-  int SearchByName(std::string const& name);
+  int SearchByName(cm::string_view name);
 
   void CreateTestCostList();
 

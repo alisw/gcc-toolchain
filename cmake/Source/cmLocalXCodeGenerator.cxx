@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmLocalXCodeGenerator.h"
 
 #include <memory>
@@ -28,17 +28,17 @@ cmLocalXCodeGenerator::cmLocalXCodeGenerator(cmGlobalGenerator* gg,
 cmLocalXCodeGenerator::~cmLocalXCodeGenerator() = default;
 
 std::string cmLocalXCodeGenerator::GetTargetDirectory(
-  cmGeneratorTarget const*) const
+  cmGeneratorTarget const* target,
+  cmStateEnums::IntermediateDirKind /*kind*/) const
 {
-  // No per-target directory for this generator (yet).
-  return std::string{};
+  return cmStrCat(target->GetName(), ".dir");
 }
 
 void cmLocalXCodeGenerator::AppendFlagEscape(std::string& flags,
-                                             const std::string& rawFlag) const
+                                             std::string const& rawFlag) const
 {
-  const cmGlobalXCodeGenerator* gg =
-    static_cast<const cmGlobalXCodeGenerator*>(this->GlobalGenerator);
+  cmGlobalXCodeGenerator const* gg =
+    static_cast<cmGlobalXCodeGenerator const*>(this->GlobalGenerator);
   gg->AppendFlag(flags, rawFlag);
 }
 
@@ -46,7 +46,7 @@ void cmLocalXCodeGenerator::Generate()
 {
   cmLocalGenerator::Generate();
 
-  for (const auto& target : this->GetGeneratorTargets()) {
+  for (auto const& target : this->GetGeneratorTargets()) {
     target->HasMacOSXRpathInstallNameDir("");
   }
 }
@@ -54,7 +54,7 @@ void cmLocalXCodeGenerator::Generate()
 void cmLocalXCodeGenerator::AddGeneratorSpecificInstallSetup(std::ostream& os)
 {
   // First check if we need to warn about incompatible settings
-  for (const auto& target : this->GetGeneratorTargets()) {
+  for (auto const& target : this->GetGeneratorTargets()) {
     target->HasMacOSXRpathInstallNameDir("");
   }
 
@@ -120,7 +120,8 @@ void cmLocalXCodeGenerator::AddGeneratorSpecificInstallSetup(std::ostream& os)
 }
 
 void cmLocalXCodeGenerator::ComputeObjectFilenames(
-  std::map<cmSourceFile const*, std::string>& mapping,
+  std::map<cmSourceFile const*, cmObjectLocations>& mapping,
+  std::string const& config,
   cmGeneratorTarget const*)
 {
   // Count the number of object files with each name. Warn about duplicate
@@ -130,15 +131,18 @@ void cmLocalXCodeGenerator::ComputeObjectFilenames(
   std::map<std::string, int> counts;
   for (auto& si : mapping) {
     cmSourceFile const* sf = si.first;
-    std::string objectName = cmStrCat(
+    std::string shortObjectName = this->GetShortObjectFileName(*sf);
+    std::string longObjectName = cmStrCat(
       cmSystemTools::GetFilenameWithoutLastExtension(sf->GetFullPath()), ".o");
 
-    std::string objectNameLower = cmSystemTools::LowerCase(objectName);
-    counts[objectNameLower] += 1;
-    if (2 == counts[objectNameLower]) {
+    std::string longObjectNameLower = cmSystemTools::LowerCase(longObjectName);
+    counts[longObjectNameLower] += 1;
+    if (2 == counts[longObjectNameLower]) {
       // TODO: emit warning about duplicate name?
     }
-    si.second = objectName;
+    si.second.ShortLoc.emplace(shortObjectName);
+    si.second.LongLoc.Update(longObjectName);
+    this->FillCustomInstallObjectLocations(*sf, config, ".o", si.second.InstallLongLoc);
   }
 }
 
@@ -156,7 +160,8 @@ void cmLocalXCodeGenerator::AddXCConfigSources(cmGeneratorTarget* target)
       *xcconfig,
       this, config);
     if (!file.empty()) {
-      target->AddSource(file);
+      auto* xcconfig_sf = target->AddSource(file);
+      xcconfig_sf->SetSpecialSourceType(cmSourceFile::SpecialSourceType::XcodeXCConfigFile);
     }
   }
 }

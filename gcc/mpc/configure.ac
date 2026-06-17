@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010, 2011, 2012, 2014, 2016, 2017, 2018, 2020, 2022 INRIA
+# Copyright (C) 2008, 2009, 2010, 2011, 2012, 2014, 2016, 2017, 2018, 2020, 2022, 2024, 2025, 2026 INRIA
 #
 # This file is part of GNU MPC.
 #
@@ -20,8 +20,8 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([mpc],[1.3.1],[mpc-discuss@inria.fr])
-AC_CONFIG_SRCDIR([src/mpc-impl.h])
+AC_INIT([mpc],[1.4.1],[mpc-discuss@inria.fr])
+AC_CONFIG_SRCDIR([src/mpc-impl.h.in])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADERS([config.h])
 
@@ -137,7 +137,6 @@ AC_CHECK_FUNCS([gettimeofday localeconv setlocale getrusage])
 AC_CHECK_FUNCS([dup dup2],,
         [AC_DEFINE([MPC_NO_STREAM_REDIRECTION],1,[Do not check mpc_out_str on stdout])])
 
-AC_CHECK_LIB([m], [fesetround])
 # Warning: up from autoconf 2.70, the following test fails with C++
 # see https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=992981
 AC_CHECK_LIB([gmp], [__gmpz_init],
@@ -157,12 +156,16 @@ AC_LINK_IFELSE(
         AC_MSG_ERROR([libmpfr not found or uses a different ABI (including static vs shared).])
         ])
 
+# Set variable for substitution in mpc.pc
+AC_SUBST(REQUIRES_GMP_VERSION, [5.0.0])     
+
 # Check for a recent GMP
 # We only guarantee that with a *functional* and recent enough GMP version,
 # MPC will compile; we do not guarantee that GMP will compile.
 # In particular fat builds are broken in GMP 5.0.0
 # (at least on 64-bit Core 2 under GNU/Linux),
 # see http://gmplib.org/list-archives/gmp-bugs/2011-August/002345.html.
+# Note: if we increase the minimal version, also do in REQUIRES_GMP_VERSION
 AC_MSG_CHECKING(for recent GMP)
 AC_COMPILE_IFELSE(
         [AC_LANG_SOURCE(
@@ -179,8 +182,12 @@ error
         AC_MSG_ERROR([GMP version >= 5.0.0 required])
         ])
 
-# Check for a recent MPFR: we require MPFR 4.1.0
+# Set variable for substitution in mpc.pc
+AC_SUBST(REQUIRES_MPFR_VERSION, [4.1.0])
+
+# Check for a recent MPFR
 # The same remark as above for GMP applies.
+# Note: if we increase the minimal version, also do in REQUIRES_MPFR_VERSION
 AC_MSG_CHECKING(for recent MPFR)
 AC_COMPILE_IFELSE(
         [AC_LANG_SOURCE(
@@ -228,5 +235,21 @@ AC_DEFINE_UNQUOTED([MPC_GCC_VERSION], ["$GCC_VERSION"], [Version of gcc])
 # Looks for short git hash if the version string contains "dev"
 MPC_GITVERSION
 
-AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile doc/Makefile tools/Makefile tools/bench/Makefile tools/mpcheck/Makefile])
+# If the environment variable MPC_DEBUG is non-empty, add compiler flags.
+if test $MPC_DEBUG ; then
+   CFLAGS="$CFLAGS -Werror"
+fi
+
+AC_CONFIG_FILES([
+    src/mpc.h
+    src/mpc-impl.h
+    mpc.pc
+    Makefile
+    src/Makefile
+    tests/Makefile
+    doc/Makefile
+    tools/Makefile
+    tools/bench/Makefile
+    tools/mpcheck/Makefile
+])
 AC_OUTPUT

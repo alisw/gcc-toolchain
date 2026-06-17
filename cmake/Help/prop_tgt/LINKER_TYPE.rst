@@ -6,10 +6,9 @@ LINKER_TYPE
 Specify which linker will be used for the link step. The property value may use
 :manual:`generator expressions <cmake-generator-expressions(7)>`.
 
-.. include:: ../variable/LINKER_PREDEFINED_TYPES.txt
+.. include:: ../variable/include/LINKER_PREDEFINED_TYPES.rst
 
-This property is not supported on :generator:`Green Hills MULTI` and
-:generator:`Visual Studio 9 2008` generators.
+This property is not supported on :generator:`Green Hills MULTI` generator.
 
 The implementation details for the selected linker will be provided by the
 :variable:`CMAKE_<LANG>_USING_LINKER_<TYPE>` variable. For example:

@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindIntl
@@ -7,80 +7,107 @@ FindIntl
 
 .. versionadded:: 3.2
 
-Find the Gettext libintl headers and libraries.
+Finds internationalization support that includes message translation functions
+such as ``gettext()``:
 
-This module reports information about the Gettext libintl
-installation in several variables.
+.. code-block:: cmake
 
-.. variable:: Intl_FOUND
+  find_package(Intl [<version>] [...])
 
-  True if libintl is found.
+These functions originate from the GNU ``libintl`` library, which is part
+of the GNU gettext utilities, but may also be provided by the standard C
+library.
 
-.. variable:: Intl_INCLUDE_DIRS
+Imported Targets
+^^^^^^^^^^^^^^^^
 
-  The directory containing the libintl headers.
+This module provides the following :ref:`Imported Targets`:
 
-.. variable:: Intl_LIBRARIES
+``Intl::Intl``
+  .. versionadded:: 3.20
 
-  The intl libraries to be linked.
+  Target encapsulating the Intl usage requirements, available if Intl is found.
 
-.. variable:: Intl_VERSION
+Result Variables
+^^^^^^^^^^^^^^^^
 
+This module defines the following variables:
+
+``Intl_FOUND``
+  Boolean indicating whether (the requested version of) Intl was found.
+
+``Intl_VERSION``
   .. versionadded:: 3.21
 
-  The version of intl found (x.y.z)
+  The version of the found Intl implementation or library, in the format
+  ``x.y.z``.
 
-.. variable:: Intl_VERSION_MAJOR
+  .. note::
+    Some Intl implementations don't embed the version in their header files.
+    In this case the variables ``Intl_VERSION*`` will be empty.
 
+``Intl_VERSION_MAJOR``
   .. versionadded:: 3.21
 
-  The major version of intl
+  The major version of Intl found.
 
-.. variable:: Intl_VERSION_MINOR
-
+``Intl_VERSION_MINOR``
   .. versionadded:: 3.21
 
-  The minor version of intl
+  The minor version of Intl found.
 
-.. variable:: Intl_VERSION_PATCH
-
+``Intl_VERSION_PATCH``
   .. versionadded:: 3.21
 
-  The patch version of intl
+  The patch version of Intl found.
 
-.. versionadded:: 3.20
-  This module defines :prop_tgt:`IMPORTED` target ``Intl::Intl``.
+``Intl_INCLUDE_DIRS``
+  Include directories containing headers needed to use Intl.
+
+``Intl_LIBRARIES``
+  The libraries needed to link against to use Intl.
+
+Cache Variables
+^^^^^^^^^^^^^^^
 
 The following cache variables may also be set:
 
-.. variable:: Intl_INCLUDE_DIR
-
-  The directory containing the libintl headers
-
-.. variable:: Intl_LIBRARY
-
-  The libintl library (if any)
-
-.. variable:: Intl_IS_BUILT_IN
-
+``Intl_IS_BUILT_IN``
   .. versionadded:: 3.20
 
-  whether ``intl`` is a part of the C library.
+  Boolean indicating whether the found Intl functionality is provided by the
+  standard C library rather than a separate ``libintl`` library.
+
+``Intl_INCLUDE_DIR``
+  The directory containing the ``libintl.h`` header file.
+
+``Intl_LIBRARY``
+  The path to the Intl library (if any).
 
 .. note::
-  On some platforms, such as Linux with GNU libc, the gettext
-  functions are present in the C standard library and libintl
-  is not required.  ``Intl_LIBRARIES`` will be empty in this
-  case.
+  On some platforms, such as Linux with GNU libc, the gettext functions are
+  present in the C standard library and libintl is not required.  The
+  ``Intl_LIBRARY`` and ``Intl_INCLUDE_DIR`` will be empty in this case.
 
-.. note::
-  Some libintl implementations don't embed the version number in their header files.
-  In this case the variables ``Intl_VERSION*`` will be empty.
+Examples
+^^^^^^^^
 
-.. note::
-  If you wish to use the Gettext tools (``msgmerge``,
-  ``msgfmt``, etc.), use :module:`FindGettext`.
+Finding the Intl support and linking the imported target for use in a project:
+
+.. code-block:: cmake
+
+  find_package(Intl)
+  target_link_libraries(app PRIVATE Intl::Intl)
+
+See Also
+^^^^^^^^
+
+* The :module:`FindGettext` module to find and use the GNU gettext tools
+  (``msgmerge``, ``msgfmt``, etc.).
 #]=======================================================================]
+
+cmake_policy(PUSH)
+cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
 include(${CMAKE_CURRENT_LIST_DIR}/CMakePushCheckState.cmake)
 if(CMAKE_C_COMPILER_LOADED)
@@ -157,9 +184,8 @@ if(Intl_INCLUDE_DIR AND EXISTS "${Intl_INCLUDE_DIR}/libintl.h")
   unset(Intl_VERSION_NUMBER)
 endif()
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(Intl
-                                  FOUND_VAR Intl_FOUND
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(Intl
                                   REQUIRED_VARS ${_Intl_REQUIRED_VARS}
                                   VERSION_VAR Intl_VERSION
                                   FAIL_MESSAGE "Failed to find Gettext libintl")
@@ -181,3 +207,5 @@ if(Intl_FOUND)
       INTERFACE_LINK_LIBRARIES "${Intl_LIBRARIES}")
   endif()
 endif()
+
+cmake_policy(POP)

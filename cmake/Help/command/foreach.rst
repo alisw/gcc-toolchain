@@ -58,7 +58,8 @@ command iterates over each item in each given list.
 The ``<items>`` following the ``ITEMS`` keyword are processed
 as in the first variant of the ``foreach`` command.
 The forms ``LISTS A`` and ``ITEMS ${A}`` are
-equivalent.
+equivalent. If no ``<lists>`` or ``<items>`` are given, the body
+of the loop will never be executed (i.e., it is processed as empty).
 
 The following example shows how the ``LISTS`` option is
 processed:
@@ -97,13 +98,20 @@ separated list of list-valued variables. The ``foreach``
 command iterates over each list simultaneously setting the
 iteration variables as follows:
 
-- if the only ``loop_var`` given, then it sets a series of
+- if a single ``loop_var`` is given, then it sets a series of
   ``loop_var_N`` variables to the current item from the
   corresponding list;
-- if multiple variable names passed, their count should match
-  the lists variables count;
-- if any of the lists are shorter, the corresponding iteration
-  variable is not defined for the current iteration.
+- if multiple variable names are passed, it sets each variable to the
+  current item from the corresponding list. The number of iteration
+  variables must match the number of list variables.
+
+If no ``<lists>`` are given, the body of the loop will never be executed
+(i.e., it is processed as empty).
+
+The following example shows how the ``ZIP_LISTS`` option is
+processed:
+
+.. noqa: spellcheck off
 
 .. code-block:: cmake
 
@@ -128,6 +136,8 @@ yields::
   -- en=two, ba=dua
   -- en=three, ba=tiga
   -- en=four, ba=
+
+.. noqa: spellcheck on
 
 See Also
 ^^^^^^^^

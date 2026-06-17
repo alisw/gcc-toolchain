@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 
 #pragma once
 
@@ -36,11 +36,13 @@ public:
 
   std::string ComputeLinkPath(cmComputeLinkInformation& cli,
                               std::string const& libPathFlag,
-                              std::string const& libPathTerminator);
+                              std::string const& libPathTerminator,
+                              std::string const& stdLinkDirString);
 
   void ComputeLinkPath(cmComputeLinkInformation& cli,
                        std::string const& libPathFlag,
                        std::string const& libPathTerminator,
+                       std::string const& stdLinkDirString,
                        std::vector<BT<std::string>>& linkPath);
 
   std::string ComputeFrameworkPath(cmComputeLinkInformation& cli,
@@ -48,6 +50,7 @@ public:
 
   std::string ComputeLinkLibraries(cmComputeLinkInformation& cli,
                                    std::string const& stdLibString);
+  std::string ComputeRPath(cmComputeLinkInformation& cli);
 
   virtual void ComputeLinkLibraries(
     cmComputeLinkInformation& cli, std::string const& stdLibString,
@@ -60,7 +63,6 @@ protected:
   std::string ComputeLinkLibs(cmComputeLinkInformation& cli);
   void ComputeLinkLibs(cmComputeLinkInformation& cli,
                        std::vector<BT<std::string>>& linkLibraries);
-  std::string ComputeRPath(cmComputeLinkInformation& cli);
 
   std::string ConvertToOutputFormat(std::string const& input);
   std::string ConvertToOutputForExisting(std::string const& input);

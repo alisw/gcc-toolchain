@@ -1,6 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
-cmake_policy(SET CMP0043 OLD) # testing the old behavior
-
+cmake_minimum_required(VERSION 3.10)
 project(Preprocess)
 
 # This test is meant both as a test and as a reference for supported
@@ -29,6 +27,9 @@ if("${CMAKE_GENERATOR}" MATCHES "Watcom WMake")
 endif()
 if("${CMAKE_GENERATOR}" MATCHES "Visual Studio")
   set(PP_VS 1)
+endif()
+if("${CMAKE_GENERATOR}" MATCHES "FASTBuild")
+  set(PP_FASTBUILD 1)
 endif()
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND
    "x${CMAKE_C_SIMULATE_ID}" STREQUAL "xMSVC")
@@ -109,9 +110,11 @@ if(NOT PP_BORLAND AND NOT PP_MINGW AND NOT PP_NMAKE)
 endif()
 
 set(EXPR_OP1 "/")
-if((NOT MSVC OR PP_NMAKE) AND
+if(NOT PP_FASTBUILD AND (NOT MSVC OR PP_NMAKE) AND
    NOT CMAKE_C_COMPILER_ID STREQUAL "Intel" AND
    NOT CLANG_MSVC_WINDOWS)
+  # FASTBuild does not support escaping of '%' character in the command line.
+  # See https://github.com/fastbuild/fastbuild/issues/390 for more details.
   # MSVC cl, Intel icl: %
   # When the cl compiler is invoked from the command line then % must
   # be written %% (to distinguish from %ENV% syntax).  However cl does
@@ -229,24 +232,45 @@ set(FILE_PATH "${Preprocess_SOURCE_DIR}/file_def.h")
 set(TARGET_PATH "${Preprocess_SOURCE_DIR}/target_def.h")
 
 # Set some definition properties.
-foreach(c "" "_DEBUG" "_RELEASE" "_RELWITHDEBINFO" "_MINSIZEREL")
-  set(FLAVOR "${c}")
+set_property(
+  DIRECTORY .
+  APPEND PROPERTY COMPILE_DEFINITIONS "DIRECTORY_DEF"
+  )
+set_property(
+  TARGET Preprocess
+  APPEND PROPERTY COMPILE_DEFINITIONS "TARGET_DEF"
+  )
+set_property(
+  SOURCE preprocess.c preprocess.cxx
+  PROPERTY COMPILE_DEFINITIONS "FILE_DEF"
+  )
+
+# Set some per-config definition properties.
+foreach(c "DEBUG" "RELEASE" "RELWITHDEBINFO" "MINSIZEREL")
   # Treat RelWithDebInfo and MinSizeRel as Release to avoid having
-  # an exponentional matrix of inclusions and exclusions of defines
-  if("${c}" STREQUAL "_RELWITHDEBINFO" OR "${c}" STREQUAL "_MINSIZEREL")
-    set(FLAVOR "_RELEASE")
+  # an exponential matrix of inclusions and exclusions of defines
+  if("${c}" STREQUAL "RELWITHDEBINFO" OR "${c}" STREQUAL "MINSIZEREL")
+    set(FLAVOR "RELEASE")
+  else()
+    set(FLAVOR "${c}")
   endif()
   set_property(
     DIRECTORY .
-    APPEND PROPERTY COMPILE_DEFINITIONS${c} "DIRECTORY_DEF${FLAVOR}"
+    APPEND PROPERTY COMPILE_DEFINITIONS "$<$<CONFIG:${c}>:DIRECTORY_DEF_${FLAVOR}>"
     )
   set_property(
     TARGET Preprocess
-    PROPERTY COMPILE_DEFINITIONS${c} "TARGET_DEF${FLAVOR}"
+    APPEND PROPERTY COMPILE_DEFINITIONS "$<$<CONFIG:${c}>:TARGET_DEF_${FLAVOR}>"
     )
+  if(NOT PREPROCESS_XCODE)
+    set_property(
+      SOURCE preprocess.c
+      APPEND PROPERTY COMPILE_DEFINITIONS "$<$<CONFIG:${c}>:FILE_DEF_${FLAVOR}>"
+      )
+  endif()
   set_property(
-    SOURCE preprocess.c preprocess.cxx
-    PROPERTY COMPILE_DEFINITIONS${c} "FILE_DEF${FLAVOR}"
+    SOURCE preprocess.cxx
+    PROPERTY COMPILE_DEFINITIONS_${c} "FILE_DEF_${FLAVOR}"
     )
 endforeach()
 

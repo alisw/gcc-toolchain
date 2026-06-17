@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 if(CMAKE_CUDA_COMPILER_FORCED)
   # The compiler configuration was forced by the user.
@@ -65,8 +65,8 @@ if(NOT CMAKE_CUDA_COMPILER_WORKS)
 endif()
 
 # Try to identify the compiler features
-include(${CMAKE_ROOT}/Modules/CMakeDetermineCompileFeatures.cmake)
-CMAKE_DETERMINE_COMPILE_FEATURES(CUDA)
+include(${CMAKE_ROOT}/Modules/CMakeDetermineCompilerSupport.cmake)
+CMAKE_DETERMINE_COMPILER_SUPPORT(CUDA)
 
 if("x${CMAKE_CUDA_SIMULATE_ID}" STREQUAL "xMSVC")
   set(CMAKE_CUDA_IMPLICIT_LINK_LIBRARIES "${CMAKE_CUDA_HOST_IMPLICIT_LINK_LIBRARIES}")

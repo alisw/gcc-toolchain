@@ -1,7 +1,7 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include <algorithm>
-#include <fstream>
+#include <cstddef>
 #include <functional>
 #include <map>
 #include <string>
@@ -35,10 +35,12 @@ using ArchToolsetStrategy = cmCMakePresetsGraph::ArchToolsetStrategy;
 using JSONHelperBuilder = cmJSONHelperBuilder;
 using ExpandMacroResult = cmCMakePresetsGraphInternal::ExpandMacroResult;
 using MacroExpander = cmCMakePresetsGraphInternal::MacroExpander;
+using MacroExpanderVector = cmCMakePresetsGraphInternal::MacroExpanderVector;
+using cmCMakePresetsGraphInternal::BaseMacroExpander;
 using cmCMakePresetsGraphInternal::ExpandMacros;
 
 constexpr int MIN_VERSION = 1;
-constexpr int MAX_VERSION = 8;
+constexpr int MAX_VERSION = 10;
 
 struct CMakeVersion
 {
@@ -108,7 +110,7 @@ auto const MatchesConditionHelper =
           ConditionStringHelper, true);
 
 bool SubConditionHelper(std::unique_ptr<cmCMakePresetsGraph::Condition>& out,
-                        const Json::Value* value, cmJSONState* state);
+                        Json::Value const* value, cmJSONState* state);
 
 auto const ListConditionVectorHelper =
   JSONHelperBuilder::Vector<std::unique_ptr<cmCMakePresetsGraph::Condition>>(
@@ -130,7 +132,7 @@ auto const NotConditionHelper =
           SubConditionHelper);
 
 bool ConditionHelper(std::unique_ptr<cmCMakePresetsGraph::Condition>& out,
-                     const Json::Value* value, cmJSONState* state)
+                     Json::Value const* value, cmJSONState* state)
 {
   if (!value) {
     out.reset();
@@ -221,7 +223,7 @@ bool ConditionHelper(std::unique_ptr<cmCMakePresetsGraph::Condition>& out,
 }
 
 bool SubConditionHelper(std::unique_ptr<cmCMakePresetsGraph::Condition>& out,
-                        const Json::Value* value, cmJSONState* state)
+                        Json::Value const* value, cmJSONState* state)
 {
   std::unique_ptr<cmCMakePresetsGraph::Condition> ptr;
   auto result = ConditionHelper(ptr, value, state);
@@ -234,7 +236,7 @@ bool SubConditionHelper(std::unique_ptr<cmCMakePresetsGraph::Condition>& out,
 }
 
 bool EnvironmentHelper(cm::optional<std::string>& out,
-                       const Json::Value* value, cmJSONState* state)
+                       Json::Value const* value, cmJSONState* state)
 {
   if (!value || value->isNull()) {
     out = cm::nullopt;
@@ -254,9 +256,14 @@ auto const VersionIntHelper =
 auto const VersionHelper = JSONHelperBuilder::Required<int>(
   cmCMakePresetsErrors::NO_VERSION, VersionIntHelper);
 
+auto const VersionRangeHelper = JSONHelperBuilder::Checked<int>(
+  cmCMakePresetsErrors::UNRECOGNIZED_VERSION_RANGE(MIN_VERSION, MAX_VERSION),
+  VersionHelper,
+  [](int const v) -> bool { return v >= MIN_VERSION && v <= MAX_VERSION; });
+
 auto const RootVersionHelper =
   JSONHelperBuilder::Object<int>(cmCMakePresetsErrors::INVALID_ROOT_OBJECT)
-    .Bind("version"_s, VersionHelper, false);
+    .Bind("version"_s, VersionRangeHelper, false);
 
 auto const CMakeVersionUIntHelper =
   JSONHelperBuilder::UInt(cmCMakePresetsErrors::INVALID_VERSION);
@@ -297,17 +304,40 @@ auto const RootPresetsHelper =
                           false)
     .Bind<std::nullptr_t>("$schema"_s, nullptr,
                           cmCMakePresetsGraphInternal::SchemaHelper(), false);
+
+class EnvironmentMacroExpander : public MacroExpander
+{
+public:
+  ExpandMacroResult operator()(std::string const& macroNamespace,
+                               std::string const& macroName,
+                               std::string& macroOut,
+                               int /*version*/) const override
+  {
+    if (macroNamespace == "penv") {
+      if (macroName.empty()) {
+        return ExpandMacroResult::Error;
+      }
+      if (cm::optional<std::string> value =
+            cmSystemTools::GetEnvVar(macroName)) {
+        macroOut += *value;
+      }
+      return ExpandMacroResult::Ok;
+    }
+
+    return ExpandMacroResult::Ignore;
+  }
+};
 }
 
 namespace cmCMakePresetsGraphInternal {
-bool PresetStringHelper(std::string& out, const Json::Value* value,
+bool PresetStringHelper(std::string& out, Json::Value const* value,
                         cmJSONState* state)
 {
   static auto const helper = JSONHelperBuilder::String();
   return helper(out, value, state);
 }
 
-bool PresetNameHelper(std::string& out, const Json::Value* value,
+bool PresetNameHelper(std::string& out, Json::Value const* value,
                       cmJSONState* state)
 {
   if (!value || !value->isString() || value->asString().empty()) {
@@ -319,7 +349,7 @@ bool PresetNameHelper(std::string& out, const Json::Value* value,
 }
 
 bool PresetVectorStringHelper(std::vector<std::string>& out,
-                              const Json::Value* value, cmJSONState* state)
+                              Json::Value const* value, cmJSONState* state)
 {
   static auto const helper = JSONHelperBuilder::Vector<std::string>(
     cmCMakePresetsErrors::INVALID_PRESET,
@@ -327,34 +357,34 @@ bool PresetVectorStringHelper(std::vector<std::string>& out,
   return helper(out, value, state);
 }
 
-bool PresetBoolHelper(bool& out, const Json::Value* value, cmJSONState* state)
+bool PresetBoolHelper(bool& out, Json::Value const* value, cmJSONState* state)
 {
   static auto const helper = JSONHelperBuilder::Bool();
   return helper(out, value, state);
 }
 
 bool PresetOptionalBoolHelper(cm::optional<bool>& out,
-                              const Json::Value* value, cmJSONState* state)
+                              Json::Value const* value, cmJSONState* state)
 {
   static auto const helper =
     JSONHelperBuilder::Optional<bool>(PresetBoolHelper);
   return helper(out, value, state);
 }
 
-bool PresetIntHelper(int& out, const Json::Value* value, cmJSONState* state)
+bool PresetIntHelper(int& out, Json::Value const* value, cmJSONState* state)
 {
   static auto const helper = JSONHelperBuilder::Int();
   return helper(out, value, state);
 }
 
-bool PresetOptionalIntHelper(cm::optional<int>& out, const Json::Value* value,
+bool PresetOptionalIntHelper(cm::optional<int>& out, Json::Value const* value,
                              cmJSONState* state)
 {
   static auto const helper = JSONHelperBuilder::Optional<int>(PresetIntHelper);
   return helper(out, value, state);
 }
 
-bool PresetVectorIntHelper(std::vector<int>& out, const Json::Value* value,
+bool PresetVectorIntHelper(std::vector<int>& out, Json::Value const* value,
                            cmJSONState* state)
 {
   static auto const helper = JSONHelperBuilder::Vector<int>(
@@ -362,9 +392,9 @@ bool PresetVectorIntHelper(std::vector<int>& out, const Json::Value* value,
   return helper(out, value, state);
 }
 
-cmJSONHelper<std::nullptr_t> VendorHelper(const ErrorGenerator& error)
+cmJSONHelper<std::nullptr_t> VendorHelper(ErrorGenerator const& error)
 {
-  return [error](std::nullptr_t& /*out*/, const Json::Value* value,
+  return [error](std::nullptr_t& /*out*/, Json::Value const* value,
                  cmJSONState* state) -> bool {
     if (!value) {
       return true;
@@ -381,7 +411,7 @@ cmJSONHelper<std::nullptr_t> VendorHelper(const ErrorGenerator& error)
 
 bool PresetConditionHelper(
   std::shared_ptr<cmCMakePresetsGraph::Condition>& out,
-  const Json::Value* value, cmJSONState* state)
+  Json::Value const* value, cmJSONState* state)
 {
   std::unique_ptr<cmCMakePresetsGraph::Condition> ptr;
   auto result = ConditionHelper(ptr, value, state);
@@ -390,7 +420,7 @@ bool PresetConditionHelper(
 }
 
 bool PresetVectorOneOrMoreStringHelper(std::vector<std::string>& out,
-                                       const Json::Value* value,
+                                       Json::Value const* value,
                                        cmJSONState* state)
 {
   out.clear();
@@ -408,7 +438,7 @@ bool PresetVectorOneOrMoreStringHelper(std::vector<std::string>& out,
 
 bool EnvironmentMapHelper(
   std::map<std::string, cm::optional<std::string>>& out,
-  const Json::Value* value, cmJSONState* state)
+  Json::Value const* value, cmJSONState* state)
 {
   static auto const helper = JSONHelperBuilder::Map<cm::optional<std::string>>(
     cmCMakePresetsErrors::INVALID_PRESET, EnvironmentHelper);
@@ -418,13 +448,13 @@ bool EnvironmentMapHelper(
 
 cmJSONHelper<std::nullptr_t> SchemaHelper()
 {
-  return [](std::nullptr_t&, const Json::Value*, cmJSONState*) -> bool {
+  return [](std::nullptr_t&, Json::Value const*, cmJSONState*) -> bool {
     return true;
   };
 }
 }
 
-bool cmCMakePresetsGraph::ReadJSONFile(const std::string& filename,
+bool cmCMakePresetsGraph::ReadJSONFile(std::string const& filename,
                                        RootType rootType,
                                        ReadReason readReason,
                                        std::vector<File*>& inProgressFiles,
@@ -455,11 +485,6 @@ bool cmCMakePresetsGraph::ReadJSONFile(const std::string& filename,
   int v = 0;
   if ((result = RootVersionHelper(v, &root, &parseState)) != true) {
     return result;
-  }
-  if (v < MIN_VERSION || v > MAX_VERSION) {
-    cmCMakePresetsErrors::UNRECOGNIZED_VERSION(&root["version"],
-                                               &this->parseState);
-    return false;
   }
 
   // Support for build and test presets added in version 2.
@@ -502,6 +527,9 @@ bool cmCMakePresetsGraph::ReadJSONFile(const std::string& filename,
     cmCMakePresetsErrors::SCHEMA_UNSUPPORTED(&this->parseState);
     return false;
   }
+
+  // Support for $comment added in version 10.
+  this->parseState.allowComments = (v >= 10);
 
   RootPresets presets;
   if ((result = RootPresetsHelper(presets, &root, &parseState)) != true) {
@@ -580,6 +608,12 @@ bool cmCMakePresetsGraph::ReadJSONFile(const std::string& filename,
         (preset.TraceMode.has_value() || preset.TraceFormat.has_value() ||
          !preset.TraceRedirect.empty() || !preset.TraceSource.empty())) {
       cmCMakePresetsErrors::TRACE_UNSUPPORTED(&this->parseState);
+      return false;
+    }
+
+    // Support for graphviz argument added in version 10.
+    if (v < 10 && !preset.GraphVizFile.empty()) {
+      cmCMakePresetsErrors::GRAPHVIZ_FILE_UNSUPPORTED(&this->parseState);
       return false;
     }
 
@@ -690,7 +724,7 @@ bool cmCMakePresetsGraph::ReadJSONFile(const std::string& filename,
   }
 
   auto const includeFile = [this, &inProgressFiles,
-                            file](const std::string& include,
+                            file](std::string const& include,
                                   RootType rootType2, ReadReason readReason2,
                                   std::string& FailureMessage) -> bool {
     bool r;
@@ -706,26 +740,13 @@ bool cmCMakePresetsGraph::ReadJSONFile(const std::string& filename,
     return true;
   };
 
-  std::vector<MacroExpander> macroExpanders;
+  MacroExpanderVector macroExpanders{};
 
-  MacroExpander environmentMacroExpander =
-    [](const std::string& macroNamespace, const std::string& macroName,
-       std::string& expanded, int /*version*/) -> ExpandMacroResult {
-    if (macroNamespace == "penv") {
-      if (macroName.empty()) {
-        return ExpandMacroResult::Error;
-      }
-      if (cm::optional<std::string> value =
-            cmSystemTools::GetEnvVar(macroName)) {
-        expanded += *value;
-      }
-      return ExpandMacroResult::Ok;
-    }
-
-    return ExpandMacroResult::Ignore;
-  };
-
-  macroExpanders.push_back(environmentMacroExpander);
+  if (v >= 9) {
+    macroExpanders.push_back(
+      cm::make_unique<BaseMacroExpander>(*this, filename));
+  }
+  macroExpanders.push_back(cm::make_unique<EnvironmentMacroExpander>());
 
   for (Json::ArrayIndex i = 0; i < presets.Include.size(); ++i) {
     auto include = presets.Include[i];

@@ -55,10 +55,41 @@ test_reuse (void)
 #include "data_check.tpl"
 #include "tgeneric.tpl"
 
+static void
+check_divby0_exc (void)
+{
+  mpc_t z;
+  mpfr_t w;
+  struct {
+    double re, im;
+  } data[] = {{+0.0, +0.0},
+              {+0.0, -0.0},
+              {-0.0, +0.0},
+              {-0.0, -0.0}};
+
+  mpc_init2 (z, 53);
+  mpfr_init2 (w, 53);
+  mpfr_set_si (w, -1, MPFR_RNDN);
+  for (size_t i = 0; i < 4; i++) {
+    mpc_set_d_d (z, data[i].re, data[i].im, MPC_RNDNN);
+    mpfr_clear_flags ();
+    mpc_pow_fr (z, z, w, MPC_RNDNN);
+    if (!mpfr_divby0_p ()) {
+      printf ("Missing division-by-zero exception\n");
+      exit (1);
+    }
+  }
+  mpfr_clear_flags ();
+  mpc_clear (z);
+  mpfr_clear (w);
+}
+
 int
 main (void)
 {
   test_start ();
+
+  check_divby0_exc ();
 
   test_reuse (); /* FIXME: remove it, already checked by tgeneric */
 

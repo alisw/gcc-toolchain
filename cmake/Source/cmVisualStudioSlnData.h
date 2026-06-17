@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -7,8 +7,6 @@
 #include <map>
 #include <string>
 #include <vector>
-
-#include <cm/optional>
 
 class cmSlnProjectEntry
 {
@@ -26,11 +24,11 @@ public:
   std::string GetName() const { return Name; }
   std::string GetRelativePath() const { return RelativePath; }
 
-  void AddProjectConfiguration(const std::string& solutionConfiguration,
-                               const std::string& projectConfiguration);
+  void AddProjectConfiguration(std::string const& solutionConfiguration,
+                               std::string const& projectConfiguration);
 
   std::string GetProjectConfiguration(
-    const std::string& solutionConfiguration);
+    std::string const& solutionConfiguration) const;
 
 private:
   std::string Guid, Name, RelativePath;
@@ -41,7 +39,7 @@ class cmSlnData
 {
 public:
   std::string GetVisualStudioVersion() const { return visualStudioVersion; }
-  void SetVisualStudioVersion(const std::string& version)
+  void SetVisualStudioVersion(std::string const& version)
   {
     visualStudioVersion = version;
   }
@@ -51,31 +49,30 @@ public:
     return minimumVisualStudioVersion;
   }
 
-  void SetMinimumVisualStudioVersion(const std::string& version)
+  void SetMinimumVisualStudioVersion(std::string const& version)
   {
     minimumVisualStudioVersion = version;
   }
 
-  cm::optional<cmSlnProjectEntry> GetProjectByGUID(
-    const std::string& projectGUID) const;
+  cmSlnProjectEntry* GetProjectByGUID(std::string const& projectGUID);
 
-  cm::optional<cmSlnProjectEntry> GetProjectByName(
-    const std::string& projectName) const;
+  cmSlnProjectEntry const* GetProjectByName(
+    std::string const& projectName) const;
 
   std::vector<cmSlnProjectEntry> GetProjects() const;
 
-  cmSlnProjectEntry* AddProject(const std::string& projectGUID,
-                                const std::string& projectName,
-                                const std::string& projectRelativePath);
+  cmSlnProjectEntry* AddProject(std::string const& projectGUID,
+                                std::string const& projectName,
+                                std::string const& projectRelativePath);
 
-  void AddConfiguration(const std::string& configuration)
+  void AddConfiguration(std::string const& configuration)
   {
     solutionConfigurations.push_back(configuration);
   }
 
-  std::string GetConfigurationTarget(const std::string& projectName,
-                                     const std::string& solutionConfiguration,
-                                     const std::string& platformName);
+  std::string GetConfigurationTarget(std::string const& projectName,
+                                     std::string const& solutionConfiguration,
+                                     std::string const& platformName);
 
 private:
   std::string visualStudioVersion, minimumVisualStudioVersion;

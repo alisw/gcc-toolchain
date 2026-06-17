@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 include(CMakeInitializeConfigs)
 
@@ -76,6 +76,13 @@ if(NOT DEFINED CMAKE_EXPORT_COMPILE_COMMANDS AND CMAKE_GENERATOR MATCHES "Ninja|
     CACHE BOOL "Enable/Disable output of compile commands during generation."
     )
   mark_as_advanced(CMAKE_EXPORT_COMPILE_COMMANDS)
+endif()
+
+if(NOT DEFINED CMAKE_EXPORT_BUILD_DATABASE AND CMAKE_GENERATOR MATCHES "Ninja")
+  set(CMAKE_EXPORT_BUILD_DATABASE "$ENV{CMAKE_EXPORT_BUILD_DATABASE}"
+    CACHE BOOL "Enable/Disable output of build database during the build."
+    )
+  mark_as_advanced(CMAKE_EXPORT_BUILD_DATABASE)
 endif()
 
 # GetDefaultWindowsPrefixBase

@@ -1,4 +1,3 @@
-cmake_policy(SET CMP0057 NEW)
 include(RunCMake)
 
 run_cmake(NotAFeature)
@@ -53,6 +52,7 @@ function(test_build)
   set(RunCMake_TEST_BINARY_DIR "${RunCMake_BINARY_DIR}/${test}-build")
   run_cmake(${test})
   set(RunCMake_TEST_NO_CLEAN 1)
+  set(RunCMake_TEST_OUTPUT_MERGE 1)
   run_cmake_command(${test}-build ${CMAKE_COMMAND} --build . ${ARGN})
 endfunction()
 

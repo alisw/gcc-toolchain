@@ -25,8 +25,8 @@ or a component GROUP name.
 Here are some CPack DEB generator wiki resources that are here for historic
 reasons and are no longer maintained but may still prove useful:
 
- - https://gitlab.kitware.com/cmake/community/-/wikis/doc/cpack/Configuration
- - https://gitlab.kitware.com/cmake/community/-/wikis/doc/cpack/PackageGenerators#deb-unix-only
+- https://gitlab.kitware.com/cmake/community/-/wikis/doc/cpack/Configuration
+- https://gitlab.kitware.com/cmake/community/-/wikis/doc/cpack/PackageGenerators#deb-unix-only
 
 List of CPack DEB generator specific variables:
 
@@ -182,11 +182,22 @@ List of CPack DEB generator specific variables:
    only the automatically discovered dependencies will be set for this
    component.
 
+ .. versionchanged:: 3.31
+
+   The variable is always expanded as a list. Before it was expanded only
+   if used in cooperation with :variable:`CPACK_DEB_COMPONENT_INSTALL`,
+   :variable:`CPACK_DEBIAN_PACKAGE_SHLIBDEPS` or
+   :variable:`CPACK_DEBIAN_<COMPONENT>_PACKAGE_SHLIBDEPS`.
+   This meant that if a component had no shared libraries discovered
+   (e.g. a package composed only of scripts) you had to join the list
+   by yourself to obtain a valid Depends field.
+
  Example:
 
  .. code-block:: cmake
 
    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6 (>= 2.3.1-6), libc6 (< 2.4)")
+   list(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS cmake)
 
 .. variable:: CPACK_DEBIAN_ENABLE_COMPONENT_DEPENDS
 
@@ -387,7 +398,7 @@ List of CPack DEB generator specific variables:
 .. variable:: CPACK_DEBIAN_PACKAGE_PREDEPENDS
               CPACK_DEBIAN_<COMPONENT>_PACKAGE_PREDEPENDS
 
- Sets the `Pre-Depends` field of the Debian package.
+ Sets the ``Pre-Depends`` field of the Debian package.
  Like :variable:`Depends <CPACK_DEBIAN_PACKAGE_DEPENDS>`, except that it
  also forces ``dpkg`` to complete installation of the packages named
  before even starting the installation of the package which declares the
@@ -451,8 +462,8 @@ List of CPack DEB generator specific variables:
 .. variable:: CPACK_DEBIAN_PACKAGE_CONFLICTS
               CPACK_DEBIAN_<COMPONENT>_PACKAGE_CONFLICTS
 
- Sets the `Conflicts` field of the Debian package.
- When one binary package declares a conflict with another using a `Conflicts`
+ Sets the ``Conflicts`` field of the Debian package.
+ When one binary package declares a conflict with another using a ``Conflicts``
  field, ``dpkg`` will not allow them to be unpacked on the system at
  the same time.
 
@@ -479,8 +490,8 @@ List of CPack DEB generator specific variables:
 .. variable:: CPACK_DEBIAN_PACKAGE_PROVIDES
               CPACK_DEBIAN_<COMPONENT>_PACKAGE_PROVIDES
 
- Sets the `Provides` field of the Debian package.
- A virtual package is one which appears in the `Provides` control field of
+ Sets the ``Provides`` field of the Debian package.
+ A virtual package is one which appears in the ``Provides`` control field of
  another package.
 
  :Mandatory: No
@@ -498,7 +509,7 @@ List of CPack DEB generator specific variables:
 .. variable:: CPACK_DEBIAN_PACKAGE_REPLACES
               CPACK_DEBIAN_<COMPONENT>_PACKAGE_REPLACES
 
- Sets the `Replaces` field of the Debian package.
+ Sets the ``Replaces`` field of the Debian package.
  Packages can declare in their control file that they should overwrite
  files in certain other packages, or completely replace other packages.
 
@@ -536,7 +547,7 @@ List of CPack DEB generator specific variables:
 .. variable:: CPACK_DEBIAN_PACKAGE_SUGGESTS
               CPACK_DEBIAN_<COMPONENT>_PACKAGE_SUGGESTS
 
- Sets the `Suggests` field of the Debian package.
+ Sets the ``Suggests`` field of the Debian package.
  Allows packages to declare a suggested package install grouping.
 
  :Mandatory: No
@@ -653,6 +664,31 @@ List of CPack DEB generator specific variables:
 
    This value is not interpreted. It is possible to pass an optional
    revision number of the referenced source package as well.
+
+.. variable:: CPACK_DEBIAN_PACKAGE_MULTIARCH
+              CPACK_DEBIAN_<COMPONENT>_PACKAGE_MULTIARCH
+
+ Sets the ``Multi-Arch`` field of the Debian package.
+ Packages can declare in their control file how they should handle
+ situations, where packages for different architectures are being installed
+ on the same machine.
+
+ :Mandatory: No
+ :Default:
+
+   - An empty string for non-component based installations
+   - :variable:`CPACK_DEBIAN_PACKAGE_MULTIARCH` for component-based
+     installations.
+
+ .. versionadded:: 3.31
+  Per-component :variable:`!CPACK_DEBIAN_<COMPONENT>_PACKAGE_MULTIARCH` variables.
+
+ See https://wiki.debian.org/MultiArch/Hints
+
+ .. note::
+
+   This value is validated. It must be one of the following values:
+   ``same``, ``foreign``, ``allowed``.
 
 Packaging of debug information
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

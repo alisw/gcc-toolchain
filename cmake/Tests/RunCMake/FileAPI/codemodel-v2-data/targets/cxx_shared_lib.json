@@ -4,6 +4,10 @@
     "directorySource": "^cxx$",
     "projectName": "Cxx",
     "type": "SHARED_LIBRARY",
+    "imported": null,
+    "local": null,
+    "abstract": null,
+    "symbolic": null,
     "isGeneratorProvided": null,
     "fileSets": null,
     "sources": [
@@ -16,7 +20,7 @@
             "backtrace": [
                 {
                     "file": "^cxx/CMakeLists\\.txt$",
-                    "line": 9,
+                    "line": 11,
                     "command": "add_library",
                     "hasParent": true
                 },
@@ -47,6 +51,14 @@
             "frameworks": null,
             "defines": [
                 {
+                    "define": "_MBCS",
+                    "backtrace": null
+                },
+                {
+                    "define": "_WINDLL",
+                    "backtrace": null
+                },
+                {
                     "define": "cxx_shared_lib_EXPORTS",
                     "backtrace": null
                 }
@@ -57,7 +69,7 @@
     "backtrace": [
         {
             "file": "^cxx/CMakeLists\\.txt$",
-            "line": 9,
+            "line": 11,
             "command": "add_library",
             "hasParent": true
         },
@@ -94,7 +106,7 @@
                 "backtrace": [
                     {
                         "file": "^codemodel-v2\\.cmake$",
-                        "line": 46,
+                        "line": 55,
                         "command": "install",
                         "hasParent": true
                     },
@@ -124,7 +136,7 @@
                 "backtrace": [
                     {
                         "file": "^codemodel-v2\\.cmake$",
-                        "line": 46,
+                        "line": 55,
                         "command": "install",
                         "hasParent": true
                     },
@@ -154,7 +166,7 @@
                 "backtrace": [
                     {
                         "file": "^codemodel-v2\\.cmake$",
-                        "line": 51,
+                        "line": 60,
                         "command": "install",
                         "hasParent": true
                     },
@@ -191,5 +203,11 @@
             "id": "^ZERO_CHECK::@a56b12a3f5c0529fb296$",
             "backtrace": null
         }
-    ]
+    ],
+    "linkLibraries": null,
+    "interfaceLinkLibraries": null,
+    "compileDependencies": null,
+    "interfaceCompileDependencies": null,
+    "objectDependencies": null,
+    "orderDependencies": null
 }

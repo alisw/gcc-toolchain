@@ -1,7 +1,7 @@
 /* mpc_get_dc, mpc_get_ldc -- Transform mpc number into C complex number
    mpc_get_str -- Convert a complex number into a string.
 
-Copyright (C) 2009, 2010, 2011, 2020, 2022 INRIA
+Copyright (C) 2009, 2010, 2011, 2020, 2022, 2023, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -21,24 +21,20 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 
 #include "config.h"
 
-#ifdef HAVE_COMPLEX_H
-#include <complex.h>
-#endif
-
 #include <locale.h>
 #include <stdio.h> /* for sprintf, fprintf */
 #include <ctype.h>
 #include <string.h>
 #include "mpc-impl.h"
 
-#ifdef HAVE_COMPLEX_H
-double _Complex
+#ifdef _MPC_HAVE_COMPLEX_H
+DOUBLE_COMPLEX
 mpc_get_dc (mpc_srcptr op, mpc_rnd_t rnd) {
    return I * mpfr_get_d (mpc_imagref (op), MPC_RND_IM (rnd))
           + mpfr_get_d (mpc_realref (op), MPC_RND_RE (rnd));
 }
 
-long double _Complex
+LONG_DOUBLE_COMPLEX
 mpc_get_ldc (mpc_srcptr op, mpc_rnd_t rnd) {
    return I * mpfr_get_ld (mpc_imagref (op), MPC_RND_IM (rnd))
           + mpfr_get_ld (mpc_realref (op), MPC_RND_RE (rnd));

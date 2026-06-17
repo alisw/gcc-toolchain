@@ -1,18 +1,51 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindBLAS
 --------
 
-Find Basic Linear Algebra Subprograms (BLAS) library
+Finds the installed Basic Linear Algebra Subprograms (BLAS) Fortran library,
+which implements the `BLAS linear-algebra interface`_:
 
-This module finds an installed Fortran library that implements the
-`BLAS linear-algebra interface`_.
+.. code-block:: cmake
+
+  find_package(BLAS [...])
 
 At least one of the ``C``, ``CXX``, or ``Fortran`` languages must be enabled.
 
 .. _`BLAS linear-algebra interface`: https://netlib.org/blas/
+
+Imported Targets
+^^^^^^^^^^^^^^^^
+
+This module provides the following :ref:`Imported Targets`:
+
+``BLAS::BLAS``
+  .. versionadded:: 3.18
+
+  Target encapsulating the libraries and usage requirements to use BLAS,
+  available only if BLAS is found.
+
+Result Variables
+^^^^^^^^^^^^^^^^
+
+This module defines the following variables:
+
+``BLAS_FOUND``
+  Boolean indicating whether the library implementing the BLAS interface
+  was found.
+``BLAS_LINKER_FLAGS``
+  Uncached list of required linker flags (excluding ``-l`` and ``-L``).
+``BLAS_LIBRARIES``
+  Uncached list of libraries (using full path name) to link against
+  to use BLAS (may be empty if compiler implicitly links BLAS).
+``BLAS95_LIBRARIES``
+  Uncached list of libraries (using full path name) to link against
+  to use BLAS95 interface.
+``BLAS95_FOUND``
+  Boolean indicating whether the library implementing the BLAS95 interface
+  was found.
 
 Input Variables
 ^^^^^^^^^^^^^^^
@@ -20,19 +53,19 @@ Input Variables
 The following variables may be set to influence this module's behavior:
 
 ``BLA_STATIC``
-  if ``ON`` use static linkage
+  If ``ON``, the static linkage will be used.
 
 ``BLA_VENDOR``
   Set to one of the :ref:`BLAS/LAPACK Vendors` to search for BLAS only
   from the specified vendor.  If not set, all vendors are considered.
 
 ``BLA_F95``
-  if ``ON`` tries to find the BLAS95 interfaces
+  If ``ON``, the module tries to find the BLAS95 interfaces.
 
 ``BLA_PREFER_PKGCONFIG``
   .. versionadded:: 3.11
 
-  if set ``pkg-config`` will be used to search for a BLAS library first
+  If set, ``pkg-config`` will be used to search for a BLAS library first
   and if one is found that is preferred
 
 ``BLA_PKGCONFIG_BLAS``
@@ -54,33 +87,20 @@ The following variables may be set to influence this module's behavior:
     Search for any BLAS/LAPACK.
     Most likely, a BLAS/LAPACK with 32-bit integer interfaces will be found.
 
-Imported targets
-^^^^^^^^^^^^^^^^
+``BLA_THREAD``
+  .. versionadded:: 4.1
 
-This module defines the following :prop_tgt:`IMPORTED` targets:
+  Specify the BLAS/LAPACK threading model:
 
-``BLAS::BLAS``
-  .. versionadded:: 3.18
+  ``SEQ``
+    Sequential model
+  ``OMP``
+    OpenMP model
+  ``ANY``
+    Search for any BLAS/LAPACK, if both are available most likely ``OMP`` will
+    be found.
 
-  The libraries to use for BLAS, if found.
-
-Result Variables
-^^^^^^^^^^^^^^^^
-
-This module defines the following variables:
-
-``BLAS_FOUND``
-  library implementing the BLAS interface is found
-``BLAS_LINKER_FLAGS``
-  uncached list of required linker flags (excluding ``-l`` and ``-L``).
-``BLAS_LIBRARIES``
-  uncached list of libraries (using full path name) to link against
-  to use BLAS (may be empty if compiler implicitly links BLAS)
-``BLAS95_LIBRARIES``
-  uncached list of libraries (using full path name) to link against
-  to use BLAS95 interface
-``BLAS95_FOUND``
-  library implementing the BLAS95 interface is found
+  This is currently only supported by NVIDIA NVPL.
 
 .. _`BLAS/LAPACK Vendors`:
 
@@ -88,7 +108,7 @@ BLAS/LAPACK Vendors
 ^^^^^^^^^^^^^^^^^^^
 
 ``Generic``
-  Generic reference implementation
+  Generic reference implementation.
 
 ``ACML``, ``ACML_MP``, ``ACML_GPU``
   AMD Core Math Library
@@ -96,31 +116,31 @@ BLAS/LAPACK Vendors
 ``AOCL``, ``AOCL_mt``
   .. versionadded:: 3.27
 
-  AMD Optimizing CPU Libraries
+  AMD Optimizing CPU Libraries.
 
 ``Apple``, ``NAS``
-  Apple BLAS (Accelerate), and Apple NAS (vecLib)
+  Apple BLAS (Accelerate), and Apple NAS (vecLib).
 
 ``Arm``, ``Arm_mp``, ``Arm_ilp64``, ``Arm_ilp64_mp``
   .. versionadded:: 3.18
 
-  Arm Performance Libraries
+  Arm Performance Libraries.
 
 ``ATLAS``
-  Automatically Tuned Linear Algebra Software
+  Automatically Tuned Linear Algebra Software.
 
 ``CXML``, ``DXML``
-  Compaq/Digital Extended Math Library
+  Compaq/Digital Extended Math Library.
 
 ``EML``, ``EML_mt``
   .. versionadded:: 3.20
 
-  Elbrus Math Library
+  Elbrus Math Library.
 
 ``FLAME``
   .. versionadded:: 3.11
 
-  BLIS Framework
+  BLIS Framework.
 
 ``FlexiBLAS``
   .. versionadded:: 3.19
@@ -128,61 +148,71 @@ BLAS/LAPACK Vendors
 ``Fujitsu_SSL2``, ``Fujitsu_SSL2BLAMP``, ``Fujitsu_SSL2SVE``, ``Fujitsu_SSL2BLAMPSVE``
   .. versionadded:: 3.20
 
-  Fujitsu SSL2 serial and parallel blas/lapack with SVE instructions
+  Fujitsu SSL2 serial and parallel blas/lapack with SVE instructions.
 
 ``Goto``
-  GotoBLAS
+  GotoBLAS.
 
 ``IBMESSL``, ``IBMESSL_SMP``
 
-  IBM Engineering and Scientific Subroutine Library
+  IBM Engineering and Scientific Subroutine Library.
 
 ``Intel``
-  Intel MKL 32 bit and 64 bit obsolete versions
+  Intel MKL 32 bit and 64 bit obsolete versions.
 
 ``Intel10_32``
-  Intel MKL v10 32 bit, threaded code
+  Intel MKL v10 32 bit, threaded code.
 
 ``Intel10_64lp``
-  Intel MKL v10+ 64 bit, threaded code, lp64 model
+  Intel MKL v10+ 64 bit, threaded code, lp64 model.
 
 ``Intel10_64lp_seq``
-  Intel MKL v10+ 64 bit, sequential code, lp64 model
+  Intel MKL v10+ 64 bit, sequential code, lp64 model.
 
 ``Intel10_64ilp``
   .. versionadded:: 3.13
 
-  Intel MKL v10+ 64 bit, threaded code, ilp64 model
+  Intel MKL v10+ 64 bit, threaded code, ilp64 model.
 
 ``Intel10_64ilp_seq``
   .. versionadded:: 3.13
 
-  Intel MKL v10+ 64 bit, sequential code, ilp64 model
+  Intel MKL v10+ 64 bit, sequential code, ilp64 model.
 
 ``Intel10_64_dyn``
   .. versionadded:: 3.17
 
-  Intel MKL v10+ 64 bit, single dynamic library
+  Intel MKL v10+ 64 bit, single dynamic library.
+
+``libblastrampoline``
+  .. versionadded:: 3.30
+
+  A BLAS/LAPACK demuxing library using PLT trampolines.
+
+``NVPL``
+  .. versionadded:: 4.1
+
+  NVIDIA Performance Libraries.
 
 ``NVHPC``
   .. versionadded:: 3.21
 
-  NVIDIA HPC SDK
+  NVIDIA HPC SDK.
 
 ``OpenBLAS``
   .. versionadded:: 3.6
 
 ``PhiPACK``
-  Portable High Performance ANSI C (PHiPAC)
+  Portable High Performance ANSI C (PHiPAC).
 
 ``SCSL``, ``SCSL_mp``
-  Scientific Computing Software Library
+  Scientific Computing Software Library.
 
 ``SGIMATH``
-  SGI Scientific Mathematical Library
+  SGI Scientific Mathematical Library.
 
 ``SunPerf``
-  Sun Performance Library
+  Sun Performance Library.
 
 .. _`Intel MKL`:
 
@@ -245,6 +275,15 @@ linked against MKL to run.
 
     . /opt/intel/oneapi/compiler/latest/env/vars.sh
 
+Examples
+^^^^^^^^
+
+Finding BLAS and linking it to a project target:
+
+.. code-block:: cmake
+
+  find_package(BLAS)
+  target_link_libraries(example PRIVATE BLAS::BLAS)
 #]=======================================================================]
 
 # The approach follows that of the ``autoconf`` macro file, ``acx_blas.m4``
@@ -281,19 +320,21 @@ if(CMAKE_Fortran_COMPILER_LOADED)
 else()
   include(${CMAKE_CURRENT_LIST_DIR}/CheckFunctionExists.cmake)
 endif()
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
+include(FindPackageHandleStandardArgs)
 
 if(BLA_PREFER_PKGCONFIG)
   if(NOT BLA_PKGCONFIG_BLAS)
     set(BLA_PKGCONFIG_BLAS "blas")
   endif()
   find_package(PkgConfig QUIET)
-  pkg_check_modules(PKGC_BLAS QUIET ${BLA_PKGCONFIG_BLAS})
-  if(PKGC_BLAS_FOUND)
-    set(BLAS_FOUND ${PKGC_BLAS_FOUND})
-    set(BLAS_LIBRARIES "${PKGC_BLAS_LINK_LIBRARIES}")
-    _add_blas_target()
-    return()
+  if(PkgConfig_FOUND)
+    pkg_check_modules(PKGC_BLAS QUIET ${BLA_PKGCONFIG_BLAS})
+    if(PKGC_BLAS_FOUND)
+      set(BLAS_FOUND ${PKGC_BLAS_FOUND})
+      set(BLAS_LIBRARIES "${PKGC_BLAS_LINK_LIBRARIES}")
+      _add_blas_target()
+      return()
+    endif()
   endif()
 endif()
 
@@ -408,6 +449,16 @@ elseif((BLA_SIZEOF_INTEGER STREQUAL "ANY") OR
   set(_blas_sizeof_integer ${BLA_SIZEOF_INTEGER})
 else()
   message(FATAL_ERROR "BLA_SIZEOF_INTEGER can have only <no value>, ANY, 4, or 8 values")
+endif()
+
+if(NOT BLA_THREAD)
+  set(_blas_thread "ANY")
+elseif((BLA_THREAD STREQUAL "ANY") OR
+       (BLA_THREAD STREQUAL "SEQ") OR
+       (BLA_THREAD STREQUAL "OMP"))
+  set(_blas_thread ${BLA_THREAD})
+else()
+  message(FATAL_ERROR "BLA_THREAD can have only <no value>, ANY, SEQ, or OMP values")
 endif()
 
 # Implicitly linked BLAS libraries?
@@ -1071,9 +1122,9 @@ if(BLA_VENDOR MATCHES "ACML" OR BLA_VENDOR STREQUAL "All")
   else()
     file(GLOB _ACML_GPU_ROOT "/opt/acml*/GPGPUexamples")
   endif()
-  list(GET _ACML_ROOT 0 _ACML_ROOT)
-  list(GET _ACML_GPU_ROOT 0 _ACML_GPU_ROOT)
   if(_ACML_ROOT)
+    list(GET _ACML_ROOT 0 _ACML_ROOT)
+    list(GET _ACML_GPU_ROOT 0 _ACML_GPU_ROOT)
     get_filename_component(_ACML_ROOT ${_ACML_ROOT} PATH)
     if(_blas_sizeof_integer EQUAL 8)
       set(_ACML_PATH_SUFFIX "_int64")
@@ -1308,6 +1359,52 @@ if(NOT BLAS_LIBRARIES
   unset(_blas_fjlapack_lib)
 endif()
 
+# nVidia NVPL? (https://developer.nvidia.com/nvpl)
+if(BLA_VENDOR STREQUAL "NVPL" OR BLA_VENDOR STREQUAL "All")
+  # Prefer lp64 unless ilp64 is requested.
+  if((_blas_sizeof_integer EQUAL 4) OR (_blas_sizeof_integer STREQUAL "ANY"))
+    list(APPEND _blas_nvpl_ints "_lp64")
+  endif()
+  if((_blas_sizeof_integer EQUAL 8) OR (_blas_sizeof_integer STREQUAL "ANY"))
+    list(APPEND _blas_nvpl_ints "_ilp64")
+  endif()
+
+  # Prefer OMP if available
+  if((_blas_thread STREQUAL "OMP") OR (_blas_thread STREQUAL "ANY"))
+    list(APPEND _blas_nvpl_threads "_omp")
+  endif()
+  if((_blas_thread STREQUAL "SEQ") OR (_blas_thread STREQUAL "ANY"))
+    list(APPEND _blas_nvpl_threads "_seq")
+  endif()
+
+  if(NOT BLAS_LIBRARIES)
+    find_package(nvpl QUIET)
+    if(nvpl_FOUND)
+      foreach(_nvpl_thread IN LISTS _blas_nvpl_threads)
+        foreach(_nvpl_int IN LISTS _blas_nvpl_ints)
+
+          set(_blas_lib "nvpl::blas${_nvpl_int}${_nvpl_thread}")
+
+          if(TARGET ${_blas_lib})
+            set(BLAS_LIBRARIES ${_blas_lib})
+            break()
+          endif()
+
+        endforeach()
+
+        if(BLAS_LIBRARIES)
+          break()
+        endif()
+
+      endforeach()
+    endif()
+  endif()
+
+  unset(_blas_lib)
+  unset(_blas_nvpl_ints)
+  unset(_blas_nvpl_threads)
+endif()
+
 # BLAS in nVidia HPC SDK? (https://developer.nvidia.com/hpc-sdk)
 if(BLA_VENDOR STREQUAL "NVHPC" OR BLA_VENDOR STREQUAL "All")
   set(_blas_nvhpc_lib "blas")
@@ -1350,6 +1447,31 @@ if(BLA_VENDOR STREQUAL "NVHPC" OR BLA_VENDOR STREQUAL "All")
   endif()
 
   unset(_blas_nvhpc_lib)
+endif()
+
+# libblastrampoline? (https://github.com/JuliaLinearAlgebra/libblastrampoline/tree/main)
+if(BLA_VENDOR STREQUAL "libblastrampoline" OR BLA_VENDOR STREQUAL "All")
+  set(_blas_libblastrampoline_lib "blastrampoline")
+
+  if(WIN32)
+    # Windows appends the version number to the library
+    string(APPEND _blas_libblastrampoline_lib "-5")
+  endif()
+
+  if(NOT BLAS_LIBRARIES)
+    check_blas_libraries(
+      BLAS_LIBRARIES
+      BLAS
+      sgemm
+      ""
+      "${_blas_libblastrampoline_lib}"
+      ""
+      ""
+      ""
+      )
+  endif()
+
+  unset(_blas_libblastrampoline_lib)
 endif()
 
 # Generic BLAS library?

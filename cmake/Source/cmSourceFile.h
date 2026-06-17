@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -31,7 +31,7 @@ public:
    * kind is assumed to be known, regardless of the given value.
    */
   cmSourceFile(
-    cmMakefile* mf, const std::string& name, bool generated,
+    cmMakefile* mf, std::string const& name, bool generated,
     cmSourceFileLocationKind kind = cmSourceFileLocationKind::Ambiguous);
 
   /**
@@ -40,27 +40,57 @@ public:
   cmCustomCommand* GetCustomCommand() const;
   void SetCustomCommand(std::unique_ptr<cmCustomCommand> cc);
 
+  enum class SpecialSourceType
+  {
+    // Sources for user-provided sources.
+    User,
+    // Source files for object files.
+    Object,
+    // Sources representing `CMakeLists.txt` files.
+    CMakeLists,
+    // Xcode `Info.plist` files for bundle targets.
+    BundleInfoPlist,
+    // Xcode source to force a link to occur with an appropriate language.
+    XcodeForceLinkerSource,
+    // Xcode `
+    XcodeXCConfigFile,
+    // Header set verification files.
+    HeaderSetVerificationSource,
+    // PCH files.
+    PchHeader,
+    PchSource,
+    PchPdbReuseSource,
+    // Unity sources.
+    UnitySource,
+    // Qt support sources.
+    QtWrapCppSource,
+    QtAutogenSource,
+  };
+  void SetSpecialSourceType(SpecialSourceType type);
+  bool IsPchHeader() const;
+  bool IsPchSource() const;
+
   //! Set/Get a property of this source file
-  void SetProperty(const std::string& prop, cmValue value);
-  void RemoveProperty(const std::string& prop)
+  void SetProperty(std::string const& prop, cmValue value);
+  void RemoveProperty(std::string const& prop)
   {
     this->SetProperty(prop, cmValue{ nullptr });
   }
-  void SetProperty(const std::string& prop, const std::string& value)
+  void SetProperty(std::string const& prop, std::string const& value)
   {
     this->SetProperty(prop, cmValue(value));
   }
-  void AppendProperty(const std::string& prop, const std::string& value,
+  void AppendProperty(std::string const& prop, std::string const& value,
                       bool asString = false);
   //! Might return a nullptr if the property is not set or invalid
-  cmValue GetProperty(const std::string& prop) const;
+  cmValue GetProperty(std::string const& prop) const;
   //! Always returns a valid pointer
-  const std::string& GetSafeProperty(const std::string& prop) const;
-  bool GetPropertyAsBool(const std::string& prop) const;
+  std::string const& GetSafeProperty(std::string const& prop) const;
+  bool GetPropertyAsBool(std::string const& prop) const;
 
   /** Implement getting a property when called from a CMake language
       command like get_property or get_source_file_property.  */
-  cmValue GetPropertyForUser(const std::string& prop);
+  cmValue GetPropertyForUser(std::string const& prop);
 
   /// Marks this file as generated
   /**
@@ -86,17 +116,17 @@ public:
   bool GetIsGenerated(
     CheckScope checkScope = CheckScope::GlobalAndLocal) const;
 
-  const std::vector<BT<std::string>>& GetCompileOptions() const
+  std::vector<BT<std::string>> const& GetCompileOptions() const
   {
     return this->CompileOptions;
   }
 
-  const std::vector<BT<std::string>>& GetCompileDefinitions() const
+  std::vector<BT<std::string>> const& GetCompileDefinitions() const
   {
     return this->CompileDefinitions;
   }
 
-  const std::vector<BT<std::string>>& GetIncludeDirectories() const
+  std::vector<BT<std::string>> const& GetIncludeDirectories() const
   {
     return this->IncludeDirectories;
   }
@@ -135,11 +165,11 @@ public:
   /**
    * Return the vector that holds the list of dependencies
    */
-  const std::vector<std::string>& GetDepends() const { return this->Depends; }
-  void AddDepend(const std::string& d) { this->Depends.push_back(d); }
+  std::vector<std::string> const& GetDepends() const { return this->Depends; }
+  void AddDepend(std::string const& d) { this->Depends.push_back(d); }
 
   // Get the properties
-  const cmPropertyMap& GetProperties() const { return this->Properties; }
+  cmPropertyMap const& GetProperties() const { return this->Properties; }
   // Set the properties
   void SetProperties(cmPropertyMap properties);
 
@@ -153,9 +183,6 @@ public:
   std::string GetObjectLibrary() const;
 
 private:
-  template <typename ValueType>
-  void StoreProperty(const std::string& prop, ValueType value);
-
   cmSourceFileLocation Location;
   cmPropertyMap Properties;
   std::unique_ptr<cmCustomCommand> CustomCommand;
@@ -169,17 +196,18 @@ private:
   std::vector<BT<std::string>> IncludeDirectories;
   bool FindFullPathFailed = false;
   bool IsGenerated = false;
+  SpecialSourceType SpecialSource = SpecialSourceType::User;
 
   bool FindFullPath(std::string* error, std::string* cmp0115Warning);
   void CheckExtension();
   void CheckLanguage(std::string const& ext);
 
-  static const std::string propLANGUAGE;
-  static const std::string propLOCATION;
-  static const std::string propGENERATED;
-  static const std::string propCOMPILE_DEFINITIONS;
-  static const std::string propCOMPILE_OPTIONS;
-  static const std::string propINCLUDE_DIRECTORIES;
+  static std::string const propLANGUAGE;
+  static std::string const propLOCATION;
+  static std::string const propGENERATED;
+  static std::string const propCOMPILE_DEFINITIONS;
+  static std::string const propCOMPILE_OPTIONS;
+  static std::string const propINCLUDE_DIRECTORIES;
 };
 
 // TODO: Factor out into platform information modules.

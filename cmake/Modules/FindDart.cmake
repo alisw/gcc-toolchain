@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindDart
@@ -8,10 +8,32 @@ FindDart
 .. deprecated:: 3.27
   This module is available only if policy :policy:`CMP0145` is not set to ``NEW``.
 
-Find DART
+Finds DART:
 
-This module looks for the dart testing software and sets DART_ROOT to
+.. code-block:: cmake
+
+  find_package(DART [...])
+
+This module looks for the dart testing software and sets ``DART_ROOT`` to
 point to where it found it.
+
+Result Variables
+^^^^^^^^^^^^^^^^
+
+This module defines the following variables:
+
+``Dart_FOUND``
+  .. versionadded:: 3.3
+
+  Boolean indicating whether DART was found.
+
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may also be set:
+
+``DART_ROOT``
+  The path to the Dart root installation.
 #]=======================================================================]
 
 if(_FindDart_testing)
@@ -35,7 +57,7 @@ find_path(DART_ROOT README.INSTALL
     DOC "If you have Dart installed, where is it located?"
     )
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(Dart DEFAULT_MSG DART_ROOT)
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(Dart DEFAULT_MSG DART_ROOT)
 
 mark_as_advanced(DART_ROOT)

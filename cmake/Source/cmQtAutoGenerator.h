@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -88,7 +88,7 @@ public:
   // -- Info options
   std::string const& InfoFile() const { return this->InfoFile_; }
   std::string const& InfoDir() const { return this->InfoDir_; }
-  cmFileTime const& InfoFileTime() const { return this->InfoFileTime_; }
+  cmFileTime InfoFileTime() const { return this->InfoFileTime_; }
   std::string const& InfoConfig() const { return this->InfoConfig_; }
   std::string const& ExecutableConfig() const
   {

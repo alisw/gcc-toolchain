@@ -25,7 +25,7 @@
 #   ownership
 #       A git author name/email for the commits.
 #   subtree
-#       The location of the thirdparty package within the main source
+#       The location of the third-party package within the main source
 #       tree.
 #   repo
 #       The git repository to use as upstream.
@@ -119,7 +119,7 @@ cd "$toplevel_dir"
     die "'tag' is empty"
 
 # Check for an empty destination directory on disk.  By checking on disk and
-# not in the repo it allows a library to be freshly re-inialized in a single
+# not in the repo it allows a library to be freshly re-initialized in a single
 # commit rather than first deleting the old copy in one commit and adding the
 # new copy in a separate commit.
 if [ ! -d "$(git rev-parse --show-toplevel)/$subtree" ]; then

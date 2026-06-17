@@ -11,12 +11,16 @@ set(targets
   aix-C-IBMClang-17.1.1.2 aix-CXX-IBMClang-17.1.1.2
   craype-C-Cray-8.7 craype-CXX-Cray-8.7 craype-Fortran-Cray-8.7
   craype-C-Cray-9.0-hlist-ad craype-CXX-Cray-9.0-hlist-ad craype-Fortran-Cray-9.0-hlist-ad
+  craype-C-CrayClang-18.0.1 craype-CXX-CrayClang-18.0.1 craype-Fortran-Cray-18.0.1
+  craype-C-CrayClang-18.0.1-fopenmp craype-CXX-CrayClang-18.0.1-fopenmp craype-Fortran-Cray-18.0.1-homp
+  craype-C-CrayClang-18.0.1-fopenmp-accel craype-CXX-CrayClang-18.0.1-fopenmp-accel craype-Fortran-Cray-18.0.1-homp-accel
   craype-C-GNU-7.3.0 craype-CXX-GNU-7.3.0 craype-Fortran-GNU-7.3.0
   craype-C-Intel-18.0.2.20180210 craype-CXX-Intel-18.0.2.20180210
     craype-Fortran-Intel-18.0.2.20180210
   darwin-C-AppleClang-8.0.0.8000042 darwin-CXX-AppleClang-8.0.0.8000042
     darwin_nostdinc-C-AppleClang-8.0.0.8000042
     darwin_nostdinc-CXX-AppleClang-8.0.0.8000042
+  emscripten-C-Clang-21.0.0 emscripten-CXX-Clang-21.0.0
   freebsd-C-Clang-3.3.0 freebsd-CXX-Clang-3.3.0 freebsd-Fortran-GNU-4.6.4
   hand-C-empty hand-CXX-empty
   hand-C-relative hand-CXX-relative
@@ -24,6 +28,7 @@ set(targets
   linux-C-GNU-10.2.1-static-libgcc
     linux-CXX-GNU-10.2.1-static-libstdc++
     linux-Fortran-GNU-10.2.1-static-libgfortran
+    linux-Fortran-GNU-13.3.0-static-libquadmath
   linux-C-GNU-12.2.0 linux-CXX-GNU-12.2.0 linux-Fortran-GNU-12.2.0
   linux-C-Intel-18.0.0.20170811 linux-CXX-Intel-18.0.0.20170811
   linux-C-Intel-2021.10.0.20230609 linux-CXX-Intel-2021.10.0.20230609 linux-Fortran-Intel-2021.10.0.20230609
@@ -40,6 +45,13 @@ set(targets
   linux-CUDA-NVIDIA-10.1.168-CLANG linux-CUDA-NVIDIA-10.1.168-XLClang-v
     linux-CUDA-NVIDIA-9.2.148-GCC
   linux-Fortran-LLVMFlang-15.0.0
+  linux-Fortran-LLVMFlang-21.1.3
+  linux-Fortran-LFortran-0.35.0-clang
+  linux-Fortran-LFortran-0.35.0-gcc
+  linux-Fortran-LFortran-0.41.0-clang
+  linux-Fortran-LFortran-0.41.0-gcc
+  linux-Fortran-LFortran-0.55.0-clang
+  linux-Fortran-LFortran-0.55.0-gcc
   linux-custom_clang-C-Clang-13.0.0 linux-custom_clang-CXX-Clang-13.0.0
   mingw.org-C-GNU-4.9.3 mingw.org-CXX-GNU-4.9.3
   netbsd-C-GNU-4.8.5 netbsd-CXX-GNU-4.8.5

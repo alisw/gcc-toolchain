@@ -139,3 +139,13 @@
 # test case for asin_taylor1
 + - 7 0b1.000001p-2 4 0b1p-9  2 0b1p-2 2 0b1p-9 N N
 - + 26 -0b1.0000001010111110100111010p-2 15 -0b1.00001000011001p-20  2 -0b1p-2 2 -0b1p-20 N N
+
+# test cases that required >= 5 Ziv loops
+- + 109 0x1.91f28721152dc8689c478af3c45p+0 88 0x4.f415ad0f62c5f350cc2288p+4 24 0x2.889d3p+112 24 0x7.27888p+100 N N
+- + 2 0x1.8p+0 2 0x1p-40 2 0x1p+0 20 0xf.f802p-84 N N
+# test case that required 8 Ziv loops (up to precision of 2947 bits)
+- + 117 0x1.63c2a68f7672dc51c5533e7204abap+0 117 0x2.c67c415afa0f8efb5a4ca99cdc946p+8 53 0xf.e38444d37e158p+1020 53 0x2.e8d198e14e25ep+1020 N N
+# test case that required 7 Ziv loops
++ + 117 -0x1.9178210c692ab7e8fe73e93224145p+0 117 -0x5.bec0f4d5d9b98027de86848bfea98p+0 53 -0x9.c556066fe22bp+4 53 -0x6.655bac2f12f08p-4 N N
+# test case that required precision up to 9379 bits
+- + 117 0x2.44b6d15aa7e1f505da03b77225f1ep-2032 117 0x2.c53e9823468d2845b483befae017cp+8 53 0xa.9825deeb1c41p-1012 53 0x4.ab9d26976257p+1020 N N

@@ -1,7 +1,6 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 
-#include <functional>
 #include <memory>
 #include <set>
 #include <string>
@@ -75,9 +74,9 @@ static bool testCreateFromPolicyMap()
     std::make_shared<cmDebugger::cmDebuggerVariablesManager>();
 
   cmPolicies::PolicyMap policyMap;
-  policyMap.Set(cmPolicies::CMP0000, cmPolicies::NEW);
-  policyMap.Set(cmPolicies::CMP0003, cmPolicies::WARN);
-  policyMap.Set(cmPolicies::CMP0005, cmPolicies::OLD);
+  policyMap.Set(cmPolicies::CMP0178, cmPolicies::NEW);
+  policyMap.Set(cmPolicies::CMP0179, cmPolicies::WARN);
+  policyMap.Set(cmPolicies::CMP0180, cmPolicies::OLD);
   auto vars = cmDebugger::cmDebuggerVariablesHelper::Create(
     variablesManager, "Locals", true, policyMap);
 
@@ -85,9 +84,9 @@ static bool testCreateFromPolicyMap()
     variablesManager->HandleVariablesRequest(
       CreateVariablesRequest(vars->GetId()));
   ASSERT_TRUE(variables.size() == 3);
-  ASSERT_VARIABLE(variables[0], "CMP0000", "NEW", "string");
-  ASSERT_VARIABLE(variables[1], "CMP0003", "WARN", "string");
-  ASSERT_VARIABLE(variables[2], "CMP0005", "OLD", "string");
+  ASSERT_VARIABLE(variables[0], "CMP0178", "NEW", "string");
+  ASSERT_VARIABLE(variables[1], "CMP0179", "WARN", "string");
+  ASSERT_VARIABLE(variables[2], "CMP0180", "OLD", "string");
 
   return true;
 }
@@ -571,18 +570,10 @@ static bool testCreateFromFileSets()
 
 int testDebuggerVariablesHelper(int, char*[])
 {
-  return runTests(std::vector<std::function<bool()>>{
-    testCreateFromPolicyMap,
-    testCreateFromPairVector,
-    testCreateFromSet,
-    testCreateFromStringVector,
-    testCreateFromTarget,
-    testCreateFromGlobalGenerator,
-    testCreateFromMakefile,
-    testCreateFromStackFrame,
-    testCreateFromTests,
-    testCreateFromBTStringVector,
-    testCreateFromFileSet,
-    testCreateFromFileSets,
-  });
+  return runTests({ testCreateFromPolicyMap, testCreateFromPairVector,
+                    testCreateFromSet, testCreateFromStringVector,
+                    testCreateFromTarget, testCreateFromGlobalGenerator,
+                    testCreateFromMakefile, testCreateFromStackFrame,
+                    testCreateFromTests, testCreateFromBTStringVector,
+                    testCreateFromFileSet, testCreateFromFileSets });
 }

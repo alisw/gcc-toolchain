@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -65,13 +65,16 @@ private:
                        std::unordered_map<std::string, std::string>>;
 
   std::string ConvertPath(std::string const& path, bool forceRelative);
-  std::string CalcCondition(const std::string& config) const;
+  std::string CalcCondition(std::string const& config) const;
   void WriteProjectConfigurations(Elem& e0);
   void WriteProjectConfigurationValues(Elem& e0);
   void WriteMSToolConfigurationValues(Elem& e1, std::string const& config);
   void WriteCEDebugProjectConfigurationValues(Elem& e0);
   void WriteMSToolConfigurationValuesManaged(Elem& e1,
                                              std::string const& config);
+  void WriteMSToolConfigurationValuesCommon(Elem& e1,
+                                            std::string const& config);
+  void WriteMSDriverConfigurationValues(Elem& e1, std::string const& config);
   void WriteHeaderSource(Elem& e1, cmSourceFile const* sf,
                          ConfigToSettings const& toolSettings);
   void WriteExtraSource(Elem& e1, cmSourceFile const* sf,
@@ -89,6 +92,7 @@ private:
   void WriteDotNetReference(Elem& e1, std::string const& ref,
                             std::string const& hint,
                             std::string const& config);
+  void WriteFrameworkReferences(Elem& e0);
   void WriteDotNetDocumentationFile(Elem& e0);
   void WriteImports(Elem& e0);
   void WriteDotNetReferenceCustomTags(Elem& e2, std::string const& ref);
@@ -112,13 +116,14 @@ private:
   void WriteSDKReferences(Elem& e0);
   void WriteSingleSDKReference(Elem& e1, std::string const& extension,
                                std::string const& version);
-  void WriteCommonMissingFiles(Elem& e1, const std::string& manifestFile);
+  void WriteCommonMissingFiles(Elem& e1, std::string const& manifestFile);
   void WriteTargetSpecificReferences(Elem& e0);
   void WriteTargetsFileReferences(Elem& e1);
 
   std::vector<std::string> GetIncludes(std::string const& config,
                                        std::string const& lang) const;
   std::string GetTargetOutputName() const;
+  std::string GetAssemblyName(std::string const& config) const;
 
   bool ComputeClOptions();
   bool ComputeClOptions(std::string const& configName);
@@ -179,10 +184,10 @@ private:
   void WriteProjectReferences(Elem& e0);
   void WriteApplicationTypeSettings(Elem& e1);
   void OutputSourceSpecificFlags(Elem& e2, cmSourceFile const* source);
-  void AddLibraries(const cmComputeLinkInformation& cli,
+  void AddLibraries(cmComputeLinkInformation const& cli,
                     std::vector<std::string>& libVec,
                     std::vector<std::string>& vsTargetVec,
-                    const std::string& config);
+                    std::string const& config);
   void AddTargetsFileAndConfigPair(std::string const& targetsFile,
                                    std::string const& config);
   void WriteLibOptions(Elem& e1, std::string const& config);
@@ -191,21 +196,26 @@ private:
   void WriteEvent(Elem& e1, std::string const& name,
                   std::vector<cmCustomCommand> const& commands,
                   std::string const& configName);
+  void WriteSdkStyleEvents(Elem& e0, std::string const& configName);
+  void WriteSdkStyleEvent(Elem& e0, std::string const& name,
+                          std::string const& when, std::string const& target,
+                          std::vector<cmCustomCommand> const& commands,
+                          std::string const& configName);
   void WriteGroupSources(Elem& e0, std::string const& name,
                          ToolSources const& sources,
                          std::vector<cmSourceGroup>&);
   void AddMissingSourceGroups(std::set<cmSourceGroup const*>& groupsUsed,
-                              const std::vector<cmSourceGroup>& allGroups);
-  bool IsResxHeader(const std::string& headerFile);
-  bool IsXamlHeader(const std::string& headerFile);
-  bool IsXamlSource(const std::string& headerFile);
+                              std::vector<cmSourceGroup> const& allGroups);
+  bool IsResxHeader(std::string const& headerFile);
+  bool IsXamlHeader(std::string const& headerFile);
+  bool IsXamlSource(std::string const& headerFile);
 
-  bool ForceOld(const std::string& source) const;
+  bool ForceOld(std::string const& source) const;
 
   void GetCSharpSourceProperties(cmSourceFile const* sf,
                                  std::map<std::string, std::string>& tags);
   void WriteCSharpSourceProperties(
-    Elem& e2, const std::map<std::string, std::string>& tags);
+    Elem& e2, std::map<std::string, std::string> const& tags);
   std::string GetCSharpSourceLink(cmSourceFile const* source);
 
   void WriteStdOutEncodingUtf8(Elem& e1);
@@ -225,7 +235,7 @@ private:
   std::string LangForClCompile;
 
   VsProjectType ProjectType;
-  bool InSourceBuild;
+  bool InSourceBuild = false;
   std::vector<std::string> Configurations;
   std::vector<TargetsFileAndConfigs> TargetsFileAndConfigsVec;
   cmGeneratorTarget* const GeneratorTarget;
@@ -233,13 +243,15 @@ private:
   std::string const Platform;
   std::string const Name;
   std::string const GUID;
-  bool MSTools;
-  bool Managed;
-  bool NsightTegra;
-  bool Android;
+  bool MSTools = false;
+  bool Managed = false;
+  bool NsightTegra = false;
+  bool Android = false;
+  bool WindowsKernelMode = false;
   bool HaveCustomCommandDepfile = false;
+  std::map<std::string, bool> ScanSourceForModuleDependencies;
   unsigned int NsightTegraVersion[4];
-  bool TargetCompileAsWinRT;
+  bool TargetCompileAsWinRT = false;
   std::set<std::string> IPOEnabledConfigurations;
   std::set<std::string> ASanEnabledConfigurations;
   std::set<std::string> FuzzerEnabledConfigurations;
@@ -247,7 +259,7 @@ private:
   cmGlobalVisualStudio10Generator* const GlobalGenerator;
   cmLocalVisualStudio10Generator* const LocalGenerator;
   std::set<std::string> CSharpCustomCommandNames;
-  bool IsMissingFiles;
+  bool IsMissingFiles = false;
   std::vector<std::string> AddedFiles;
   std::string DefaultArtifactDir;
   bool AddedDefaultCertificate = false;
@@ -264,6 +276,9 @@ private:
   using ToolSourceMap = std::map<std::string, ToolSources>;
   ToolSourceMap Tools;
 
+  using MsvcCharSet = cmGeneratorTarget::MsvcCharSet;
+  std::map<std::string, MsvcCharSet> CharSet;
+
   std::set<std::string> ExpectedResxHeaders;
   std::set<std::string> ExpectedXamlHeaders;
   std::set<std::string> ExpectedXamlSources;
@@ -279,12 +294,10 @@ private:
   void WriteCommonPropertyGroupGlobals(
     cmVisualStudio10TargetGenerator::Elem& e1);
 
-  bool HasCustomCommands() const;
-
   std::unordered_map<std::string, ConfigToSettings> ParsedToolTargetSettings;
-  bool PropertyIsSameInAllConfigs(const ConfigToSettings& toolSettings,
-                                  const std::string& propName);
-  void ParseSettingsProperty(const std::string& settingsPropertyValue,
+  bool PropertyIsSameInAllConfigs(ConfigToSettings const& toolSettings,
+                                  std::string const& propName);
+  void ParseSettingsProperty(std::string const& settingsPropertyValue,
                              ConfigToSettings& toolSettings);
-  std::string GetCMakeFilePath(const char* name) const;
+  std::string GetCMakeFilePath(char const* name) const;
 };

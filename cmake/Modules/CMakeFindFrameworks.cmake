@@ -1,9 +1,12 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 CMakeFindFrameworks
 -------------------
+
+.. deprecated:: 3.31
+  This module does nothing, unless policy :policy:`CMP0173` is set to ``OLD``.
 
 helper module to find OSX frameworks
 
@@ -11,6 +14,25 @@ This module reads hints about search locations from variables::
 
   CMAKE_FIND_FRAMEWORK_EXTRA_LOCATIONS - Extra directories
 #]=======================================================================]
+
+cmake_policy(GET CMP0173 _cmp0173)
+if(_cmp0173 STREQUAL "NEW")
+  message(FATAL_ERROR
+    "CMakeFindFrameworks.cmake is not maintained and lacks support for more "
+    "recent framework handling. It will be removed in a future version of "
+    "CMake. Update the code to use find_library() instead. "
+    "Use of this module is now an error according to policy CMP0173."
+  )
+elseif(_cmp0173 STREQUAL "")
+  # CMake will have already emitted the standard policy warning for the point
+  # of inclusion. We only need to add the context-specific info here.
+  message(AUTHOR_WARNING
+    "CMakeFindFrameworks.cmake is not maintained and lacks support for more "
+    "recent framework handling. It will be removed in a future version of "
+    "CMake. Update the code to use find_library() instead."
+  )
+endif ()
+unset(_cmp0173)
 
 if(NOT CMAKE_FIND_FRAMEWORKS_INCLUDED)
   set(CMAKE_FIND_FRAMEWORKS_INCLUDED 1)

@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindLTTngUST
@@ -7,35 +7,83 @@ FindLTTngUST
 
 .. versionadded:: 3.6
 
-Find
-`Linux Trace Toolkit Next Generation (LTTng-UST) <https://lttng.org/>`__ library.
+Finds the `LTTng <https://lttng.org/>`_ (Linux Trace Toolkit: next generation)
+user space tracing library (LTTng-UST):
 
-Imported target
-^^^^^^^^^^^^^^^
+.. code-block:: cmake
 
-This module defines the following :prop_tgt:`IMPORTED` target:
+  find_package(LTTngUST [<version>] [...])
 
-``LTTng::UST``
-  The LTTng-UST library, if found
-
-Result variables
+Imported Targets
 ^^^^^^^^^^^^^^^^
 
-This module sets the following
+This module provides the following :ref:`Imported Targets`:
+
+``LTTng::UST``
+  Target providing the LTTng-UST library usage requirements.  This target is
+  available only when LTTng-UST is found.
+
+Result Variables
+^^^^^^^^^^^^^^^^
+
+This module defines the following variables:
+
+``LTTngUST_FOUND``
+  Boolean indicating whether the (requested version of) LTTng-UST library
+  was found.
+
+``LTTngUST_VERSION``
+  .. versionadded:: 4.2
+
+  The LTTng-UST version.
+
+``LTTNGUST_HAS_TRACEF``
+  ``TRUE`` if the ``tracef()`` API is available in the system's LTTng-UST.
+
+``LTTNGUST_HAS_TRACELOG``
+  ``TRUE`` if the ``tracelog()`` API is available in the system's LTTng-UST.
+
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may also be set:
+
+``LTTNGUST_INCLUDE_DIRS``
+  The LTTng-UST include directories.
+``LTTNGUST_LIBRARIES``
+  The libraries needed to use LTTng-UST.
+
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
+
+The following variables are provided for backward compatibility:
 
 ``LTTNGUST_FOUND``
-  ``TRUE`` if system has LTTng-UST
-``LTTNGUST_INCLUDE_DIRS``
-  The LTTng-UST include directories
-``LTTNGUST_LIBRARIES``
-  The libraries needed to use LTTng-UST
+  .. deprecated:: 4.2
+    Use ``LTTngUST_FOUND``, which has the same value.
+
+  Boolean indicating whether the (requested version of) LTTng-UST library
+  was found.
+
 ``LTTNGUST_VERSION_STRING``
-  The LTTng-UST version
-``LTTNGUST_HAS_TRACEF``
-  ``TRUE`` if the ``tracef()`` API is available in the system's LTTng-UST
-``LTTNGUST_HAS_TRACELOG``
-  ``TRUE`` if the ``tracelog()`` API is available in the system's LTTng-UST
+  .. deprecated:: 4.2
+    Superseded by the ``LTTngUST_VERSION``.
+
+  The LTTng-UST version.
+
+Examples
+^^^^^^^^
+
+Finding the LTTng-UST library and linking it to a project target:
+
+.. code-block:: cmake
+
+  find_package(LTTugNST)
+  target_link_libraries(project_target PRIVATE LTTng::UST)
 #]=======================================================================]
+
+cmake_policy(PUSH)
+cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
 find_path(LTTNGUST_INCLUDE_DIRS NAMES lttng/tracepoint.h)
 find_library(LTTNGUST_LIBRARIES NAMES lttng-ust)
@@ -69,8 +117,9 @@ if(LTTNGUST_INCLUDE_DIRS AND LTTNGUST_LIBRARIES)
            lttngust_v_minor "${lttngust_version_minor_string}")
     string(REGEX REPLACE ".*[\t ]+([0-9]+).*" "\\1"
            lttngust_v_patch "${lttngust_version_patch_string}")
-    set(LTTNGUST_VERSION_STRING
+    set(LTTngUST_VERSION
         "${lttngust_v_major}.${lttngust_v_minor}.${lttngust_v_patch}")
+    set(LTTNGUST_VERSION_STRING "${LTTngUST_VERSION}")
     unset(lttngust_version_major_string)
     unset(lttngust_version_minor_string)
     unset(lttngust_version_patch_string)
@@ -94,9 +143,11 @@ if(LTTNGUST_INCLUDE_DIRS AND LTTNGUST_LIBRARIES)
   set(LTTNGUST_LIBRARIES ${LTTNGUST_LIBRARIES} ${CMAKE_DL_LIBS})
 endif()
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
-find_package_handle_standard_args(LTTngUST FOUND_VAR LTTNGUST_FOUND
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(LTTngUST
                                   REQUIRED_VARS LTTNGUST_LIBRARIES
                                                 LTTNGUST_INCLUDE_DIRS
-                                  VERSION_VAR LTTNGUST_VERSION_STRING)
+                                  VERSION_VAR LTTngUST_VERSION)
 mark_as_advanced(LTTNGUST_LIBRARIES LTTNGUST_INCLUDE_DIRS)
+
+cmake_policy(POP)

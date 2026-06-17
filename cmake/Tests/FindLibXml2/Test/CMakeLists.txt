@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(TestFindLibXml2 C)
 include(CTest)
 
 find_package(LibXml2 REQUIRED)
 
-add_definitions(-DCMAKE_EXPECTED_LibXml2_VERSION="${LIBXML2_VERSION_STRING}")
+add_definitions(-DCMAKE_EXPECTED_LibXml2_VERSION="${LibXml2_VERSION}")
 
 add_executable(test_tgt main.c)
 target_link_libraries(test_tgt LibXml2::LibXml2)

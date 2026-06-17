@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindPythonLibs
@@ -10,43 +10,115 @@ FindPythonLibs
 
 .. deprecated:: 3.12
 
-  Use :module:`FindPython3`, :module:`FindPython2` or :module:`FindPython` instead.
+  Use :module:`FindPython3`, :module:`FindPython2`, or :module:`FindPython`
+  instead.
 
-Find python libraries
+Finds the Python installation and determines the location of its include
+directories and libraries, as well as the name of the Python library to
+link against:
 
-This module finds if Python is installed and determines where the
-include files and libraries are.  It also determines what the name of
-the library is.  This code sets the following variables:
+.. code-block:: cmake
 
-::
+  find_package(PythonLibs [<version>] [...])
 
-  PYTHONLIBS_FOUND           - have the Python libs been found
-  PYTHON_LIBRARIES           - path to the python library
-  PYTHON_INCLUDE_PATH        - path to where Python.h is found (deprecated)
-  PYTHON_INCLUDE_DIRS        - path to where Python.h is found
-  PYTHON_DEBUG_LIBRARIES     - path to the debug library (deprecated)
-  PYTHONLIBS_VERSION_STRING  - version of the Python libs found (since CMake 2.8.8)
+.. note::
 
+  When using both this and the :module:`FindPythonInterp` module, call
+  ``find_package(PythonInterp)`` before ``find_package(PythonLibs)``.  This
+  ensures that the detected interpreter version is used to guide the selection
+  of compatible libraries, resulting in a consistent ``PYTHON_LIBRARIES`` value.
 
+Result Variables
+^^^^^^^^^^^^^^^^
 
-The Python_ADDITIONAL_VERSIONS variable can be used to specify a list
-of version numbers that should be taken into account when searching
-for Python.  You need to set this variable before calling
-find_package(PythonLibs).
+This module defines the following variables:
 
-If you'd like to specify the installation of Python to use, you should
-modify the following cache variables:
+``PythonLibs_FOUND``
+  .. versionadded:: 3.3
 
-::
+  Boolean indicating whether the (requested version of) Python libraries
+  were found.
 
-  PYTHON_LIBRARY             - path to the python library
-  PYTHON_INCLUDE_DIR         - path to where Python.h is found
+``PYTHONLIBS_VERSION_STRING``
+  The version of the Python libraries found.
 
-If calling both ``find_package(PythonInterp)`` and
-``find_package(PythonLibs)``, call ``find_package(PythonInterp)`` first to
-get the currently active Python version by default with a consistent version
-of PYTHON_LIBRARIES.
+``PYTHON_LIBRARIES``
+  Libraries needed to link against to use Python.
+
+``PYTHON_INCLUDE_DIRS``
+  Include directories needed to use Python.
+
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may also be set to specify the Python installation
+to use:
+
+``PYTHON_LIBRARY``
+  The path to the Python library.
+
+``PYTHON_INCLUDE_DIR``
+  The directory containing the ``Python.h`` header file.
+
+Hints
+^^^^^
+
+This module accepts the following variables before calling
+``find_package(PythonLibs)``:
+
+``Python_ADDITIONAL_VERSIONS``
+  This variable can be used to specify a list of version numbers that should be
+  taken into account when searching for Python.
+
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
+
+The following variables are provided for backward compatibility:
+
+``PYTHONLIBS_FOUND``
+  .. deprecated:: 3.12
+    Use ``PythonLibs_FOUND``, which has the same value.
+
+  Boolean indicating whether the (requested version of) Python libraries
+  were found.
+
+``PYTHON_DEBUG_LIBRARIES``
+  .. deprecated:: 2.8.8
+    Use ``PYTHON_LIBRARIES`` instead.
+
+  Result variable that holds the path to the debug library.
+
+``PYTHON_INCLUDE_PATH``
+  .. deprecated:: 2.8.0
+    Use ``PYTHON_INCLUDE_DIR`` or ``PYTHON_INCLUDE_DIRS`` instead.
+
+  Result variable that holds the path to the directory containing the
+  ``Python.h`` header file.
+
+Examples
+^^^^^^^^
+
+In earlier versions of CMake, Python libraries were found and used in a project
+like this:
+
+.. code-block:: cmake
+
+  find_package(PythonLibs)
+  target_link_libraries(app PRIVATE ${PYTHON_LIBRARIES})
+  target_include_directories(app PRIVATE ${PYTHON_INCLUDE_DIRS})
+
+Starting with CMake 3.12, Python libraries can be found using the
+:module:`FindPython` module.  The equivalent example using the modern approach
+with an imported target is:
+
+.. code-block:: cmake
+
+  find_package(Python COMPONENTS Development)
+  target_link_libraries(app PRIVATE Python::Python)
 #]=======================================================================]
+
+cmake_policy(PUSH)
+cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
 cmake_policy(GET CMP0148 _FindPythonLibs_CMP0148)
 if(_FindPythonLibs_CMP0148 STREQUAL "NEW")
@@ -55,6 +127,7 @@ endif()
 
 if(_FindPythonLibs_testing)
   set(_FindPythonLibs_included TRUE)
+  cmake_policy(POP)
   return()
 endif()
 
@@ -77,7 +150,10 @@ if(IS_ABSOLUTE "${PYTHON_EXECUTABLE}")
   endif()
 endif()
 
-include(${CMAKE_CURRENT_LIST_DIR}/CMakeFindFrameworks.cmake)
+block(SCOPE_FOR POLICIES)
+  cmake_policy(SET CMP0173 OLD)
+  include(${CMAKE_CURRENT_LIST_DIR}/CMakeFindFrameworks.cmake)
+endblock()
 # Search for the python framework on Apple.
 CMAKE_FIND_FRAMEWORKS(Python)
 
@@ -92,7 +168,7 @@ set(CMAKE_FIND_FRAMEWORK LAST)
 
 set(_PYTHON1_VERSIONS 1.6 1.5)
 set(_PYTHON2_VERSIONS 2.7 2.6 2.5 2.4 2.3 2.2 2.1 2.0)
-set(_PYTHON3_VERSIONS 3.13 3.12 3.11 3.10 3.9 3.8 3.7 3.6 3.5 3.4 3.3 3.2 3.1 3.0)
+set(_PYTHON3_VERSIONS 3.15 3.14 3.13 3.12 3.11 3.10 3.9 3.8 3.7 3.6 3.5 3.4 3.3 3.2 3.1 3.0)
 
 if(PythonLibs_FIND_VERSION)
     if(PythonLibs_FIND_VERSION_COUNT GREATER 1)
@@ -301,12 +377,12 @@ set(PYTHON_INCLUDE_DIRS "${PYTHON_INCLUDE_DIR}")
 set(PYTHON_DEBUG_LIBRARIES "${PYTHON_DEBUG_LIBRARY}")
 
 # These variables have been historically named in this module different from
-# what SELECT_LIBRARY_CONFIGURATIONS() expects.
+# what select_library_configurations() expects.
 set(PYTHON_LIBRARY_DEBUG "${PYTHON_DEBUG_LIBRARY}")
 set(PYTHON_LIBRARY_RELEASE "${PYTHON_LIBRARY}")
 include(${CMAKE_CURRENT_LIST_DIR}/SelectLibraryConfigurations.cmake)
-SELECT_LIBRARY_CONFIGURATIONS(PYTHON)
-# SELECT_LIBRARY_CONFIGURATIONS() sets ${PREFIX}_FOUND if it has a library.
+select_library_configurations(PYTHON)
+# select_library_configurations() sets ${PREFIX}_FOUND if it has a library.
 # Unset this, this prefix doesn't match the module prefix, they are different
 # for historical reasons.
 unset(PYTHON_FOUND)
@@ -319,8 +395,8 @@ else()
   unset(CMAKE_FIND_FRAMEWORK)
 endif()
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(PythonLibs
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(PythonLibs
                                   REQUIRED_VARS PYTHON_LIBRARIES PYTHON_INCLUDE_DIRS
                                   VERSION_VAR PYTHONLIBS_VERSION_STRING)
 
@@ -410,3 +486,5 @@ extern \"C\" {
   execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_filenameTmp}" "${_filename}" OUTPUT_QUIET ERROR_QUIET)
 
 endfunction()
+
+cmake_policy(POP)

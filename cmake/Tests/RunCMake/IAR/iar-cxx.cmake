@@ -1,5 +1,5 @@
 enable_language(CXX)
-
-add_executable(exec-cxx)
-target_sources(exec-cxx PRIVATE module.cxx)
+set(CMAKE_CXX_ICSTAT "${PSEUDO_ICSTAT}" -some -args)
+add_executable(exec-cxx module.cxx)
+target_compile_options(exec-cxx PRIVATE -e)
 target_link_options(exec-cxx PRIVATE ${LINKER_OPTS})

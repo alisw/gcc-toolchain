@@ -1,14 +1,17 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmGetPropertyCommand.h"
 
 #include <cstddef>
+#include <functional>
+
+#include <cm/string_view>
+#include <cmext/string_view>
 
 #include "cmExecutionStatus.h"
 #include "cmGlobalGenerator.h"
 #include "cmInstalledFile.h"
 #include "cmMakefile.h"
-#include "cmMessageType.h"
 #include "cmPolicies.h"
 #include "cmProperty.h"
 #include "cmPropertyDefinition.h"
@@ -33,33 +36,33 @@ enum OutType
 };
 
 // Implementation of each property type.
-bool HandleGlobalMode(cmExecutionStatus& status, const std::string& name,
-                      OutType infoType, const std::string& variable,
-                      const std::string& propertyName);
-bool HandleDirectoryMode(cmExecutionStatus& status, const std::string& name,
-                         OutType infoType, const std::string& variable,
-                         const std::string& propertyName);
-bool HandleTargetMode(cmExecutionStatus& status, const std::string& name,
-                      OutType infoType, const std::string& variable,
-                      const std::string& propertyName);
-bool HandleSourceMode(cmExecutionStatus& status, const std::string& name,
-                      OutType infoType, const std::string& variable,
-                      const std::string& propertyName,
+bool HandleGlobalMode(cmExecutionStatus& status, std::string const& name,
+                      OutType infoType, std::string const& variable,
+                      std::string const& propertyName);
+bool HandleDirectoryMode(cmExecutionStatus& status, std::string const& name,
+                         OutType infoType, std::string const& variable,
+                         std::string const& propertyName);
+bool HandleTargetMode(cmExecutionStatus& status, std::string const& name,
+                      OutType infoType, std::string const& variable,
+                      std::string const& propertyName);
+bool HandleSourceMode(cmExecutionStatus& status, std::string const& name,
+                      OutType infoType, std::string const& variable,
+                      std::string const& propertyName,
                       cmMakefile& directory_makefile,
                       bool source_file_paths_should_be_absolute);
-bool HandleTestMode(cmExecutionStatus& status, const std::string& name,
-                    OutType infoType, const std::string& variable,
-                    const std::string& propertyName,
+bool HandleTestMode(cmExecutionStatus& status, std::string const& name,
+                    OutType infoType, std::string const& variable,
+                    std::string const& propertyName,
                     cmMakefile& directory_makefile);
-bool HandleVariableMode(cmExecutionStatus& status, const std::string& name,
-                        OutType infoType, const std::string& variable,
-                        const std::string& propertyName);
-bool HandleCacheMode(cmExecutionStatus& status, const std::string& name,
-                     OutType infoType, const std::string& variable,
-                     const std::string& propertyName);
-bool HandleInstallMode(cmExecutionStatus& status, const std::string& name,
-                       OutType infoType, const std::string& variable,
-                       const std::string& propertyName);
+bool HandleVariableMode(cmExecutionStatus& status, std::string const& name,
+                        OutType infoType, std::string const& variable,
+                        std::string const& propertyName);
+bool HandleCacheMode(cmExecutionStatus& status, std::string const& name,
+                     OutType infoType, std::string const& variable,
+                     std::string const& propertyName);
+bool HandleInstallMode(cmExecutionStatus& status, std::string const& name,
+                       OutType infoType, std::string const& variable,
+                       std::string const& propertyName);
 }
 
 bool cmGetPropertyCommand(std::vector<std::string> const& args,
@@ -267,12 +270,44 @@ bool cmGetPropertyCommand(std::vector<std::string> const& args,
   return true;
 }
 
+namespace GetPropertyCommand {
+bool GetSourceFilePropertyGENERATED(
+  std::string const& name, cmMakefile& mf,
+  std::function<bool(bool)> const& storeResult)
+{
+  // Globally set as generated?
+  // Note: If the given "name" only contains a filename or a relative path
+  //       the file's location is ambiguous. In general, one would expect
+  //       it in the source-directory, because that is where source files
+  //       are located normally. However, generated files are normally
+  //       generated in the build-directory. Therefore, we first check for
+  //       a generated file in the build-directory before we check for a
+  //       generated file in the source-directory.
+  {
+    auto file =
+      cmSystemTools::CollapseFullPath(name, mf.GetCurrentBinaryDirectory());
+    if (mf.GetGlobalGenerator()->IsGeneratedFile(file)) {
+      return storeResult(true);
+    }
+  }
+  {
+    auto file =
+      cmSystemTools::CollapseFullPath(name, mf.GetCurrentSourceDirectory());
+    if (mf.GetGlobalGenerator()->IsGeneratedFile(file)) {
+      return storeResult(true);
+    }
+  }
+  // Skip checking the traditional/local property.
+  return storeResult(false);
+}
+}
+
 namespace {
 
 // Implementation of result storage.
 template <typename ValueType>
 bool StoreResult(OutType infoType, cmMakefile& makefile,
-                 const std::string& variable, ValueType value)
+                 std::string const& variable, ValueType value)
 {
   if (infoType == OutSet) {
     makefile.AddDefinition(variable, value ? "1" : "0");
@@ -288,14 +323,14 @@ bool StoreResult(OutType infoType, cmMakefile& makefile,
 }
 template <>
 bool StoreResult(OutType infoType, cmMakefile& makefile,
-                 const std::string& variable, std::nullptr_t value)
+                 std::string const& variable, std::nullptr_t value)
 {
   return StoreResult(infoType, makefile, variable, cmValue(value));
 }
 
-bool HandleGlobalMode(cmExecutionStatus& status, const std::string& name,
-                      OutType infoType, const std::string& variable,
-                      const std::string& propertyName)
+bool HandleGlobalMode(cmExecutionStatus& status, std::string const& name,
+                      OutType infoType, std::string const& variable,
+                      std::string const& propertyName)
 {
   if (!name.empty()) {
     status.SetError("given name for GLOBAL scope.");
@@ -308,9 +343,9 @@ bool HandleGlobalMode(cmExecutionStatus& status, const std::string& name,
                      cm->GetState()->GetGlobalProperty(propertyName));
 }
 
-bool HandleDirectoryMode(cmExecutionStatus& status, const std::string& name,
-                         OutType infoType, const std::string& variable,
-                         const std::string& propertyName)
+bool HandleDirectoryMode(cmExecutionStatus& status, std::string const& name,
+                         OutType infoType, std::string const& variable,
+                         std::string const& propertyName)
 {
   // Default to the current directory.
   cmMakefile* mf = &status.GetMakefile();
@@ -334,30 +369,14 @@ bool HandleDirectoryMode(cmExecutionStatus& status, const std::string& name,
     }
   }
 
-  if (propertyName == "DEFINITIONS") {
-    switch (mf->GetPolicyStatus(cmPolicies::CMP0059)) {
-      case cmPolicies::WARN:
-        mf->IssueMessage(MessageType::AUTHOR_WARNING,
-                         cmPolicies::GetPolicyWarning(cmPolicies::CMP0059));
-        CM_FALLTHROUGH;
-      case cmPolicies::OLD:
-        return StoreResult(infoType, status.GetMakefile(), variable,
-                           mf->GetDefineFlagsCMP0059());
-      case cmPolicies::NEW:
-      case cmPolicies::REQUIRED_ALWAYS:
-      case cmPolicies::REQUIRED_IF_USED:
-        break;
-    }
-  }
-
   // Get the property.
   return StoreResult(infoType, status.GetMakefile(), variable,
                      mf->GetProperty(propertyName));
 }
 
-bool HandleTargetMode(cmExecutionStatus& status, const std::string& name,
-                      OutType infoType, const std::string& variable,
-                      const std::string& propertyName)
+bool HandleTargetMode(cmExecutionStatus& status, std::string const& name,
+                      OutType infoType, std::string const& variable,
+                      std::string const& propertyName)
 {
   if (name.empty()) {
     status.SetError("not given name for TARGET scope.");
@@ -394,23 +413,43 @@ bool HandleTargetMode(cmExecutionStatus& status, const std::string& name,
   return false;
 }
 
-bool HandleSourceMode(cmExecutionStatus& status, const std::string& name,
-                      OutType infoType, const std::string& variable,
-                      const std::string& propertyName,
+bool HandleSourceMode(cmExecutionStatus& status, std::string const& name,
+                      OutType infoType, std::string const& variable,
+                      std::string const& propertyName,
                       cmMakefile& directory_makefile,
-                      const bool source_file_paths_should_be_absolute)
+                      bool const source_file_paths_should_be_absolute)
 {
   if (name.empty()) {
     status.SetError("not given name for SOURCE scope.");
     return false;
   }
 
+  // Special handling for GENERATED property.
+  // Note: Only, if CMP0163 is set to NEW!
+  if (propertyName == "GENERATED"_s) {
+    auto& mf = status.GetMakefile();
+    auto cmp0163 = directory_makefile.GetPolicyStatus(cmPolicies::CMP0163);
+    bool const cmp0163new =
+      cmp0163 != cmPolicies::OLD && cmp0163 != cmPolicies::WARN;
+    if (cmp0163new) {
+      return GetPropertyCommand::GetSourceFilePropertyGENERATED(
+        name, mf, [infoType, &variable, &mf](bool isGenerated) -> bool {
+          // Set the value on the original Makefile scope, not the scope of the
+          // requested directory.
+          return StoreResult(infoType, mf, variable,
+                             (isGenerated) ? cmValue("1") : cmValue("0"));
+        });
+    }
+  }
+
   // Get the source file.
-  const std::string source_file_absolute_path =
+  std::string const source_file_absolute_path =
     SetPropertyCommand::MakeSourceFilePathAbsoluteIfNeeded(
       status, name, source_file_paths_should_be_absolute);
   if (cmSourceFile* sf =
         directory_makefile.GetOrCreateSource(source_file_absolute_path)) {
+    // Set the value on the original Makefile scope, not the scope of the
+    // requested directory.
     return StoreResult(infoType, status.GetMakefile(), variable,
                        sf->GetPropertyForUser(propertyName));
   }
@@ -420,9 +459,9 @@ bool HandleSourceMode(cmExecutionStatus& status, const std::string& name,
   return false;
 }
 
-bool HandleTestMode(cmExecutionStatus& status, const std::string& name,
-                    OutType infoType, const std::string& variable,
-                    const std::string& propertyName, cmMakefile& test_makefile)
+bool HandleTestMode(cmExecutionStatus& status, std::string const& name,
+                    OutType infoType, std::string const& variable,
+                    std::string const& propertyName, cmMakefile& test_makefile)
 {
   if (name.empty()) {
     status.SetError("not given name for TEST scope.");
@@ -440,9 +479,9 @@ bool HandleTestMode(cmExecutionStatus& status, const std::string& name,
   return false;
 }
 
-bool HandleVariableMode(cmExecutionStatus& status, const std::string& name,
-                        OutType infoType, const std::string& variable,
-                        const std::string& propertyName)
+bool HandleVariableMode(cmExecutionStatus& status, std::string const& name,
+                        OutType infoType, std::string const& variable,
+                        std::string const& propertyName)
 {
   if (!name.empty()) {
     status.SetError("given name for VARIABLE scope.");
@@ -453,9 +492,9 @@ bool HandleVariableMode(cmExecutionStatus& status, const std::string& name,
                      status.GetMakefile().GetDefinition(propertyName));
 }
 
-bool HandleCacheMode(cmExecutionStatus& status, const std::string& name,
-                     OutType infoType, const std::string& variable,
-                     const std::string& propertyName)
+bool HandleCacheMode(cmExecutionStatus& status, std::string const& name,
+                     OutType infoType, std::string const& variable,
+                     std::string const& propertyName)
 {
   if (name.empty()) {
     status.SetError("not given name for CACHE scope.");
@@ -471,9 +510,9 @@ bool HandleCacheMode(cmExecutionStatus& status, const std::string& name,
   return true;
 }
 
-bool HandleInstallMode(cmExecutionStatus& status, const std::string& name,
-                       OutType infoType, const std::string& variable,
-                       const std::string& propertyName)
+bool HandleInstallMode(cmExecutionStatus& status, std::string const& name,
+                       OutType infoType, std::string const& variable,
+                       std::string const& propertyName)
 {
   if (name.empty()) {
     status.SetError("not given name for INSTALL scope.");

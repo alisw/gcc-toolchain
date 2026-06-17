@@ -1,5 +1,0 @@
-if(TEST TestThatDoesNotExist)
-  message(FATAL_ERROR "if TestThatDoesNotExist is true")
-else()
-  message(STATUS "if TestThatDoesNotExist is false")
-endif()

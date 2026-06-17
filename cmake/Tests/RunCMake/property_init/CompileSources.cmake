@@ -78,6 +78,8 @@ set(properties
   "BUILD_WITH_INSTALL_NAME_DIR"             "@rpath/"           "<SAME>"
   ### Install
   "INSTALL_NAME_DIR"                        "@rpath/"           "<SAME>"
+  "INSTALL_OBJECT_NAME_STRATEGY"            "SHORT"             "<SAME>"
+  "INSTALL_OBJECT_ONLY_USE_DESTINATION"     "ON"                "<SAME>"
   "INSTALL_REMOVE_ENVIRONMENT_RPATH"        "ON"                "<SAME>"
   "INSTALL_RPATH"                           "@rpath/"           "<SAME>"
   "INSTALL_RPATH_USE_LINK_PATH"             "ON"                "<SAME>"
@@ -100,6 +102,7 @@ set(properties
   "C_LINKER_LAUNCHER"                       "ccache"            "<SAME>"
   ### C++
   "CXX_LINKER_LAUNCHER"                     "ccache"            "<SAME>"
+  "CXX_MODULE_STD"                          "ON"                "<SAME>"
   ### CUDA
   "CUDA_RESOLVE_DEVICE_SYMBOLS"             "ON"                "<SAME>"
   "CUDA_RUNTIME_LIBRARY"                    "Static"            "<SAME>"
@@ -111,6 +114,7 @@ set(properties
   "OBJCXX_LINKER_LAUNCHER"                  "ccache"            "<SAME>"
 
   # Static analysis
+  "SKIP_LINTING"                            "OFF"               "<SAME>"
   ## C
   "C_CLANG_TIDY"                            "clang-tidy"        "<SAME>"
   "C_CLANG_TIDY_EXPORT_FIXES_DIR"           "${dir}"            "<SAME>"
@@ -176,6 +180,7 @@ set(properties
 
   # Metadata
   "EXPORT_COMPILE_COMMANDS"                 "OFF"               "<SAME>"
+  "EXPORT_BUILD_DATABASE"                   "OFF"               "<SAME>"
   )
 
 if (CMAKE_HOST_APPLE) # compile-guarded in CMake
@@ -192,6 +197,7 @@ if (CMAKE_HOST_APPLE) # compile-guarded in CMake
       "XCODE_SCHEME_UNDEFINED_BEHAVIOUR_SANITIZER"      "ON"          "<SAME>"
       "XCODE_SCHEME_UNDEFINED_BEHAVIOUR_SANITIZER_STOP" "ON"          "<SAME>"
       "XCODE_SCHEME_LAUNCH_CONFIGURATION"               "ON"          "<SAME>"
+      "XCODE_SCHEME_TEST_CONFIGURATION"                 "ON"          "<SAME>"
       "XCODE_SCHEME_ENABLE_GPU_API_VALIDATION"          "ON"          "<SAME>"
       "XCODE_SCHEME_ENABLE_GPU_SHADER_VALIDATION"       "ON"          "<SAME>"
       "XCODE_SCHEME_WORKING_DIRECTORY"                  "ON"          "<SAME>"
@@ -201,6 +207,7 @@ if (CMAKE_HOST_APPLE) # compile-guarded in CMake
       "XCODE_SCHEME_MALLOC_GUARD_EDGES"                 "ON"          "<SAME>"
       "XCODE_SCHEME_GUARD_MALLOC"                       "ON"          "<SAME>"
       "XCODE_SCHEME_LAUNCH_MODE"                        "ON"          "<SAME>"
+      "XCODE_SCHEME_LLDB_INIT_FILE"                     "ON"          "<SAME>"
       "XCODE_SCHEME_ZOMBIE_OBJECTS"                     "ON"          "<SAME>"
       "XCODE_SCHEME_MALLOC_STACK"                       "ON"          "<SAME>"
       "XCODE_SCHEME_DYNAMIC_LINKER_API_USAGE"           "ON"          "<SAME>"
@@ -242,6 +249,13 @@ if (CMAKE_GENERATOR MATCHES "Ninja")
         link_pool=1
         pch_pool=1)
 endif ()
+
+# FASTBuild requires that launchers actually be available
+# at configure time
+if(CMAKE_GENERATOR MATCHES FASTBuild)
+  file(TOUCH "${dir}/ccache")
+  file(CHMOD "${dir}/ccache" PERMISSIONS OWNER_READ OWNER_EXECUTE)
+endif()
 
 prepare_target_types(can_compile_sources
   EXECUTABLE SHARED STATIC MODULE OBJECT)

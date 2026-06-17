@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(MacRuntimePath_A)
 
 # a shared library
@@ -9,8 +9,6 @@ set_target_properties(shared PROPERTIES MACOSX_RPATH 1)
 add_library(shared2 SHARED shared.cpp shared.h)
 set_target_properties(shared2 PROPERTIES
   BUILD_WITH_INSTALL_RPATH 1 INSTALL_NAME_DIR "@rpath")
-
-cmake_policy(SET CMP0042 NEW)
 
 # a framework library
 add_library(framework SHARED framework.cpp framework.h)

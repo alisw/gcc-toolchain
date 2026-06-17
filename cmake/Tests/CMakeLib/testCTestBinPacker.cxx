@@ -2,6 +2,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "cmCTestBinPacker.h"
@@ -16,8 +17,7 @@ struct ExpectedPackResult
   std::vector<cmCTestBinPackerAllocation> ExpectedBlockAllocations;
 };
 
-static const std::vector<ExpectedPackResult> expectedResults
-{
+static std::vector<ExpectedPackResult> const expectedResults{
   /* clang-format off */
   {
     { 2, 2, 2, 2 },
@@ -215,7 +215,7 @@ struct AllocationComparison
   bool Equal;
 };
 
-static const std::vector<AllocationComparison> comparisons{
+static std::vector<AllocationComparison> const comparisons{
   /* clang-format off */
   { { 0, 1, "0" }, { 0, 1, "0" }, true },
   { { 0, 1, "0" }, { 1, 1, "0" }, false },
@@ -224,7 +224,7 @@ static const std::vector<AllocationComparison> comparisons{
   /* clang-format on */
 };
 
-static bool TestExpectedPackResult(const ExpectedPackResult& expected)
+static bool TestExpectedPackResult(ExpectedPackResult const& expected)
 {
   std::vector<cmCTestBinPackerAllocation> roundRobinAllocations;
   roundRobinAllocations.reserve(expected.SlotsNeeded.size());

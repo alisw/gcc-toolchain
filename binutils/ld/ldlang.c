@@ -134,7 +134,7 @@ lang_statement_list_type file_chain = { NULL, NULL };
    lang_input_statement_type statement (reached via input_statement field in a
    lang_statement_union).  */
 lang_statement_list_type input_file_chain;
-static const char *current_input_file;
+static lang_input_statement_type *current_input_file;
 struct bfd_elf_dynamic_list **current_dynamic_list_p;
 struct bfd_sym_chain entry_symbol = { NULL, NULL };
 const char *entry_section = ".text";
@@ -336,10 +336,10 @@ stat_ldirname (const char *name)
 /* If PATTERN is of the form archive:file, return a pointer to the
    separator.  If not, return NULL.  */
 
-static char *
+static const char *
 archive_path (const char *pattern)
 {
-  char *p = NULL;
+  const char *p = NULL;
 
   if (link_info.path_separator == 0)
     return p;
@@ -361,7 +361,7 @@ archive_path (const char *pattern)
    return whether F matches FILE_SPEC.  */
 
 static bool
-input_statement_is_archive_path (const char *file_spec, char *sep,
+input_statement_is_archive_path (const char *file_spec, const char *sep,
 				 lang_input_statement_type *f)
 {
   bool match = false;
@@ -376,9 +376,10 @@ input_statement_is_archive_path (const char *file_spec, char *sep,
       if (sep != file_spec)
 	{
 	  const char *aname = bfd_get_filename (f->the_bfd->my_archive);
-	  *sep = 0;
+	  /* SEP which points into FILE_SPEC is in writable memory.  */
+	  *(char *) sep = 0;
 	  match = name_match (file_spec, aname) == 0;
-	  *sep = link_info.path_separator;
+	  *(char *) sep = link_info.path_separator;
 	}
     }
   return match;
@@ -420,7 +421,7 @@ walk_wild_file_in_exclude_list (struct name_list *exclude_list,
        list_tmp;
        list_tmp = list_tmp->next)
     {
-      char *p = archive_path (list_tmp->name);
+      const char *p = archive_path (list_tmp->name);
 
       if (p != NULL)
 	{
@@ -476,7 +477,7 @@ walk_wild_section_match (lang_wild_statement_type *ptr,
 {
   struct wildcard_list *sec;
   const char *file_spec = ptr->filename;
-  char *p;
+  const char *p;
 
   /* Check if filenames match.  */
   if (file_spec == NULL)
@@ -1261,7 +1262,32 @@ new_afile (const char *name,
       FAIL ();
     }
 
-  lang_statement_append (&input_file_chain, p, &p->next_real_file);
+  if (current_input_file != NULL)
+    {
+      lang_input_statement_type *f, *prev;
+
+      /* Insert the new input file before the current input file to
+	 maintain the input file order.  NB: The first item on the
+	 input file chain is a null one.  */
+      prev = &input_file_chain.head->input_statement;
+      for (f = prev->next_real_file;
+	   f != NULL;
+	   f = f->next_real_file)
+	{
+	  if (f == current_input_file)
+	    {
+	      p->next_real_file = prev->next_real_file;
+	      prev->next_real_file = p;
+	      break;
+	    }
+	  prev = f;
+	}
+
+      if (f == NULL)
+	abort ();
+    }
+  else
+    lang_statement_append (&input_file_chain, p, &p->next_real_file);
   return p;
 }
 
@@ -1293,7 +1319,10 @@ lang_add_input_file (const char *name,
       return ret;
     }
 
-  return new_afile (name, file_type, target, current_input_file);
+  return new_afile (name, file_type, target,
+		    (current_input_file
+		     ? current_input_file->filename
+		     : NULL));
 }
 
 struct out_section_hash_entry
@@ -3134,7 +3163,7 @@ load_symbols (lang_input_statement_type *entry,
 
       ldfile_assumed_script = true;
       parser_input = input_script;
-      current_input_file = entry->filename;
+      current_input_file = entry;
       yyparse ();
       current_input_file = NULL;
       ldfile_assumed_script = false;
@@ -7724,6 +7753,20 @@ lang_set_flags (lang_memory_region_type *ptr, const char *flags, int invert)
     }
 }
 
+static void
+debug_input_files (void)
+{
+  lang_input_statement_type *f;
+
+  for (f = &input_file_chain.head->input_statement;
+       f != NULL;
+       f = f->next_real_file)
+    if (f->the_bfd)
+      fprintf (stderr, "file: %s\n", f->the_bfd->filename);
+    else
+      fprintf (stderr, "input: %s\n", f->filename);
+}
+
 /* Call a function on each real input file.  This function will be
    called on an archive, but not on the elements.  */
 
@@ -8597,7 +8640,10 @@ lang_process (void)
   lang_common ();
 
   if (0)
-    debug_prefix_tree ();
+    {
+      debug_prefix_tree ();
+      debug_input_files ();
+    }
 
   resolve_wilds ();
 
@@ -10696,7 +10742,7 @@ cmdline_fopen_temp (const char *path, const char *target,
 #ifdef HAVE_DOS_BASED_FILE_SYSTEM
   {
     /* We could have foo/bar\\baz, or foo\\bar, or d:bar.  */
-    char *bslash = strrchr (path, '\\');
+    const char *bslash = strrchr (path, '\\');
 
     if (slash == NULL || (bslash != NULL && bslash > slash))
       slash = bslash;

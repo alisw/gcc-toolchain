@@ -1,16 +1,22 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 UseSWIG
 -------
 
-This file provides support for ``SWIG``. It is assumed that :module:`FindSWIG`
-module has already been loaded.
-
 .. only:: html
 
   .. contents::
+
+This module provides support for ``SWIG``. It is assumed that :module:`FindSWIG`
+module has already been loaded.
+
+Load this module in a CMake project with:
+
+.. code-block:: cmake
+
+  include(UseSWIG)
 
 CMake Commands
 ^^^^^^^^^^^^^^
@@ -21,12 +27,15 @@ The following command is defined for use with ``SWIG``:
 
   .. versionadded:: 3.8
 
-  Define swig module with given name and specified language::
+  Define swig module with given name and specified language:
+
+  .. code-block:: cmake
 
     swig_add_library(<name>
                      [TYPE <SHARED|MODULE|STATIC|USE_BUILD_SHARED_LIBS>]
                      LANGUAGE <language>
                      [NO_PROXY]
+                     [DEBUG_POSTFIX <postfix>]
                      [OUTPUT_DIR <directory>]
                      [OUTFILE_DIR <directory>]
                      SOURCES <file>...
@@ -91,6 +100,16 @@ The following command is defined for use with ``SWIG``:
     .. versionadded:: 3.12
 
     Prevent the generation of the wrapper layer (swig ``-noproxy`` option).
+
+  ``DEBUG_POSTFIX``
+    .. versionadded:: 4.2
+
+    Manage the :prop_tgt:`DEBUG_POSTFIX` target property. Currently, only
+    meaningful for the ``python`` language.
+
+    If the :prop_gbl:`DEBUG_CONFIGURATIONS` global property is defined, define
+    the :prop_tgt:`<CONFIG>_POSTFIX` target property for each debug
+    configuration.
 
   ``OUTPUT_DIR``
     .. versionadded:: 3.12
@@ -188,9 +207,8 @@ ensure generated files will receive the required settings.
   itself. This property is only meaningful for
   :ref:`Makefile <Makefile Generators>`,
   :ref:`Ninja <Ninja Generators>`, :generator:`Xcode`, and
-  :ref:`Visual Studio <Visual Studio Generators>`
-  (:generator:`Visual Studio 12 2013` and above) generators. Default value is
-  ``FALSE``.
+  :ref:`Visual Studio <Visual Studio Generators>` generators.
+  Default value is ``FALSE``.
 
   .. versionadded:: 3.21
     Added the support of :generator:`Xcode` generator.
@@ -352,9 +370,8 @@ as well as ``SWIG``:
   itself. This variable is only meaningful for
   :ref:`Makefile <Makefile Generators>`,
   :ref:`Ninja <Ninja Generators>`, :generator:`Xcode`, and
-  :ref:`Visual Studio <Visual Studio Generators>`
-  (:generator:`Visual Studio 12 2013` and above) generators. Default value is
-  ``FALSE``.
+  :ref:`Visual Studio <Visual Studio Generators>` generators.
+  Default value is ``FALSE``.
 
   Source file property ``USE_SWIG_DEPENDENCIES``, if not defined, will be
   initialized with the value of this variable.
@@ -374,7 +391,9 @@ Deprecated Commands
     Use :command:`target_link_libraries` with the standard target name,
     or with ``${SWIG_MODULE_<name>_REAL_NAME}`` for legacy target naming.
 
-  Link libraries to swig module::
+  Link libraries to swig module:
+
+  .. code-block:: cmake
 
     swig_link_libraries(<name> <item>...)
 
@@ -396,10 +415,6 @@ Deprecated Commands
 #]=======================================================================]
 
 cmake_policy(PUSH)
-# numbers and boolean constants
-cmake_policy (SET CMP0012 NEW)
-# IN_LIST operator
-cmake_policy (SET CMP0057 NEW)
 # Ninja generator normalizes custom command depfile paths
 cmake_policy (SET CMP0116 NEW)
 
@@ -466,7 +481,10 @@ function(SWIG_GET_EXTRA_OUTPUT_FILES language outfiles generatedpath infile)
 
     # try to get module name from "%module foo" syntax
     if ( EXISTS "${infile}" )
+      cmake_policy(PUSH)
+      cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
       file ( STRINGS "${infile}" module_basename REGEX "[ ]*%module[ ]*[a-zA-Z0-9_]+.*" )
+      cmake_policy(POP)
     endif ()
     if ( module_basename )
       string ( REGEX REPLACE "[ ]*%module[ ]*([a-zA-Z0-9_]+).*" "\\1" module_basename "${module_basename}" )
@@ -474,7 +492,10 @@ function(SWIG_GET_EXTRA_OUTPUT_FILES language outfiles generatedpath infile)
     else ()
       # try to get module name from "%module (options=...) foo" syntax
       if ( EXISTS "${infile}" )
+        cmake_policy(PUSH)
+        cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
         file ( STRINGS "${infile}" module_basename REGEX "[ ]*%module[ ]*\\(.*\\)[ ]*[a-zA-Z0-9_]+.*" )
+        cmake_policy(POP)
       endif ()
       if ( module_basename )
         string ( REGEX REPLACE "[ ]*%module[ ]*\\(.*\\)[ ]*([a-zA-Z0-9_]+).*" "\\1" module_basename "${module_basename}" )
@@ -559,7 +580,7 @@ function(SWIG_ADD_SOURCE_TO_MODULE name outfiles infile)
   endif()
 
   set (use_swig_dependencies ${SWIG_USE_SWIG_DEPENDENCIES})
-  if (CMAKE_GENERATOR MATCHES "Make|Ninja|Xcode|Visual Studio (1[1-9]|[2-9][0-9])")
+  if (CMAKE_GENERATOR MATCHES "Make|Ninja|Xcode|Visual Studio")
     get_property(use_swig_dependencies_set SOURCE "${infile}" PROPERTY USE_SWIG_DEPENDENCIES SET)
     if (use_swig_dependencies_set)
       get_property(use_swig_dependencies SOURCE "${infile}" PROPERTY USE_SWIG_DEPENDENCIES)
@@ -665,7 +686,7 @@ function(SWIG_ADD_SOURCE_TO_MODULE name outfiles infile)
         NOT ("-interface" IN_LIST swig_source_file_flags OR "-interface" IN_LIST SWIG_MODULE_${name}_EXTRA_FLAGS))
       # This makes sure that the name used in the proxy code
       # matches the library name created by CMake
-      list (APPEND SWIG_MODULE_${name}_EXTRA_FLAGS "-interface" "$<TARGET_FILE_PREFIX:${target_name}>$<TARGET_FILE_BASE_NAME:${target_name}>")
+      list (APPEND SWIG_MODULE_${name}_EXTRA_FLAGS "-interface" "$<TARGET_FILE_PREFIX:${target_name}>$<TARGET_FILE_BASE_NAME:${target_name},POSTFIX:$<IF:$<AND:$<BOOL:${SWIG_DEBUG_POSTFIX}>,$<CONFIG:${SWIG_DEBUG_CONFIGS}>>,EXCLUDE,INCLUDE>>")
     endif()
   endif()
   list (APPEND swig_extra_flags ${SWIG_MODULE_${name}_EXTRA_FLAGS})
@@ -777,6 +798,7 @@ function(SWIG_ADD_LIBRARY name)
   set(options NO_PROXY)
   set(oneValueArgs LANGUAGE
                    TYPE
+                   DEBUG_POSTFIX
                    OUTPUT_DIR
                    OUTFILE_DIR)
   set(multiValueArgs SOURCES)
@@ -798,6 +820,18 @@ function(SWIG_ADD_LIBRARY name)
     set(_SAM_TYPE MODULE)
   elseif(_SAM_TYPE STREQUAL "USE_BUILD_SHARED_LIBS")
     unset(_SAM_TYPE)
+  endif()
+
+  if(_SAM_DEBUG_POSTFIX)
+    get_property(SWIG_DEBUG_CONFIGS GLOBAL PROPERTY DEBUG_CONFIGURATIONS)
+    if(NOT SWIG_DEBUG_CONFIGS)
+      set(SWIG_DEBUG_CONFIGS DEBUG)
+    endif()
+    string(TOUPPER "${SWIG_DEBUG_CONFIGS}" SWIG_DEBUG_CONFIGS)
+    set(SWIG_DEBUG_POSTFIX "${_SAM_DEBUG_POSTFIX}")
+  else()
+    unset(SWIG_DEBUG_CONFIGS)
+    unset(SWIG_DEBUG_POSTFIX)
   endif()
 
   cmake_policy(GET CMP0078 target_name_policy)
@@ -884,7 +918,7 @@ function(SWIG_ADD_LIBRARY name)
     set(SWIG_SOURCE_FILE_EXTENSIONS ".i")
   endif()
 
-  if (CMAKE_GENERATOR MATCHES "Make|Ninja|Xcode|Visual Studio (1[1-9]|[2-9][0-9])")
+  if (CMAKE_GENERATOR MATCHES "Make|Ninja|Xcode|Visual Studio")
     # For Makefiles, Ninja, Xcode and Visual Studio generators,
     # use SWIG generated dependencies if requested
     if (NOT DEFINED SWIG_USE_SWIG_DEPENDENCIES)
@@ -991,6 +1025,11 @@ function(SWIG_ADD_LIBRARY name)
     if(WIN32 AND NOT CYGWIN)
       set_target_properties(${target_name} PROPERTIES SUFFIX ".pyd")
     endif()
+    if(SWIG_DEBUG_POSTFIX)
+      foreach(config IN LISTS SWIG_DEBUG_CONFIGS)
+        set_target_properties(${target_name} PROPERTIES ${config}_POSTFIX "${SWIG_DEBUG_POSTFIX}")
+      endforeach()
+    endif()
   elseif (swig_lowercase_language STREQUAL "r")
     set_target_properties(${target_name} PROPERTIES PREFIX "")
   elseif (swig_lowercase_language STREQUAL "ruby")
@@ -1063,6 +1102,10 @@ endfunction()
 # Like TARGET_LINK_LIBRARIES but for swig modules
 #
 function(SWIG_LINK_LIBRARIES name)
+  cmake_policy(GET CMP0078 target_name_policy)
+  if (target_name_policy STREQUAL "NEW")
+    set (UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
+  endif()
   if (UseSWIG_TARGET_NAME_PREFERENCE STREQUAL "STANDARD")
     message(DEPRECATION "SWIG_LINK_LIBRARIES is deprecated. Use TARGET_LINK_LIBRARIES instead.")
     target_link_libraries(${name} ${ARGN})

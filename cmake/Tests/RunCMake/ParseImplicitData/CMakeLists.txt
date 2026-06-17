@@ -11,7 +11,7 @@
 #   -DUNAME="Darwin"       -- operating system name (def: CMAKE_SYSTEM_NAME)
 #
 
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.10)
 if(POLICY CMP0089)
   cmake_policy(SET CMP0089 NEW)
 endif()
@@ -27,7 +27,7 @@ message("Generate input for system type: ${UNAME}")
 
 # CMAKE_<LANG>_COMPILER_* variables we save in the resultfile
 set(compvars ABI AR ARCHITECTURE_ID EXTERNAL_TOOLCHAIN ID LAUNCHER LOADED
-  RANLIB TARGET VERSION VERSION_INTERAL)
+  RANLIB TARGET VERSION VERSION_INTERNAL)
 
 foreach(lang IN ITEMS ${LANGUAGES})
 

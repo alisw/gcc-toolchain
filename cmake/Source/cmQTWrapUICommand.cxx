@@ -1,10 +1,11 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmQTWrapUICommand.h"
 
 #include <utility>
 
 #include <cm/memory>
+#include <cm/string_view>
 
 #include "cmCustomCommand.h"
 #include "cmCustomCommandLines.h"

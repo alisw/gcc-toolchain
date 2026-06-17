@@ -1,8 +1,0 @@
-cmake_minimum_required(VERSION 3.10)
-if(RunCMake_TEST MATCHES "^BeforeProject")
-  include(${RunCMake_TEST}.cmake)
-  project(${RunCMake_TEST} NONE)
-  return()
-endif()
-project(${RunCMake_TEST} NONE)
-include(${RunCMake_TEST}.cmake)

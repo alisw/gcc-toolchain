@@ -1,12 +1,13 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 if(NOT CMake_SOURCE_DIR)
   set(CMakeHelp_STANDALONE 1)
-  cmake_minimum_required(VERSION 3.13...3.27 FATAL_ERROR)
+  cmake_minimum_required(VERSION 3.13...4.0 FATAL_ERROR)
   get_filename_component(tmp "${CMAKE_CURRENT_SOURCE_DIR}" PATH)
   get_filename_component(CMake_SOURCE_DIR "${tmp}" PATH)
   include(${CMake_SOURCE_DIR}/Modules/CTestUseLaunchers.cmake)
+  include(${CMake_SOURCE_DIR}/Source/CMakeCopyright.cmake)
   include(${CMake_SOURCE_DIR}/Source/CMakeVersion.cmake)
   include(${CMake_SOURCE_DIR}/Source/CMakeInstallDestinations.cmake)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CTestCustom.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/CTestCustom.cmake @ONLY)
@@ -26,6 +27,7 @@ option(SPHINX_LINKCHECK "Check external links mentioned in documentation" OFF)
 option(SPHINX_QTHELP "Build Qt help with Sphinx" OFF)
 option(SPHINX_LATEXPDF "Build PDF help with Sphinx using LaTeX" OFF)
 option(SPHINX_TEXT "Build text help with Sphinx (not installed)" OFF)
+option(SPHINX_INCLUDE_IN_ALL "Build Sphinx documentation by default" ON)
 find_program(SPHINX_EXECUTABLE
   NAMES sphinx-build
   DOC "Sphinx Documentation Builder (sphinx-doc.org)"
@@ -50,10 +52,7 @@ elseif(NOT SPHINX_EXECUTABLE)
   message(FATAL_ERROR "SPHINX_EXECUTABLE (sphinx-build) is not found!")
 endif()
 
-set(copyright_line_regex "^Copyright (2000-20[0-9][0-9] Kitware.*)")
-file(STRINGS "${CMake_SOURCE_DIR}/Copyright.txt" copyright_line
-  LIMIT_COUNT 1 REGEX "${copyright_line_regex}")
-if(copyright_line MATCHES "${copyright_line_regex}")
+if(CMake_COPYRIGHT_LINE MATCHES "^Copyright (.*)$")
   set(conf_copyright "${CMAKE_MATCH_1}")
 else()
   set(conf_copyright "Kitware, Inc.")
@@ -63,6 +62,12 @@ if(CMake_SPHINX_CMAKE_ORG)
   set(conf_baseurl "https://cmake.org/cmake/help/latest")
 else()
   set(conf_baseurl "")
+endif()
+
+if(CMake_SPHINX_CMAKE_ORG)
+  set(conf_cmakeorg "True")
+else()
+  set(conf_cmakeorg "False")
 endif()
 
 set(conf_docs "${CMake_SOURCE_DIR}/Help")
@@ -256,7 +261,11 @@ foreach(format IN LISTS doc_formats)
   endif()
 endforeach()
 
-add_custom_target(documentation ALL DEPENDS ${doc_format_outputs})
+if (SPHINX_INCLUDE_IN_ALL)
+  set(add_documentation_to_all ALL)
+endif()
+
+add_custom_target(documentation ${add_documentation_to_all} DEPENDS ${doc_format_outputs})
 
 if(CMake_SPHINX_DEPEND_ON_EXECUTABLES)
   foreach(t IN ITEMS cmake ccmake cmake-gui cpack ctest)

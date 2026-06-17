@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #-----------------------------------------------------------------------------
 # set some special flags for different compilers
@@ -37,33 +37,45 @@ elseif(_CLANG_MSVC_WINDOWS AND "x${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUA
   string(APPEND CMAKE_EXE_LINKER_FLAGS " -Xlinker -stack:20000000")
 endif()
 
-#silence duplicate symbol warnings on AIX
+# Silence "Additional optimization may be attained by recompiling and
+# specifying MAXMEM option" warning on XLC (AIX)
+if(CMAKE_CXX_COMPILER_ID MATCHES "^(XL|XLClang)$")
+  string(APPEND CMAKE_CXX_FLAGS " -qmaxmem=-1")
+endif()
+
+# Silence duplicate symbol warnings on AIX
 if(CMAKE_SYSTEM_NAME MATCHES "AIX")
-  if(NOT CMAKE_COMPILER_IS_GNUCXX)
+  if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -bhalt:5 ")
   endif()
 endif()
 
 if(CMAKE_SYSTEM MATCHES "OSF1-V")
-  if(NOT CMAKE_COMPILER_IS_GNUCXX)
+  if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -timplicit_local -no_implicit_include ")
   endif()
 endif()
 
 # Workaround for short jump tables on PA-RISC
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^parisc")
-  if(CMAKE_COMPILER_IS_GNUCC)
+  if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mlong-calls")
   endif()
-  if(CMAKE_COMPILER_IS_GNUCXX)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mlong-calls")
   endif()
 endif()
 
 # Use 64-bit off_t on 32-bit Linux
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SIZEOF_VOID_P EQUAL 4)
-  # ensure 64bit offsets are used for filesystem accesses for 32bit compilation
+  # Use 64-bit off_t even in 32-bit builds.
   add_compile_definitions(_FILE_OFFSET_BITS=64)
+
+  # Use 64-bit time_t even in 32-bit builds.  Skip this with
+  # system libarchive because its ABI uses the default time_t.
+  if (NOT CMAKE_USE_SYSTEM_LIBARCHIVE)
+    add_compile_definitions(_TIME_BITS=64)
+  endif()
 endif()
 
 # Workaround for TOC Overflow on ppc64

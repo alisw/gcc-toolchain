@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(SUBDIR)
 
 # Some systems do not seem to support rpath with spaces.
@@ -74,4 +74,3 @@ add_executable(TestWithAuxSourceDir ${SOURCES})
 if(CMAKE_PAREN)
   target_link_libraries(TestWithAuxSourceDir testOddPath)
 endif()
-

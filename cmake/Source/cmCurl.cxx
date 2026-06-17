@@ -1,6 +1,9 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmCurl.h"
+
+#include <cm/string_view>
+#include <cmext/string_view>
 
 #if !defined(CMAKE_USE_SYSTEM_CURL) && !defined(_WIN32) &&                    \
   !defined(__APPLE__) && !defined(CURL_CA_BUNDLE) && !defined(CURL_CA_PATH)
@@ -31,7 +34,96 @@
     }                                                                         \
   } while (false)
 
-std::string cmCurlSetCAInfo(::CURL* curl, const std::string& cafile)
+// curl versions before 7.52.0 did not provide TLS 1.3 support
+#if defined(LIBCURL_VERSION_NUM) && LIBCURL_VERSION_NUM < 0x073400
+#  define CURL_SSLVERSION_TLSv1_3 CURL_SSLVERSION_LAST
+#endif
+
+// curl versions before 7.64.1 referred to Secure Transport as DarwinSSL
+#if defined(LIBCURL_VERSION_NUM) && LIBCURL_VERSION_NUM < 0x074001
+#  define CURLSSLBACKEND_SECURETRANSPORT CURLSSLBACKEND_DARWINSSL
+#endif
+
+// Make sure we keep up with new TLS versions supported by curl.
+// Do this only for our vendored curl to avoid breaking builds
+// against external future versions of curl.
+#if !defined(CMAKE_USE_SYSTEM_CURL)
+// NOLINTNEXTLINE(misc-redundant-expression)
+static_assert(CURL_SSLVERSION_LAST == 8,
+              "A new CURL_SSLVERSION_ may be available!");
+#endif
+
+::CURLcode cm_curl_global_init(long flags)
+{
+  // curl 7.56.0 introduced curl_global_sslset.
+#if defined(__APPLE__) && defined(CMAKE_USE_SYSTEM_CURL) &&                   \
+  defined(LIBCURL_VERSION_NUM) && LIBCURL_VERSION_NUM >= 0x073800
+  cm::optional<std::string> curl_ssl_backend =
+    cmSystemTools::GetEnvVar("CURL_SSL_BACKEND");
+  if (!curl_ssl_backend || curl_ssl_backend->empty()) {
+    curl_version_info_data* cv = curl_version_info(CURLVERSION_FIRST);
+    // curl 8.3.0 through 8.5.x did not re-initialize LibreSSL correctly,
+    // so prefer the Secure Transport backend by default in those versions.
+    if (cv->version_num >= 0x080300 && cv->version_num < 0x080600) {
+#  if defined(__clang__)
+#    define CM_CURL_DEPRECATED_CURLSSLBACKEND_SECURETRANSPORT_CLANG
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#  elif defined(__GNUC__)
+#    define CM_CURL_DEPRECATED_CURLSSLBACKEND_SECURETRANSPORT_GCC
+#    pragma GCC diagnostic push
+#    pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#  endif
+      curl_global_sslset(CURLSSLBACKEND_SECURETRANSPORT, NULL, NULL);
+#  if defined(CM_CURL_DEPRECATED_CURLSSLBACKEND_SECURETRANSPORT_CLANG)
+#    undef CM_CURL_DEPRECATED_CURLSSLBACKEND_SECURETRANSPORT_CLANG
+#    pragma clang diagnostic pop
+#  elif defined(CM_CURL_DEPRECATED_CURLSSLBACKEND_SECURETRANSPORT_GCC)
+#    undef CM_CURL_DEPRECATED_CURLSSLBACKEND_SECURETRANSPORT_GCC
+#    pragma GCC diagnostic pop
+#  endif
+    }
+  }
+#endif
+  return ::curl_global_init(flags);
+}
+
+cm::optional<int> cmCurlParseTLSVersion(cm::string_view tls_version)
+{
+  cm::optional<int> v;
+  if (tls_version == "1.0"_s) {
+    v = CURL_SSLVERSION_TLSv1_0;
+  } else if (tls_version == "1.1"_s) {
+    v = CURL_SSLVERSION_TLSv1_1;
+  } else if (tls_version == "1.2"_s) {
+    v = CURL_SSLVERSION_TLSv1_2;
+  } else if (tls_version == "1.3"_s) {
+    v = CURL_SSLVERSION_TLSv1_3;
+  }
+  return v;
+}
+
+cm::optional<std::string> cmCurlPrintTLSVersion(int curl_tls_version)
+{
+  cm::optional<std::string> s;
+  switch (curl_tls_version) {
+    case CURL_SSLVERSION_TLSv1_0:
+      s = "CURL_SSLVERSION_TLSv1_0"_s;
+      break;
+    case CURL_SSLVERSION_TLSv1_1:
+      s = "CURL_SSLVERSION_TLSv1_1"_s;
+      break;
+    case CURL_SSLVERSION_TLSv1_2:
+      s = "CURL_SSLVERSION_TLSv1_2"_s;
+      break;
+    case CURL_SSLVERSION_TLSv1_3:
+      s = "CURL_SSLVERSION_TLSv1_3"_s;
+      break;
+  }
+  return s;
+}
+
+std::string cmCurlSetCAInfo(::CURL* curl, std::string const& cafile)
 {
   std::string e;
   std::string env_ca;
@@ -72,16 +164,34 @@ std::string cmCurlSetCAInfo(::CURL* curl, const std::string& cafile)
       check_curl_result(res, "Unable to set TLS/SSL Verify CAPATH: ");
     }
 #  undef CMAKE_CAPATH_COMMON
+#  ifdef _AIX
+#    define CMAKE_CAPATH_AIX "/var/ssl/certs"
+    if (cmSystemTools::FileIsDirectory(CMAKE_CAPATH_AIX)) {
+      ::CURLcode res =
+        ::curl_easy_setopt(curl, CURLOPT_CAPATH, CMAKE_CAPATH_AIX);
+      check_curl_result(res, "Unable to set TLS/SSL Verify CAPATH: ");
+    }
+#    undef CMAKE_CAPATH_AIX
+#  endif
+#  ifdef __sun
+#    define CMAKE_CAPATH_SUNOS_CSW "/etc/opt/csw/ssl/certs"
+    if (cmSystemTools::FileIsDirectory(CMAKE_CAPATH_SUNOS_CSW)) {
+      ::CURLcode res =
+        ::curl_easy_setopt(curl, CURLOPT_CAPATH, CMAKE_CAPATH_SUNOS_CSW);
+      check_curl_result(res, "Unable to set TLS/SSL Verify CAPATH: ");
+    }
+#    undef CMAKE_CAPATH_SUNOS_CSW
+#  endif
   }
 #endif
   return e;
 }
 
-std::string cmCurlSetNETRCOption(::CURL* curl, const std::string& netrc_level,
-                                 const std::string& netrc_file)
+std::string cmCurlSetNETRCOption(::CURL* curl, std::string const& netrc_level,
+                                 std::string const& netrc_file)
 {
   std::string e;
-  CURL_NETRC_OPTION curl_netrc_level = CURL_NETRC_LAST;
+  long curl_netrc_level = CURL_NETRC_LAST;
   ::CURLcode res;
 
   if (!netrc_level.empty()) {
@@ -145,4 +255,16 @@ std::string cmCurlFixFileURL(std::string url)
 #endif
 
   return url;
+}
+
+::CURL* cm_curl_easy_init()
+{
+  ::CURL* curl = curl_easy_init();
+  if (curl_version_info_data* cv = curl_version_info(CURLVERSION_FIRST)) {
+    // curl 8.7.x returns incorrect HTTP/2 error codes.
+    if (cv->version_num >= 0x080700 && cv->version_num < 0x080800) {
+      curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+    }
+  }
+  return curl;
 }

@@ -1,6 +1,6 @@
 /* random.c -- Handle seed for random numbers.
 
-// Copyright (C) 2008, 2009, 2010, 2011, 2012 INRIA
+// Copyright (C) 2008, 2009, 2010, 2011, 2012, 2023 INRIA
 
 This file is part of GNU MPC.
 
@@ -41,11 +41,43 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 gmp_randstate_t  rands;
 static char      rands_initialized;
 
+
+void
+mpc_test_print_libraries (void)
+{
+#ifdef __MPIR_VERSION
+  printf ("MPIR: include %d.%d.%d, lib %s\n",
+          __MPIR_VERSION, __MPIR_VERSION_MINOR, __MPIR_VERSION_PATCHLEVEL,
+          mpir_version);
+#else
+  printf ("GMP: include %d.%d.%d, lib %s\n",
+          __GNU_MP_VERSION, __GNU_MP_VERSION_MINOR, __GNU_MP_VERSION_PATCHLEVEL,
+          gmp_version);
+#endif
+  printf ("MPFR: include %s, lib %s\n",
+          MPFR_VERSION_STRING,
+          mpfr_get_version ());
+  printf ("MPC: include %s, lib %s\n", MPC_VERSION_STRING,
+          mpc_get_version ());
+
+#ifdef MPC_CC
+  printf ("C compiler: %s\n", MPC_CC);
+#endif
+#ifdef MPC_GCC
+  printf ("GCC: %s\n", MPC_GCC);
+#endif
+#ifdef MPC_GCC_VERSION
+  printf ("GCC version: %s\n", MPC_GCC_VERSION);
+#endif
+}
+
 void
 test_start (void)
 {
   char *environment_seed;
   unsigned long seed;
+
+  mpc_test_print_libraries ();
 
   if (rands_initialized)
     {

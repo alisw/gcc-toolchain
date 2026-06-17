@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -17,6 +17,7 @@ class cmDebuggerThread;
 }
 
 namespace dap {
+struct StackTraceRequest;
 struct StackTraceResponse;
 }
 
@@ -32,7 +33,7 @@ public:
   std::shared_ptr<cmDebuggerThread> StartThread(std::string const& name);
   void EndThread(std::shared_ptr<cmDebuggerThread> const& thread);
   cm::optional<dap::StackTraceResponse> GetThreadStackTraceResponse(
-    std::int64_t id);
+    dap::StackTraceRequest const& request);
 };
 
 } // namespace cmDebugger

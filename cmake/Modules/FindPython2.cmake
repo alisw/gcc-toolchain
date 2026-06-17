@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindPython2
@@ -7,8 +7,12 @@ FindPython2
 
 .. versionadded:: 3.12
 
-Find Python 2 interpreter, compiler and development environment (include
-directories and libraries).
+Finds Python 2 interpreter, compiler and development environment (include
+directories and libraries):
+
+.. code-block:: cmake
+
+  find_package(Python2 [<version>] [COMPONENTS <components>...] [...])
 
 .. versionadded:: 3.19
   When a version is requested, it can be specified as a simple value or as a
@@ -31,19 +35,40 @@ The following components are supported:
     * ``Development.Embed``: search for artifacts for Python 2 embedding
       developments.
 
-* ``NumPy``: search for NumPy include directories.
-
 .. versionadded:: 3.14
-  Added the ``NumPy`` component.
+
+  * ``NumPy``: search for NumPy include directories. Specifying this component
+    imply also the components ``Interpreter`` and ``Development.Module``.
+
+  .. versionchanged:: 4.2
+    The component ``Development.Module`` is no longer implied when the policy
+    :policy:`CMP0201` is set to ``NEW``.
 
 If no ``COMPONENTS`` are specified, ``Interpreter`` is assumed.
 
 If component ``Development`` is specified, it implies sub-components
 ``Development.Module`` and ``Development.Embed``.
 
+.. versionchanged:: 4.1
+  In a cross-compiling mode (i.e. the :variable:`CMAKE_CROSSCOMPILING` variable
+  is defined to true), the following constraints, when the policy
+  :policy:`CMP0190` is set to ``NEW``, now apply to the requested components:
+
+  * ``Interpreter`` or ``Compiler`` alone: the host artifacts will be searched.
+  * ``Interpreter`` or ``Compiler`` with ``Development`` or any sub-component:
+    The target artifacts will be searched. In this case, the
+    :variable:`CMAKE_CROSSCOMPILING_EMULATOR` variable must be defined and will
+    be used to execute the interpreter or the compiler.
+
+  When both host and target artifacts are needed, two different calls to the
+  :command:`find_package` command should be done. The
+  ``Python_ARTIFACTS_PREFIX`` variable can be helpful in this situation.
+
 To ensure consistent versions between components ``Interpreter``, ``Compiler``,
 ``Development`` (or one of its sub-components) and ``NumPy``, specify all
-components at the same time::
+components at the same time:
+
+.. code-block:: cmake
 
   find_package (Python2 COMPONENTS Interpreter Development)
 
@@ -64,16 +89,32 @@ for you.
 Imported Targets
 ^^^^^^^^^^^^^^^^
 
-This module defines the following :ref:`Imported Targets <Imported Targets>`:
+This module provides the following :ref:`Imported Targets`:
 
 .. versionchanged:: 3.14
   :ref:`Imported Targets <Imported Targets>` are only created when
   :prop_gbl:`CMAKE_ROLE` is ``PROJECT``.
 
 ``Python2::Interpreter``
-  Python 2 interpreter. Target defined if component ``Interpreter`` is found.
+  Python 2 interpreter. This target is defined only if the ``Interpreter``
+  component is found.
+``Python2::InterpreterDebug``
+  .. versionadded:: 3.30
+
+  Python 2 debug interpreter. This target is defined only if the
+  ``Interpreter`` component is found and the ``Python2_EXECUTABLE_DEBUG``
+  variable is defined. The target is only defined on the ``Windows`` platform.
+
+``Python2::InterpreterMultiConfig``
+  .. versionadded:: 3.30
+
+  Python 2 interpreter. The release or debug version of the interpreter will be
+  used, based on the context (platform, configuration).
+  This target is defined only if the ``Interpreter`` component is found
+
 ``Python2::Compiler``
-  Python 2 compiler. Target defined if component ``Compiler`` is found.
+  Python 2 compiler. This target is defined only if the ``Compiler`` component
+  is found.
 ``Python2::Module``
   .. versionadded:: 3.15
 
@@ -88,19 +129,38 @@ This module defines the following :ref:`Imported Targets <Imported Targets>`:
   .. versionadded:: 3.14
 
   NumPy library for Python 2. Target defined if component ``NumPy`` is found.
+  Moreover, this target has the ``Python2::Module`` target as dependency.
+
+  .. versionchanged:: 4.2
+    This target does not have anymore the ``Python2::Module`` target as
+    dependency when the policy :policy:`CMP0201` is set to ``NEW``.
 
 Result Variables
 ^^^^^^^^^^^^^^^^
 
-This module will set the following variables in your project
+This module defines the following variables
 (see :ref:`Standard Variable Names <CMake Developer Standard Variable Names>`):
 
 ``Python2_FOUND``
-  System has the Python 2 requested components.
+  Boolean indicating whether system has the Python 2 requested components.
 ``Python2_Interpreter_FOUND``
-  System has the Python 2 interpreter.
+  Boolean indicating whether system has the Python 2 interpreter.
 ``Python2_EXECUTABLE``
   Path to the Python 2 interpreter.
+``Python2_EXECUTABLE_DEBUG``
+  .. versionadded:: 3.30
+
+  Path to the debug Python 2 interpreter. It is only defined on the ``Windows``
+  platform.
+
+``Python2_INTERPRETER``
+  .. versionadded:: 3.30
+
+  Path to the Python 2 interpreter, defined as a
+  :manual:`generator expression <cmake-generator-expressions(7)>` selecting
+  the ``Python2_EXECUTABLE`` or ``Python2_EXECUTABLE_DEBUG`` variable based on
+  the context (platform, configuration).
+
 ``Python2_INTERPRETER_ID``
   A short string unique to the interpreter. Possible values include:
     * Python
@@ -130,7 +190,7 @@ This module will set the following variables in your project
   Information returned by ``sysconfig.get_path('platlib')`` or else
   ``distutils.sysconfig.get_python_lib(plat_specific=True,standard_lib=False)``.
 ``Python2_Compiler_FOUND``
-  System has the Python 2 compiler.
+  Boolean indicating whether system has the Python 2 compiler.
 ``Python2_COMPILER``
   Path to the Python 2 compiler. Only offered by IronPython.
 ``Python2_COMPILER_ID``
@@ -143,20 +203,28 @@ This module will set the following variables in your project
   The ``.Net`` interpreter. Only used by ``IronPython`` implementation.
 
 ``Python2_Development_FOUND``
-  System has the Python 2 development artifacts.
+  Boolean indicating whether system has the Python 2 development artifacts.
 
 ``Python2_Development.Module_FOUND``
   .. versionadded:: 3.18
 
-  System has the Python 2 development artifacts for Python module.
+  Boolean indicating whether system has the Python 2 development artifacts
+  for Python module.
 
 ``Python2_Development.Embed_FOUND``
   .. versionadded:: 3.18
 
-  System has the Python 2 development artifacts for Python embedding.
+  Boolean indicating whether system has the Python 2 development artifacts
+  for Python embedding.
 
 ``Python2_INCLUDE_DIRS``
   The Python 2 include directories.
+
+``Python2_DEBUG_POSTFIX``
+  .. versionadded:: 3.30
+
+  Postfix of debug python module. This variable can be used to define the
+  :prop_tgt:`DEBUG_POSTFIX` target property.
 
 ``Python2_LINK_OPTIONS``
   .. versionadded:: 3.19
@@ -187,7 +255,7 @@ This module will set the following variables in your project
 ``Python2_NumPy_FOUND``
   .. versionadded:: 3.14
 
-  System has the NumPy.
+  Boolean indicating whether system has the NumPy.
 
 ``Python2_NumPy_INCLUDE_DIRS``
   .. versionadded:: 3.14
@@ -285,9 +353,9 @@ Hints
 
   .. note::
 
-    If the component ``Development`` is requested, it is **strongly**
-    recommended to also include the component ``Interpreter`` to get expected
-    result.
+    If the component ``Development`` is requested (or one of its
+    sub-components) and is not found or the wrong artifacts are returned,
+    including also the component ``Interpreter`` may be helpful.
 
 ``Python2_FIND_IMPLEMENTATIONS``
   .. versionadded:: 3.18
@@ -303,7 +371,7 @@ Hints
     See `IronPython <https://ironpython.net>`_.
   * ``PyPy``: This implementation use ``RPython`` language and
     ``RPython translation toolchain`` to produce the python interpreter.
-    See `PyPy <https://www.pypy.org>`_.
+    See `PyPy <https://pypy.org>`_.
 
   The default value is:
 
@@ -404,6 +472,31 @@ can be controlled with the following variable:
   * If set to ``FALSE`` or undefined: Enable multiple version/component
     requirements.
 
+``Python2_ARTIFACTS_PREFIX``
+  .. versionadded:: 4.0
+
+  Define a custom prefix which will be used for the definition of all the
+  result variables, targets, and commands. By using this variable, this module
+  supports multiple calls in the same directory with different
+  version/component requirements.
+  For example, in case of cross-compilation, development components are needed
+  but the native python interpreter can also be required:
+
+  .. code-block:: cmake
+
+    find_package(Python2 COMPONENTS Development)
+
+    set(Python2_ARTIFACTS_PREFIX "_HOST")
+    find_package(Python2 COMPONENTS Interpreter)
+
+    # Here Python2_HOST_EXECUTABLE and Python2_HOST::Interpreter artifacts are defined
+
+  .. note::
+
+    For consistency with standard behavior of modules, the various standard
+    ``_FOUND`` variables (i.e. without the custom prefix) are also defined by
+    each call to the :command:`find_package` command.
+
 Commands
 ^^^^^^^^
 
@@ -411,25 +504,38 @@ This module defines the command ``Python2_add_library`` (when
 :prop_gbl:`CMAKE_ROLE` is ``PROJECT``), which has the same semantics as
 :command:`add_library` and adds a dependency to target ``Python2::Python`` or,
 when library type is ``MODULE``, to target ``Python2::Module`` and takes care
-of Python module naming rules::
+of Python module naming rules:
+
+.. code-block:: cmake
 
   Python2_add_library (<name> [STATIC | SHARED | MODULE]
                        <source1> [<source2> ...])
 
 If library type is not specified, ``MODULE`` is assumed.
+
+.. versionadded:: 3.30
+  For ``MODULE`` type, the :prop_tgt:`DEBUG_POSTFIX` target property is
+  initialized with the value of ``Python2_DEBUG_POSTFIX`` variable if defined.
 #]=======================================================================]
 
 
-set (_PYTHON_PREFIX Python2)
+set (_PYTHON_BASE Python2)
+if(${_PYTHON_BASE}_ARTIFACTS_PREFIX)
+  set(_PYTHON_PREFIX "${_PYTHON_BASE}${${_PYTHON_BASE}_ARTIFACTS_PREFIX}")
+else()
+  set(_PYTHON_PREFIX "${_PYTHON_BASE}")
+endif()
 
-set (_Python2_REQUIRED_VERSION_MAJOR 2)
+set (_${_PYTHON_PREFIX}_REQUIRED_VERSION_MAJOR 2)
 
 include (${CMAKE_CURRENT_LIST_DIR}/FindPython/Support.cmake)
 
-if (COMMAND __Python2_add_library)
-  macro (Python2_add_library)
-    __Python2_add_library (Python2 ${ARGV})
-  endmacro()
+if (COMMAND __${_PYTHON_PREFIX}_add_library AND NOT COMMAND ${_PYTHON_PREFIX}_add_library)
+  cmake_language(EVAL CODE
+    "macro (${_PYTHON_PREFIX}_add_library)
+       __${_PYTHON_PREFIX}_add_library (${_PYTHON_PREFIX} \${ARGV})
+     endmacro()")
 endif()
 
+unset (_PYTHON_BASE)
 unset (_PYTHON_PREFIX)

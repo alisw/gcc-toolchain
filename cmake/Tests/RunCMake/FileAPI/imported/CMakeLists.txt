@@ -3,6 +3,9 @@ project(Imported)
 add_library(imported_lib UNKNOWN IMPORTED)
 set_target_properties(imported_lib PROPERTIES IMPORTED_LOCATION "imported_unk${CMAKE_STATIC_LIBRARY_SUFFIX}")
 add_executable(imported_exe IMPORTED)
+set_target_properties(imported_exe PROPERTIES
+  IMPORTED_LOCATION "imported_exe${CMAKE_EXECUTABLE_SUFFIX}"
+)
 add_executable(link_imported_exe ../empty.c)
 target_link_libraries(link_imported_exe PRIVATE imported_lib)
 
@@ -29,9 +32,20 @@ add_library(imported_interface_lib INTERFACE IMPORTED)
 add_executable(link_imported_interface_exe ../empty.c)
 target_link_libraries(link_imported_interface_exe PRIVATE imported_interface_lib)
 
+add_library(imported_interface_symbolic_lib INTERFACE SYMBOLIC IMPORTED)
+add_executable(link_imported_interface_symbolic_exe ../empty.c)
+target_link_libraries(link_imported_interface_symbolic_exe PRIVATE imported_interface_symbolic_lib)
+
 install(IMPORTED_RUNTIME_ARTIFACTS imported_shared_lib
   DESTINATION lib
 )
 install(IMPORTED_RUNTIME_ARTIFACTS imported_shared_lib
   DESTINATION lib2 OPTIONAL
+)
+
+# This is deliberately missing the IMPORTED_IMPLIB property.
+# The file API needs to tolerate this for unused imported targets.
+add_library(unused_imported_shared_lib SHARED IMPORTED)
+set_target_properties(unused_imported_shared_lib PROPERTIES
+    IMPORTED_LOCATION "unused_imported_shared${CMAKE_SHARED_LIBRARY_SUFFIX}"
 )

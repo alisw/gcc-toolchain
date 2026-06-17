@@ -1,8 +1,6 @@
 
 include(RunCMake)
 
-cmake_policy(SET CMP0054 NEW)
-
 macro(run_cmake_target test subtest target)
   set(RunCMake_TEST_BINARY_DIR ${RunCMake_BINARY_DIR}/${test}-build)
   set(RunCMake_TEST_NO_CLEAN 1)
@@ -135,4 +133,5 @@ if ((CMAKE_SYSTEM_NAME STREQUAL "Windows" AND
     OR CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS|tvOS|visionOS|watchOS|Linux|BSD|MSYS|CYGWIN")
   run_cmake(feature-WHOLE_ARCHIVE)
   run_cmake_target(feature-WHOLE_ARCHIVE link-exe main)
+  run_cmake_target(feature-WHOLE_ARCHIVE circular-exe main_circular)
 endif()

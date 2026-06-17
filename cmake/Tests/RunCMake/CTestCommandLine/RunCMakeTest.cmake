@@ -1,7 +1,42 @@
 include(RunCMake)
 include(RunCTest)
+cmake_policy(SET CMP0140 NEW)
+
+# Do not use any proxy for lookup of an invalid site.
+# DNS failure by proxy looks different than DNS failure without proxy.
+set(ENV{no_proxy} "$ENV{no_proxy},badhostname.invalid")
 
 set(RunCMake_TEST_TIMEOUT 60)
+
+block()
+  set(RunCMake_TEST_BINARY_DIR ${RunCMake_BINARY_DIR}/FailureLabels)
+  set(RunCMake_TEST_NO_CLEAN 1)
+  file(REMOVE_RECURSE "${RunCMake_TEST_BINARY_DIR}")
+  file(MAKE_DIRECTORY "${RunCMake_TEST_BINARY_DIR}")
+  file(WRITE "${RunCMake_TEST_BINARY_DIR}/CTestTestfile.cmake" "
+add_test(ShortName \"${CMAKE_COMMAND}\" -E false)
+set_tests_properties(ShortName PROPERTIES LABELS \"Label1;Label2\")
+add_test(LongerName \"${CMAKE_COMMAND}\" -E false)
+set_tests_properties(LongerName PROPERTIES LABELS \"Label3\")
+add_test(Long_Test_Name_That_Is_Over_Fifty_Characters_In_Length \"${CMAKE_COMMAND}\" -E false)
+set_tests_properties(Long_Test_Name_That_Is_Over_Fifty_Characters_In_Length PROPERTIES LABELS \"Label4\")
+")
+  run_cmake_command(FailureLabels ${CMAKE_CTEST_COMMAND})
+endblock()
+
+block()
+  set(RunCMake_TEST_BINARY_DIR ${RunCMake_BINARY_DIR}/PrintLabels)
+  set(RunCMake_TEST_NO_CLEAN 1)
+  file(REMOVE_RECURSE "${RunCMake_TEST_BINARY_DIR}")
+  file(MAKE_DIRECTORY "${RunCMake_TEST_BINARY_DIR}")
+  file(WRITE "${RunCMake_TEST_BINARY_DIR}/CTestTestfile.cmake" "
+add_test(A \"${CMAKE_COMMAND}\" -E true)
+set_tests_properties(A PROPERTIES LABELS \"Label1;Label2\")
+add_test(B \"${CMAKE_COMMAND}\" -E true)
+set_tests_properties(B PROPERTIES LABELS \"Label3\")
+")
+  run_cmake_command(PrintLabels ${CMAKE_CTEST_COMMAND} --print-labels)
+endblock()
 
 run_cmake_command(repeat-opt-bad1
   ${CMAKE_CTEST_COMMAND} --repeat until-pass
@@ -321,6 +356,9 @@ function(run_TestOutputSize)
   set(RunCMake_TEST_NO_CLEAN 1)
   file(REMOVE_RECURSE "${RunCMake_TEST_BINARY_DIR}")
   file(MAKE_DIRECTORY "${RunCMake_TEST_BINARY_DIR}")
+  file(WRITE "${RunCMake_TEST_BINARY_DIR}/DartConfiguration.tcl" "
+BuildDirectory: ${RunCMake_TEST_BINARY_DIR}
+")
   file(WRITE "${RunCMake_TEST_BINARY_DIR}/CTestTestfile.cmake" "
   add_test(PassingTest \"${CMAKE_COMMAND}\" -E echo PassingTestOutput)
   add_test(FailingTest \"${CMAKE_COMMAND}\" -E no_such_command)
@@ -341,6 +379,9 @@ function(run_TestOutputTruncation mode expected)
   set(TRUNCATED_OUTPUT ${expected})  # used in TestOutputTruncation-check.cmake
   file(REMOVE_RECURSE "${RunCMake_TEST_BINARY_DIR}")
   file(MAKE_DIRECTORY "${RunCMake_TEST_BINARY_DIR}")
+  file(WRITE "${RunCMake_TEST_BINARY_DIR}/DartConfiguration.tcl" "
+BuildDirectory: ${RunCMake_TEST_BINARY_DIR}
+")
   file(WRITE "${RunCMake_TEST_BINARY_DIR}/CTestTestfile.cmake" "
   add_test(Truncation_${mode} \"${CMAKE_COMMAND}\" -E echo 123456789)
 ")
@@ -409,6 +450,20 @@ function(show_only_json_check_python v)
   set(json_file "${RunCMake_TEST_BINARY_DIR}/ctest.json")
   file(WRITE "${json_file}" "${actual_stdout}")
   set(actual_stdout "" PARENT_SCOPE)
+
+  if(CMake_TEST_JSON_SCHEMA)
+    execute_process(
+      COMMAND ${Python_EXECUTABLE} "${RunCMake_SOURCE_DIR}/show-only_json_validate_schema.py" "${json_file}"
+      RESULT_VARIABLE result
+      OUTPUT_VARIABLE output
+      ERROR_VARIABLE output
+    )
+    if(NOT result STREQUAL 0)
+      string(REPLACE "\n" "\n  " output "${output}")
+      string(APPEND RunCMake_TEST_FAILED "Failed to validate version ${v} JSON schema for file: ${file}\nOutput:\n${output}\n")
+    endif()
+  endif()
+
   execute_process(
     COMMAND ${Python_EXECUTABLE} "${RunCMake_SOURCE_DIR}/show-only_json-v${v}_check.py" "${json_file}"
     RESULT_VARIABLE result
@@ -417,8 +472,9 @@ function(show_only_json_check_python v)
     )
   if(NOT result EQUAL 0)
     string(REPLACE "\n" "\n  " output "  ${output}")
-    set(RunCMake_TEST_FAILED "Unexpected output:\n${output}" PARENT_SCOPE)
+    string(APPEND RunCMake_TEST_FAILED "Unexpected output:\n${output}" PARENT_SCOPE)
   endif()
+  return(PROPAGATE RunCMake_TEST_FAILED)
 endfunction()
 
 function(run_ShowOnly)
@@ -429,10 +485,16 @@ function(run_ShowOnly)
   file(WRITE "${RunCMake_TEST_BINARY_DIR}/CTestTestfile.cmake" "
     add_test(ShowOnly \"${CMAKE_COMMAND}\" -E echo)
     set_tests_properties(ShowOnly PROPERTIES
-      WILL_FAIL true
+      GENERATED_RESOURCE_SPEC_FILE \"/Path/Does/Not/Exist\"
       RESOURCE_GROUPS \"2,threads:2,gpus:4;gpus:2,threads:4\"
       REQUIRED_FILES RequiredFileDoesNotExist
       _BACKTRACE_TRIPLES \"file1;1;add_test;file0;;\"
+      TIMEOUT 1234.5
+      TIMEOUT_SIGNAL_NAME SIGINT
+      TIMEOUT_SIGNAL_GRACE_PERIOD 2.1
+      WILL_FAIL true
+      USER_DEFINED_A \"User defined property A value\"
+      USER_DEFINED_B \"User defined property B value\"
       )
     add_test(ShowOnlyNotAvailable NOT_AVAILABLE)
 ")
@@ -482,8 +544,40 @@ run_NoTests()
 # Check the configuration type variable is passed
 run_ctest(check-configuration-type)
 
+function(run_FailDrop case)
+  set(RunCMake_TEST_BINARY_DIR ${RunCMake_BINARY_DIR}/FailDrop-${case}-build)
+  run_cmake_with_options(FailDrop-${case} ${ARGN})
+  unset(ENV{CMAKE_TLS_VERIFY}) # Test that env variable is saved in ctest config file.
+  unset(ENV{CMAKE_TLS_VERSION}) # Test that env variable is saved in ctest config file.
+  set(RunCMake_TEST_NO_CLEAN 1)
+  run_cmake_command(FailDrop-${case}-ctest
+    ${CMAKE_CTEST_COMMAND} -M Experimental -T Submit -VV
+    )
+endfunction()
+run_FailDrop(TLSVersion-1.1 -DCTEST_TLS_VERSION=1.1)
+run_FailDrop(TLSVersion-1.1-cmake -DCMAKE_TLS_VERSION=1.1) # Test fallback to CMake variable.
+set(ENV{CMAKE_TLS_VERSION} 1.1) # Test fallback to env variable.
+run_FailDrop(TLSVersion-1.1-env)
+unset(ENV{CMAKE_TLS_VERSION})
+run_FailDrop(TLSVerify-ON -DCTEST_TLS_VERIFY=ON)
+run_FailDrop(TLSVerify-ON-cmake -DCMAKE_TLS_VERIFY=ON) # Test fallback to CMake variable.
+set(ENV{CMAKE_TLS_VERIFY} 1) # Test fallback to env variable.
+run_FailDrop(TLSVerify-ON-env)
+unset(ENV{CMAKE_TLS_VERIFY})
+run_FailDrop(TLSVerify-OFF -DCTEST_TLS_VERIFY=OFF)
+run_FailDrop(TLSVerify-OFF-cmake -DCMAKE_TLS_VERIFY=OFF) # Test fallback to CMake variable.
+set(ENV{CMAKE_TLS_VERIFY} 0) # Test fallback to env variable.
+run_FailDrop(TLSVerify-OFF-env)
+unset(ENV{CMAKE_TLS_VERIFY})
+
+run_cmake_command(EmptyDirTest-ctest
+  ${CMAKE_CTEST_COMMAND} -C Debug -M Experimental -T Test
+  )
+
 run_cmake_command(EmptyDirCoverage-ctest
-  ${CMAKE_CTEST_COMMAND} -C Debug -M Experimental -T Coverage
+  # Isolate this test from any surrounding coverage tool.
+  ${CMAKE_COMMAND} -E env COVNOSAVE=1 --unset=COVAPPDATADIR --unset=COVFILE
+    ${CMAKE_CTEST_COMMAND} -C Debug -M Experimental -T Coverage
   )
 
 function(run_MemCheckSan case opts)
@@ -510,7 +604,7 @@ run_MemCheckSan(UndefinedBehavior "simulate_sanitizer=1")
 run_cmake_command(test-dir-invalid-arg ${CMAKE_CTEST_COMMAND} --test-dir)
 run_cmake_command(test-dir-non-existing-dir ${CMAKE_CTEST_COMMAND} --test-dir non-existing-dir)
 
-function(run_testDir)
+function(run_testDir testName testPreset)
   set(RunCMake_TEST_BINARY_DIR ${RunCMake_BINARY_DIR}/testDir)
   set(RunCMake_TEST_NO_CLEAN 1)
   file(REMOVE_RECURSE "${RunCMake_TEST_BINARY_DIR}")
@@ -520,9 +614,16 @@ function(run_testDir)
   add_test(Test1 \"${CMAKE_COMMAND}\" -E true)
   add_test(Test2 \"${CMAKE_COMMAND}\" -E true)
   ")
-  run_cmake_command(testDir ${CMAKE_CTEST_COMMAND} --test-dir "${RunCMake_TEST_BINARY_DIR}/sub")
+  if (testPreset)
+    set(presetCommandLine --preset=default)
+    configure_file(
+      ${RunCMake_SOURCE_DIR}/testDir-presets.json.in
+      ${RunCMake_TEST_BINARY_DIR}/CMakePresets.json)
+  endif()
+  run_cmake_command(${testName} ${CMAKE_CTEST_COMMAND} --test-dir "${RunCMake_TEST_BINARY_DIR}/sub" ${presetCommandLine})
 endfunction()
-run_testDir()
+run_testDir(testDir 0)
+run_testDir(testDir-preset 1)
 
 # Test --output-junit
 function(run_output_junit)
@@ -542,6 +643,23 @@ set_tests_properties(test5 PROPERTIES  SKIP_REGULAR_EXPRESSION \"please skip\")
   run_cmake_command(output-junit ${CMAKE_CTEST_COMMAND} --output-junit "${RunCMake_TEST_BINARY_DIR}/junit.xml")
 endfunction()
 run_output_junit()
+
+run_cmake_command(invalid-ctest-argument ${CMAKE_CTEST_COMMAND} --not-a-valid-ctest-argument)
+
+block()
+  set(RunCMake_TEST_BINARY_DIR ${RunCMake_BINARY_DIR}/TimeoutDefault)
+  set(RunCMake_TEST_NO_CLEAN 1)
+  file(REMOVE_RECURSE "${RunCMake_TEST_BINARY_DIR}")
+  file(MAKE_DIRECTORY "${RunCMake_TEST_BINARY_DIR}")
+  file(WRITE "${RunCMake_TEST_BINARY_DIR}/DartConfiguration.tcl" "
+BuildDirectory: ${RunCMake_TEST_BINARY_DIR}
+")
+  file(WRITE "${RunCMake_TEST_BINARY_DIR}/CTestTestfile.cmake" "
+add_test(test1 \"${CMAKE_COMMAND}\" -E true)
+")
+  run_cmake_command(TimeoutDefault ${CMAKE_CTEST_COMMAND} -V)
+  run_cmake_command(TimeoutDefault-T-Test ${CMAKE_CTEST_COMMAND} -V -T Test)
+endblock()
 
 if(WIN32)
   block()
@@ -571,3 +689,17 @@ set_tests_properties(test1 PROPERTIES TIMEOUT_SIGNAL_GRACE_PERIOD 1000)
     run_cmake_command(TimeoutSignalBad ${CMAKE_CTEST_COMMAND})
   endblock()
 endif()
+
+block()
+  set(RunCMake_TEST_BINARY_DIR ${RunCMake_BINARY_DIR}/ScheduleRandomSeed)
+  set(RunCMake_TEST_NO_CLEAN 1)
+  file(REMOVE_RECURSE "${RunCMake_TEST_BINARY_DIR}")
+  file(MAKE_DIRECTORY "${RunCMake_TEST_BINARY_DIR}")
+  file(WRITE "${RunCMake_TEST_BINARY_DIR}/CTestTestfile.cmake" "
+foreach(i RANGE 1 5)
+  add_test(test\${i} \"${CMAKE_COMMAND}\" -E true)
+endforeach()
+")
+  run_cmake_command(ScheduleRandomSeed1 ${CMAKE_CTEST_COMMAND} --schedule-random --schedule-random-seed 42)
+  run_cmake_command(ScheduleRandomSeed2 ${CMAKE_CTEST_COMMAND} --schedule-random --schedule-random-seed 42)
+endblock()

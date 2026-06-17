@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 include(Compiler/Fujitsu)
 __compiler_fujitsu(CXX)
 
@@ -42,6 +42,8 @@ if(CMAKE_CXX_COMPILER_VERSION GREATER_EQUAL 4)
 
   set(CMAKE_CXX17_STANDARD_COMPILE_OPTION  -std=c++17)
   set(CMAKE_CXX17_EXTENSION_COMPILE_OPTION -std=gnu++17)
+
+  set(CMAKE_CXX_STANDARD_LATEST 17)
 endif()
 
 __compiler_check_default_language_standard(CXX 4 14)

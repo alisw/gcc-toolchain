@@ -95,6 +95,35 @@ bug20200208 (void)
 #include "data_check.tpl"
 #include "tgeneric.tpl"
 
+static void
+check_divby0_exc (void)
+{
+  mpc_t z, w;
+  struct {
+    double re, im;
+  } data[] = {{+0.0, +0.0},
+              {+0.0, -0.0},
+              {-0.0, +0.0},
+              {-0.0, -0.0}};
+
+  mpc_init2 (z, 53);
+  mpc_init2 (w, 53);
+  mpc_set_d_d (w, +1.0, 0.0, MPC_RNDNN);
+  for (size_t i = 0; i < 4; i++) {
+    mpc_set_d_d (z, data[i].re, data[i].im, MPC_RNDNN);
+    mpfr_clear_flags ();
+    mpc_pow (z, z, w, MPC_RNDNN);
+    if (!mpfr_divby0_p ()) {
+      printf ("Missing division-by-zero exception for (%la,%la)\n",
+              data[i].re, data[i].im);
+      exit (1);
+    }
+  }
+  mpfr_clear_flags ();
+  mpc_clear (z);
+  mpc_clear (w);
+}
+
 int
 main (void)
 {
@@ -103,6 +132,8 @@ main (void)
   bug20200208 ();
 
   reuse_bug ();
+
+  check_divby0_exc ();
 
   data_check_template ("pow.dsc", "pow.dat");
 

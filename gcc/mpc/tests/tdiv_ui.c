@@ -27,10 +27,29 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 
 #include "tgeneric.tpl"
 
+static void
+check_divby0_exc (void)
+{
+  mpc_t z;
+
+  mpc_init2 (z, 53);
+  mpc_set_d_d (z, 1.0, 0.0, MPC_RNDNN);
+  mpfr_clear_flags ();
+  mpc_div_ui (z, z, 0, MPC_RNDNN);
+  if (!mpfr_divby0_p ()) {
+    printf ("Missing division-by-zero exception\n");
+    exit (1);
+  }
+  mpfr_clear_flags ();
+  mpc_clear (z);
+}
+
 int
 main (void)
 {
   test_start ();
+
+  check_divby0_exc ();
 
   tgeneric_template ("div_ui.dsc", 2, 1024, 7, -1);
 

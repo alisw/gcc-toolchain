@@ -1,6 +1,6 @@
 /* mpc_acos -- arccosine of a complex number.
 
-Copyright (C) 2009, 2010, 2011, 2012, 2020 INRIA
+Copyright (C) 2009, 2010, 2011, 2012, 2020, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -26,6 +26,7 @@ mpc_acos (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
 {
   int inex_re, inex_im, inex, loop = 0;
   mpfr_prec_t p_re, p_im, p;
+  mpfr_exp_t ex, ey;
   mpc_t z1;
   mpfr_t pi_over_2;
   mpfr_exp_t e1, e2;
@@ -180,6 +181,15 @@ mpc_acos (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
   p_re = mpfr_get_prec (mpc_realref(rop));
   p_im = mpfr_get_prec (mpc_imagref(rop));
   p = p_re;
+
+  /* when x/y is large (say 2^k), then the real part of asin(x+iy)
+     is near Pi/2, thus we add to p the difference between the
+     exponents of x and y */
+  ex = mpfr_get_exp (mpc_realref (op));
+  ey = mpfr_get_exp (mpc_imagref (op));
+  if (ex > ey)
+    p += ex - ey;
+
   mpc_init3 (z1, p, p_im); /* we round directly the imaginary part to p_im,
                               with rounding mode opposite to rnd_im */
   rnd_im = MPC_RND_IM(rnd);
@@ -196,9 +206,8 @@ mpc_acos (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
   mpfr_init2 (pi_over_2, p);
   for (;;)
     {
-      loop ++;
+      MPC_LOOP_NEXT(loop, op, rop);
       p += (loop <= 2) ? mpc_ceil_log2 (p) + 3 : p / 2;
-
       mpfr_set_prec (mpc_realref(z1), p);
       mpfr_set_prec (pi_over_2, p);
 

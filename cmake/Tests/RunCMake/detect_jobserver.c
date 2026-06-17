@@ -22,7 +22,7 @@
 // jobserver flags.
 char* jobserver_auth(char* message)
 {
-  const char* jobserver_flags[3] = { "--jobserver-auth=", "--jobserver-fds=",
+  char const* jobserver_flags[3] = { "--jobserver-auth=", "--jobserver-fds=",
                                      "-J" };
   char* start = NULL;
   char* end;
@@ -71,7 +71,7 @@ char* jobserver_auth(char* message)
 #if defined(_WIN32)
 #  include <windows.h>
 
-int windows_semaphore(const char* semaphore, char* message)
+int windows_semaphore(char const* semaphore, char* message)
 {
   // Open the semaphore
   HANDLE hSemaphore = OpenSemaphoreA(SEMAPHORE_ALL_ACCESS, FALSE, semaphore);
@@ -114,11 +114,10 @@ int test_fd(int read_fd, int write_fd, char* message)
   return 0;
 }
 
-int posix(const char* jobserver, char* message)
+int posix(char const* jobserver, char* message)
 {
   int read_fd;
   int write_fd;
-  const char* path;
 
   // First try to parse as "R,W" file descriptors
   if (sscanf(jobserver, "%d,%d", &read_fd, &write_fd) == 2) {
@@ -127,7 +126,7 @@ int posix(const char* jobserver, char* message)
 
   // Then try to parse as "fifo:PATH"
   if (strncmp(jobserver, "fifo:", 5) == 0) {
-    path = jobserver + 5;
+    char const* path = jobserver + 5;
     read_fd = open(path, O_RDONLY);
     write_fd = open(path, O_WRONLY);
     return test_fd(read_fd, write_fd, message);
@@ -163,6 +162,7 @@ int main(int argc, char** argv)
 
   jobserver = jobserver_auth(message);
   if (jobserver == NULL) {
+    fclose(fp);
     fprintf(stderr, "%s\n", message);
     return 1;
   }
@@ -172,6 +172,7 @@ int main(int argc, char** argv)
 #else
   result = posix(jobserver, message);
 #endif
+  fclose(fp);
   free(jobserver);
   message[MAX_MESSAGE_LENGTH] = '\0';
 

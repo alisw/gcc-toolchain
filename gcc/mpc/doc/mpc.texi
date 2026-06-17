@@ -12,7 +12,7 @@
 This manual is for GNU MPC, a library for multiple precision complex arithmetic,
 version @value{VERSION} of @value{UPDATED-MONTH}.
 
-Copyright @copyright{} 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2016, 2018, 2020, 2022 INRIA
+Copyright @copyright{} 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2016, 2018, 2020, 2022, 2023, 2024, 2025, 2026 INRIA
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -120,7 +120,7 @@ along with this program. If not, see @uref{http://www.gnu.org/licenses/}.
 
 GNU MPC is a portable library written in C for arbitrary precision arithmetic
 on complex numbers providing correct rounding. It implements a multiprecision
-equivalent of the C99 standard.
+equivalent of the C standard.
 It builds upon the GNU MP and the GNU MPFR libraries.
 
 @section How to use this Manual
@@ -337,6 +337,8 @@ by adding the line
 @example
    #include "mpc.h"
 @end example
+To use, for instance, input and output functions, this line should come
+after the inclusion of standard C headers such as @file{stdio.h}.
 
 @section Nomenclature and Types
 
@@ -345,14 +347,21 @@ by adding the line
 @tindex mpc_ptr
 @tindex mpc_srcptr
 @noindent
-@dfn{Complex number} or @dfn{Complex} for short, is a pair of two
-arbitrary precision floating-point numbers (for the real and imaginary parts).
+A @dfn{complex number} is a pair of two arbitrary precision floating-point
+numbers of type @code{mpfr_t} (for the real and imaginary parts).
 The C data type for such objects is @code{mpc_t}.
+As for GNU MP and GNU MPFR, a variable of type @code{mpc_t} is in fact
+an array with one @code{struct} element, which is allocated on the stack
+(while the mantissas of its real and imaginary parts will eventually be
+allocated on the heap, usually by a call to
+@code{mpc_init2}, see @ref{Initializing Complex Numbers}).
+The type @code{mpc_ptr} represents a pointer to the corresponding
+@code{struct}, while @code{mpc_srcptr} represents a constant pointer.
 
 @cindex Precision
 @tindex mpfr_prec_t
 @noindent
-The @dfn{Precision} is the number of bits used to represent the mantissa
+The @dfn{precision} is the number of bits used to represent the mantissa
 of the real and imaginary parts;
 the corresponding C data type is @code{mpfr_prec_t}.
 For more details on the allowed precision range,
@@ -362,6 +371,9 @@ For more details on the allowed precision range,
 @ifnotinfo
 see Section ``Nomenclature and Types'' in @cite{GNU MPFR}.
 @end ifnotinfo
+While for most applications it should be appropriate to choose the same
+precision for the real and imaginary parts, it is possible to create
+numbers with different precisions for the two parts.
 
 @cindex Rounding Mode
 @tindex mpc_rnd_t
@@ -373,11 +385,19 @@ the corresponding C data type is @code{mpc_rnd_t}.
 A complex rounding mode is a pair of two rounding modes: one for the real
 part, one for the imaginary part.
 
+
 @section Function Classes
 
-There is only one class of functions in the GNU MPC library, namely functions for
-complex arithmetic. The function names begin with @code{mpc_}. The
-associated type is @code{mpc_t}.
+The main class of functions in the GNU MPC library consists of functions
+for complex arithmetic. Their names begin with @code{mpc_}, and they
+operate (mainly) on arguments of type @code{mpc_t} (or @code{mpc_ptr}
+and @code{mpc_srcptr} to be more precise; for the sake of simplicity,
+we will use @code{mpc_t} in the following, the interested reader may
+consult the include file @file{mpc.h} for full details).
+
+A new class of experimental functions, prefixed with @code{mpcb_}, operates
+on complex balls, and functions starting with @code{mpcr_} operate on their
+corresponding radii, see @ref{Ball Arithmetic}.
 
 
 @section GNU MPC Variable Conventions
@@ -425,11 +445,63 @@ and the second one for the imaginary part.
 For example @code{MPC_RNDZU} indicates to round the real part towards zero,
 and the imaginary part towards plus infinity.
 
-The @samp{round to nearest} mode works as in the IEEE P754 standard: in case
+The @samp{round to nearest} mode works as in the IEEE 754 standard: in case
 the number to be rounded lies exactly in the middle of two representable
 numbers, it is rounded to the one with the least significant bit set to zero.
 For example, the number 5, which is represented by (101) in binary, is rounded
 to (100)=4 with a precision of two bits, and not to (110)=6.
+
+A useful macro is @code{MPC_RND(r1,r2)}, which from two MPFR rounding
+modes @code{r1} for the real part and @code{r2} for the imaginary part,
+constructs the corresponding MPC rounding mode.
+Similarly, for an MPC rounding mode @code{r}, @code{MPC_RND_RE(r)} and
+@code{MPC_RND_IM(r)} yield the corresponding MPFR rounding modes for the
+real and imaginary part, respectively.
+
+
+@section Semantics
+
+Finite precision complex floating-point numbers are in reality elements
+of Q@math{(i)}; more precisely, their real and imaginary parts are rational
+numbers with denominator a power of 2 (such a rational number is also called
+a @dfn{dyadic rational}, and we may call its complex counterpart a
+@dfn{dyadic number}). All inputs to functions are thus considered exact,
+and results of function evaluations are mathematically defined as complex
+numbers. We consider their real and imaginary parts separately,
+that is, a function with @math{n} complex inputs and one complex result
+is identified with a function with @math{2n} real inputs and two real
+results.
+If such a result is itself a dyadic number representable at the
+precision of the output variable, then GNU MPC assigns this exact result;
+otherwise the mathematical result falls between two dyadic numbers that are
+representable in the target precision, and GNU MPC assigns one of these
+numbers to the output variable according to the rounding mode.
+Notice that this uniquely defines the expected output of any function.
+Since every variable carries its own precision (more precisely, two
+precisions, for the real and the imaginary part), function calls are made
+without an additional argument for the target precision; the rounding mode,
+however, needs in general to be given as an additional argument.
+Notice that in the case of an inexact output, there is a rounding error
+of at most the difference between two consecutive representable dyadic
+numbers. When such an output is used as an input to another function,
+it is again considered exact, and the GNU MPC library does not track how
+rounding errors propagate through successive function applications
+(unless ball arithmetic is used).
+
+This semantics is a generalization of the IEEE-754 standard (also included
+into recent C standards) for real floating-point numbers of fixed precision
+to complex floating-point numbers of arbitrary precision.
+The goal of the GNU MPC library is to provide operations with complex
+numbers that are well-defined with predictable results.
+
+Since the real and imaginary parts of complex numbers are @code{mpfr_t},
+besides @dfn{finite} values, they may also contain @dfn{special} values from
+the GNU MPFR library such as NaN and (signed) infinities; additionally
+zeroes also have signs.
+Since GNU MPFR does not distinguish between quiet and signaling NaN,
+this holds for GNU MPC too.
+These are handled analogously to GNU MPFR; for special cases,
+see @ref{Special Values}.
 
 
 @anchor{return-value}
@@ -438,8 +510,8 @@ to (100)=4 with a precision of two bits, and not to (110)=6.
 Most GNU MPC functions have a return value of type @code{int}, which is used
 to indicate the position of the rounded real and imaginary parts with respect
 to the exact (infinite precision) values.
-If this integer is @code{i}, the macros @code{MPC_INEX_RE(i)} and
-@code{MPC_INEX_IM(i)} give 0 if the corresponding rounded value is exact,
+If this integer is @code{k}, the macros @code{MPC_INEX_RE(k)} and
+@code{MPC_INEX_IM(k)} give 0 if the corresponding rounded value is exact,
 a negative value if the rounded value is less than the exact one,
 and a positive value if it is greater than the exact one.
 Similarly, functions computing a result of type @code{mpfr_t}
@@ -448,22 +520,101 @@ whether the rounded value is the same, larger or smaller then
 the exact result.
 
 Some functions, such as @code{mpc_sin_cos}, compute two complex results;
-the macros @code{MPC_INEX1(i)} and @code{MPC_INEX2(i)}, applied to
-the return value @code{i} of such a function, yield the exactness value
-corresponding to the first or the second computed value, respectively.
+the macros @code{MPC_INEX1(k)} and @code{MPC_INEX2(k)}, applied to
+the return value @code{k} of such a function, yield the exactness value
+corresponding to the first and the second computed value, respectively.
 
 
-@section Branch Cuts And Special Values
+@node Special Values
+@section Special Values, Signed Zeroes and Branch Cuts
 
-Some complex functions have branch cuts, across which the function is
-discontinous. In GNU MPC, the branch cuts chosen are the same as those
-specified for the corresponding functions in the ISO C99 standard.
+When evaluating a function in an argument whose real or imaginary part is
+a special value (that is NaN or a (signed) infinity) or a (signed) zero,
+our goal is to compute the same result as specified for the corresponding
+function in the C standard.
 
-Likewise, when evaluated at a point whose real or imaginary part is
-either infinite or a NaN or a signed zero, a function returns the same
-value as those specified for the corresponding function in the ISO C99
-standard.
+More precisely, we implement the following principles for real numbers
+(which appear to be consistent with the C standard).
+The value @math{+\infty} is considered as the limit of sequences
+of positive numbers tending to infinity, @math{-\infty} as the limit of
+sequences of negative numbers with absolute values tending to infinity.
+To handle division by infinities it is then natural to also consider
+signed zeroes as limits of sequences, namely @math{+0} and @math{-0} as the
+limits of sequences of positive resp. negative numbers with absolute value
+tending to zero, so that we obtain for the division of two real numbers
+that @math{1/+\infty=+0}, @math{1/-\infty=-0}, @math{1/+0=+\infty} and
+@math{1/-0=-\infty}.
+On the other hand, @math{+0/+0=}NaN and @math{+\infty/+\infty=}NaN,
+since any value is possible depending on how fast the dividend and
+divisor sequences, respectively, tend to zero or infinity.
+There is only one, unsigned, NaN value representing @dfn{not a number};
+and any formula involving a NaN results in a NaN.
 
+A peculiarity arises when adding signed zeroes; clearly,
+@math{(+0)+(+0)=+0} and @math{(-0)+(-0)=-0}, but what should
+the result of @math{(+0)+(-0)} be? If each operand is replaced by
+a sequence of positive resp. negative real numbers tending to zero,
+then the sequence of their sums may or may not have a common sign
+(it could even be alternating between positive and negative).
+A logical result would be an unsigned zero, but this is not foreseen
+by the IEEE-754 standard since the binary format reserves one bit for
+the sign, so that every number has either a plus or a minus sign
+(which is ignored for NaN).
+So in case the sign of a resulting zero cannot be determined, the
+result is arbitrarily fixed to be @math{+0}.
+One could imagine a fourth type of zero, the exact zero; such a number
+is also not foreseen by the standard, so that any zero input to a
+function is considered signed, and as for other numbers, ``inexact''
+output (here, an arbitrarily assigned plus sign) is considered
+``exact'' as an input to a subsequent function call.
+Beware that although @math{+0} and @math{-0} differ in sign, they
+nevertheless compare as equal; so equal function inputs may lead to
+differing results!
+
+Since complex numbers are given through their real and imaginary parts,
+there are in fact four different complex zeroes depending on the signs
+(all of which compare as equal).
+
+Signs in parts of complex numbers become meaningful when branch cuts come
+into play. The complex logarithm, for instance, is defined up to integer
+multiples of @math{2 \pi i}, since exp@math{(2 \pi i) = 1}. More precisely,
+when trying to define the logarithm as a continuous function, one walk
+on a circle around the origin leads to values that differ by
+@math{2 \pi i}. So there is necessarily a discontinuity, which is placed
+along a @dfn{branch cut}. In GNU MPC, the chosen branch cuts are the same
+as those specified for the corresponding functions in the C standard.
+For instance, the complex logarithm has a branch cut along the negative
+real axis (which in particular leads to results coinciding with GNU MPFR
+on the positive real axis). Since @math{-1+0i} can be seen as above the
+branch cut, but @math{-1-0i} can be seen as below the branch cut, we
+compute the exact results log@math{(-1+0i)=+0+\pi i} and
+log@math{(-1-0i)=+0-\pi i} (and round to a representable dyadic number),
+where the imaginary parts differ by @math{2 \pi i} and the signs of the
+real parts cannot be determined and are thus set to plus.
+(In fact extending the preceding arguments, we can also consider the
+exact finite value -1 as the limit of a sequence tending to -1;
+then the real part of the result tends to zero and is positive
+when -1 is approached from below on the real axis and negative when
+-1 is approached from above on the real axis.)
+
+This semantics becomes fuzzy when mixed operations between complex
+and real numbers enter the game. Two different approaches stand out.
+First of all, a real value may first be promoted to a complex value,
+and then the previous rules apply. For instance, with this approach,
+@math{(1-0i)+(+0)=(1-0i)+(+0+0i)=1+0i}, where the sign of the imaginary
+part of the result cannot be determined and is thus set to plus.
+Alternatively, the zero imaginary part of the real number may be
+interpreted as an exact zero; then @math{(1-0i)+(+0)=1-0i}.
+The C standard appears to follow the second approach, which we thus also
+adopt in MPC.
+
+
+@section Exceptions
+
+This version of GNU MPC does not support exceptions (invalid, division by
+zero, overflow, underflow, inexact).
+A future version might support them, through the GNU MPFR mechanism for
+supporting exceptions.
 
 @node Complex Functions
 @chapter Complex Functions
@@ -482,7 +633,7 @@ operation exactly (with ``infinite precision''), and round the result to
 the destination variable precision with the given rounding mode.
 
 The GNU MPC complex functions are intended to be a smooth extension
-of the IEEE P754 arithmetic. The results obtained on one
+of the IEEE 754 arithmetic. The results obtained on one
 computer should not differ from the results obtained on a computer with a
 different word size.
 
@@ -593,8 +744,8 @@ with the given rounding mode @var{rnd}.
 @deftypefunx int mpc_set_sj (mpc_t @var{rop}, intmax_t @var{op}, mpc_rnd_t @var{rnd})
 @deftypefunx int mpc_set_d (mpc_t @var{rop}, double @var{op}, mpc_rnd_t @var{rnd})
 @deftypefunx int mpc_set_ld (mpc_t @var{rop}, long double @var{op}, mpc_rnd_t @var{rnd})
-@deftypefunx int mpc_set_dc (mpc_t @var{rop}, double _Complex @var{op}, mpc_rnd_t @var{rnd})
-@deftypefunx int mpc_set_ldc (mpc_t @var{rop}, long double _Complex @var{op}, mpc_rnd_t @var{rnd})
+@deftypefunx int mpc_set_dc (mpc_t @var{rop}, double complex @var{op}, mpc_rnd_t @var{rnd})
+@deftypefunx int mpc_set_ldc (mpc_t @var{rop}, long double complex @var{op}, mpc_rnd_t @var{rnd})
 @deftypefunx int mpc_set_z (mpc_t @var{rop}, const mpz_t @var{op} mpc_rnd_t @var{rnd})
 @deftypefunx int mpc_set_q (mpc_t @var{rop}, const mpq_t @var{op} mpc_rnd_t @var{rnd})
 @deftypefunx int mpc_set_f (mpc_t @var{rop}, const mpf_t @var{op} mpc_rnd_t @var{rnd})
@@ -609,6 +760,10 @@ For @code{mpc_set_d}, be careful that the input number @var{op} may not be
 exactly representable as a double-precision number (this happens for 0.1 for
 instance), in which case it is first rounded by the C compiler to a
 double-precision number, and then only to a complex number.
+With the Microsoft compiler, which does not provide the standard type
+@code{double complex} or @code{long double complex}, replace
+@code{double _Complex} by @code{_Dcomplex} and
+@code{long double _Complex} by @code{_Lcomplex}.
 @end deftypefun
 
 @deftypefun int mpc_set_ui_ui (mpc_t @var{rop}, unsigned long int @var{op1}, unsigned long int @var{op2}, mpc_rnd_t @var{rnd})
@@ -653,9 +808,13 @@ third auxiliary variable.
 The following functions are available only if @code{<complex.h>}
 is included @emph{before} @file{mpc.h}.
 
-@deftypefun double _Complex mpc_get_dc (const mpc_t @var{op}, mpc_rnd_t @var{rnd})
-@deftypefunx {long double _Complex} mpc_get_ldc (mpc_t @var{op}, mpc_rnd_t @var{rnd})
+@deftypefun double complex mpc_get_dc (const mpc_t @var{op}, mpc_rnd_t @var{rnd})
+@deftypefunx {long double complex} mpc_get_ldc (mpc_t @var{op}, mpc_rnd_t @var{rnd})
 Convert @var{op} to a C complex number, using the rounding mode @var{rnd}.
+With the Microsoft compiler, which does not provide the standard type
+@code{double complex} or @code{long double complex}, replace
+@code{double _Complex} by @code{_Dcomplex} and
+@code{long double _Complex} by @code{_Lcomplex}.
 @end deftypefun
 
 
@@ -778,7 +937,7 @@ remaining in the stream).
 The function @code{mpc_strtoc}, on the other hand, may track back
 when reaching the whitespace; it treats the string as the two successive
 complex numbers @code{NaN + i * 0} and @code{13 + i}.
-It is thus recommended to have a whitespace follow each floating point number
+It is thus recommended to have a whitespace follow each floating-point number
 to avoid this problem.
 @end deftypefun
 
@@ -943,6 +1102,9 @@ Set @var{rop} to the dot product of the elements in the arrays @var{op1} and
 @deftypefunx int mpc_ui_div (mpc_t @var{rop}, unsigned long int @var{op1}, const mpc_t @var{op2}, mpc_rnd_t @var{rnd})
 @deftypefunx int mpc_fr_div (mpc_t @var{rop}, const mpfr_t @var{op1}, const mpc_t @var{op2}, mpc_rnd_t @var{rnd})
 Set @var{rop} to @var{op1}/@var{op2} rounded according to @var{rnd}.
+The functions @code{mpc_fr_div} and @code{mpc_ui_div} follow the C standard (draft N3685,
+section 6.5.6, paragraph 9) concerning special values and signed zeroes.
+
 @end deftypefun
 
 @deftypefun int mpc_conj (mpc_t @var{rop}, const mpc_t @var{op}, mpc_rnd_t @var{rnd})
@@ -1004,16 +1166,27 @@ For @code{mpc_pow_d}, @code{mpc_pow_ld}, @code{mpc_pow_si}, @code{mpc_pow_ui},
 the imaginary part of @var{op2} is considered as +0.
 When both @var{op1} and @var{op2} are zero, the result has real part 1,
 and imaginary part 0, with sign being the opposite of that of @var{op2}.
+When both @var{op1} and @var{op2} have real or imaginary part 0, and similarly
+for the result, we use the following rule:
+when we replace both 0 inputs by tiny values of the same sign,
+if the sign of the 0 part in the result does not depend on the relative value
+of these tiny values, we use that sign.
+Otherwise, we fix the zero part in the result to +0.
 @end deftypefun
 
 @deftypefun int mpc_exp (mpc_t @var{rop}, const mpc_t @var{op}, mpc_rnd_t @var{rnd})
-Set @var{rop} to the exponential of @var{op},
+@deftypefunx int mpc_exp10 (mpc_t @var{rop}, const mpc_t @var{op}, mpc_rnd_t @var{rnd})
+@deftypefunx int mpc_exp2 (mpc_t @var{rop}, const mpc_t @var{op}, mpc_rnd_t @var{rnd})
+Set @var{rop} to the natural, base-10 and base-2 exponential of @var{op},
 rounded according to @var{rnd} with the precision of @var{rop}.
+The functions @code{mpc_exp10} and @code{mpc_exp2} currently use a trivial implementation
+calling @code{mpc_pow}.
 @end deftypefun
 
 @deftypefun int mpc_log (mpc_t @var{rop}, const mpc_t @var{op}, mpc_rnd_t @var{rnd})
+@deftypefunx int mpc_log2 (mpc_t @var{rop}, const mpc_t @var{op}, mpc_rnd_t @var{rnd})
 @deftypefunx int mpc_log10 (mpc_t @var{rop}, const mpc_t @var{op}, mpc_rnd_t @var{rnd})
-Set @var{rop} to the natural and base-10 logarithm of @var{op} respectively,
+Set @var{rop} to the natural, base-2 and base-10 logarithm of @var{op} respectively,
 rounded according to @var{rnd} with the precision of @var{rop}.
 The principal branch is chosen, with the branch cut on the negative real axis,
 so that the imaginary part of the result lies in
@@ -1022,6 +1195,13 @@ so that the imaginary part of the result lies in
 @end iftex
 @ifnottex
 ]-Pi , Pi]
+@end ifnottex
+,
+@iftex
+@math{]-\pi/\log(2) , \pi/\log(2)]}
+@end iftex
+@ifnottex
+]-Pi/log(2) , Pi/log(2)]
 @end ifnottex
 and
 @iftex
@@ -1224,7 +1404,7 @@ The approach of using a relative error (or radius) instead of an absolute
 one simplifies error analyses for multiplicative operations (multiplication,
 division, square roots, and the AGM), at the expense of making them more
 complicated for additive operations. It has the major drawback of not being
-able to represent balls centred at 0; in floating point arithmetic, however,
+able to represent balls centred at 0; in floating-point arithmetic, however,
 0 is never reached by rounding, but only through operations with exact
 result, which could be handled at a higher, application level. For more
 discussion on these issues, see the file @code{algorithms.tex}.
@@ -1245,7 +1425,7 @@ struct {
 with the usual trick in the GNU multiprecision libraries of defining the
 main type @code{mpcr_t} as a 1-dimensional array of this struct, and
 variable and constant pointers @code{mpcr_ptr} and @code{mpcr_srcptr}.
-It can contain the special values infinity or zero, or floating point
+It can contain the special values infinity or zero, or floating-point
 numbers encoded as @math{m⋅2@sup{e}} for a positive mantissa
 @math{m} and an arbitrary (usually negative) exponent @math{e}.
 Normalised finite radii use 31 bits for the mantissa, that is,
@@ -1315,8 +1495,10 @@ Otherwise the behaviour is undefined.
 
 @deftypefun void mpcr_out_str (FILE *@var{f}, mpcr_srcptr @var{r})
 Output @var{r} on @var{f}, which may be @code{stdout}.
-Caveat: This function so far serves mainly for debugging purposes, its
-behaviour will probably change in the future.
+The output is enclosed in square brackets; so @code{[0]} stands for the
+radius zero and @code{[@@Inf@@]} for the radius infinity. Other radii are
+printed in the format @code{[mant exp]}, where @code{mant} and @code{exp}
+are the internal fields of the radius structure.
 @end deftypefun
 
 
@@ -1507,6 +1689,13 @@ when using appropriate values for @var{err_re} and @var{err_im}.
 @deftypefun void mpcb_set_ui_ui (mpcb_ptr @var{z}, unsigned long int @var{re}, unsigned long int @var {im}, mpfr_prec_t @var{prec})
 Set @var{z} to a ball with centre @var{re}+I*@var{im} at precision
 @var{prec} or the size of an @code{unsigned long int}, whatever is larger.
+@end deftypefun
+
+
+@deftypefun void mpcb_out_str (FILE *@var{f}, mpcb_srcptr @var{z})
+Output @var{z} on @var{f}, which may be @code{stdout}.
+The format is to output the centre (in round parentheses), followed
+by the radius (in square brackets).
 @end deftypefun
 
 

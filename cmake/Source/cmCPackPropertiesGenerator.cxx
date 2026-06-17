@@ -1,7 +1,6 @@
 #include "cmCPackPropertiesGenerator.h"
 
 #include <map>
-#include <memory>
 #include <ostream>
 
 #include "cmGeneratorExpression.h"
@@ -19,7 +18,7 @@ cmCPackPropertiesGenerator::cmCPackPropertiesGenerator(
 }
 
 void cmCPackPropertiesGenerator::GenerateScriptForConfig(
-  std::ostream& os, const std::string& config, Indent indent)
+  std::ostream& os, std::string const& config, Indent indent)
 {
   std::string const& expandedFileName =
     this->InstalledFile.GetNameExpression().Evaluate(this->LG, config);

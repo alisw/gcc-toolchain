@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -124,6 +124,10 @@ public:
   /// A list of images to be shown on PerformInstallationPage.
   std::vector<std::string> ProductImages;
 
+  /// A list of associated URLs linked to images to be shown on
+  /// PerformInstallationPage.
+  std::vector<std::string> ProductImageUrls;
+
   /// Command executed after the installer is done if the user accepts the
   /// action
   std::string RunProgram;
@@ -154,6 +158,6 @@ public:
   std::string Directory;
 
 protected:
-  void printSkippedOptionWarning(const std::string& optionName,
-                                 const std::string& optionValue);
+  void printSkippedOptionWarning(std::string const& optionName,
+                                 std::string const& optionValue);
 };

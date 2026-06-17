@@ -27,6 +27,8 @@ main (void)
   mpc_t z;
   mpfr_prec_t prec, pr, pi;
 
+  test_start ();
+
   mpc_init2 (z, 1000);
 
   for (prec = 2; prec <= 1000; prec++)
@@ -64,6 +66,8 @@ main (void)
     }
 
   mpc_clear (z);
+
+  test_end ();
 
   return 0;
 }

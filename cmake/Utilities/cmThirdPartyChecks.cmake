@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 # Hard-code third-party try_compile checks where we know the answer.
 
@@ -55,6 +55,7 @@ if(WIN32)
   set(HAVE_EILSEQ 1)
   set(HAVE_ERR_H 0)
   set(HAVE_ERRNO_H 1)
+  set(HAVE_EVENTFD 0)
   set(HAVE_EXT2FS_EXT2_FS_H 0)
   set(HAVE_FCHDIR 0)
   set(HAVE_FCHFLAGS 0)
@@ -211,8 +212,10 @@ if(WIN32)
   set(HAVE_STRUCT_VFSCONF 0)
   set(HAVE_STRUCT_XVFSCONF 0)
   set(HAVE_SYMLINK 0)
+  set(HAVE_SYSCONF 0)
   set(HAVE_SYS_ACL_H 0)
   set(HAVE_SYSCALL_GETRANDOM 0)
+  set(HAVE_SYS_EVENTFD_H 0)
   set(HAVE_SYS_EXTATTR_H 0)
   set(HAVE_SYS_FILIO_H 0)
   set(HAVE_SYS_IOCTL_H 0)
@@ -234,6 +237,8 @@ if(WIN32)
   set(HAVE_SYS_VFS_H 0)
   set(HAVE_SYS_WAIT_H 0)
   set(HAVE_SYS_XATTR_H 0)
+  set(HAVE_TCGETATTR 0)
+  set(HAVE_TCSETATTR 0)
   set(HAVE_TIMEGM 0)
   set(HAVE_TZSET 1)
   set(HAVE_UNLINKAT 0)

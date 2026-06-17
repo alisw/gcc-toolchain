@@ -1,48 +1,99 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 CheckCSourceCompiles
 --------------------
 
-Check if given C source compiles and links into an executable.
+This module provides a command to check whether a C source can be built.
+
+Load this module in a CMake project with:
+
+.. code-block:: cmake
+
+  include(CheckCSourceCompiles)
+
+Commands
+^^^^^^^^
+
+This module provides the following command:
 
 .. command:: check_c_source_compiles
 
+  Checks once whether the given C source code can be built:
+
   .. code-block:: cmake
 
-    check_c_source_compiles(<code> <resultVar>
-                            [FAIL_REGEX <regex1> [<regex2>...]])
+    check_c_source_compiles(<code> <variable> [FAIL_REGEX <regexes>...])
 
-  Check that the source supplied in ``<code>`` can be compiled as a C source
-  file and linked as an executable (so it must contain at least a ``main()``
-  function). The result will be stored in the internal cache variable specified
-  by ``<resultVar>``, with a boolean true value for success and boolean false
-  for failure. If ``FAIL_REGEX`` is provided, then failure is determined by
-  checking if anything in the output matches any of the specified regular
-  expressions.
+  This command checks once that the source supplied in ``<code>`` can be
+  compiled (and linked into an executable).  The result of the check is
+  stored in the internal cache variable specified by ``<variable>``.
 
-  The check is only performed once, with the result cached in the variable named
-  by ``<resultVar>``. Every subsequent CMake run will reuse this cached value
-  rather than performing the check again, even if the ``<code>`` changes. In
-  order to force the check to be re-evaluated, the variable named by
-  ``<resultVar>`` must be manually removed from the cache.
+  The arguments are:
 
-  The compile and link commands can be influenced by setting any of the
-  following variables prior to calling ``check_c_source_compiles()``:
+  ``<code>``
+    C source code to check.  This must be an entire program, as written in
+    a file containing the body block.  All symbols used in the source code
+    are expected to be declared as usual in their corresponding headers.
 
-.. include:: /module/CMAKE_REQUIRED_FLAGS.txt
+  ``<variable>``
+    Variable name of an internal cache variable to store the result of the
+    check, with boolean true for success and boolean false for failure.
 
-.. include:: /module/CMAKE_REQUIRED_DEFINITIONS.txt
+  ``FAIL_REGEX <regexes>...``
+    If one or more regular expression patterns are provided, then failure is
+    determined by checking if anything in the compiler output matches any of
+    the specified regular expressions.
 
-.. include:: /module/CMAKE_REQUIRED_INCLUDES.txt
+  .. rubric:: Variables Affecting the Check
 
-.. include:: /module/CMAKE_REQUIRED_LINK_OPTIONS.txt
+  The following variables may be set before calling this command to modify
+  the way the check is run:
 
-.. include:: /module/CMAKE_REQUIRED_LIBRARIES.txt
+  .. include:: /module/include/CMAKE_REQUIRED_FLAGS.rst
 
-.. include:: /module/CMAKE_REQUIRED_QUIET.txt
+  .. include:: /module/include/CMAKE_REQUIRED_DEFINITIONS.rst
 
+  .. include:: /module/include/CMAKE_REQUIRED_INCLUDES.rst
+
+  .. include:: /module/include/CMAKE_REQUIRED_LINK_OPTIONS.rst
+
+  .. include:: /module/include/CMAKE_REQUIRED_LIBRARIES.rst
+
+  .. include:: /module/include/CMAKE_REQUIRED_LINK_DIRECTORIES.rst
+
+  .. include:: /module/include/CMAKE_REQUIRED_QUIET.rst
+
+  .. include:: /module/include/CMAKE_TRY_COMPILE_TARGET_TYPE.rst
+
+Examples
+^^^^^^^^
+
+Checking whether C source code containing SSE2 intrinsic can be compiled
+and linked:
+
+.. code-block:: cmake
+
+  include(CheckCSourceCompiles)
+
+  check_c_source_compiles("
+    #include <emmintrin.h>
+    int main(void)
+    {
+      __m128d a = _mm_setzero_pd();
+      (void)a;
+      return 0;
+    }
+  " PROJECT_HAVE_SSE2_INTRINSICS)
+
+See Also
+^^^^^^^^
+
+* The :module:`CheckSourceCompiles` module for a more general command to
+  check whether source can be built.
+* The :module:`CheckSourceRuns` module to check whether source can be built
+  and run.
 #]=======================================================================]
 
 include_guard(GLOBAL)

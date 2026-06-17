@@ -8,4 +8,6 @@ set(expect
   )
 check_api("^${expect}$")
 
-check_python(cmakeFiles-v1)
+check_stateful_queries(foo)
+
+check_python(cmakeFiles-v1 index)

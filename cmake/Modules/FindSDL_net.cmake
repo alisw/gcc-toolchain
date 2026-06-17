@@ -1,36 +1,124 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindSDL_net
 -----------
 
-Locate SDL_net library
+Finds the SDL_net library, a cross-platform network library for use with the
+SDL (Simple DirectMedia Layer) applications:
 
-This module defines:
+.. code-block:: cmake
 
-::
+  find_package(SDL_net [<version>] [...])
 
-  SDL_NET_LIBRARIES, the name of the library to link against
-  SDL_NET_INCLUDE_DIRS, where to find the headers
-  SDL_NET_FOUND, if false, do not try to link against
-  SDL_NET_VERSION_STRING - human-readable string containing the version of SDL_net
+.. note::
 
+  This module is specifically intended for SDL_net version 1.  Starting with
+  version 2.1, SDL_net provides a CMake package configuration file when built
+  with CMake and should be found using ``find_package(SDL2_net)``.  These
+  newer versions provide :ref:`Imported Targets` that encapsulate usage
+  requirements.  Refer to the official SDL documentation for more information.
 
+Result Variables
+^^^^^^^^^^^^^^^^
 
-For backward compatibility the following variables are also set:
+This module defines the following variables:
 
-::
+``SDL_net_FOUND``
+  .. versionadded:: 3.3
 
-  SDLNET_LIBRARY (same value as SDL_NET_LIBRARIES)
-  SDLNET_INCLUDE_DIR (same value as SDL_NET_INCLUDE_DIRS)
-  SDLNET_FOUND (same value as SDL_NET_FOUND)
+  Boolean indicating whether the (requested version of) SDL_net library was
+  found.
 
+``SDL_net_VERSION``
+  .. versionadded:: 4.2
 
+  The human-readable string containing the version of SDL_net found.
 
-$SDLDIR is an environment variable that would correspond to the
-./configure --prefix=$SDLDIR used in building SDL.
+``SDL_NET_INCLUDE_DIRS``
+  Include directories containing headers needed to use the SDL_net library.
+
+``SDL_NET_LIBRARIES``
+  Libraries needed to link against to use the SDL_net library.
+
+Hints
+^^^^^
+
+This module accepts the following variables:
+
+``SDLDIR``
+  Environment variable that can be set to help locate an SDL library installed
+  in a custom location.  It should point to the installation destination that
+  was used when configuring, building, and installing SDL library:
+  ``./configure --prefix=$SDLDIR``.
+
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
+
+The following variables are provided for backward compatibility:
+
+``SDL_NET_VERSION_STRING``
+  .. deprecated:: 4.2
+    Use ``SDL_net_VERSION``, which has the same value.
+
+  The human-readable string containing the version of SDL_net found.
+
+``SDL_NET_FOUND``
+  .. deprecated:: 4.2
+    Use ``SDL_net_FOUND``, which has the same value.
+
+``SDLNET_FOUND``
+  .. deprecated:: 2.8.10
+    Use ``SDL_net_FOUND``, which has the same value.
+
+``SDLNET_INCLUDE_DIR``
+  .. deprecated:: 2.8.10
+    Use ``SDL_NET_INCLUDE_DIRS``, which has the same value.
+
+``SDLNET_LIBRARY``
+  .. deprecated:: 2.8.10
+    Use ``SDL_NET_LIBRARIES``, which has the same value.
+
+Examples
+^^^^^^^^
+
+Finding SDL_net library and creating an imported interface target for linking it
+to a project target:
+
+.. code-block:: cmake
+
+  find_package(SDL_net)
+
+  if(SDL_net_FOUND AND NOT TARGET SDL::SDL_net)
+    add_library(SDL::SDL_net INTERFACE IMPORTED)
+    set_target_properties(
+      SDL::SDL_net
+      PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${SDL_NET_INCLUDE_DIRS}"
+        INTERFACE_LINK_LIBRARIES "${SDL_NET_LIBRARIES}"
+    )
+  endif()
+
+  target_link_libraries(project_target PRIVATE SDL::SDL_net)
+
+When working with SDL_net version 2, the upstream package provides the
+``SDL2_net::SDL2_net`` imported target directly.  It can be used in a project
+without using this module:
+
+.. code-block:: cmake
+
+  find_package(SDL2_net)
+  target_link_libraries(project_target PRIVATE SDL2_net::SDL2_net)
+
+See Also
+^^^^^^^^
+
+* The :module:`FindSDL` module to find the main SDL library.
 #]=======================================================================]
+
+cmake_policy(PUSH)
+cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
 if(NOT SDL_NET_INCLUDE_DIR AND SDLNET_INCLUDE_DIR)
   set(SDL_NET_INCLUDE_DIR ${SDLNET_INCLUDE_DIR} CACHE PATH "directory cache
@@ -70,7 +158,8 @@ if(SDL_NET_INCLUDE_DIR AND EXISTS "${SDL_NET_INCLUDE_DIR}/SDL_net.h")
   string(REGEX REPLACE "^#define[ \t]+SDL_NET_MAJOR_VERSION[ \t]+([0-9]+)$" "\\1" SDL_NET_VERSION_MAJOR "${SDL_NET_VERSION_MAJOR_LINE}")
   string(REGEX REPLACE "^#define[ \t]+SDL_NET_MINOR_VERSION[ \t]+([0-9]+)$" "\\1" SDL_NET_VERSION_MINOR "${SDL_NET_VERSION_MINOR_LINE}")
   string(REGEX REPLACE "^#define[ \t]+SDL_NET_PATCHLEVEL[ \t]+([0-9]+)$" "\\1" SDL_NET_VERSION_PATCH "${SDL_NET_VERSION_PATCH_LINE}")
-  set(SDL_NET_VERSION_STRING ${SDL_NET_VERSION_MAJOR}.${SDL_NET_VERSION_MINOR}.${SDL_NET_VERSION_PATCH})
+  set(SDL_net_VERSION ${SDL_NET_VERSION_MAJOR}.${SDL_NET_VERSION_MINOR}.${SDL_NET_VERSION_PATCH})
+  set(SDL_NET_VERSION_STRING "${SDL_net_VERSION}")
   unset(SDL_NET_VERSION_MAJOR_LINE)
   unset(SDL_NET_VERSION_MINOR_LINE)
   unset(SDL_NET_VERSION_PATCH_LINE)
@@ -82,15 +171,17 @@ endif()
 set(SDL_NET_LIBRARIES ${SDL_NET_LIBRARY})
 set(SDL_NET_INCLUDE_DIRS ${SDL_NET_INCLUDE_DIR})
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
+include(FindPackageHandleStandardArgs)
 
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(SDL_net
+find_package_handle_standard_args(SDL_net
                                   REQUIRED_VARS SDL_NET_LIBRARIES SDL_NET_INCLUDE_DIRS
-                                  VERSION_VAR SDL_NET_VERSION_STRING)
+                                  VERSION_VAR SDL_net_VERSION)
 
 # for backward compatibility
 set(SDLNET_LIBRARY ${SDL_NET_LIBRARIES})
 set(SDLNET_INCLUDE_DIR ${SDL_NET_INCLUDE_DIRS})
-set(SDLNET_FOUND ${SDL_NET_FOUND})
+set(SDLNET_FOUND ${SDL_net_FOUND})
 
 mark_as_advanced(SDL_NET_LIBRARY SDL_NET_INCLUDE_DIR)
+
+cmake_policy(POP)

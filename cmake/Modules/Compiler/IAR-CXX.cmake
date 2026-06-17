@@ -10,15 +10,12 @@
 include(Compiler/IAR)
 include(Compiler/CMakeCommonCompilerMacros)
 
-if(NOT DEFINED CMAKE_CXX_COMPILER_VERSION)
-  message(FATAL_ERROR "CMAKE_CXX_COMPILER_VERSION not detected. This should be automatic.")
+if(NOT CMAKE_CXX_COMPILER_VERSION)
+  message(FATAL_ERROR "Could not detect CMAKE_CXX_COMPILER_VERSION. This should be automatic. Check your product license.\n")
 endif()
 
 # Whenever needed, override this default behavior using CMAKE_IAR_CXX_FLAG in your toolchain file.
 if(NOT CMAKE_IAR_CXX_FLAG)
-  cmake_policy(PUSH)
-  cmake_policy(SET CMP0057 NEW) # if IN_LIST
-
   set(_CMAKE_IAR_MODERNCXX_LIST 14 17)
   if(${CMAKE_CXX_STANDARD_COMPUTED_DEFAULT} IN_LIST _CMAKE_IAR_MODERNCXX_LIST OR
      ("${CMAKE_CXX_COMPILER_ARCHITECTURE_ID}" STREQUAL "ARM" AND ${CMAKE_CXX_STANDARD_COMPUTED_DEFAULT} EQUAL 98))
@@ -27,8 +24,6 @@ if(NOT CMAKE_IAR_CXX_FLAG)
     set(CMAKE_IAR_CXX_FLAG --eec++)
   endif()
   unset(_CMAKE_IAR_MODERNCXX_LIST)
-
-  cmake_policy(POP)
 endif()
 
 set(CMAKE_CXX_STANDARD_COMPILE_OPTION "")
@@ -56,7 +51,7 @@ elseif("${CMAKE_CXX_COMPILER_ARCHITECTURE_ID}" STREQUAL "RH850")
 
 elseif("${CMAKE_CXX_COMPILER_ARCHITECTURE_ID}" STREQUAL "RL78")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 2)
-    # # IAR C++ Compiler for RL78 prior version 2.xx uses XLINK. Support in CMake is not implemented.
+    # IAR C++ Compiler for RL78 prior version 2.xx uses XLINK. Support in CMake is not implemented.
     message(FATAL_ERROR "IAR C++ Compiler for RL78 version ${CMAKE_CXX_COMPILER_VERSION} not supported by CMake.")
   endif()
   __compiler_iar_ilink(CXX)

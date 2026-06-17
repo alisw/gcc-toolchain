@@ -83,7 +83,7 @@ with the :prop_tgt:`LINKER_LANGUAGE` target property.
 Toolchain Features
 ==================
 
-CMake provides the :command:`try_compile` command and wrapper macros such as
+CMake provides the :command:`try_compile` command and modules such as
 :module:`CheckSourceCompiles`, :module:`CheckCXXSymbolExists` and
 :module:`CheckIncludeFile` to test capability and availability of various
 toolchain features. These APIs test the toolchain in some way and cache the
@@ -251,7 +251,7 @@ Cross compiling for Windows CE requires the corresponding SDK being
 installed on your system.  These SDKs are usually installed under
 ``C:/Program Files (x86)/Windows CE Tools/SDKs``.
 
-A toolchain file to configure a Visual Studio generator for
+A toolchain file to configure :ref:`Visual Studio Generators` for
 Windows CE may look like this:
 
 .. code-block:: cmake
@@ -291,7 +291,7 @@ CMake selects a Windows SDK as described by documentation of the
 Cross Compiling for Windows Phone
 ---------------------------------
 
-A toolchain file to configure a Visual Studio generator for
+A toolchain file to configure :ref:`Visual Studio Generators` for
 Windows Phone may look like this:
 
 .. code-block:: cmake
@@ -302,7 +302,7 @@ Windows Phone may look like this:
 Cross Compiling for Windows Store
 ---------------------------------
 
-A toolchain file to configure a Visual Studio generator for
+A toolchain file to configure a :ref:`Visual Studio Generators` for
 Windows Store may look like this:
 
 .. code-block:: cmake
@@ -591,14 +591,14 @@ a different SDK (e.g. a simulator) can be selected by setting the
 necessary (see :ref:`Switching Between Device and Simulator` below).
 A list of available SDKs can be obtained by running ``xcodebuild -showsdks``.
 
-========  ================= ==================== ================
-OS        CMAKE_SYSTEM_NAME Device SDK (default) Simulator SDK
-========  ================= ==================== ================
-iOS       iOS               iphoneos             iphonesimulator
-tvOS      tvOS              appletvos            appletvsimulator
-visionOS  visionOS          xros                 xrsimulator
-watchOS   watchOS           watchos              watchsimulator
-========  ================= ==================== ================
+========  ================= ==================== ================ ============
+OS        CMAKE_SYSTEM_NAME Device SDK (default) Simulator SDK    Catalyst SDK
+========  ================= ==================== ================ ============
+iOS       iOS               iphoneos             iphonesimulator  macosx
+tvOS      tvOS              appletvos            appletvsimulator N/A
+visionOS  visionOS          xros                 xrsimulator      N/A
+watchOS   watchOS           watchos              watchsimulator   N/A
+========  ================= ==================== ================ ============
 
 For example, to create a CMake configuration for iOS, the following
 command is sufficient:
@@ -704,3 +704,75 @@ the next rules to make device + simulator configuration work:
 
 - Use :command:`find_package` only for libraries installed with
   :variable:`CMAKE_IOS_INSTALL_COMBINED` feature
+
+.. _`Cross Compiling for Emscripten`:
+
+Cross Compiling for Emscripten
+------------------------------
+
+.. versionadded:: 4.2
+
+A toolchain file may configure cross-compiling for `Emscripten`_ by
+setting the :variable:`CMAKE_SYSTEM_NAME` variable to ``Emscripten``.
+For example, a toolchain file might contain:
+
+.. code-block:: cmake
+
+  set(CMAKE_SYSTEM_NAME Emscripten)
+  set(CMAKE_C_COMPILER /path/to/emcc)
+  set(CMAKE_CXX_COMPILER /path/to/em++)
+
+.. _`Emscripten`: https://emscripten.org/
+
+Cross Compiling using Renesas compilers
+---------------------------------------
+
+For cross-compiling with Renesas compilers, specify at least:
+
+:variable:`CMAKE_SYSTEM_NAME`
+  Set to ``Generic``.  Must be specified to enable cross compiling.
+
+:variable:`CMAKE_C_COMPILER <CMAKE_<LANG>_COMPILER>`
+  Set to the path to the Renesas C compiler, e.g.,
+  ``ccrx``, ``ccrl``, or ``ccrh``.
+
+:variable:`CMAKE_C_FLAGS <CMAKE_<LANG>_FLAGS>`
+  Set to the ``-isa=`` or ``-cpu=`` flag the compiler requires.
+
+See example toolchain files in the following sections.
+
+Renesas CC-RX
+^^^^^^^^^^^^^
+
+.. code-block:: cmake
+
+  set(CMAKE_SYSTEM_NAME Generic)
+  set(CMAKE_C_COMPILER "ccrx.exe")
+  set(CMAKE_ASM_COMPILER "ccrx.exe") # if using ASM language
+  set(CMAKE_C_FLAGS "-isa=rxv3") # specify the version of target RX CPU
+  set(CMAKE_EXE_LINKER_FLAGS "-lnkopt=<your linker option here>")
+
+Renesas CC-RL
+^^^^^^^^^^^^^
+
+.. code-block:: cmake
+
+  set(CMAKE_SYSTEM_NAME Generic)
+  set(CMAKE_C_COMPILER "ccrl.exe")
+  set(CMAKE_ASM_COMPILER "ccrl.exe") # if using ASM language
+  set(CMAKE_C_FLAGS "-cpu=S3") # specify the version of target RL CPU
+  # To avoid test executable runs out of const section's size.
+  set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+  # Specifying device file and section layout linker options through compiler driver.
+  set(CMAKE_EXE_LINKER_FLAGS "-lnkopt=-device=dr5f10y14.dvf -lnkopt=-auto_section_layout")
+
+Renesas CC-RH
+^^^^^^^^^^^^^
+
+.. code-block:: cmake
+
+  set(CMAKE_SYSTEM_NAME Generic)
+  set(CMAKE_C_COMPILER "ccrh.exe")
+  set(CMAKE_ASM_COMPILER "ccrh.exe") # if using ASM language
+  set(CMAKE_C_FLAGS "-Xcommon=rh850") # specify the version of target RH850 CPU
+  set(CMAKE_EXE_LINKER_FLAGS "-lnkopt=<your linker option here>")

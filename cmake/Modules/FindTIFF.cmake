@@ -1,72 +1,133 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindTIFF
 --------
 
-Find the TIFF library (``libtiff``, https://libtiff.gitlab.io/libtiff/).
+Finds the `TIFF library <https://libtiff.gitlab.io/libtiff/>`_ (``libtiff``):
 
-Optional COMPONENTS
-^^^^^^^^^^^^^^^^^^^
+.. code-block:: cmake
 
-This module supports the optional component `CXX`, for use with the COMPONENTS
-argument of the :command:`find_package` command. This component has an associated
-imported target, as described below.
+  find_package(TIFF [<version>] [COMPONENTS <components>...] [...])
 
-Imported targets
+This module also takes into account the upstream TIFF library's exported CMake
+package configuration, if available.
+
+Components
+^^^^^^^^^^
+
+This module supports optional components which can be specified with:
+
+.. code-block:: cmake
+
+  find_package(TIFF [COMPONENTS <components>...])
+
+Supported components include:
+
+``CXX``
+  .. versionadded:: 3.19
+
+  Optional component that ensures that the C++ wrapper library (``libtiffxx``)
+  is found.
+
+Imported Targets
 ^^^^^^^^^^^^^^^^
 
-.. versionadded:: 3.5
-
-This module defines the following :prop_tgt:`IMPORTED` targets:
+This module provides the following :ref:`Imported Targets`:
 
 ``TIFF::TIFF``
-  The TIFF library, if found.
+  .. versionadded:: 3.5
+
+  Target encapsulating the TIFF library usage requirements, available only if
+  the TIFF is found.
 
 ``TIFF::CXX``
   .. versionadded:: 3.19
 
-  The C++ wrapper libtiffxx, if requested by the `COMPONENTS CXX` option,
-  if the compiler is not MSVC (which includes the C++ wrapper in libtiff),
-  and if found.
+  Target encapsulating the usage requirements for the the C++ wrapper library
+  ``libtiffxx``, available only if TIFF is found.  This target provides CXX
+  usage requirements only if the compiler is not MSVC.  It also has the
+  ``TIFF::TIFF`` target linked in to simplify its usage.
 
-Result variables
+Result Variables
 ^^^^^^^^^^^^^^^^
 
-This module will set the following variables in your project:
+This module defines the following variables:
 
 ``TIFF_FOUND``
-  true if the TIFF headers and libraries were found
-``TIFF_INCLUDE_DIR``
-  the directory containing the TIFF headers
-``TIFF_INCLUDE_DIRS``
-  the directory containing the TIFF headers
-``TIFF_LIBRARIES``
-  TIFF libraries to be linked
+  Boolean indicating whether (the requested version of) TIFF is found.
 
-Cache variables
+``TIFF_VERSION``
+  .. versionadded:: 4.2
+
+  The version of TIFF library found.
+
+``TIFF_INCLUDE_DIRS``
+  The directory containing the TIFF headers.
+
+``TIFF_LIBRARIES``
+  TIFF libraries to be linked.
+
+Cache Variables
 ^^^^^^^^^^^^^^^
 
 The following cache variables may also be set:
 
 ``TIFF_INCLUDE_DIR``
-  the directory containing the TIFF headers
-``TIFF_LIBRARY_RELEASE``
-  the path to the TIFF library for release configurations
-``TIFF_LIBRARY_DEBUG``
-  the path to the TIFF library for debug configurations
-``TIFFXX_LIBRARY_RELEASE``
-  the path to the TIFFXX library for release configurations
-``TIFFXX_LIBRARY_DEBUG``
-  the path to the TIFFXX library for debug configurations
+  The directory containing the TIFF headers.
 
-.. versionadded:: 3.4
-  Debug and Release variants are found separately.
+``TIFF_LIBRARY_RELEASE``
+  .. versionadded:: 3.4
+
+  The path to the TIFF library for release configurations.
+
+``TIFF_LIBRARY_DEBUG``
+  .. versionadded:: 3.4
+
+  The path to the TIFF library for debug configurations.
+
+``TIFFXX_LIBRARY_RELEASE``
+  .. versionadded:: 3.19
+
+  The path to the TIFFXX library for release configurations.
+
+``TIFFXX_LIBRARY_DEBUG``
+  .. versionadded:: 3.19
+
+  The path to the TIFFXX library for debug configurations.
+
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
+
+The following variables are provided for backward compatibility:
+
+``TIFF_VERSION_STRING``
+  .. deprecated:: 4.2
+    Superseded by the ``TIFF_VERSION``.
+
+  The version of TIFF library found.
+
+Examples
+^^^^^^^^
+
+Finding TIFF library and linking it to a project target:
+
+.. code-block:: cmake
+
+  find_package(TIFF)
+  target_link_libraries(project_target PRIVATE TIFF::TIFF)
+
+Finding TIFF and TIFFXX libraries by specifying the ``CXX`` component:
+
+.. code-block:: cmake
+
+  find_package(TIFF COMPONENTS CXX)
+  target_link_libraries(project_target PRIVATE TIFF::CXX)
 #]=======================================================================]
 
 cmake_policy(PUSH)
-cmake_policy(SET CMP0057 NEW) # if IN_LIST
+cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
 set(_TIFF_args)
 if (TIFF_FIND_VERSION)
@@ -201,17 +262,18 @@ if (Tiff_FOUND)
       endif ()
     endif ()
   endif ()
-  set(TIFF_VERSION_STRING "${Tiff_VERSION}")
+  set(TIFF_VERSION "${Tiff_VERSION}")
+  set(TIFF_VERSION_STRING "${TIFF_VERSION}")
   foreach (_TIFF_component IN LISTS TIFF_FIND_COMPONENTS)
     set(TIFF_${_TIFF_component}_FOUND "${Tiff_${_TIFF_component}_FOUND}")
   endforeach ()
   unset(_TIFF_component)
 
-  include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
+  include(FindPackageHandleStandardArgs)
   find_package_handle_standard_args(TIFF
                                     HANDLE_COMPONENTS
                                     REQUIRED_VARS Tiff_DIR
-                                    VERSION_VAR TIFF_VERSION_STRING)
+                                    VERSION_VAR TIFF_VERSION)
 
   cmake_policy(POP)
   return ()
@@ -237,7 +299,8 @@ if(TIFF_INCLUDE_DIR AND EXISTS "${TIFF_INCLUDE_DIR}/tiffvers.h")
          REGEX "^#define[\t ]+TIFFLIB_VERSION_STR[\t ]+\"LIBTIFF, Version .*")
 
     string(REGEX REPLACE "^#define[\t ]+TIFFLIB_VERSION_STR[\t ]+\"LIBTIFF, Version +([^ \\n]*).*"
-           "\\1" TIFF_VERSION_STRING "${tiff_version_str}")
+           "\\1" TIFF_VERSION "${tiff_version_str}")
+    set(TIFF_VERSION_STRING "${TIFF_VERSION}")
     unset(tiff_version_str)
 endif()
 
@@ -269,11 +332,11 @@ unset(_comp)
 unset(TIFF_NAMES)
 unset(TIFF_NAMES_DEBUG)
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(TIFF
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(TIFF
                                   HANDLE_COMPONENTS
                                   REQUIRED_VARS TIFF_LIBRARY TIFF_INCLUDE_DIR
-                                  VERSION_VAR TIFF_VERSION_STRING)
+                                  VERSION_VAR TIFF_VERSION)
 
 if(TIFF_FOUND)
   set(TIFF_LIBRARIES ${TIFF_LIBRARY})

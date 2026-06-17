@@ -1,93 +1,160 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindGTK2
 --------
 
-Find the GTK2 widget libraries and several of its other optional components
-like ``gtkmm``, ``glade``, and ``glademm``.
+.. note::
 
-Specify one or more of the following components as you call this find
-module.  See example below.
+  This module is intended specifically for GTK version 2.x, which is obsolete
+  and no longer maintained.  Use the latest supported GTK version and
+  :module:`FindPkgConfig` module to find GTK in CMake instead of this module.
+  For example:
 
-* ``gtk``
-* ``gtkmm``
-* ``glade``
-* ``glademm``
+  .. code-block:: cmake
+
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk4>=4.14)
+    target_link_libraries(example PRIVATE PkgConfig::GTK)
+
+Finds the GTK widget libraries and several of its other optional components:
+
+.. code-block:: cmake
+
+  find_package(GTK2 [<version>] [COMPONENTS <components>...] [...])
+
+GTK is a multi-platform toolkit for creating graphical user interfaces.
+
+Components
+^^^^^^^^^^
+
+This module supports optional components, which can be specified with the
+:command:`find_package` command:
+
+.. code-block:: cmake
+
+  find_package(GTK2 [COMPONENTS <components>...])
+
+Supported components include:
+
+.. hlist::
+
+  * ``atk``
+  * ``atkmm``
+  * ``cairo``
+  * ``cairomm``
+  * ``gdk_pixbuf``
+  * ``gdk``
+  * ``gdkmm``
+  * ``gio``
+  * ``giomm``
+  * ``glade``
+  * ``glademm``
+  * ``glib``
+  * ``glibmm``
+  * ``gmodule``
+  * ``gobject``
+  * ``gthread``
+  * ``gtk``
+  * ``gtkmm``
+  * ``pango``
+  * ``pangocairo``
+  * ``pangoft2``
+  * ``pangomm``
+  * ``pangoxft``
+  * ``sigc``
+
+* .. versionadded:: 3.16.7
+    ``harfbuzz``
+
+If no components are specified, module by default searches for the ``gtk``
+component.
 
 Imported Targets
 ^^^^^^^^^^^^^^^^
 
-This module defines the following :prop_tgt:`IMPORTED` targets (subject to
+This module provides the following :ref:`Imported Targets` (subject to
 component selection):
 
-``GTK2::atk``, ``GTK2::atkmm``, ``GTK2::cairo``, ``GTK2::cairomm``,
-``GTK2::gdk_pixbuf``, ``GTK2::gdk``, ``GTK2::gdkmm``, ``GTK2::gio``,
-``GTK2::giomm``, ``GTK2::glade``, ``GTK2::glademm``, ``GTK2::glib``,
-``GTK2::glibmm``, ``GTK2::gmodule``, ``GTK2::gobject``, ``GTK2::gthread``,
-``GTK2::gtk``, ``GTK2::gtkmm``, ``GTK2::harfbuzz``, ``GTK2::pango``,
-``GTK2::pangocairo``, ``GTK2::pangoft2``, ``GTK2::pangomm``,
-``GTK2::pangoxft``, ``GTK2::sigc``.
+``GTK2::<component>``
+  Target encapsulating the specified GTK component usage requirements,
+  available if GTK and this component are found.  The ``<component>`` should
+  be written in the same case, as listed above.  For example, use
+  ``GTK2::gtk`` for the ``gtk`` component, or ``GTK2::gdk_pixbuf`` for the
+  ``gdk_pixbuf`` component, etc.
 
-.. versionadded:: 3.16.7
-  Added the ``GTK2::harfbuzz`` target.
+``GTK2::sigc++``
+  .. versionadded:: 3.5
+
+  Target encapsulating the usage requirements to enable c++11 on its dependents
+  when using sigc++ 2.5.1 or higher.  This target is automatically applied to
+  dependent targets as needed.
 
 Result Variables
 ^^^^^^^^^^^^^^^^
 
-The following variables will be defined for your use
+This module defines the following variables:
 
 ``GTK2_FOUND``
-  Were all of your specified components found?
+  Boolean indicating whether (the requested version of) GTK 2 and all
+  specified components were found.
+``GTK2_VERSION``
+  The version of GTK found (x.y.z).
+``GTK2_MAJOR_VERSION``
+  The major version of GTK found.
+``GTK2_MINOR_VERSION``
+  The minor version of GTK found.
+``GTK2_PATCH_VERSION``
+  The patch version of GTK found.
 ``GTK2_INCLUDE_DIRS``
-  All include directories
+  Include directories containing headers needed to use GTK.
 ``GTK2_LIBRARIES``
-  All libraries
+  Libraries needed to link against to use GTK.
 ``GTK2_TARGETS``
   .. versionadded:: 3.5
-    All imported targets
-``GTK2_DEFINITIONS``
-  Additional compiler flags
-``GTK2_VERSION``
-  The version of GTK2 found (x.y.z)
-``GTK2_MAJOR_VERSION``
-  The major version of GTK2
-``GTK2_MINOR_VERSION``
-  The minor version of GTK2
-``GTK2_PATCH_VERSION``
-  The patch version of GTK2
 
-.. versionadded:: 3.5
-  When ``GTK2_USE_IMPORTED_TARGETS`` is set to ``TRUE``, ``GTK2_LIBRARIES``
-  will list imported targets instead of library paths.
+  A list of all defined imported targets.
+``GTK2_DEFINITIONS``
+  Additional compiler flags needed to use GTK.
 
 Input Variables
 ^^^^^^^^^^^^^^^
 
-Optional variables you can define prior to calling this module:
+This module accepts the following optional variables before calling the
+``find_package(GTK2)``:
 
 ``GTK2_DEBUG``
-  Enables verbose debugging of the module
+  Boolean variable that enables verbose debugging output of this module.
+
 ``GTK2_ADDITIONAL_SUFFIXES``
-  Allows defining additional directories to search for include files
+  A list of additional path suffixes to search for include files.
 
-Example Usage
-^^^^^^^^^^^^^
+``GTK2_USE_IMPORTED_TARGETS``
+  .. versionadded:: 3.5
 
-Call :command:`find_package` once.  Here are some examples to pick from:
+  When this variable is set to boolean true, ``GTK2_LIBRARIES`` variable will
+  contain a list imported targets instead of library paths.
+
+Examples
+^^^^^^^^
+
+Examples: Finding GTK version 2
+"""""""""""""""""""""""""""""""
+
+Call :command:`find_package` once.  Here are some examples to pick from.
 
 Require GTK 2.6 or later:
 
 .. code-block:: cmake
 
-  find_package(GTK2 2.6 REQUIRED gtk)
+  find_package(GTK2 2.6 REQUIRED COMPONENTS gtk)
 
-Require GTK 2.10 or later and Glade:
+Require GTK 2.10 or later and its Glade component:
 
 .. code-block:: cmake
 
-  find_package(GTK2 2.10 REQUIRED gtk glade)
+  find_package(GTK2 2.10 REQUIRED COMPONENTS gtk glade)
 
 Search for GTK/GTKMM 2.8 or later:
 
@@ -95,15 +162,32 @@ Search for GTK/GTKMM 2.8 or later:
 
   find_package(GTK2 2.8 COMPONENTS gtk gtkmm)
 
-Use the results:
+Finding GTK 2 and linking it to a project target:
 
 .. code-block:: cmake
 
-  if(GTK2_FOUND)
-    include_directories(${GTK2_INCLUDE_DIRS})
-    add_executable(mygui mygui.cc)
-    target_link_libraries(mygui ${GTK2_LIBRARIES})
-  endif()
+  find_package(GTK2)
+  add_executable(mygui mygui.cc)
+  target_link_libraries(mygui PRIVATE GTK2::gtk)
+
+Examples: Finding GTK version 3 or later
+""""""""""""""""""""""""""""""""""""""""
+
+Finding GTK 3 with :module:`FindPkgConfig` instead of this module:
+
+.. code-block:: cmake
+
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(GTK3 REQUIRED IMPORTED_TARGET gtk+-3.0>=3.14)
+  target_link_libraries(example PRIVATE PkgConfig::GTK3)
+
+Or similarly to find GTK 4:
+
+.. code-block:: cmake
+
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(GTK4 REQUIRED IMPORTED_TARGET gtk4>=4.14)
+  target_link_libraries(example PRIVATE PkgConfig::GTK4)
 #]=======================================================================]
 
 # Version 1.6 (CMake 3.0)
@@ -175,7 +259,10 @@ Use the results:
 include(${CMAKE_CURRENT_LIST_DIR}/SelectLibraryConfigurations.cmake)
 
 function(_GTK2_GET_VERSION _OUT_major _OUT_minor _OUT_micro _gtkversion_hdr)
+    cmake_policy(PUSH)
+    cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
     file(STRINGS ${_gtkversion_hdr} _contents REGEX "#define GTK_M[A-Z]+_VERSION[ \t]+")
+    cmake_policy(POP)
     if(_contents)
         string(REGEX REPLACE ".*#define GTK_MAJOR_VERSION[ \t]+\\(([0-9]+)\\).*" "\\1" ${_OUT_major} "${_contents}")
         string(REGEX REPLACE ".*#define GTK_MINOR_VERSION[ \t]+\\(([0-9]+)\\).*" "\\1" ${_OUT_minor} "${_contents}")
@@ -211,7 +298,10 @@ endfunction()
 #=============================================================
 
 function(_GTK2_SIGCXX_GET_VERSION _OUT_major _OUT_minor _OUT_micro _sigcxxversion_hdr)
+    cmake_policy(PUSH)
+    cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
     file(STRINGS ${_sigcxxversion_hdr} _contents REGEX "#define SIGCXX_M[A-Z]+_VERSION[ \t]+")
+    cmake_policy(POP)
     if(_contents)
         string(REGEX REPLACE ".*#define SIGCXX_MAJOR_VERSION[ \t]+([0-9]+).*" "\\1" ${_OUT_major} "${_contents}")
         string(REGEX REPLACE ".*#define SIGCXX_MINOR_VERSION[ \t]+([0-9]+).*" "\\1" ${_OUT_minor} "${_contents}")
@@ -300,6 +390,10 @@ function(_GTK2_FIND_INCLUDE_DIR _var _hdr)
     endif()
     find_path(GTK2_${_var}_INCLUDE_DIR ${_hdr}
         PATHS
+            ${PC_GLIB2_INCLUDEDIR}
+            ${PC_GLIB2_LIBDIR}
+            ${PC_GTK2_INCLUDEDIR}
+            ${PC_GTK2_LIBDIR}
             ${_gtk2_arch_dir}
             /usr/local/libx32
             /usr/local/lib64
@@ -610,6 +704,23 @@ if(NOT GTK2_FIND_COMPONENTS)
     set(GTK2_FIND_COMPONENTS gtk)
 endif()
 
+# Retrieve LIBDIR from the GTK2 and GLIB2 pkg-config files, which are
+# used to compute the arch-specific include prefixes. While at it,
+# also retrieve their INCLUDEDIR, to accommodate non-standard layouts.
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+  pkg_check_modules(PC_GTK2 QUIET gtk+-2.0)
+  if(PC_GTK2_FOUND)
+    pkg_get_variable(PC_GTK2_INCLUDEDIR gtk+-2.0 includedir)
+    pkg_get_variable(PC_GTK2_LIBDIR gtk+-2.0 libdir)
+  endif()
+  pkg_check_modules(PC_GLIB2 QUIET glib-2.0)
+  if(PC_GLIB2_FOUND)
+    pkg_get_variable(PC_GLIB2_INCLUDEDIR glib-2.0 includedir)
+    pkg_get_variable(PC_GLIB2_LIBDIR glib-2.0 libdir)
+  endif()
+endif()
+
 #
 # If specified, enforce version number
 #
@@ -888,7 +999,7 @@ endif()
 
 set(_GTK2_did_we_find_everything true)  # This gets set to GTK2_FOUND
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
+include(FindPackageHandleStandardArgs)
 
 foreach(_GTK2_component ${GTK2_FIND_COMPONENTS})
     string(TOUPPER ${_GTK2_component} _COMPONENT_UPPER)
@@ -897,7 +1008,7 @@ foreach(_GTK2_component ${GTK2_FIND_COMPONENTS})
 
     set(FPHSA_NAME_MISMATCHED 1)
     if(_GTK2_component STREQUAL "gtk")
-        FIND_PACKAGE_HANDLE_STANDARD_ARGS(GTK2_${_COMPONENT_UPPER} "Some or all of the gtk libraries were not found."
+        find_package_handle_standard_args(GTK2_${_COMPONENT_UPPER} "Some or all of the gtk libraries were not found."
             GTK2_GTK_LIBRARY
             GTK2_GTK_INCLUDE_DIR
 
@@ -910,7 +1021,7 @@ foreach(_GTK2_component ${GTK2_FIND_COMPONENTS})
             GTK2_GLIB_LIBRARY
         )
     elseif(_GTK2_component STREQUAL "gtkmm")
-        FIND_PACKAGE_HANDLE_STANDARD_ARGS(GTK2_${_COMPONENT_UPPER} "Some or all of the gtkmm libraries were not found."
+        find_package_handle_standard_args(GTK2_${_COMPONENT_UPPER} "Some or all of the gtkmm libraries were not found."
             GTK2_GTKMM_LIBRARY
             GTK2_GTKMM_INCLUDE_DIR
             GTK2_GTKMMCONFIG_INCLUDE_DIR
@@ -927,12 +1038,12 @@ foreach(_GTK2_component ${GTK2_FIND_COMPONENTS})
             FREETYPE_INCLUDE_DIR_freetype2
         )
     elseif(_GTK2_component STREQUAL "glade")
-        FIND_PACKAGE_HANDLE_STANDARD_ARGS(GTK2_${_COMPONENT_UPPER} "The glade library was not found."
+        find_package_handle_standard_args(GTK2_${_COMPONENT_UPPER} "The glade library was not found."
             GTK2_GLADE_LIBRARY
             GTK2_GLADE_INCLUDE_DIR
         )
     elseif(_GTK2_component STREQUAL "glademm")
-        FIND_PACKAGE_HANDLE_STANDARD_ARGS(GTK2_${_COMPONENT_UPPER} "The glademm library was not found."
+        find_package_handle_standard_args(GTK2_${_COMPONENT_UPPER} "The glademm library was not found."
             GTK2_GLADEMM_LIBRARY
             GTK2_GLADEMM_INCLUDE_DIR
             GTK2_GLADEMMCONFIG_INCLUDE_DIR

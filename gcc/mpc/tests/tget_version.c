@@ -1,6 +1,6 @@
 /* tget_version -- Test file for mpc_get_version
 
-Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010, 2011 INRIA
+Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010, 2011, 2023 INRIA
 
 This file is part of GNU MPC.
 
@@ -25,20 +25,7 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 int
 main (void)
 {
-#ifdef __MPIR_VERSION
-  printf ("MPIR: include %d.%d.%d, lib %s\n",
-          __MPIR_VERSION, __MPIR_VERSION_MINOR, __MPIR_VERSION_PATCHLEVEL,
-          mpir_version);
-#else
-  printf ("GMP: include %d.%d.%d, lib %s\n",
-          __GNU_MP_VERSION, __GNU_MP_VERSION_MINOR, __GNU_MP_VERSION_PATCHLEVEL,
-          gmp_version);
-#endif
-  printf ("MPFR: include %s, lib %s\n",
-          MPFR_VERSION_STRING,
-          mpfr_get_version ());
-  printf ("MPC: include %s, lib %s\n", MPC_VERSION_STRING,
-          mpc_get_version ());
+  test_start ();
 
   if (strcmp (mpc_get_version (), MPC_VERSION_STRING) != 0)
     {
@@ -48,15 +35,7 @@ main (void)
       exit (1);
     }
 
-#ifdef MPC_CC
-  printf ("C compiler: %s\n", MPC_CC);
-#endif
-#ifdef MPC_GCC
-  printf ("GCC: %s\n", MPC_GCC);
-#endif
-#ifdef MPC_GCC_VERSION
-  printf ("GCC version: %s\n", MPC_GCC_VERSION);
-#endif
+  test_end ();
 
   return 0;
 }

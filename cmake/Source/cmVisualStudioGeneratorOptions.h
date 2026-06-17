@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -7,6 +7,9 @@
 #include <iosfwd>
 #include <string>
 
+#include <cm/optional>
+
+#include "cmGeneratorTarget.h"
 #include "cmGlobalVisualStudioGenerator.h"
 #include "cmIDEFlagTable.h"
 #include "cmIDEOptions.h"
@@ -42,7 +45,7 @@ public:
   void ClearTables();
 
   // Store options from command line flags.
-  void Parse(const std::string& flags);
+  void Parse(std::string const& flags);
   void ParseFinish();
 
   void PrependInheritedString(std::string const& key);
@@ -57,34 +60,33 @@ public:
   // Store options for verbose builds.
   void SetVerboseMakefile(bool verbose);
 
-  // Check for specific options.
-  bool UsingUnicode() const;
-  bool UsingSBCS() const;
+  // Detect a character set definition.
+  cm::optional<cmGeneratorTarget::MsvcCharSet> GetCharSet() const;
 
   void FixCudaCodeGeneration();
 
   void FixManifestUACFlags();
 
-  bool IsDebug() const;
+  bool UsingDebugInfo() const;
+  cm::optional<bool> UsingDebugRuntime() const;
   bool IsWinRt() const;
   bool IsManaged() const;
   // Write options to output.
   void OutputPreprocessorDefinitions(std::ostream& fout, int indent,
-                                     const std::string& lang);
+                                     std::string const& lang);
   void OutputAdditionalIncludeDirectories(std::ostream& fout, int indent,
-                                          const std::string& lang);
+                                          std::string const& lang);
   void OutputFlagMap(std::ostream& fout, int indent);
-  void SetConfiguration(const std::string& config);
-  const std::string& GetConfiguration() const;
+  void SetConfiguration(std::string const& config);
+  std::string const& GetConfiguration() const;
 
 protected:
   virtual void OutputFlag(std::ostream& fout, int indent,
-                          const std::string& tag,
-                          const std::string& content) = 0;
+                          std::string const& tag,
+                          std::string const& content) = 0;
 
 private:
   cmLocalVisualStudioGenerator* LocalGenerator;
-  cmGlobalVisualStudioGenerator::VSVersion Version;
 
   std::string Configuration;
   Tool CurrentTool;

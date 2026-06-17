@@ -71,10 +71,10 @@ test_special (void)
   mpc_set_ui_ui (a, 4, 0, MPC_RNDNN);
   mpc_ui_div (b, 1, a, MPC_RNDNN);
   if (mpfr_cmp_ui_2exp (mpc_realref(b), 1, -2) != 0 ||
-      mpfr_cmp_ui (mpc_imagref(b), 0) != 0 || mpfr_signbit (mpc_imagref(b)) != 0)
+      mpfr_cmp_ui (mpc_imagref(b), 0) != 0 || mpfr_signbit (mpc_imagref(b)) != 1)
     {
       printf ("1/(4,0) failed\n");
-      printf ("expected (1/4,0)\n");
+      printf ("expected (1/4,-0)\n");
       printf ("got      ");
       mpc_out_str (stdout, 10, 0, b, MPC_RNDNN);
       printf ("\n");
@@ -92,12 +92,31 @@ test_special (void)
 
 #include "tgeneric.tpl"
 
+static void
+check_divby0_exc (void)
+{
+  mpc_t z;
+
+  mpc_init2 (z, 53);
+  mpc_set_d_d (z, 0.0, 0.0, MPC_RNDNN);
+  mpfr_clear_flags ();
+  mpc_ui_div (z, 1, z, MPC_RNDNN);
+  if (!mpfr_divby0_p ()) {
+    printf ("Missing division-by-zero exception\n");
+    exit (1);
+  }
+  mpfr_clear_flags ();
+  mpc_clear (z);
+}
+
 int
 main (void)
 {
   test_start ();
 
   test_special ();
+
+  check_divby0_exc ();
 
   tgeneric_template ("ui_div.dsc", 2, 1024, 7, 4096);
 

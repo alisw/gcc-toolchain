@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -11,9 +11,10 @@
 #include <vector>
 
 #include <cm/optional>
+#include <cm/string_view>
 
-#include "cmConstStack.h"
 #include "cmList.h"
+#include "cmStack.h"
 #include "cmSystemTools.h"
 
 /** \class cmListFileCache
@@ -34,17 +35,17 @@ struct cmListFileArgument
     Bracket
   };
   cmListFileArgument() = default;
-  cmListFileArgument(std::string v, Delimiter d, long line)
-    : Value(std::move(v))
+  cmListFileArgument(cm::string_view v, Delimiter d, long line)
+    : Value(v.data(), v.size())
     , Delim(d)
     , Line(line)
   {
   }
-  bool operator==(const cmListFileArgument& r) const
+  bool operator==(cmListFileArgument const& r) const
   {
     return (this->Value == r.Value) && (this->Delim == r.Delim);
   }
-  bool operator!=(const cmListFileArgument& r) const { return !(*this == r); }
+  bool operator!=(cmListFileArgument const& r) const { return !(*this == r); }
   std::string Value;
   Delimiter Delim = Unquoted;
   long Line = 0;
@@ -116,8 +117,8 @@ public:
   // seem to be any way for this to happen given the member types.
   // NOLINTNEXTLINE(bugprone-exception-escape)
   cmListFileContext(cmListFileContext&& /*other*/) noexcept = default;
-  cmListFileContext(const cmListFileContext& /*other*/) = default;
-  cmListFileContext& operator=(const cmListFileContext& /*other*/) = default;
+  cmListFileContext(cmListFileContext const& /*other*/) = default;
+  cmListFileContext& operator=(cmListFileContext const& /*other*/) = default;
 #if __cplusplus >= 201703L || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
   cmListFileContext& operator=(cmListFileContext&& /*other*/) noexcept =
     default;
@@ -138,10 +139,10 @@ public:
 
   static cmListFileContext FromListFilePath(std::string const& filePath)
   {
-    // We are entering a file-level scope but have not yet reached
-    // any specific line or command invocation within it.  This context
-    // is useful to print when it is at the top but otherwise can be
-    // skipped during call stack printing.
+    // We are entering a file-level scope but have not yet reached any specific
+    // line or command invocation within it.  This context is useful to print
+    // when it is at the top, but otherwise can be skipped during call stack
+    // printing if preceded by a more specific entry.
     cmListFileContext lfc;
     lfc.FilePath = filePath;
     return lfc;
@@ -161,7 +162,7 @@ public:
 };
 
 std::ostream& operator<<(std::ostream&, cmListFileContext const&);
-bool operator<(const cmListFileContext& lhs, const cmListFileContext& rhs);
+bool operator<(cmListFileContext const& lhs, cmListFileContext const& rhs);
 bool operator==(cmListFileContext const& lhs, cmListFileContext const& rhs);
 bool operator!=(cmListFileContext const& lhs, cmListFileContext const& rhs);
 
@@ -169,11 +170,12 @@ bool operator!=(cmListFileContext const& lhs, cmListFileContext const& rhs);
 class cmListFileBacktrace
   : public cmConstStack<cmListFileContext, cmListFileBacktrace>
 {
-  using cmConstStack::cmConstStack;
-  friend class cmConstStack<cmListFileContext, cmListFileBacktrace>;
+  using cmStack::cmStack;
+  friend cmListFileBacktrace::Base;
 };
 #ifndef cmListFileCache_cxx
-extern template class cmConstStack<cmListFileContext, cmListFileBacktrace>;
+extern template class cmStack<cmListFileContext const, cmListFileBacktrace,
+                              cmStackType::Const>;
 #endif
 
 // Wrap type T as a value with a backtrace.  For purposes of
@@ -237,10 +239,10 @@ std::vector<BT<std::string>> cmExpandListWithBacktrace(
 
 struct cmListFile
 {
-  bool ParseFile(const char* path, cmMessenger* messenger,
+  bool ParseFile(char const* path, cmMessenger* messenger,
                  cmListFileBacktrace const& lfbt);
 
-  bool ParseString(const char* str, const char* virtual_filename,
+  bool ParseString(cm::string_view str, char const* virtual_filename,
                    cmMessenger* messenger, cmListFileBacktrace const& lfbt);
 
   std::vector<cmListFileFunction> Functions;

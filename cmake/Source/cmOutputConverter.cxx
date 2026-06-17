@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmOutputConverter.h"
 
 #include <algorithm>
@@ -154,7 +154,7 @@ std::string cmOutputConverter::MaybeRelativeToCurBinDir(
 }
 
 std::string cmOutputConverter::ConvertToOutputForExisting(
-  const std::string& remote, OutputFormat format, bool useWatcomQuote) const
+  std::string const& remote, OutputFormat format, bool useWatcomQuote) const
 {
 #ifdef _WIN32
   // Cache the Short Paths since we only convert the same few paths anyway and
@@ -281,6 +281,10 @@ std::string cmOutputConverter::EscapeForShell(cm::string_view str,
   if (!this->GetState()->UseWindowsShell()) {
     flags |= Shell_Flag_IsUnix;
   }
+  if (this->GetState()->UseFastbuildMake()) {
+    // Fastbuild needs to escape very few characters.
+    flags = Shell_Flag_Fastbuild;
+  }
 
   return cmOutputConverter::EscapeForShell(str, flags);
 }
@@ -300,7 +304,7 @@ std::string cmOutputConverter::EscapeForCMake(cm::string_view str,
 {
   // Always double-quote the argument to take care of most escapes.
   std::string result = (wrapQuotes == WrapQuotes::Wrap) ? "\"" : "";
-  for (const char c : str) {
+  for (char const c : str) {
     if (c == '"') {
       // Escape the double quote to avoid ending the argument.
       result += "\\\"";
@@ -436,6 +440,10 @@ bool cmOutputConverter::Shell_CharNeedsQuotes(char c, int flags)
     return true;
   }
 
+  if (flags & Shell_Flag_Fastbuild) {
+    return false;
+  }
+
   /* Quote hyphens in response files */
   if (flags & Shell_Flag_IsResponse) {
     if (c == '-') {
@@ -450,7 +458,8 @@ bool cmOutputConverter::Shell_CharNeedsQuotes(char c, int flags)
     }
   } else {
     /* On Windows several special characters need quotes to preserve them.  */
-    if (Shell_CharNeedsQuotesOnWindows(c)) {
+    if (Shell_CharNeedsQuotesOnWindows(c) ||
+        (c == ';' && (flags & Shell_Flag_VSIDE))) {
       return true;
     }
   }
@@ -644,6 +653,8 @@ std::string cmOutputConverter::Shell_GetArgument(cm::string_view in, int flags)
            quoting.  Either way the $ is isolated from surrounding
            text to avoid looking like a variable reference.  */
         out += "\"$\"";
+      } else if (flags & Shell_Flag_Fastbuild) {
+        out += "^$";
       } else {
         /* Otherwise a dollar is written just $. */
         out += '$';
@@ -670,11 +681,8 @@ std::string cmOutputConverter::Shell_GetArgument(cm::string_view in, int flags)
       }
     } else if (*cit == ';') {
       if (flags & Shell_Flag_VSIDE) {
-        /* In a VS IDE a semicolon is written ";".  If this is written
-           in an un-quoted argument it starts a quoted segment,
-           inserts the ; and ends the segment.  If it is written in a
-           quoted argument it ends quoting, inserts the ; and restarts
-           quoting.  Either way the ; is isolated.  */
+        /* In VS a semicolon is written `";"` inside a quoted argument.
+           It ends quoting, inserts the `;`, and restarts quoting.  */
         out += "\";\"";
       } else {
         /* Otherwise a semicolon is written just ;. */
@@ -686,6 +694,8 @@ std::string cmOutputConverter::Shell_GetArgument(cm::string_view in, int flags)
       } else {
         out += '\n';
       }
+    } else if (*cit == '^' && (flags & Shell_Flag_Fastbuild)) {
+      out += "^^";
     } else {
       /* Store this character.  */
       out += *cit;

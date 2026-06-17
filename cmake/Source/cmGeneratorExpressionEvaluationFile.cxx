@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmGeneratorExpressionEvaluationFile.h"
 
 #include <memory>
@@ -8,6 +8,7 @@
 
 #include "cmsys/FStream.hxx"
 
+#include "cmGenExContext.h"
 #include "cmGeneratedFileStream.h"
 #include "cmGlobalGenerator.h"
 #include "cmListFileCache.h"
@@ -22,7 +23,8 @@ cmGeneratorExpressionEvaluationFile::cmGeneratorExpressionEvaluationFile(
   std::unique_ptr<cmCompiledGeneratorExpression> outputFileExpr,
   std::unique_ptr<cmCompiledGeneratorExpression> condition,
   bool inputIsContent, std::string newLineCharacter, mode_t permissions,
-  cmPolicies::PolicyStatus policyStatusCMP0070)
+  cmPolicies::PolicyStatus policyStatusCMP0070,
+  cmPolicies::PolicyStatus policyStatusCMP0189)
   : Input(std::move(input))
   , Target(std::move(target))
   , OutputFileExpr(std::move(outputFileExpr))
@@ -30,20 +32,23 @@ cmGeneratorExpressionEvaluationFile::cmGeneratorExpressionEvaluationFile(
   , InputIsContent(inputIsContent)
   , NewLineCharacter(std::move(newLineCharacter))
   , PolicyStatusCMP0070(policyStatusCMP0070)
+  , PolicyStatusCMP0189(policyStatusCMP0189)
   , Permissions(permissions)
 {
 }
 
 void cmGeneratorExpressionEvaluationFile::Generate(
-  cmLocalGenerator* lg, const std::string& config, const std::string& lang,
+  cmLocalGenerator* lg, std::string const& config, std::string const& lang,
   cmCompiledGeneratorExpression* inputExpression,
   std::map<std::string, std::string>& outputFiles, mode_t perm)
 {
+  cm::GenEx::Context context(lg, config, lang);
+  context.SetCMP0189(this->PolicyStatusCMP0189);
   std::string rawCondition = this->Condition->GetInput();
   cmGeneratorTarget* target = lg->FindGeneratorTargetToUse(this->Target);
   if (!rawCondition.empty()) {
     std::string condResult =
-      this->Condition->Evaluate(lg, config, target, nullptr, nullptr, lang);
+      this->Condition->Evaluate(context, nullptr, target);
     if (condResult == "0") {
       return;
     }
@@ -58,10 +63,9 @@ void cmGeneratorExpressionEvaluationFile::Generate(
     }
   }
 
-  const std::string outputFileName =
-    this->GetOutputFileName(lg, target, config, lang);
-  const std::string& outputContent =
-    inputExpression->Evaluate(lg, config, target, nullptr, nullptr, lang);
+  std::string const outputFileName = this->GetOutputFileName(context, target);
+  std::string const& outputContent =
+    inputExpression->Evaluate(context, nullptr, target);
 
   auto it = outputFiles.find(outputFileName);
 
@@ -123,8 +127,10 @@ void cmGeneratorExpressionEvaluationFile::CreateOutputFile(
   cmGeneratorTarget* target = lg->FindGeneratorTargetToUse(this->Target);
   gg->GetEnabledLanguages(enabledLanguages);
 
-  for (std::string const& le : enabledLanguages) {
-    std::string const name = this->GetOutputFileName(lg, target, config, le);
+  for (std::string const& lang : enabledLanguages) {
+    cm::GenEx::Context context(lg, config, lang);
+    context.SetCMP0189(this->PolicyStatusCMP0189);
+    std::string const name = this->GetOutputFileName(context, target);
     cmSourceFile* sf = lg->GetMakefile()->GetOrCreateGeneratedSource(name);
 
     // Tell the build system generators that there is no build rule
@@ -142,7 +148,7 @@ void cmGeneratorExpressionEvaluationFile::Generate(cmLocalGenerator* lg)
   if (this->InputIsContent) {
     inputContent = this->Input;
   } else {
-    const std::string inputFileName = this->GetInputFileName(lg);
+    std::string const inputFileName = this->GetInputFileName(lg);
     lg->GetMakefile()->AddCMakeDependFile(inputFileName);
     if (!this->Permissions) {
       cmSystemTools::GetPermissions(inputFileName.c_str(), this->Permissions);
@@ -190,7 +196,7 @@ void cmGeneratorExpressionEvaluationFile::Generate(cmLocalGenerator* lg)
 }
 
 std::string cmGeneratorExpressionEvaluationFile::GetInputFileName(
-  cmLocalGenerator* lg)
+  cmLocalGenerator const* lg)
 {
   std::string inputFileName = this->Input;
 
@@ -204,23 +210,23 @@ std::string cmGeneratorExpressionEvaluationFile::GetInputFileName(
 }
 
 std::string cmGeneratorExpressionEvaluationFile::GetOutputFileName(
-  cmLocalGenerator* lg, cmGeneratorTarget* target, const std::string& config,
-  const std::string& lang)
+  cm::GenEx::Context const& context, cmGeneratorTarget* target)
 {
   std::string outputFileName =
-    this->OutputFileExpr->Evaluate(lg, config, target, nullptr, nullptr, lang);
+    this->OutputFileExpr->Evaluate(context, nullptr, target);
 
   if (cmSystemTools::FileIsFullPath(outputFileName)) {
     outputFileName = cmSystemTools::CollapseFullPath(outputFileName);
   } else {
-    outputFileName = this->FixRelativePath(outputFileName, PathForOutput, lg);
+    outputFileName =
+      this->FixRelativePath(outputFileName, PathForOutput, context.LG);
   }
 
   return outputFileName;
 }
 
 std::string cmGeneratorExpressionEvaluationFile::FixRelativePath(
-  std::string const& relativePath, PathRole role, cmLocalGenerator* lg)
+  std::string const& relativePath, PathRole role, cmLocalGenerator const* lg)
 {
   std::string resultPath;
   switch (this->PolicyStatusCMP0070) {
@@ -253,8 +259,6 @@ std::string cmGeneratorExpressionEvaluationFile::FixRelativePath(
       // which ends up being used relative to the working dir.
       resultPath = relativePath;
       break;
-    case cmPolicies::REQUIRED_IF_USED:
-    case cmPolicies::REQUIRED_ALWAYS:
     case cmPolicies::NEW:
       // NEW behavior is to interpret the relative path with respect
       // to the current source or binary directory.

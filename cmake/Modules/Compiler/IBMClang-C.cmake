@@ -1,4 +1,11 @@
 include(Compiler/IBMClang)
+
+set(_ibmclang_version_c "${CMAKE_C_COMPILER_VERSION}")
+set(CMAKE_C_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION_INTERNAL}")
+include(Compiler/Clang-C)
+set(CMAKE_C_COMPILER_VERSION "${_ibmclang_version_c}")
+unset(_ibmclang_version_c)
+
 __compiler_ibmclang(C)
 
 set(CMAKE_C_COMPILE_OPTIONS_EXPLICIT_LANGUAGE -x c)
@@ -23,8 +30,11 @@ set(CMAKE_C11_STANDARD__HAS_FULL_SUPPORT ON)
 set(CMAKE_C11_STANDARD_COMPILE_OPTION "-std=c11")
 set(CMAKE_C11_EXTENSION_COMPILE_OPTION "-std=gnu11")
 
+set(CMAKE_C_STANDARD_LATEST 11)
+
 if (CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 17.1.0)
   set(CMAKE_C17_STANDARD_COMPILE_OPTION  "-std=c17")
   set(CMAKE_C17_EXTENSION_COMPILE_OPTION "-std=gnu17")
+  set(CMAKE_C_STANDARD_LATEST 17)
 endif ()
 __compiler_check_default_language_standard(C 17.1.0 17)

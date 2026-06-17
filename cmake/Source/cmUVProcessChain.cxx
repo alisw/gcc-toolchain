@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmUVProcessChain.h"
 
 #include <array>
@@ -11,6 +11,8 @@
 #include <cm/memory>
 
 #include <cm3p/uv.h>
+
+#include "cmsys/Process.h"
 
 #include "cm_fileno.hxx"
 
@@ -36,7 +38,7 @@ struct cmUVProcessChain::InternalData
     void Finish();
   };
 
-  const cmUVProcessChainBuilder* Builder = nullptr;
+  cmUVProcessChainBuilder const* Builder = nullptr;
 
   bool Valid = false;
 
@@ -52,22 +54,23 @@ struct cmUVProcessChain::InternalData
   unsigned int ProcessesCompleted = 0;
   std::vector<std::unique_ptr<ProcessData>> Processes;
 
-  bool Prepare(const cmUVProcessChainBuilder* builder);
+  bool Prepare(cmUVProcessChainBuilder const* builder);
   void SpawnProcess(
     std::size_t index,
-    const cmUVProcessChainBuilder::ProcessConfiguration& config, bool first,
+    cmUVProcessChainBuilder::ProcessConfiguration const& config, bool first,
     bool last);
   void Finish();
+  void Terminate();
 };
 
 cmUVProcessChainBuilder::cmUVProcessChainBuilder() = default;
 
 cmUVProcessChainBuilder& cmUVProcessChainBuilder::AddCommand(
-  const std::vector<std::string>& arguments)
+  std::vector<std::string> arguments)
 {
   if (!arguments.empty()) {
     this->Processes.emplace_back();
-    this->Processes.back().Arguments = arguments;
+    this->Processes.back().Arguments = std::move(arguments);
   }
   return *this;
 }
@@ -156,6 +159,12 @@ cmUVProcessChainBuilder& cmUVProcessChainBuilder::SetWorkingDirectory(
   return *this;
 }
 
+cmUVProcessChainBuilder& cmUVProcessChainBuilder::SetDetached()
+{
+  this->Detached = true;
+  return *this;
+}
+
 uv_loop_t* cmUVProcessChainBuilder::GetLoop() const
 {
   return this->Loop;
@@ -180,7 +189,7 @@ cmUVProcessChain cmUVProcessChainBuilder::Start() const
 }
 
 bool cmUVProcessChain::InternalData::Prepare(
-  const cmUVProcessChainBuilder* builder)
+  cmUVProcessChainBuilder const* builder)
 {
   this->Builder = builder;
 
@@ -319,7 +328,7 @@ bool cmUVProcessChain::InternalData::Prepare(
 
 void cmUVProcessChain::InternalData::SpawnProcess(
   std::size_t index,
-  const cmUVProcessChainBuilder::ProcessConfiguration& config, bool first,
+  cmUVProcessChainBuilder::ProcessConfiguration const& config, bool first,
   bool last)
 {
   auto& process = *this->Processes[index];
@@ -329,7 +338,7 @@ void cmUVProcessChain::InternalData::SpawnProcess(
   // Bounds were checked at add time, first element is guaranteed to exist
   options.file = config.Arguments[0].c_str();
 
-  std::vector<const char*> arguments;
+  std::vector<char const*> arguments;
   arguments.reserve(config.Arguments.size());
   for (auto const& arg : config.Arguments) {
     arguments.push_back(arg.c_str());
@@ -337,10 +346,16 @@ void cmUVProcessChain::InternalData::SpawnProcess(
   arguments.push_back(nullptr);
   options.args = const_cast<char**>(arguments.data());
   options.flags = UV_PROCESS_WINDOWS_HIDE;
+  if (this->Builder->Detached) {
+    options.flags |= UV_PROCESS_DETACHED;
+  }
 #if UV_VERSION_MAJOR > 1 ||                                                   \
   (UV_VERSION_MAJOR == 1 && UV_VERSION_MINOR >= 48) ||                        \
   !defined(CMAKE_USE_SYSTEM_LIBUV)
   options.flags |= UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME;
+#endif
+#if UV_VERSION_MAJOR > 1 || !defined(CMAKE_USE_SYSTEM_LIBUV)
+  options.flags |= UV_PROCESS_WINDOWS_USE_PARENT_ERROR_MODE;
 #endif
   if (!this->Builder->WorkingDirectory.empty()) {
     options.cwd = this->Builder->WorkingDirectory.c_str();
@@ -377,6 +392,9 @@ void cmUVProcessChain::InternalData::SpawnProcess(
          process.Process.spawn(*this->Loop, options, &process)) < 0) {
     process.Finish();
   }
+  if (this->Builder->Detached) {
+    uv_unref((uv_handle_t*)process.Process);
+  }
   process.InputPipe.reset();
   process.OutputPipe.reset();
 }
@@ -386,6 +404,15 @@ void cmUVProcessChain::InternalData::Finish()
   this->TempOutputPipe.reset();
   this->TempErrorPipe.reset();
   this->Valid = true;
+}
+
+void cmUVProcessChain::InternalData::Terminate()
+{
+  for (std::unique_ptr<ProcessData> const& p : this->Processes) {
+    if (!p->ProcessStatus.Finished) {
+      cmsysProcess_KillPID(static_cast<unsigned long>(p->Process->pid));
+    }
+  }
 }
 
 cmUVProcessChain::cmUVProcessChain()
@@ -439,7 +466,7 @@ bool cmUVProcessChain::Wait(uint64_t milliseconds)
         auto* timeoutPtr = static_cast<bool*>(handle->data);
         *timeoutPtr = true;
       },
-      milliseconds, 0);
+      milliseconds, 0, cm::uv_update_time::yes);
   }
 
   while (!timeout &&
@@ -450,10 +477,10 @@ bool cmUVProcessChain::Wait(uint64_t milliseconds)
   return !timeout;
 }
 
-std::vector<const cmUVProcessChain::Status*> cmUVProcessChain::GetStatus()
+std::vector<cmUVProcessChain::Status const*> cmUVProcessChain::GetStatus()
   const
 {
-  std::vector<const cmUVProcessChain::Status*> statuses(
+  std::vector<cmUVProcessChain::Status const*> statuses(
     this->Data->Processes.size(), nullptr);
   for (std::size_t i = 0; i < statuses.size(); i++) {
     statuses[i] = &this->GetStatus(i);
@@ -461,7 +488,7 @@ std::vector<const cmUVProcessChain::Status*> cmUVProcessChain::GetStatus()
   return statuses;
 }
 
-const cmUVProcessChain::Status& cmUVProcessChain::GetStatus(
+cmUVProcessChain::Status const& cmUVProcessChain::GetStatus(
   std::size_t index) const
 {
   return this->Data->Processes[index]->ProcessStatus;
@@ -470,6 +497,11 @@ const cmUVProcessChain::Status& cmUVProcessChain::GetStatus(
 bool cmUVProcessChain::Finished() const
 {
   return this->Data->ProcessesCompleted >= this->Data->Processes.size();
+}
+
+void cmUVProcessChain::Terminate()
+{
+  this->Data->Terminate();
 }
 
 std::pair<cmUVProcessChain::ExceptionCode, std::string>
@@ -549,7 +581,7 @@ cmUVProcessChain::Status::GetException() const
       case STATUS_NO_MEMORY:
       default: {
         char buf[256];
-        snprintf(buf, sizeof(buf), "Exit code 0x%x\n",
+        snprintf(buf, sizeof(buf), "Exit code 0x%x",
                  static_cast<unsigned int>(this->ExitStatus));
         return std::make_pair(ExceptionCode::Other, buf);
       }

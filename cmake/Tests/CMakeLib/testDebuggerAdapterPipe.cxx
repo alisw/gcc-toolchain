@@ -1,15 +1,12 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 
 #include <chrono>
 #include <cstdio>
-#include <functional>
 #include <future>
-#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <vector>
 
 #include <cm3p/cppdap/future.h>
 #include <cm3p/cppdap/io.h>
@@ -23,9 +20,10 @@
 #include "cmVersionConfig.h"
 
 #ifdef _WIN32
+#  include "cmsys/SystemTools.hxx"
+
 #  include "cmCryptoHash.h"
 #  include "cmDebuggerWindowsPipeConnection.h"
-#  include "cmSystemTools.h"
 #else
 #  include "cmDebuggerPosixPipeConnection.h"
 #endif
@@ -72,25 +70,22 @@ bool testProtocolWithPipes()
 #ifdef _WIN32
   std::string namedPipe = R"(\\.\pipe\LOCAL\CMakeDebuggerPipe2_)" +
     cmCryptoHash(cmCryptoHash::AlgoSHA256)
-      .HashString(cmSystemTools::GetCurrentWorkingDirectory());
+      .HashString(cmsys::SystemTools::GetCurrentWorkingDirectory());
 #else
   std::string namedPipe = "CMakeDebuggerPipe2";
 #endif
 
   std::unique_ptr<dap::Session> client = dap::Session::create();
-  client->registerHandler([&](const dap::InitializedEvent& e) {
-    (void)e;
+  client->registerHandler([&](dap::InitializedEvent /*unused*/) {
     initializedEventReceivedPromise.set_value(true);
   });
-  client->registerHandler([&](const dap::ExitedEvent& e) {
-    (void)e;
+  client->registerHandler([&](dap::ExitedEvent /*unused*/) {
     exitedEventReceivedPromise.set_value(true);
   });
-  client->registerHandler([&](const dap::TerminatedEvent& e) {
-    (void)e;
+  client->registerHandler([&](dap::TerminatedEvent const& /*unused*/) {
     terminatedEventReceivedPromise.set_value(true);
   });
-  client->registerHandler([&](const dap::ThreadEvent& e) {
+  client->registerHandler([&](dap::ThreadEvent const& e) {
     if (e.reason == "started") {
       threadStartedPromise.set_value(true);
     } else if (e.reason == "exited") {
@@ -116,7 +111,7 @@ bool testProtocolWithPipes()
       ASSERT_TRUE(disconnectResponseReceivedFuture.wait_for(futureTimeout) ==
                   std::future_status::ready);
       return 0;
-    } catch (const std::runtime_error& error) {
+    } catch (std::runtime_error const& error) {
       std::cerr << "Error: Failed to create debugger adapter.\n";
       std::cerr << error.what() << "\n";
       return -1;
@@ -180,7 +175,5 @@ bool testProtocolWithPipes()
 
 int testDebuggerAdapterPipe(int, char*[])
 {
-  return runTests(std::vector<std::function<bool()>>{
-    testProtocolWithPipes,
-  });
+  return runTests({ testProtocolWithPipes });
 }

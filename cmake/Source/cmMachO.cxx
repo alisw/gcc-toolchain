@@ -1,10 +1,9 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmMachO.h"
 
 #include <cstddef>
 #include <string>
-#include <vector>
 
 #include <cm/memory>
 
@@ -13,8 +12,12 @@
 #include "cmAlgorithms.h"
 
 // Include the Mach-O format information system header.
+#include <mach-o/arch.h>
 #include <mach-o/fat.h>
 #include <mach-o/loader.h>
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 130000
+#  include <mach-o/utils.h>
+#endif
 
 /**
 
@@ -80,13 +83,13 @@ public:
   // A load_command and its associated data
   struct RawLoadCommand
   {
-    uint32_t type(const cmMachOHeaderAndLoadCommands& m) const
+    uint32_t type(cmMachOHeaderAndLoadCommands const& m) const
     {
       if (this->LoadCommand.size() < sizeof(load_command)) {
         return 0;
       }
-      const load_command* cmd =
-        reinterpret_cast<const load_command*>(&this->LoadCommand[0]);
+      load_command const* cmd =
+        reinterpret_cast<load_command const*>(&this->LoadCommand[0]);
       return m.swap(cmd->cmd);
     }
     std::vector<char> LoadCommand;
@@ -100,7 +103,7 @@ public:
 
   virtual bool read_mach_o(cmsys::ifstream& fin) = 0;
 
-  const std::vector<RawLoadCommand>& load_commands() const
+  std::vector<RawLoadCommand> const& load_commands() const
   {
     return this->LoadCommands;
   }
@@ -115,12 +118,15 @@ public:
     return v;
   }
 
+  struct cmMachO::MachHeader mach_header() const { return MachHeader; }
+
 protected:
   bool read_load_commands(uint32_t ncmds, uint32_t sizeofcmds,
                           cmsys::ifstream& fin);
 
   bool Swap;
   std::vector<RawLoadCommand> LoadCommands;
+  struct cmMachO::MachHeader MachHeader;
 };
 
 // Implementation for reading Mach-O header and load commands.
@@ -138,9 +144,11 @@ public:
     if (!read(fin, this->Header)) {
       return false;
     }
-    this->Header.cputype = swap(this->Header.cputype);
-    this->Header.cpusubtype = swap(this->Header.cpusubtype);
-    this->Header.filetype = swap(this->Header.filetype);
+    // swap the header data and export a (potentially) useful subset via the
+    // parent class.
+    this->MachHeader.CpuType = swap(this->Header.cputype);
+    this->MachHeader.CpuSubType = swap(this->Header.cpusubtype);
+    this->MachHeader.FileType = swap(this->Header.filetype);
     this->Header.ncmds = swap(this->Header.ncmds);
     this->Header.sizeofcmds = swap(this->Header.sizeofcmds);
     this->Header.flags = swap(this->Header.flags);
@@ -186,11 +194,11 @@ bool cmMachOHeaderAndLoadCommands::read_load_commands(uint32_t ncmds,
 class cmMachOInternal
 {
 public:
-  cmMachOInternal(const char* fname);
-  cmMachOInternal(const cmMachOInternal&) = delete;
+  cmMachOInternal(char const* fname);
+  cmMachOInternal(cmMachOInternal const&) = delete;
   ~cmMachOInternal();
 
-  cmMachOInternal& operator=(const cmMachOInternal&) = delete;
+  cmMachOInternal& operator=(cmMachOInternal const&) = delete;
 
   // read a Mach-O file
   bool read_mach_o(uint32_t file_offset);
@@ -209,7 +217,7 @@ public:
   std::vector<std::unique_ptr<cmMachOHeaderAndLoadCommands>> MachOList;
 };
 
-cmMachOInternal::cmMachOInternal(const char* fname)
+cmMachOInternal::cmMachOInternal(char const* fname)
   : Fin(fname)
 {
   // Quit now if the file could not be opened.
@@ -253,7 +261,7 @@ cmMachOInternal::cmMachOInternal(const char* fname)
     }
 
     // parse each Mach-O file
-    for (const auto& arch : this->FatArchs) {
+    for (auto const& arch : this->FatArchs) {
       if (!this->read_mach_o(OSSwapBigToHostInt32(arch.offset))) {
         return;
       }
@@ -308,9 +316,12 @@ bool cmMachOInternal::read_mach_o(uint32_t file_offset)
 //============================================================================
 // External class implementation.
 
-cmMachO::cmMachO(const char* fname)
+cmMachO::cmMachO(char const* fname)
   : Internal(cm::make_unique<cmMachOInternal>(fname))
 {
+  for (auto const& m : this->Internal->MachOList) {
+    Headers.push_back(m->mach_header());
+  }
 }
 
 cmMachO::~cmMachO() = default;
@@ -335,7 +346,7 @@ bool cmMachO::GetInstallName(std::string& install_name)
   std::unique_ptr<cmMachOHeaderAndLoadCommands>& macho =
     this->Internal->MachOList[0];
   for (size_t i = 0; i < macho->load_commands().size(); i++) {
-    const cmMachOHeaderAndLoadCommands::RawLoadCommand& cmd =
+    cmMachOHeaderAndLoadCommands::RawLoadCommand const& cmd =
       macho->load_commands()[i];
     uint32_t lc_cmd = cmd.type(*macho);
     if (lc_cmd == LC_ID_DYLIB || lc_cmd == LC_LOAD_WEAK_DYLIB ||
@@ -354,4 +365,40 @@ bool cmMachO::GetInstallName(std::string& install_name)
 
 void cmMachO::PrintInfo(std::ostream& /*os*/) const
 {
+}
+
+cmMachO::StringList cmMachO::GetArchitectures() const
+{
+  cmMachO::StringList archs;
+  if (Valid() && !this->Headers.empty()) {
+    for (auto const& header : this->Headers) {
+      char const* archName = "unknown";
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 130000
+      if (__builtin_available(macOS 13.0, *)) {
+        archName = (header.CpuType & CPU_TYPE_ARM)
+          ? macho_arch_name_for_cpu_type(header.CpuType, header.CpuSubType)
+          : macho_arch_name_for_cpu_type(header.CpuType, CPU_SUBTYPE_MULTIPLE);
+      } else
+#endif
+      {
+#if defined __clang__
+#  define CM_MACOS_DEPRECATED_NXGetArchInfoFromCpuType
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+        NXArchInfo const* archInfo = (header.CpuType & CPU_TYPE_ARM)
+          ? NXGetArchInfoFromCpuType(header.CpuType, header.CpuSubType)
+          : NXGetArchInfoFromCpuType(header.CpuType, CPU_SUBTYPE_MULTIPLE);
+#ifdef CM_MACOS_DEPRECATED_NXGetArchInfoFromCpuType
+#  undef CM_MACOS_DEPRECATED_NXGetArchInfoFromCpuType
+#  pragma clang diagnostic pop
+#endif
+        if (archInfo) {
+          archName = archInfo->name;
+        }
+      }
+      archs.push_back(archName);
+    }
+  }
+  return archs;
 }

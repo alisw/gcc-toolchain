@@ -1,25 +1,73 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindGnuplot
 -----------
 
-this module looks for gnuplot
+Finds the Gnuplot command-line graphing utility for generating two- and
+three-dimensional plots (``gnuplot``):
 
+.. code-block:: cmake
 
+  find_package(Gnuplot [<version>] [...])
 
-Once done this will define
+Result Variables
+^^^^^^^^^^^^^^^^
 
-::
+This module defines the following variables:
 
-  GNUPLOT_FOUND - system has Gnuplot
-  GNUPLOT_EXECUTABLE - the Gnuplot executable
-  GNUPLOT_VERSION_STRING - the version of Gnuplot found (since CMake 2.8.8)
+``Gnuplot_FOUND``
+  .. versionadded:: 3.3
 
+  Boolean indicating whether (the requested version of) Gnuplot was found.
 
+``Gnuplot_VERSION``
+  .. versionadded:: 4.2
 
-GNUPLOT_VERSION_STRING will not work for old versions like 3.7.1.
+  The version of Gnuplot found.
+
+  .. note::
+
+    Version detection is available only for Gnuplot 4 and later.  Earlier
+    versions did not provide version output.
+
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may also be set:
+
+``GNUPLOT_EXECUTABLE``
+  Absolute path to the ``gnuplot`` executable.
+
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
+
+The following variables are provided for backward compatibility:
+
+``GNUPLOT_FOUND``
+  .. deprecated:: 4.2
+    Use ``Gnuplot_FOUND``, which has the same value.
+
+  Boolean indicating whether (the requested version of) Gnuplot was found.
+
+``GNUPLOT_VERSION_STRING``
+  .. deprecated:: 4.2
+    Superseded by the ``Gnuplot_VERSION``.
+
+  The version of Gnuplot found.
+
+Examples
+^^^^^^^^
+
+Finding Gnuplot and executing it in a process:
+
+.. code-block:: cmake
+
+  find_package(Gnuplot)
+  if(Gnuplot_FOUND)
+    execute_process(COMMAND ${GNUPLOT_EXECUTABLE} --help)
+  endif()
 #]=======================================================================]
 
 include(${CMAKE_CURRENT_LIST_DIR}/FindCygwin.cmake)
@@ -41,17 +89,18 @@ if (GNUPLOT_EXECUTABLE)
                   ERROR_QUIET
                   OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-    string(REGEX REPLACE "^gnuplot ([0-9\\.]+)( patchlevel )?" "\\1." GNUPLOT_VERSION_STRING "${GNUPLOT_OUTPUT_VARIABLE}")
-    string(REGEX REPLACE "\\.$" "" GNUPLOT_VERSION_STRING "${GNUPLOT_VERSION_STRING}")
+    string(REGEX REPLACE "^gnuplot ([0-9\\.]+)( patchlevel )?" "\\1." Gnuplot_VERSION "${GNUPLOT_OUTPUT_VARIABLE}")
+    string(REGEX REPLACE "\\.$" "" Gnuplot_VERSION "${Gnuplot_VERSION}")
+    set(GNUPLOT_VERSION_STRING "${Gnuplot_VERSION}")
     unset(GNUPLOT_OUTPUT_VARIABLE)
 endif()
 
 # for compatibility
 set(GNUPLOT ${GNUPLOT_EXECUTABLE})
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(Gnuplot
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(Gnuplot
                                   REQUIRED_VARS GNUPLOT_EXECUTABLE
-                                  VERSION_VAR GNUPLOT_VERSION_STRING)
+                                  VERSION_VAR Gnuplot_VERSION)
 
 mark_as_advanced( GNUPLOT_EXECUTABLE )

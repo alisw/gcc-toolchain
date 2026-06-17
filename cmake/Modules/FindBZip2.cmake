@@ -1,59 +1,109 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindBZip2
 ---------
 
-Try to find BZip2
+Finds the BZip2 data compression library (libbz2):
 
-IMPORTED Targets
+.. code-block:: cmake
+
+  find_package(BZip2 [<version>] [...])
+
+Imported Targets
 ^^^^^^^^^^^^^^^^
 
-.. versionadded:: 3.12
+This module provides the following :ref:`Imported Targets`:
 
-This module defines :prop_tgt:`IMPORTED` target ``BZip2::BZip2``, if
-BZip2 has been found.
+``BZip2::BZip2``
+  .. versionadded:: 3.12
+
+  Target encapsulating the usage requirements of BZip2 library.  This target is
+  available only when BZip2 is found.
 
 Result Variables
 ^^^^^^^^^^^^^^^^
 
 This module defines the following variables:
 
-``BZIP2_FOUND``
-  system has BZip2
+``BZip2_FOUND``
+  .. versionadded:: 3.3
+
+  Boolean indicating whether the (requested version of) BZip2 library was
+  found.
+
+``BZip2_VERSION``
+  .. versionadded:: 4.2
+
+  The version of BZip2 found.
+
 ``BZIP2_INCLUDE_DIRS``
   .. versionadded:: 3.12
-    the BZip2 include directories
+
+  Include directories needed to use BZip2 library.
+
 ``BZIP2_LIBRARIES``
-  Link these to use BZip2
-``BZIP2_NEED_PREFIX``
-  this is set if the functions are prefixed with ``BZ2_``
-``BZIP2_VERSION``
-  .. versionadded:: 3.26
-    the version of BZip2 found.
+  Libraries needed for linking to use BZip2.
 
-  See also legacy variable ``BZIP2_VERSION_STRING``.
-
-Cache variables
+Cache Variables
 ^^^^^^^^^^^^^^^
 
 The following cache variables may also be set:
 
 ``BZIP2_INCLUDE_DIR``
-  the BZip2 include directory
+  The directory containing the BZip2 headers.
 
-Legacy Variables
-^^^^^^^^^^^^^^^^
+``BZIP2_LIBRARY_RELEASE``
+  The path to the BZip2 library for release configurations.
+
+``BZIP2_LIBRARY_DEBUG``
+  The path to the BZip2 library for debug configurations.
+
+``BZIP2_NEED_PREFIX``
+  Boolean indicating whether BZip2 functions are prefixed with ``BZ2_``
+  (e.g., ``BZ2_bzCompressInit()``).  Versions of BZip2 prior to 1.0.0 used
+  unprefixed function names (e.g., ``bzCompressInit()``).
+
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
 
 The following variables are provided for backward compatibility:
 
-``BZIP2_VERSION_STRING``
-  the version of BZip2 found.
+``BZIP2_FOUND``
+  .. deprecated:: 4.2
+    Use ``BZip2_FOUND``, which has the same value.
 
-  .. versionchanged:: 3.26
-    Superseded by ``BZIP2_VERSION``.
+  Boolean indicating whether the (requested version of) BZip2 library was
+  found.
+
+``BZIP2_VERSION_STRING``
+  .. deprecated:: 3.26
+    Superseded by the ``BZIP2_VERSION`` (and ``BZip2_VERSION``).
+
+  The version of BZip2 found.
+
+``BZIP2_VERSION``
+  .. versionadded:: 3.26
+
+  .. deprecated:: 4.2
+    Superseded by the ``BZip2_VERSION``.
+
+  The version of BZip2 found.
+
+Examples
+^^^^^^^^
+
+Finding BZip2 library and linking it to a project target:
+
+.. code-block:: cmake
+
+  find_package(BZip2)
+  target_link_libraries(project_target PRIVATE BZip2::BZip2)
 #]=======================================================================]
+
+cmake_policy(PUSH)
+cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
 set(_BZIP2_PATHS PATHS
   "[HKEY_LOCAL_MACHINE\\SOFTWARE\\GnuWin32\\Bzip2;InstallPath]"
@@ -66,7 +116,7 @@ if (NOT BZIP2_LIBRARIES)
     find_library(BZIP2_LIBRARY_DEBUG NAMES bz2d bzip2d libbz2d libbzip2d NAMES_PER_DIR ${_BZIP2_PATHS} PATH_SUFFIXES lib)
 
     include(${CMAKE_CURRENT_LIST_DIR}/SelectLibraryConfigurations.cmake)
-    SELECT_LIBRARY_CONFIGURATIONS(BZIP2)
+    select_library_configurations(BZIP2)
 else ()
     file(TO_CMAKE_PATH "${BZIP2_LIBRARIES}" BZIP2_LIBRARIES)
 endif ()
@@ -75,14 +125,15 @@ if (BZIP2_INCLUDE_DIR AND EXISTS "${BZIP2_INCLUDE_DIR}/bzlib.h")
     file(STRINGS "${BZIP2_INCLUDE_DIR}/bzlib.h" BZLIB_H REGEX "bzip2/libbzip2 version [0-9]+\\.[^ ]+ of [0-9]+ ")
     string(REGEX REPLACE ".* bzip2/libbzip2 version ([0-9]+\\.[^ ]+) of [0-9]+ .*" "\\1" BZIP2_VERSION_STRING "${BZLIB_H}")
     set(BZIP2_VERSION ${BZIP2_VERSION_STRING})
+    set(BZip2_VERSION ${BZIP2_VERSION_STRING})
 endif ()
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(BZip2
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(BZip2
                                   REQUIRED_VARS BZIP2_LIBRARIES BZIP2_INCLUDE_DIR
-                                  VERSION_VAR BZIP2_VERSION)
+                                  VERSION_VAR BZip2_VERSION)
 
-if (BZIP2_FOUND)
+if (BZip2_FOUND)
   set(BZIP2_INCLUDE_DIRS ${BZIP2_INCLUDE_DIR})
   include(${CMAKE_CURRENT_LIST_DIR}/CheckSymbolExists.cmake)
   include(${CMAKE_CURRENT_LIST_DIR}/CMakePushCheckState.cmake)
@@ -90,7 +141,15 @@ if (BZIP2_FOUND)
   set(CMAKE_REQUIRED_QUIET ${BZip2_FIND_QUIETLY})
   set(CMAKE_REQUIRED_INCLUDES ${BZIP2_INCLUDE_DIR})
   set(CMAKE_REQUIRED_LIBRARIES ${BZIP2_LIBRARIES})
-  CHECK_SYMBOL_EXISTS(BZ2_bzCompressInit "bzlib.h" BZIP2_NEED_PREFIX)
+
+  # Versions before 1.0.2 required <stdio.h> for the FILE definition.
+  set(BZip2_headers "bzlib.h")
+  if(BZip2_VERSION VERSION_LESS "1.0.2")
+    list(PREPEND BZip2_headers "stdio.h")
+  endif()
+  check_symbol_exists(BZ2_bzCompressInit "${BZip2_headers}" BZIP2_NEED_PREFIX)
+  unset(BZip2_headers)
+
   cmake_pop_check_state()
 
   if(NOT TARGET BZip2::BZip2)
@@ -120,3 +179,5 @@ if (BZIP2_FOUND)
 endif ()
 
 mark_as_advanced(BZIP2_INCLUDE_DIR)
+
+cmake_policy(POP)

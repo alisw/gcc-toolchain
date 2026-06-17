@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 
 #include "cmStandardLevelResolver.h"
 
@@ -35,16 +35,16 @@
 namespace {
 
 #define FEATURE_STRING(F) , #F
-const char* const C_FEATURES[] = { nullptr FOR_EACH_C_FEATURE(
+char const* const C_FEATURES[] = { nullptr FOR_EACH_C_FEATURE(
   FEATURE_STRING) };
 
-const char* const CXX_FEATURES[] = { nullptr FOR_EACH_CXX_FEATURE(
+char const* const CXX_FEATURES[] = { nullptr FOR_EACH_CXX_FEATURE(
   FEATURE_STRING) };
 
-const char* const CUDA_FEATURES[] = { nullptr FOR_EACH_CUDA_FEATURE(
+char const* const CUDA_FEATURES[] = { nullptr FOR_EACH_CUDA_FEATURE(
   FEATURE_STRING) };
 
-const char* const HIP_FEATURES[] = { nullptr FOR_EACH_HIP_FEATURE(
+char const* const HIP_FEATURES[] = { nullptr FOR_EACH_HIP_FEATURE(
   FEATURE_STRING) };
 #undef FEATURE_STRING
 
@@ -76,8 +76,8 @@ struct StandardLevelComputer
                                   std::string const& config) const
   {
 
-    const auto& stds = this->Levels;
-    const auto& stdsStrings = this->LevelsAsStrings;
+    auto const& stds = this->Levels;
+    auto const& stdsStrings = this->LevelsAsStrings;
 
     cmValue defaultStd = makefile->GetDefinition(
       cmStrCat("CMAKE_", this->Language, "_STANDARD_DEFAULT"));
@@ -88,8 +88,10 @@ struct StandardLevelComputer
 
     cmPolicies::PolicyStatus const cmp0128{ makefile->GetPolicyStatus(
       cmPolicies::CMP0128) };
-    bool const defaultExt{ cmIsOn(*makefile->GetDefinition(
-      cmStrCat("CMAKE_", this->Language, "_EXTENSIONS_DEFAULT"))) };
+    bool const defaultExt{ makefile
+                             ->GetDefinition(cmStrCat("CMAKE_", this->Language,
+                                                      "_EXTENSIONS_DEFAULT"))
+                             .IsOn() };
     bool ext = true;
 
     if (cmp0128 == cmPolicies::NEW) {
@@ -97,7 +99,7 @@ struct StandardLevelComputer
     }
 
     if (cmValue extPropValue = target->GetLanguageExtensions(this->Language)) {
-      ext = cmIsOn(*extPropValue);
+      ext = extPropValue.IsOn();
     }
 
     std::string const type{ ext ? "EXTENSION" : "STANDARD" };
@@ -115,7 +117,7 @@ struct StandardLevelComputer
             makefile->PolicyOptionalWarningEnabled(
               "CMAKE_POLICY_WARNING_CMP0128") &&
             ext != defaultExt) {
-          const char* state{};
+          char const* state{};
           if (ext) {
             if (!makefile->GetDefinition(cmStrCat(
                   "CMAKE_", this->Language, "_EXTENSION_COMPILE_OPTION"))) {
@@ -240,8 +242,8 @@ struct StandardLevelComputer
                                    cmGeneratorTarget const* target,
                                    std::string const& config) const
   {
-    const auto& stds = this->Levels;
-    const auto& stdsStrings = this->LevelsAsStrings;
+    auto const& stds = this->Levels;
+    auto const& stdsStrings = this->LevelsAsStrings;
 
     cmValue defaultStd = makefile->GetDefinition(
       cmStrCat("CMAKE_", this->Language, "_STANDARD_DEFAULT"));
@@ -252,8 +254,10 @@ struct StandardLevelComputer
 
     cmPolicies::PolicyStatus const cmp0128{ makefile->GetPolicyStatus(
       cmPolicies::CMP0128) };
-    bool const defaultExt{ cmIsOn(*makefile->GetDefinition(
-      cmStrCat("CMAKE_", this->Language, "_EXTENSIONS_DEFAULT"))) };
+    bool const defaultExt{ makefile
+                             ->GetDefinition(cmStrCat("CMAKE_", this->Language,
+                                                      "_EXTENSIONS_DEFAULT"))
+                             .IsOn() };
     bool ext = true;
 
     if (cmp0128 == cmPolicies::NEW) {
@@ -261,7 +265,7 @@ struct StandardLevelComputer
     }
 
     if (cmValue extPropValue = target->GetLanguageExtensions(this->Language)) {
-      ext = cmIsOn(*extPropValue);
+      ext = extPropValue.IsOn();
     }
 
     std::string const type{ ext ? "EXTENSION" : "STANDARD" };
@@ -363,7 +367,7 @@ struct StandardLevelComputer
         std::find(cm::cbegin(this->Levels), cm::cend(this->Levels),
                   ParseStd(*existingStandard));
       if (existingLevelIter == cm::cend(this->Levels)) {
-        const std::string e =
+        std::string const e =
           cmStrCat("The ", this->Language, "_STANDARD property on target \"",
                    targetName, "\" contained an invalid value: \"",
                    *existingStandard, "\".");
@@ -407,7 +411,7 @@ struct StandardLevelComputer
     // convert defaultStandard to an integer
     if (std::find(cm::cbegin(this->Levels), cm::cend(this->Levels),
                   ParseStd(*defaultStandard)) == cm::cend(this->Levels)) {
-      const std::string e = cmStrCat("The CMAKE_", this->Language,
+      std::string const e = cmStrCat("The CMAKE_", this->Language,
                                      "_STANDARD_DEFAULT variable contains an "
                                      "invalid value: \"",
                                      *defaultStandard, "\".");
@@ -425,7 +429,7 @@ struct StandardLevelComputer
       std::find(cm::cbegin(this->Levels), cm::cend(this->Levels),
                 ParseStd(*existingStandard));
     if (existingLevelIter == cm::cend(this->Levels)) {
-      const std::string e =
+      std::string const e =
         cmStrCat("The ", this->Language, "_STANDARD property on target \"",
                  target->GetName(), "\" contained an invalid value: \"",
                  *existingStandard, "\".");
@@ -517,7 +521,7 @@ std::string cmStandardLevelResolver::GetCompileOptionDef(
   cmGeneratorTarget const* target, std::string const& lang,
   std::string const& config) const
 {
-  const auto& mapping = StandardComputerMapping.find(lang);
+  auto const& mapping = StandardComputerMapping.find(lang);
   if (mapping == cm::cend(StandardComputerMapping)) {
     return std::string{};
   }
@@ -529,7 +533,7 @@ std::string cmStandardLevelResolver::GetEffectiveStandard(
   cmGeneratorTarget const* target, std::string const& lang,
   std::string const& config) const
 {
-  const auto& mapping = StandardComputerMapping.find(lang);
+  auto const& mapping = StandardComputerMapping.find(lang);
   if (mapping == cm::cend(StandardComputerMapping)) {
     return std::string{};
   }
@@ -537,8 +541,23 @@ std::string cmStandardLevelResolver::GetEffectiveStandard(
   return mapping->second.GetEffectiveStandard(this->Makefile, target, config);
 }
 
+std::string cmStandardLevelResolver::GetLevelString(
+  std::string const& lang, cmStandardLevel level) const
+{
+  auto mapping = StandardComputerMapping.find(lang);
+  if (mapping == StandardComputerMapping.end()) {
+    return {};
+  }
+
+  if (mapping->second.LevelsAsStrings.size() <= level.Index()) {
+    return {};
+  }
+
+  return mapping->second.LevelsAsStrings[level.Index()];
+}
+
 bool cmStandardLevelResolver::AddRequiredTargetFeature(
-  cmTarget* target, const std::string& feature, std::string* error) const
+  cmTarget* target, std::string const& feature, std::string* error) const
 {
   if (cmGeneratorExpression::Find(feature) != std::string::npos) {
     target->AppendProperty("COMPILE_FEATURES", feature,
@@ -573,7 +592,7 @@ bool cmStandardLevelResolver::AddRequiredTargetFeature(
 }
 
 bool cmStandardLevelResolver::CheckCompileFeaturesAvailable(
-  const std::string& targetName, const std::string& feature, std::string& lang,
+  std::string const& targetName, std::string const& feature, std::string& lang,
   std::string* error) const
 {
   if (!this->CompileFeatureKnown(targetName, feature, lang, error)) {
@@ -612,7 +631,7 @@ bool cmStandardLevelResolver::CheckCompileFeaturesAvailable(
 }
 
 bool cmStandardLevelResolver::CompileFeatureKnown(
-  const std::string& targetName, const std::string& feature, std::string& lang,
+  std::string const& targetName, std::string const& feature, std::string& lang,
   std::string* error) const
 {
   assert(cmGeneratorExpression::Find(feature) == std::string::npos);
@@ -685,7 +704,7 @@ cm::optional<cmStandardLevel> cmStandardLevelResolver::LanguageStandardLevel(
 }
 
 cmValue cmStandardLevelResolver::CompileFeaturesAvailable(
-  const std::string& lang, std::string* error) const
+  std::string const& lang, std::string* error) const
 {
   if (!this->Makefile->GetGlobalGenerator()->GetLanguageEnabled(lang)) {
     std::ostringstream e;
@@ -731,7 +750,7 @@ cmValue cmStandardLevelResolver::CompileFeaturesAvailable(
 }
 
 bool cmStandardLevelResolver::GetNewRequiredStandard(
-  const std::string& targetName, const std::string& feature,
+  std::string const& targetName, std::string const& feature,
   cmValue currentLangStandardValue,
   cm::optional<cmStandardLevel>& featureLevel,
   std::string& newRequiredStandard, std::string* error) const
@@ -754,7 +773,7 @@ bool cmStandardLevelResolver::GetNewRequiredStandard(
 
 bool cmStandardLevelResolver::HaveStandardAvailable(
   cmGeneratorTarget const* target, std::string const& lang,
-  std::string const& config, const std::string& feature) const
+  std::string const& config, std::string const& feature) const
 {
   auto mapping = StandardComputerMapping.find(lang);
   if (mapping != cm::cend(StandardComputerMapping)) {

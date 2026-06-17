@@ -1,6 +1,6 @@
 /* radius -- Functions for radii of complex balls.
 
-Copyright (C) 2022 INRIA
+Copyright (C) 2022, 2023, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -18,7 +18,6 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program. If not, see http://www.gnu.org/licenses/ .
 */
 
-#include <math.h>
 #include <inttypes.h> /* for the PRIi64 format modifier */
 #include <stdio.h>    /* for FILE */
 #include "mpc-impl.h"
@@ -408,11 +407,11 @@ int64_t mpcr_get_exp (mpcr_srcptr r)
 void mpcr_out_str (FILE *f, mpcr_srcptr r)
 {
    if (mpcr_inf_p (r))
-      fprintf (f, "∞");
+      fprintf (f, "[@Inf@]");
    else if (mpcr_zero_p (r))
-      fprintf (f, "0");
+      fprintf (f, "[0]");
    else {
-      fprintf (f, "±(%" PRIi64 ", %" PRIi64 ")", MPCR_MANT (r), MPCR_EXP (r));
+      fprintf (f, "[%" PRIi64 " %" PRIi64 "]", MPCR_MANT (r), MPCR_EXP (r));
    }
 }
 
@@ -636,38 +635,28 @@ void mpcr_sqrt (mpcr_ptr r, mpcr_srcptr s)
 }
 
 
-static void mpcr_set_d_rnd (mpcr_ptr r, double d, mpfr_rnd_t rnd)
-   /* Assuming that d is a positive double, set r to d rounded according
-      to rnd, which can be one of MPFR_RNDU or MPFR_RNDD. */
-{
-   double frac;
-   int e;
-
-   frac = frexp (d, &e);
-   MPCR_MANT (r) = (int64_t) (frac * (((int64_t) 1) << 53));
-   MPCR_EXP (r) = e - 53;
-   mpcr_normalise_rnd (r, rnd);
-}
-
-
 static void mpcr_f_abs_rnd (mpcr_ptr r, mpfr_srcptr z, mpfr_rnd_t rnd)
    /* Set r to the absolute value of z, rounded according to rnd, which
       can be one of MPFR_RNDU or MPFR_RNDD. */
 {
-   double d;
    int neg;
+   mpfr_exp_t aux;
+   mpfr_t zr;
 
    neg = mpfr_cmp_ui (z, 0);
    if (neg == 0)
       mpcr_set_zero (r);
    else {
-      if (rnd == MPFR_RNDU)
-         d = mpfr_get_d (z, MPFR_RNDA);
+      mpfr_init2 (zr, 31);
+      mpfr_frexp (&aux, zr, z, (rnd == MPFR_RNDU ? MPFR_RNDA : MPFR_RNDZ));
+      MPCR_EXP (r) = aux;
+      mpfr_mul_2exp (zr, zr, 31, MPFR_RNDN);
+      MPCR_EXP (r) -= 31;
+      if (neg > 0)
+         MPCR_MANT (r) = mpfr_get_si (zr, MPFR_RNDN);
       else
-         d = mpfr_get_d (z, MPFR_RNDZ);
-      if (d < 0)
-         d = -d;
-      mpcr_set_d_rnd (r, d, rnd);
+         MPCR_MANT (r) = -mpfr_get_si (zr, MPFR_RNDN);
+      mpfr_clear (zr);
    }
 }
 

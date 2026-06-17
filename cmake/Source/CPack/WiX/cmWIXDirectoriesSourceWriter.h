@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include <string>
@@ -13,7 +13,8 @@
 class cmWIXDirectoriesSourceWriter : public cmWIXSourceWriter
 {
 public:
-  cmWIXDirectoriesSourceWriter(cmCPackLog* logger, std::string const& filename,
+  cmWIXDirectoriesSourceWriter(unsigned long wixVersion, cmCPackLog* logger,
+                               std::string const& filename,
                                GuidType componentGuidType);
 
   void EmitStartMenuFolder(std::string const& startMenuFolder);
@@ -22,9 +23,16 @@ public:
 
   void EmitStartupFolder();
 
-  size_t BeginInstallationPrefixDirectory(
+  struct InstallationPrefixDirectory
+  {
+    bool HasStandardDirectory = false;
+    size_t Depth = 0;
+  };
+
+  InstallationPrefixDirectory BeginInstallationPrefixDirectory(
     std::string const& programFilesFolderId,
     std::string const& installRootString);
 
-  void EndInstallationPrefixDirectory(size_t size);
+  void EndInstallationPrefixDirectory(
+    InstallationPrefixDirectory installationPrefixDirectory);
 };

@@ -1,6 +1,7 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include <cstddef>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -25,7 +26,7 @@ using TestPreset = cmCMakePresetsGraph::TestPreset;
 using JSONHelperBuilder = cmJSONHelperBuilder;
 
 bool TestPresetOutputVerbosityHelper(
-  TestPreset::OutputOptions::VerbosityEnum& out, const Json::Value* value,
+  TestPreset::OutputOptions::VerbosityEnum& out, Json::Value const* value,
   cmJSONState* state)
 {
   if (!value) {
@@ -62,7 +63,7 @@ auto const TestPresetOptionalOutputVerbosityHelper =
     TestPresetOutputVerbosityHelper);
 
 bool TestPresetOutputTruncationHelper(
-  cm::optional<cmCTestTypes::TruncationMode>& out, const Json::Value* value,
+  cm::optional<cmCTestTypes::TruncationMode>& out, Json::Value const* value,
   cmJSONState* state)
 {
   if (!value) {
@@ -144,7 +145,7 @@ auto const TestPresetOptionalFilterIncludeIndexObjectHelper =
 
 bool TestPresetOptionalFilterIncludeIndexHelper(
   cm::optional<TestPreset::IncludeOptions::IndexOptions>& out,
-  const Json::Value* value, cmJSONState* state)
+  Json::Value const* value, cmJSONState* state)
 {
   if (!value) {
     out = cm::nullopt;
@@ -197,7 +198,7 @@ auto const TestPresetOptionalFilterExcludeHelper =
             TestPresetOptionalFilterExcludeFixturesHelper, false));
 
 bool TestPresetExecutionShowOnlyHelper(
-  TestPreset::ExecutionOptions::ShowOnlyEnum& out, const Json::Value* value,
+  TestPreset::ExecutionOptions::ShowOnlyEnum& out, Json::Value const* value,
   cmJSONState* state)
 {
   if (!value || !value->isString()) {
@@ -225,7 +226,7 @@ auto const TestPresetOptionalExecutionShowOnlyHelper =
 
 bool TestPresetExecutionModeHelper(
   TestPreset::ExecutionOptions::RepeatOptions::ModeEnum& out,
-  const Json::Value* value, cmJSONState* state)
+  Json::Value const* value, cmJSONState* state)
 {
   if (!value) {
     return true;
@@ -265,7 +266,7 @@ auto const TestPresetOptionalExecutionRepeatHelper =
 
 bool TestPresetExecutionNoTestsActionHelper(
   TestPreset::ExecutionOptions::NoTestsActionEnum& out,
-  const Json::Value* value, cmJSONState* state)
+  Json::Value const* value, cmJSONState* state)
 {
   if (!value) {
     out = TestPreset::ExecutionOptions::NoTestsActionEnum::Default;
@@ -377,7 +378,7 @@ auto const TestPresetHelper =
 
 namespace cmCMakePresetsGraphInternal {
 bool TestPresetsHelper(std::vector<cmCMakePresetsGraph::TestPreset>& out,
-                       const Json::Value* value, cmJSONState* state)
+                       Json::Value const* value, cmJSONState* state)
 {
   static auto const helper = JSONHelperBuilder::Vector<TestPreset>(
     cmCMakePresetsErrors::INVALID_PRESETS, TestPresetHelper);

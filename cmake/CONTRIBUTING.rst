@@ -26,7 +26,8 @@ To contribute patches:
 #. Fork the upstream `CMake Repository`_ into a personal account.
 #. Run `Utilities/SetupForDevelopment.sh`_ for local git configuration.
 #. See `Building CMake`_ for building CMake locally.
-#. See the `CMake Source Code Guide`_ for coding guidelines.
+#. See the `CMake Source Code Guide`_ for coding guidelines
+   and the `CMake Testing Guide`_ for testing instructions.
 #. Create a topic branch named suitably for your work.
    Base all new work on the upstream ``master`` branch.
    Base work on the upstream ``release`` branch only if it fixes a
@@ -49,6 +50,7 @@ The merge request will enter the `CMake Review Process`_ for consideration.
 .. _`Utilities/SetupForDevelopment.sh`: Utilities/SetupForDevelopment.sh
 .. _`Building CMake`: README.rst#building-cmake
 .. _`CMake Source Code Guide`: Help/dev/source.rst
+.. _`CMake Testing Guide`: Help/dev/testing.rst
 .. _`commit messages`: Help/dev/review.rst#commit-messages
 .. _`CMake Review Process`: Help/dev/review.rst
 
@@ -61,10 +63,10 @@ drive testing and submit results to the `CMake CDash Page`_.  Anyone is
 welcome to provide testing machines in order to help keep support for their
 platforms working.
 
-See documentation on `CMake Testing Process`_ for more information.
+See documentation on `CMake Integration Testing`_ for more information.
 
 .. _`CMake CDash Page`: https://open.cdash.org/index.php?project=CMake
-.. _`CMake Testing Process`: Help/dev/testing.rst
+.. _`CMake Integration Testing`: Help/dev/integration-testing.rst
 
 License
 =======
@@ -72,6 +74,6 @@ License
 We do not require any formal copyright assignment or contributor license
 agreement.  Any contributions intentionally sent upstream are presumed
 to be offered under terms of the OSI-approved BSD 3-clause License.
-See `Copyright.txt`_ for details.
+See `LICENSE.rst`_ for details.
 
-.. _`Copyright.txt`: Copyright.txt
+.. _`LICENSE.rst`: LICENSE.rst

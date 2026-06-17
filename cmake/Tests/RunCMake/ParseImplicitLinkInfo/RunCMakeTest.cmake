@@ -10,6 +10,7 @@ run_cmake(ParseImplicitLinkInfo)
 # - CMAKE_C_COMPILER_LINKER
 # - CMAKE_C_COMPILER_LINKER_ID
 # - CMAKE_C_COMPILER_LINKER_VERSION
+# - CMAKE_C_IMPLICIT_LINK_LIBRARIES
 # - CMAKE_C_IMPLICIT_LINK_DIRECTORIES
 run_cmake(Inspect)
 set(info "${RunCMake_BINARY_DIR}/Inspect-build/info.cmake")
@@ -19,6 +20,9 @@ if(CMAKE_HOST_UNIX)
   run_cmake_script(DetermineLinkerId)
 endif()
 
+if(CMAKE_C_IMPLICIT_LINK_LIBRARIES MATCHES ";")
+  run_cmake_with_options(ExcludeLibs "-Dinfo=${RunCMake_BINARY_DIR}/Inspect-build/info.cmake")
+endif()
 if(CMAKE_C_IMPLICIT_LINK_DIRECTORIES MATCHES ";")
   run_cmake_with_options(ExcludeDirs "-Dinfo=${RunCMake_BINARY_DIR}/Inspect-build/info.cmake")
 endif()
@@ -26,8 +30,7 @@ endif()
 if(CMAKE_SYSTEM_NAME MATCHES "^(Linux|Darwin|Windows|AIX|SunOS)$|BSD"
     AND NOT CMAKE_C_COMPILER_ID MATCHES "^(Borland|Embarcadero|OpenWatcom|OrangeC|Watcom)$"
     AND NOT (CMAKE_C_COMPILER_ID MATCHES "^(Intel|IntelLLVM)$" AND CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    AND NOT CMAKE_C_COMPILER_LINKER MATCHES "Visual Studio 9\\.0"
-    AND NOT RunCMake_GENERATOR MATCHES "Visual Studio 9 "
+    AND NOT CMAKE_C_COMPILER_LINKER MATCHES "Microsoft Visual Studio 9\\.0/VC/bin"
     )
   if(NOT CMAKE_C_COMPILER_LINKER OR NOT CMAKE_C_COMPILER_LINKER_ID OR NOT CMAKE_C_COMPILER_LINKER_VERSION)
     message(SEND_ERROR "C compiler's linker not identified:\n"
@@ -39,4 +42,8 @@ if(CMAKE_SYSTEM_NAME MATCHES "^(Linux|Darwin|Windows|AIX|SunOS)$|BSD"
       "  CMAKE_C_COMPILER_LINKER_VERSION='${CMAKE_C_COMPILER_LINKER_VERSION}'\n"
       )
   endif()
+endif()
+
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID MATCHES Clang)
+  run_cmake_with_options(CheckCompilerLinkerId "-DCMAKE_C_FLAGS=-fdiagnostics-color=always")
 endif()

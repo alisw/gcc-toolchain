@@ -1,6 +1,6 @@
-This is m2.info, produced by makeinfo version 6.5 from gm2.texi.
+This is m2.info, produced by makeinfo version 7.1 from gm2.texi.
 
-Copyright (C) 1999-2025 Free Software Foundation, Inc.
+Copyright © 1999-2025 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -14,7 +14,7 @@ START-INFO-DIR-ENTRY
 END-INFO-DIR-ENTRY
 
 
-   Copyright (C) 1999-2025 Free Software Foundation, Inc.
+   Copyright © 1999-2025 Free Software Foundation, Inc.
 
    Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -115,9 +115,9 @@ available and access to assembly programming is achieved using the same
 syntax as that used by GCC.
 
    The gm2 driver allows third party libraries to be installed alongside
-gm2 libraries.  For example if the user specifies library 'foo' using
-'-flibs=foo' the driver will check the standard GCC install directory
-for a sub directory 'foo' containing the library contents.  The library
+gm2 libraries.  For example if the user specifies library ‘foo’ using
+‘-flibs=foo’ the driver will check the standard GCC install directory
+for a sub directory ‘foo’ containing the library contents.  The library
 module search path is altered accordingly for compile and link.
 
 
@@ -134,43 +134,43 @@ File: m2.info,  Node: Features,  Prev: Development,  Up: Overview
 1.4 GNU Modula-2 Features
 =========================
 
-   * the compiler currently complies with Programming in Modula-2
+   • the compiler currently complies with Programming in Modula-2
      Edition 2, 3, 4 and ISO Modula-2.  Users can switch on specific
-     language features by using: '-fpim', '-fpim2', '-fpim3', '-fpim4'
-     or '-fiso'.
+     language features by using: ‘-fpim’, ‘-fpim2’, ‘-fpim3’, ‘-fpim4’
+     or ‘-fiso’.
 
-   * the option '-fswig' will automatically create a swig interface file
+   • the option ‘-fswig’ will automatically create a swig interface file
      which corresponds to the definition module of the file being
      compiled.
 
-   * exception handling is compatible with C++ and swig.  Modula-2 code
+   • exception handling is compatible with C++ and swig.  Modula-2 code
      can be used with C or C++ code.
 
-   * Python can call GNU Modula-2 modules via swig.
+   • Python can call GNU Modula-2 modules via swig.
 
-   * shared libraries can be built.
+   • shared libraries can be built.
 
-   * fixed sized types are now available from 'SYSTEM'.
+   • fixed sized types are now available from ‘SYSTEM’.
 
-   * variables can be declared at addresses.
+   • variables can be declared at addresses.
 
-   * much better dwarf-2 debugging support and when used with 'gdb' the
-     programmer can display 'RECORD's, 'ARRAY's, 'SET's, subranges and
+   • much better dwarf-2 debugging support and when used with ‘gdb’ the
+     programmer can display ‘RECORD’s, ‘ARRAY’s, ‘SET’s, subranges and
      constant char literals in Modula-2 syntax.
 
-   * supports sets of any ordinal size (memory permitting).
+   • supports sets of any ordinal size (memory permitting).
 
-   * easy interface to C, and varargs can be passed to C routines.
+   • easy interface to C, and varargs can be passed to C routines.
 
-   * many Logitech libraries have been implemented and can be accessed
-     via: '-flibs=m2log,m2pim,m2iso'.
+   • many Logitech libraries have been implemented and can be accessed
+     via: ‘-flibs=m2log,m2pim,m2iso’.
 
-   * coroutines have been implemented in the PIM style and these are
+   • coroutines have been implemented in the PIM style and these are
      accessible from SYSTEM. A number of supporting libraries (executive
      and file descriptor mapping to interrupt vector libraries are
-     available through the '-flibs=m2iso,m2pim' switch).
+     available through the ‘-flibs=m2iso,m2pim’ switch).
 
-   * can be built as a cross compiler (for embedded microprocessors such
+   • can be built as a cross compiler (for embedded microprocessors such
      as the AVR and the ARM).
 
 
@@ -222,15 +222,15 @@ File: m2.info,  Node: Example usage,  Next: Compiler options,  Prev: Using,  Up:
 2.1 Example compile and link
 ============================
 
-The 'gm2' command is the GNU compiler for the Modula-2 language and
-supports many of the same options as 'gcc'.  *Note Option Summary:
+The ‘gm2’ command is the GNU compiler for the Modula-2 language and
+supports many of the same options as ‘gcc’.  *Note Option Summary:
 (gcc)Option Summary.  This manual only documents the options specific to
-'gm2'.
+‘gm2’.
 
    This section describes how to compile and link a simple hello world
 program.  It provides a few examples of using the different options
 mentioned in *note Compiler options::.  Assuming that you have a file
-called 'hello.mod' in your current directory which contains:
+called ‘hello.mod’ in your current directory which contains:
 
      MODULE hello ;
 
@@ -240,23 +240,23 @@ called 'hello.mod' in your current directory which contains:
         WriteString ('hello world') ; WriteLn
      END hello.
 
-   You can compile and link it by: 'gm2 -g hello.mod'.  The result will
-be an 'a.out' file created in your directory.
+   You can compile and link it by: ‘gm2 -g hello.mod’.  The result will
+be an ‘a.out’ file created in your directory.
 
    You can split this command into two steps if you prefer.  The compile
-step can be achieved by: 'gm2 -g -c -fscaffold-main hello.mod' and the
-link via: 'gm2 -g hello.o'.
+step can be achieved by: ‘gm2 -g -c -fscaffold-main hello.mod’ and the
+link via: ‘gm2 -g hello.o’.
 
    (1)
 
    ---------- Footnotes ----------
 
-   (1) To see all the compile actions taken by 'gm2' users can also add
-the '-v' flag at the command line, for example:
+   (1) To see all the compile actions taken by ‘gm2’ users can also add
+the ‘-v’ flag at the command line, for example:
 
-   'gm2 -v -g -I. hello.mod'
+   ‘gm2 -v -g -I. hello.mod’
 
-   This displays the sub processes initiated by 'gm2' which can be
+   This displays the sub processes initiated by ‘gm2’ which can be
 useful when trouble shooting.
 
 
@@ -272,97 +272,97 @@ generic flags details *Note (gcc)Invoking GCC::.
 of compilation is done.  The following kinds of input file names are
 supported:
 
-'FILE.mod'
-     Modula-2 implementation or program source files.  See the '-fmod='
+‘FILE.mod’
+     Modula-2 implementation or program source files.  See the ‘-fmod=’
      option if you wish to compile a project which uses a different
      source file extension.
-'FILE.def'
+‘FILE.def’
      Modula-2 definition module source files.  Definition modules are
      not compiled separately, in GNU Modula-2 definition modules are
      parsed as required when program or implementation modules are
-     compiled.  See the '-fdef=' option if you wish to compile a project
+     compiled.  See the ‘-fdef=’ option if you wish to compile a project
      which uses a different source file extension.
 
-   You can specify more than one input file on the 'gm2' command line,
+   You can specify more than one input file on the ‘gm2’ command line,
 
-'-g'
-     create debugging information so that debuggers such as 'gdb' can
+‘-g’
+     create debugging information so that debuggers such as ‘gdb’ can
      inspect and control executable.
 
-'-I'
+‘-I’
      used to specify the search path for definition and implementation
-     modules.  An example is: 'gm2 -g -c -I.:../../libs foo.mod'.  If
+     modules.  An example is: ‘gm2 -g -c -I.:../../libs foo.mod’.  If
      this option is not specified then the default path is added which
      consists of the current directory followed by the appropriate
      language dialect library directories.
 
-'-fauto-init'
+‘-fauto-init’
      turns on auto initialization of pointers to NIL. Whenever a block
      is created all pointers declared within this scope will have their
      addresses assigned to NIL.
 
-'-fbounds'
-     turns on run time subrange, array index and indirection via 'NIL'
+‘-fbounds’
+     turns on run time subrange, array index and indirection via ‘NIL’
      pointer checking.
 
-'-fcase'
-     turns on compile time checking to check whether a 'CASE' statement
-     requires an 'ELSE' clause when on was not specified.
+‘-fcase’
+     turns on compile time checking to check whether a ‘CASE’ statement
+     requires an ‘ELSE’ clause when on was not specified.
 
-'-fcpp'
-     preprocess the source with 'cpp -lang-asm -traditional-cpp' For
+‘-fcpp’
+     preprocess the source with ‘cpp -lang-asm -traditional-cpp’ For
      further details about these options *Note (cpp)Invocation::.  If
-     '-fcpp' is supplied then all definition modules and implementation
-     modules which are parsed will be prepossessed by 'cpp'.
+     ‘-fcpp’ is supplied then all definition modules and implementation
+     modules which are parsed will be prepossessed by ‘cpp’.
 
-'-fdebug-builtins'
+‘-fdebug-builtins’
      call a real function, rather than the builtin equivalent.  This can
      be useful for debugging parameter values to a builtin function as
      it allows users to single step code into an intrinsic function.
 
-'-fdef='
+‘-fdef=’
      recognize the specified suffix as a definition module filename.
-     The default implementation and module filename suffix is '.def'.
+     The default implementation and module filename suffix is ‘.def’.
      If this option is used GNU Modula-2 will still fall back to this
      default if a requested definition module is not found.
 
-'-fdump-system-exports'
+‘-fdump-system-exports’
      display all inbuilt system items.  This is an internal command line
      option.
 
-'-fexceptions'
+‘-fexceptions’
      turn on exception handling code.  By default this option is on.
-     Exception handling can be disabled by '-fno-exceptions' and no
+     Exception handling can be disabled by ‘-fno-exceptions’ and no
      references are made to the run time exception libraries.
 
-'-fextended-opaque'
+‘-fextended-opaque’
      allows opaque types to be implemented as any type.  This is a GNU
      Modula-2 extension and it requires that the implementation module
      defining the opaque type is available so that it can be resolved
      when compiling the module which imports the opaque type.
 
-'-ffloatvalue'
+‘-ffloatvalue’
      turns on run time checking to check whether a floating point number
      is about to exceed range.
 
-'-fgen-module-list=filename'
+‘-fgen-module-list=filename’
      attempt to find all modules when linking and generate a module
-     list.  If the 'filename' is '-' then the contents are not written
+     list.  If the ‘filename’ is ‘-’ then the contents are not written
      and only used to force the linking of all module ctors.  This
-     option cannot be used if '-fuse-list=' is enabled.
+     option cannot be used if ‘-fuse-list=’ is enabled.
 
-'-findex'
+‘-findex’
      generate code to check whether array index values are out of
-     bounds.  Array index checking can be disabled via '-fno-index'.
+     bounds.  Array index checking can be disabled via ‘-fno-index’.
 
-'-fiso'
+‘-fiso’
      turn on ISO standard features.  Currently this enables the ISO
-     'SYSTEM' module and alters the default library search path so that
+     ‘SYSTEM’ module and alters the default library search path so that
      the ISO libraries are searched before the PIM libraries.  It also
-     effects the behavior of 'DIV' and 'MOD' operators.  *Note
+     effects the behavior of ‘DIV’ and ‘MOD’ operators.  *Note
      Dialect::.
 
-'-flibs='
+‘-flibs=’
      modifies the default library search path.  The libraries supplied
      are: m2pim, m2iso, m2min, m2log and m2cor.  These map onto the
      Programming in Modula-2 base libraries, ISO standard libraries,
@@ -373,205 +373,205 @@ supported:
      -flibs=m2iso if you also specify -fpim, -fpim2, -fpim3, -fpim4 or
      -fiso.  Unless you are using -flibs=m2min you should include m2pim
      as the they provide the base modules which all other dialects
-     utilize.  The option '-fno-libs=-' disables the 'gm2' driver from
+     utilize.  The option ‘-fno-libs=-’ disables the ‘gm2’ driver from
      modifying the search and library paths.
 
-'-static-libgm2'
+‘-static-libgm2’
      On systems that provide the m2 runtimes as both shared and static
      libraries, this option forces the use of the static version.
 
-'-fm2-debug-trace='
+‘-fm2-debug-trace=’
      turn on trace debugging using a comma separated list:
-     'line,token,quad,all'.  This is an internal command line option.
+     ‘line,token,quad,all’.  This is an internal command line option.
 
-'-fm2-dump='
+‘-fm2-dump=’
      enable dumping of modula-2 internal representation of data
      structures using a comma separated list.  The list can contain:
-     'quad,gimple,decl,all'.
+     ‘quad,gimple,decl,all’.
 
-'-fm2-dump-decl=filestem'
-     dump the modula-2 representation of a symbol to the 'filestem'
-     specified.  This option only takes effect if the '-fm2-dump-filter'
+‘-fm2-dump-decl=filestem’
+     dump the modula-2 representation of a symbol to the ‘filestem’
+     specified.  This option only takes effect if the ‘-fm2-dump-filter’
      is specified.
 
-'-fm2-dump-gimple=filestem'
-     dump modula-2 gimple representation to the 'filestem' specified.
+‘-fm2-dump-gimple=filestem’
+     dump modula-2 gimple representation to the ‘filestem’ specified.
 
-'-fm2-dump-quad=filestem'
-     dump quadruple representation to the 'filestem' specified.
+‘-fm2-dump-quad=filestem’
+     dump quadruple representation to the ‘filestem’ specified.
 
-'-fm2-dump-filter='rules''
-     filter the language dumps '-fdump-lang-decl', '-fdump-lang-gimple'
-     and'-fdump-lang-quad' on 'rules'.  'rules' must be a comma
+‘-fm2-dump-filter=‘rules’’
+     filter the language dumps ‘-fdump-lang-decl’, ‘-fdump-lang-gimple’
+     and‘-fdump-lang-quad’ on ‘rules’.  ‘rules’ must be a comma
      separated list which can take three forms: the full decl textual
-     name of a procedure, '[libname.]module.ident' or
-     '[filename:]module.ident'.  This is an internal command line
+     name of a procedure, ‘[libname.]module.ident’ or
+     ‘[filename:]module.ident’.  This is an internal command line
      option.  Currently it only filters on procedure names and regexp
      matching is not implemented.  Three examples of its use following
-     the previous forms could be: '-fm2-dump-filter=_M2_hello_init',
-     '-fm2-dump-filter=m2pim.StrIO.WriteString' and
-     '-fm2-dump-filter=StrLib.mod:StrIO.WriteString'.
+     the previous forms could be: ‘-fm2-dump-filter=_M2_hello_init’,
+     ‘-fm2-dump-filter=m2pim.StrIO.WriteString’ and
+     ‘-fm2-dump-filter=StrLib.mod:StrIO.WriteString’.
 
-'-fm2-file-offset-bits='
-     force the type 'SYSTEM.COFF_T' to be built using the specified
+‘-fm2-file-offset-bits=’
+     force the type ‘SYSTEM.COFF_T’ to be built using the specified
      number of bits.  If this option is not used then default is
-     'CSSIZE_T' bits.
+     ‘CSSIZE_T’ bits.
 
-'-fm2-g'
+‘-fm2-g’
      improve the debugging experience for new programmers at the expense
-     of generating 'nop' instructions if necessary to ensure single
+     of generating ‘nop’ instructions if necessary to ensure single
      stepping precision over all code related keywords.  An example of
-     this is in termination of a list of nested 'IF' statements where
-     multiple 'END' keywords are mapped onto a sequence of 'nop'
+     this is in termination of a list of nested ‘IF’ statements where
+     multiple ‘END’ keywords are mapped onto a sequence of ‘nop’
      instructions.
 
-'-fm2-lower-case'
+‘-fm2-lower-case’
      render keywords in error messages using lower case.
 
-'-fm2-pathname='
+‘-fm2-pathname=’
      specify the module mangled prefix name for all modules in the
      following include paths.
 
-'-fm2-pathnameI'
+‘-fm2-pathnameI’
      for internal use only: used by the driver to copy the user facing
-     '-I' option.
+     ‘-I’ option.
 
-'-fm2-plugin'
+‘-fm2-plugin’
      insert plugin to identify run time errors at compile time (default
      on).
 
-'-fm2-prefix='
+‘-fm2-prefix=’
      specify the module mangled prefix name.  All exported symbols from
      a definition module will have the prefix name.
 
-'-fm2-statistics'
+‘-fm2-statistics’
      generates quadruple information: number of quadruples generated,
      number of quadruples remaining after optimization and number of
      source lines compiled.
 
-'-fm2-strict-type'
+‘-fm2-strict-type’
      experimental flag to turn on the new strict type checker.
 
-'-fm2-whole-program'
+‘-fm2-whole-program’
      compile all implementation modules and program module at once.
      Notice that you need to take care if you are compiling different
      dialect modules (particularly with the negative operands to
-     modulus).  But this option, when coupled together with '-O3', can
+     modulus).  But this option, when coupled together with ‘-O3’, can
      deliver huge performance improvements.
 
-'-fmod='
+‘-fmod=’
      recognize the specified suffix as implementation and module
      filenames.  The default implementation and module filename suffix
-     is '.mod'.  If this option is used GNU Modula-2 will still fall
+     is ‘.mod’.  If this option is used GNU Modula-2 will still fall
      back to this default if it needs to read an implementation module
      and the specified suffixed filename does not exist.
 
-'-fnil'
-     generate code to detect accessing data through a 'NIL' value
-     pointer.  Dereferencing checking through a 'NIL' pointer can be
-     disabled by '-fno-nil'.
+‘-fnil’
+     generate code to detect accessing data through a ‘NIL’ value
+     pointer.  Dereferencing checking through a ‘NIL’ pointer can be
+     disabled by ‘-fno-nil’.
 
-'-fpim'
+‘-fpim’
      turn on PIM standard features.  Currently this enables the PIM
-     'SYSTEM' module and determines which identifiers are pervasive
-     (declared in the base module).  If no other '-fpim[234]' switch is
+     ‘SYSTEM’ module and determines which identifiers are pervasive
+     (declared in the base module).  If no other ‘-fpim[234]’ switch is
      used then division and modulus operators behave as defined in PIM4.
      *Note Dialect::.
 
-'-fpim2'
-     turn on PIM-2 standard features.  Currently this removes 'SIZE'
+‘-fpim2’
+     turn on PIM-2 standard features.  Currently this removes ‘SIZE’
      from being a pervasive identifier (declared in the base module).
-     It places 'SIZE' in the 'SYSTEM' module.  It also effects the
-     behavior of 'DIV' and 'MOD' operators.  *Note Dialect::.
+     It places ‘SIZE’ in the ‘SYSTEM’ module.  It also effects the
+     behavior of ‘DIV’ and ‘MOD’ operators.  *Note Dialect::.
 
-'-fpim3'
+‘-fpim3’
      turn on PIM-3 standard features.  Currently this only effects the
-     behavior of 'DIV' and 'MOD' operators.  *Note Dialect::.
+     behavior of ‘DIV’ and ‘MOD’ operators.  *Note Dialect::.
 
-'-fpim4'
+‘-fpim4’
      turn on PIM-4 standard features.  Currently this only effects the
-     behavior of 'DIV' and 'MOD' operators.  *Note Dialect::.
+     behavior of ‘DIV’ and ‘MOD’ operators.  *Note Dialect::.
 
-'-fpositive-mod-floor-div'
-     forces the 'DIV' and 'MOD' operators to behave as defined by PIM4.
+‘-fpositive-mod-floor-div’
+     forces the ‘DIV’ and ‘MOD’ operators to behave as defined by PIM4.
      All modulus results are positive and the results from the division
      are rounded to the floor.  *Note Dialect::.
 
-'-fpthread'
+‘-fpthread’
      link against the pthread library.  By default this option is on.
-     It can be disabled by '-fno-pthread'.  GNU Modula-2 uses the GCC
+     It can be disabled by ‘-fno-pthread’.  GNU Modula-2 uses the GCC
      pthread libraries to implement coroutines (see the SYSTEM
      implementation module).
 
-'-frange'
+‘-frange’
      generate code to check the assignment range, return value range set
      range and constructor range.  Range checking can be disabled via
-     '-fno-range'.
+     ‘-fno-range’.
 
-'-freturn'
-     generate code to check that functions always exit with a 'RETURN'
+‘-freturn’
+     generate code to check that functions always exit with a ‘RETURN’
      and do not fall out at the end.  Return checking can be disabled
-     via '-fno-return'.
+     via ‘-fno-return’.
 
-'-fruntime-modules='
+‘-fruntime-modules=’
      specify, using a comma separated list, the run time modules and
      their order.  These modules will initialized first before any other
      modules in the application dependency.  By default the run time
-     modules list is set to 'm2iso:RTentity,m2iso:Storage,m2iso:SYSTEM,'
-     'm2iso:M2RTS,m2iso:RTExceptions,m2iso:IOLink'.  Note that these
+     modules list is set to ‘m2iso:RTentity,m2iso:Storage,m2iso:SYSTEM,’
+     ‘m2iso:M2RTS,m2iso:RTExceptions,m2iso:IOLink’.  Note that these
      modules will only be linked into your executable if they are
      required.  Adding a long list of dependent modules will not effect
      the size of the executable it merely states the initialization
      order should they be required.
 
-'-fscaffold-dynamic'
-     the option ensures that 'gm2' will generate a dynamic scaffold
+‘-fscaffold-dynamic’
+     the option ensures that ‘gm2’ will generate a dynamic scaffold
      infrastructure when compiling implementation and program modules.
-     By default this option is on.  Use '-fno-scaffold-dynamic' to turn
-     it off or select '-fno-scaffold-static'.
+     By default this option is on.  Use ‘-fno-scaffold-dynamic’ to turn
+     it off or select ‘-fno-scaffold-static’.
 
-'-fscaffold-c'
+‘-fscaffold-c’
      generate a C source scaffold for the current module being compiled.
 
-'-fscaffold-c++'
+‘-fscaffold-c++’
      generate a C++ source scaffold for the current module being
      compiled.
 
-'-fscaffold-main'
-     force the generation of the 'main' function.  This is not necessary
-     if the '-c' is omitted.
+‘-fscaffold-main’
+     force the generation of the ‘main’ function.  This is not necessary
+     if the ‘-c’ is omitted.
 
-'-fscaffold-static'
-     the option ensures that 'gm2' will generate a static scaffold
+‘-fscaffold-static’
+     the option ensures that ‘gm2’ will generate a static scaffold
      within the program module.  The static scaffold consists of
      sequences of calls to all dependent module initialization and
      finalization procedures.  The static scaffold is useful for
      debugging and single stepping the initialization blocks of
      implementation modules.
 
-'-fshared'
+‘-fshared’
      generate a shared library from the module.
 
-'-fsoft-check-all'
+‘-fsoft-check-all’
      turns on all run time checks.  This is the same as invoking GNU
-     Modula-2 using the command options '-fnil' '-frange' '-findex'
-     '-fwholevalue' '-fwholediv' '-fcase' '-freturn'.
+     Modula-2 using the command options ‘-fnil’ ‘-frange’ ‘-findex’
+     ‘-fwholevalue’ ‘-fwholediv’ ‘-fcase’ ‘-freturn’.
 
-'-fsources'
+‘-fsources’
      displays the path to the source of each module.  This option can be
      used at compile time to check the correct definition module is
      being used.
 
-'-fswig'
+‘-fswig’
      generate a swig interface file.
 
-'-funbounded-by-reference'
+‘-funbounded-by-reference’
      enable optimization of unbounded parameters by attempting to pass
-     non 'VAR' unbounded parameters by reference.  This optimization
+     non ‘VAR’ unbounded parameters by reference.  This optimization
      avoids the implicit copy inside the callee procedure.  GNU Modula-2
      will only allow unbounded parameters to be passed by reference if,
      inside the callee procedure, they are not written to, no address is
-     calculated on the array and it is not passed as a 'VAR' parameter.
+     calculated on the array and it is not passed as a ‘VAR’ parameter.
      Note that it is possible to write code to break this optimization,
      therefore this option should be used carefully.  For example it
      would be possible to take the address of an array, pass the address
@@ -579,42 +579,42 @@ supported:
      and write to the location using the address parameter.
 
      Due to the dangerous nature of this option it is not enabled when
-     the '-O' option is specified.
+     the ‘-O’ option is specified.
 
-'-fuse-list=filename'
-     if '-fscaffold-static' is enabled then use the file 'filename' for
+‘-fuse-list=filename’
+     if ‘-fscaffold-static’ is enabled then use the file ‘filename’ for
      the initialization order of modules.  Whereas if
-     '-fscaffold-dynamic' is enabled then use this file to force linking
+     ‘-fscaffold-dynamic’ is enabled then use this file to force linking
      of all module ctors.  This option cannot be used if
-     '-fgen-module-list=' is enabled.
+     ‘-fgen-module-list=’ is enabled.
 
-'-fwholediv'
+‘-fwholediv’
      generate code to detect whole number division by zero or modulus by
      zero.
 
-'-fwholevalue'
+‘-fwholevalue’
      generate code to detect whole number overflow and underflow.
 
-'-Wcase-enum'
-     generate a warning if a 'CASE' statement selects on an enumerated
-     type expression and the statement is missing one or more 'CASE'
-     labels.  No warning is issued if the 'CASE' statement has a default
-     'ELSE' clause.  The option '-Wall' will turn on this flag.
+‘-Wcase-enum’
+     generate a warning if a ‘CASE’ statement selects on an enumerated
+     type expression and the statement is missing one or more ‘CASE’
+     labels.  No warning is issued if the ‘CASE’ statement has a default
+     ‘ELSE’ clause.  The option ‘-Wall’ will turn on this flag.
 
-'-Wuninit-variable-checking'
+‘-Wuninit-variable-checking’
      issue a warning if a variable is used before it is initialized.
      The checking only occurs in the first basic block in each
      procedure.  It does not check parameters, array types or set types.
 
-'-Wuninit-variable-checking=all,known,cond'
+‘-Wuninit-variable-checking=all,known,cond’
      issue a warning if a variable is used before it is initialized.
      The checking will only occur in the first basic block in each
-     procedure if 'known' is specified.  If 'cond' or 'all' is specified
+     procedure if ‘known’ is specified.  If ‘cond’ or ‘all’ is specified
      then checking continues into conditional branches of the flow
      graph.  All checking will stop when a procedure call is invoked or
-     the top of a loop is encountered.  The option '-Wall' will turn on
-     this flag with '-Wuninit-variable-checking=known'.  The
-     '-Wuninit-variable-checking=all' will increase compile time.
+     the top of a loop is encountered.  The option ‘-Wall’ will turn on
+     this flag with ‘-Wuninit-variable-checking=known’.  The
+     ‘-Wuninit-variable-checking=all’ will increase compile time.
 
 
 File: m2.info,  Node: Linking,  Next: Elementary data types,  Prev: Compiler options,  Up: Using
@@ -622,21 +622,21 @@ File: m2.info,  Node: Linking,  Next: Elementary data types,  Prev: Compiler opt
 This section describes the linking related options.  There are three
 linking strategies available which are dynamic scaffold, static scaffold
 and user defined.  The dynamic scaffold is enabled by default and each
-module will register itself to the run time 'M2RTS' via a constructor.
-The static scaffold mechanism will invoke each modules '_init' and
-'_finish' function in turn via a sequence of calls from within 'main'.
+module will register itself to the run time ‘M2RTS’ via a constructor.
+The static scaffold mechanism will invoke each modules ‘_init’ and
+‘_finish’ function in turn via a sequence of calls from within ‘main’.
 Lastly the user defined strategy can be implemented by turning off the
-dynamic and static options via '-fno-scaffold-dynamic' and
-'-fno-scaffold-static'.
+dynamic and static options via ‘-fno-scaffold-dynamic’ and
+‘-fno-scaffold-static’.
 
    In the simple test below:
 
      $ gm2 hello.mod
 
-   the driver will add the options '-fscaffold-dynamic' and
-'-fgen-module-list=-' which generate a list of application modules and
-also creates the 'main' function with calls to 'M2RTS'.  It can be
-useful to add the option '-fsources' which displays the source files as
+   the driver will add the options ‘-fscaffold-dynamic’ and
+‘-fgen-module-list=-’ which generate a list of application modules and
+also creates the ‘main’ function with calls to ‘M2RTS’.  It can be
+useful to add the option ‘-fsources’ which displays the source files as
 they are parsed and summarizes whether the source file is required for
 compilation or linking.
 
@@ -646,10 +646,10 @@ then you could use these steps:
      $ gm2 -c -fscaffold-main hello.mod
      $ gm2 hello.o
 
-   The '-fscaffold-main' informs the compiler to generate the 'main'
+   The ‘-fscaffold-main’ informs the compiler to generate the ‘main’
 function and scaffold.  You can enable the environment variable
-'GCC_M2LINK_RTFLAG' to trace the construction and destruction of the
-application.  The values for 'GCC_M2LINK_RTFLAG' are shown in the table
+‘GCC_M2LINK_RTFLAG’ to trace the construction and destruction of the
+application.  The values for ‘GCC_M2LINK_RTFLAG’ are shown in the table
 below:
 
      value   | meaning
@@ -669,8 +669,8 @@ below:
    One of the advantages of the dynamic scaffold is that the driver
 behaves in a similar way to the other front end drivers.  For example
 consider a small project consisting of 4 definition implementation
-modules ('a.def', 'a.mod', 'b.def', 'b.mod', 'c.def', 'c.mod', 'd.def',
-'d.mod') and a program module 'program.mod'.
+modules (‘a.def’, ‘a.mod’, ‘b.def’, ‘b.mod’, ‘c.def’, ‘c.mod’, ‘d.def’,
+‘d.mod’) and a program module ‘program.mod’.
 
    To link this project we could:
 
@@ -686,8 +686,8 @@ order in which the corresponding separate modules finish the processing
 of their import lists.
 
    However, if required, you can override this using
-'-fruntime-modules=a,b,c,d' for example which forces the initialization
-sequence to 'a', 'b', 'c' and 'd'.
+‘-fruntime-modules=a,b,c,d’ for example which forces the initialization
+sequence to ‘a’, ‘b’, ‘c’ and ‘d’.
 
 
 File: m2.info,  Node: Elementary data types,  Next: Standard procedures,  Prev: Linking,  Up: Using
@@ -699,10 +699,10 @@ This section describes the elementary data types supported by GNU
 Modula-2.  It also describes the relationship between these data types
 and the equivalent C data types.
 
-   The following data types are supported: 'INTEGER', 'LONGINT',
-'SHORTINT', 'CARDINAL', 'LONGCARD', 'SHORTCARD', 'BOOLEAN', 'REAL',
-'LONGREAL', 'SHORTREAL', 'COMPLEX', 'LONGCOMPLEX', 'SHORTCOMPLEX' and
-'CHAR'.
+   The following data types are supported: ‘INTEGER’, ‘LONGINT’,
+‘SHORTINT’, ‘CARDINAL’, ‘LONGCARD’, ‘SHORTCARD’, ‘BOOLEAN’, ‘REAL’,
+‘LONGREAL’, ‘SHORTREAL’, ‘COMPLEX’, ‘LONGCOMPLEX’, ‘SHORTCOMPLEX’ and
+‘CHAR’.
 
    An equivalence table is given below:
 
@@ -724,7 +724,7 @@ and the equivalent C data types.
      LONGCOMPLEX               complex long double
 
    Note that GNU Modula-2 also supports fixed sized data types which are
-exported from the 'SYSTEM' module.  *Note The PIM system module::.
+exported from the ‘SYSTEM’ module.  *Note The PIM system module::.
 *Note The ISO system module::.
 
 
@@ -740,11 +740,11 @@ visible.
 -------------------------------------------------------------
 
 The following procedures are implemented and conform with Programming in
-Modula-2 and ISO Modula-2: 'NEW', 'DISPOSE', 'INC', 'DEC', 'INCL',
-'EXCL' and 'HALT'.  The standard functions are: 'ABS', 'CAP', 'CHR',
-'FLOAT', 'HIGH', 'LFLOAT', 'LTRUNC', 'MIN', 'MAX', 'ODD', 'SFLOAT',
-'STRUNC' 'TRUNC' and 'VAL'.  All these functions and procedures (except
-'HALT', 'NEW', 'DISPOSE' and, under non constant conditions, 'LENGTH')
+Modula-2 and ISO Modula-2: ‘NEW’, ‘DISPOSE’, ‘INC’, ‘DEC’, ‘INCL’,
+‘EXCL’ and ‘HALT’.  The standard functions are: ‘ABS’, ‘CAP’, ‘CHR’,
+‘FLOAT’, ‘HIGH’, ‘LFLOAT’, ‘LTRUNC’, ‘MIN’, ‘MAX’, ‘ODD’, ‘SFLOAT’,
+‘STRUNC’ ‘TRUNC’ and ‘VAL’.  All these functions and procedures (except
+‘HALT’, ‘NEW’, ‘DISPOSE’ and, under non constant conditions, ‘LENGTH’)
 generate in-line code for efficiency.
 
 
@@ -991,7 +991,7 @@ generate in-line code for efficiency.
 2.4.2 ISO specific standard procedures and functions
 ----------------------------------------------------
 
-The standard function 'LENGTH' is specific to ISO Modula-2 and is
+The standard function ‘LENGTH’ is specific to ISO Modula-2 and is
 defined as:
 
 
@@ -1018,9 +1018,9 @@ defined as:
 
      PROCEDURE LENGTH (a: ARRAY OF CHAR) : CARDINAL ;
 
-   This function is evaluated at compile time, providing that string 'a'
-is a constant.  If 'a' cannot be evaluated then a call is made to
-'M2RTS.Length'.
+   This function is evaluated at compile time, providing that string ‘a’
+is a constant.  If ‘a’ cannot be evaluated then a call is made to
+‘M2RTS.Length’.
 
 
      (*
@@ -1046,22 +1046,22 @@ File: m2.info,  Node: High procedure function,  Next: Dialect,  Prev: Standard p
 ===========================================
 
 This section describes the behavior of the standard procedure function
-'HIGH' and it includes a table of parameters with the expected return
+‘HIGH’ and it includes a table of parameters with the expected return
 result.  The standard procedure function will return the last accessible
-indice of an 'ARRAY'.  If the parameter to 'HIGH' is a static array then
-the result will be a 'CARDINAL' value matching the upper bound in the
-'ARRAY' declaration.
+indice of an ‘ARRAY’.  If the parameter to ‘HIGH’ is a static array then
+the result will be a ‘CARDINAL’ value matching the upper bound in the
+‘ARRAY’ declaration.
 
    The section also describes the behavior of a string literal actual
-parameter and how it relates to 'HIGH'.  The PIM2, PIM3, PIM4 and ISO
-standard is silent on the issue of whether a 'nul' is present in an
-'ARRAY' 'OF' 'CHAR' actual parameter.
+parameter and how it relates to ‘HIGH’.  The PIM2, PIM3, PIM4 and ISO
+standard is silent on the issue of whether a ‘nul’ is present in an
+‘ARRAY’ ‘OF’ ‘CHAR’ actual parameter.
 
-   If the first parameter to 'HIGH' is an unbounded 'ARRAY' the return
-value from 'HIGH' will be the last accessible element in the array.  If
+   If the first parameter to ‘HIGH’ is an unbounded ‘ARRAY’ the return
+value from ‘HIGH’ will be the last accessible element in the array.  If
 a constant string literal is passed as an actual parameter then it will
-be 'nul' terminated.  The table and example code below describe the
-effect of passing an actual parameter and the expected 'HIGH' value.
+be ‘nul’ terminated.  The table and example code below describe the
+effect of passing an actual parameter and the expected ‘HIGH’ value.
 
      MODULE example1 ;
 
@@ -1089,10 +1089,10 @@ effect of passing an actual parameter and the expected 'HIGH' value.
       '12'            | 2        | TRUE
       '123'           | 3        | TRUE
 
-   A constant string literal will be passed to an 'ARRAY' 'OF' 'CHAR'
-with an appended 'nul' 'CHAR'.  Thus if the constant string literal ''''
+   A constant string literal will be passed to an ‘ARRAY’ ‘OF’ ‘CHAR’
+with an appended ‘nul’ ‘CHAR’.  Thus if the constant string literal ‘''’
 is passed as an actual parameter (in example1) then the result from
-'HIGH(a)' will be '0'.
+‘HIGH(a)’ will be ‘0’.
 
      MODULE example2 ;
 
@@ -1147,19 +1147,19 @@ Modula-2 language as defined in ISO/IEC Information technology -
 programming languages - part 1: Modula-2 Language, ISO/IEC 10514-1
 (1996) (ISO).
 
-   The command line switches '-fpim2', '-fpim3', '-fpim4' and '-fiso'
+   The command line switches ‘-fpim2’, ‘-fpim3’, ‘-fpim4’ and ‘-fiso’
 can be used to force mutually exclusive features.  However by default
 the compiler will not aggressively fail if a non mutually exclusive
 feature is used from another dialect.  For example it is possible to
-specify '-fpim2' and still utilize 'DEFINITION' 'MODULES' which have no
+specify ‘-fpim2’ and still utilize ‘DEFINITION’ ‘MODULES’ which have no
 export list.
 
    Some dialect differences will force a compile time error, for example
-in PIM2 the user must 'IMPORT' 'SIZE' from the module 'SYSTEM', whereas
-in PIM3 and PIM4 'SIZE' is a pervasive function.  Thus compiling PIM4
-source code with the '-fpim2' switch will cause a compile time error.
-This can be fixed quickly with an additional 'IMPORT' or alternatively
-by compiling with the '-fpim4' switch.
+in PIM2 the user must ‘IMPORT’ ‘SIZE’ from the module ‘SYSTEM’, whereas
+in PIM3 and PIM4 ‘SIZE’ is a pervasive function.  Thus compiling PIM4
+source code with the ‘-fpim2’ switch will cause a compile time error.
+This can be fixed quickly with an additional ‘IMPORT’ or alternatively
+by compiling with the ‘-fpim4’ switch.
 
    However there are some very important differences between the
 dialects which are mutually exclusive and therefore it is vital that
@@ -1170,7 +1170,7 @@ used.
 ---------------------------------------------
 
 The most dangerous set of mutually exclusive features found in the four
-dialects supported by GNU Modula-2 are the 'INTEGER' division, remainder
+dialects supported by GNU Modula-2 are the ‘INTEGER’ division, remainder
 and modulus arithmetic operators.  It is important to note that the same
 source code can be compiled to give different run time results depending
 upon these switches!  The reference manual for the various dialects of
@@ -1202,25 +1202,25 @@ File: m2.info,  Node: Exceptions,  Next: Semantic checking,  Prev: Dialect,  Up:
 
 This section describes how exceptions are implemented in GNU Modula-2
 and how command line switches affect their behavior.  The option
-'-fsoft-check-all' enables all software checking of nil dereferences,
+‘-fsoft-check-all’ enables all software checking of nil dereferences,
 division by zero etc.  Additional code is produced to check these
 conditions and exception handlers are invoked if the conditions prevail.
 
-   Without '-fsoft-check-all' these exceptions will be caught by
+   Without ‘-fsoft-check-all’ these exceptions will be caught by
 hardware (assuming the hardware support exists) and a signal handler is
-invoked.  The signal handler will in turn 'THROW' an exception which
+invoked.  The signal handler will in turn ‘THROW’ an exception which
 will be caught by the appropriate Modula-2 handler.  However the action
 of throwing an exception from within a signal handler is implementation
 defined (according to the C++ documentation).  For example on the x86_64
 architecture this works whereas on the i686 architecture it does not.
 Therefore to ensure portability it is recommended to use
-'-fsoft-check-all'.
+‘-fsoft-check-all’.
 
    (1)
 
    ---------- Footnotes ----------
 
-   (1) '-fsoft-check-all' can be effectively combined with '-O2' to
+   (1) ‘-fsoft-check-all’ can be effectively combined with ‘-O2’ to
 semantically analyze source code for possible run time errors at compile
 time.
 
@@ -1251,7 +1251,7 @@ Consider the following program:
      END assignvalue.
 
    here we see that the programmer has overlooked that the return value
-from 'bad' will cause an overflow to 'foo'.  If we compile the code with
+from ‘bad’ will cause an overflow to ‘foo’.  If we compile the code with
 the following options:
 
      $ gm2 -g -fsoft-check-all -O2 -fm2-plugin -c assignvalue.mod
@@ -1260,12 +1260,12 @@ the following options:
 
    The gm2 semantic plugin is automatically run and will generate a
 warning message for every exception call which is known as reachable.
-It is highly advised to run the optimizer ('-O2' or '-O3') with
-'-fsoft-check-all' so that the compiler is able to run the optimizer and
+It is highly advised to run the optimizer (‘-O2’ or ‘-O3’) with
+‘-fsoft-check-all’ so that the compiler is able to run the optimizer and
 perform variable and flow analysis before the semantic plugin is
 invoked.
 
-   The '-Wuninit-variable-checking' can be used to identify
+   The ‘-Wuninit-variable-checking’ can be used to identify
 uninitialized variables within the first basic block in a procedure.
 The checking is limited to variables so long as they are not an array or
 set or a variant record or var parameter.
@@ -1332,7 +1332,7 @@ uninitialized.
      END testwithnoptr.
 
    The following example detects a record is uninitialized via a pointer
-variable in a 'WITH' block.
+variable in a ‘WITH’ block.
 
      $ gm2 -g -c -Wuninit-variable-checking testwithnoptr.mod
      testwithnoptr.mod:21:8: warning: In procedure ‘test’: attempting to
@@ -1382,18 +1382,18 @@ File: m2.info,  Node: Extensions,  Next: Type compatibility,  Prev: Semantic che
 
 This section introduces the GNU Modula-2 language extensions.  The GNU
 Modula-2 compiler allows abstract data types to be any type, not just
-restricted to a pointer type providing the '-fextended-opaque' option is
+restricted to a pointer type providing the ‘-fextended-opaque’ option is
 supplied *Note Compiler options::.
 
    Declarations can be made in any order, whether they are types,
 constants, procedures, nested modules or variables.
 
-   GNU Modula-2 also allows programmers to interface to 'C' and assembly
+   GNU Modula-2 also allows programmers to interface to ‘C’ and assembly
 language.
 
-   GNU Modula-2 provides support for the special tokens '__LINE__',
-'__FILE__', '__FUNCTION__' and '__DATE__'.  Support for these tokens
-will occur even if the '-fcpp' option is not supplied.  A table of these
+   GNU Modula-2 provides support for the special tokens ‘__LINE__’,
+‘__FILE__’, ‘__FUNCTION__’ and ‘__DATE__’.  Support for these tokens
+will occur even if the ‘-fcpp’ option is not supplied.  A table of these
 identifiers and their data type and values is given below:
 
      Scope       GNU Modula-2 token      Data type and example value
@@ -1430,14 +1430,14 @@ identifiers and their data type and values is given below:
                                          is 1.
 
 
-   The preprocessor 'cpp' can be invoked via the '-fcpp' command line
-option.  This in turn invokes 'cpp' with the following arguments
-'-traditional -lang-asm'.  These options preserve comments and all
-quotations.  'gm2' treats a '#' character in the first column as a
-preprocessor directive unless '-fno-cpp' is supplied.
+   The preprocessor ‘cpp’ can be invoked via the ‘-fcpp’ command line
+option.  This in turn invokes ‘cpp’ with the following arguments
+‘-traditional -lang-asm’.  These options preserve comments and all
+quotations.  ‘gm2’ treats a ‘#’ character in the first column as a
+preprocessor directive unless ‘-fno-cpp’ is supplied.
 
-   For example here is a module which calls 'FatalError' via the macro
-'ERROR'.
+   For example here is a module which calls ‘FatalError’ via the macro
+‘ERROR’.
 
      MODULE cpp ;
 
@@ -1466,11 +1466,11 @@ preprocessor directive unless '-fno-cpp' is supplied.
      END cpp.
 
    Another use for the C preprocessor in Modula-2 might be to turn on
-debugging code.  For example the library module 'FormatStrings.mod' uses
-procedures from 'DynamicStrings.mod' and to track down memory leaks it
+debugging code.  For example the library module ‘FormatStrings.mod’ uses
+procedures from ‘DynamicStrings.mod’ and to track down memory leaks it
 was useful to track the source file and line where each string was
-created.  Here is a section of 'FormatStrings.mod' which shows how the
-debugging code was enabled and disabled by adding '-fcpp' to the command
+created.  Here is a section of ‘FormatStrings.mod’ which shows how the
+debugging code was enabled and disabled by adding ‘-fcpp’ to the command
 line.
 
      FROM DynamicStrings IMPORT String, InitString, InitStringChar, Mark,
@@ -1521,9 +1521,9 @@ line.
         RETURN s
      END Sprintf1 ;
 
-   It is worth noting that the overhead of this code once '-fcpp' is not
+   It is worth noting that the overhead of this code once ‘-fcpp’ is not
 present and -O2 is used will be zero since the local empty procedures
-'DSdbEnter' and 'DSdbExit' will be thrown away by the optimization
+‘DSdbEnter’ and ‘DSdbExit’ will be thrown away by the optimization
 passes of the GCC backend.
 
 2.9.1 Optional procedure parameter
@@ -1531,9 +1531,9 @@ passes of the GCC backend.
 
 GNU Modula-2 allows the last parameter to a procedure or function
 parameter to be optional.  For example in the ISO library
-'COROUTINES.def' the procedure 'NEWCOROUTINE' is defined as having an
-optional fifth argument ('initProtection') which, if absent, is
-automatically replaced by 'NIL'.
+‘COROUTINES.def’ the procedure ‘NEWCOROUTINE’ is defined as having an
+optional fifth argument (‘initProtection’) which, if absent, is
+automatically replaced by ‘NIL’.
 
      PROCEDURE NEWCOROUTINE (procBody: PROC; workspace: SYSTEM.ADDRESS;
                              size: CARDINAL; VAR cr: COROUTINE;
@@ -1549,7 +1549,7 @@ automatically replaced by 'NIL'.
           which specifies the initial protection level of the coroutine.
        *)
 
-   The implementation module 'COROUTINES.mod' implements this procedure
+   The implementation module ‘COROUTINES.mod’ implements this procedure
 using the following syntax:
 
      PROCEDURE NEWCOROUTINE (procBody: PROC; workspace: SYSTEM.ADDRESS;
@@ -1560,8 +1560,8 @@ using the following syntax:
      END NEWCOROUTINE ;
 
    Note that it is illegal for this declaration to contain an
-initializer value for 'initProtection'.  However it is necessary to
-surround this parameter with the brackets '[' and ']'.  This serves to
+initializer value for ‘initProtection’.  However it is necessary to
+surround this parameter with the brackets ‘[’ and ‘]’.  This serves to
 remind the programmer that the last parameter was declared as optional
 in the definition module.
 
@@ -1570,7 +1570,7 @@ in which case the initializer is mandatory in the implementation or
 program module.
 
    GNU Modula-2 also provides additional fixed sized data types which
-are all exported from the 'SYSTEM' module.  *Note The PIM system
+are all exported from the ‘SYSTEM’ module.  *Note The PIM system
 module::.  *Note The ISO system module::.
 
 
@@ -1649,7 +1649,7 @@ PIM type compatibility see Programming in Modula-2 Edition 4 page 29,
 Modula-2 restricts the types of expressions to the same type.
 Expression compatibility is a symmetric relation.
 
-   For example two sub expressions of 'INTEGER' and 'CARDINAL' are not
+   For example two sub expressions of ‘INTEGER’ and ‘CARDINAL’ are not
 expression compatible
 (<https://freepages.modula2.org/report4/modula-2.html> and ISO
 Modula-2).
@@ -1661,34 +1661,34 @@ data types (imported from SYSTEM).
 -------------------------------
 
 This section discusses the assignment issues surrounding assignment
-compatibility of elementary types ('INTEGER', 'CARDINAL', 'REAL' and
-'CHAR' for example).  The information here is found in more detail in
+compatibility of elementary types (‘INTEGER’, ‘CARDINAL’, ‘REAL’ and
+‘CHAR’ for example).  The information here is found in more detail in
 the Modula-2 ISO standard BS ISO/IEC 10514-1:1996 page 122.
 
    Assignment compatibility exists between the same sized elementary
 types.
 
    Same type family of different sizes are also compatible as long as
-the 'MAX('type')' and 'MIN('type')' is known.  So for example this
-includes the 'INTEGER' family, 'CARDINAL' family and the 'REAL' family.
+the ‘MAX(’type‘)’ and ‘MIN(’type‘)’ is known.  So for example this
+includes the ‘INTEGER’ family, ‘CARDINAL’ family and the ‘REAL’ family.
 
    The reason for this is that when the assignment is performed the
 compiler will check to see that the expression (on the right of the
-':=') lies within the range of the designator type (on the left hand
-side of the ':=').  Thus these ordinal types can be assignment
-compatible.  However it does mean that 'WORD32' is not compatible with
-'WORD16' as 'WORD32' does not have a minimum or maximum value and
+‘:=’) lies within the range of the designator type (on the left hand
+side of the ‘:=’).  Thus these ordinal types can be assignment
+compatible.  However it does mean that ‘WORD32’ is not compatible with
+‘WORD16’ as ‘WORD32’ does not have a minimum or maximum value and
 therefore cannot be checked.  The compiler does not know which of the
-two bytes from 'WORD32' should be copied into 'WORD16' and which two
-should be ignored.  Currently the types 'BITSET8', 'BITSET16' and
-'BITSET32' are assignment incompatible.  However this restriction maybe
+two bytes from ‘WORD32’ should be copied into ‘WORD16’ and which two
+should be ignored.  Currently the types ‘BITSET8’, ‘BITSET16’ and
+‘BITSET32’ are assignment incompatible.  However this restriction maybe
 lifted when further run time checking is achieved.
 
-   Modula-2 does allow 'INTEGER' to be assignment compatible with 'WORD'
-as they are the same size.  Likewise GNU Modula-2 allows 'INTEGER16' to
-be compatible with 'WORD16' and the same for the other fixed sized types
-and their sized equivalent in either 'WORD'n, 'BYTE' or 'LOC' types.
-However it prohibits assignment between 'WORD' and 'WORD32' even though
+   Modula-2 does allow ‘INTEGER’ to be assignment compatible with ‘WORD’
+as they are the same size.  Likewise GNU Modula-2 allows ‘INTEGER16’ to
+be compatible with ‘WORD16’ and the same for the other fixed sized types
+and their sized equivalent in either ‘WORD’n, ‘BYTE’ or ‘LOC’ types.
+However it prohibits assignment between ‘WORD’ and ‘WORD32’ even though
 on many systems these sizes will be the same.  The reasoning behind this
 rule is that the extended fixed sized types are meant to be used by
 applications requiring fixed sized data types and it is more portable to
@@ -1707,13 +1707,13 @@ exceed the type range will result in a compile time error message.
 ------------------------------
 
 Parameter compatibility is divided into two areas, pass by value and
-pass by reference ('VAR').  In the case of pass by value the rules are
+pass by reference (‘VAR’).  In the case of pass by value the rules are
 exactly the same as assignment.  However in the second case, pass by
 reference, the actual parameter and formal parameter must be the same
-size and family.  Furthermore 'INTEGER' and 'CARDINAL's are not treated
+size and family.  Furthermore ‘INTEGER’ and ‘CARDINAL’s are not treated
 as compatible in the pass by reference case.
 
-   The types 'BYTE', 'LOC', 'WORD' and 'WORD'n derivatives are
+   The types ‘BYTE’, ‘LOC’, ‘WORD’ and ‘WORD’n derivatives are
 assignment and parameter compatible with any data type of the same size.
 
 
@@ -1728,7 +1728,7 @@ dialect of Modula-2 and can be compiled with the command line:
 
      $ gm2 -g -fiso -fsoft-check-all lazyunique.mod
 
-   The option '-fsoft-check-all' generates checks for 'NIL' pointer
+   The option ‘-fsoft-check-all’ generates checks for ‘NIL’ pointer
 access violation.  In turn this will call the exception handler.
 
      MODULE lazyunique ;  (*!m2iso+gm2*)
@@ -1843,7 +1843,7 @@ File: m2.info,  Node: Unbounded by reference,  Next: Building a shared library, 
 This section documents a GNU Modula-2 compiler switch which implements a
 language optimization surrounding the implementation of unbounded
 arrays.  In GNU Modula-2 the unbounded array is implemented by utilizing
-an internal structure 'struct {dataType *address, unsigned int high}'.
+an internal structure ‘struct {dataType *address, unsigned int high}’.
 So given the Modula-2 procedure declaration:
 
      PROCEDURE foo (VAR a: ARRAY OF dataType) ;
@@ -1851,7 +1851,7 @@ So given the Modula-2 procedure declaration:
         IF a[2]= (* etc *)
      END foo ;
 
-   it is translated into GCC 'tree's, which can be represented in their
+   it is translated into GCC ‘tree’s, which can be represented in their
 C form thus:
 
      void foo (struct {dataType *address, unsigned int high} a)
@@ -1859,7 +1859,7 @@ C form thus:
         if (a.address[2] == /* etc */
      }
 
-   Whereas if the procedure 'foo' was declared as:
+   Whereas if the procedure ‘foo’ was declared as:
 
      PROCEDURE foo (a: ARRAY OF dataType) ;
      BEGIN
@@ -1867,7 +1867,7 @@ C form thus:
      END foo ;
 
    then it is implemented by being translated into the following GCC
-'tree's, which can be represented in their C form thus:
+‘tree’s, which can be represented in their C form thus:
 
      void foo (struct {dataType *address, unsigned int high} a)
      {
@@ -1880,17 +1880,17 @@ C form thus:
 
    This implementation works, but it makes a copy of each non VAR
 unbounded array when a procedure is entered.  If the unbounded array is
-not changed during procedure 'foo' then this implementation will be very
-inefficient.  In effect Modula-2 lacks the 'REF' keyword of Ada.
+not changed during procedure ‘foo’ then this implementation will be very
+inefficient.  In effect Modula-2 lacks the ‘REF’ keyword of Ada.
 Consequently the programmer maybe tempted to sacrifice semantic clarity
-for greater efficiency by declaring the parameter using the 'VAR'
-keyword in place of 'REF'.
+for greater efficiency by declaring the parameter using the ‘VAR’
+keyword in place of ‘REF’.
 
-   The '-funbounded-by-reference' switch instructs the compiler to check
+   The ‘-funbounded-by-reference’ switch instructs the compiler to check
 and see if the programmer is modifying the content of any unbounded
 array.  If it is modified then a copy will be made upon entry into the
 procedure.  Conversely if the content is only read and never modified
-then this non 'VAR' unbounded array is a candidate for being passed by
+then this non ‘VAR’ unbounded array is a candidate for being passed by
 reference.  It is only a candidate as it is still possible that passing
 this parameter by reference could alter the meaning of the source code.
 For example consider the following case:
@@ -1908,18 +1908,18 @@ For example consider the following case:
         StrConCat(a, a, a)
      END foo ;
 
-   In the code above we see that the same parameter, 'a', is being
-passed three times to 'StrConCat'.  Clearly even though parameters 'b'
-and 'c' are never modified it would be incorrect to implement them as
+   In the code above we see that the same parameter, ‘a’, is being
+passed three times to ‘StrConCat’.  Clearly even though parameters ‘b’
+and ‘c’ are never modified it would be incorrect to implement them as
 pass by reference.  Therefore the compiler checks to see if any non
-'VAR' parameter is type compatible with any 'VAR' parameter and if so it
+‘VAR’ parameter is type compatible with any ‘VAR’ parameter and if so it
 generates run time procedure entry checks to determine whether the
-contents of parameters 'b' or 'c' matches the contents of 'a'.  If a
-match is detected then a copy is made and the 'address' in the unbounded
-'struct'ure is modified.
+contents of parameters ‘b’ or ‘c’ matches the contents of ‘a’.  If a
+match is detected then a copy is made and the ‘address’ in the unbounded
+‘struct’ure is modified.
 
    The compiler will check the address range of each candidate against
-the address range of any 'VAR' parameter, providing they are type
+the address range of any ‘VAR’ parameter, providing they are type
 compatible.  For example consider:
 
      PROCEDURE foo (a: ARRAY OF BYTE; VAR f: REAL) ;
@@ -1937,9 +1937,9 @@ compatible.  For example consider:
         foo(r, r)
      END bar ;
 
-   Here we see that although parameter, 'a', is a candidate for the
+   Here we see that although parameter, ‘a’, is a candidate for the
 passing by reference, it would be incorrect to use this transformation.
-Thus the compiler detects that parameters, 'a' and 'f' are type
+Thus the compiler detects that parameters, ‘a’ and ‘f’ are type
 compatible and will produce run time checking code to test whether the
 address range of their respective contents intersect.
 
@@ -1950,9 +1950,9 @@ File: m2.info,  Node: Building a shared library,  Next: Interface for Python,  P
 ==============================
 
 This section describes building a tiny shared library implemented in
-Modula-2 and built with 'libtool'.  Suppose a project consists of two
+Modula-2 and built with ‘libtool’.  Suppose a project consists of two
 definition modules and two implementation modules and a program module
-'a.def', 'a.mod', 'b.def', 'b.mod' and 'c.mod'.  The first step is to
+‘a.def’, ‘a.mod’, ‘b.def’, ‘b.mod’ and ‘c.mod’.  The first step is to
 compile the modules using position independent code.  This can be
 achieved by the following three commands:
 
@@ -1969,14 +1969,14 @@ also must compile the scaffold.
      gm2 -c -g -fmakeinit -fshared c.mod
      libtool --tag=CC --mode=compile g++ -g -c c_m2.cpp -o c_m2.lo
 
-   The third step is to link all these '.lo' files.
+   The third step is to link all these ‘.lo’ files.
 
      libtool --mode=link gcc -g c_m2.lo a.lo b.lo c.lo \
              -L$(prefix)/lib64 \
              -rpath `pwd` -lgm2 -lstdc++ -lm -o libabc.la
 
-   At this point the shared library 'libabc.so' will have been created
-inside the directory '.libs'.
+   At this point the shared library ‘libabc.so’ will have been created
+inside the directory ‘.libs’.
 
 
 File: m2.info,  Node: Interface for Python,  Next: Producing a Python module,  Prev: Building a shared library,  Up: Using
@@ -1992,12 +1992,12 @@ to generate all the necessary wrapping to that the desired scripting
 language may access the implementation module.
 
    Here is an example of how you might call upon the services of the
-Modula-2 library module 'NumberIO' from Python3.
+Modula-2 library module ‘NumberIO’ from Python3.
 
    The following commands can be used to generate the Python3 module:
 
-     export src='directory to the sources'
-     export prefix='directory to where the compiler is installed'
+     export src=‘directory to the sources’
+     export prefix=‘directory to where the compiler is installed’
      gm2 -I${src} -c -g -fswig ${src}/../../../gm2-libs/NumberIO.mod
      gm2 -I${src} -c -g -fmakelist ${src}/../../../gm2-libs/NumberIO.mod
 
@@ -2023,14 +2023,14 @@ Modula-2 library module 'NumberIO' from Python3.
      cp .libs/libNumberIO.so _NumberIO.so
 
    The first four commands, generate the swig interface file
-'NumberIO.i' and python wrap files 'NumberIO_wrap.cxx' and
-'NumberIO.py'.  The next three 'libtool' commnads compile the C++ and
-Modula-2 source code into '.lo' objects.  The last 'libtool' command
-links all the '.lo' files into a '.la' file and includes all shared
+‘NumberIO.i’ and python wrap files ‘NumberIO_wrap.cxx’ and
+‘NumberIO.py’.  The next three ‘libtool’ commnads compile the C++ and
+Modula-2 source code into ‘.lo’ objects.  The last ‘libtool’ command
+links all the ‘.lo’ files into a ‘.la’ file and includes all shared
 library dependencies.
 
    Now it is possible to run the following Python script (called
-'testnum.py'):
+‘testnum.py’):
 
      import NumberIO
 
@@ -2042,17 +2042,17 @@ library dependencies.
      1234 x 2 = 2468
 
    *Note Producing a Python module:: for another example which uses the
-'UNQUALIFIED' keyword to reduce the module name clutter from the
+‘UNQUALIFIED’ keyword to reduce the module name clutter from the
 viewport of Python3.
 
 2.14.1 Limitations of automatic generated of Swig files
 -------------------------------------------------------
 
 This section discusses the limitations of automatically generating swig
-files.  From the previous example we see that the module 'NumberIO' had
-a swig interface file 'NumberIO.i' automatically generated by the
+files.  From the previous example we see that the module ‘NumberIO’ had
+a swig interface file ‘NumberIO.i’ automatically generated by the
 compiler.  If we consider three of the procedure definitions in
-'NumberIO.def' we can see the success and limitations of the automatic
+‘NumberIO.def’ we can see the success and limitations of the automatic
 interface generation.
 
      PROCEDURE StrToHex (a: ARRAY OF CHAR; VAR x: CARDINAL) ;
@@ -2070,17 +2070,17 @@ interface generation.
      extern void NumberIO_ReadInt (int *x);
      /*  parameters: x is unknown */
 
-   In the case of 'StrToHex' it can be seen that the compiler detects
+   In the case of ‘StrToHex’ it can be seen that the compiler detects
 that the last parameter is an output.  It explicitly tells swig this by
-using the parameter name 'OUTPUT' and in the following comment it
+using the parameter name ‘OUTPUT’ and in the following comment it
 informs the user that it knows this to be an output parameter.  In the
-second procedure 'StrToInt' it marks the final parameter as an output,
-but it tells the user that this is only a guess.  Finally in 'ReadInt'
-it informs the user that it does not know whether the parameter, 'x', is
+second procedure ‘StrToInt’ it marks the final parameter as an output,
+but it tells the user that this is only a guess.  Finally in ‘ReadInt’
+it informs the user that it does not know whether the parameter, ‘x’, is
 an output, input or an inout parameter.
 
-   The compiler decides whether to mark a parameter as either: 'INPUT',
-'OUTPUT' or 'INOUT' if it is read before written or visa versa in the
+   The compiler decides whether to mark a parameter as either: ‘INPUT’,
+‘OUTPUT’ or ‘INOUT’ if it is read before written or visa versa in the
 first basic block.  At this point it will write output that the
 parameter is known.  If it is not read or written in the first basic
 block then subsequent basic blocks are searched and the result is
@@ -2093,7 +2093,7 @@ useful despite these limitations.
    In conclusion it would be wise to check all parameters in any
 automatically generated swig interface file.  Furthermore you can force
 the automatic mechanism to generate correct interface files by reading
-or writing to the 'VAR' parameter in the first basic block of a
+or writing to the ‘VAR’ parameter in the first basic block of a
 procedure.
 
 
@@ -2111,7 +2111,7 @@ initialize your application in Python.
 next event simulation.  The Python module needs to have a clear API
 which should be placed in a single definition module.  Furthermore the
 API should only use fundamental pervasive data types and strings.  Below
-the API is contained in the file 'twoDsim.def':
+the API is contained in the file ‘twoDsim.def’:
 
      DEFINITION MODULE twoDsim ;
 
@@ -2218,10 +2218,10 @@ the API is contained in the file 'twoDsim.def':
 
      END twoDsim.
 
-   The keyword 'UNQUALIFIED' can be used to ensure that the compiler
-will provide externally accessible functions 'gravity', 'box', 'poly3',
-'poly5', 'poly6', 'mass', 'fix', 'circle', 'pivot', 'velocity', 'accel',
-'fps', 'replayRate', 'simulateFor' rather than name mangled
+   The keyword ‘UNQUALIFIED’ can be used to ensure that the compiler
+will provide externally accessible functions ‘gravity’, ‘box’, ‘poly3’,
+‘poly5’, ‘poly6’, ‘mass’, ‘fix’, ‘circle’, ‘pivot’, ‘velocity’, ‘accel’,
+‘fps’, ‘replayRate’, ‘simulateFor’ rather than name mangled
 alternatives.  Hence in our Python3 application we could write:
 
      #!/usr/bin/env python3
@@ -2246,15 +2246,15 @@ alternatives.  Hence in our Python3 application we could write:
          print ("exception raised")
 
    which accesses the various functions defined and implemented by the
-module 'twoDsim'.  The Modula-2 source code is compiled via:
+module ‘twoDsim’.  The Modula-2 source code is compiled via:
 
      $ gm2 -g -fiso -c -fswig twoDsim.mod
      $ gm2 -g -fiso -c -fmakelist twoDsim.mod
      $ gm2 -g -fiso -c -fmakeinit twoDsim.mod
 
-   The first command both compiles the source file creating 'twoDsim.o'
-and produces a swig interface file 'swig.i'.  We now use 'swig' and
-'g++' to produce and compile the interface wrappers:
+   The first command both compiles the source file creating ‘twoDsim.o’
+and produces a swig interface file ‘swig.i’.  We now use ‘swig’ and
+‘g++’ to produce and compile the interface wrappers:
 
      $ libtool --mode=compile g++ -g -c twoDsim_m2.cpp -o twoDsim_m2.lo
      $ swig -c++ -python3 twoDsim.i
@@ -2273,7 +2273,7 @@ and produces a swig interface file 'swig.i'.  We now use 'swig' and
         -rpath `pwd` -lgm2 -lstdc++ -lm -o libtwoDsim.la
      cp .libs/libtwoDsim.so _twoDsim.so
 
-   The library name must start with '_' to comply with the Python3
+   The library name must start with ‘_’ to comply with the Python3
 module naming scheme.
 
 
@@ -2285,15 +2285,15 @@ File: m2.info,  Node: Interface to C,  Next: Assembly language,  Prev: Producing
 The GNU Modula-2 compiler tries to use the C calling convention wherever
 possible however some parameters have no C equivalent and thus a
 language specific method is used.  For example unbounded arrays are
-passed as a 'struct {void *address, unsigned int high}' and the contents
+passed as a ‘struct {void *address, unsigned int high}’ and the contents
 of these arrays are copied by callee functions when they are declared as
-non 'VAR' parameters.  The 'VAR' equivalent unbounded array parameters
-need no copy, but still use the 'struct' representation.
+non ‘VAR’ parameters.  The ‘VAR’ equivalent unbounded array parameters
+need no copy, but still use the ‘struct’ representation.
 
    The recommended method of interfacing GNU Modula-2 to C is by telling
 the definition module that the implementation is in the C language.
-This is achieved by using the tokens 'DEFINITION MODULE FOR "C"'.  Here
-is an example 'libprintf.def'.
+This is achieved by using the tokens ‘DEFINITION MODULE FOR "C"’.  Here
+is an example ‘libprintf.def’.
 
      DEFINITION MODULE FOR "C" libprintf ;
 
@@ -2303,16 +2303,16 @@ is an example 'libprintf.def'.
 
      END libprintf.
 
-   the 'UNQUALIFIED' keyword in the definition module informs GNU
+   the ‘UNQUALIFIED’ keyword in the definition module informs GNU
 Modula-2 not to prefix the module name to exported references in the
 object file.
 
-   The 'printf' declaration states that the first parameter semantically
-matches 'ARRAY OF CHAR' but since the module is for the C language it
-will be mapped onto 'char *'.  The token '...' indicates a variable
+   The ‘printf’ declaration states that the first parameter semantically
+matches ‘ARRAY OF CHAR’ but since the module is for the C language it
+will be mapped onto ‘char *’.  The token ‘...’ indicates a variable
 number of arguments (varargs) and all parameters passed here are mapped
 onto their C equivalents.  Arrays and constant strings are passed as
-pointers.  Lastly '[ INTEGER ]' states that the caller can ignore the
+pointers.  Lastly ‘[ INTEGER ]’ states that the caller can ignore the
 function return result if desired.
 
    The hello world program can be rewritten as:
@@ -2327,12 +2327,12 @@ function return result if desired.
 
    and it can be compiled by:
 
-   'gm2 -g hello.mod -lc'
+   ‘gm2 -g hello.mod -lc’
 
-   In reality the '-lc' is redundant as libc is always included in the
+   In reality the ‘-lc’ is redundant as libc is always included in the
 linking process.  It is shown here to emphasize that the C library or
-object file containing 'printf' must be present.  The search path for
-modules can be changed by using '-I'.
+object file containing ‘printf’ must be present.  The search path for
+modules can be changed by using ‘-I’.
 
    If a procedure function is declared using varargs then some parameter
 values are converted.  The table below summarizes the default
@@ -2347,9 +2347,9 @@ conversions and default types used.
      a: ARRAY [0..5] OF CHAR|  ADR (a)             |   char *
      3.14                   |  none                |   long double
 
-   If you wish to pass 'int' values then you should explicitly convert
+   If you wish to pass ‘int’ values then you should explicitly convert
 the constants using one of the conversion mechanisms.  For example:
-'INTEGER(10)' or 'VAL(INTEGER, 10)' or 'CAST(INTEGER, 10)'.
+‘INTEGER(10)’ or ‘VAL(INTEGER, 10)’ or ‘CAST(INTEGER, 10)’.
 
 
 File: m2.info,  Node: Assembly language,  Next: Alignment,  Prev: Interface to C,  Up: Using
@@ -2358,11 +2358,11 @@ File: m2.info,  Node: Assembly language,  Next: Alignment,  Prev: Interface to C
 ===================================
 
 The interface for GNU Modula-2 to assembly language is almost identical
-to GNU C. The only alterations are that the keywords 'asm' and
-'volatile' are in capitals, following the Modula-2 convention.
+to GNU C. The only alterations are that the keywords ‘asm’ and
+‘volatile’ are in capitals, following the Modula-2 convention.
 
    A simple, but highly non optimal, example is given below.  Here we
-want to add the two 'CARDINAL's 'foo' and 'bar' together and return the
+want to add the two ‘CARDINAL’s ‘foo’ and ‘bar’ together and return the
 result.  The target processor is assumed to be executing the x86_64
 instruction set.
 
@@ -2410,8 +2410,8 @@ File: m2.info,  Node: Alignment,  Next: Packed,  Prev: Assembly language,  Up: U
 ========================
 
 GNU Modula-2 allows you to specify alignment for types and variables.
-The syntax for alignment is to use the ISO pragma directives '<*'
-'bytealignment (' expression ')' and '*>'.  These directives can be used
+The syntax for alignment is to use the ISO pragma directives ‘<*’
+‘bytealignment (’ expression ‘)’ and ‘*>’.  These directives can be used
 after type and variable declarations.
 
    The ebnf of the alignment production is:
@@ -2420,9 +2420,9 @@ after type and variable declarations.
      ByteAlignment := '<*' AttributeExpression '*>' =:
      AlignmentExpression := "(" ConstExpression ")" =:
 
-   The 'Alignment' ebnf statement may be used during construction of
+   The ‘Alignment’ ebnf statement may be used during construction of
 types, records, record fields, arrays, pointers and variables.  Below is
-an example of aligning a type so that the variable 'bar' is aligned on a
+an example of aligning a type so that the variable ‘bar’ is aligned on a
 1024 address.
 
      MODULE align ;
@@ -2465,7 +2465,7 @@ an example of aligning a type so that the variable 'bar' is aligned on a
         END
      END align4.
 
-   In example 'align5' record field 'y' is aligned on a 1024 byte
+   In example ‘align5’ record field ‘y’ is aligned on a 1024 byte
 boundary.
 
      MODULE align5 ;
@@ -2489,8 +2489,8 @@ boundary.
         END
      END align5.
 
-   In the example below module 'align6' declares 'foo' as an array of
-256 'INTEGER's.  The array 'foo' is aligned on a 1024 byte boundary.
+   In the example below module ‘align6’ declares ‘foo’ as an array of
+256 ‘INTEGER’s.  The array ‘foo’ is aligned on a 1024 byte boundary.
 
      MODULE align6 ;
 
@@ -2518,8 +2518,8 @@ File: m2.info,  Node: Packed,  Next: Built-ins,  Prev: Alignment,  Up: Using
 2.19 Packing data types
 =======================
 
-The pragma '<* bytealignment(0) *>' can be used to specify that the
-fields within a 'RECORD' are to be packed.  Currently this only applies
+The pragma ‘<* bytealignment(0) *>’ can be used to specify that the
+fields within a ‘RECORD’ are to be packed.  Currently this only applies
 to fields which are declared as subranges, ordinal types and enumerated
 types.  Here is an example of how two subranges might be packed into a
 byte.
@@ -2535,13 +2535,13 @@ byte.
                    y: bits3i ;
                END ;
 
-   Notice that the user has specified that in between fields 'x' and 'y'
+   Notice that the user has specified that in between fields ‘x’ and ‘y’
 there are two bits unused.
 
    Now the user wishes to create a record with byte numbers zero and one
-occupied and then an 'INTEGER32' field which is four byte aligned.  In
+occupied and then an ‘INTEGER32’ field which is four byte aligned.  In
 this case byte numbers two and three will be unused.  The pragma
-'bytealignment' can be issued at the start of the record indicating the
+‘bytealignment’ can be issued at the start of the record indicating the
 default alignment for the whole record and this can be overridden by
 individual fields if necessary.
 
@@ -2552,7 +2552,7 @@ individual fields if necessary.
               END ;
 
    In the following example the user has specified that a record has two
-fields 'p' and 'q' but that there are three bytes unused between these
+fields ‘p’ and ‘q’ but that there are three bytes unused between these
 fields.
 
         header = RECORD
@@ -2562,10 +2562,10 @@ fields.
                     q: byte ;
                  END ;
 
-   The pragma '<* bytesunused(x) *>' can only be used if the current
-field is on a byte boundary.  There is also a 'SYSTEM' pseudo procedure
-function 'TBITSIZE(T)' which returns the minimum number of bits
-necessary to represent type 'T'.
+   The pragma ‘<* bytesunused(x) *>’ can only be used if the current
+field is on a byte boundary.  There is also a ‘SYSTEM’ pseudo procedure
+function ‘TBITSIZE(T)’ which returns the minimum number of bits
+necessary to represent type ‘T’.
 
    Another example of packing record bit fields is given below:
 
@@ -2611,14 +2611,14 @@ File: m2.info,  Node: Built-ins,  Next: The PIM system module,  Prev: Packed,  U
 
 This section describes the built-in constants and functions defined in
 GNU Modula-2.  The following compiler constants can be accessed using
-the '__ATTRIBUTE__' '__BUILTIN__' keywords.  These are not part of the
+the ‘__ATTRIBUTE__’ ‘__BUILTIN__’ keywords.  These are not part of the
 Modula-2 language and they may differ depending upon the target
 architecture but they provide a method whereby common libraries can
 interface to a different underlying architecture.
 
-   The built-in constants are: 'BITS_PER_UNIT', 'BITS_PER_WORD',
-'BITS_PER_CHAR' and 'UNITS_PER_WORD'.  They are integrated into GNU
-Modula-2 by an extension to the 'ConstFactor' rule:
+   The built-in constants are: ‘BITS_PER_UNIT’, ‘BITS_PER_WORD’,
+‘BITS_PER_CHAR’ and ‘UNITS_PER_WORD’.  They are integrated into GNU
+Modula-2 by an extension to the ‘ConstFactor’ rule:
 
      ConstFactor := ConstQualidentOrSet | Number | ConstString |
                     "(" ConstExpression ")" | "NOT" ConstFactor |
@@ -2626,39 +2626,39 @@ Modula-2 by an extension to the 'ConstFactor' rule:
 
      ConstAttribute := "__ATTRIBUTE__" "__BUILTIN__" "(" "(" Ident ")" ")" =:
 
-   Here is an example taken from the ISO library 'SYSTEM.def':
+   Here is an example taken from the ISO library ‘SYSTEM.def’:
 
      CONST
         BITSPERLOC    = __ATTRIBUTE__ __BUILTIN__ ((BITS_PER_UNIT)) ;
         LOCSPERWORD   = __ATTRIBUTE__ __BUILTIN__ ((UNITS_PER_WORD)) ;
 
    Built-in functions are transparent to the end user.  All built-in
-functions are declared in 'DEFINITION MODULE's and are imported as and
+functions are declared in ‘DEFINITION MODULE’s and are imported as and
 when required.  Built-in functions are declared in definition modules by
-using the '__BUILTIN__' keyword.  Here is a section of the ISO library
-'LongMath.def' which demonstrates this feature.
+using the ‘__BUILTIN__’ keyword.  Here is a section of the ISO library
+‘LongMath.def’ which demonstrates this feature.
 
      PROCEDURE __BUILTIN__ sqrt (x: LONGREAL): LONGREAL;
        (* Returns the square root of x *)
 
-   This indicates that the function 'sqrt' will be implemented using the
+   This indicates that the function ‘sqrt’ will be implemented using the
 gcc built-in maths library.  If gcc cannot utilize the built-in function
-(for example if the programmer requested the address of 'sqrt') then
+(for example if the programmer requested the address of ‘sqrt’) then
 code is generated to call the alternative function implemented in the
-'IMPLEMENTATION' 'MODULE'.
+‘IMPLEMENTATION’ ‘MODULE’.
 
-   Sometimes a function exported from the 'DEFINITION' 'MODULE' will
+   Sometimes a function exported from the ‘DEFINITION’ ‘MODULE’ will
 have a different name from the built-in function within gcc.  In such
 cases the mapping between the GNU Modula-2 function name and the gcc
-name is expressed using the keywords '__ATTRIBUTE__' '__BUILTIN__'
-'((Ident))'.  For example the function 'sqrt' in 'LongMath.def' maps
-onto the gcc built-in function 'sqrtl' and this is expressed as:
+name is expressed using the keywords ‘__ATTRIBUTE__’ ‘__BUILTIN__’
+‘((Ident))’.  For example the function ‘sqrt’ in ‘LongMath.def’ maps
+onto the gcc built-in function ‘sqrtl’ and this is expressed as:
 
      PROCEDURE __ATTRIBUTE__ __BUILTIN__ ((sqrtl)) sqrt
                                          (x: LONGREAL) : LONGREAL;
        (* Returns the positive square root of x *)
 
-   The following module 'Builtins.def' enumerates the list of built-in
+   The following module ‘Builtins.def’ enumerates the list of built-in
 functions which can be accessed in GNU Modula-2.  It also serves to
 define the parameter and return value for each function:
 
@@ -2918,7 +2918,7 @@ in-line code if optimization flags are passed to GNU Modula-2, users are
 advised to utilize the same functions from more generic libraries.  The
 built-in mechanism will be applied to these generic libraries where
 appropriate.  Note for the mathematical routines to be in-lined you need
-to specify the '-ffast-math -O' options.
+to specify the ‘-ffast-math -O’ options.
 
 
 File: m2.info,  Node: The PIM system module,  Next: The ISO system module,  Prev: Built-ins,  Up: Using
@@ -3131,24 +3131,24 @@ File: m2.info,  Node: The PIM system module,  Next: The ISO system module,  Prev
      END SYSTEM.
 
    The different dialects of Modula-2 PIM-[234] and ISO Modula-2 declare
-the function 'SIZE' in different places.  PIM-[34] and ISO Modula-2
-declare 'SIZE' as a pervasive function (declared in the base module).
-PIM-2 defined 'SIZE' in the 'SYSTEM' module (as shown above).
+the function ‘SIZE’ in different places.  PIM-[34] and ISO Modula-2
+declare ‘SIZE’ as a pervasive function (declared in the base module).
+PIM-2 defined ‘SIZE’ in the ‘SYSTEM’ module (as shown above).
 
    GNU Modula-2 allows users to specify the dialect of Modula-2 by using
-the '-fiso' and '-fpim2' command line switches.
+the ‘-fiso’ and ‘-fpim2’ command line switches.
 
-   The data types 'CSIZE_T', 'CSSIZE_T' and 'COFF_T' are also exported
-from the 'SYSTEM' module.  The type 'CSIZE_T' is unsigned and is mapped
-onto the target C data type 'size_t' whereas the type 'CSSIZE_T' is
-mapped onto the signed C data type 'ssize_t'.  The default size for the
-signed type 'COFF_T' is the same as 'CSSIZE_T' and this can be
-overridden by the '-fm2-file-offset-bits=' command line option.
+   The data types ‘CSIZE_T’, ‘CSSIZE_T’ and ‘COFF_T’ are also exported
+from the ‘SYSTEM’ module.  The type ‘CSIZE_T’ is unsigned and is mapped
+onto the target C data type ‘size_t’ whereas the type ‘CSSIZE_T’ is
+mapped onto the signed C data type ‘ssize_t’.  The default size for the
+signed type ‘COFF_T’ is the same as ‘CSSIZE_T’ and this can be
+overridden by the ‘-fm2-file-offset-bits=’ command line option.
 
    It is anticipated that these should only be used to provide cross
 platform definition modules for C libraries.
 
-   There are also a variety of fixed sized 'INTEGER' and 'CARDINAL'
+   There are also a variety of fixed sized ‘INTEGER’ and ‘CARDINAL’
 types.  The variety of the fixed sized types will depend upon the target
 architecture.
 
@@ -3415,17 +3415,17 @@ File: m2.info,  Node: The ISO system module,  Next: Release map,  Prev: The PIM 
 
      END SYSTEM.
 
-   The data types 'CSIZE_T', 'CSSIZE_T' and 'COFF_T' are also exported
-from the 'SYSTEM' module.  The type 'CSIZE_T' is unsigned and is mapped
-onto the target C data type 'size_t' whereas the type 'CSSIZE_T' is
-mapped onto the signed C data type 'ssize_t'.  The default size for the
-signed type 'COFF_T' is the same as 'CSSIZE_T' and this can be
-overridden by the '-fm2-file-offset-bits=' command line option.
+   The data types ‘CSIZE_T’, ‘CSSIZE_T’ and ‘COFF_T’ are also exported
+from the ‘SYSTEM’ module.  The type ‘CSIZE_T’ is unsigned and is mapped
+onto the target C data type ‘size_t’ whereas the type ‘CSSIZE_T’ is
+mapped onto the signed C data type ‘ssize_t’.  The default size for the
+signed type ‘COFF_T’ is the same as ‘CSSIZE_T’ and this can be
+overridden by the ‘-fm2-file-offset-bits=’ command line option.
 
    It is anticipated that these should only be used to provide cross
 platform definition modules for C libraries.
 
-   There are also a variety of fixed sized 'INTEGER' and 'CARDINAL'
+   There are also a variety of fixed sized ‘INTEGER’ and ‘CARDINAL’
 types.  The variety of the fixed sized types will depend upon the target
 architecture.
 
@@ -3475,9 +3475,9 @@ run using:
 
    Finally the results of the testsuite can be emailed to the
 gcc-testresults (https://gcc.gnu.org/lists.html) list using the
-'test_summary' script found in the gcc source tree:
+‘test_summary’ script found in the gcc source tree:
 
-     $ 'directory to the sources'/contrib/test_summary
+     $ ‘directory to the sources’/contrib/test_summary
 
 
 File: m2.info,  Node: Limitations,  Next: Objectives,  Prev: Regression tests,  Up: Using
@@ -3495,17 +3495,17 @@ File: m2.info,  Node: Objectives,  Next: FAQ,  Prev: Limitations,  Up: Using
 2.27 Objectives
 ===============
 
-   * The intention of GNU Modula-2 is to provide a production Modula-2
+   • The intention of GNU Modula-2 is to provide a production Modula-2
      front end to GCC.
 
-   * It should support all Niklaus Wirth PIM Dialects [234] and also ISO
+   • It should support all Niklaus Wirth PIM Dialects [234] and also ISO
      Modula-2 including a re-implementation of all the ISO modules.
 
-   * There should be an easy interface to C.
+   • There should be an easy interface to C.
 
-   * Exploit the features of GCC.
+   • Exploit the features of GCC.
 
-   * Listen to the requests of the users.
+   • Listen to the requests of the users.
 
 
 File: m2.info,  Node: FAQ,  Next: Community,  Prev: Objectives,  Up: Using
@@ -3571,7 +3571,7 @@ GNU General Public License
 
                         Version 3, 29 June 2007
 
-     Copyright (C) 2007 Free Software Foundation, Inc. <https://www.fsf.org>
+     Copyright © 2007 Free Software Foundation, Inc. <https://www.fsf.org>
 
      Everyone is permitted to copy and distribute verbatim copies of this
      license document, but changing it is not allowed.
@@ -4258,11 +4258,11 @@ mail.
 notice like this when it starts in an interactive mode:
 
      PROGRAM Copyright (C) YEAR NAME OF AUTHOR
-     This program comes with ABSOLUTELY NO WARRANTY; for details type 'show w'.
+     This program comes with ABSOLUTELY NO WARRANTY; for details type ‘show w’.
      This is free software, and you are welcome to redistribute it
-     under certain conditions; type 'show c' for details.
+     under certain conditions; type ‘show c’ for details.
 
-   The hypothetical commands 'show w' and 'show c' should show the
+   The hypothetical commands ‘show w’ and ‘show c’ should show the
 appropriate parts of the General Public License.  Of course, your
 program's commands might be different; for a GUI interface, you would
 use an "about box".
@@ -4278,10 +4278,6 @@ library, you may consider it more useful to permit linking proprietary
 applications with the library.  If this is what you want to do, use the
 GNU Lesser General Public License instead of this License.  But first,
 please read <https://www.gnu.org/licenses/why-not-lgpl.html>.
-
-* Menu:
-
-* Contributing::
 
 
 File: m2.info,  Node: Contributing,  Next: EBNF,  Prev: Copying,  Up: Top
@@ -4821,10 +4817,10 @@ modules originally came from the M2F compiler and have been cleaned up
 and extended.  They provide a basic interface to the underlying
 operating system via libc.  They also include a number of libraries to
 allow access to compiler built-ins.  Perhaps the largest difference to
-PIM and ISO libraries is the 'DynamicString' module which declares the
-type 'String'.  The heavy use of this opaque data type results in a
-number of equivalent modules that can either handle 'ARRAY OF CHAR' or
-'String'.
+PIM and ISO libraries is the ‘DynamicString’ module which declares the
+type ‘String’.  The heavy use of this opaque data type results in a
+number of equivalent modules that can either handle ‘ARRAY OF CHAR’ or
+‘String’.
 
    These modules have been extensively tested and are used throughout
 building the GNU Modula-2 compiler.
@@ -12421,8 +12417,8 @@ File: m2.info,  Node: PIM coroutine support,  Next: M2 ISO Libraries,  Prev: PIM
 4.3 PIM coroutine support
 =========================
 
-This directory contains a PIM 'SYSTEM' containing the 'PROCESS'
-primitives built on top of 'gthread's.
+This directory contains a PIM ‘SYSTEM’ containing the ‘PROCESS’
+primitives built on top of ‘gthread’s.
 * Menu:
 
 * gm2-libs-coroutines/Executive::Executive.def
@@ -12989,49 +12985,49 @@ File: m2.info,  Node: M2 ISO Libraries,  Prev: PIM coroutine support,  Up: Libra
 
 This directory contains the ISO definition modules and some
 corresponding implementation modules.  The definition files:
-'ChanConsts.def', 'CharClass.def', 'ComplexMath.def',
-'ConvStringLong.def', 'ConvStringReal.def', 'ConvTypes.def',
-'COROUTINES.def', 'EXCEPTIONS.def', 'GeneralUserExceptions.def',
-'IOChan.def', 'IOConsts.def', 'IOLink.def', 'IOLink.def',
-'IOResult.def', 'LongComplexMath.def', 'LongConv.def', 'LongIO.def',
-'LongMath.def', 'LongStr.def', 'LowLong.def', 'LowReal.def',
-'M2EXCEPTION.def', 'Processes.def', 'ProgramArgs.def', 'RawIO.def',
-'RealConv.def', 'RealIO.def', 'RealMath.def', 'RealStr.def',
-'RndFile.def', 'Semaphores.def', 'SeqFile.def', 'SIOResult.def',
-'SLongIO.def', 'SRawIO.def', 'SRealIO.def', 'StdChans.def',
-'STextIO.def', 'Storage.def', 'StreamFile.def', 'Strings.def',
-'SWholeIO.def', 'SysClock.def', 'SYSTEM.def', 'TERMINATION.def',
-'TextIO.def', 'WholeConv.def', 'WholeIO.def' and 'WholeStr.def' were
+‘ChanConsts.def’, ‘CharClass.def’, ‘ComplexMath.def’,
+‘ConvStringLong.def’, ‘ConvStringReal.def’, ‘ConvTypes.def’,
+‘COROUTINES.def’, ‘EXCEPTIONS.def’, ‘GeneralUserExceptions.def’,
+‘IOChan.def’, ‘IOConsts.def’, ‘IOLink.def’, ‘IOLink.def’,
+‘IOResult.def’, ‘LongComplexMath.def’, ‘LongConv.def’, ‘LongIO.def’,
+‘LongMath.def’, ‘LongStr.def’, ‘LowLong.def’, ‘LowReal.def’,
+‘M2EXCEPTION.def’, ‘Processes.def’, ‘ProgramArgs.def’, ‘RawIO.def’,
+‘RealConv.def’, ‘RealIO.def’, ‘RealMath.def’, ‘RealStr.def’,
+‘RndFile.def’, ‘Semaphores.def’, ‘SeqFile.def’, ‘SIOResult.def’,
+‘SLongIO.def’, ‘SRawIO.def’, ‘SRealIO.def’, ‘StdChans.def’,
+‘STextIO.def’, ‘Storage.def’, ‘StreamFile.def’, ‘Strings.def’,
+‘SWholeIO.def’, ‘SysClock.def’, ‘SYSTEM.def’, ‘TERMINATION.def’,
+‘TextIO.def’, ‘WholeConv.def’, ‘WholeIO.def’ and ‘WholeStr.def’ were
 defined by the International Standard Information technology -
 programming languages BS ISO/IEC 10514-1:1996E Part 1: Modula-2, Base
 Language.
 
-   The Copyright to the definition files 'ChanConsts.def',
-'CharClass.def', 'ComplexMath.def', 'ConvStringLong.def',
-'ConvStringReal.def', 'ConvTypes.def', 'COROUTINES.def',
-'EXCEPTIONS.def', 'GeneralUserExceptions.def', 'IOChan.def',
-'IOConsts.def', 'IOLink.def', 'IOLink.def', 'IOResult.def',
-'LongComplexMath.def', 'LongConv.def', 'LongIO.def', 'LongMath.def',
-'LongStr.def', 'LowLong.def', 'LowReal.def', 'M2EXCEPTION.def',
-'Processes.def', 'ProgramArgs.def', 'RawIO.def', 'RealConv.def',
-'RealIO.def', 'RealMath.def', 'RealStr.def', 'RndFile.def',
-'Semaphores.def', 'SeqFile.def', 'SIOResult.def', 'SLongIO.def',
-'SRawIO.def', 'SRealIO.def', 'StdChans.def', 'STextIO.def',
-'Storage.def', 'StreamFile.def', 'Strings.def', 'SWholeIO.def',
-'SysClock.def', 'SYSTEM.def', 'TERMINATION.def', 'TextIO.def',
-'WholeConv.def', 'WholeIO.def' and 'WholeStr.def' belong to ISO/IEC
+   The Copyright to the definition files ‘ChanConsts.def’,
+‘CharClass.def’, ‘ComplexMath.def’, ‘ConvStringLong.def’,
+‘ConvStringReal.def’, ‘ConvTypes.def’, ‘COROUTINES.def’,
+‘EXCEPTIONS.def’, ‘GeneralUserExceptions.def’, ‘IOChan.def’,
+‘IOConsts.def’, ‘IOLink.def’, ‘IOLink.def’, ‘IOResult.def’,
+‘LongComplexMath.def’, ‘LongConv.def’, ‘LongIO.def’, ‘LongMath.def’,
+‘LongStr.def’, ‘LowLong.def’, ‘LowReal.def’, ‘M2EXCEPTION.def’,
+‘Processes.def’, ‘ProgramArgs.def’, ‘RawIO.def’, ‘RealConv.def’,
+‘RealIO.def’, ‘RealMath.def’, ‘RealStr.def’, ‘RndFile.def’,
+‘Semaphores.def’, ‘SeqFile.def’, ‘SIOResult.def’, ‘SLongIO.def’,
+‘SRawIO.def’, ‘SRealIO.def’, ‘StdChans.def’, ‘STextIO.def’,
+‘Storage.def’, ‘StreamFile.def’, ‘Strings.def’, ‘SWholeIO.def’,
+‘SysClock.def’, ‘SYSTEM.def’, ‘TERMINATION.def’, ‘TextIO.def’,
+‘WholeConv.def’, ‘WholeIO.def’ and ‘WholeStr.def’ belong to ISO/IEC
 (International Organization for Standardization and International
 Electrotechnical Commission).  The licence allows them to be distributed
 with the compiler (as described on page 707 of the Information
 technology - Programming languages Part 1: Modula-2, Base Language.  BS
 ISO/IEC 10514-1:1996).
 
-   All implementation modules and 'ClientSocket.def', 'LongWholeIO.def',
-'M2RTS.def', 'MemStream.def', 'pth.def', 'RandomNumber.def',
-'RTdata.def', 'RTentity.def', 'RTfio.def', 'RTio.def',
-'ShortComplexMath.def', 'ShortIO.def', 'ShortWholeIO.def',
-'SimpleCipher.def', 'SLongWholeIO.def', 'SShortIO.def',
-'SShortWholeIO.def', 'StringChan.def' and 'wraptime.def' are Copyright
+   All implementation modules and ‘ClientSocket.def’, ‘LongWholeIO.def’,
+‘M2RTS.def’, ‘MemStream.def’, ‘pth.def’, ‘RandomNumber.def’,
+‘RTdata.def’, ‘RTentity.def’, ‘RTfio.def’, ‘RTio.def’,
+‘ShortComplexMath.def’, ‘ShortIO.def’, ‘ShortWholeIO.def’,
+‘SimpleCipher.def’, ‘SLongWholeIO.def’, ‘SShortIO.def’,
+‘SShortWholeIO.def’, ‘StringChan.def’ and ‘wraptime.def’ are Copyright
 of the FSF and are held under the GPLv3 with runtime exceptions.
 
    Under Section 7 of GPL version 3, you are granted additional
@@ -13044,9 +13040,9 @@ the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 <http://www.gnu.org/licenses/>.
 
    Notice that GNU Modula-2 contains additional libraries for
-input/output of 'SHORTREAL', 'SHORTCARD', 'SHORTINT', 'LONGCARD',
-'LONGINT' data types.  It also provides a 'RandomNumber', 'SimpleCipher'
-and 'ClientSocket' modules as well as low level modules which allow the
+input/output of ‘SHORTREAL’, ‘SHORTCARD’, ‘SHORTINT’, ‘LONGCARD’,
+‘LONGINT’ data types.  It also provides a ‘RandomNumber’, ‘SimpleCipher’
+and ‘ClientSocket’ modules as well as low level modules which allow the
 IO libraries to coexist with their PIM counterparts.
 * Menu:
 
@@ -18851,6 +18847,8 @@ File: m2.info,  Node: Indices,  Prev: Libraries,  Up: Top
 * alloca:                                Built-ins.           (line 236)
 * alloca <1>:                            gm2-libs/Builtins.   (line 183)
 * alloca <2>:                            gm2-libs/cbuiltin.   (line  52)
+* alloca_trace:                          Built-ins.           (line 305)
+* alloca_trace <1>:                      gm2-libs/Builtins.   (line 252)
 * ALLOCATE:                              gm2-libs/Storage.    (line  19)
 * ALLOCATE <1>:                          gm2-libs/SysStorage. (line  21)
 * ALLOCATE <2>:                          gm2-libs-iso/Storage.
@@ -18858,8 +18856,6 @@ File: m2.info,  Node: Indices,  Prev: Libraries,  Up: Top
 * AllocateDeviceId:                      gm2-libs-iso/IOLink. (line  18)
 * AllocateSource:                        gm2-libs-iso/EXCEPTIONS.
                                                               (line  18)
-* alloca_trace:                          Built-ins.           (line 305)
-* alloca_trace <1>:                      gm2-libs/Builtins.   (line 252)
 * Append:                                gm2-libs-iso/Strings.
                                                               (line  55)
 * arccos:                                gm2-libs-iso/ComplexMath.
@@ -20000,10 +19996,10 @@ File: m2.info,  Node: Indices,  Prev: Libraries,  Up: Top
                                                               (line  50)
 * GetOpt:                                gm2-libs/GetOpt.     (line  25)
 * getopt:                                gm2-libs/cgetopt.    (line  29)
-* GetOptLong:                            gm2-libs/GetOpt.     (line  87)
-* GetOptLongOnly:                        gm2-libs/GetOpt.     (line  97)
 * getopt_long:                           gm2-libs/cgetopt.    (line  42)
 * getopt_long_only:                      gm2-libs/cgetopt.    (line  50)
+* GetOptLong:                            gm2-libs/GetOpt.     (line  87)
+* GetOptLongOnly:                        gm2-libs/GetOpt.     (line  97)
 * getpid:                                gm2-libs/libc.       (line 256)
 * GetPos:                                gm2-libs-log/FileSystem.
                                                               (line 218)
@@ -20748,13 +20744,13 @@ File: m2.info,  Node: Indices,  Prev: Libraries,  Up: Top
                                                               (line  25)
 * nModes (const) <2>:                    gm2-libs-iso/LowShort.
                                                               (line  25)
+* no_argument (const):                   gm2-libs/GetOpt.     (line  12)
 * NoException:                           gm2-libs/M2RTS.      (line 175)
 * NoException <1>:                       gm2-libs-iso/M2RTS.  (line 183)
 * NonVarFPSection (ebnf):                EBNF.                (line 424)
 * NoReturnException:                     gm2-libs/M2RTS.      (line 166)
 * NoReturnException <1>:                 gm2-libs-iso/M2RTS.  (line 174)
 * NormalPart (ebnf):                     EBNF.                (line 385)
-* no_argument (const):                   gm2-libs/GetOpt.     (line  12)
 * np (const):                            gm2-libs/ASCII.      (line  24)
 * nul (const):                           gm2-libs/ASCII.      (line  21)
 * NullChan:                              gm2-libs-iso/StdChans.
@@ -21273,10 +21269,10 @@ File: m2.info,  Node: Indices,  Prev: Libraries,  Up: Top
 * Resume:                                gm2-libs-coroutines/Executive.
                                                               (line  46)
 * RetryStatement (ebnf):                 EBNF.                (line 286)
-* ReturnException:                       gm2-libs/M2RTS.      (line 153)
-* ReturnException <1>:                   gm2-libs-iso/M2RTS.  (line 161)
 * return_address:                        Built-ins.           (line 298)
 * return_address <1>:                    gm2-libs/Builtins.   (line 245)
+* ReturnException:                       gm2-libs/M2RTS.      (line 153)
+* ReturnException <1>:                   gm2-libs-iso/M2RTS.  (line 161)
 * ReverseIndex:                          gm2-libs/DynamicStrings.
                                                               (line 201)
 * Rewrite:                               gm2-libs-iso/MemStream.
@@ -21911,6 +21907,7 @@ File: m2.info,  Node: Indices,  Prev: Libraries,  Up: Top
 * TicksPerSecond (const):                gm2-libs-coroutines/TimerHandler.
                                                               (line  16)
 * time:                                  gm2-libs/libc.       (line 463)
+* time_t (type):                         gm2-libs/libc.       (line  32)
 * timeb (type):                          gm2-libs/libc.       (line  49)
 * timespec (type):                       gm2-libs-iso/wrapclock.
                                                               (line  11)
@@ -21925,7 +21922,6 @@ File: m2.info,  Node: Indices,  Prev: Libraries,  Up: Top
                                                               (line  23)
 * timezone (type):                       gm2-libs-iso/wraptime.
                                                               (line  19)
-* time_t (type):                         gm2-libs/libc.       (line  32)
 * tm (type):                             gm2-libs/libc.       (line  35)
 * tm (type) <1>:                         gm2-libs-iso/wraptime.
                                                               (line  20)
@@ -22292,230 +22288,235 @@ File: m2.info,  Node: Indices,  Prev: Libraries,  Up: Top
 
 
 Tag Table:
-Node: Top1081
-Node: Overview1561
-Node: What is GNU Modula-21919
-Ref: What is GNU Modula-2-Footnote-12393
-Node: Why use GNU Modula-22964
-Node: Development4538
-Node: Features4784
-Node: Using6390
-Node: Example usage8339
-Ref: Example usage-Footnote-19453
-Node: Compiler options9702
-Node: Linking24704
-Node: Elementary data types27721
-Node: Standard procedures29156
-Node: High procedure function37882
-Node: Dialect40775
-Node: Exceptions44126
-Ref: Exceptions-Footnote-145235
-Node: Semantic checking45383
-Node: Extensions49343
-Node: Type compatibility57199
-Node: Exception handling63539
-Node: Unbounded by reference66335
-Node: Building a shared library70306
-Node: Interface for Python71756
-Node: Producing a Python module76822
-Node: Interface to C81824
-Node: Assembly language84886
-Node: Alignment86896
-Node: Packed89383
-Node: Built-ins92056
-Node: The PIM system module106718
-Node: The ISO system module115344
-Node: Release map125946
-Node: Documentation126493
-Node: Regression tests126758
-Node: Limitations127573
-Node: Objectives127883
-Node: FAQ128357
-Node: Community128798
-Node: Other languages129149
-Node: License129393
-Node: Copying130311
-Node: Contributing167860
-Node: EBNF168565
-Node: Libraries183397
-Node: Base libraries183825
-Node: gm2-libs/ARRAYOFCHAR186755
-Node: gm2-libs/ASCII187164
-Node: gm2-libs/Args188286
-Node: gm2-libs/Assertion188882
-Node: gm2-libs/Break189293
-Node: gm2-libs/Builtins189499
-Node: gm2-libs/CFileSysOp201185
-Node: gm2-libs/CHAR202756
-Node: gm2-libs/COROUTINES203134
-Node: gm2-libs/CmdArgs203507
-Node: gm2-libs/Debug204210
-Node: gm2-libs/DynamicStrings205068
-Node: gm2-libs/Environment215818
-Node: gm2-libs/FIO216828
-Node: gm2-libs/FileSysOp226069
-Node: gm2-libs/FormatStrings226787
-Node: gm2-libs/FpuIO228459
-Node: gm2-libs/GetOpt229877
-Node: gm2-libs/IO233335
-Node: gm2-libs/Indexing235066
-Node: gm2-libs/LMathLib0238029
-Node: gm2-libs/LegacyReal238800
-Node: gm2-libs/M2Dependent239075
-Node: gm2-libs/M2EXCEPTION241607
-Node: gm2-libs/M2RTS242857
-Node: gm2-libs/MathLib0250565
-Node: gm2-libs/MemUtils251266
-Node: gm2-libs/NumberIO251867
-Node: gm2-libs/OptLib253754
-Node: gm2-libs/PushBackInput255652
-Node: gm2-libs/RTExceptions258266
-Node: gm2-libs/RTint262913
-Node: gm2-libs/SArgs265844
-Node: gm2-libs/SCmdArgs266604
-Node: gm2-libs/SEnvironment267335
-Node: gm2-libs/SFIO268325
-Node: gm2-libs/SMathLib0270713
-Node: gm2-libs/SYSTEM271491
-Node: gm2-libs/Scan279035
-Node: gm2-libs/Selective280921
-Node: gm2-libs/StdIO282816
-Node: gm2-libs/Storage284650
-Node: gm2-libs/StrCase285902
-Node: gm2-libs/StrIO287132
-Node: gm2-libs/StrLib287907
-Node: gm2-libs/String289521
-Node: gm2-libs/StringConvert289888
-Node: gm2-libs/StringFileSysOp301187
-Node: gm2-libs/SysExceptions301824
-Node: gm2-libs/SysStorage302810
-Node: gm2-libs/TimeString304508
-Node: gm2-libs/UnixArgs304927
-Node: gm2-libs/cbuiltin305353
-Node: gm2-libs/cgetopt313837
-Node: gm2-libs/cxxabi316619
-Node: gm2-libs/dtoa317172
-Node: gm2-libs/errno318257
-Node: gm2-libs/gdbif318675
-Node: gm2-libs/ldtoa319668
-Node: gm2-libs/libc320818
-Node: gm2-libs/libm334690
-Node: gm2-libs/sckt337674
-Node: gm2-libs/termios341472
-Node: gm2-libs/wrapc346487
-Node: PIM and Logitech 3.0 Compatible349822
-Node: gm2-libs-log/BitBlockOps352580
-Node: gm2-libs-log/BitByteOps356482
-Node: gm2-libs-log/BitWordOps359372
-Node: gm2-libs-log/BlockOps362218
-Node: gm2-libs-log/Break364390
-Node: gm2-libs-log/CardinalIO365401
-Node: gm2-libs-log/Conversions369219
-Node: gm2-libs-log/DebugPMD370602
-Node: gm2-libs-log/DebugTrace370864
-Node: gm2-libs-log/Delay371128
-Node: gm2-libs-log/Display371547
-Node: gm2-libs-log/ErrorCode372076
-Node: gm2-libs-log/FileSystem372952
-Node: gm2-libs-log/FloatingUtilities379733
-Node: gm2-libs-log/InOut381484
-Node: gm2-libs-log/Keyboard385830
-Node: gm2-libs-log/LongIO386489
-Node: gm2-libs-log/NumberConversion386941
-Node: gm2-libs-log/Random387272
-Node: gm2-libs-log/RealConversions388648
-Node: gm2-libs-log/RealInOut393529
-Node: gm2-libs-log/Strings396284
-Node: gm2-libs-log/Termbase398170
-Node: gm2-libs-log/Terminal400716
-Node: gm2-libs-log/TimeDate402232
-Node: PIM coroutine support404192
-Node: gm2-libs-coroutines/Executive404680
-Node: gm2-libs-coroutines/KeyBoardLEDs408329
-Node: gm2-libs-coroutines/SYSTEM409294
-Node: gm2-libs-coroutines/TimerHandler419814
-Node: M2 ISO Libraries422237
-Node: gm2-libs-iso/COROUTINES429043
-Node: gm2-libs-iso/ChanConsts432892
-Node: gm2-libs-iso/CharClass436243
-Node: gm2-libs-iso/ClientSocket437314
-Node: gm2-libs-iso/ComplexMath438419
-Node: gm2-libs-iso/ConvStringLong440744
-Node: gm2-libs-iso/ConvStringReal442064
-Node: gm2-libs-iso/ConvStringShort443376
-Node: gm2-libs-iso/ConvTypes444702
-Node: gm2-libs-iso/EXCEPTIONS446082
-Node: gm2-libs-iso/ErrnoCategory448243
-Node: gm2-libs-iso/GeneralUserExceptions449713
-Node: gm2-libs-iso/IOChan450910
-Node: gm2-libs-iso/IOChanUtils458401
-Node: gm2-libs-iso/IOConsts459248
-Node: gm2-libs-iso/IOLink460030
-Node: gm2-libs-iso/IOResult465853
-Node: gm2-libs-iso/LongComplexMath466885
-Node: gm2-libs-iso/LongConv469198
-Node: gm2-libs-iso/LongIO471375
-Node: gm2-libs-iso/LongMath473847
-Node: gm2-libs-iso/LongStr475706
-Node: gm2-libs-iso/LongWholeIO478292
-Node: gm2-libs-iso/LowLong480147
-Node: gm2-libs-iso/LowReal483721
-Node: gm2-libs-iso/LowShort487118
-Node: gm2-libs-iso/M2EXCEPTION490739
-Node: gm2-libs-iso/M2RTS491957
-Node: gm2-libs-iso/MemStream499757
-Node: gm2-libs-iso/Preemptive503029
-Node: gm2-libs-iso/Processes503530
-Node: gm2-libs-iso/ProgramArgs509345
-Node: gm2-libs-iso/RTco510414
-Node: gm2-libs-iso/RTdata512088
-Node: gm2-libs-iso/RTentity513375
-Node: gm2-libs-iso/RTfio514488
-Node: gm2-libs-iso/RTgen517114
-Node: gm2-libs-iso/RTgenif520079
-Node: gm2-libs-iso/RTio524059
-Node: gm2-libs-iso/RandomNumber525707
-Node: gm2-libs-iso/RawIO528126
-Node: gm2-libs-iso/RealConv529023
-Node: gm2-libs-iso/RealIO531136
-Node: gm2-libs-iso/RealMath533582
-Node: gm2-libs-iso/RealStr535356
-Node: gm2-libs-iso/RndFile537909
-Node: gm2-libs-iso/SIOResult542667
-Node: gm2-libs-iso/SLongIO543695
-Node: gm2-libs-iso/SLongWholeIO546119
-Node: gm2-libs-iso/SRawIO547929
-Node: gm2-libs-iso/SRealIO548813
-Node: gm2-libs-iso/SShortIO551125
-Node: gm2-libs-iso/SShortWholeIO553559
-Node: gm2-libs-iso/STextIO555380
-Node: gm2-libs-iso/SWholeIO557780
-Node: gm2-libs-iso/SYSTEM559570
-Node: gm2-libs-iso/Semaphores569511
-Node: gm2-libs-iso/SeqFile571126
-Node: gm2-libs-iso/ShortComplexMath575678
-Node: gm2-libs-iso/ShortConv578029
-Node: gm2-libs-iso/ShortIO580165
-Node: gm2-libs-iso/ShortMath582649
-Node: gm2-libs-iso/ShortStr584535
-Node: gm2-libs-iso/ShortWholeIO587133
-Node: gm2-libs-iso/SimpleCipher589003
-Node: gm2-libs-iso/StdChans589993
-Node: gm2-libs-iso/Storage591990
-Node: gm2-libs-iso/StreamFile594076
-Node: gm2-libs-iso/StringChan596136
-Node: gm2-libs-iso/Strings597351
-Node: gm2-libs-iso/SysClock604831
-Node: gm2-libs-iso/TERMINATION606634
-Node: gm2-libs-iso/TermFile607247
-Node: gm2-libs-iso/TextIO609542
-Node: gm2-libs-iso/TextUtil612170
-Node: gm2-libs-iso/WholeConv612931
-Node: gm2-libs-iso/WholeIO615461
-Node: gm2-libs-iso/WholeStr617299
-Node: gm2-libs-iso/wrapclock619090
-Node: gm2-libs-iso/wrapsock622707
-Node: gm2-libs-iso/wraptime625301
-Node: Indices629674
+Node: Top1079
+Node: Overview1559
+Node: What is GNU Modula-21917
+Ref: What is GNU Modula-2-Footnote-12391
+Node: Why use GNU Modula-22962
+Node: Development4548
+Node: Features4794
+Node: Using6478
+Node: Example usage8427
+Ref: Example usage-Footnote-19573
+Node: Compiler options9838
+Node: Linking25492
+Node: Elementary data types28625
+Node: Standard procedures30120
+Node: High procedure function38962
+Node: Dialect41947
+Node: Exceptions45358
+Ref: Exceptions-Footnote-146483
+Node: Semantic checking46639
+Node: Extensions50627
+Node: Type compatibility58611
+Node: Exception handling65107
+Node: Unbounded by reference67911
+Node: Building a shared library71982
+Node: Interface for Python73468
+Node: Producing a Python module78634
+Node: Interface to C83724
+Node: Assembly language86866
+Node: Alignment88896
+Node: Packed91431
+Node: Built-ins94152
+Node: The PIM system module108914
+Node: The ISO system module117616
+Node: Release map128270
+Node: Documentation128817
+Node: Regression tests129082
+Node: Limitations129905
+Node: Objectives130215
+Node: FAQ130699
+Node: Community131140
+Node: Other languages131491
+Node: License131735
+Node: Copying132653
+Node: Contributing170190
+Node: EBNF170895
+Node: Libraries185727
+Node: Base libraries186155
+Node: gm2-libs/ARRAYOFCHAR189101
+Node: gm2-libs/ASCII189510
+Node: gm2-libs/Args190632
+Node: gm2-libs/Assertion191228
+Node: gm2-libs/Break191639
+Node: gm2-libs/Builtins191845
+Node: gm2-libs/CFileSysOp203531
+Node: gm2-libs/CHAR205102
+Node: gm2-libs/COROUTINES205480
+Node: gm2-libs/CmdArgs205853
+Node: gm2-libs/Debug206556
+Node: gm2-libs/DynamicStrings207414
+Node: gm2-libs/Environment218164
+Node: gm2-libs/FIO219174
+Node: gm2-libs/FileSysOp228415
+Node: gm2-libs/FormatStrings229133
+Node: gm2-libs/FpuIO230805
+Node: gm2-libs/GetOpt232223
+Node: gm2-libs/IO235681
+Node: gm2-libs/Indexing237412
+Node: gm2-libs/LMathLib0240375
+Node: gm2-libs/LegacyReal241146
+Node: gm2-libs/M2Dependent241421
+Node: gm2-libs/M2EXCEPTION243953
+Node: gm2-libs/M2RTS245203
+Node: gm2-libs/MathLib0252911
+Node: gm2-libs/MemUtils253612
+Node: gm2-libs/NumberIO254213
+Node: gm2-libs/OptLib256100
+Node: gm2-libs/PushBackInput257998
+Node: gm2-libs/RTExceptions260612
+Node: gm2-libs/RTint265259
+Node: gm2-libs/SArgs268190
+Node: gm2-libs/SCmdArgs268950
+Node: gm2-libs/SEnvironment269681
+Node: gm2-libs/SFIO270671
+Node: gm2-libs/SMathLib0273059
+Node: gm2-libs/SYSTEM273837
+Node: gm2-libs/Scan281381
+Node: gm2-libs/Selective283267
+Node: gm2-libs/StdIO285162
+Node: gm2-libs/Storage286996
+Node: gm2-libs/StrCase288248
+Node: gm2-libs/StrIO289478
+Node: gm2-libs/StrLib290253
+Node: gm2-libs/String291867
+Node: gm2-libs/StringConvert292234
+Node: gm2-libs/StringFileSysOp303533
+Node: gm2-libs/SysExceptions304170
+Node: gm2-libs/SysStorage305156
+Node: gm2-libs/TimeString306854
+Node: gm2-libs/UnixArgs307273
+Node: gm2-libs/cbuiltin307699
+Node: gm2-libs/cgetopt316183
+Node: gm2-libs/cxxabi318965
+Node: gm2-libs/dtoa319518
+Node: gm2-libs/errno320603
+Node: gm2-libs/gdbif321021
+Node: gm2-libs/ldtoa322014
+Node: gm2-libs/libc323164
+Node: gm2-libs/libm337036
+Node: gm2-libs/sckt340020
+Node: gm2-libs/termios343818
+Node: gm2-libs/wrapc348833
+Node: PIM and Logitech 3.0 Compatible352168
+Node: gm2-libs-log/BitBlockOps354926
+Node: gm2-libs-log/BitByteOps358828
+Node: gm2-libs-log/BitWordOps361718
+Node: gm2-libs-log/BlockOps364564
+Node: gm2-libs-log/Break366736
+Node: gm2-libs-log/CardinalIO367747
+Node: gm2-libs-log/Conversions371565
+Node: gm2-libs-log/DebugPMD372948
+Node: gm2-libs-log/DebugTrace373210
+Node: gm2-libs-log/Delay373474
+Node: gm2-libs-log/Display373893
+Node: gm2-libs-log/ErrorCode374422
+Node: gm2-libs-log/FileSystem375298
+Node: gm2-libs-log/FloatingUtilities382079
+Node: gm2-libs-log/InOut383830
+Node: gm2-libs-log/Keyboard388176
+Node: gm2-libs-log/LongIO388835
+Node: gm2-libs-log/NumberConversion389287
+Node: gm2-libs-log/Random389618
+Node: gm2-libs-log/RealConversions390994
+Node: gm2-libs-log/RealInOut395875
+Node: gm2-libs-log/Strings398630
+Node: gm2-libs-log/Termbase400516
+Node: gm2-libs-log/Terminal403062
+Node: gm2-libs-log/TimeDate404578
+Node: PIM coroutine support406538
+Node: gm2-libs-coroutines/Executive407038
+Node: gm2-libs-coroutines/KeyBoardLEDs410687
+Node: gm2-libs-coroutines/SYSTEM411652
+Node: gm2-libs-coroutines/TimerHandler422172
+Node: M2 ISO Libraries424595
+Node: gm2-libs-iso/COROUTINES431901
+Node: gm2-libs-iso/ChanConsts435750
+Node: gm2-libs-iso/CharClass439101
+Node: gm2-libs-iso/ClientSocket440172
+Node: gm2-libs-iso/ComplexMath441277
+Node: gm2-libs-iso/ConvStringLong443602
+Node: gm2-libs-iso/ConvStringReal444922
+Node: gm2-libs-iso/ConvStringShort446234
+Node: gm2-libs-iso/ConvTypes447560
+Node: gm2-libs-iso/EXCEPTIONS448940
+Node: gm2-libs-iso/ErrnoCategory451101
+Node: gm2-libs-iso/GeneralUserExceptions452571
+Node: gm2-libs-iso/IOChan453768
+Node: gm2-libs-iso/IOChanUtils461259
+Node: gm2-libs-iso/IOConsts462106
+Node: gm2-libs-iso/IOLink462888
+Node: gm2-libs-iso/IOResult468711
+Node: gm2-libs-iso/LongComplexMath469743
+Node: gm2-libs-iso/LongConv472056
+Node: gm2-libs-iso/LongIO474233
+Node: gm2-libs-iso/LongMath476705
+Node: gm2-libs-iso/LongStr478564
+Node: gm2-libs-iso/LongWholeIO481150
+Node: gm2-libs-iso/LowLong483005
+Node: gm2-libs-iso/LowReal486579
+Node: gm2-libs-iso/LowShort489976
+Node: gm2-libs-iso/M2EXCEPTION493597
+Node: gm2-libs-iso/M2RTS494815
+Node: gm2-libs-iso/MemStream502615
+Node: gm2-libs-iso/Preemptive505887
+Node: gm2-libs-iso/Processes506388
+Node: gm2-libs-iso/ProgramArgs512203
+Node: gm2-libs-iso/RTco513272
+Node: gm2-libs-iso/RTdata514946
+Node: gm2-libs-iso/RTentity516233
+Node: gm2-libs-iso/RTfio517346
+Node: gm2-libs-iso/RTgen519972
+Node: gm2-libs-iso/RTgenif522937
+Node: gm2-libs-iso/RTio526917
+Node: gm2-libs-iso/RandomNumber528565
+Node: gm2-libs-iso/RawIO530984
+Node: gm2-libs-iso/RealConv531881
+Node: gm2-libs-iso/RealIO533994
+Node: gm2-libs-iso/RealMath536440
+Node: gm2-libs-iso/RealStr538214
+Node: gm2-libs-iso/RndFile540767
+Node: gm2-libs-iso/SIOResult545525
+Node: gm2-libs-iso/SLongIO546553
+Node: gm2-libs-iso/SLongWholeIO548977
+Node: gm2-libs-iso/SRawIO550787
+Node: gm2-libs-iso/SRealIO551671
+Node: gm2-libs-iso/SShortIO553983
+Node: gm2-libs-iso/SShortWholeIO556417
+Node: gm2-libs-iso/STextIO558238
+Node: gm2-libs-iso/SWholeIO560638
+Node: gm2-libs-iso/SYSTEM562428
+Node: gm2-libs-iso/Semaphores572369
+Node: gm2-libs-iso/SeqFile573984
+Node: gm2-libs-iso/ShortComplexMath578536
+Node: gm2-libs-iso/ShortConv580887
+Node: gm2-libs-iso/ShortIO583023
+Node: gm2-libs-iso/ShortMath585507
+Node: gm2-libs-iso/ShortStr587393
+Node: gm2-libs-iso/ShortWholeIO589991
+Node: gm2-libs-iso/SimpleCipher591861
+Node: gm2-libs-iso/StdChans592851
+Node: gm2-libs-iso/Storage594848
+Node: gm2-libs-iso/StreamFile596934
+Node: gm2-libs-iso/StringChan598994
+Node: gm2-libs-iso/Strings600209
+Node: gm2-libs-iso/SysClock607689
+Node: gm2-libs-iso/TERMINATION609492
+Node: gm2-libs-iso/TermFile610105
+Node: gm2-libs-iso/TextIO612400
+Node: gm2-libs-iso/TextUtil615028
+Node: gm2-libs-iso/WholeConv615789
+Node: gm2-libs-iso/WholeIO618319
+Node: gm2-libs-iso/WholeStr620157
+Node: gm2-libs-iso/wrapclock621948
+Node: gm2-libs-iso/wrapsock625565
+Node: gm2-libs-iso/wraptime628159
+Node: Indices632532
 
 End Tag Table
+
+
+Local Variables:
+coding: utf-8
+End:

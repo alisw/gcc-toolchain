@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -146,7 +146,7 @@ public:
   TryCompileCode. The result is stored in OutputFile. If nothing is found,
   the error message is stored in FindErrorMessage.
    */
-  void FindOutputFile(const std::string& targetName);
+  void FindOutputFile(std::string const& targetName);
 
   static void WriteTryCompileEventFields(
     cmConfigureLog& log, cmTryCompileResult const& compileResult);
@@ -161,8 +161,7 @@ private:
   std::string WriteSource(std::string const& name, std::string const& content,
                           char const* command) const;
 
-  Arguments ParseArgs(
-    const cmRange<std::vector<std::string>::const_iterator>& args,
-    const cmArgumentParser<Arguments>& parser,
-    std::vector<std::string>& unparsedArguments);
+  Arguments ParseArgs(cmRange<std::vector<std::string>::const_iterator> args,
+                      cmArgumentParser<Arguments> const& parser,
+                      std::vector<std::string>& unparsedArguments);
 };

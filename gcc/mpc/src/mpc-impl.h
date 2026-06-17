@@ -1,6 +1,6 @@
 /* mpc-impl.h -- Internal include file for mpc.
 
-Copyright (C) 2002, 2004, 2005, 2008, 2009, 2010, 2011, 2012, 2020, 2022 INRIA
+Copyright (C) 2002, 2004, 2005, 2008, 2009, 2010, 2011, 2012, 2020, 2022, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -23,7 +23,20 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 #define __MPC_LIBRARY_BUILD
    /* to indicate we are inside the library build */
 
+// define MPC_DEBUG to enable debug routines
+// #define MPC_DEBUG
+
+#if 1
+#define _MPC_HAVE_COMPLEX_H
+#include <complex.h>
+#else
+#undef _MPC_HAVE_COMPLEX_H
+#endif
+
 #include "config.h"
+#ifdef MPC_DEBUG
+#include <stdio.h>
+#endif
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
 #endif
@@ -156,6 +169,27 @@ do {                                                            \
   MPFR_OUT_Q (mpc_imagref (x));                                 \
   printf (");\n");                                              \
 } while (0)
+
+// to debug Ziv's loop
+#ifndef MPC_DEBUG
+#define MPC_LOOP_NEXT(loop,op,rop)                                      \
+  do {                                                                  \
+  loop++;                                                               \
+  } while (0)
+#else // adjust condition to your needs
+#define MPC_LOOP_NEXT(loop,op,rop)                                      \
+  do {                                                                  \
+    loop++;                                                             \
+    if (loop >= 3) {                                                    \
+        fprintf (stderr, "loop=%d in file %s, line %d\n", loop, __FILE__, __LINE__); \
+        mpfr_fprintf (stderr, "op[%lu,%lu]=(%Ra,%Ra) rop:[%lu,%lu]\n",  \
+                      mpfr_get_prec (mpc_realref (op)), mpfr_get_prec (mpc_imagref (op)), \
+                      mpc_realref (op), mpc_imagref (op),               \
+                      mpfr_get_prec (mpc_realref (rop)), mpfr_get_prec (mpc_imagref (rop))); \
+        abort ();                                                       \
+    }                                                                   \
+  } while (0)
+#endif
 
 
 /*

@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindJsonCpp
@@ -19,12 +19,8 @@ Result Variables
 This module defines the following variables:
 
 ``JsonCpp_FOUND``
-  True if JsonCpp was found, false otherwise.
-``JsonCpp_INCLUDE_DIRS``
-  Include directories needed to include JsonCpp headers.
-``JsonCpp_LIBRARIES``
-  Libraries needed to link to JsonCpp.
-``JsonCpp_VERSION_STRING``
+  Boolean indicating whether (the requested version of) JsonCpp was found.
+``JsonCpp_VERSION``
   The version of JsonCpp found.
   May not be set for JsonCpp versions prior to 1.0.
 ``JsonCpp_VERSION_MAJOR``
@@ -33,6 +29,10 @@ This module defines the following variables:
   The minor version of JsonCpp.
 ``JsonCpp_VERSION_PATCH``
   The patch version of JsonCpp.
+``JsonCpp_INCLUDE_DIRS``
+  Include directories needed to include JsonCpp headers.
+``JsonCpp_LIBRARIES``
+  Libraries needed to link to JsonCpp.
 
 Cache Variables
 ^^^^^^^^^^^^^^^
@@ -69,12 +69,12 @@ else()
   set(_JsonCpp_H "")
 endif()
 if(_JsonCpp_H MATCHES "${_JsonCpp_H_REGEX}")
-  set(JsonCpp_VERSION_STRING "${CMAKE_MATCH_1}")
+  set(JsonCpp_VERSION "${CMAKE_MATCH_1}")
   set(JsonCpp_VERSION_MAJOR "${CMAKE_MATCH_2}")
   set(JsonCpp_VERSION_MINOR "${CMAKE_MATCH_3}")
   set(JsonCpp_VERSION_PATCH "${CMAKE_MATCH_4}")
 else()
-  set(JsonCpp_VERSION_STRING "")
+  set(JsonCpp_VERSION "")
   set(JsonCpp_VERSION_MAJOR "")
   set(JsonCpp_VERSION_MINOR "")
   set(JsonCpp_VERSION_PATCH "")
@@ -84,12 +84,10 @@ unset(_JsonCpp_H)
 
 #-----------------------------------------------------------------------------
 include(${CMAKE_CURRENT_LIST_DIR}/../../Modules/FindPackageHandleStandardArgs.cmake)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(JsonCpp
-  FOUND_VAR JsonCpp_FOUND
+find_package_handle_standard_args(JsonCpp
   REQUIRED_VARS JsonCpp_LIBRARY JsonCpp_INCLUDE_DIR
-  VERSION_VAR JsonCpp_VERSION_STRING
+  VERSION_VAR JsonCpp_VERSION
   )
-set(JSONCPP_FOUND ${JsonCpp_FOUND})
 
 #-----------------------------------------------------------------------------
 # Provide documented result variables and targets.

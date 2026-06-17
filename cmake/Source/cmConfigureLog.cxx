@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmConfigureLog.h"
 
 #include <cassert>
@@ -23,12 +23,12 @@
 #include "cmake.h"
 
 cmConfigureLog::cmConfigureLog(std::string logDir,
-                               std::vector<unsigned long> logVersions)
+                               std::vector<unsigned int> logVersions)
   : LogDir(std::move(logDir))
   , LogVersions(std::move(logVersions))
 {
   // Always emit events for the latest log version.
-  static const unsigned long LatestLogVersion = 1;
+  static unsigned int const LatestLogVersion = 1;
   if (!cm::contains(this->LogVersions, LatestLogVersion)) {
     this->LogVersions.emplace_back(LatestLogVersion);
   }
@@ -46,7 +46,7 @@ cmConfigureLog::~cmConfigureLog()
 }
 
 bool cmConfigureLog::IsAnyLogVersionEnabled(
-  std::vector<unsigned long> const& v) const
+  std::vector<unsigned int> const& v) const
 {
   // Both input lists are sorted.  Look for a matching element.
   auto i1 = v.cbegin();
@@ -123,6 +123,26 @@ void cmConfigureLog::EndLine()
   this->Stream << std::endl;
 }
 
+void cmConfigureLog::BeginArray()
+{
+  ++this->Indent;
+}
+
+void cmConfigureLog::NextArrayElement()
+{
+  assert(this->Indent);
+  --this->Indent;
+  this->BeginLine() << '-';
+  this->EndLine();
+  ++this->Indent;
+}
+
+void cmConfigureLog::EndArray()
+{
+  assert(this->Indent);
+  --this->Indent;
+}
+
 void cmConfigureLog::BeginObject(cm::string_view key)
 {
   this->BeginLine() << key << ':';
@@ -196,7 +216,7 @@ void cmConfigureLog::WriteValue(cm::string_view key,
 void cmConfigureLog::WriteValue(cm::string_view key,
                                 std::map<std::string, std::string> const& map)
 {
-  static const std::string rawKeyChars = //
+  static std::string const rawKeyChars = //
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"         //
     "abcdefghijklmnopqrstuvwxyz"         //
     "0123456789"                         //

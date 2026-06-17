@@ -90,7 +90,6 @@ static void uv__init_global_job_handle(void) {
   info.BasicLimitInformation.LimitFlags =
       JOB_OBJECT_LIMIT_BREAKAWAY_OK |
       JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK |
-      JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION |
       JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
 
   uv_global_job_handle_ = CreateJobObjectW(&attr, NULL);
@@ -993,7 +992,8 @@ int uv_spawn(uv_loop_t* loop,
                               UV_PROCESS_WINDOWS_HIDE |
                               UV_PROCESS_WINDOWS_HIDE_CONSOLE |
                               UV_PROCESS_WINDOWS_HIDE_GUI |
-                              UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS)));
+                              UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS |
+                              UV_PROCESS_WINDOWS_USE_PARENT_ERROR_MODE)));
 
   err = uv__utf8_to_utf16_alloc(options->file, &application);
   if (err)
@@ -1083,14 +1083,24 @@ int uv_spawn(uv_loop_t* loop,
   startup.lpTitle = NULL;
   startup.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
 
+#if 1
+  /* cmake does not need libuv's support for passing file descriptors >= 3
+     to the MSVC C run-time in the child.  Avoid using reserved members.  */
+  startup.cbReserved2 = 0;
+  startup.lpReserved2 = NULL;
+#else
   startup.cbReserved2 = uv__stdio_size(process->child_stdio_buffer);
   startup.lpReserved2 = (BYTE*) process->child_stdio_buffer;
+#endif
 
   startup.hStdInput = uv__stdio_handle(process->child_stdio_buffer, 0);
   startup.hStdOutput = uv__stdio_handle(process->child_stdio_buffer, 1);
   startup.hStdError = uv__stdio_handle(process->child_stdio_buffer, 2);
 
-  process_flags = CREATE_UNICODE_ENVIRONMENT;
+  process_flags = CREATE_UNICODE_ENVIRONMENT | CREATE_DEFAULT_ERROR_MODE;
+  if (options->flags & UV_PROCESS_WINDOWS_USE_PARENT_ERROR_MODE) {
+    process_flags &= ~(CREATE_DEFAULT_ERROR_MODE);
+  }
 
   if ((options->flags & UV_PROCESS_WINDOWS_HIDE_CONSOLE) ||
       (options->flags & UV_PROCESS_WINDOWS_HIDE)) {

@@ -19,6 +19,7 @@ Value                           Name
 ``Clang``                       `LLVM Clang`_
 ``Cray``                        Cray Compiler
 ``CrayClang``                   Cray Clang-based Compiler
+``Diab``                        `Wind River Systems Diab Compiler`_
 ``Embarcadero``, ``Borland``    `Embarcadero`_
 ``Flang``                       `Classic Flang Fortran Compiler`_
 ``LLVMFlang``                   `LLVM Flang Fortran Compiler`_
@@ -32,6 +33,7 @@ Value                           Name
 ``Intel``                       Intel Classic Compiler
 ``IntelLLVM``                   `Intel LLVM-Based Compiler`_
 ``LCC``                         MCST Elbrus C/C++/Fortran Compiler
+``LFortran``                    LFortran Fortran Compiler
 ``MSVC``                        `Microsoft Visual Studio`_
 ``NVHPC``                       `NVIDIA HPC Compiler`_
 ``NVIDIA``                      `NVIDIA CUDA Compiler`_
@@ -39,8 +41,11 @@ Value                           Name
 ``OpenWatcom``                  `Open Watcom`_
 ``PGI``                         The Portland Group
 ``PathScale``                   PathScale
+``QCC``                         QNX C/C++ compiler
+``Renesas``                     `Renesas Compiler`_
+``SCO``                         SCO OpenServer/UnixWare C/C++ Compiler
 ``SDCC``                        `Small Device C Compiler`_
-``SunPro``                      Oracle Solaris Studio
+``SunPro``                      Oracle Developer Studio
 ``Tasking``                     `Tasking Compiler Toolsets`_
 ``TI``                          Texas Instruments
 ``TIClang``                     `Texas Instruments Clang-based Compilers`_
@@ -66,7 +71,9 @@ languages.
 .. _NVIDIA CUDA Compiler: https://developer.nvidia.com/cuda-llvm-compiler
 .. _Open Watcom: https://open-watcom.github.io
 .. _OrangeC Compiler: https://github.com/LADSoft/OrangeC
+.. _Renesas Compiler: https://www.renesas.com
 .. _Small Device C Compiler: https://sdcc.sourceforge.net
 .. _Tiny C Compiler: https://bellard.org/tcc
 .. _Tasking Compiler Toolsets: https://www.tasking.com
 .. _Texas Instruments Clang-based Compilers: https://www.ti.com/tool/download/ARM-CGT-CLANG
+.. _Wind River Systems Diab Compiler: https://www.windriver.com/resource/wind-river-diab-compiler-product-overview

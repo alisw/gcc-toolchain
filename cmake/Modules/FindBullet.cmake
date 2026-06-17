@@ -1,39 +1,75 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindBullet
 ----------
 
-Try to find the Bullet physics engine
+Finds the Bullet physics engine:
 
+.. code-block:: cmake
 
+  find_package(Bullet [...])
 
-::
+Result Variables
+^^^^^^^^^^^^^^^^
 
-  This module defines the following variables
+This module defines the following variables:
 
+``Bullet_FOUND``
+  .. versionadded:: 3.3
 
+  Boolean indicating whether Bullet was found.
 
-::
+``BULLET_INCLUDE_DIRS``
+  The Bullet include directories.
 
-  BULLET_FOUND - Was bullet found
-  BULLET_INCLUDE_DIRS - the Bullet include directories
-  BULLET_LIBRARIES - Link to this, by default it includes
-                     all bullet components (Dynamics,
-                     Collision, LinearMath, & SoftBody)
+``BULLET_LIBRARIES``
+  Libraries needed to link to Bullet.  By default, all Bullet components
+  (Dynamics, Collision, LinearMath, and SoftBody) are added.
 
+Hints
+^^^^^
 
+This module accepts the following variables:
 
-::
+``BULLET_ROOT``
+  Can be set to Bullet install path or Windows build path to specify where to
+  find Bullet.
 
-  This module accepts the following variables
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
 
+The following variables are provided for backward compatibility:
 
+``BULLET_FOUND``
+  .. deprecated:: 4.2
+    Use ``Bullet_FOUND``, which has the same value.
 
-::
+  Boolean indicating whether Bullet was found.
 
-  BULLET_ROOT - Can be set to bullet install path or Windows build path
+Examples
+^^^^^^^^
+
+Finding Bullet and conditionally creating an interface :ref:`imported target
+<Imported Targets>` that encapsulates its usage requirements for linking to a
+project target:
+
+.. code-block:: cmake
+
+  find_package(Bullet)
+
+  if(Bullet_FOUND AND NOT TARGET Bullet::Bullet)
+    add_library(Bullet::Bullet INTERFACE IMPORTED)
+    set_target_properties(
+      Bullet::Bullet
+      PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${BULLET_INCLUDE_DIRS}"
+        INTERFACE_LINK_LIBRARIES "${BULLET_LIBRARIES}"
+    )
+  endif()
+
+  target_link_libraries(example PRIVATE Bullet::Bullet)
 #]=======================================================================]
 
 macro(_FIND_BULLET_LIBRARY _var)
@@ -79,13 +115,13 @@ _FIND_BULLET_LIBRARY(BULLET_SOFTBODY_LIBRARY        BulletSoftBody)
 _FIND_BULLET_LIBRARY(BULLET_SOFTBODY_LIBRARY_DEBUG  BulletSoftBody_Debug BulletSoftBody_d)
 
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(Bullet DEFAULT_MSG
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(Bullet DEFAULT_MSG
     BULLET_DYNAMICS_LIBRARY BULLET_COLLISION_LIBRARY BULLET_MATH_LIBRARY
     BULLET_SOFTBODY_LIBRARY BULLET_INCLUDE_DIR)
 
 set(BULLET_INCLUDE_DIRS ${BULLET_INCLUDE_DIR})
-if(BULLET_FOUND)
+if(Bullet_FOUND)
    _BULLET_APPEND_LIBRARIES(BULLET_LIBRARIES BULLET_DYNAMICS_LIBRARY)
    _BULLET_APPEND_LIBRARIES(BULLET_LIBRARIES BULLET_COLLISION_LIBRARY)
    _BULLET_APPEND_LIBRARIES(BULLET_LIBRARIES BULLET_MATH_LIBRARY)

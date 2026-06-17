@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #ifndef NOMINMAX
@@ -21,14 +21,14 @@ public:
   SmartCOMPtr(T* p)
   {
     ptr = p;
-    if (ptr != nullptr) {
+    if (ptr) {
       ptr->AddRef();
     }
   }
-  SmartCOMPtr(const SmartCOMPtr<T>& sptr)
+  SmartCOMPtr(SmartCOMPtr<T> const& sptr)
   {
     ptr = sptr.ptr;
-    if (ptr != nullptr) {
+    if (ptr) {
       ptr->AddRef();
     }
   }
@@ -38,7 +38,7 @@ public:
   {
     if (*this != p) {
       ptr = p;
-      if (ptr != nullptr) {
+      if (ptr) {
         ptr->AddRef();
       }
     }
@@ -48,7 +48,7 @@ public:
   template <class I>
   HRESULT QueryInterface(REFCLSID rclsid, I** pp)
   {
-    if (pp != nullptr) {
+    if (pp) {
       return ptr->QueryInterface(rclsid, (void**)pp);
     }
     return E_FAIL;
@@ -62,7 +62,7 @@ public:
   }
   ~SmartCOMPtr()
   {
-    if (ptr != nullptr) {
+    if (ptr) {
       ptr->Release();
     }
   }
@@ -75,8 +75,8 @@ class SmartBSTR
 {
 public:
   SmartBSTR() = default;
-  SmartBSTR(const SmartBSTR& src) = delete;
-  SmartBSTR& operator=(const SmartBSTR& src) = delete;
+  SmartBSTR(SmartBSTR const& src) = delete;
+  SmartBSTR& operator=(SmartBSTR const& src) = delete;
   operator BSTR() const { return str; }
   BSTR* operator&() throw() { return &str; }
   ~SmartBSTR() throw() { ::SysFreeString(str); }
@@ -118,7 +118,7 @@ private:
                          VSInstanceInfo& vsInstanceInfo);
   bool CheckInstalledComponent(SmartCOMPtr<ISetupPackageReference> package,
                                bool& bWin10SDK, bool& bWin81SDK);
-  int ChooseVSInstance(const std::vector<VSInstanceInfo>& vecVSInstances);
+  int ChooseVSInstance(std::vector<VSInstanceInfo> const& vecVSInstances);
   bool EnumerateAndChooseVSInstance();
   bool LoadSpecifiedVSInstanceFromDisk();
   bool EnumerateVSInstancesWithVswhere(

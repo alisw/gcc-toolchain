@@ -1,29 +1,58 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 CMakeVerifyManifest
 -------------------
 
+This module is intended to be used in command-line mode using the
+:ref:`cmake -P <Script Processing Mode>` to verify that embedded manifests
+and side-by-side manifests for a project match.
 
+Load this module in a CMake script with:
 
-CMakeVerifyManifest.cmake
+.. code-block:: cmake
 
-This script is used to verify that embedded manifests and side by side
-manifests for a project match.  To run this script, cd to a directory
-and run the script with cmake -P.  On the command line you can pass in
-versions that are OK even if not found in the .manifest files.  For
-example, cmake -Dallow_versions=8.0.50608.0
--PCmakeVerifyManifest.cmake could be used to allow an embedded manifest
-of 8.0.50608.0 to be used in a project even if that version was not
-found in the .manifest file.
+  include(CMakeVerifyManifest)
+
+This module first recursively globs ``*.manifest`` files from
+the current source directory and creates a list of allowed versions.
+
+Next, the script globs all ``*.exe`` and ``*.dll`` files.  Each
+``.exe`` and ``.dll`` file is scanned for embedded manifests and
+the versions of CRT are checked to be in the list of allowed
+versions.
+
+Input Variables
+^^^^^^^^^^^^^^^
+
+This module accepts the following variables:
+
+``allow_versions``
+  Additional versions can be passed by setting the ``allow_versions``
+  variable from the invocation command.  This enables using additional
+  embedded manifest versions in a project, even if that version was not
+  found in a ``.manifest`` file.
+
+Examples
+^^^^^^^^
+
+To use this module in the project, create a local command-line script (for
+example, in the project's subdirectory ``cmake/scripts``) and include the
+module:
+
+.. code-block:: cmake
+  :caption: ``cmake/scripts/verify-manifest.cmake``
+
+  include(CMakeVerifyManifest)
+
+Then run the local script in command-line and, for example, specify
+additional embedded manifest of ``8.0.50608.0`` to be used in a project:
+
+.. code-block:: shell
+
+  cmake -Dallow_versions=8.0.50608.0 -Pcmake/scripts/verify-manifest.cmake
 #]=======================================================================]
-
-# This script first recursively globs *.manifest files from
-# the current directory.  Then globs *.exe and *.dll.  Each
-# .exe and .dll is scanned for embedded manifests and the versions
-# of CRT are compared to those found in the .manifest files
-# from the first glob.
 
 # crt_version:
 # function to extract the CRT version from a file
@@ -31,7 +60,10 @@ found in the .manifest file.
 # it will put the list of versions found into the variable
 # specified by list_var
 function(crt_version file list_var)
+  cmake_policy(PUSH)
+  cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
   file(STRINGS "${file}" strings REGEX "Microsoft.VC...CRT" NEWLINE_CONSUME)
+  cmake_policy(POP)
   foreach(s ${strings})
     set(has_match 1)
     string(REGEX

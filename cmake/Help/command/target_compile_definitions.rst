@@ -15,7 +15,7 @@ named ``<target>`` must have been created by a command such as
 :ref:`ALIAS target <Alias Targets>`.
 
 The ``INTERFACE``, ``PUBLIC`` and ``PRIVATE`` keywords are required to
-specify the :ref:`scope <Target Usage Requirements>` of the following arguments.
+specify the :ref:`scope <Target Command Scope>` of the following arguments.
 ``PRIVATE`` and ``PUBLIC`` items will populate the :prop_tgt:`COMPILE_DEFINITIONS`
 property of ``<target>``. ``PUBLIC`` and ``INTERFACE`` items will populate the
 :prop_tgt:`INTERFACE_COMPILE_DEFINITIONS` property of ``<target>``.
@@ -26,7 +26,7 @@ same ``<target>`` append items in the order called.
   Allow setting ``INTERFACE`` items on :ref:`IMPORTED targets <Imported Targets>`.
 
 .. |command_name| replace:: ``target_compile_definitions``
-.. include:: GENEX_NOTE.txt
+.. include:: include/GENEX_NOTE.rst
 
 Any leading ``-D`` on an item will be removed.  Empty items are ignored.
 For example, the following are all equivalent:

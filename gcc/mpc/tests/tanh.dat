@@ -1,6 +1,6 @@
 # Data file for mpc_tanh.
 #
-# Copyright (C) 2008 INRIA
+# Copyright (C) 2008, 2024 INRIA
 #
 # This file is part of GNU MPC.
 #
@@ -79,3 +79,11 @@
 # IEEE-754 double precision
 + - 53 0x10000000000001p-53  53 0x1FFFFFFFFFFFFFp-53   53 0x1E938CBCEB16DFp-55 53 0x1B1F56FDEEF00Fp-53 N N
 
+# the following inputs are slow in MPC 1.3.1
+# (missing return and ternary values have to be computed)
+- - 24 0x1p+0 24 -0x2.98558p-95740488 24 0x1.fa4dc4p+24 24 0x1.82924ep+103 N N
++ - 24 0x1p+0 24 -0x3.77024cp-416167636 24 0x1.131a1ep+27 24 -0x1.2961ep-69 N N
++ - 24 0x1p+0 24 0x9.143a5p-95885748 24 0x1.fb1248p+24 24 0x1.64b61cp-103 N N
++ + 24 0x1p+0 24 -0x1.445116p-31105176 24 0x1.48fc5ep+23 24 -0x1.9f7646p-76 N N
++ + 24 0x1p+0 24 -0x2.9fda2p-50245948 24 0x1.09b71ep+24 24 0x1.245a8p+69 N N
++ - 24 0x1p+0 24 0x0p+0 24 0x1.386458p+61 24 0x1.870846p-1 N N

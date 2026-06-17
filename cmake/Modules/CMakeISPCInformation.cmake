@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 if(UNIX)
   set(CMAKE_ISPC_OUTPUT_EXTENSION .o)
@@ -61,5 +61,7 @@ if(NOT CMAKE_ISPC_COMPILE_OBJECT)
   set(CMAKE_ISPC_COMPILE_OBJECT
     "<CMAKE_ISPC_COMPILER> <DEFINES> <INCLUDES> <FLAGS> -o <OBJECT> --emit-obj <SOURCE> -h <ISPC_HEADER>")
 endif()
+
+set(CMAKE_ISPC_USE_LINKER_INFORMATION FALSE)
 
 set(CMAKE_ISPC_INFORMATION_LOADED 1)

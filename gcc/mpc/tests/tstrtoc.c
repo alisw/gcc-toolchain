@@ -160,7 +160,9 @@ check_null (void)
 int
 main (void)
 {
+  test_start ();
   check_null ();
   check_file ("strtoc.dat");
+  test_end ();
   return 0;
 }

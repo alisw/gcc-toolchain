@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 CPackIFW
@@ -10,6 +10,12 @@ CPackIFW
 This module looks for the location of the command-line utilities supplied with the
 `Qt Installer Framework <https://doc.qt.io/qtinstallerframework/index.html>`_
 (QtIFW).
+
+Load this module in a CMake project with:
+
+.. code-block:: cmake
+
+  include(CPackIFW)
 
 The module also defines several commands to control the behavior of the
 :cpack_gen:`CPack IFW Generator`.
@@ -23,7 +29,7 @@ The module defines the following commands:
 
   Sets the arguments specific to the CPack IFW generator.
 
-  ::
+  .. code-block:: cmake
 
     cpack_ifw_configure_component(<compname> [COMMON] [ESSENTIAL] [VIRTUAL]
                         [FORCED_INSTALLATION] [REQUIRES_ADMIN_RIGHTS]
@@ -176,7 +182,7 @@ The module defines the following commands:
 
   Sets the arguments specific to the CPack IFW generator.
 
-  ::
+  .. code-block:: cmake
 
     cpack_ifw_configure_component_group(<groupname> [VIRTUAL]
                         [FORCED_INSTALLATION] [REQUIRES_ADMIN_RIGHTS]
@@ -317,7 +323,7 @@ The module defines the following commands:
 
   Add QtIFW specific remote repository to binary installer.
 
-  ::
+  .. code-block:: cmake
 
     cpack_ifw_add_repository(<reponame> [DISABLED]
                         URL <url>
@@ -350,7 +356,7 @@ The module defines the following commands:
 
   Update QtIFW specific repository from remote repository.
 
-  ::
+  .. code-block:: cmake
 
     cpack_ifw_update_repository(<reponame>
                         [[ADD|REMOVE] URL <url>]|
@@ -387,7 +393,7 @@ The module defines the following commands:
 
   Add additional resources in the installer binary.
 
-  ::
+  .. code-block:: cmake
 
     cpack_ifw_add_package_resources(<file_path> <file_path> ...)
 
@@ -639,7 +645,7 @@ macro(_cpack_ifw_resolve_script _variable)
 endmacro()
 
 # Resolve full path to license file
-macro(_cpack_ifw_resolve_lisenses _variable)
+macro(_cpack_ifw_resolve_licenses _variable)
   if(${_variable})
     set(_ifw_license_file FALSE)
     set(_ifw_licenses_fix)
@@ -651,7 +657,7 @@ macro(_cpack_ifw_resolve_lisenses _variable)
         set(_ifw_license_file TRUE)
       endif()
       list(APPEND _ifw_licenses_fix "${_ifw_licenses_arg}")
-    endforeach(_ifw_licenses_arg)
+    endforeach()
     set(${_variable} "${_ifw_licenses_fix}")
   endif()
 endmacro()
@@ -667,7 +673,7 @@ macro(_cpack_ifw_resolve_file_list _variable)
       else()
         message(WARNING "CPack IFW: page file \"${_ifw_file_arg}\" does not exist. Skipping")
       endif()
-    endforeach(_ifw_file_arg)
+    endforeach()
     set(${_variable} "${_ifw_list_fix}")
   endif()
 endmacro()
@@ -683,7 +689,7 @@ macro(cpack_ifw_configure_component compname)
   cmake_parse_arguments(CPACK_IFW_COMPONENT_${_CPACK_IFWCOMP_UNAME} "${_IFW_OPT}" "${_IFW_ARGS}" "${_IFW_MULTI_ARGS}" ${ARGN})
 
   _cpack_ifw_resolve_script(CPACK_IFW_COMPONENT_${_CPACK_IFWCOMP_UNAME}_SCRIPT)
-  _cpack_ifw_resolve_lisenses(CPACK_IFW_COMPONENT_${_CPACK_IFWCOMP_UNAME}_LICENSES)
+  _cpack_ifw_resolve_licenses(CPACK_IFW_COMPONENT_${_CPACK_IFWCOMP_UNAME}_LICENSES)
   _cpack_ifw_resolve_file_list(CPACK_IFW_COMPONENT_${_CPACK_IFWCOMP_UNAME}_USER_INTERFACES)
   _cpack_ifw_resolve_file_list(CPACK_IFW_COMPONENT_${_CPACK_IFWCOMP_UNAME}_TRANSLATIONS)
 
@@ -724,7 +730,7 @@ macro(cpack_ifw_configure_component_group grpname)
   cmake_parse_arguments(CPACK_IFW_COMPONENT_GROUP_${_CPACK_IFWGRP_UNAME} "${_IFW_OPT}" "${_IFW_ARGS}" "${_IFW_MULTI_ARGS}" ${ARGN})
 
   _cpack_ifw_resolve_script(CPACK_IFW_COMPONENT_GROUP_${_CPACK_IFWGRP_UNAME}_SCRIPT)
-  _cpack_ifw_resolve_lisenses(CPACK_IFW_COMPONENT_GROUP_${_CPACK_IFWGRP_UNAME}_LICENSES)
+  _cpack_ifw_resolve_licenses(CPACK_IFW_COMPONENT_GROUP_${_CPACK_IFWGRP_UNAME}_LICENSES)
   _cpack_ifw_resolve_file_list(CPACK_IFW_COMPONENT_GROUP_${_CPACK_IFWGRP_UNAME}_USER_INTERFACES)
   _cpack_ifw_resolve_file_list(CPACK_IFW_COMPONENT_GROUP_${_CPACK_IFWGRP_UNAME}_TRANSLATIONS)
 

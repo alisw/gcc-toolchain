@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -13,6 +13,7 @@
 #include "cmListFileCache.h"
 
 class cmMessenger;
+struct cmGlobCacheEntry;
 
 /** \class cmGlobVerificationManager
  * \brief Class for expressing build-time dependencies on glob expressions.
@@ -25,15 +26,15 @@ class cmGlobVerificationManager
 protected:
   //! Save verification script for given makefile.
   //! Saves to output <path>/<CMakeFilesDirectory>/VerifyGlobs.cmake
-  bool SaveVerificationScript(const std::string& path, cmMessenger* messenger);
+  bool SaveVerificationScript(std::string const& path, cmMessenger* messenger);
 
   //! Add an entry into the glob cache
-  void AddCacheEntry(bool recurse, bool listDirectories, bool followSymlinks,
-                     const std::string& relative,
-                     const std::string& expression,
-                     const std::vector<std::string>& files,
-                     const std::string& variable,
-                     const cmListFileBacktrace& bt, cmMessenger* messenger);
+  void AddCacheEntry(cmGlobCacheEntry const& entry,
+                     std::string const& variable,
+                     cmListFileBacktrace const& bt, cmMessenger* messenger);
+
+  //! Get all cache entries
+  std::vector<cmGlobCacheEntry> GetCacheEntries() const;
 
   //! Clear the glob cache for state reset.
   void Reset();
@@ -48,12 +49,12 @@ protected:
 private:
   struct CacheEntryKey
   {
-    const bool Recurse;
-    const bool ListDirectories;
-    const bool FollowSymlinks;
-    const std::string Relative;
-    const std::string Expression;
-    CacheEntryKey(const bool rec, const bool l, const bool s, std::string rel,
+    bool const Recurse;
+    bool const ListDirectories;
+    bool const FollowSymlinks;
+    std::string const Relative;
+    std::string const Expression;
+    CacheEntryKey(bool const rec, bool const l, bool const s, std::string rel,
                   std::string e)
       : Recurse(rec)
       , ListDirectories(l)
@@ -62,8 +63,8 @@ private:
       , Expression(std::move(e))
     {
     }
-    bool operator<(const CacheEntryKey& r) const;
-    void PrintGlobCommand(std::ostream& out, const std::string& cmdVar);
+    bool operator<(CacheEntryKey const& r) const;
+    void PrintGlobCommand(std::ostream& out, std::string const& cmdVar);
   };
 
   struct CacheEntryValue

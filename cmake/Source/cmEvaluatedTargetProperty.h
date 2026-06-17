@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include <memory>
@@ -9,15 +9,20 @@
 #include "cmGeneratorTarget.h"
 #include "cmListFileCache.h"
 
-class cmLinkImplItem;
+namespace cm {
+namespace GenEx {
+struct Context;
+}
+}
+
+class cmLinkItem;
 struct cmGeneratorExpressionDAGChecker;
 
 // Represent a target property entry after evaluating generator expressions
 // and splitting up lists.
 struct EvaluatedTargetPropertyEntry
 {
-  EvaluatedTargetPropertyEntry(cmLinkImplItem const& item,
-                               cmListFileBacktrace bt);
+  EvaluatedTargetPropertyEntry(cmLinkItem const& item, cmListFileBacktrace bt);
 
   // Move-only.
   EvaluatedTargetPropertyEntry(EvaluatedTargetPropertyEntry&&) = default;
@@ -27,15 +32,15 @@ struct EvaluatedTargetPropertyEntry
   EvaluatedTargetPropertyEntry& operator=(
     EvaluatedTargetPropertyEntry const&) = delete;
 
-  cmLinkImplItem const& LinkImplItem;
+  cmLinkItem const& LinkItem;
   cmListFileBacktrace Backtrace;
   std::vector<std::string> Values;
   bool ContextDependent = false;
 };
 
 EvaluatedTargetPropertyEntry EvaluateTargetPropertyEntry(
-  cmGeneratorTarget const* thisTarget, std::string const& config,
-  std::string const& lang, cmGeneratorExpressionDAGChecker* dagChecker,
+  cmGeneratorTarget const* thisTarget, cm::GenEx::Context const& context,
+  cmGeneratorExpressionDAGChecker* dagChecker,
   cmGeneratorTarget::TargetPropertyEntry& entry);
 
 struct EvaluatedTargetPropertyEntries
@@ -45,8 +50,8 @@ struct EvaluatedTargetPropertyEntries
 };
 
 EvaluatedTargetPropertyEntries EvaluateTargetPropertyEntries(
-  cmGeneratorTarget const* thisTarget, std::string const& config,
-  std::string const& lang, cmGeneratorExpressionDAGChecker* dagChecker,
+  cmGeneratorTarget const* thisTarget, cm::GenEx::Context const& context,
+  cmGeneratorExpressionDAGChecker* dagChecker,
   std::vector<std::unique_ptr<cmGeneratorTarget::TargetPropertyEntry>> const&
     in);
 
@@ -70,11 +75,10 @@ enum class IncludeRuntimeInterface
   No
 };
 
-void AddInterfaceEntries(cmGeneratorTarget const* headTarget,
-                         std::string const& config, std::string const& prop,
-                         std::string const& lang,
-                         cmGeneratorExpressionDAGChecker* dagChecker,
-                         EvaluatedTargetPropertyEntries& entries,
-                         IncludeRuntimeInterface searchRuntime,
-                         cmGeneratorTarget::LinkInterfaceFor interfaceFor =
-                           cmGeneratorTarget::LinkInterfaceFor::Usage);
+void AddInterfaceEntries(
+  cmGeneratorTarget const* headTarget, std::string const& prop,
+  cm::GenEx::Context const& context,
+  cmGeneratorExpressionDAGChecker* dagChecker,
+  EvaluatedTargetPropertyEntries& entries,
+  IncludeRuntimeInterface searchRuntime,
+  cmGeneratorTarget::UseTo usage = cmGeneratorTarget::UseTo::Compile);

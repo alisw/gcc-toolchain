@@ -1,37 +1,65 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindRTI
 -------
 
-Try to find M&S HLA RTI libraries
+Finds HLA RTI standard libraries and their include directories:
 
-This module finds if any HLA RTI is installed and locates the standard
-RTI include files and libraries.
+.. code-block:: cmake
 
-RTI is a simulation infrastructure standardized by IEEE and SISO.  It
-has a well defined C++ API that assures that simulation applications
-are independent on a particular RTI implementation.
+  find_package(RTI [...])
 
-::
+`RTI <https://en.wikipedia.org/wiki/Run-time_infrastructure_(simulation)>`_
+(Run-Time Infrastructure) is a simulation infrastructure standardized by IEEE
+and SISO, required when implementing HLA (High Level Architecture).  It provides
+a well-defined C++ API, ensuring that M&S (Modeling and Simulation) applications
+remain independent of a particular RTI implementation.
 
-  http://en.wikipedia.org/wiki/Run-Time_Infrastructure_(simulation)
+Result Variables
+^^^^^^^^^^^^^^^^
 
+This module defines the following variables:
 
+``RTI_FOUND``
+  Boolean indicating whether HLA RTI was found.
+``RTI_LIBRARIES``
+  The libraries to link against to use RTI.
+``RTI_DEFINITIONS``
+  Compile definitions for using RTI.  Default value is set to
+  ``-DRTI_USES_STD_FSTREAM``.
 
-This code sets the following variables:
+Cache Variables
+^^^^^^^^^^^^^^^
 
-::
+The following cache variables may also be set:
 
-  RTI_INCLUDE_DIR = the directory where RTI includes file are found
-  RTI_LIBRARIES = The libraries to link against to use RTI
-  RTI_DEFINITIONS = -DRTI_USES_STD_FSTREAM
-  RTI_FOUND = Set to FALSE if any HLA RTI was not found
+``RTI_INCLUDE_DIR``
+  Directory where RTI include files are found.
 
+Examples
+^^^^^^^^
 
+Finding RTI and creating an imported interface target for linking it to a
+project target:
 
-Report problems to <certi-devel@nongnu.org>
+.. code-block:: cmake
+
+  find_package(RTI)
+
+  if(RTI_FOUND AND NOT TARGET RTI::RTI)
+    add_library(RTI::RTI INTERFACE IMPORTED)
+    set_target_properties(
+      RTI::RTI
+      PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${RTI_INCLUDE_DIR}"
+        INTERFACE_LINK_LIBRARIES "${RTI_LIBRARIES}"
+        INTERFACE_COMPILE_DEFINITIONS "${RTI_DEFINITIONS}"
+    )
+  endif()
+
+  target_link_libraries(example PRIVATE RTI::RTI)
 #]=======================================================================]
 
 macro(RTI_MESSAGE_QUIETLY QUIET TYPE MSG)
@@ -42,8 +70,13 @@ endmacro()
 
 set(RTI_DEFINITIONS "-DRTI_USES_STD_FSTREAM")
 
-# Detect the CERTI installation, http://www.cert.fr/CERTI
-# Detect the MAK Technologies RTI installation, http://www.mak.com/products/rti.php
+# noqa: spellcheck off
+# Detect the CERTI installation:
+#   - https://www.nongnu.org/certi/
+#   - Mailing list for reporting issues and development discussions:
+#     <certi-devel@nongnu.org>
+# Detect the MAK Technologies RTI installation:
+#   - https://www.mak.com/mak-one/tools/mak-rti
 # note: the following list is ordered to find the most recent version first
 set(RTI_POSSIBLE_DIRS
   ENV CERTI_HOME
@@ -55,6 +88,7 @@ set(RTI_POSSIBLE_DIRS
 set(RTI_OLD_FIND_LIBRARY_PREFIXES "${CMAKE_FIND_LIBRARY_PREFIXES}")
 # The MAK RTI has the "lib" prefix even on Windows.
 set(CMAKE_FIND_LIBRARY_PREFIXES "lib" "")
+# noqa: spellcheck on
 
 find_library(RTI_LIBRARY
   NAMES RTI RTI-NG
@@ -95,8 +129,6 @@ endif ()
 # Set the modified system variables back to the original value.
 set(CMAKE_FIND_LIBRARY_PREFIXES "${RTI_OLD_FIND_LIBRARY_PREFIXES}")
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(RTI DEFAULT_MSG
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(RTI DEFAULT_MSG
   RTI_LIBRARY RTI_INCLUDE_DIR)
-
-# $Id$

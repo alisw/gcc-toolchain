@@ -1,3 +1,823 @@
+2026-06-08  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-06-07  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-06-06  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-06-05  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-06-04  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-06-03  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-06-02  Jan Beulich  <jbeulich@suse.com>
+
+	gprof: fix testsuite with older glibc
+	It is quite sad that 2.46 has again shipped with this breakage. Short of
+	those responsible taking care, use the workaround that was suggested in
+	https://sourceware.org/pipermail/binutils/2025-April/140316.html.
+
+	(cherry picked from commit 1319410a1e9d857f15c9019a87d6d4b62fa6d39a)
+
+2026-06-02  Simon Marchi  <simon.marchi@polymtl.ca>
+
+	sim: fix a few -Wdiscarded-qualifiers errors
+	Change-Id: I5caaf741a6d3835d593e62c3a567171c09d6241c
+	(cherry picked from commit 38e9187d24b6e14bfadafb6d6feda5770f74ff07)
+
+2026-06-02  Keith Seitz  <keiths@redhat.com>
+
+	Fix even more -Wdiscarded-qualifers issues
+	Fedora Rawhide is failing to build due to new glibc header changes
+	enforcing const-correctness in functions like strchr and memchr.
+	For example:
+
+	../../opcodes/aarch64-dis.c: In function ‘remove_dot_suffix’:
+	../../opcodes/aarch64-dis.c:4027:7: error: assignment discards ‘const’ qualifier from po
+	inter target type [-Werror=discarded-qualifiers]
+	 4027 |   ptr = strchr (inst->opcode->name, '.');
+	      |       ^
+	cc1: all warnings being treated as errors
+
+	This patch addresses all the discovered issues with --enable-targets=all
+	and regenerates a few cgen files along the way.
+
+	(cherry picked from commit 36974d77e95efb1b640e8005a6bea6a6bed64aa7)
+
+2026-06-02  Simon Marchi  <simon.marchi@polymtl.ca>
+
+	bfd: fix 2 more -Wdiscarded-qualifiers errors
+	Change-Id: I047cd848506fc4d3dafdb901e300fe22430dddde
+	(cherry picked from commit b3679b82926dd525e17a9b48114e96e95f0f6444)
+
+2026-06-02  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-06-01  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-31  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-30  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-29  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-28  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-27  Alan Modra  <amodra@gmail.com>
+
+	check sframe version in _bfd_elf_parse_sframe
+	Currently if you attempt to link an object file with sframe version 2
+	contents, the linker will complain in _bfd_elf_merge_section_sframe
+	and fail to produce an output.  This affects anyone who has objects
+	assembled by binutils-2.45 with .sframe sections.  A work-around is to
+	pass --discard-sframe to ld.
+
+	Ideally the linker would rewrite version 2 sframe input to version 3,
+	but in the absence of that support it would be nicer if ld just
+	ignored version 2 (or 1) sframe sections without needing to pass
+	--discard-sframe.  That is the aim of this patch.
+
+	It does so by checking the sframe version in _bfd_elf_parse_sframe
+	where various failing checks result in an error being printed and the
+	section not being marked as SEC_INFO_TYPE_SFRAME, but causes no
+	overall linker failure.  In addition, an sframe version failure now
+	also marks the sframe section with SEC_EXCLUDE.  This is also done for
+	other sframe failures.  See the changelog below for other fixes.
+
+	bfd/
+		* elf-sframe.c (_bfd_elf_merge_section_sframe): Don't check
+		sframe version here.
+		(_bfd_elf_parse_sframe): Check sframe version here instead.
+		Do the "already parsed" check first.  Reorder various other
+		checks.  Do not bother parsing or print errors when
+		discard_sframe is set.  Free section contents on failure
+		paths.  Set SEC_EXCLUDE for fails.  Check for NULL bfd_zalloc
+		return, and only allocate after successfully parsing sframe.
+		On errors report that the section will be ignored, not "no
+		.sframe will be created".
+	binutils/
+		* testsuite/lib/binutils-common.exp: Ignore sframe version
+		errors.
+
+	(cherry picked from commit 7c80233f4d47c2508d8984bdcfc644b9a6e7bf9a)
+
+2026-05-27  Alan Modra  <amodra@gmail.com>
+
+	Correct calls to sframe_encoder_free
+	Like the patch to free sframe decoder data, this also needs to ensure
+	the function doing the free is passed the actual context address.
+
+	bfd/
+		* elf-sframe.c (_bfd_elf_write_section_sframe): Don't pass
+		address of local var to sframe_encoder_free, pass the actual
+		context address.
+		* elf64-s390.c (elf_s390_link_hash_table_create): Tidy
+		zmalloc call.
+		(_bfd_s390_elf_write_sframe_plt): Don't pass address of local
+		var to sframe_encoder_free, pass the actual context address.
+		* elfxx-x86.c (_bfd_x86_elf_write_sframe_plt): Likewise.
+
+	(big-fix cherry-pick from 3949fb481a6739dc1f4dc5fad09d7646c90af3d2
+	 without the extra encoder frees)
+
+2026-05-27  Alan Modra  <amodra@gmail.com>
+
+	Correct calls to sframe_decoder_free
+	Correct calls to sframe_decoder_free so that sfd_info->stf_ctx is
+	cleared.  If sfd_info->stf_ctx isn't cleared we can get double frees.
+
+		* elf-sframe.c (sframe_decode): Do not pass local var sfd_ctx
+		address to sframe_decoder_free, pass the actual context address.
+		(_bfd_elf_merge_section_sframe): Likewise.
+
+	(bug-fix cherry-pick from 3949fb481a6739dc1f4dc5fad09d7646c90af3d2
+	 without the free on bfd_close.)
+
+2026-05-27  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-26  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-25  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-24  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-23  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-22  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-21  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-20  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-19  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-18  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-17  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-16  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-15  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-14  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-13  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-12  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-11  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-10  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-09  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-08  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-07  Calvin Owens  <calvin@wbinvd.org>
+
+	Fix discarded-qualifiers problems in ldlang.c
+	Assign strchr return to a const char* to match its arg in a couple of
+	places.  archive_path now returns a const char*, and
+	input_statement_is_archive_path now has a const char* sep arg.  If
+	you follow where these args come from in ldgram.y it can be seen that
+	they are in fact in writable memory, so it isn't necessary to copy
+	file_spec to poke in a zero which is restored before the function
+	returns.
+
+	This partially fixes PR binutils/34125.
+
+	(cherry picked from commit 65cd0d66a647f14719e69bd19f34dc98bdb7e635)
+
+2026-05-07  Mark Wielaard  <mark@klomp.org>
+
+	ld: Fix calls to strchr that discard or use wrong const qualifiers
+		PR binutils/34125
+		* ld/emultempl/pe.em (pe_fixup_stdcalls): Make at a const char *.
+		(gldEMULATION_NAME_after_open): Make pnt a const char *.
+		(gldEMULATION_NAME_place_orphan): Make dollar a const char *.
+		* ld/emultempl/pep.em (pep_fixup_stdcalls): Make at a
+		const char *. Introduce at2 as non-const char *.
+		(gldEMULATION_NAME_after_open): Make pnt a const char *.
+		(gldEMULATION_NAME_place_orphan): Make dollar a const char *.
+		* ld/emultempl/spuelf.em (spu_elf_load_ovl_mgr): Make p a
+		const char *. Introduce np as char *.
+		* ld/ldelf.c (ldelf_search_needed): Call strchr on freeme, so
+		slash is non-const, then assign freeme to replacement.
+
+	(cherry picked from commit 34ca322d8a2b55e4ee193492a489aaa68195cffb)
+
+2026-05-07  Simon Marchi  <simon.marchi@polymtl.ca>
+
+	binutils: fix C23 -Wdiscarded-qualifiers errors
+	When compiling with gcc 15, I get these:
+
+	      CC       prdbg.o
+	    /home/simark/src/binutils-gdb/binutils/prdbg.c: In function â€˜tg_start_functionâ€™:
+	    /home/simark/src/binutils-gdb/binutils/prdbg.c:2658:11: error: assignment discards â€˜constâ€™ qualifier from pointer target type [-Werror=discarded-qualifiers]
+	     2658 |       sep = strchr (name, '(');
+	          |           ^
+	    cc1: all warnings being treated as errors
+	    make[2]: *** [Makefile:1220: prdbg.o] Error 1
+	      CC       addr2line.o
+	    /home/simark/src/binutils-gdb/binutils/addr2line.c: In function â€˜translate_addressesâ€™:
+	    /home/simark/src/binutils-gdb/binutils/addr2line.c:390:21: error: assignment discards â€˜constâ€™ qualifier from pointer target type [-Werror=discarded-qualifiers]
+	      390 |                   h = strrchr (filename, '/');
+	          |                     ^
+	    cc1: all warnings being treated as errors
+	    make[2]: *** [Makefile:1220: addr2line.o] Error 1
+	      CC       nm.o
+	    /home/simark/src/binutils-gdb/binutils/nm.c: In function â€˜print_symnameâ€™:
+	    /home/simark/src/binutils-gdb/binutils/nm.c:689:21: error: initialization discards â€˜constâ€™ qualifier from pointer target type [-Werror=discarded-qualifiers]
+	      689 |       char *atver = strchr (name, '@');
+	          |                     ^~~~~~
+	    cc1: all warnings being treated as errors
+
+	I think they are related to the fact that strchr having changed to
+	return const when passed a const.
+
+	This partially fixes PR binutils/34125.
+
+	Change-Id: Idb829916378f0a18e717d1e80414aaa5eba4f7f0
+	(cherry picked from commit 9cb12adfb54bc3dabf4ee00296064245eb7660ef)
+
+2026-05-07  H.J. Lu  <hjl.tools@gmail.com>
+
+	Fix the strrchr error for DOS based filesystem
+	Fix the strrchr error like:
+
+	gprof/source.c:130:28: error: initialization discards ‘const’ qualifier from pointer target type [-Werror=discarded-qualifiers]
+	  130 |             char *bslash = strrchr (sf->name, '\\');
+
+	binutils/
+
+		PR binutils/34125
+		* bucomm.c (template_in_dir): Make bslash const char *.
+
+	gprof/
+
+		PR binutils/34125
+		* source.c (annotate_source): Make bslash const char *.
+
+	(cherry picked from commit 365fc34606d2d566855e8ba3db9c4f7986ed3bcc)
+
+2026-05-07  Mark Wielaard  <mark@klomp.org>
+
+	gprof: Fix strchr discarded qualifier call
+	In annotate_source strrchr is called on a const char *. So the result
+	should also be stored in a const char *.
+
+		PR binutils/34125
+		* gprof/source.c (annotate_source): Make name_only a const char *.
+
+	(cherry picked from commit b8d39fd810e7373aac4f129c34813f6a609d8d5f)
+
+2026-05-07  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-06  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-05  H.J. Lu  <hjl.tools@gmail.com>
+
+	ld: Limit PR ld/34088 test to Linux/x86-64 and Linux/aarch64
+	Since PR ld/34088 test requires libm.a, which has feclearexcept, as a
+	linker script like
+
+	GROUP ( /usr/lib64/libm-2.42.a /usr/lib64/libmvec.a )
+
+	which is implemented for Linux/x86-64 and Linux/aarch64, limit such test
+	to Linux/x86-64 and Linux/aarch64.
+
+		PR ld/34088
+		* testsuite/ld-plugin/lto.exp: Limit PR ld/34088 test to
+		Linux/x86-64 and Linux/aarch64.
+
+	(cherry picked from commit 4d11bf8cc73a1f56d2ffc5af7334ae2c251584b6)
+
+2026-05-05  H.J. Lu  <hjl.tools@gmail.com>
+
+	ld: Maintain the input file order
+	When adding a new input archive, which comes from a linker script file
+	and isn't referenced by any inputs, ld appends it to the input file list.
+	On Linux, when -lm is used with /usr/lib64/libm.a:
+
+	GROUP ( /usr/lib64/libm-2.42.a /usr/lib64/libmvec.a )
+
+	the input file order looks like
+
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/crt1.o
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/crti.o
+	/usr/lib/gcc/x86_64-redhat-linux/15/crtbeginT.o
+	x.o (symbol from plugin)
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/libm.a
+	/usr/lib/gcc/x86_64-redhat-linux/15/libgcc.a
+	/usr/lib/gcc/x86_64-redhat-linux/15/libgcc_eh.a
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/libc.a
+	/usr/lib/gcc/x86_64-redhat-linux/15/crtend.o
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/crtn.o
+	/usr/lib64/libm-2.42.a
+	/usr/lib64/libmvec.a
+
+	since the compiler may not add compiler builtin functions to the LTO
+	symbol table as it doesn't really know if builtin functions will have
+	real symbols.  When ld extracts an element from the archive later during
+	LTO rescan, the final input file order is
+
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/crt1.o
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/crti.o
+	/usr/lib/gcc/x86_64-redhat-linux/15/crtbeginT.o
+	x.o (symbol from plugin)
+	/tmp/ccHN6O4n.ltrans0.ltrans.o
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/libm.a
+	/usr/lib/gcc/x86_64-redhat-linux/15/libgcc.a
+	/usr/lib/gcc/x86_64-redhat-linux/15/libgcc_eh.a
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/libc.a
+	/usr/lib/gcc/x86_64-redhat-linux/15/crtend.o
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/crtn.o
+	fclrexcpt.o
+
+	where x.o references the builtin function, feclearexcept which is defined
+	in fclrexcpt.o from /usr/lib64/libm-2.42.a.
+
+	As the result, the .eh_frame section terminator in crtn.o is placed before
+	fclrexcpt.o and the .eh_frame section in the output isn't terminated.  The
+	output crashes when it runs over the .eh_frame section during EH frame
+	registration.  Insert the new input file before the current input file to
+	maintain the same input file order:
+
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/crt1.o
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/crti.o
+	/usr/lib/gcc/x86_64-redhat-linux/15/crtbeginT.o
+	x.o (symbol from plugin)
+	/usr/lib64/libm-2.42.a
+	/usr/lib64/libmvec.a
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/libm.a
+	/usr/lib/gcc/x86_64-redhat-linux/15/libgcc.a
+	/usr/lib/gcc/x86_64-redhat-linux/15/libgcc_eh.a
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/libc.a
+	/usr/lib/gcc/x86_64-redhat-linux/15/crtend.o
+	/usr/lib/gcc/x86_64-redhat-linux/15/../../../../lib64/crtn.o
+
+	as the non-LTO input to properly terminate the .eh_frame section.
+
+	Add a static LTO test to reference feclearexcept which is a compiler
+	builtin function and isn't in the LTO symbol table when GCC is used.
+	It triggers the run-time crash on glibc targets of a linker script
+	libm.a without this fix when GCC 13 or above is used:
+
+	https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124869
+
+	Also add a debug function, debug_input_files, to display the input file
+	chain.  It is optimized out when compiler optimization is turned on.
+
+		PR ld/34088
+		* ldlang.c (current_input_file): Changed to the pointer to
+		lang_input_statement_type.
+		(new_afile): Insert the new input file before the current input
+		file to maintain the input file order.
+		(lang_add_input_file): Updated.
+		(load_symbols): Likewise.
+		(debug_input_files): New function.
+		(lang_process): Reference it.
+		* testsuite/ld-plugin/lto.exp: Run PR ld/34088 test.
+		* testsuite/ld-plugin/pr34088.c: New file.
+
+	(cherry picked from commit da208daeb710b26608a0b981df215e9da209af80)
+
+2026-05-05  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-04  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-03  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-02  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-05-01  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-30  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-29  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-28  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-27  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-26  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-25  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-24  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-23  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-22  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-21  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-20  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-19  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-18  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-17  Jan Beulich  <jbeulich@suse.com>
+
+	x86: refine special casing of insns with MSR as immediate
+	PR gas/34028
+
+	i.op[].imms is legitimate to de-reference only when the operand actually
+	is an immediate. The pointer happens to be non-NULL for most other operand
+	kinds (i.e. a deref is UB, but would likely not fault), just not for
+	memory operands without displacement.
+
+	Leverage that the to-be-special-cased insns all only have just a single
+	immediate, and leverage further that after the immediately preceding
+	swapping of operands valid immediates will come first. Hence the
+	conditional can be adjusted to satisfy the criteria above, and no loop is
+	needed at all.
+
+	With the conditional changed, leverage the property also in optimize_imm()
+	itself, reducing the number of loop iterations.
+
+2026-04-17  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-16  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-15  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-14  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-13  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-12  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-11  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-10  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-09  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-08  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-07  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-06  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-05  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-04  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-03  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-02  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-04-01  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-31  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-30  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-29  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-28  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-27  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-26  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-25  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-24  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-23  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-22  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-21  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-20  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-19  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-18  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-17  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-16  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-15  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-14  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-13  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-12  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-11  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-10  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-09  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-08  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-07  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-06  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-05  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-04  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-03  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-02  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-03-01  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-28  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-27  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-26  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-25  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-24  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-23  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-22  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-21  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-20  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-19  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-18  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-17  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-16  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-15  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-14  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-13  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-12  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-11  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-10  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-09  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2026-02-08  Nick Clifton  <nickc@redhat.com>
+
+	Open 2.46 branch for development and update version number to 2.46.0
+
+	This is the 2.46 release
+
 2026-02-08  GDB Administrator  <gdbadmin@sourceware.org>
 
 	Automatic date update in version.in
@@ -321609,55 +322429,3 @@
 2021-07-04  GDB Administrator  <gdbadmin@sourceware.org>
 
 	Automatic date update in version.in
-
-2021-07-03  H.J. Lu  <hjl.tools@gmail.com>
-
-	gprof: Regenerate configure
-		* configure: Regenerated.
-
-2021-07-03  Joel Brobecker  <brobecker@adacore.com>
-
-	Update NEWS post GDB 11 branch creation.
-	gdb/ChangeLog:
-
-		* NEWS: Create a new section for the next release branch.
-		Rename the section of the current branch, now that it has
-		been cut.
-
-2021-07-03  Joel Brobecker  <brobecker@adacore.com>
-
-	Bump version to 12.0.50.DATE-git.
-	Now that the GDB 11 branch has been created, we can
-	bump the version number.
-
-	gdb/ChangeLog:
-
-		GDB 11 branch created (4b51505e33441c6165e7789fa2b6d21930242927):
-		* version.in: Bump version to 12.0.50.DATE-git.
-
-	gdb/testsuite/ChangeLog:
-
-		* gdb.base/default.exp: Change $_gdb_major to 12.
-
-2021-07-03  Tom Tromey  <tom@tromey.com>
-
-	Use 'bool' more idiomatically in dwarf_decode_lines
-	I noticed a couple of spots related to dwarf_decode_lines where the
-	'include_p' field was not being used idiomatically -- it is of type
-	bool now, so treat it as such.
-
-	gdb/ChangeLog
-	2021-07-03  Tom Tromey  <tom@tromey.com>
-
-		* dwarf2/read.c (lnp_state_machine::record_line): Use 'true'.
-		(dwarf_decode_lines): Remove '=='.
-
-2021-07-03  Nick Clifton  <nickc@redhat.com>
-
-	More minor updates to the how-to-make-a-release documentation
-
-	Update version number and regenerate files
-
-	Add markers for 2.37 branch
-
-	Synchronize libiberty sources (and include/demangle.h) with GCC master version

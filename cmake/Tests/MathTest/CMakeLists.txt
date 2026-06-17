@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required(VERSION 3.10)
 project(MathTest)
 
 
@@ -52,4 +52,3 @@ configure_file(
 
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 add_executable(MathTest MathTestExec.cxx)
-

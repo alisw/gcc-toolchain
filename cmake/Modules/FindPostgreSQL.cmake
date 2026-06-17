@@ -1,45 +1,123 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindPostgreSQL
 --------------
 
-Find the PostgreSQL installation.
+Finds the PostgreSQL installation - the client library (``libpq``) and
+optionally the server:
 
-IMPORTED Targets
+.. code-block:: cmake
+
+  find_package(PostgreSQL [<version>] [...])
+
+Imported Targets
 ^^^^^^^^^^^^^^^^
 
-.. versionadded:: 3.14
+This module provides the following :ref:`Imported Targets`:
 
-This module defines :prop_tgt:`IMPORTED` target ``PostgreSQL::PostgreSQL``
-if PostgreSQL has been found.
+``PostgreSQL::PostgreSQL``
+  .. versionadded:: 3.14
+
+  Target encapsulating all usage requirements of the required ``libpq`` client
+  library and the optionally requested PostgreSQL server component.  This target
+  is available only if PostgreSQL is found.
 
 Result Variables
 ^^^^^^^^^^^^^^^^
 
-This module will set the following variables in your project:
+This module defines the following variables:
 
 ``PostgreSQL_FOUND``
-  True if PostgreSQL is found.
+  Boolean indicating whether the minimum required version and components of
+  PostgreSQL were found.
+
+``PostgreSQL_VERSION``
+  .. versionadded:: 4.2
+
+  The version of PostgreSQL found.
+
 ``PostgreSQL_LIBRARIES``
-  the PostgreSQL libraries needed for linking
+  The PostgreSQL libraries needed for linking.
+
 ``PostgreSQL_INCLUDE_DIRS``
-  the directories of the PostgreSQL headers
+  The include directories containing PostgreSQL headers.
+
 ``PostgreSQL_LIBRARY_DIRS``
-  the link directories for PostgreSQL libraries
-``PostgreSQL_VERSION_STRING``
-  the version of PostgreSQL found
+  The directories containing PostgreSQL libraries.
+
 ``PostgreSQL_TYPE_INCLUDE_DIR``
-  the directories of the PostgreSQL server headers
+  The include directory containing PostgreSQL server headers.
 
 Components
 ^^^^^^^^^^
 
-This module contains additional ``Server`` component, that forcibly checks
-for the presence of server headers. Note that ``PostgreSQL_TYPE_INCLUDE_DIR``
-is set regardless of the presence of the ``Server`` component in find_package call.
+This module supports the following additional components:
 
+``Server``
+  .. versionadded:: 3.20
+
+  Ensures that server headers are also found.  Note that
+  ``PostgreSQL_TYPE_INCLUDE_DIR`` variable is set regardless of whether this
+  component is specified in the ``find_package()`` call.
+
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
+
+The following variables are provided for backward compatibility:
+
+``PostgreSQL_VERSION_STRING``
+  .. deprecated:: 4.2
+    Superseded by the ``PostgreSQL_VERSION``.
+
+  The version of PostgreSQL found.
+
+Examples
+^^^^^^^^
+
+Finding the PostgreSQL client library and linking it to a project target:
+
+.. code-block:: cmake
+
+  find_package(PostgreSQL)
+  target_link_libraries(project_target PRIVATE PostgreSQL::PostgreSQL)
+
+Specifying a minimum required PostgreSQL version:
+
+.. code-block:: cmake
+
+  find_package(PostgreSQL 11)
+
+Finding the PostgreSQL client library and requiring server headers using the
+``Server`` component provides an imported target with all usage requirements,
+which can then be linked to a project target:
+
+.. code-block:: cmake
+
+  find_package(PostgreSQL COMPONENTS Server)
+  target_link_libraries(project_target PRIVATE PostgreSQL::PostgreSQL)
+
+When checking for PostgreSQL client library features, some capabilities are
+indicated by preprocessor macros in the ``libpq-fe.h`` header (e.g.
+``LIBPQ_HAS_PIPELINING``).  Others may require using the
+:command:`check_symbol_exists` command:
+
+.. code-block:: cmake
+
+  find_package(PostgreSQL)
+  target_link_libraries(project_target PRIVATE PostgreSQL::PostgreSQL)
+
+  # The PQservice() function is available as of PostgreSQL 18.
+  if(TARGET PostgreSQL::PostgreSQL)
+    include(CheckSymbolExists)
+    include(CMakePushCheckState)
+
+    cmake_push_check_state(RESET)
+    set(CMAKE_REQUIRED_LIBRARIES PostgreSQL::PostgreSQL)
+    check_symbol_exists(PQservice "libpq-fe.h" PROJECT_HAS_PQSERVICE)
+    cmake_pop_check_state()
+  endif()
 #]=======================================================================]
 
 # ----------------------------------------------------------------------------
@@ -53,6 +131,7 @@ is set regardless of the presence of the ``Server`` component in find_package ca
 # In Windows the default installation of PostgreSQL uses that as part of the path.
 # E.g C:\Program Files\PostgreSQL\8.4.
 # Currently, the following version numbers are known to this module:
+# "17"
 # "16" "15" "14" "13" "12" "11" "10" "9.6" "9.5" "9.4" "9.3" "9.2" "9.1" "9.0" "8.4" "8.3" "8.2" "8.1" "8.0"
 #
 # To use this variable just do something like this:
@@ -92,7 +171,7 @@ is set regardless of the presence of the ``Server`` component in find_package ca
 # ----------------------------------------------------------------------------
 
 cmake_policy(PUSH)
-cmake_policy(SET CMP0057 NEW) # if IN_LIST
+cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
 set(PostgreSQL_INCLUDE_PATH_DESCRIPTION "top-level directory containing the PostgreSQL include directories. E.g /usr/local/include/PostgreSQL/8.4 or C:/Program Files/PostgreSQL/8.4/include")
 set(PostgreSQL_INCLUDE_DIR_MESSAGE "Set the PostgreSQL_INCLUDE_DIR cmake cache entry to the ${PostgreSQL_INCLUDE_PATH_DESCRIPTION}")
@@ -102,6 +181,7 @@ set(PostgreSQL_ROOT_DIR_MESSAGE "Set the PostgreSQL_ROOT system variable to wher
 
 
 set(PostgreSQL_KNOWN_VERSIONS ${PostgreSQL_ADDITIONAL_VERSIONS}
+    "17"
     "16" "15" "14" "13" "12" "11" "10" "9.6" "9.5" "9.4" "9.3" "9.2" "9.1" "9.0" "8.4" "8.3" "8.2" "8.1" "8.0")
 
 # Define additional search paths for root directories.
@@ -232,14 +312,16 @@ if (PostgreSQL_INCLUDE_DIR)
       math(EXPR _PostgreSQL_major_version "${_PostgreSQL_VERSION_NUM} / 10000")
       math(EXPR _PostgreSQL_minor_version "${_PostgreSQL_VERSION_NUM} % 10000 / 100")
       math(EXPR _PostgreSQL_patch_version "${_PostgreSQL_VERSION_NUM} % 100")
-      set(PostgreSQL_VERSION_STRING "${_PostgreSQL_major_version}.${_PostgreSQL_minor_version}.${_PostgreSQL_patch_version}")
+      set(PostgreSQL_VERSION "${_PostgreSQL_major_version}.${_PostgreSQL_minor_version}.${_PostgreSQL_patch_version}")
+      set(PostgreSQL_VERSION_STRING "${PostgreSQL_VERSION}")
       unset(_PostgreSQL_major_version)
       unset(_PostgreSQL_minor_version)
       unset(_PostgreSQL_patch_version)
     else ()
       math(EXPR _PostgreSQL_major_version "${_PostgreSQL_VERSION_NUM} / 10000")
       math(EXPR _PostgreSQL_minor_version "${_PostgreSQL_VERSION_NUM} % 10000")
-      set(PostgreSQL_VERSION_STRING "${_PostgreSQL_major_version}.${_PostgreSQL_minor_version}")
+      set(PostgreSQL_VERSION "${_PostgreSQL_major_version}.${_PostgreSQL_minor_version}")
+      set(PostgreSQL_VERSION_STRING "${PostgreSQL_VERSION}")
       unset(_PostgreSQL_major_version)
       unset(_PostgreSQL_minor_version)
     endif ()
@@ -250,7 +332,8 @@ if (PostgreSQL_INCLUDE_DIR)
              REGEX "^#define[\t ]+PG_VERSION[\t ]+\".*\"")
         if(pgsql_version_str)
           string(REGEX REPLACE "^#define[\t ]+PG_VERSION[\t ]+\"([^\"]*)\".*"
-                 "\\1" PostgreSQL_VERSION_STRING "${pgsql_version_str}")
+                 "\\1" PostgreSQL_VERSION "${pgsql_version_str}")
+          set(PostgreSQL_VERSION_STRING "${PostgreSQL_VERSION}")
           break()
         endif()
       endif()
@@ -268,12 +351,11 @@ if("Server" IN_LIST PostgreSQL_FIND_COMPONENTS)
 endif()
 
 # Did we find anything?
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
+include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(PostgreSQL
                                   REQUIRED_VARS PostgreSQL_LIBRARY PostgreSQL_INCLUDE_DIR
                                   HANDLE_COMPONENTS
-                                  VERSION_VAR PostgreSQL_VERSION_STRING)
-set(PostgreSQL_FOUND  ${POSTGRESQL_FOUND})
+                                  VERSION_VAR PostgreSQL_VERSION)
 
 function(__postgresql_import_library _target _var _config)
   if(_config)

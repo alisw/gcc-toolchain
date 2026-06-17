@@ -1,9 +1,10 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmInstallTargetGenerator.h"
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <functional>
 #include <map>
 #include <set>
@@ -21,6 +22,7 @@
 #include "cmLocalGenerator.h"
 #include "cmMakefile.h"
 #include "cmMessageType.h"
+#include "cmObjectLocation.h"
 #include "cmOutputConverter.h"
 #include "cmPolicies.h"
 #include "cmScriptGenerator.h"
@@ -66,7 +68,7 @@ void computeFilesToInstall(
   // Library interface name.
   std::string fromSOName;
   std::string toSOName;
-  if (library != output) {
+  if (!library.empty() && library != output) {
     haveNamelink = true;
     fromSOName = cmStrCat(fromDirConfig, library);
     toSOName = library;
@@ -144,7 +146,7 @@ cmInstallTargetGenerator::cmInstallTargetGenerator(
 cmInstallTargetGenerator::~cmInstallTargetGenerator() = default;
 
 void cmInstallTargetGenerator::GenerateScriptForConfig(
-  std::ostream& os, const std::string& config, Indent indent)
+  std::ostream& os, std::string const& config, Indent indent)
 {
   // Compute the list of files to install for this target.
   Files files = this->GetFiles(config);
@@ -166,32 +168,54 @@ void cmInstallTargetGenerator::GenerateScriptForConfig(
   // Add pre-installation tweaks.
   if (!files.NoTweak) {
     AddTweak(os, indent, config, toDir, files.To,
-             [this](std::ostream& o, Indent i, const std::string& c,
-                    const std::string& f) {
+             [this](std::ostream& o, Indent i, std::string const& c,
+                    std::string const& f) {
                this->PreReplacementTweaks(o, i, c, f);
              });
   }
 
   // Write code to install the target file.
-  const char* no_dir_permissions = nullptr;
-  const char* no_rename = nullptr;
+  char const* no_dir_permissions = nullptr;
   bool optional = this->Optional || this->ImportLibrary;
   std::string literal_args;
-  if (!files.FromDir.empty()) {
-    literal_args += " FILES_FROM_DIR \"" + files.FromDir + "\"";
-  }
   if (files.UseSourcePermissions) {
     literal_args += " USE_SOURCE_PERMISSIONS";
   }
-  this->AddInstallRule(os, dest, files.Type, files.From, optional,
-                       this->FilePermissions.c_str(), no_dir_permissions,
-                       no_rename, literal_args.c_str(), indent);
+  if (files.Rename) {
+    if (files.From.size() != files.To.size()) {
+      this->Target->GetLocalGenerator()->IssueMessage(
+        MessageType::INTERNAL_ERROR,
+        "cmInstallTargetGenerator generated a rename request with mismatched "
+        "names.");
+      return;
+    }
+    std::vector<std::string> FileNames;
+    FileNames.resize(1);
+    for (size_t i = 0; i < files.From.size(); ++i) {
+      if (files.FromDir.empty()) {
+        FileNames[0] = files.From[i];
+      } else {
+        FileNames[0] = cmStrCat(files.FromDir, '/', files.From[i]);
+      }
+      this->AddInstallRule(os, dest, files.Type, FileNames, optional,
+                           this->FilePermissions.c_str(), no_dir_permissions,
+                           files.To[i].c_str(), literal_args.c_str(), indent);
+    }
+  } else {
+    char const* no_rename = nullptr;
+    if (!files.FromDir.empty()) {
+      literal_args += " FILES_FROM_DIR \"" + files.FromDir + "\"";
+    }
+    this->AddInstallRule(os, dest, files.Type, files.From, optional,
+                         this->FilePermissions.c_str(), no_dir_permissions,
+                         no_rename, literal_args.c_str(), indent);
+  }
 
   // Add post-installation tweaks.
   if (!files.NoTweak) {
     AddTweak(os, indent, config, toDir, files.To,
-             [this](std::ostream& o, Indent i, const std::string& c,
-                    const std::string& f) {
+             [this](std::ostream& o, Indent i, std::string const& c,
+                    std::string const& f) {
                this->PostReplacementTweaks(o, i, c, f);
              });
   }
@@ -225,16 +249,24 @@ cmInstallTargetGenerator::Files cmInstallTargetGenerator::GetFiles(
 
     case cmStateEnums::OBJECT_LIBRARY: {
       // Compute all the object files inside this target
-      std::vector<std::string> objects;
-      this->Target->GetTargetObjectNames(config, objects);
+      std::vector<std::pair<cmObjectLocation, cmObjectLocation>> objects;
+      auto storeObjectLocations = [&objects](cmObjectLocation const& build,
+                                             cmObjectLocation const& install) {
+        objects.emplace_back(build, install);
+      };
+      this->Target->GetTargetObjectLocations(config, storeObjectLocations);
 
       files.Type = cmInstallType_FILES;
       files.NoTweak = true;
+      files.Rename = true;
       files.FromDir = this->Target->GetObjectDirectory(config);
-      files.ToDir = computeInstallObjectDir(this->Target, config);
-      for (std::string& obj : objects) {
-        files.From.emplace_back(obj);
-        files.To.emplace_back(std::move(obj));
+      if (!this->Target->GetPropertyAsBool(
+            "INSTALL_OBJECT_ONLY_USE_DESTINATION")) {
+        files.ToDir = computeInstallObjectDir(this->Target, config);
+      }
+      for (auto const& obj : objects) {
+        files.From.emplace_back(obj.first.GetPath());
+        files.To.emplace_back(obj.second.GetPath());
       }
       return files;
     }
@@ -334,7 +366,7 @@ cmInstallTargetGenerator::Files cmInstallTargetGenerator::GetFiles(
              this->ImportlinkMode == NamelinkModeNone);
 
       auto GNUToMS = [this, &config, &files,
-                      &fromDirConfig](const std::string& lib) {
+                      &fromDirConfig](std::string const& lib) {
         std::string importLib;
         if (this->Target->GetImplibGNUtoMS(config, lib, importLib)) {
           files.From.emplace_back(fromDirConfig + importLib);
@@ -403,6 +435,10 @@ cmInstallTargetGenerator::Files cmInstallTargetGenerator::GetFiles(
 
       files.From.emplace_back(std::move(from1));
       files.To.emplace_back(std::move(to1));
+    } else if (this->Target->IsArchivedAIXSharedLibrary()) {
+      // Install only the archive on AIX.
+      computeFilesToInstall(files, this->NamelinkMode, fromDirConfig,
+                            targetNames.Output, {}, targetNames.Real);
     } else {
       computeFilesToInstall(files, this->NamelinkMode, fromDirConfig,
                             targetNames.Output, targetNames.SharedObject,
@@ -419,9 +455,21 @@ cmInstallTargetGenerator::Files cmInstallTargetGenerator::GetFiles(
 void cmInstallTargetGenerator::GetInstallObjectNames(
   std::string const& config, std::vector<std::string>& objects) const
 {
-  this->Target->GetTargetObjectNames(config, objects);
-  for (std::string& o : objects) {
-    o = cmStrCat(computeInstallObjectDir(this->Target, config), "/", o);
+  std::vector<cmObjectLocation> installedObjects;
+  auto storeObjectLocations =
+    [&installedObjects](cmObjectLocation const&,
+                        cmObjectLocation const& install) {
+      installedObjects.emplace_back(install);
+    };
+  this->Target->GetTargetObjectLocations(config, storeObjectLocations);
+  objects.reserve(installedObjects.size());
+  std::string rootDir;
+  if (!this->Target->GetPropertyAsBool(
+        "INSTALL_OBJECT_ONLY_USE_DESTINATION")) {
+    rootDir = cmStrCat(computeInstallObjectDir(this->Target, config), '/');
+  }
+  for (cmObjectLocation const& o : installedObjects) {
+    objects.emplace_back(cmStrCat(rootDir, o.GetPath()));
   }
 }
 
@@ -433,7 +481,7 @@ std::string cmInstallTargetGenerator::GetDestination(
 }
 
 std::string cmInstallTargetGenerator::GetInstallFilename(
-  const std::string& config) const
+  std::string const& config) const
 {
   NameType nameType = this->ImportLibrary ? NameImplib : NameNormal;
   return cmInstallTargetGenerator::GetInstallFilename(this->Target, config,
@@ -441,7 +489,7 @@ std::string cmInstallTargetGenerator::GetInstallFilename(
 }
 
 std::string cmInstallTargetGenerator::GetInstallFilename(
-  cmGeneratorTarget const* target, const std::string& config,
+  cmGeneratorTarget const* target, std::string const& config,
   NameType nameType)
 {
   std::string fname;
@@ -470,7 +518,7 @@ std::string cmInstallTargetGenerator::GetInstallFilename(
   } else {
     cmGeneratorTarget::Names targetNames = target->GetLibraryNames(config);
     if (nameType == NameImplib || nameType == NameImplibReal) {
-      const auto& importName = nameType == NameImplib
+      auto const& importName = nameType == NameImplib
         ? targetNames.ImportLibrary
         : targetNames.ImportReal;
       // Use the import library name.
@@ -508,7 +556,7 @@ bool cmInstallTargetGenerator::Compute(cmLocalGenerator* lg)
 
 void cmInstallTargetGenerator::PreReplacementTweaks(std::ostream& os,
                                                     Indent indent,
-                                                    const std::string& config,
+                                                    std::string const& config,
                                                     std::string const& file)
 {
   this->AddRPathCheckRule(os, indent, config, file);
@@ -516,7 +564,7 @@ void cmInstallTargetGenerator::PreReplacementTweaks(std::ostream& os,
 
 void cmInstallTargetGenerator::PostReplacementTweaks(std::ostream& os,
                                                      Indent indent,
-                                                     const std::string& config,
+                                                     std::string const& config,
                                                      std::string const& file)
 {
   this->AddInstallNamePatchRule(os, indent, config, file);
@@ -527,7 +575,7 @@ void cmInstallTargetGenerator::PostReplacementTweaks(std::ostream& os,
 }
 
 void cmInstallTargetGenerator::AddInstallNamePatchRule(
-  std::ostream& os, Indent indent, const std::string& config,
+  std::ostream& os, Indent indent, std::string const& config,
   std::string const& toDestDirPath)
 {
   if (this->ImportLibrary || this->NamelinkMode == NamelinkModeOnly ||
@@ -623,7 +671,7 @@ void cmInstallTargetGenerator::AddInstallNamePatchRule(
 }
 
 void cmInstallTargetGenerator::AddRPathCheckRule(
-  std::ostream& os, Indent indent, const std::string& config,
+  std::ostream& os, Indent indent, std::string const& config,
   std::string const& toDestDirPath)
 {
   // Skip the chrpath if the target does not need it.
@@ -675,7 +723,7 @@ void cmInstallTargetGenerator::AddRPathCheckRule(
 }
 
 void cmInstallTargetGenerator::AddChrpathPatchRule(
-  std::ostream& os, Indent indent, const std::string& config,
+  std::ostream& os, Indent indent, std::string const& config,
   std::string const& toDestDirPath)
 {
   // Skip the chrpath if the target does not need it.
@@ -753,7 +801,7 @@ void cmInstallTargetGenerator::AddChrpathPatchRule(
       // Remove rpaths that are unchanged (value was set to empty)
       ordered.erase(
         std::remove_if(ordered.begin(), ordered.end(),
-                       [&runpath_change](const std::string& runpath) {
+                       [&runpath_change](std::string const& runpath) {
                          return runpath_change.find(runpath)->second.empty();
                        }),
         ordered.end());
@@ -813,7 +861,7 @@ void cmInstallTargetGenerator::AddChrpathPatchRule(
 }
 
 void cmInstallTargetGenerator::AddStripRule(std::ostream& os, Indent indent,
-                                            const std::string& toDestDirPath)
+                                            std::string const& toDestDirPath)
 {
 
   // don't strip static and import libraries, because it removes the only
@@ -856,7 +904,7 @@ void cmInstallTargetGenerator::AddStripRule(std::ostream& os, Indent indent,
 }
 
 void cmInstallTargetGenerator::AddRanlibRule(std::ostream& os, Indent indent,
-                                             const std::string& toDestDirPath)
+                                             std::string const& toDestDirPath)
 {
   // Static libraries need ranlib on this platform.
   if (this->Target->GetType() != cmStateEnums::STATIC_LIBRARY) {
@@ -869,7 +917,7 @@ void cmInstallTargetGenerator::AddRanlibRule(std::ostream& os, Indent indent,
     return;
   }
 
-  const std::string& ranlib =
+  std::string const& ranlib =
     this->Target->Target->GetMakefile()->GetRequiredDefinition("CMAKE_RANLIB");
   if (ranlib.empty()) {
     return;
@@ -880,7 +928,7 @@ void cmInstallTargetGenerator::AddRanlibRule(std::ostream& os, Indent indent,
 }
 
 void cmInstallTargetGenerator::AddUniversalInstallRule(
-  std::ostream& os, Indent indent, const std::string& toDestDirPath)
+  std::ostream& os, Indent indent, std::string const& toDestDirPath)
 {
   cmMakefile const* mf = this->Target->Target->GetMakefile();
 
@@ -916,7 +964,7 @@ void cmInstallTargetGenerator::AddUniversalInstallRule(
 }
 
 void cmInstallTargetGenerator::IssueCMP0095Warning(
-  const std::string& unescapedRpath)
+  std::string const& unescapedRpath)
 {
   // Reduce warning noise to cases where used RPATHs may actually be affected
   // by CMP0095. This filter is meant to skip warnings in cases when
@@ -924,7 +972,7 @@ void cmInstallTargetGenerator::IssueCMP0095Warning(
   // worked already before CMP0095. We intend to issue a warning in all cases
   // with curly-braces syntax, even if the workaround of double-escaping is in
   // place, since we deprecate the need for it with CMP0095.
-  const bool potentially_affected(unescapedRpath.find("${") !=
+  bool const potentially_affected(unescapedRpath.find("${") !=
                                   std::string::npos);
 
   if (potentially_affected) {

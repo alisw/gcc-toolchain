@@ -1,6 +1,6 @@
-This is ld.info, produced by makeinfo version 7.2 from ld.texi.
+This is ld.info, produced by makeinfo version 7.3 from ld.texi.
 
-This file documents the GNU linker LD (GNU Binutils) version 2.46.0.
+This file documents the GNU linker LD (GNU Binutils) version 2.46.1.
 
    Copyright © 1991-2026 Free Software Foundation, Inc.
 
@@ -21,7 +21,7 @@ File: ld.info,  Node: Top,  Next: Overview,  Up: (dir)
 LD
 **
 
-This file documents the GNU linker ld (GNU Binutils) version 2.46.0.
+This file documents the GNU linker ld (GNU Binutils) version 2.46.1.
 
    This document is distributed under the terms of the GNU Free
 Documentation License version 1.3.  A copy of the license is included in
@@ -9721,7 +9721,7 @@ LD Index
 * LONG(EXPRESSION):                      Output Section Data.
                                                              (line    6)
 * M and K integer suffixes:              Constants.          (line   15)
-* M68HC11 and 68HC12 support:            M68HC11/68HC12.     (line    5)
+* M68HC11 and 68HC12 support:            M68HC11/68HC12.     (line    6)
 * machine architecture:                  Miscellaneous Commands.
                                                              (line  127)
 * machine dependencies:                  Machine Dependent.  (line    6)

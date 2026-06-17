@@ -6,16 +6,16 @@ has not been set explicitly by :command:`cmake_policy` or implicitly
 by :command:`cmake_minimum_required`. This is meaningful
 only for the policies that do not warn by default:
 
-* ``CMAKE_POLICY_WARNING_CMP0025`` controls the warning for
-  policy :policy:`CMP0025`.
-* ``CMAKE_POLICY_WARNING_CMP0047`` controls the warning for
-  policy :policy:`CMP0047`.
-* ``CMAKE_POLICY_WARNING_CMP0056`` controls the warning for
-  policy :policy:`CMP0056`.
-* ``CMAKE_POLICY_WARNING_CMP0060`` controls the warning for
-  policy :policy:`CMP0060`.
-* ``CMAKE_POLICY_WARNING_CMP0065`` controls the warning for
-  policy :policy:`CMP0065`.
+* ``CMAKE_POLICY_WARNING_CMP0025`` controlled the warning for
+  policy :policy:`CMP0025` in CMake versions before 4.0.
+* ``CMAKE_POLICY_WARNING_CMP0047`` controlled the warning for
+  policy :policy:`CMP0047` in CMake versions before 4.0.
+* ``CMAKE_POLICY_WARNING_CMP0056`` controlled the warning for
+  policy :policy:`CMP0056` in CMake versions before 4.0.
+* ``CMAKE_POLICY_WARNING_CMP0060`` controlled the warning for
+  policy :policy:`CMP0060` in CMake versions before 4.0.
+* ``CMAKE_POLICY_WARNING_CMP0065`` controlled the warning for
+  policy :policy:`CMP0065` in CMake versions before 4.0.
 * ``CMAKE_POLICY_WARNING_CMP0066`` controls the warning for
   policy :policy:`CMP0066`.
 * ``CMAKE_POLICY_WARNING_CMP0067`` controls the warning for
@@ -38,6 +38,8 @@ only for the policies that do not warn by default:
   policy :policy:`CMP0129`.
 * ``CMAKE_POLICY_WARNING_CMP0133`` controls the warning for
   policy :policy:`CMP0133`.
+* ``CMAKE_POLICY_WARNING_CMP0172`` controls the warning for
+  policy :policy:`CMP0172`.
 
 This variable should not be set by a project in CMake code.  Project
 developers running CMake may set this variable in their cache to

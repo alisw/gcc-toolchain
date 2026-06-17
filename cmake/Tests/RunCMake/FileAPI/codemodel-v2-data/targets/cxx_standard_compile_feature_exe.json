@@ -4,6 +4,10 @@
     "directorySource": "^cxx$",
     "projectName": "Cxx",
     "type": "EXECUTABLE",
+    "imported": null,
+    "local": null,
+    "abstract": null,
+    "symbolic": null,
     "isGeneratorProvided": null,
     "fileSets": null,
     "sources": [
@@ -16,7 +20,7 @@
             "backtrace": [
                 {
                     "file": "^cxx/CMakeLists\\.txt$",
-                    "line": 26,
+                    "line": 28,
                     "command": "add_executable",
                     "hasParent": true
                 },
@@ -40,13 +44,12 @@
     "compileGroups": [
         {
             "language": "CXX",
-            "languageStandard" :
-            {
+            "languageStandard": {
                 "backtraces": [
                     [
                         {
                             "file": "^cxx/CMakeLists\\.txt$",
-                            "line": 27,
+                            "line": 29,
                             "command": "set_property",
                             "hasParent": true
                         },
@@ -58,21 +61,26 @@
                         }
                     ]
                 ],
-                "standard" : "98"
+                "standard": "98"
             },
             "sourcePaths": [
                 "^empty\\.cxx$"
             ],
             "includes": null,
             "frameworks": null,
-            "defines": null,
+            "defines": [
+                {
+                    "define": "_MBCS",
+                    "backtrace": null
+                }
+            ],
             "compileCommandFragments": null
         }
     ],
     "backtrace": [
         {
             "file": "^cxx/CMakeLists\\.txt$",
-            "line": 26,
+            "line": 28,
             "command": "add_executable",
             "hasParent": true
         },
@@ -109,5 +117,11 @@
             "id": "^ZERO_CHECK::@a56b12a3f5c0529fb296$",
             "backtrace": null
         }
-    ]
+    ],
+    "linkLibraries": null,
+    "interfaceLinkLibraries": null,
+    "compileDependencies": null,
+    "interfaceCompileDependencies": null,
+    "objectDependencies": null,
+    "orderDependencies": null
 }

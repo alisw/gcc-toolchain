@@ -1,6 +1,8 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmCryptoHash.h"
+
+#include <cassert>
 
 #include <cm/memory>
 
@@ -77,7 +79,38 @@ std::unique_ptr<cmCryptoHash> cmCryptoHash::New(cm::string_view algo)
   if (algo == "SHA3_512") {
     return cm::make_unique<cmCryptoHash>(AlgoSHA3_512);
   }
-  return std::unique_ptr<cmCryptoHash>(nullptr);
+  return std::unique_ptr<cmCryptoHash>();
+}
+
+std::string cmCryptoHash::GetHashAlgoName() const
+{
+#ifndef CMAKE_USE_SYSTEM_LIBRHASH
+  static_assert(RHASH_HASH_COUNT == 10, "Update switch statement!");
+#endif
+  switch (this->Id) {
+    case RHASH_MD5:
+      return "MD5";
+    case RHASH_SHA1:
+      return "SHA1";
+    case RHASH_SHA224:
+      return "SHA224";
+    case RHASH_SHA256:
+      return "SHA256";
+    case RHASH_SHA384:
+      return "SHA384";
+    case RHASH_SHA512:
+      return "SHA512";
+    case RHASH_SHA3_224:
+      return "SHA3_224";
+    case RHASH_SHA3_256:
+      return "SHA3_256";
+    case RHASH_SHA3_384:
+      return "SHA3_384";
+    case RHASH_SHA3_512:
+      return "SHA3_512";
+  }
+  assert(false);
+  return "UNKNOWN";
 }
 
 bool cmCryptoHash::IntFromHexDigit(char input, char& output)
@@ -98,7 +131,7 @@ bool cmCryptoHash::IntFromHexDigit(char input, char& output)
 }
 
 std::string cmCryptoHash::ByteHashToString(
-  const std::vector<unsigned char>& hash)
+  std::vector<unsigned char> const& hash)
 {
   // Map from 4-bit index to hexadecimal representation.
   static char const hex[16] = { '0', '1', '2', '3', '4', '5', '6', '7',
@@ -120,7 +153,7 @@ std::vector<unsigned char> cmCryptoHash::ByteHashString(cm::string_view input)
   return this->Finalize();
 }
 
-std::vector<unsigned char> cmCryptoHash::ByteHashFile(const std::string& file)
+std::vector<unsigned char> cmCryptoHash::ByteHashFile(std::string const& file)
 {
   cmsys::ifstream fin(file.c_str(), std::ios::in | std::ios::binary);
   if (fin) {
@@ -159,7 +192,7 @@ std::string cmCryptoHash::HashString(cm::string_view input)
   return ByteHashToString(this->ByteHashString(input));
 }
 
-std::string cmCryptoHash::HashFile(const std::string& file)
+std::string cmCryptoHash::HashFile(std::string const& file)
 {
   return ByteHashToString(this->ByteHashFile(file));
 }

@@ -7,7 +7,7 @@ Add a target with no output so it will always be built.
 
   add_custom_target(Name [ALL] [command1 [args1...]]
                     [COMMAND command2 [args2...] ...]
-                    [DEPENDS depend depend depend ... ]
+                    [DEPENDS depend depend depend ...]
                     [BYPRODUCTS [files...]]
                     [WORKING_DIRECTORY dir]
                     [COMMENT comment]
@@ -60,8 +60,8 @@ The options are:
   .. versionadded:: 3.20
     Arguments to ``BYPRODUCTS`` may use a restricted set of
     :manual:`generator expressions <cmake-generator-expressions(7)>`.
-    :ref:`Target-dependent expressions <Target-Dependent Queries>` are not
-    permitted.
+    :ref:`Target-dependent expressions <Target-Dependent Expressions>`
+    are not permitted.
 
   .. versionchanged:: 3.28
     In custom targets using :ref:`file sets`, byproducts are now
@@ -103,10 +103,10 @@ The options are:
   dependency will be added automatically so that the mentioned target will be
   built before this custom target (see policy :policy:`CMP0112`).
 
-    * ``TARGET_FILE``
-    * ``TARGET_LINKER_FILE``
-    * ``TARGET_SONAME_FILE``
-    * ``TARGET_PDB_FILE``
+  * ``TARGET_FILE``
+  * ``TARGET_LINKER_FILE``
+  * ``TARGET_SONAME_FILE``
+  * ``TARGET_PDB_FILE``
 
   The command and arguments are optional and if not specified an empty
   target will be created.
@@ -191,6 +191,7 @@ The options are:
   Execute the command with the given current working directory.
   If it is a relative path it will be interpreted relative to the
   build tree directory corresponding to the current source directory.
+  If not specified, set to :variable:`CMAKE_CURRENT_BINARY_DIR`.
 
   .. versionadded:: 3.13
     Arguments to ``WORKING_DIRECTORY`` may use

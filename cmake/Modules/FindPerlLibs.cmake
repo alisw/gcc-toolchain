@@ -1,51 +1,102 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindPerlLibs
 ------------
 
-Find Perl libraries
+Finds Perl libraries:
 
-This module finds if PERL is installed and determines where the
-include files and libraries are.  It also determines what the name of
-the library is.  This code sets the following variables:
+.. code-block:: cmake
 
-::
+  find_package(PerlLibs [<version>] [...])
 
-  PERLLIBS_FOUND    = True if perl.h & libperl were found
-  PERL_INCLUDE_PATH = path to where perl.h is found
-  PERL_LIBRARY      = path to libperl
-  PERL_EXECUTABLE   = full path to the perl binary
+Perl is a general-purpose, interpreted, dynamic programming language.
 
+This module detects whether Perl interpreter is installed via the
+:module:`FindPerl` module and determines the locations of Perl include paths,
+libraries, and the library name.
 
+Result Variables
+^^^^^^^^^^^^^^^^
 
-The minimum required version of Perl can be specified using the
-standard syntax, e.g.  find_package(PerlLibs 6.0)
+This module defines the following variables:
 
-::
+``PerlLibs_FOUND``
+  .. versionadded:: 3.3
 
-  The following variables are also available if needed
-  (introduced after CMake 2.6.4)
+  Boolean indicating whether (the requested version of) ``<perl.h>`` and
+  ``libperl`` were found.
 
+``PerlLibs_VERSION``
+  .. versionadded:: 4.2
 
+  The version of Perl library found.
 
-::
+``PERL_SITESEARCH``
+  Path to the sitesearch install directory (``-V:installsitesearch``).
+``PERL_SITEARCH``
+  Path to the sitelib install directory (``-V:installsitearch``).
+``PERL_SITELIB``
+  Path to the sitelib install directory (``-V:installsitelib``).
+``PERL_VENDORARCH``
+  Path to the vendor arch install directory (``-V:installvendorarch``).
+``PERL_VENDORLIB``
+  Path to the vendor lib install directory (``-V:installvendorlib``).
+``PERL_ARCHLIB``
+  Path to the core arch lib install directory (``-V:archlib``).
+``PERL_PRIVLIB``
+  Path to the core priv lib install directory (``-V:privlib``).
+``PERL_UPDATE_ARCHLIB``
+  Path to the update arch lib install directory (``-V:installarchlib``).
+``PERL_UPDATE_PRIVLIB``
+  Path to the update priv lib install directory (``-V:installprivlib``).
+``PERL_EXTRA_C_FLAGS``
+  Compilation flags used to build Perl.
 
-  PERL_SITESEARCH     = path to the sitesearch install dir (-V:installsitesearch)
-  PERL_SITEARCH       = path to the sitelib install directory (-V:installsitearch)
-  PERL_SITELIB        = path to the sitelib install directory (-V:installsitelib)
-  PERL_VENDORARCH     = path to the vendor arch install directory (-V:installvendorarch)
-  PERL_VENDORLIB      = path to the vendor lib install directory (-V:installvendorlib)
-  PERL_ARCHLIB        = path to the core arch lib install directory (-V:archlib)
-  PERL_PRIVLIB        = path to the core priv lib install directory (-V:privlib)
-  PERL_UPDATE_ARCHLIB = path to the update arch lib install directory (-V:installarchlib)
-  PERL_UPDATE_PRIVLIB = path to the update priv lib install directory (-V:installprivlib)
-  PERL_EXTRA_C_FLAGS = Compilation flags used to build perl
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may also be set:
+
+``PERL_INCLUDE_PATH``
+  Directory containing ``perl.h`` and other Perl header files.
+``PERL_LIBRARY``
+  Path to the ``libperl``.
+``PERL_EXECUTABLE``
+  Full path to the ``perl`` executable.
+
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
+
+The following variables are provided for backward compatibility:
+
+``PERLLIBS_FOUND``
+  .. deprecated:: 4.2
+    Use ``PerlLibs_FOUND``, which has the same value.
+
+  Boolean indicating whether (the requested version of) ``<perl.h>`` and
+  ``libperl`` were found.
+
+Examples
+^^^^^^^^
+
+Finding Perl libraries and specifying the minimum required version:
+
+.. code-block:: cmake
+
+  find_package(PerlLibs 6.0)
+
+See Also
+^^^^^^^^
+
+* The :module:`FindPerl` module to find the Perl interpreter.
 #]=======================================================================]
 
 # find the perl executable
 include(${CMAKE_CURRENT_LIST_DIR}/FindPerl.cmake)
+
+set(PerlLibs_VERSION "${Perl_VERSION}")
 
 if (PERL_EXECUTABLE)
 
@@ -106,14 +157,15 @@ if (PERL_EXECUTABLE)
   ### PERL_POSSIBLE_LIBRARY_NAMES
   perl_get_info(PERL_POSSIBLE_LIBRARY_NAMES libperl)
   if (NOT PERL_POSSIBLE_LIBRARY_NAMES)
-    set(PERL_POSSIBLE_LIBRARY_NAMES perl${PERL_VERSION_STRING} perl)
+    set(PERL_POSSIBLE_LIBRARY_NAMES perl${PerlLibs_VERSION} perl)
   endif()
   if(CMAKE_SYSTEM_NAME MATCHES "CYGWIN")
-    list (APPEND PERL_POSSIBLE_LIBRARY_NAMES perl${PERL_VERSION_STRING})
+    list (APPEND PERL_POSSIBLE_LIBRARY_NAMES perl${PerlLibs_VERSION})
   endif()
   if (CMAKE_SYSTEM_NAME MATCHES "MSYS|CYGWIN")
-    # on MSYS and CYGWIN environments, current perl -V:libperl gives shared library name
-    # rather than the import library. So, extends possible library names
+    # On MSYS and CYGWIN environments, current perl -V:libperl gives shared
+    # library name rather than the import library. So, extend possible library
+    # names.
     list (APPEND PERL_POSSIBLE_LIBRARY_NAMES perl)
   endif()
 
@@ -124,10 +176,10 @@ if (PERL_EXECUTABLE)
     PATHS
       "${PERL_UPDATE_ARCHLIB}/CORE"
       "${PERL_ARCHLIB}/CORE"
-      /usr/lib/perl5/${PERL_VERSION_STRING}/${PERL_ARCHNAME}/CORE
-      /usr/lib/perl/${PERL_VERSION_STRING}/${PERL_ARCHNAME}/CORE
-      /usr/lib/perl5/${PERL_VERSION_STRING}/CORE
-      /usr/lib/perl/${PERL_VERSION_STRING}/CORE
+      /usr/lib/perl5/${PerlLibs_VERSION}/${PERL_ARCHNAME}/CORE
+      /usr/lib/perl/${PerlLibs_VERSION}/${PERL_ARCHNAME}/CORE
+      /usr/lib/perl5/${PerlLibs_VERSION}/CORE
+      /usr/lib/perl/${PerlLibs_VERSION}/CORE
   )
 
   ### PERL_LIBRARY
@@ -137,24 +189,24 @@ if (PERL_EXECUTABLE)
     PATHS
       "${PERL_UPDATE_ARCHLIB}/CORE"
       "${PERL_ARCHLIB}/CORE"
-      /usr/lib/perl5/${PERL_VERSION_STRING}/${PERL_ARCHNAME}/CORE
-      /usr/lib/perl/${PERL_VERSION_STRING}/${PERL_ARCHNAME}/CORE
-      /usr/lib/perl5/${PERL_VERSION_STRING}/CORE
-      /usr/lib/perl/${PERL_VERSION_STRING}/CORE
+      /usr/lib/perl5/${PerlLibs_VERSION}/${PERL_ARCHNAME}/CORE
+      /usr/lib/perl/${PerlLibs_VERSION}/${PERL_ARCHNAME}/CORE
+      /usr/lib/perl5/${PerlLibs_VERSION}/CORE
+      /usr/lib/perl/${PerlLibs_VERSION}/CORE
   )
 
 endif ()
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
+include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(PerlLibs REQUIRED_VARS PERL_LIBRARY PERL_INCLUDE_PATH
-                                           VERSION_VAR PERL_VERSION_STRING)
+                                           VERSION_VAR PerlLibs_VERSION)
 
 # Introduced after CMake 2.6.4 to bring module into compliance
 set(PERL_INCLUDE_DIR  ${PERL_INCLUDE_PATH})
 set(PERL_INCLUDE_DIRS ${PERL_INCLUDE_PATH})
 set(PERL_LIBRARIES    ${PERL_LIBRARY})
 # For backward compatibility with CMake before 2.8.8
-set(PERL_VERSION ${PERL_VERSION_STRING})
+set(PERL_VERSION ${PerlLibs_VERSION})
 
 mark_as_advanced(
   PERL_INCLUDE_PATH

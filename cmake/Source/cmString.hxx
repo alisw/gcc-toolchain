@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -60,7 +60,7 @@ struct IntoString<T const[N]> : IntoString<T[N]>
 template <>
 struct IntoString<char*> : std::true_type
 {
-  static String into_string(const char* s);
+  static String into_string(char const* s);
 };
 
 template <>
@@ -87,7 +87,7 @@ struct IntoString<std::string> : std::true_type
 template <>
 struct IntoString<char> : std::true_type
 {
-  static std::string into_string(char const& c) { return std::string(1, c); }
+  static std::string into_string(char c) { return std::string(1, c); }
 };
 
 /**
@@ -124,7 +124,7 @@ struct AsStringView<T const[N]> : AsStringView<T[N]>
 template <>
 struct AsStringView<char*> : std::true_type
 {
-  static string_view view(const char* s) { return s; }
+  static string_view view(char const* s) { return s; }
 };
 
 template <std::string::size_type N>
@@ -142,19 +142,27 @@ struct AsStringView<std::string> : std::true_type
 template <>
 struct AsStringView<char> : std::true_type
 {
-  static string_view view(const char& s) { return string_view(&s, 1); }
+  static string_view view(
+    char const& s) // clazy:exclude=function-args-by-value
+  {
+    return string_view(&s, 1);
+  }
 };
 
 template <>
 struct AsStringView<string_view> : std::true_type
 {
-  static string_view view(string_view const& s) { return s; }
+  static string_view view(string_view s) { return s; }
 };
 
 template <>
 struct AsStringView<static_string_view> : std::true_type
 {
-  static string_view view(static_string_view const& s) { return s; }
+  static string_view view(
+    static_string_view const& s) // clazy:exclude=function-args-by-value
+  {
+    return s;
+  }
 };
 
 template <>
@@ -250,7 +258,7 @@ public:
   }
 
   /** Construct by copying the specified buffer.  */
-  String(const char* d, size_type s)
+  String(char const* d, size_type s)
     : String(std::string(d, s))
   {
   }
@@ -349,7 +357,7 @@ public:
   bool empty() const noexcept { return this->view_.empty(); }
 
   /** Return a pointer to the start of the string.  */
-  const char* data() const noexcept { return this->view_.data(); }
+  char const* data() const noexcept { return this->view_.data(); }
 
   /** Return the length of the string in bytes.  */
   size_type size() const noexcept { return this->view_.size(); }
@@ -389,7 +397,7 @@ public:
       containing the same value as this instance.  The pointer
       is valid until this instance is mutated, destroyed,
       or str() is called.  */
-  const char* c_str();
+  char const* c_str();
 
   const_iterator begin() const noexcept { return this->view_.begin(); }
   const_iterator end() const noexcept { return this->view_.end(); }
@@ -518,7 +526,7 @@ public:
     *this = std::move(s);
   }
 
-  void swap(String& other)
+  void swap(String& other) noexcept
   {
     std::swap(this->string_, other.string_);
     std::swap(this->view_, other.view_);
@@ -546,12 +554,12 @@ public:
     return this->view_.compare(pos1, count1, v, pos2, count2);
   }
 
-  int compare(size_type pos1, size_type count1, const char* s) const
+  int compare(size_type pos1, size_type count1, char const* s) const
   {
     return this->view_.compare(pos1, count1, s);
   }
 
-  int compare(size_type pos1, size_type count1, const char* s,
+  int compare(size_type pos1, size_type count1, char const* s,
               size_type count2) const
   {
     return this->view_.compare(pos1, count1, s, count2);
@@ -565,7 +573,7 @@ public:
     return this->view_.find(v, pos);
   }
 
-  size_type find(const char* s, size_type pos, size_type count) const
+  size_type find(char const* s, size_type pos, size_type count) const
   {
     return this->view_.find(s, pos, count);
   }
@@ -578,7 +586,7 @@ public:
     return this->view_.rfind(v, pos);
   }
 
-  size_type rfind(const char* s, size_type pos, size_type count) const
+  size_type rfind(char const* s, size_type pos, size_type count) const
   {
     return this->view_.rfind(s, pos, count);
   }
@@ -591,7 +599,7 @@ public:
     return this->view_.find_first_of(v, pos);
   }
 
-  size_type find_first_of(const char* s, size_type pos, size_type count) const
+  size_type find_first_of(char const* s, size_type pos, size_type count) const
   {
     return this->view_.find_first_of(s, pos, count);
   }
@@ -604,7 +612,7 @@ public:
     return this->view_.find_first_not_of(v, pos);
   }
 
-  size_type find_first_not_of(const char* s, size_type pos,
+  size_type find_first_not_of(char const* s, size_type pos,
                               size_type count) const
   {
     return this->view_.find_first_not_of(s, pos, count);
@@ -618,7 +626,7 @@ public:
     return this->view_.find_last_of(v, pos);
   }
 
-  size_type find_last_of(const char* s, size_type pos, size_type count) const
+  size_type find_last_of(char const* s, size_type pos, size_type count) const
   {
     return this->view_.find_last_of(s, pos, count);
   }
@@ -631,7 +639,7 @@ public:
     return this->view_.find_last_not_of(v, pos);
   }
 
-  size_type find_last_not_of(const char* s, size_type pos,
+  size_type find_last_not_of(char const* s, size_type pos,
                              size_type count) const
   {
     return this->view_.find_last_not_of(s, pos, count);
@@ -708,104 +716,104 @@ struct IsComparable<char> : std::true_type
 };
 
 /** comparison operators */
-inline bool operator==(const String& l, const String& r)
+inline bool operator==(String const& l, String const& r)
 {
   return l.view() == r.view();
 }
 template <typename L>
 typename std::enable_if<IsComparable<L>::value, bool>::type operator==(
-  L&& l, const String& r)
+  L&& l, String const& r)
 {
   return AsStringView<L>::view(std::forward<L>(l)) == r.view();
 }
 template <typename R>
 typename std::enable_if<IsComparable<R>::value, bool>::type operator==(
-  const String& l, R&& r)
+  String const& l, R&& r)
 {
   return l.view() == AsStringView<R>::view(std::forward<R>(r));
 }
 
-inline bool operator!=(const String& l, const String& r)
+inline bool operator!=(String const& l, String const& r)
 {
   return l.view() != r.view();
 }
 template <typename L>
 typename std::enable_if<IsComparable<L>::value, bool>::type operator!=(
-  L&& l, const String& r)
+  L&& l, String const& r)
 {
   return AsStringView<L>::view(std::forward<L>(l)) != r.view();
 }
 template <typename R>
 typename std::enable_if<IsComparable<R>::value, bool>::type operator!=(
-  const String& l, R&& r)
+  String const& l, R&& r)
 {
   return l.view() != AsStringView<R>::view(std::forward<R>(r));
 }
 
-inline bool operator<(const String& l, const String& r)
+inline bool operator<(String const& l, String const& r)
 {
   return l.view() < r.view();
 }
 template <typename L>
 typename std::enable_if<IsComparable<L>::value, bool>::type operator<(
-  L&& l, const String& r)
+  L&& l, String const& r)
 {
   return AsStringView<L>::view(std::forward<L>(l)) < r.view();
 }
 template <typename R>
 typename std::enable_if<IsComparable<R>::value, bool>::type operator<(
-  const String& l, R&& r)
+  String const& l, R&& r)
 {
   return l.view() < AsStringView<R>::view(std::forward<R>(r));
 }
 
-inline bool operator<=(const String& l, const String& r)
+inline bool operator<=(String const& l, String const& r)
 {
   return l.view() <= r.view();
 }
 template <typename L>
 typename std::enable_if<IsComparable<L>::value, bool>::type operator<=(
-  L&& l, const String& r)
+  L&& l, String const& r)
 {
   return AsStringView<L>::view(std::forward<L>(l)) <= r.view();
 }
 template <typename R>
 typename std::enable_if<IsComparable<R>::value, bool>::type operator<=(
-  const String& l, R&& r)
+  String const& l, R&& r)
 {
   return l.view() <= AsStringView<R>::view(std::forward<R>(r));
 }
 
-inline bool operator>(const String& l, const String& r)
+inline bool operator>(String const& l, String const& r)
 {
   return l.view() > r.view();
 }
 template <typename L>
 typename std::enable_if<IsComparable<L>::value, bool>::type operator>(
-  L&& l, const String& r)
+  L&& l, String const& r)
 {
   return AsStringView<L>::view(std::forward<L>(l)) > r.view();
 }
 template <typename R>
 typename std::enable_if<IsComparable<R>::value, bool>::type operator>(
-  const String& l, R&& r)
+  String const& l, R&& r)
 {
   return l.view() > AsStringView<R>::view(std::forward<R>(r));
 }
 
-inline bool operator>=(const String& l, const String& r)
+inline bool operator>=(String const& l, String const& r)
 {
   return l.view() >= r.view();
 }
 template <typename L>
 typename std::enable_if<IsComparable<L>::value, bool>::type operator>=(
-  L&& l, const String& r)
+  L&& l, String const& r)
 {
   return AsStringView<L>::view(std::forward<L>(l)) >= r.view();
 }
 template <typename R>
 typename std::enable_if<IsComparable<R>::value, bool>::type operator>=(
-  const String& l, R&& r)
+  String const& l, R&& r)
 {
   return l.view() >= AsStringView<R>::view(std::forward<R>(r));
 }
@@ -835,7 +843,7 @@ struct StringOpPlus
 template <typename T>
 struct StringAdd
 {
-  static const bool value = AsStringView<T>::value;
+  static bool const value = AsStringView<T>::value;
   using temp_type = string_view;
   template <typename S>
   static temp_type temp(S&& s)

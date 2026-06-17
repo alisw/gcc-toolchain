@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -15,6 +15,8 @@
 #include <cm/optional>
 
 #include <cm3p/uv.h>
+
+#include <sys/types.h>
 
 #include "cmDuration.h"
 #include "cmProcessOutput.h"
@@ -35,6 +37,7 @@ public:
   void SetCommand(std::string const& command);
   void SetCommandArguments(std::vector<std::string> const& arg);
   void SetWorkingDirectory(std::string const& dir);
+  void SetStopTimeout(cmDuration t) { this->StopTimeout = t; }
   void SetTimeout(cmDuration t) { this->Timeout = t; }
   void ChangeTimeout(cmDuration t);
   void ResetStartTime();
@@ -46,8 +49,13 @@ public:
     Normal,
     StopTime,
   };
-  void SetTimeoutReason(TimeoutReason r) { this->TimeoutReason_ = r; }
   TimeoutReason GetTimeoutReason() const { return this->TimeoutReason_; }
+  struct ComputedTimeout
+  {
+    TimeoutReason Reason;
+    cmDuration Duration;
+  };
+  cm::optional<ComputedTimeout> GetComputedTimeout() const;
 
   enum class State
   {
@@ -66,6 +74,14 @@ public:
   void SetId(int id) { this->Id = id; }
   int64_t GetExitValue() const { return this->ExitValue; }
   cmDuration GetTotalTime() { return this->TotalTime; }
+  std::chrono::steady_clock::time_point GetStartTime()
+  {
+    return this->StartTime;
+  }
+  std::chrono::system_clock::time_point GetSystemStartTime()
+  {
+    return this->SystemStartTime;
+  }
 
   enum class Exception
   {
@@ -94,9 +110,11 @@ public:
   Termination GetTerminationStyle() const { return this->TerminationStyle; }
 
 private:
+  cm::optional<cmDuration> StopTimeout;
   cm::optional<cmDuration> Timeout;
   TimeoutReason TimeoutReason_ = TimeoutReason::Normal;
   std::chrono::steady_clock::time_point StartTime;
+  std::chrono::system_clock::time_point SystemStartTime;
   cmDuration TotalTime;
   bool ReadHandleClosed = false;
   bool ProcessHandleClosed = false;
@@ -115,13 +133,13 @@ private:
                        int term_signal);
   static void OnTimeoutCB(uv_timer_t* timer);
   static void OnReadCB(uv_stream_t* stream, ssize_t nread,
-                       const uv_buf_t* buf);
+                       uv_buf_t const* buf);
   static void OnAllocateCB(uv_handle_t* handle, size_t suggested_size,
                            uv_buf_t* buf);
 
   void OnExit(int64_t exit_status, int term_signal);
   void OnTimeout();
-  void OnRead(ssize_t nread, const uv_buf_t* buf);
+  void OnRead(ssize_t nread, uv_buf_t const* buf);
   void OnAllocate(size_t suggested_size, uv_buf_t* buf);
 
   void StartTimer();
@@ -142,7 +160,7 @@ private:
   std::string Command;
   std::string WorkingDirectory;
   std::vector<std::string> Arguments;
-  std::vector<const char*> ProcessArgs;
+  std::vector<char const*> ProcessArgs;
   int Id;
   int64_t ExitValue;
   Termination TerminationStyle = Termination::Normal;

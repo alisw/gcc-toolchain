@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #if defined(__CYGWIN__)
 // For S_IWRITE symbol
 #  define _DEFAULT_SOURCE
@@ -15,10 +15,15 @@
 #include "cmUuid.h"
 #include "cmWIXAccessControlList.h"
 
-cmWIXFilesSourceWriter::cmWIXFilesSourceWriter(cmCPackLog* logger,
+#ifdef _WIN32
+#  include "cmsys/Encoding.hxx"
+#endif
+
+cmWIXFilesSourceWriter::cmWIXFilesSourceWriter(unsigned long wixVersion,
+                                               cmCPackLog* logger,
                                                std::string const& filename,
                                                GuidType componentGuidType)
-  : cmWIXSourceWriter(logger, filename, componentGuidType)
+  : cmWIXSourceWriter(wixVersion, logger, filename, componentGuidType)
 {
 }
 
@@ -117,7 +122,7 @@ std::string cmWIXFilesSourceWriter::EmitComponentCreateFolder(
 std::string cmWIXFilesSourceWriter::EmitComponentFile(
   std::string const& directoryId, std::string const& id,
   std::string const& filePath, cmWIXPatch& patch,
-  cmInstalledFile const* installedFile)
+  cmInstalledFile const* installedFile, int diskId)
 {
   std::string componentId = std::string("CM_C") + id;
   std::string fileId = std::string("CM_F") + id;
@@ -131,6 +136,10 @@ std::string cmWIXFilesSourceWriter::EmitComponentFile(
   AddAttribute("Id", componentId);
   AddAttribute("Guid", guid);
 
+  if (diskId) {
+    AddAttribute("DiskId", std::to_string(diskId));
+  }
+
   if (installedFile) {
     if (installedFile->GetPropertyAsBool("CPACK_NEVER_OVERWRITE")) {
       AddAttribute("NeverOverwrite", "yes");
@@ -143,7 +152,18 @@ std::string cmWIXFilesSourceWriter::EmitComponentFile(
   patch.ApplyFragment(componentId, *this);
   BeginElement("File");
   AddAttribute("Id", fileId);
-  AddAttribute("Source", CMakeToWixPath(filePath));
+
+  std::string sourcePath = CMakeToWixPath(filePath);
+#ifdef _WIN32
+  // WiX cannot handle long paths natively, but since v4,
+  // it supports long paths via UNC prefixes.
+  if (this->WixVersion >= 4) {
+    sourcePath = cmsys::Encoding::ToNarrow(
+      cmsys::Encoding::ToWindowsExtendedPath(sourcePath));
+  }
+#endif
+  AddAttribute("Source", sourcePath);
+
   AddAttribute("KeyPath", "yes");
 
   mode_t fileMode = 0;

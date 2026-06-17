@@ -68,6 +68,7 @@ target_link_libraries(imp_testExe1
   exp_testLib7
   exp_testLibCycleA
   exp_testLibPerConfigDest
+  exp_testSharedObjectAIX
   exp_testStaticLibWithPlugin
   )
 
@@ -123,6 +124,7 @@ target_link_libraries(imp_testExe1b
   bld_testLib7
   bld_testLibCycleA
   bld_testLibPerConfigDest
+  bld_testSharedObjectAIX
   bld_testStaticLibWithPlugin
   )
 
@@ -184,13 +186,9 @@ if(CMAKE_SHARED_LIBRARY_SONAME_C_FLAG AND
   endforeach()
 endif()
 
-add_executable(cmp0022OLD_test cmp0022OLD_test_vs6_1.cpp)
-target_link_libraries(cmp0022OLD_test bld_cmp0022OLD)
 add_executable(cmp0022NEW_test cmp0022NEW_test_vs6_1.cpp)
 target_link_libraries(cmp0022NEW_test bld_cmp0022NEW)
 
-add_executable(cmp0022OLD_exp_test cmp0022OLD_test_vs6_2.cpp)
-target_link_libraries(cmp0022OLD_exp_test exp_cmp0022OLD)
 add_executable(cmp0022NEW_exp_test cmp0022NEW_test_vs6_2.cpp)
 target_link_libraries(cmp0022NEW_exp_test exp_cmp0022NEW)
 
@@ -211,10 +209,8 @@ target_link_libraries(imp_ExePlugin1b PRIVATE bld_testExeWithPluginHelper testEx
 
 # Export/CMakeLists.txt pretends the RelWithDebInfo (as well as Debug)
 # configuration should link to debug libs.
-foreach(c DEBUG RELWITHDEBINFO)
-  set_property(TARGET imp_testExe1 PROPERTY COMPILE_DEFINITIONS_${c} EXE_DBG)
-  set_property(TARGET imp_testExe1b PROPERTY COMPILE_DEFINITIONS_${c} EXE_DBG)
-endforeach()
+target_compile_definitions(imp_testExe1  PRIVATE "$<$<CONFIG:Debug,RelWithDebInfo>:EXE_DBG>")
+target_compile_definitions(imp_testExe1b PRIVATE "$<$<CONFIG:Debug,RelWithDebInfo>:EXE_DBG>")
 
 #-----------------------------------------------------------------------------
 include(${CMAKE_INSTALL_PREFIX}/lib/expAbs/expAbs.cmake)
@@ -328,6 +324,16 @@ foreach(vis Pub Priv Iface)
   endif()
 endforeach()
 
+# Create executables to verify custom transitive properties.
+add_executable(imp_testLib10 imp_testLib10.c)
+target_link_libraries(imp_testLib10 PRIVATE exp_testLib10)
+add_executable(imp_testLib10b imp_testLib10.c)
+target_link_libraries(imp_testLib10b PRIVATE bld_testLib10)
+add_executable(imp_testLib11 imp_testLib11.c)
+target_link_libraries(imp_testLib11 PRIVATE exp_testLib11)
+add_executable(imp_testLib11b imp_testLib11.c)
+target_link_libraries(imp_testLib11b PRIVATE bld_testLib11)
+
 #-----------------------------------------------------------------------------
 # Test that handling imported targets, including transitive dependencies,
 # works in CheckFunctionExists (...and hopefully all other try_compile() checks
@@ -415,37 +421,21 @@ target_link_libraries(iface_test_bld bld_testSharedLibDepends)
 set_property(TARGET iface_test_bld PROPERTY NO_SYSTEM_FROM_IMPORTED 1)
 
 set_property(TARGET bld_testSharedLibRequired APPEND PROPERTY
-    LINK_INTERFACE_LIBRARIES
+    INTERFACE_LINK_LIBRARIES
         excludedFromAll
 )
-get_target_property(_configs bld_testSharedLibRequired IMPORTED_CONFIGURATIONS)
-foreach(_config ${_configs})
-    set_property(TARGET bld_testSharedLibRequired APPEND PROPERTY
-        IMPORTED_LINK_INTERFACE_LIBRARIES_${_config}
-        excludedFromAll
-    )
-endforeach()
-unset(_configs)
 add_executable(iface_test_exp iface_test.cpp)
 target_link_libraries(iface_test_exp testSharedLibDepends)
 
 set_property(TARGET testSharedLibDepends APPEND PROPERTY
-    LINK_INTERFACE_LIBRARIES
+    INTERFACE_LINK_LIBRARIES
         excludedFromAll
 )
-get_target_property(_configs testSharedLibDepends IMPORTED_CONFIGURATIONS)
-foreach(_config ${_configs})
-    set_property(TARGET testSharedLibDepends APPEND PROPERTY
-        IMPORTED_LINK_INTERFACE_LIBRARIES_${_config}
-        excludedFromAll
-    )
-endforeach()
-unset(_configs)
 
 if (((CMAKE_C_COMPILER_ID STREQUAL GNU AND CMAKE_C_COMPILER_VERSION VERSION_GREATER 4.4)
     OR CMAKE_C_COMPILER_ID MATCHES "LCC"
     OR (CMAKE_C_COMPILER_ID STREQUAL Clang AND NOT "x${CMAKE_CXX_SIMULATE_ID}" STREQUAL "xMSVC"))
-    AND (CMAKE_GENERATOR STREQUAL "Unix Makefiles" OR CMAKE_GENERATOR STREQUAL "Ninja"))
+    AND (CMAKE_GENERATOR STREQUAL "Unix Makefiles" OR CMAKE_GENERATOR STREQUAL "Ninja" OR CMAKE_GENERATOR STREQUAL "FASTBuild"))
   include(CheckCXXCompilerFlag)
   check_cxx_compiler_flag(-Wunused-variable run_sys_includes_test)
   if(run_sys_includes_test)
@@ -617,7 +607,7 @@ checkForProperty(Req::testLinkDirectories "INTERFACE_LINK_DIRECTORIES" "${CMAKE_
 
 #---------------------------------------------------------------------------------
 # check that imported libraries have the expected INTERFACE_LINK_DEPENDS property
-if(CMAKE_GENERATOR MATCHES "Make|Ninja")
+if(CMAKE_GENERATOR MATCHES "Make|Ninja|FASTBuild")
   checkForProperty(bld_testLinkDepends "INTERFACE_LINK_DEPENDS" "BUILD_LINK_DEPENDS")
   checkForProperty(Req::testLinkDepends "INTERFACE_LINK_DEPENDS" "${CMAKE_INSTALL_PREFIX}/INSTALL_LINK_DEPENDS")
 endif()

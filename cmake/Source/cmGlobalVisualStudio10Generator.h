@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include <cstddef>
@@ -35,12 +35,12 @@ public:
                            cmMakefile* mf) override;
 
   std::vector<GeneratedMakeCommand> GenerateBuildCommand(
-    const std::string& makeProgram, const std::string& projectName,
-    const std::string& projectDir, std::vector<std::string> const& targetNames,
-    const std::string& config, int jobs, bool verbose,
-    const cmBuildOptions& buildOptions = cmBuildOptions(),
-    std::vector<std::string> const& makeOptions =
-      std::vector<std::string>()) override;
+    std::string const& makeProgram, std::string const& projectName,
+    std::string const& projectDir, std::vector<std::string> const& targetNames,
+    std::string const& config, int jobs, bool verbose,
+    cmBuildOptions buildOptions = cmBuildOptions(),
+    std::vector<std::string> const& makeOptions = std::vector<std::string>(),
+    BuildTryCompile isInTryCompile = BuildTryCompile::No) override;
 
   //! create the correct local generator
   std::unique_ptr<cmLocalGenerator> CreateLocalGenerator(
@@ -53,7 +53,7 @@ public:
   void EnableLanguage(std::vector<std::string> const& languages, cmMakefile*,
                       bool optional) override;
 
-  void AddAndroidExecutableWarning(const std::string& name)
+  void AddAndroidExecutableWarning(std::string const& name)
   {
     this->AndroidExecutableWarnings.insert(name);
   }
@@ -65,25 +65,25 @@ public:
   std::string GetNsightTegraVersion() const;
 
   /** The vctargets path for the target platform.  */
-  const char* GetCustomVCTargetsPath() const;
+  char const* GetCustomVCTargetsPath() const;
 
   /** The toolset name for the target platform.  */
-  const char* GetPlatformToolset() const;
+  char const* GetPlatformToolset() const;
   std::string const& GetPlatformToolsetString() const;
 
   /** The toolset version props file, if any.  */
   std::string const& GetPlatformToolsetVersionProps() const;
 
   /** The toolset host architecture name (e.g. x64 for 64-bit host tools).  */
-  const char* GetPlatformToolsetHostArchitecture() const;
+  char const* GetPlatformToolsetHostArchitecture() const;
   std::string const& GetPlatformToolsetHostArchitectureString() const;
 
   /** The cuda toolset version.  */
-  const char* GetPlatformToolsetCuda() const;
+  char const* GetPlatformToolsetCuda() const;
   std::string const& GetPlatformToolsetCudaString() const;
 
   /** The custom cuda install directory */
-  const char* GetPlatformToolsetCudaCustomDir() const;
+  char const* GetPlatformToolsetCudaCustomDir() const;
   std::string const& GetPlatformToolsetCudaCustomDirString() const;
 
   /** The nvcc subdirectory of a custom cuda install directory */
@@ -94,10 +94,7 @@ public:
   std::string const& GetPlatformToolsetCudaVSIntegrationSubdirString() const;
 
   /** The fortran toolset name.  */
-  cm::optional<std::string> GetPlatformToolsetFortran() const override
-  {
-    return this->GeneratorToolsetFortran;
-  }
+  cm::optional<std::string> GetPlatformToolsetFortran() const override;
 
   /** Return whether we need to use No/Debug instead of false/true
       for GenerateDebugInformation.  */
@@ -127,10 +124,16 @@ public:
   /** Return true if building for WindowsStore */
   bool TargetsWindowsStore() const { return this->SystemIsWindowsStore; }
 
+  /** Return true if building for WindowsKernelModeDriver */
+  bool TargetsWindowsKernelModeDriver() const
+  {
+    return this->SystemIsWindowsKernelModeDriver;
+  }
+
   /** Return true if building for Android */
   bool TargetsAndroid() const { return this->SystemIsAndroid; }
 
-  const char* GetCMakeCFGIntDir() const override { return "$(Configuration)"; }
+  char const* GetCMakeCFGIntDir() const override { return "$(Configuration)"; }
 
   /** Generate an <output>.rule file path for a given command output.  */
   std::string GenerateRuleFile(std::string const& output) const override;
@@ -139,7 +142,7 @@ public:
                    std::string const& sfRel);
 
   std::string Encoding() override;
-  const char* GetToolsVersion() const;
+  char const* GetToolsVersion() const;
 
   virtual cm::optional<std::string> GetVSInstanceVersion() const { return {}; }
 
@@ -162,7 +165,7 @@ public:
   /** Return the first two components of CMAKE_SYSTEM_VERSION.  */
   std::string GetApplicationTypeRevision() const;
 
-  virtual const char* GetAndroidApplicationTypeRevision() const { return ""; }
+  virtual char const* GetAndroidApplicationTypeRevision() const { return ""; }
 
   cmIDEFlagTable const* GetClFlagTable() const;
   cmIDEFlagTable const* GetCSharpFlagTable() const;
@@ -178,9 +181,10 @@ public:
   bool IsMsBuildRestoreSupported() const;
   bool IsBuildInParallelSupported() const;
 
+  bool SupportsShortObjectNames() const override;
+
 protected:
-  cmGlobalVisualStudio10Generator(cmake* cm, const std::string& name,
-                                  std::string const& platformInGeneratorName);
+  cmGlobalVisualStudio10Generator(cmake* cm, std::string const& name);
 
   void Generate() override;
   virtual bool InitializeSystem(cmMakefile* mf);
@@ -188,6 +192,7 @@ protected:
   virtual bool InitializeWindowsCE(cmMakefile* mf);
   virtual bool InitializeWindowsPhone(cmMakefile* mf);
   virtual bool InitializeWindowsStore(cmMakefile* mf);
+  virtual bool InitializeWindowsKernelModeDriver(cmMakefile* mf);
   virtual bool InitializeTegraAndroid(cmMakefile* mf);
   virtual bool InitializeAndroid(cmMakefile* mf);
 
@@ -228,6 +233,7 @@ protected:
   std::string GeneratorToolsetCudaNvccSubdir;
   std::string GeneratorToolsetCudaVSIntegrationSubdir;
   cm::optional<std::string> GeneratorToolsetFortran;
+  cm::optional<std::string> DefaultToolsetFortran;
   std::string DefaultPlatformToolset;
   std::string DefaultPlatformToolsetHostArchitecture;
   std::string DefaultAndroidToolset;
@@ -249,6 +255,7 @@ protected:
   bool SystemIsWindowsCE = false;
   bool SystemIsWindowsPhone = false;
   bool SystemIsWindowsStore = false;
+  bool SystemIsWindowsKernelModeDriver = false;
   bool SystemIsAndroid = false;
   bool MSBuildCommandInitialized = false;
 

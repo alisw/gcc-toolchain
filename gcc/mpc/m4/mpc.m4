@@ -1,6 +1,6 @@
 # mpc.m4
 #
-# Copyright (C) 2008, 2009, 2010, 2011, 2012, 2014, 2018 INRIA
+# Copyright (C) 2008, 2009, 2010, 2011, 2012, 2014, 2018, 2023, 2024 INRIA
 #
 # This file is part of GNU MPC.
 #
@@ -26,7 +26,7 @@
 #
 # DESCRIPTION
 #
-# Check whether complex.h is usable; if yes, define HAVE_COMPLEX_H.
+# Check whether complex.h is usable; if yes, define MPC_HAVE_COMPLEX_H.
 #
 AC_DEFUN([MPC_COMPLEX_H], [
    AC_CHECK_HEADER(
@@ -37,7 +37,13 @@ AC_DEFUN([MPC_COMPLEX_H], [
             [
                AC_LANG_PROGRAM(
                   [[#include <complex.h>]],
-                  [[complex double x = 1.0 + 2.0 * I; return (creal (x) + cimag (x));]]
+                  [[
+#ifdef _MSC_VER
+   _Dcomplex x = 1.0 + 2.0 * I; return (creal (x) + cimag (x));
+#else
+   complex double x = 1.0 + 2.0 * I; return (creal (x) + cimag (x));
+#endif
+                  ]]
                )
             ]
          )
@@ -49,12 +55,17 @@ AC_DEFUN([MPC_COMPLEX_H], [
             [MPC_CONFTEST],
             [
                AC_MSG_RESULT([yes])
-               AC_DEFINE([HAVE_COMPLEX_H], [1], [complex.h present and usable])
+               AC_SUBST([MPC_HAVE_COMPLEX_H], [1])
             ],
             [
                AC_MSG_RESULT([no, build without support for C complex numbers])
+               AC_SUBST([MPC_HAVE_COMPLEX_H], [0])
             ]
          )
+      ],
+      [
+         AC_MSG_RESULT([no, build without support for C complex numbers])
+         AC_SUBST([MPC_HAVE_COMPLEX_H], [0])
       ]
    )
 ])

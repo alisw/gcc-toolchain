@@ -1,11 +1,18 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 CPackComponent
 --------------
 
-Configure components for binary installers and source packages.
+This module provides commands to configure components for binary installers
+and source packages.
+
+Load this module in a CMake project with:
+
+.. code-block:: cmake
+
+  include(CPackComponent)
 
 .. only:: html
 
@@ -14,7 +21,7 @@ Configure components for binary installers and source packages.
 Introduction
 ^^^^^^^^^^^^
 
-This module is automatically included by :module:`CPack`.
+This module is also automatically included by :module:`CPack`.
 
 Certain binary installers (especially the graphical installers) generated
 by CPack allow users to select individual application *components* to install.
@@ -47,7 +54,9 @@ The following variables influence the component-specific packaging:
  list. The :command:`get_cmake_property` command can be used to obtain the
  ``COMPONENTS`` property, then the :command:`list(REMOVE_ITEM)` command can be
  used to remove the unwanted ones. For example, to use all defined components
- except ``foo`` and ``bar``::
+ except ``foo`` and ``bar``:
+
+ .. code-block:: cmake
 
    get_cmake_property(CPACK_COMPONENTS_ALL COMPONENTS)
    list(REMOVE_ITEM CPACK_COMPONENTS_ALL "foo" "bar")
@@ -113,7 +122,7 @@ Add component
 
 Describe an installation component.
 
-::
+.. code-block:: cmake
 
   cpack_add_component(compname
                       [DISPLAY_NAME name]
@@ -190,7 +199,7 @@ Add component group
 
 Describes a group of related CPack installation components.
 
-::
+.. code-block:: cmake
 
   cpack_add_component_group(groupname
                            [DISPLAY_NAME name]
@@ -242,7 +251,7 @@ Add installation type
 Add a new installation type containing
 a set of predefined component selections to the graphical installer.
 
-::
+.. code-block:: cmake
 
   cpack_add_install_type(typename
                          [DISPLAY_NAME name])
@@ -269,7 +278,7 @@ Configure downloads
 Configure CPack to download
 selected components on-the-fly as part of the installation process.
 
-::
+.. code-block:: cmake
 
   cpack_configure_downloads(site
                             [UPLOAD_DIRECTORY dirname]

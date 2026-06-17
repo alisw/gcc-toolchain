@@ -16,6 +16,22 @@
 /* First, we deal with  platform-specific or compiler-specific issues. */
 
 /* begin standard C headers. */
+/* Feature test macros. Flex uses functions that require a minimum set of
+ * macros defined. As defining some macros may hide function declarations that
+ * user code might use, be conservative and respect user's definitions as much
+ * as possible. In glibc, feature test macros may not be all set up until one
+ * of the libc header (that includes <features.h>) is included. This creates
+ * a circular dependency when we check the macros. <assert.h> is the safest
+ * header we can include and does not declare too many functions we don't need.
+ */
+#if !defined(__GNU_LIBRARY__) && defined(__STDC__)
+#include <assert.h>
+#endif
+#if !(defined(_POSIX_C_SOURCE) || defined(_XOPEN_SOURCE) || \
+    defined(_POSIX_SOURCE))
+# define _POSIX_C_SOURCE 1 /* Required for fileno() */
+# define _POSIX_SOURCE 1
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -32,8 +48,8 @@
 
 #if defined (__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 
-/* C99 says to define __STDC_LIMIT_MACROS before including stdint.h,
- * if you want the limit (max/min) macros for int types. 
+/* C++ systems might need __STDC_LIMIT_MACROS defined before including
+ * <stdint.h>, if you want the limit (max/min) macros for int types.
  */
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS 1
@@ -823,13 +839,13 @@ int yylex (void);
 #define YY_NO_INPUT
 #define YY_NO_UNPUT
 
-#line 826 "config/bfin-lex.c"
+#line 842 "config/bfin-lex.c"
 /* Define Start States ... Actually we will use exclusion.
    If no start state is specified it should match any state
    and <INITIAL> would match some keyword rules only with
    initial.  */
 
-#line 832 "config/bfin-lex.c"
+#line 848 "config/bfin-lex.c"
 
 #define INITIAL 0
 #define KEYWORD 1
@@ -1050,7 +1066,7 @@ YY_DECL
 	{
 #line 46 "./config/bfin-lex.l"
 
-#line 1053 "config/bfin-lex.c"
+#line 1069 "config/bfin-lex.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -2333,7 +2349,7 @@ YY_RULE_SETUP
 #line 340 "./config/bfin-lex.l"
 ECHO;
 	YY_BREAK
-#line 2336 "config/bfin-lex.c"
+#line 2352 "config/bfin-lex.c"
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(KEYWORD):
 case YY_STATE_EOF(FLAGS):

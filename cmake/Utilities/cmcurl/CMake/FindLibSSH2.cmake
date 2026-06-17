@@ -21,25 +21,63 @@
 # SPDX-License-Identifier: curl
 #
 ###########################################################################
-# - Try to find the libssh2 library
-# Once done this will define
+# Find the libssh2 library
 #
-# LIBSSH2_FOUND - system has the libssh2 library
-# LIBSSH2_INCLUDE_DIR - the libssh2 include directory
-# LIBSSH2_LIBRARY - the libssh2 library name
+# Input variables:
+#
+# - `LIBSSH2_INCLUDE_DIR`:   Absolute path to libssh2 include directory.
+# - `LIBSSH2_LIBRARY`:       Absolute path to `libssh2` library.
+#
+# Result variables:
+#
+# - `LIBSSH2_FOUND`:         System has libssh2.
+# - `LIBSSH2_INCLUDE_DIRS`:  The libssh2 include directories.
+# - `LIBSSH2_LIBRARIES`:     The libssh2 library names.
+# - `LIBSSH2_LIBRARY_DIRS`:  The libssh2 library directories.
+# - `LIBSSH2_PC_REQUIRES`:   The libssh2 pkg-config packages.
+# - `LIBSSH2_CFLAGS`:        Required compiler flags.
+# - `LIBSSH2_VERSION`:       Version of libssh2.
 
-find_path(LIBSSH2_INCLUDE_DIR libssh2.h)
+set(LIBSSH2_PC_REQUIRES "libssh2")
 
-find_library(LIBSSH2_LIBRARY NAMES ssh2 libssh2)
-
-if(LIBSSH2_INCLUDE_DIR)
-  file(STRINGS "${LIBSSH2_INCLUDE_DIR}/libssh2.h" libssh2_version_str REGEX "^#define[\t ]+LIBSSH2_VERSION[\t ]+\"(.*)\"")
-  string(REGEX REPLACE "^.*\"([^\"]+)\"" "\\1"  LIBSSH2_VERSION "${libssh2_version_str}")
+if(CURL_USE_PKGCONFIG AND
+   NOT DEFINED LIBSSH2_INCLUDE_DIR AND
+   NOT DEFINED LIBSSH2_LIBRARY)
+  find_package(PkgConfig QUIET)
+  pkg_check_modules(LIBSSH2 ${LIBSSH2_PC_REQUIRES})
 endif()
 
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(LibSSH2
-    REQUIRED_VARS LIBSSH2_LIBRARY LIBSSH2_INCLUDE_DIR
-    VERSION_VAR LIBSSH2_VERSION)
+if(LIBSSH2_FOUND AND LIBSSH2_INCLUDE_DIRS)
+  set(Libssh2_FOUND TRUE)
+  string(REPLACE ";" " " LIBSSH2_CFLAGS "${LIBSSH2_CFLAGS}")
+  message(STATUS "Found Libssh2 (via pkg-config): ${LIBSSH2_INCLUDE_DIRS} (found version \"${LIBSSH2_VERSION}\")")
+else()
+  find_path(LIBSSH2_INCLUDE_DIR NAMES "libssh2.h")
+  find_library(LIBSSH2_LIBRARY NAMES "ssh2" "libssh2")
 
-mark_as_advanced(LIBSSH2_INCLUDE_DIR LIBSSH2_LIBRARY)
+  unset(LIBSSH2_VERSION CACHE)
+  if(LIBSSH2_INCLUDE_DIR AND EXISTS "${LIBSSH2_INCLUDE_DIR}/libssh2.h")
+    set(_version_regex "#[\t ]*define[\t ]+LIBSSH2_VERSION[\t ]+\"([^\"]*)\"")
+    file(STRINGS "${LIBSSH2_INCLUDE_DIR}/libssh2.h" _version_str REGEX "${_version_regex}")
+    string(REGEX REPLACE "${_version_regex}" "\\1" _version_str "${_version_str}")
+    set(LIBSSH2_VERSION "${_version_str}")
+    unset(_version_regex)
+    unset(_version_str)
+  endif()
+
+  include(FindPackageHandleStandardArgs)
+  find_package_handle_standard_args(Libssh2
+    REQUIRED_VARS
+      LIBSSH2_INCLUDE_DIR
+      LIBSSH2_LIBRARY
+    VERSION_VAR
+      LIBSSH2_VERSION
+  )
+
+  if(LIBSSH2_FOUND)
+    set(LIBSSH2_INCLUDE_DIRS ${LIBSSH2_INCLUDE_DIR})
+    set(LIBSSH2_LIBRARIES    ${LIBSSH2_LIBRARY})
+  endif()
+
+  mark_as_advanced(LIBSSH2_INCLUDE_DIR LIBSSH2_LIBRARY)
+endif()

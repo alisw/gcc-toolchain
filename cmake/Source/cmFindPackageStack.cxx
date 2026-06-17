@@ -1,7 +1,15 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #define cmFindPackageStack_cxx
 #include "cmFindPackageStack.h"
 
-#include "cmConstStack.tcc" // IWYU pragma: keep
-template class cmConstStack<cmFindPackageCall, cmFindPackageStack>;
+#include "cmStack.tcc" // IWYU pragma: keep
+template class cmStack<cmFindPackageCall, cmFindPackageStack>;
+
+template cmFindPackageCall&
+cmStack<cmFindPackageCall, cmFindPackageStack>::Top<true>();
+
+cmFindPackageCall const& cmFindPackageStack::Top() const
+{
+  return this->cmStack::Top();
+}

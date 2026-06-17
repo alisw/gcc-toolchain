@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmLocalVisualStudioGenerator.h"
 
 #include <utility>
@@ -18,6 +18,7 @@
 #include "cmOutputConverter.h"
 #include "cmSourceFile.h"
 #include "cmStateTypes.h"
+#include "cmStringAlgorithms.h"
 #include "cmSystemTools.h"
 #include "cmValue.h"
 
@@ -38,8 +39,8 @@ cmLocalVisualStudioGenerator::GetVersion() const
 }
 
 void cmLocalVisualStudioGenerator::ComputeObjectFilenames(
-  std::map<cmSourceFile const*, std::string>& mapping,
-  cmGeneratorTarget const* gt)
+  std::map<cmSourceFile const*, cmObjectLocations>& mapping,
+  std::string const& config, cmGeneratorTarget const* gt)
 {
   char const* custom_ext = gt->GetCustomObjectExtension();
   std::string dir_max = this->ComputeLongestObjectDirectory(gt);
@@ -50,8 +51,19 @@ void cmLocalVisualStudioGenerator::ComputeObjectFilenames(
 
   for (auto const& si : mapping) {
     cmSourceFile const* sf = si.first;
-    std::string objectNameLower = cmSystemTools::LowerCase(
-      cmSystemTools::GetFilenameWithoutLastExtension(sf->GetFullPath()));
+    std::string baseObjectName;
+    if (gt->GetUseShortObjectNames()) {
+      baseObjectName = this->GetShortObjectFileName(*sf);
+    } else {
+      auto customObjectName = this->GetCustomObjectFileName(*sf);
+      if (customObjectName.empty()) {
+        baseObjectName =
+          cmSystemTools::GetFilenameWithoutLastExtension(sf->GetFullPath());
+      } else {
+        baseObjectName = std::move(customObjectName);
+      }
+    }
+    std::string objectNameLower = cmSystemTools::LowerCase(baseObjectName);
     if (custom_ext) {
       objectNameLower += custom_ext;
     } else {
@@ -66,26 +78,56 @@ void cmLocalVisualStudioGenerator::ComputeObjectFilenames(
 
   for (auto& si : mapping) {
     cmSourceFile const* sf = si.first;
-    std::string objectName =
-      cmSystemTools::GetFilenameWithoutLastExtension(sf->GetFullPath());
-    if (custom_ext) {
-      objectName += custom_ext;
+    std::string shortObjectName = this->GetShortObjectFileName(*sf);
+    std::string longObjectName;
+    auto customObjectName = this->GetCustomObjectFileName(*sf);
+    if (customObjectName.empty()) {
+      longObjectName =
+        cmSystemTools::GetFilenameWithoutLastExtension(sf->GetFullPath());
     } else {
-      objectName += this->GlobalGenerator->GetLanguageOutputExtension(*sf);
+      longObjectName = std::move(customObjectName);
+      const_cast<cmGeneratorTarget*>(gt)->AddExplicitObjectName(sf);
     }
-    if (counts[cmSystemTools::LowerCase(objectName)] > 1) {
+    if (custom_ext) {
+      shortObjectName += custom_ext;
+      longObjectName += custom_ext;
+    } else {
+      shortObjectName +=
+        this->GlobalGenerator->GetLanguageOutputExtension(*sf);
+      longObjectName += this->GlobalGenerator->GetLanguageOutputExtension(*sf);
+    }
+    if (counts[cmSystemTools::LowerCase(longObjectName)] > 1) {
       const_cast<cmGeneratorTarget*>(gt)->AddExplicitObjectName(sf);
       bool keptSourceExtension;
-      objectName = this->GetObjectFileNameWithoutTarget(
-        *sf, dir_max, &keptSourceExtension, custom_ext);
+      bool forceShortObjectName = false;
+      longObjectName = this->GetObjectFileNameWithoutTarget(
+        *sf, dir_max, &keptSourceExtension, custom_ext, &forceShortObjectName);
     }
-    si.second = objectName;
+    si.second.ShortLoc.emplace(shortObjectName);
+    si.second.LongLoc.Update(longObjectName);
+    this->FillCustomInstallObjectLocations(*sf, config, custom_ext,
+                                           si.second.InstallLongLoc);
   }
+}
+
+std::string cmLocalVisualStudioGenerator::GetObjectOutputRoot(
+  cmStateEnums::IntermediateDirKind kind) const
+{
+  if (this->UseShortObjectNames(kind)) {
+    return cmStrCat(this->GetCurrentBinaryDirectory(), '/',
+                    this->GetGlobalGenerator()->GetShortBinaryOutputDir());
+  }
+  return this->GetCurrentBinaryDirectory();
+}
+
+bool cmLocalVisualStudioGenerator::AlwaysUsesCMFPaths() const
+{
+  return false;
 }
 
 std::unique_ptr<cmCustomCommand>
 cmLocalVisualStudioGenerator::MaybeCreateImplibDir(cmGeneratorTarget* target,
-                                                   const std::string& config,
+                                                   std::string const& config,
                                                    bool isFortran)
 {
   std::unique_ptr<cmCustomCommand> pcc;
@@ -116,18 +158,18 @@ cmLocalVisualStudioGenerator::MaybeCreateImplibDir(cmGeneratorTarget* target,
   return pcc;
 }
 
-const char* cmLocalVisualStudioGenerator::ReportErrorLabel() const
+char const* cmLocalVisualStudioGenerator::ReportErrorLabel() const
 {
   return ":VCReportError";
 }
 
-const char* cmLocalVisualStudioGenerator::GetReportErrorLabel() const
+char const* cmLocalVisualStudioGenerator::GetReportErrorLabel() const
 {
   return this->ReportErrorLabel();
 }
 
 std::string cmLocalVisualStudioGenerator::ConstructScript(
-  cmCustomCommandGenerator const& ccg, const std::string& newline_text)
+  cmCustomCommandGenerator const& ccg, std::string const& newline_text)
 {
   bool useLocal = this->CustomCommandUseLocal();
   std::string workingDirectory = ccg.GetWorkingDirectory();
@@ -136,12 +178,12 @@ std::string cmLocalVisualStudioGenerator::ConstructScript(
   std::string newline;
 
   // Line to check for error between commands.
-  std::string check_error = newline_text;
+  std::string check_error;
   if (useLocal) {
-    check_error += "if %errorlevel% neq 0 goto :cmEnd";
+    check_error = cmStrCat(newline_text, "if %errorlevel% neq 0 goto :cmEnd");
   } else {
-    check_error += "if errorlevel 1 goto ";
-    check_error += this->GetReportErrorLabel();
+    check_error = cmStrCat(newline_text, "if errorlevel 1 goto ",
+                           this->GetReportErrorLabel());
   }
 
   // Store the script in a string.
@@ -149,26 +191,22 @@ std::string cmLocalVisualStudioGenerator::ConstructScript(
 
   // Open a local context.
   if (useLocal) {
-    script += newline;
+    script = cmStrCat(newline, "setlocal");
     newline = newline_text;
-    script += "setlocal";
   }
 
   if (!workingDirectory.empty()) {
     // Change the working directory.
-    script += newline;
+    script = cmStrCat(script, newline, "cd ",
+                      this->ConvertToOutputFormat(workingDirectory, SHELL),
+                      check_error);
     newline = newline_text;
-    script += "cd ";
-    script += this->ConvertToOutputFormat(workingDirectory, SHELL);
-    script += check_error;
 
     // Change the working drive.
     if (workingDirectory.size() > 1 && workingDirectory[1] == ':') {
-      script += newline;
+      script = cmStrCat(script, newline, workingDirectory[0],
+                        workingDirectory[1], check_error);
       newline = newline_text;
-      script += workingDirectory[0];
-      script += workingDirectory[1];
-      script += check_error;
     }
   }
 
@@ -178,11 +216,8 @@ std::string cmLocalVisualStudioGenerator::ConstructScript(
     cmValue extraPath =
       this->Makefile->GetDefinition("CMAKE_MSVCIDE_RUN_PATH");
     if (extraPath) {
-      script += newline;
+      script = cmStrCat(script, newline, "set PATH=", *extraPath, ";%PATH%");
       newline = newline_text;
-      script += "set PATH=";
-      script += *extraPath;
-      script += ";%PATH%";
     }
   }
 
@@ -227,26 +262,30 @@ std::string cmLocalVisualStudioGenerator::ConstructScript(
 
   // Close the local context.
   if (useLocal) {
-    script += newline;
-    script += ":cmEnd";
-    script += newline;
-    script += "endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone";
-    script += newline;
-    script += ":cmErrorLevel";
-    script += newline;
-    script += "exit /b %1";
-    script += newline;
-    script += ":cmDone";
-    script += newline;
-    script += "if %errorlevel% neq 0 goto ";
-    script += this->GetReportErrorLabel();
+    // clang-format off
+    script = cmStrCat(
+        script
+      , newline
+      , ":cmEnd"
+      , newline
+      , "endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone"
+      , newline
+      , ":cmErrorLevel"
+      , newline
+      , "exit /b %1"
+      , newline
+      , ":cmDone"
+      , newline
+      , "if %errorlevel% neq 0 goto ", this->GetReportErrorLabel()
+      );
+    // clang-format on
   }
 
   return script;
 }
 
 std::string cmLocalVisualStudioGenerator::FinishConstructScript(
-  VsProjectType projectType, const std::string& newline)
+  VsProjectType projectType, std::string const& newline)
 {
   bool useLocal = this->CustomCommandUseLocal();
 

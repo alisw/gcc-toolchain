@@ -8,7 +8,7 @@ Projects may provide further modules; their location(s)
 can be specified in the :variable:`CMAKE_MODULE_PATH` variable.
 
 Utility Modules
-^^^^^^^^^^^^^^^
+===============
 
 These modules are loaded using the :command:`include` command.
 
@@ -30,8 +30,8 @@ These modules are loaded using the :command:`include` command.
    /module/CheckFortranSourceCompiles
    /module/CheckFortranSourceRuns
    /module/CheckFunctionExists
-   /module/CheckIncludeFileCXX
    /module/CheckIncludeFile
+   /module/CheckIncludeFileCXX
    /module/CheckIncludeFiles
    /module/CheckIPOSupported
    /module/CheckLanguage
@@ -55,9 +55,6 @@ These modules are loaded using the :command:`include` command.
    /module/CMakeBackwardCompatibilityCXX
    /module/CMakeDependentOption
    /module/CMakeFindDependencyMacro
-   /module/CMakeFindFrameworks
-   /module/CMakeFindPackageMode
-   /module/CMakeGraphVizOptions
    /module/CMakePackageConfigHelpers
    /module/CMakePrintHelpers
    /module/CMakePrintSystemInformation
@@ -70,7 +67,6 @@ These modules are loaded using the :command:`include` command.
    /module/CSharpUtilities
    /module/CTest
    /module/CTestCoverageCollectGCOV
-   /module/CTestScriptMode
    /module/CTestUseLaunchers
    /module/DeployQt4
    /module/ExternalData
@@ -86,7 +82,6 @@ These modules are loaded using the :command:`include` command.
    /module/InstallRequiredSystemLibraries
    /module/ProcessorCount
    /module/SelectLibraryConfigurations
-   /module/SquishTestScript
    /module/TestForANSIForScope
    /module/TestForANSIStreamHeaders
    /module/TestForSSTREAM
@@ -97,7 +92,7 @@ These modules are loaded using the :command:`include` command.
    /module/UsewxWidgets
 
 Find Modules
-^^^^^^^^^^^^
+============
 
 These modules search for third-party software.
 They are normally called through the :command:`find_package` command.
@@ -112,10 +107,8 @@ They are normally called through the :command:`find_package` command.
    /module/FindBacktrace
    /module/FindBISON
    /module/FindBLAS
-   /module/FindBoost
    /module/FindBullet
    /module/FindBZip2
-   /module/FindCABLE
    /module/FindCoin3D
    /module/FindCUDAToolkit
    /module/FindCups
@@ -134,8 +127,6 @@ They are normally called through the :command:`find_package` command.
    /module/FindFLTK2
    /module/FindFontconfig
    /module/FindFreetype
-   /module/FindGCCXML
-   /module/FindGDAL
    /module/FindGettext
    /module/FindGIF
    /module/FindGit
@@ -192,7 +183,6 @@ They are normally called through the :command:`find_package` command.
    /module/FindOpenSSL
    /module/FindOpenThreads
    /module/Findosg
-   /module/Findosg_functions
    /module/FindosgAnimation
    /module/FindosgDB
    /module/FindosgFX
@@ -231,15 +221,15 @@ They are normally called through the :command:`find_package` command.
    /module/FindRTI
    /module/FindRuby
    /module/FindSDL
-   /module/FindSDL_image
    /module/FindSDL_gfx
+   /module/FindSDL_image
    /module/FindSDL_mixer
    /module/FindSDL_net
    /module/FindSDL_sound
    /module/FindSDL_ttf
    /module/FindSelfPackers
-   /module/FindSquish
    /module/FindSQLite3
+   /module/FindSquish
    /module/FindSubversion
    /module/FindSWIG
    /module/FindTCL
@@ -259,10 +249,10 @@ They are normally called through the :command:`find_package` command.
    /module/FindZLIB
 
 Deprecated Modules
-^^^^^^^^^^^^^^^^^^^
+==================
 
 Deprecated Utility Modules
-==========================
+--------------------------
 
 .. toctree::
    :maxdepth: 1
@@ -270,6 +260,7 @@ Deprecated Utility Modules
    /module/AddFileDependencies
    /module/CMakeDetermineVSServicePack
    /module/CMakeExpandImportedTargets
+   /module/CMakeFindFrameworks
    /module/CMakeForceCompiler
    /module/CMakeParseArguments
    /module/Dart
@@ -278,21 +269,25 @@ Deprecated Utility Modules
    /module/MacroAddFileDependencies
    /module/TestBigEndian
    /module/TestCXXAcceptsFlag
+   /module/Use_wxWindows
    /module/UseJavaClassFilelist
    /module/UseJavaSymlinks
    /module/UsePkgConfig
-   /module/Use_wxWindows
    /module/WriteBasicConfigVersionFile
    /module/WriteCompilerDetectionHeader
 
 Deprecated Find Modules
-=======================
+-----------------------
 
 .. toctree::
    :maxdepth: 1
 
+   /module/FindBoost
+   /module/FindCABLE
    /module/FindCUDA
    /module/FindDart
+   /module/FindGCCXML
+   /module/FindGDAL
    /module/FindITK
    /module/FindPythonInterp
    /module/FindPythonLibs
@@ -302,7 +297,7 @@ Deprecated Find Modules
    /module/FindwxWindows
 
 Legacy CPack Modules
-====================
+--------------------
 
 These modules used to be mistakenly exposed to the user, and have been moved
 out of user visibility. They are for CPack internal use, and should never be
@@ -322,3 +317,17 @@ used directly.
    /module/CPackProductBuild
    /module/CPackRPM
    /module/CPackWIX
+
+Miscellaneous Modules
+---------------------
+
+These internal modules are not intended to be included directly in projects:
+
+.. toctree::
+   :maxdepth: 1
+
+   /module/CMakeFindPackageMode
+   /module/CMakeGraphVizOptions
+   /module/CTestScriptMode
+   /module/Findosg_functions
+   /module/SquishTestScript

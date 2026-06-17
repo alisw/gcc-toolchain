@@ -1,6 +1,6 @@
 /* mpc-tests.h -- Tests helper functions.
 
-Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2020, 2022 INRIA
+Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2020, 2022, 2023, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -26,6 +26,7 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 #include <ctype.h>
 #include <stdlib.h>
 #include <inttypes.h> /* for the PRIi64 format modifier */
+#include <time.h>
 #include "mpc-impl.h"
 
 /* pieces copied from mpc-impl.h */
@@ -82,6 +83,20 @@ do {                                                            \
     : (inex) == 8 ? "(0, -1)"                   \
     : (inex) == 9 ? "(+1, -1)"                  \
     : (inex) == 10 ? "(-1, -1)" : "unknown"
+
+/* Timer functioins, a simplified version of the code in CM without
+   measuring wallclock time. */
+typedef struct {
+   clock_t time_old;
+   double elapsed;
+} __mpc_timer_struct;
+typedef __mpc_timer_struct mpc_timer_t [1];
+
+extern void mpc_timer_start (mpc_timer_t t);
+extern void mpc_timer_reset (mpc_timer_t t);
+extern void mpc_timer_continue (mpc_timer_t t);
+extern void mpc_timer_stop (mpc_timer_t t);
+extern double mpc_timer_get (mpc_timer_t t);
 
 #define TEST_FAILED(func,op,got,expected,rnd)			\
   do {								\
@@ -168,8 +183,8 @@ typedef enum {
   NATIVE_L,            /* signed long */
   NATIVE_D,            /* double */
   NATIVE_LD,           /* long double */
-  NATIVE_DC,           /* double _Complex */
-  NATIVE_LDC,          /* long double _Complex */
+  NATIVE_DC,           /* double complex */
+  NATIVE_LDC,          /* long double complex */
   NATIVE_IM,           /* intmax_t */
   NATIVE_UIM,          /* uintmax_t */
   NATIVE_STRING,       /* char* */
@@ -241,8 +256,8 @@ typedef union {
   uintmax_t            uim;
 #endif
 #ifdef _Complex_I
-  double _Complex      dc;
-  long double _Complex ldc;
+  DOUBLE_COMPLEX       dc;
+  LONG_DOUBLE_COMPLEX  ldc;
 #endif
   char *               string;
   string_info_t        string_info;
@@ -363,5 +378,8 @@ void    next_rnd_mode       (mpc_fun_param_t *params);
 void    set_output_precision    (mpc_fun_param_t *params, mpfr_prec_t prec);
 void    set_input_precision     (mpc_fun_param_t *params, mpfr_prec_t prec);
 void    set_reference_precision (mpc_fun_param_t *params, mpfr_prec_t prec);
+
+/* version printing in random.c */
+void mpc_test_print_libraries (void);
 
 #endif /* __MPC_TESTS_H */

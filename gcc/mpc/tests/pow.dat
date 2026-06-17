@@ -1,6 +1,6 @@
 # Data file for mpc_pow.
 #
-# Copyright (C) 2009, 2011, 2012 INRIA
+# Copyright (C) 2009, 2011, 2012, 2014, 2015, 2016, 2024, 2025 INRIA
 #
 # This file is part of GNU MPC.
 #
@@ -471,3 +471,25 @@
 
 # bug reported by Joseph Myers (07 Apr 2015)
 + - 2 -0x3p1073741819 2 0x3p1073741819 2 1 2 2 2 0x1p1000 2 0 Z Z
+
+# bug founds and fixed on November 13, 2024
+# Re((-4,eps1)^(0.5,eps2)) gives both signs depending on eps1 and eps2
+# in that case we choose the + sign:
+0 0 2 +0 2 +2 2 -4 2 +0 2 0.5 2 +0 N N
+# Re((-4,eps1)^(0.5,-eps2)) gives only + depending on eps1 and eps2:
+0 0 2 +0 2 +2 2 -4 2 +0 2 0.5 2 -0 N N
+# Re((-4,-eps1)^(0.5,eps2)) gives only + depending on eps1 and eps2:
+0 0 2 +0 2 -2 2 -4 2 -0 2 0.5 2 +0 N N
+# Re((-4,-eps1)^(0.5,-eps2)) gives both signs depending on eps1 and eps2:
+0 0 2 +0 2 -2 2 -4 2 -0 2 0.5 2 -0 N N
+# Im((16,eps1)^(0.25,eps2)) gives only + depending on eps1 and eps2:
+0 0 2 +2 2 +0 2 16 2 +0 2 0.25 2 +0 N N
+# Im((16,eps1)^(0.25,-eps2)) gives both signs depending on eps1 and eps2:
+0 0 2 +2 2 +0 2 16 2 +0 2 0.25 2 -0 N N
+# Im((16,-eps1)^(0.25,eps2)) gives both signs depending on eps1 and eps2:
+0 0 2 +2 2 +0 2 16 2 -0 2 0.25 2 +0 N N
+# Im((16,-eps1)^(0.25,-eps2)) gives only - depending on eps1 and eps2
+# [and it should be the conjugate of (16,eps1)^(0.25,eps2)]:
+0 0 2 +2 2 -0 2 16 2 -0 2 0.25 2 -0 N N
+? ? 53 +0 53 -0x1.bb67ae8584caap+0 53 -3 53 -0 53 0.5 53 +0 N N
+? ? 53 +0 53 +0x1.bb67ae8584caap+0 53 -3 53 +0 53 0.5 53 +0 N N

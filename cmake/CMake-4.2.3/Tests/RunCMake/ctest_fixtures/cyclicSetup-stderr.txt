@@ -1,2 +1,0 @@
-^Error: a cycle exists in the test dependency graph for the test "cyclicSetup"\.
-Please fix the cycle and run ctest again\.$

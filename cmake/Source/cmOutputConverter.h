@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -54,7 +54,7 @@ public:
   std::string ConvertDirectorySeparatorsForShell(cm::string_view source) const;
 
   //! for existing files convert to output path and short path if spaces
-  std::string ConvertToOutputForExisting(const std::string& remote,
+  std::string ConvertToOutputForExisting(std::string const& remote,
                                          OutputFormat format = SHELL,
                                          bool useWatcomQuote = false) const;
 
@@ -103,7 +103,8 @@ public:
     Shell_Flag_IsResponse = (1 << 10),
 
     /** The target shell is in a Ninja build file.  */
-    Shell_Flag_Ninja = (1 << 11)
+    Shell_Flag_Ninja = (1 << 11),
+    Shell_Flag_Fastbuild = (1 << 12),
   };
 
   std::string EscapeForShell(cm::string_view str, bool makeVars = false,

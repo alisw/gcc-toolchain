@@ -9,6 +9,8 @@ function(RunClean)
 endfunction()
 RunClean()
 
+run_cmake_with_options(ArchsStandard "-DCMAKE_OSX_ARCHITECTURES=$(ARCHS_STANDARD)")
+
 run_cmake(ExplicitCMakeLists)
 run_cmake(ImplicitCMakeLists)
 run_cmake(InterfaceLibSources)
@@ -89,6 +91,13 @@ if(XCODE_VERSION VERSION_GREATER_EQUAL 12)
 
   XcodeObjectLibsInTwoProjectsMacOS()
 
+  block()
+    set(RunCMake_TEST_BINARY_DIR ${RunCMake_BINARY_DIR}/BundlePostBuild-build)
+    run_cmake(BundlePostBuild)
+    set(RunCMake_TEST_NO_CLEAN 1)
+    run_cmake_command(BundlePostBuild-build ${CMAKE_COMMAND} --build . --config Debug)
+  endblock()
+
 endif()
 
 function(XcodeSchemaGeneration)
@@ -168,5 +177,15 @@ function(BundleLinkBundle)
 endfunction()
 
 BundleLinkBundle()
+
+if(XCODE_VERSION VERSION_GREATER_EQUAL 12)
+  block()
+    set(RunCMake_TEST_BINARY_DIR ${RunCMake_BINARY_DIR}/XcodeWorkspace-build)
+    run_cmake(XcodeWorkspace)
+    set(RunCMake_TEST_NO_CLEAN 1)
+    run_cmake_command(XcodeWorkspace-build ${CMAKE_COMMAND} --build . --config Debug)
+    run_cmake_command(XcodeWorkspace-build2 ${CMAKE_COMMAND} --build . --config Debug --target custom1 custom2)
+  endblock()
+endif()
 
 # Please add device-specific tests to '../XcodeProject-Device/RunCMakeTest.cmake'.

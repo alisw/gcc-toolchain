@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 ExternalData
@@ -9,7 +9,14 @@ ExternalData
 
    .. contents::
 
-Manage data files stored outside source tree
+This module provides commands to manage data files stored outside source
+tree.
+
+Load this module in a CMake project with:
+
+.. code-block:: cmake
+
+  include(ExternalData)
 
 Introduction
 ^^^^^^^^^^^^
@@ -47,7 +54,9 @@ Module Functions
 .. command:: ExternalData_Expand_Arguments
 
   The ``ExternalData_Expand_Arguments`` function evaluates ``DATA{}``
-  references in its arguments and constructs a new list of arguments::
+  references in its arguments and constructs a new list of arguments:
+
+  .. code-block:: cmake
 
     ExternalData_Expand_Arguments(
       <target>   # Name of data management target
@@ -62,7 +71,9 @@ Module Functions
 
   The ``ExternalData_Add_Test`` function wraps around the CMake
   :command:`add_test` command but supports ``DATA{}`` references in
-  its arguments::
+  its arguments:
+
+  .. code-block:: cmake
 
     ExternalData_Add_Test(
       <target>   # Name of data management target
@@ -72,10 +83,18 @@ Module Functions
   It passes its arguments through ``ExternalData_Expand_Arguments`` and then
   invokes the :command:`add_test` command using the results.
 
+  .. versionchanged:: 3.31
+    If the arguments after ``<target>`` define a test with an executable
+    that is a CMake target, empty values in the :prop_tgt:`TEST_LAUNCHER`
+    and :prop_tgt:`CROSSCOMPILING_EMULATOR` properties of that target are
+    preserved.  See policy :policy:`CMP0178`.
+
 .. command:: ExternalData_Add_Target
 
   The ``ExternalData_Add_Target`` function creates a custom target to
-  manage local instances of data files stored externally::
+  manage local instances of data files stored externally:
+
+  .. code-block:: cmake
 
     ExternalData_Add_Target(
       <target>                  # Name of data management target
@@ -120,6 +139,14 @@ calling any of the functions provided by this module.
   Specify a full path to a ``.cmake`` custom fetch script identified by
   ``<key>`` in entries of the ``ExternalData_URL_TEMPLATES`` list.
   See `Custom Fetch Scripts`_.
+
+.. variable:: ExternalData_HTTPHEADERS
+
+  .. versionadded:: 4.0
+
+  The ``ExternalData_HTTPHEADERS`` variable may be used to supply a list of
+  headers, each element containing one header with the form ``Key: Value``.
+  See the :command:`file(DOWNLOAD)` command's ``HTTPHEADER`` option.
 
 .. variable:: ExternalData_LINK_CONTENT
 
@@ -232,21 +259,22 @@ members of a series are fetched, only the file originally named by the
 recognizes file series names ending with ``#.ext``, ``_#.ext``, ``.#.ext``,
 or ``-#.ext`` where ``#`` is a sequence of decimal digits and ``.ext`` is
 any single extension.  Configure it with a regex that parses ``<number>``
-and ``<suffix>`` parts from the end of ``<name>``::
+and ``<suffix>`` parts from the end of ``<name>``:
 
- ExternalData_SERIES_PARSE = regex of the form (<number>)(<suffix>)$
+  ``ExternalData_SERIES_PARSE`` - regex of the form ``(<number>)(<suffix>)$``.
 
-For more complicated cases set::
+For more complicated cases set:
 
- ExternalData_SERIES_PARSE = regex with at least two () groups
- ExternalData_SERIES_PARSE_PREFIX = <prefix> regex group number, if any
- ExternalData_SERIES_PARSE_NUMBER = <number> regex group number
- ExternalData_SERIES_PARSE_SUFFIX = <suffix> regex group number
+* ``ExternalData_SERIES_PARSE`` - regex with at least two ``()`` groups.
+* ``ExternalData_SERIES_PARSE_PREFIX`` - regex group number of the ``<prefix>``, if any.
+* ``ExternalData_SERIES_PARSE_NUMBER`` - regex group number of the ``<number>``.
+* ``ExternalData_SERIES_PARSE_SUFFIX`` - regex group number of the ``<suffix>``.
 
 Configure series number matching with a regex that matches the
-``<number>`` part of series members named ``<prefix><number><suffix>``::
+``<number>`` part of series members named ``<prefix><number><suffix>``:
 
- ExternalData_SERIES_MATCH = regex matching <number> in all series members
+  ``ExternalData_SERIES_MATCH`` - regex matching ``<number>`` in all series
+  members
 
 Note that the ``<suffix>`` of a series does not include a hash-algorithm
 extension.
@@ -286,20 +314,22 @@ source directory.
 Hash Algorithms
 ^^^^^^^^^^^^^^^
 
-The following hash algorithms are supported::
+The following hash algorithms are supported:
 
- %(algo)     <ext>     Description
- -------     -----     -----------
- MD5         .md5      Message-Digest Algorithm 5, RFC 1321
- SHA1        .sha1     US Secure Hash Algorithm 1, RFC 3174
- SHA224      .sha224   US Secure Hash Algorithms, RFC 4634
- SHA256      .sha256   US Secure Hash Algorithms, RFC 4634
- SHA384      .sha384   US Secure Hash Algorithms, RFC 4634
- SHA512      .sha512   US Secure Hash Algorithms, RFC 4634
- SHA3_224    .sha3-224 Keccak SHA-3
- SHA3_256    .sha3-256 Keccak SHA-3
- SHA3_384    .sha3-384 Keccak SHA-3
- SHA3_512    .sha3-512 Keccak SHA-3
+ ============ ============= ============
+ %(algo)      <ext>         Description
+ ============ ============= ============
+ ``MD5``      ``.md5``      Message-Digest Algorithm 5, RFC 1321
+ ``SHA1``     ``.sha1``     US Secure Hash Algorithm 1, RFC 3174
+ ``SHA224``   ``.sha224``   US Secure Hash Algorithms, RFC 4634
+ ``SHA256``   ``.sha256``   US Secure Hash Algorithms, RFC 4634
+ ``SHA384``   ``.sha384``   US Secure Hash Algorithms, RFC 4634
+ ``SHA512``   ``.sha512``   US Secure Hash Algorithms, RFC 4634
+ ``SHA3_224`` ``.sha3-224`` Keccak SHA-3
+ ``SHA3_256`` ``.sha3-256`` Keccak SHA-3
+ ``SHA3_384`` ``.sha3-384`` Keccak SHA-3
+ ``SHA3_512`` ``.sha3-512`` Keccak SHA-3
+ ============ ============= ============
 
 .. versionadded:: 3.8
   Added the ``SHA3_*`` hash algorithms.
@@ -353,7 +383,17 @@ file or set a variable:
 function(ExternalData_add_test target)
   # Expand all arguments as a single string to preserve escaped semicolons.
   ExternalData_expand_arguments("${target}" testArgs "${ARGN}")
-  add_test(${testArgs})
+
+  # We need the caller's CMP0178 policy setting to apply here
+  cmake_policy(GET CMP0178 cmp0178
+    PARENT_SCOPE  # undocumented, do not use outside of CMake
+  )
+
+  # ExternalData_expand_arguments() escapes semicolons, so we should still be
+  # preserving empty elements from ARGN here. But CMP0178 is still important
+  # for correctly handling TEST_LAUNCHER and CROSSCOMPILING_EMULATOR target
+  # properties that contain empty elements.
+  add_test(${testArgs} __CMP0178 "${cmp0178}")
 endfunction()
 
 function(ExternalData_add_target target)
@@ -437,9 +477,22 @@ function(ExternalData_add_target target)
     endif()
   endforeach()
 
+  # Store http headers.
+  if(ExternalData_HTTPHEADERS)
+    message(STATUS "${CMAKE_CURRENT_BINARY_DIR}/${target}_config.cmake")
+    string(CONCAT _ExternalData_CONFIG_CODE "${_ExternalData_CONFIG_CODE}\n"
+      "set(ExternalData_HTTPHEADERS)")
+    foreach(h IN LISTS ExternalData_HTTPHEADERS)
+      string(REPLACE "\\" "\\\\" tmp "${h}")
+      string(REPLACE "\"" "\\\"" h "${tmp}")
+      string(CONCAT _ExternalData_CONFIG_CODE "${_ExternalData_CONFIG_CODE}\n"
+        "list(APPEND ExternalData_HTTPHEADERS \"${h}\")")
+    endforeach()
+  endif()
+
   # Store configuration for use by build-time script.
   set(config ${CMAKE_CURRENT_BINARY_DIR}/${target}_config.cmake)
-  configure_file(${_ExternalData_SELF_DIR}/ExternalData_config.cmake.in ${config} @ONLY)
+  configure_file(${CMAKE_CURRENT_FUNCTION_LIST_DIR}/ExternalData_config.cmake.in ${config} @ONLY)
 
   set(files "")
 
@@ -471,7 +524,7 @@ function(ExternalData_add_target target)
                                    -DExternalData_ACTION=local
                                    -DExternalData_SHOW_PROGRESS=${_ExternalData_add_target_SHOW_PROGRESS}
                                    -DExternalData_CONFIG=${config}
-                                   -P ${_ExternalData_SELF}
+                                   -P ${CMAKE_CURRENT_FUNCTION_LIST_FILE}
           MAIN_DEPENDENCY "${name}"
           )
       endif()
@@ -508,7 +561,7 @@ function(ExternalData_add_target target)
                                    -DExternalData_ACTION=fetch
                                    -DExternalData_SHOW_PROGRESS=${_ExternalData_add_target_SHOW_PROGRESS}
                                    -DExternalData_CONFIG=${config}
-                                   -P ${_ExternalData_SELF}
+                                   -P ${CMAKE_CURRENT_FUNCTION_LIST_FILE}
           # Update whenever the object hash changes.
           MAIN_DEPENDENCY "${name}${first_ext}"
           )
@@ -562,8 +615,6 @@ endfunction()
 
 set(_ExternalData_REGEX_ALGO "MD5|SHA1|SHA224|SHA256|SHA384|SHA512|SHA3_224|SHA3_256|SHA3_384|SHA3_512")
 set(_ExternalData_REGEX_EXT "md5|sha1|sha224|sha256|sha384|sha512|sha3-224|sha3-256|sha3-384|sha3-512")
-set(_ExternalData_SELF "${CMAKE_CURRENT_LIST_FILE}")
-get_filename_component(_ExternalData_SELF_DIR "${_ExternalData_SELF}" PATH)
 
 function(_ExternalData_compute_hash var_hash algo file)
   if("${algo}" MATCHES "^${_ExternalData_REGEX_ALGO}$")
@@ -853,10 +904,7 @@ macro(_ExternalData_arg_series)
 endmacro()
 
 function(_ExternalData_arg_find_files glob pattern regex)
-  cmake_policy(PUSH)
-  cmake_policy(SET CMP0009 NEW)
   file(${glob} globbed RELATIVE "${top_src}" "${top_src}/${pattern}*")
-  cmake_policy(POP)
   set(externals_count -1)
   foreach(entry IN LISTS globbed)
     if("x${entry}" MATCHES "^x(.*)(\\.(${_ExternalData_REGEX_EXT}))$")
@@ -960,6 +1008,12 @@ function(_ExternalData_download_file url file err_var msg_var)
   set(retry 3)
   while(retry)
     math(EXPR retry "${retry} - 1")
+    set(httpheader_args)
+    if (ExternalData_HTTPHEADERS)
+      foreach(h IN LISTS ExternalData_HTTPHEADERS)
+        list(APPEND httpheader_args HTTPHEADER "${h}")
+      endforeach()
+    endif()
     if(ExternalData_TIMEOUT_INACTIVITY)
       set(inactivity_timeout INACTIVITY_TIMEOUT ${ExternalData_TIMEOUT_INACTIVITY})
     elseif(NOT "${ExternalData_TIMEOUT_INACTIVITY}" EQUAL 0)
@@ -978,7 +1032,7 @@ function(_ExternalData_download_file url file err_var msg_var)
     if (ExternalData_SHOW_PROGRESS)
       list(APPEND show_progress_args SHOW_PROGRESS)
     endif ()
-    file(DOWNLOAD "${url}" "${file}" STATUS status LOG log ${inactivity_timeout} ${absolute_timeout} ${show_progress_args})
+    file(DOWNLOAD "${url}" "${file}" STATUS status LOG log ${httpheader_args} ${inactivity_timeout} ${absolute_timeout} ${show_progress_args})
     list(GET status 0 err)
     list(GET status 1 msg)
     if(err)

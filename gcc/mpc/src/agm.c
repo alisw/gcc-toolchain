@@ -88,8 +88,8 @@ mpc_agm_general (mpc_ptr rop, mpc_srcptr a, mpc_srcptr b, mpc_rnd_t rnd)
 
    /* Compute an approximation k1 of the precision loss in the first
       iteration. */
-   mpc_init2 (b0, 2);
-   mpc_init2 (a1, 2);
+   mpc_init2 (b0, MPFR_PREC_MIN);
+   mpc_init2 (a1, MPFR_PREC_MIN);
    prec = 1;
    do {
       prec *= 2;
@@ -115,6 +115,11 @@ mpc_agm_general (mpc_ptr rop, mpc_srcptr a, mpc_srcptr b, mpc_rnd_t rnd)
    mpc_clear (b0);
    k1 = MPC_MAX (3, - 2 * exp_re_a1 - 2);
 
+   mpc_init2 (an, MPFR_PREC_MIN);
+   mpc_init2 (bn, MPFR_PREC_MIN);
+   mpc_init2 (anp1, MPFR_PREC_MIN);
+   mpc_init2 (bnp1, MPFR_PREC_MIN);
+
    /* Compute the number n of iterations and the target precision. */
    N = MPC_MAX_PREC (rop) + 20;
       /* 20 is an arbitrary safety margin. */
@@ -134,10 +139,10 @@ mpc_agm_general (mpc_ptr rop, mpc_srcptr a, mpc_srcptr b, mpc_rnd_t rnd)
       n = L + mpc_ceil_log2 (N + 4) + 3;
       prec = N + (n + k1 + 7 + 1) / 2;
 
-      mpc_init2 (an, prec);
-      mpc_init2 (bn, prec);
-      mpc_init2 (anp1, prec);
-      mpc_init2 (bnp1, prec);
+      mpc_set_prec (an, prec);
+      mpc_set_prec (bn, prec);
+      mpc_set_prec (anp1, prec);
+      mpc_set_prec (bnp1, prec);
 
       /* Compute the argument for AGM (1, b0) at the working precision. */
       if (cmp >= 0)

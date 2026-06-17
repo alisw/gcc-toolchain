@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -13,17 +13,25 @@
 #include <utility>
 #include <vector>
 
-#include "cmComputeComponentGraph.h"
+#include <cm/optional>
+
 #include "cmGraphAdjacencyList.h"
 #include "cmLinkItem.h"
 #include "cmListFileCache.h"
 #include "cmTargetLinkLibraryType.h"
 
+class cmComputeComponentGraph;
 class cmGeneratorTarget;
 class cmGlobalGenerator;
 class cmMakefile;
 class cmSourceFile;
 class cmake;
+
+enum class LinkLibrariesStrategy
+{
+  REORDER_MINIMALLY,
+  REORDER_FREELY,
+};
 
 /** \class cmComputeLinkDepends
  * \brief Compute link dependencies for targets.
@@ -31,13 +39,13 @@ class cmake;
 class cmComputeLinkDepends
 {
 public:
-  cmComputeLinkDepends(cmGeneratorTarget const* target,
-                       const std::string& config,
-                       const std::string& linkLanguage);
+  cmComputeLinkDepends(cmGeneratorTarget const* target, std::string config,
+                       std::string linkLanguage,
+                       LinkLibrariesStrategy strategy);
   ~cmComputeLinkDepends();
 
-  cmComputeLinkDepends(const cmComputeLinkDepends&) = delete;
-  cmComputeLinkDepends& operator=(const cmComputeLinkDepends&) = delete;
+  cmComputeLinkDepends(cmComputeLinkDepends const&) = delete;
+  cmComputeLinkDepends& operator=(cmComputeLinkDepends const&) = delete;
 
   // Basic information about each link item.
   struct LinkEntry
@@ -76,20 +84,18 @@ public:
   using EntryVector = std::vector<LinkEntry>;
   EntryVector const& Compute();
 
-  void SetOldLinkDirMode(bool b);
-  std::set<cmGeneratorTarget const*> const& GetOldWrongConfigItems() const
-  {
-    return this->OldWrongConfigItems;
-  }
-
 private:
   // Context information.
-  cmGeneratorTarget const* Target;
-  cmMakefile* Makefile;
-  cmGlobalGenerator const* GlobalGenerator;
+  cmGeneratorTarget const* Target = nullptr;
+  cmMakefile* Makefile = nullptr;
+  cmGlobalGenerator const* GlobalGenerator = nullptr;
   cmake* CMakeInstance;
-  std::string LinkLanguage;
   std::string Config;
+  bool DebugMode = false;
+  std::string LinkLanguage;
+  cmTargetLinkLibraryType LinkType;
+  LinkLibrariesStrategy Strategy;
+
   EntryVector FinalLinkEntries;
   std::map<std::string, std::string> LinkLibraryOverride;
 
@@ -98,16 +104,18 @@ private:
 
   std::pair<std::map<cmLinkItem, size_t>::iterator, bool> AllocateLinkEntry(
     cmLinkItem const& item);
-  std::pair<size_t, bool> AddLinkEntry(
-    cmLinkItem const& item,
-    size_t groupIndex = cmComputeComponentGraph::INVALID_COMPONENT);
+  std::pair<size_t, bool> AddLinkEntry(cmLinkItem const& item,
+                                       cm::optional<size_t> groupIndex);
   void AddLinkObject(cmLinkItem const& item);
-  void AddVarLinkEntries(size_t depender_index, const char* value);
+  void AddVarLinkEntries(cm::optional<size_t> depender_index,
+                         char const* value);
   void AddDirectLinkEntries();
   template <typename T>
-  void AddLinkEntries(size_t depender_index, std::vector<T> const& libs);
+  void AddLinkEntries(cm::optional<size_t> depender_index,
+                      std::vector<T> const& libs);
   void AddLinkObjects(std::vector<cmLinkItem> const& objs);
-  cmLinkItem ResolveLinkItem(size_t depender_index, const std::string& name);
+  cmLinkItem ResolveLinkItem(cm::optional<size_t> depender_index,
+                             std::string const& name);
 
   // One entry for each unique item.
   std::vector<LinkEntry> EntryList;
@@ -120,8 +128,8 @@ private:
   struct BFSEntry
   {
     size_t Index;
-    size_t GroupIndex;
-    const char* LibDepends;
+    cm::optional<size_t> GroupIndex;
+    char const* LibDepends;
   };
   std::queue<BFSEntry> BFSQueue;
   void FollowLinkEntry(BFSEntry qe);
@@ -192,19 +200,14 @@ private:
   void VisitEntry(size_t index);
   PendingComponent& MakePendingComponent(size_t component);
   size_t ComputeComponentCount(NodeList const& nl);
+  void DisplayOrderedEntries();
   void DisplayFinalEntries();
 
   // Record of the original link line.
   std::vector<size_t> OriginalEntries;
-  std::set<cmGeneratorTarget const*> OldWrongConfigItems;
-  void CheckWrongConfigItem(cmLinkItem const& item);
 
   // Record of explicitly linked object files.
   std::vector<size_t> ObjectEntries;
 
   size_t ComponentOrderId;
-  cmTargetLinkLibraryType LinkType;
-  bool HasConfig;
-  bool DebugMode;
-  bool OldLinkDirMode;
 };

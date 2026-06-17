@@ -1,3 +1,0 @@
-Cannot find file: [^
-]*/Tests/RunCMake/CTestCommandLine/EmptyDirCoverage-ctest-build/DartConfiguration\.tcl
- Cannot find any coverage files\. Ignoring Coverage request\.$

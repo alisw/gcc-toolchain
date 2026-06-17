@@ -61,10 +61,38 @@ test_integer_values (void)
 
 #include "tgeneric.tpl"
 
+static void
+check_divby0_exc (void)
+{
+  mpc_t z;
+  struct {
+    double re, im;
+  } data[] = {{+0.0, +0.0},
+              {+0.0, -0.0},
+              {-0.0, +0.0},
+              {-0.0, -0.0}};
+
+  mpc_init2 (z, 53);
+  for (size_t i = 0; i < 4; i++) {
+    mpc_set_d_d (z, data[i].re, data[i].im, MPC_RNDNN);
+    mpfr_clear_flags ();
+    mpc_pow_d (z, z, -1.0, MPC_RNDNN);
+    if (!mpfr_divby0_p ()) {
+      printf ("Missing division-by-zero exception\n");
+      exit (1);
+    }
+  }
+  mpfr_clear_flags ();
+  mpc_clear (z);
+}
+
+
 int
 main (void)
 {
   test_start ();
+
+  check_divby0_exc ();
 
   tgeneric_template ("pow_d.dsc", 2, 1024, 15, 20);
 

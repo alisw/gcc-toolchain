@@ -50,10 +50,41 @@ test_large (void)
 
 #include "data_check.tpl"
 
+static void
+check_divby0_exc (void)
+{
+  mpc_t z;
+  mpz_t w;
+  struct {
+    double re, im;
+  } data[] = {{+0.0, +0.0},
+              {+0.0, -0.0},
+              {-0.0, +0.0},
+              {-0.0, -0.0}};
+
+  mpc_init2 (z, 53);
+  mpz_init (w);
+  mpz_set_si (w, -1);
+  for (size_t i = 0; i < 4; i++) {
+    mpc_set_d_d (z, data[i].re, data[i].im, MPC_RNDNN);
+    mpfr_clear_flags ();
+    mpc_pow_z (z, z, w, MPC_RNDNN);
+    if (!mpfr_divby0_p ()) {
+      printf ("Missing division-by-zero exception\n");
+      exit (1);
+    }
+  }
+  mpfr_clear_flags ();
+  mpc_clear (z);
+  mpz_clear (w);
+}
+
 int
 main (void)
 {
   test_start ();
+
+  check_divby0_exc ();
 
   data_check_template ("pow_z.dsc", "pow_z.dat");
 

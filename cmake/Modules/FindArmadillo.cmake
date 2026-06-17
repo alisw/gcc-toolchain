@@ -1,38 +1,117 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindArmadillo
 -------------
 
-Find the Armadillo C++ library.
-Armadillo is a library for linear algebra & scientific computing.
+Finds the Armadillo C++ library:
+
+.. code-block:: cmake
+
+  find_package(Armadillo [<version>] [...])
+
+Armadillo is a library for linear algebra and scientific computing.
 
 .. versionadded:: 3.18
-  Support for linking wrapped libraries directly (``ARMA_DONT_USE_WRAPPER``).
+  Support for linking wrapped libraries directly (see the
+  ``ARMA_DONT_USE_WRAPPER`` preprocessor macro that needs to be defined before
+  including the ``<armadillo>`` header).
 
-Using Armadillo:
+Result Variables
+^^^^^^^^^^^^^^^^
 
-::
+This module defines the following variables:
+
+``Armadillo_FOUND``
+  .. versionadded:: 3.3
+
+  Boolean indicating whether the (requested version of) Armadillo library
+  was found.
+
+``Armadillo_VERSION``
+  .. versionadded:: 4.2
+
+  The version of Armadillo found (e.g., ``14.90.0``).
+
+``Armadillo_VERSION_NAME``
+  .. versionadded:: 4.2
+
+  The version name of Armadillo found (e.g., ``Antipodean Antileech``).
+
+``ARMADILLO_INCLUDE_DIRS``
+  List of required include directories.
+
+``ARMADILLO_LIBRARIES``
+  List of libraries to be linked.
+
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
+
+The following variables are provided for backward compatibility:
+
+``ARMADILLO_FOUND``
+  .. deprecated:: 4.2
+    Use ``Armadillo_FOUND``, which has the same value.
+
+  Boolean indicating whether the (requested version of) Armadillo library
+  was found.
+
+``ARMADILLO_VERSION_STRING``
+  .. deprecated:: 4.2
+    Superseded by the ``Armadillo_VERSION``.
+
+  The version of Armadillo found.
+
+``ARMADILLO_VERSION_MAJOR``
+  .. deprecated:: 4.2
+    Superseded by the ``Armadillo_VERSION``.
+
+  Major version number.
+
+``ARMADILLO_VERSION_MINOR``
+  .. deprecated:: 4.2
+    Superseded by the ``Armadillo_VERSION``.
+
+  Minor version number.
+
+``ARMADILLO_VERSION_PATCH``
+  .. deprecated:: 4.2
+    Superseded by the ``Armadillo_VERSION``.
+
+  Patch version number.
+
+``ARMADILLO_VERSION_NAME``
+  .. deprecated:: 4.2
+    Superseded by the ``Armadillo_VERSION_NAME``.
+
+  The version name of Armadillo found (e.g., ``Antipodean Antileech``).
+
+Examples
+^^^^^^^^
+
+Finding Armadillo and creating an imported target:
+
+.. code-block:: cmake
 
   find_package(Armadillo REQUIRED)
-  include_directories(${ARMADILLO_INCLUDE_DIRS})
+
+  if(Armadillo_FOUND AND NOT TARGET Armadillo::Armadillo)
+    add_library(Armadillo::Armadillo INTERFACE IMPORTED)
+    set_target_properties(
+      Armadillo::Armadillo
+      PROPERTIES
+        INTERFACE_LINK_LIBRARIES "${ARMADILLO_LIBRARIES}"
+        INTERFACE_INCLUDE_DIRECTORIES "${ARMADILLO_INCLUDE_DIRS}"
+    )
+  endif()
+
   add_executable(foo foo.cc)
-  target_link_libraries(foo ${ARMADILLO_LIBRARIES})
-
-This module sets the following variables:
-
-::
-
-  ARMADILLO_FOUND - set to true if the library is found
-  ARMADILLO_INCLUDE_DIRS - list of required include directories
-  ARMADILLO_LIBRARIES - list of libraries to be linked
-  ARMADILLO_VERSION_MAJOR - major version number
-  ARMADILLO_VERSION_MINOR - minor version number
-  ARMADILLO_VERSION_PATCH - patch version number
-  ARMADILLO_VERSION_STRING - version number as a string (ex: "1.0.4")
-  ARMADILLO_VERSION_NAME - name of the version (ex: "Antipodean Antileech")
+  target_link_libraries(foo PRIVATE Armadillo::Armadillo)
 #]=======================================================================]
+
+cmake_policy(PUSH)
+cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
 find_path(ARMADILLO_INCLUDE_DIR
   NAMES armadillo
@@ -51,10 +130,9 @@ if(ARMADILLO_INCLUDE_DIR)
   set(ARMADILLO_VERSION_MAJOR 0)
   set(ARMADILLO_VERSION_MINOR 0)
   set(ARMADILLO_VERSION_PATCH 0)
-  set(ARMADILLO_VERSION_NAME "EARLY RELEASE")
+  set(Armadillo_VERSION_NAME "EARLY RELEASE")
 
   if(EXISTS "${ARMADILLO_INCLUDE_DIR}/armadillo_bits/arma_version.hpp")
-
     # Read and parse armdillo version header file for version number
     file(STRINGS "${ARMADILLO_INCLUDE_DIR}/armadillo_bits/arma_version.hpp" _ARMA_HEADER_CONTENTS REGEX "#define ARMA_VERSION_[A-Z]+ ")
     string(REGEX REPLACE ".*#define ARMA_VERSION_MAJOR ([0-9]+).*" "\\1" ARMADILLO_VERSION_MAJOR "${_ARMA_HEADER_CONTENTS}")
@@ -62,11 +140,13 @@ if(ARMADILLO_INCLUDE_DIR)
     string(REGEX REPLACE ".*#define ARMA_VERSION_PATCH ([0-9]+).*" "\\1" ARMADILLO_VERSION_PATCH "${_ARMA_HEADER_CONTENTS}")
 
     # WARNING: The number of spaces before the version name is not one.
-    string(REGEX REPLACE ".*#define ARMA_VERSION_NAME\ +\"([0-9a-zA-Z\ _-]+)\".*" "\\1" ARMADILLO_VERSION_NAME "${_ARMA_HEADER_CONTENTS}")
+    string(REGEX REPLACE ".*#define ARMA_VERSION_NAME\ +\"([0-9a-zA-Z\ _-]+)\".*" "\\1" Armadillo_VERSION_NAME "${_ARMA_HEADER_CONTENTS}")
 
+    set(ARMADILLO_VERSION_NAME "${Armadillo_VERSION_NAME}")
   endif()
 
-  set(ARMADILLO_VERSION_STRING "${ARMADILLO_VERSION_MAJOR}.${ARMADILLO_VERSION_MINOR}.${ARMADILLO_VERSION_PATCH}")
+  set(Armadillo_VERSION "${ARMADILLO_VERSION_MAJOR}.${ARMADILLO_VERSION_MINOR}.${ARMADILLO_VERSION_PATCH}")
+  set(ARMADILLO_VERSION_STRING "${Armadillo_VERSION}")
 endif ()
 
 if(EXISTS "${ARMADILLO_INCLUDE_DIR}/armadillo_bits/config.hpp")
@@ -78,9 +158,10 @@ if(EXISTS "${ARMADILLO_INCLUDE_DIR}/armadillo_bits/config.hpp")
   string(REGEX MATCH "ARMA_USE_HDF5" _ARMA_USE_HDF5 "${_ARMA_CONFIG_CONTENTS}")
 endif()
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
+include(FindPackageHandleStandardArgs)
 
-# If _ARMA_USE_WRAPPER is set, then we just link to armadillo, but if it's not then we need support libraries instead
+# If _ARMA_USE_WRAPPER is set, then we just link to armadillo, but if it's not
+# then we need support libraries instead.
 set(_ARMA_SUPPORT_LIBRARIES)
 
 if(_ARMA_USE_WRAPPER)
@@ -96,8 +177,13 @@ if(_ARMA_USE_WRAPPER)
   mark_as_advanced(ARMADILLO_LIBRARY)
   set(_ARMA_REQUIRED_VARS ARMADILLO_LIBRARY)
 else()
-  # Link directly to individual components.
   set(ARMADILLO_LIBRARY "")
+endif()
+
+# Transitive linking with the wrapper does not work with MSVC,
+# so we must *also* link against Armadillo's dependencies.
+if(NOT _ARMA_USE_WRAPPER OR MSVC)
+  # Link directly to individual components.
   foreach(pkg
       LAPACK
       BLAS
@@ -116,9 +202,9 @@ endif()
 
 find_package_handle_standard_args(Armadillo
   REQUIRED_VARS ARMADILLO_INCLUDE_DIR ${_ARMA_REQUIRED_VARS}
-  VERSION_VAR ARMADILLO_VERSION_STRING)
+  VERSION_VAR Armadillo_VERSION)
 
-if (ARMADILLO_FOUND)
+if (Armadillo_FOUND)
   set(ARMADILLO_INCLUDE_DIRS ${ARMADILLO_INCLUDE_DIR})
   set(ARMADILLO_LIBRARIES ${ARMADILLO_LIBRARY} ${_ARMA_SUPPORT_LIBRARIES})
 endif ()
@@ -133,3 +219,5 @@ unset(_ARMA_USE_ARPACK)
 unset(_ARMA_USE_HDF5)
 unset(_ARMA_CONFIG_CONTENTS)
 unset(_ARMA_HEADER_CONTENTS)
+
+cmake_policy(POP)

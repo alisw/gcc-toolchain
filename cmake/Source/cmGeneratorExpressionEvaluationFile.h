@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -14,6 +14,12 @@
 #include "cmGeneratorExpression.h"
 #include "cmPolicies.h"
 
+namespace cm {
+namespace GenEx {
+struct Context;
+}
+}
+
 class cmGeneratorTarget;
 class cmLocalGenerator;
 
@@ -25,7 +31,8 @@ public:
     std::unique_ptr<cmCompiledGeneratorExpression> outputFileExpr,
     std::unique_ptr<cmCompiledGeneratorExpression> condition,
     bool inputIsContent, std::string newLineCharacter, mode_t permissions,
-    cmPolicies::PolicyStatus policyStatusCMP0070);
+    cmPolicies::PolicyStatus policyStatusCMP0070,
+    cmPolicies::PolicyStatus policyStatusCMP0189);
 
   void Generate(cmLocalGenerator* lg);
 
@@ -34,31 +41,30 @@ public:
   void CreateOutputFile(cmLocalGenerator* lg, std::string const& config);
 
 private:
-  void Generate(cmLocalGenerator* lg, const std::string& config,
-                const std::string& lang,
+  void Generate(cmLocalGenerator* lg, std::string const& config,
+                std::string const& lang,
                 cmCompiledGeneratorExpression* inputExpression,
                 std::map<std::string, std::string>& outputFiles, mode_t perm);
 
-  std::string GetInputFileName(cmLocalGenerator* lg);
-  std::string GetOutputFileName(cmLocalGenerator* lg,
-                                cmGeneratorTarget* target,
-                                const std::string& config,
-                                const std::string& lang);
+  std::string GetInputFileName(cmLocalGenerator const* lg);
+  std::string GetOutputFileName(cm::GenEx::Context const& context,
+                                cmGeneratorTarget* target);
   enum PathRole
   {
     PathForInput,
     PathForOutput
   };
   std::string FixRelativePath(std::string const& filePath, PathRole role,
-                              cmLocalGenerator* lg);
+                              cmLocalGenerator const* lg);
 
-  const std::string Input;
-  const std::string Target;
-  const std::unique_ptr<cmCompiledGeneratorExpression> OutputFileExpr;
-  const std::unique_ptr<cmCompiledGeneratorExpression> Condition;
+  std::string const Input;
+  std::string const Target;
+  std::unique_ptr<cmCompiledGeneratorExpression> const OutputFileExpr;
+  std::unique_ptr<cmCompiledGeneratorExpression> const Condition;
   std::vector<std::string> Files;
-  const bool InputIsContent;
-  const std::string NewLineCharacter;
+  bool const InputIsContent;
+  std::string const NewLineCharacter;
   cmPolicies::PolicyStatus PolicyStatusCMP0070;
+  cmPolicies::PolicyStatus PolicyStatusCMP0189;
   mode_t Permissions;
 };

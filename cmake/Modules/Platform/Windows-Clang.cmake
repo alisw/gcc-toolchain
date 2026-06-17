@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 
 # This module is shared by multiple languages; use include blocker.
@@ -33,10 +33,15 @@ macro(__windows_compiler_clang_gnu lang)
   set(CMAKE_FIND_LIBRARY_PREFIXES "lib" "")
   set(CMAKE_FIND_LIBRARY_SUFFIXES ".dll.a" ".a" ".lib")
   set(CMAKE_SUPPORT_WINDOWS_EXPORT_ALL_SYMBOLS 1)
-  set (CMAKE_LINK_DEF_FILE_FLAG "-Xlinker /DEF:")
+  set(CMAKE_${lang}_LINK_DEF_FILE_FLAG "-Xlinker /DEF:")
+  set(CMAKE_LINK_DEF_FILE_FLAG "${CMAKE_${lang}_LINK_DEF_FILE_FLAG}")
+
+  set(CMAKE_${lang}_COMPILE_OPTIONS_SYSROOT "--sysroot=")
 
   set(CMAKE_${lang}_LINKER_WRAPPER_FLAG "-Xlinker" " ")
   set(CMAKE_${lang}_LINKER_WRAPPER_FLAG_SEP)
+
+  set(CMAKE_${lang}_LINK_MODE DRIVER)
 
   set(CMAKE_${lang}_LINKER_MANIFEST_FLAG " -Xlinker /MANIFESTINPUT:")
   set(CMAKE_${lang}_COMPILE_OPTIONS_WARNING_AS_ERROR "-Werror")
@@ -54,8 +59,7 @@ macro(__windows_compiler_clang_gnu lang)
   set(CMAKE_${lang}_LINK_OPTIONS_NO_PIE "")
   set(CMAKE_SHARED_LIBRARY_${lang}_FLAGS "")
   set(CMAKE_SHARED_LIBRARY_CREATE_${lang}_FLAGS "-shared")
-
-  set(CMAKE_${lang}_LINK_LIBRARIES_PROCESSING ORDER=FORWARD UNICITY=ALL)
+  set(CMAKE_${lang}_SHARED_LIBRARY_COMPILE_DEFINITIONS "_WINDLL")
 
   # linker selection
   set(CMAKE_${lang}_USING_LINKER_DEFAULT "-fuse-ld=lld-link")
@@ -84,10 +88,10 @@ macro(__windows_compiler_clang_gnu lang)
   set(CMAKE_${lang}_ARCHIVE_APPEND "<CMAKE_AR> q <TARGET> <LINK_FLAGS> <OBJECTS>")
   set(CMAKE_${lang}_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>")
   set(CMAKE_${lang}_CREATE_SHARED_LIBRARY
-    "<CMAKE_${lang}_COMPILER> -nostartfiles -nostdlib <CMAKE_SHARED_LIBRARY_${lang}_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> <CMAKE_SHARED_LIBRARY_CREATE_${lang}_FLAGS> -o <TARGET> ${CMAKE_GNULD_IMAGE_VERSION} -Xlinker /MANIFEST:EMBED -Xlinker /implib:<TARGET_IMPLIB> -Xlinker /pdb:<TARGET_PDB> -Xlinker /version:<TARGET_VERSION_MAJOR>.<TARGET_VERSION_MINOR> <OBJECTS> <LINK_LIBRARIES> <MANIFESTS>")
+    "<CMAKE_${lang}_COMPILER> -nostartfiles -nostdlib <CMAKE_SHARED_LIBRARY_${lang}_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> -o <TARGET> ${CMAKE_GNULD_IMAGE_VERSION} -Xlinker /MANIFEST:EMBED -Xlinker /implib:<TARGET_IMPLIB> -Xlinker /pdb:<TARGET_PDB> -Xlinker /version:<TARGET_VERSION_MAJOR>.<TARGET_VERSION_MINOR> <OBJECTS> <LINK_LIBRARIES> <MANIFESTS>")
   set(CMAKE_${lang}_CREATE_SHARED_MODULE ${CMAKE_${lang}_CREATE_SHARED_LIBRARY})
   set(CMAKE_${lang}_LINK_EXECUTABLE
-    "<CMAKE_${lang}_COMPILER> -nostartfiles -nostdlib <FLAGS> <CMAKE_${lang}_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> -Xlinker /MANIFEST:EMBED -Xlinker /implib:<TARGET_IMPLIB> -Xlinker /pdb:<TARGET_PDB> -Xlinker /version:<TARGET_VERSION_MAJOR>.<TARGET_VERSION_MINOR> ${CMAKE_GNULD_IMAGE_VERSION} <LINK_LIBRARIES> <MANIFESTS>")
+    "<CMAKE_${lang}_COMPILER> -nostartfiles -nostdlib <FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> -Xlinker /MANIFEST:EMBED -Xlinker /implib:<TARGET_IMPLIB> -Xlinker /pdb:<TARGET_PDB> -Xlinker /version:<TARGET_VERSION_MAJOR>.<TARGET_VERSION_MINOR> ${CMAKE_GNULD_IMAGE_VERSION} <LINK_LIBRARIES> <MANIFESTS>")
 
   set(CMAKE_${lang}_CREATE_WIN32_EXE "-Xlinker /subsystem:windows")
   set(CMAKE_${lang}_CREATE_CONSOLE_EXE "-Xlinker /subsystem:console")
@@ -117,6 +121,13 @@ macro(__windows_compiler_clang_gnu lang)
     string(APPEND CMAKE_${lang}_FLAGS_RELEASE_INIT " -O3 -DNDEBUG${_RTL_FLAGS}")
     string(APPEND CMAKE_${lang}_FLAGS_RELWITHDEBINFO_INIT " -O2 -DNDEBUG${_DBG_FLAGS}${_RTL_FLAGS}")
 
+    # clang-cl accepts -RTC* flags but ignores them.  Simulate this
+    # with the GNU-like drivers by simply passing no flags at all.
+    set(CMAKE_${lang}_COMPILE_OPTIONS_MSVC_RUNTIME_CHECKS_PossibleDataLoss      "")
+    set(CMAKE_${lang}_COMPILE_OPTIONS_MSVC_RUNTIME_CHECKS_StackFrameErrorCheck  "")
+    set(CMAKE_${lang}_COMPILE_OPTIONS_MSVC_RUNTIME_CHECKS_UninitializedVariable "")
+    set(CMAKE_${lang}_COMPILE_OPTIONS_MSVC_RUNTIME_CHECKS_RTCsu                 "")
+
     set(CMAKE_${lang}_COMPILE_OPTIONS_MSVC_DEBUG_INFORMATION_FORMAT_Embedded        -g -Xclang -gcodeview)
     #set(CMAKE_${lang}_COMPILE_OPTIONS_MSVC_DEBUG_INFORMATION_FORMAT_ProgramDatabase) # not supported by Clang
     #set(CMAKE_${lang}_COMPILE_OPTIONS_MSVC_DEBUG_INFORMATION_FORMAT_EditAndContinue) # not supported by Clang
@@ -135,13 +146,6 @@ macro(__windows_compiler_clang_gnu lang)
   string(TOLOWER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_LOWER)
   set(CMAKE_${lang}_STANDARD_LIBRARIES_INIT "-lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 -loldnames")
 
-  # Features for LINK_LIBRARY generator expression
-  if(MSVC_VERSION GREATER "1900")
-    ## WHOLE_ARCHIVE: Force loading all members of an archive
-    set(CMAKE_${lang}_LINK_LIBRARY_USING_WHOLE_ARCHIVE "LINKER:/WHOLEARCHIVE:<LIBRARY>")
-    set(CMAKE_${lang}_LINK_LIBRARY_USING_WHOLE_ARCHIVE_SUPPORTED TRUE)
-  endif()
-
   enable_language(RC)
 endmacro()
 
@@ -155,9 +159,15 @@ macro(__enable_llvm_rc_preprocessing clang_option_prefix extra_pp_flags)
     endif()
     if(DEFINED CMAKE_RC_PREPROCESSOR)
       set(CMAKE_DEPFILE_FLAGS_RC "${clang_option_prefix}-MD ${clang_option_prefix}-MF ${clang_option_prefix}<DEP_FILE>")
-      # The <FLAGS> are passed to the preprocess and the resource compiler to pick
-      # up the eventual -D / -C options passed through the CMAKE_RC_FLAGS.
-      set(CMAKE_RC_COMPILE_OBJECT "<CMAKE_COMMAND> -E cmake_llvm_rc <SOURCE> <OBJECT>.pp <${CMAKE_RC_PREPROCESSOR}> <DEFINES> -DRC_INVOKED <INCLUDES> <FLAGS> ${extra_pp_flags} -E -- <SOURCE> ++ <CMAKE_RC_COMPILER> <DEFINES> -I <SOURCE_DIR> <INCLUDES> <FLAGS> /fo <OBJECT> <OBJECT>.pp")
+      # llvm-rc runs preprocessor starting from LLVM-13, so we can run it directly instead of using "cmake_llvm_rc".
+      # See https://reviews.llvm.org/D100755 for more details.
+      if (CMAKE_GENERATOR MATCHES "FASTBuild")
+        set(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <DEFINES> -I <SOURCE_DIR> <INCLUDES> <FLAGS> /fo<OBJECT> <SOURCE>")
+      else()
+        # The <FLAGS> are passed to the preprocess and the resource compiler to pick
+        # up the eventual -D / -C options passed through the CMAKE_RC_FLAGS.
+        set(CMAKE_RC_COMPILE_OBJECT "<CMAKE_COMMAND> -E cmake_llvm_rc <SOURCE> <OBJECT>.pp <${CMAKE_RC_PREPROCESSOR}> <DEFINES> -DRC_INVOKED <INCLUDES> <FLAGS> ${extra_pp_flags} -E -- <SOURCE> ++ <CMAKE_RC_COMPILER> <DEFINES> -I <SOURCE_DIR> <INCLUDES> <FLAGS> /fo <OBJECT> <OBJECT>.pp")
+      endif()
       if(CMAKE_GENERATOR MATCHES "Ninja")
         set(CMAKE_NINJA_CMCLDEPS_RC 0)
         set(CMAKE_NINJA_DEP_TYPE_RC gcc)
@@ -226,6 +236,8 @@ if("x${CMAKE_C_SIMULATE_ID}" STREQUAL "xMSVC"
       unset(CMAKE_${lang}_COMPILE_OPTIONS_MSVC_DEBUG_INFORMATION_FORMAT_EditAndContinue) # -ZI not supported by Clang
       set(CMAKE_${lang}_COMPILE_OPTIONS_WARNING_AS_ERROR "-WX")
       set(CMAKE_INCLUDE_SYSTEM_FLAG_${lang} "-imsvc")
+
+      set(CMAKE_${lang}_LINK_MODE LINKER)
     endmacro()
   else()
     cmake_policy(GET CMP0091 __WINDOWS_CLANG_CMP0091)
@@ -244,6 +256,14 @@ if("x${CMAKE_C_SIMULATE_ID}" STREQUAL "xMSVC"
     endif()
     unset(__WINDOWS_MSVC_CMP0141)
 
+    cmake_policy(GET CMP0184 __WINDOWS_MSVC_CMP0184)
+    if(__WINDOWS_MSVC_CMP0184 STREQUAL "NEW")
+      set(CMAKE_MSVC_RUNTIME_CHECKS_DEFAULT "$<$<CONFIG:Debug>:StackFrameErrorCheck;UninitializedVariable>")
+    else()
+      set(CMAKE_MSVC_RUNTIME_CHECKS_DEFAULT "")
+    endif()
+    unset(__WINDOWS_MSVC_CMP0184)
+
     set(CMAKE_BUILD_TYPE_INIT Debug)
 
     __enable_llvm_rc_preprocessing("" "-x c")
@@ -257,6 +277,8 @@ else()
   __enable_llvm_rc_preprocessing("" "-x c")
   macro(__windows_compiler_clang_base lang)
     __windows_compiler_gnu(${lang})
+
+    set(CMAKE_${lang}_LINK_MODE DRIVER)
   endmacro()
 endif()
 

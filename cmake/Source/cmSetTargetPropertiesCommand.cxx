@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmSetTargetPropertiesCommand.h"
 
 #include <algorithm>
@@ -34,12 +34,16 @@ bool cmSetTargetPropertiesCommand(std::vector<std::string> const& args,
   cmMakefile& mf = status.GetMakefile();
 
   // loop over all the targets
-  for (const std::string& tname : cmStringRange{ args.begin(), propsIter }) {
+  for (std::string const& tname : cmStringRange{ args.begin(), propsIter }) {
     if (mf.IsAlias(tname)) {
       status.SetError("can not be used on an ALIAS target.");
       return false;
     }
     if (cmTarget* target = mf.FindTargetToUse(tname)) {
+      if (target->IsSymbolic()) {
+        status.SetError("can not be used on a SYMBOLIC target.");
+        return false;
+      }
       // loop through all the props and set them
       for (auto k = propsIter + 1; k != args.end(); k += 2) {
         target->SetProperty(*k, *(k + 1));

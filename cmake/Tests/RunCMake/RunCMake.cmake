@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 foreach(
   arg
@@ -107,11 +107,11 @@ function(run_cmake test)
     if(NOT DEFINED RunCMake_TEST_OPTIONS)
       set(RunCMake_TEST_OPTIONS "")
     endif()
-    if(APPLE)
-      list(APPEND RunCMake_TEST_OPTIONS -DCMAKE_POLICY_DEFAULT_CMP0025=NEW)
-    endif()
     if(RunCMake_TEST_LCC AND NOT RunCMake_TEST_NO_CMP0129)
       list(APPEND RunCMake_TEST_OPTIONS -DCMAKE_POLICY_DEFAULT_CMP0129=NEW)
+    endif()
+    if(CMAKE_HOST_SYSTEM_NAME STREQUAL "AIX")
+      list(APPEND RunCMake_TEST_OPTIONS -DCMAKE_POLICY_DEFAULT_CMP0182=NEW)
     endif()
     if(RunCMake_MAKE_PROGRAM)
       list(APPEND RunCMake_TEST_OPTIONS "-DCMAKE_MAKE_PROGRAM=${RunCMake_MAKE_PROGRAM}")
@@ -143,25 +143,33 @@ function(run_cmake test)
   if(NOT RunCMake_TEST_COMMAND_WORKING_DIRECTORY)
     set(RunCMake_TEST_COMMAND_WORKING_DIRECTORY "${RunCMake_TEST_BINARY_DIR}")
   endif()
-  string(CONCAT _code [[execute_process(
-    COMMAND ${RunCMake_TEST_COMMAND}
-            ${RunCMake_TEST_OPTIONS}
-            ]] "${RunCMake_TEST_RAW_ARGS}\n" [[
-    WORKING_DIRECTORY "${RunCMake_TEST_COMMAND_WORKING_DIRECTORY}"
-    OUTPUT_VARIABLE actual_stdout
-    ERROR_VARIABLE ${actual_stderr_var}
-    RESULT_VARIABLE actual_result
-    ENCODING UTF8
-    ${maybe_timeout}
-    ${maybe_input_file}
-    )]])
+  if(NOT RunCMake_CHECK_ONLY)
+    string(CONCAT _code [[execute_process(
+      COMMAND ${RunCMake_TEST_COMMAND}
+              ${RunCMake_TEST_OPTIONS}
+              ]] "${RunCMake_TEST_RAW_ARGS}\n" [[
+      WORKING_DIRECTORY "${RunCMake_TEST_COMMAND_WORKING_DIRECTORY}"
+      OUTPUT_VARIABLE actual_stdout
+      ERROR_VARIABLE ${actual_stderr_var}
+      RESULT_VARIABLE actual_result
+      ENCODING UTF8
+      ${maybe_timeout}
+      ${maybe_input_file}
+      )]])
+  else()
+    set(expect_result "")
+  endif()
   if(DEFINED ENV{PWD})
     set(old_pwd "$ENV{PWD}")
   else()
     set(old_pwd)
   endif()
-  # Emulate a shell using this directory.
-  set(ENV{PWD} "${RunCMake_TEST_COMMAND_WORKING_DIRECTORY}")
+  if(RunCMake_TEST_COMMAND_PWD)
+    set(ENV{PWD} "${RunCMake_TEST_COMMAND_PWD}")
+  else()
+    # Emulate a shell using this directory.
+    set(ENV{PWD} "${RunCMake_TEST_COMMAND_WORKING_DIRECTORY}")
+  endif()
   cmake_language(EVAL CODE "${_code}")
   if(DEFINED old_pwd)
     set(ENV{PWD} "${old_pwd}")
@@ -193,6 +201,7 @@ function(run_cmake test)
     "|icp?x: remark: Note that use of .-g. without any optimization-level option will turn off most compiler optimizations"
     "|ifx: remark #10440: Note that use of a debug option without any optimization-level option will turnoff most compiler optimizations"
     "|lld-link: warning: procedure symbol record for .* refers to PDB item index [0-9A-Fa-fx]+ which is not a valid function ID record"
+    "|ld: warning: .* has a LOAD segment with RWX permissions"
     "|Error kstat returned"
     "|Hit xcodebuild bug"
     "|Recompacting log\\.\\.\\."
@@ -209,6 +218,7 @@ function(run_cmake test)
     "|[^\n]*xcodebuild[^\n]*DVTCoreDeviceEnabledState: DVTCoreDeviceEnabledState_Disabled set via user default"
     "|[^\n]*xcodebuild[^\n]*DVTPlugInManager"
     "|[^\n]*xcodebuild[^\n]*DVTSDK: Warning: SDK path collision for path"
+    "|[^\n]*xcodebuild[^\n]*IDERunDestination: Supported platforms for the buildables in the current scheme is empty"
     "|[^\n]*xcodebuild[^\n]*Requested but did not find extension point with identifier"
     "|[^\n]*xcodebuild[^\n]*nil host used in call to allows.*HTTPSCertificateForHost"
     "|[^\n]*xcodebuild[^\n]*warning: file type[^\n]*is based on missing file type"
@@ -217,17 +227,19 @@ function(run_cmake test)
     "|[^\n]*offset in archive not a multiple of 8"
     "|[^\n]*from Time Machine by path"
     "|[^\n]*Bullseye Testing Technology"
+    ${RunCMake_TEST_EXTRA_IGNORE_LINE_REGEX}
     ")[^\n]*\n)+"
     )
   if(RunCMake_IGNORE_POLICY_VERSION_DEPRECATION)
     string(REGEX REPLACE [[
 ^CMake Deprecation Warning at [^
 ]*CMakeLists.txt:1 \(cmake_minimum_required\):
-  Compatibility with CMake < 3\.5 will be removed from a future version of
+  Compatibility with CMake < 3\.10 will be removed from a future version of
   CMake.
 
-  Update the VERSION argument <min> value or use a \.\.\.<max> suffix to tell
-  CMake that the project does not need compatibility with older versions\.
+  Update the VERSION argument <min> value\.  Or, use the <min>\.\.\.<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier\.
 +
 ]] "" actual_stderr "${actual_stderr}")
   endif()
@@ -247,6 +259,7 @@ function(run_cmake test)
     endif()
   endforeach()
   unset(RunCMake_TEST_FAILED)
+  unset(RunCMake_TEST_FAILURE_MESSAGE)
   if(RunCMake-check-file AND EXISTS ${top_src}/${RunCMake-check-file})
     include(${top_src}/${RunCMake-check-file})
   else()
@@ -255,7 +268,7 @@ function(run_cmake test)
   if(RunCMake_TEST_FAILED)
     set(msg "${RunCMake_TEST_FAILED}\n${msg}")
   endif()
-  if(msg)
+  if(msg AND NOT RunCMake_CHECK_ONLY)
     string(REPLACE ";" "\" \"" command "\"${RunCMake_TEST_COMMAND}\"")
     if(RunCMake_TEST_OPTIONS)
       string(REPLACE ";" "\" \"" options "\"${RunCMake_TEST_OPTIONS}\"")
@@ -265,8 +278,7 @@ function(run_cmake test)
       string(APPEND command " ${RunCMake_TEST_RAW_ARGS}")
     endif()
     string(APPEND msg "Command was:\n command> ${command}\n")
-  endif()
-  if(msg)
+
     foreach(o IN ITEMS stdout stderr config)
       if(DEFINED expect_${o})
         string(REGEX REPLACE "\n" "\n expect-${o}> " expect_${o} " expect-${o}> ${expect_${o}}")
@@ -277,6 +289,11 @@ function(run_cmake test)
         string(APPEND msg "Actual ${o}:\n${actual_${o}}\n")
       endif()
     endforeach()
+    if(RunCMake_TEST_FAILURE_MESSAGE)
+      string(APPEND msg "${RunCMake_TEST_FAILURE_MESSAGE}")
+    endif()
+  endif()
+  if(msg)
     message(SEND_ERROR "${test}${RunCMake_TEST_VARIANT_DESCRIPTION} - FAILED:\n${msg}")
   else()
     message(STATUS "${test}${RunCMake_TEST_VARIANT_DESCRIPTION} - PASSED")
@@ -324,6 +341,31 @@ function(ensure_files_match expected_file actual_file)
       ${actual_file_content}\n
     ")
   endif()
+endfunction()
+
+function(RunCMake_check_file type file expect_content)
+  if(EXISTS "${file}")
+    file(READ "${file}" actual_content)
+    string(REPLACE "\r\n" "\n" actual_content "${actual_content}")
+    string(REGEX REPLACE "\n+$" "" actual_content "${actual_content}")
+    string(REPLACE "\t" "  " actual_content "${actual_content}")
+    if(NOT actual_content MATCHES "${expect_content}")
+      string(REPLACE "\n" "\n expect-${type}> " expect_content " expect-${type}> ${expect_content}")
+      string(REPLACE "\n" "\n actual-${type}> " actual_content " actual-${type}> ${actual_content}")
+      string(APPEND RunCMake_TEST_FAILED "${type} does not match that expected.\n"
+        "Expected ${type} to match:\n${expect_content}\n"
+        "Actual ${type}:\n${actual_content}\n"
+      )
+    endif()
+  else()
+    string(APPEND RunCMake_TEST_FAILED "${type} file does not exist:\n ${file}\n")
+  endif()
+  return(PROPAGATE RunCMake_TEST_FAILED)
+endfunction()
+
+function(RunCMake_check_slnx slnx_file expect_slnx)
+  RunCMake_check_file("slnx" "${slnx_file}" "${expect_slnx}")
+  return(PROPAGATE RunCMake_TEST_FAILED)
 endfunction()
 
 # Get the user id on unix if possible.

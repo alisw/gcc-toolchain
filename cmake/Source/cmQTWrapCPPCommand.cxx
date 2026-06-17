@@ -1,10 +1,11 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmQTWrapCPPCommand.h"
 
 #include <utility>
 
 #include <cm/memory>
+#include <cm/string_view>
 
 #include "cmCustomCommand.h"
 #include "cmCustomCommandLines.h"
@@ -43,6 +44,8 @@ bool cmQTWrapCPPCommand(std::vector<std::string> const& args,
       std::string newName =
         cmStrCat(mf.GetCurrentBinaryDirectory(), "/moc_", srcName, ".cxx");
       cmSourceFile* sf = mf.GetOrCreateSource(newName, true);
+      sf->SetSpecialSourceType(
+        cmSourceFile::SpecialSourceType::QtWrapCppSource);
       if (curr) {
         sf->SetProperty("ABSTRACT", curr->GetProperty("ABSTRACT"));
       }

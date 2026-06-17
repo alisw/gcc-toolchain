@@ -39,6 +39,32 @@ bug20091120 (void)
   mpc_clear (y);
 }
 
+static void
+check_divby0_exc (void)
+{
+  mpc_t z;
+  struct {
+    double re, im;
+  } data[] = {{+1.0, +0.0},
+              {+1.0, -0.0},
+              {-1.0, +0.0},
+              {-1.0, -0.0}};
+
+  mpc_init2 (z, 53);
+  for (size_t i = 0; i < 4; i++) {
+    mpc_set_d_d (z, data[i].re, data[i].im, MPC_RNDNN);
+    mpfr_clear_flags ();
+    mpc_atanh (z, z, MPC_RNDNN);
+    if (!mpfr_divby0_p ()) {
+      printf ("Missing division-by-zero exception for (%la,%la)\n",
+              data[i].re, data[i].im);
+      exit (1);
+    }
+  }
+  mpfr_clear_flags ();
+  mpc_clear (z);
+}
+
 #define MPC_FUNCTION_CALL                                       \
   P[0].mpc_inex = mpc_atanh (P[1].mpc, P[2].mpc, P[3].mpc_rnd)
 #define MPC_FUNCTION_CALL_REUSE_OP1                             \
@@ -53,6 +79,8 @@ main (void)
   test_start ();
 
   bug20091120 ();
+
+  check_divby0_exc ();
 
   data_check_template ("atanh.dsc", "atanh.dat");
 

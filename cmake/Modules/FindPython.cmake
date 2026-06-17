@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindPython
@@ -7,8 +7,12 @@ FindPython
 
 .. versionadded:: 3.12
 
-Find Python interpreter, compiler and development environment (include
-directories and libraries).
+Finds Python interpreter, compiler and development environment (include
+directories and libraries):
+
+.. code-block:: cmake
+
+  find_package(Python [<version>] [COMPONENTS <components>...] [...])
 
 .. versionadded:: 3.19
   When a version is requested, it can be specified as a simple value or as a
@@ -38,19 +42,40 @@ The following components are supported:
       `Stable Application Binary Interface <https://docs.python.org/3/c-api/stable.html>`_.
       This component is available only for version ``3.2`` and upper.
 
-* ``NumPy``: search for NumPy include directories.
-
 .. versionadded:: 3.14
-  Added the ``NumPy`` component.
+
+  * ``NumPy``: search for NumPy include directories. Specifying this component
+    imply also the components ``Interpreter`` and ``Development.Module``.
+
+  .. versionchanged:: 4.2
+    The component ``Development.Module`` is no longer implied when the policy
+    :policy:`CMP0201` is set to ``NEW``.
 
 If no ``COMPONENTS`` are specified, ``Interpreter`` is assumed.
 
 If component ``Development`` is specified, it implies sub-components
 ``Development.Module`` and ``Development.Embed``.
 
+.. versionchanged:: 4.1
+  In a cross-compiling mode (i.e. the :variable:`CMAKE_CROSSCOMPILING` variable
+  is defined to true), the following constraints, when the policy
+  :policy:`CMP0190` is set to ``NEW``, now apply to the requested components:
+
+  * ``Interpreter`` or ``Compiler`` alone: the host artifacts will be searched.
+  * ``Interpreter`` or ``Compiler`` with ``Development`` or any sub-component:
+    The target artifacts will be searched. In this case, the
+    :variable:`CMAKE_CROSSCOMPILING_EMULATOR` variable must be defined and will
+    be used to execute the interpreter or the compiler.
+
+  When both host and target artifacts are needed, two different calls to the
+  :command:`find_package` command should be done. The
+  ``Python_ARTIFACTS_PREFIX`` variable can be helpful in this situation.
+
 To ensure consistent versions between components ``Interpreter``, ``Compiler``,
 ``Development`` (or one of its sub-components) and ``NumPy``, specify all
-components at the same time::
+components at the same time:
+
+.. code-block:: cmake
 
   find_package (Python COMPONENTS Interpreter Development)
 
@@ -70,16 +95,32 @@ To manage concurrent versions 3 and 2 of Python, use :module:`FindPython3` and
 Imported Targets
 ^^^^^^^^^^^^^^^^
 
-This module defines the following :ref:`Imported Targets <Imported Targets>`:
+This module provides the following :ref:`Imported Targets`:
 
 .. versionchanged:: 3.14
   :ref:`Imported Targets <Imported Targets>` are only created when
   :prop_gbl:`CMAKE_ROLE` is ``PROJECT``.
 
 ``Python::Interpreter``
-  Python interpreter. Target defined if component ``Interpreter`` is found.
+  Python interpreter. This target is defined only if the ``Interpreter``
+  component is found.
+``Python::InterpreterDebug``
+  .. versionadded:: 3.30
+
+  Python debug interpreter. This target is defined only if the ``Interpreter``
+  component is found and the ``Python_EXECUTABLE_DEBUG`` variable is defined.
+  The target is only defined on the ``Windows`` platform.
+
+``Python::InterpreterMultiConfig``
+  .. versionadded:: 3.30
+
+  Python interpreter. The release or debug version of the interpreter will be
+  used, based on the context (platform, configuration).
+  This target is defined only if the ``Interpreter`` component is found
+
 ``Python::Compiler``
-  Python compiler. Target defined if component ``Compiler`` is found.
+  Python compiler. This target is defined only if the ``Compiler`` component is
+  found.
 
 ``Python::Module``
   .. versionadded:: 3.15
@@ -101,19 +142,38 @@ This module defines the following :ref:`Imported Targets <Imported Targets>`:
   .. versionadded:: 3.14
 
   NumPy Python library. Target defined if component ``NumPy`` is found.
+  Moreover, this target has the ``Python::Module`` target as dependency.
+
+  .. versionchanged:: 4.2
+    This target does not have anymore the ``Python::Module`` target as
+    dependency when the policy :policy:`CMP0201` is set to ``NEW``.
 
 Result Variables
 ^^^^^^^^^^^^^^^^
 
-This module will set the following variables in your project
+This module defines the following variables
 (see :ref:`Standard Variable Names <CMake Developer Standard Variable Names>`):
 
 ``Python_FOUND``
-  System has the Python requested components.
+  Boolean indicating whether system has the Python requested components.
 ``Python_Interpreter_FOUND``
-  System has the Python interpreter.
+  Boolean indicating whether system has the Python interpreter.
 ``Python_EXECUTABLE``
   Path to the Python interpreter.
+``Python_EXECUTABLE_DEBUG``
+  .. versionadded:: 3.30
+
+  Path to the debug Python interpreter. It is only defined on the ``Windows``
+  platform.
+
+``Python_INTERPRETER``
+  .. versionadded:: 3.30
+
+  Path to the Python interpreter, defined as a
+  :manual:`generator expression <cmake-generator-expressions(7)>` selecting
+  the ``Python_EXECUTABLE`` or ``Python_EXECUTABLE_DEBUG`` variable based on
+  the context (platform, configuration).
+
 ``Python_INTERPRETER_ID``
   A short string unique to the interpreter. Possible values include:
     * Python
@@ -159,7 +219,7 @@ This module will set the following variables in your project
   string.
 
 ``Python_Compiler_FOUND``
-  System has the Python compiler.
+  Boolean indicating whether system has the Python compiler.
 ``Python_COMPILER``
   Path to the Python compiler. Only offered by IronPython.
 ``Python_COMPILER_ID``
@@ -172,27 +232,40 @@ This module will set the following variables in your project
   The ``.Net`` interpreter. Only used by ``IronPython`` implementation.
 
 ``Python_Development_FOUND``
-  System has the Python development artifacts.
+  Boolean indicating whether system has the Python development artifacts.
 
 ``Python_Development.Module_FOUND``
   .. versionadded:: 3.18
 
-  System has the Python development artifacts for Python module.
+  Boolean indicating whether system has the Python development artifacts
+  for Python module.
 
 ``Python_Development.SABIModule_FOUND``
   .. versionadded:: 3.26
 
-  System has the Python development artifacts for Python module using the
-  Stable Application Binary Interface.
+  Boolean indicating whether system has the Python development artifacts
+  for Python module using the Stable Application Binary Interface.
 
 ``Python_Development.Embed_FOUND``
   .. versionadded:: 3.18
 
-  System has the Python development artifacts for Python embedding.
+  Boolean indicating whether system has the Python development artifacts
+  for Python embedding.
 
 ``Python_INCLUDE_DIRS``
 
   The Python include directories.
+
+``Python_DEFINITIONS``
+  .. versionadded:: 3.30.3
+
+  The Python preprocessor definitions.
+
+``Python_DEBUG_POSTFIX``
+  .. versionadded:: 3.30
+
+  Postfix of debug python module. This variable can be used to define the
+  :prop_tgt:`DEBUG_POSTFIX` target property.
 
 ``Python_LINK_OPTIONS``
   .. versionadded:: 3.19
@@ -235,7 +308,7 @@ This module will set the following variables in your project
 ``Python_NumPy_FOUND``
   .. versionadded:: 3.14
 
-  System has the NumPy.
+  Boolean indicating whether system has the NumPy.
 
 ``Python_NumPy_INCLUDE_DIRS``
   .. versionadded:: 3.14
@@ -274,42 +347,58 @@ Hints
 
     This hint will be honored only when searched for ``Python`` version 3.
 
-  .. note::
+  The ``Python_FIND_ABI`` variable is a 4-tuple specifying, in that order,
+  ``pydebug`` (``d``), ``pymalloc`` (``m``), ``unicode`` (``u``) and
+  ``gil_disabled`` (``t``) flags.
 
-    If ``Python_FIND_ABI`` is not defined, any ABI will be searched.
+  .. versionadded:: 3.30
+    A fourth element, specifying the ``gil_disabled`` flag (i.e. free
+    threaded python), is added and is optional. If not specified, the value is
+    ``OFF``.
 
-  The ``Python_FIND_ABI`` variable is a 3-tuple specifying, in that order,
-  ``pydebug`` (``d``), ``pymalloc`` (``m``) and ``unicode`` (``u``) flags.
   Each element can be set to one of the following:
 
   * ``ON``: Corresponding flag is selected.
   * ``OFF``: Corresponding flag is not selected.
   * ``ANY``: The two possibilities (``ON`` and ``OFF``) will be searched.
 
-  From this 3-tuple, various ABIs will be searched starting from the most
-  specialized to the most general. Moreover, ``debug`` versions will be
-  searched **after** ``non-debug`` ones.
+  .. note::
 
-  For example, if we have::
+    If ``Python3_FIND_ABI`` is not defined, any ABI, excluding the
+    ``gil_disabled`` flag, will be searched.
 
-    set (Python_FIND_ABI "ON" "ANY" "ANY")
+  From this 4-tuple, various ABIs will be searched starting from the most
+  specialized to the most general. Moreover, when ``ANY`` is specified for
+  ``pydebug`` and ``gil_disabled``, ``debug`` and ``free threaded`` versions
+  will be searched **after** ``non-debug`` and ``non-gil-disabled`` ones.
+
+  For example, if we have:
+
+  .. code-block:: cmake
+
+    set (Python_FIND_ABI "ON" "ANY" "ANY" "ON")
 
   The following flags combinations will be appended, in that order, to the
-  artifact names: ``dmu``, ``dm``, ``du``, and ``d``.
+  artifact names: ``tdmu``, ``tdm``, ``tdu``, and ``td``.
 
-  And to search any possible ABIs::
+  And to search any possible ABIs:
 
-    set (Python_FIND_ABI "ANY" "ANY" "ANY")
+  .. code-block:: cmake
+
+    set (Python_FIND_ABI "ANY" "ANY" "ANY" "ANY")
 
   The following combinations, in that order, will be used: ``mu``, ``m``,
-  ``u``, ``<empty>``, ``dmu``, ``dm``, ``du`` and ``d``.
+  ``u``, ``<empty>``, ``dmu``, ``dm``, ``du``, ``d``, ``tmu``, ``tm``, ``tu``,
+  ``t``, ``tdmu``, ``tdm``, ``tdu``, and ``td``.
 
   .. note::
 
-    This hint is useful only on ``POSIX`` systems. So, on ``Windows`` systems,
+    This hint is useful only on ``POSIX`` systems except for the
+    ``gil_disabled`` flag. So, on ``Windows`` systems,
     when ``Python_FIND_ABI`` is defined, ``Python`` distributions from
-    `python.org <https://www.python.org/>`_ will be found only if value for
-    each flag is ``OFF`` or ``ANY``.
+    `python.org <https://www.python.org/>`_ will be found only if the value for
+    each flag is ``OFF`` or ``ANY`` except for the fourth one
+    (``gil_disabled``).
 
 ``Python_FIND_STRATEGY``
   .. versionadded:: 3.15
@@ -380,9 +469,9 @@ Hints
 
   .. note::
 
-    If the component ``Development`` is requested, it is **strongly**
-    recommended to also include the component ``Interpreter`` to get expected
-    result.
+    If the component ``Development`` is requested (or one of its
+    sub-components) and is not found or the wrong artifacts are returned,
+    including also the component ``Interpreter`` may be helpful.
 
 ``Python_FIND_IMPLEMENTATIONS``
   .. versionadded:: 3.18
@@ -398,7 +487,7 @@ Hints
     See `IronPython <https://ironpython.net>`_.
   * ``PyPy``: This implementation use ``RPython`` language and
     ``RPython translation toolchain`` to produce the python interpreter.
-    See `PyPy <https://www.pypy.org>`_.
+    See `PyPy <https://pypy.org>`_.
 
   The default value is:
 
@@ -506,6 +595,31 @@ can be controlled with the following variable:
   * If set to ``FALSE`` or undefined: Enable multiple version/component
     requirements.
 
+``Python_ARTIFACTS_PREFIX``
+  .. versionadded:: 4.0
+
+  Define a custom prefix which will be used for the definition of all the
+  result variables, targets, and commands. By using this variable, this module
+  supports multiple calls in the same directory with different
+  version/component requirements.
+  For example, in case of cross-compilation, development components are needed
+  but the native python interpreter can also be required:
+
+  .. code-block:: cmake
+
+    find_package(Python COMPONENTS Development)
+
+    set(Python_ARTIFACTS_PREFIX "_HOST")
+    find_package(Python COMPONENTS Interpreter)
+
+    # Here Python_HOST_EXECUTABLE and Python_HOST::Interpreter artifacts are defined
+
+  .. note::
+
+    For consistency with standard behavior of modules, the various standard
+    ``_FOUND`` variables (i.e. without the custom prefix) are also defined by
+    each call to the :command:`find_package` command.
+
 Commands
 ^^^^^^^^
 
@@ -514,7 +628,9 @@ This module defines the command ``Python_add_library`` (when
 :command:`add_library` and adds a dependency to target ``Python::Python`` or,
 when library type is ``MODULE``, to target ``Python::Module`` or
 ``Python::SABIModule`` (when ``USE_SABI`` option is specified) and takes care
-of Python module naming rules::
+of Python module naming rules:
+
+.. code-block:: cmake
 
   Python_add_library (<name> [STATIC | SHARED | MODULE [USE_SABI <version>] [WITH_SOABI]]
                       <source1> [<source2> ...])
@@ -537,84 +653,94 @@ If the library type is not specified, ``MODULE`` is assumed.
 
   When option ``WITH_SOABI`` is also specified,  the module suffix will include
   the ``Python_SOSABI`` value, if any.
+
+.. versionadded:: 3.30
+  For ``MODULE`` type, the :prop_tgt:`DEBUG_POSTFIX` target property is
+  initialized with the value of ``Python_DEBUG_POSTFIX`` variable if defined.
 #]=======================================================================]
 
 
 cmake_policy(PUSH)
-# numbers and boolean constants
-cmake_policy (SET CMP0012 NEW)
+# foreach loop variable scope
+cmake_policy (SET CMP0124 NEW)
 
 
-set (_PYTHON_PREFIX Python)
-unset (_Python_REQUIRED_VERSION_MAJOR)
-unset (_Python_REQUIRED_VERSIONS)
+set (_PYTHON_BASE Python)
+if(${_PYTHON_BASE}_ARTIFACTS_PREFIX)
+  set(_PYTHON_PREFIX "${_PYTHON_BASE}${${_PYTHON_BASE}_ARTIFACTS_PREFIX}")
+else()
+  set(_PYTHON_PREFIX "${_PYTHON_BASE}")
+endif()
+
+unset (_${_PYTHON_PREFIX}_REQUIRED_VERSION_MAJOR)
+unset (_${_PYTHON_PREFIX}_REQUIRED_VERSIONS)
 
 if (Python_FIND_VERSION_RANGE)
   # compute list of major versions
-  foreach (_Python_MAJOR IN ITEMS 3 2)
-    if (_Python_MAJOR VERSION_GREATER_EQUAL Python_FIND_VERSION_MIN_MAJOR
-        AND ((Python_FIND_VERSION_RANGE_MAX STREQUAL "INCLUDE" AND _Python_MAJOR VERSION_LESS_EQUAL Python_FIND_VERSION_MAX)
-        OR (Python_FIND_VERSION_RANGE_MAX STREQUAL "EXCLUDE" AND _Python_MAJOR VERSION_LESS Python_FIND_VERSION_MAX)))
-      list (APPEND _Python_REQUIRED_VERSIONS ${_Python_MAJOR})
+  foreach (version_major IN ITEMS 3 2)
+    if (version_major VERSION_GREATER_EQUAL Python_FIND_VERSION_MIN_MAJOR
+        AND ((Python_FIND_VERSION_RANGE_MAX STREQUAL "INCLUDE" AND version_major VERSION_LESS_EQUAL Python_FIND_VERSION_MAX)
+        OR (Python_FIND_VERSION_RANGE_MAX STREQUAL "EXCLUDE" AND version_major VERSION_LESS Python_FIND_VERSION_MAX)))
+      list (APPEND _${_PYTHON_PREFIX}_REQUIRED_VERSIONS ${version_major})
     endif()
   endforeach()
-  list (LENGTH _Python_REQUIRED_VERSIONS _Python_VERSION_COUNT)
-  if (_Python_VERSION_COUNT EQUAL 0)
-    unset (_Python_REQUIRED_VERSIONS)
-  elseif (_Python_VERSION_COUNT EQUAL 1)
-    set (_Python_REQUIRED_VERSION_MAJOR ${_Python_REQUIRED_VERSIONS})
+  list (LENGTH _${_PYTHON_PREFIX}_REQUIRED_VERSIONS _${_PYTHON_PREFIX}_VERSION_COUNT)
+  if (_${_PYTHON_PREFIX}_VERSION_COUNT EQUAL 0)
+    unset (_${_PYTHON_PREFIX}_REQUIRED_VERSIONS)
+  elseif (_${_PYTHON_PREFIX}_VERSION_COUNT EQUAL 1)
+    set (_${_PYTHON_PREFIX}_REQUIRED_VERSION_MAJOR ${_${_PYTHON_PREFIX}_REQUIRED_VERSIONS})
   endif()
 elseif (DEFINED Python_FIND_VERSION)
-  set (_Python_REQUIRED_VERSION_MAJOR ${Python_FIND_VERSION_MAJOR})
+  set (_${_PYTHON_PREFIX}_REQUIRED_VERSION_MAJOR ${Python_FIND_VERSION_MAJOR})
 else()
-  set (_Python_REQUIRED_VERSIONS 3 2)
+  set (_${_PYTHON_PREFIX}_REQUIRED_VERSIONS 3 2)
 endif()
 
-if (_Python_REQUIRED_VERSION_MAJOR)
+if (_${_PYTHON_PREFIX}_REQUIRED_VERSION_MAJOR)
   include (${CMAKE_CURRENT_LIST_DIR}/FindPython/Support.cmake)
-elseif (_Python_REQUIRED_VERSIONS)
+elseif (_${_PYTHON_PREFIX}_REQUIRED_VERSIONS)
   # iterate over versions in quiet and NOT required modes to avoid multiple
   # "Found" messages and prematurally failure.
-  set (_Python_QUIETLY ${Python_FIND_QUIETLY})
-  set (_Python_REQUIRED ${Python_FIND_REQUIRED})
+  set (_${_PYTHON_PREFIX}_QUIETLY ${Python_FIND_QUIETLY})
+  set (_${_PYTHON_PREFIX}_REQUIRED ${Python_FIND_REQUIRED})
   set (Python_FIND_QUIETLY TRUE)
   set (Python_FIND_REQUIRED FALSE)
 
-  set (_Python_REQUIRED_VERSION_LAST 2)
+  set (_${_PYTHON_PREFIX}_REQUIRED_VERSION_LAST 2)
 
-  unset (_Python_INPUT_VARS)
-  foreach (_Python_ITEM IN ITEMS Python_EXECUTABLE Python_COMPILER Python_LIBRARY
-                                 Python_INCLUDE_DIR Python_NumPy_INCLUDE_DIR)
-    if (NOT DEFINED ${_Python_ITEM})
-      list (APPEND _Python_INPUT_VARS ${_Python_ITEM})
+  unset (_${_PYTHON_PREFIX}_INPUT_VARS)
+  foreach (item IN ITEMS Python_EXECUTABLE Python_COMPILER Python_LIBRARY
+                         Python_INCLUDE_DIR Python_NumPy_INCLUDE_DIR)
+    if (NOT DEFINED ${item})
+      list (APPEND _${_PYTHON_PREFIX}_INPUT_VARS ${item})
     endif()
   endforeach()
 
-  foreach (_Python_REQUIRED_VERSION_MAJOR IN LISTS _Python_REQUIRED_VERSIONS)
-    set (Python_FIND_VERSION ${_Python_REQUIRED_VERSION_MAJOR})
+  foreach (_${_PYTHON_PREFIX}_REQUIRED_VERSION_MAJOR IN LISTS _${_PYTHON_PREFIX}_REQUIRED_VERSIONS)
+    set (Python_FIND_VERSION ${_${_PYTHON_PREFIX}_REQUIRED_VERSION_MAJOR})
     include (${CMAKE_CURRENT_LIST_DIR}/FindPython/Support.cmake)
     if (Python_FOUND OR
-        _Python_REQUIRED_VERSION_MAJOR EQUAL _Python_REQUIRED_VERSION_LAST)
+        _${_PYTHON_PREFIX}_REQUIRED_VERSION_MAJOR EQUAL _${_PYTHON_PREFIX}_REQUIRED_VERSION_LAST)
       break()
     endif()
     # clean-up INPUT variables not set by the user
-    foreach (_Python_ITEM IN LISTS _Python_INPUT_VARS)
-      unset (${_Python_ITEM})
+    foreach (item IN LISTS _${_PYTHON_PREFIX}_INPUT_VARS)
+      unset (${item})
     endforeach()
     # clean-up some CACHE variables to ensure look-up restart from scratch
-    foreach (_Python_ITEM IN LISTS _Python_CACHED_VARS)
-      unset (${_Python_ITEM} CACHE)
+    foreach (item IN LISTS _${_PYTHON_PREFIX}_CACHED_VARS)
+      unset (${item} CACHE)
     endforeach()
   endforeach()
 
   unset (Python_FIND_VERSION)
 
-  set (Python_FIND_QUIETLY ${_Python_QUIETLY})
-  set (Python_FIND_REQUIRED ${_Python_REQUIRED})
+  set (Python_FIND_QUIETLY ${_${_PYTHON_PREFIX}_QUIETLY})
+  set (Python_FIND_REQUIRED ${_${_PYTHON_PREFIX}_REQUIRED})
   if (Python_FIND_REQUIRED OR NOT Python_FIND_QUIETLY)
     # call again validation command to get "Found" or error message
     find_package_handle_standard_args (Python HANDLE_COMPONENTS HANDLE_VERSION_RANGE
-                                              REQUIRED_VARS ${_Python_REQUIRED_VARS}
+                                              REQUIRED_VARS ${_${_PYTHON_PREFIX}_REQUIRED_VARS}
                                               VERSION_VAR Python_VERSION)
   endif()
 else()
@@ -624,18 +750,20 @@ else()
     set (Python_FIND_REQUIRED_Interpreter TRUE)
   endif()
 
-  include (${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
+  include(FindPackageHandleStandardArgs)
   find_package_handle_standard_args (Python HANDLE_COMPONENTS HANDLE_VERSION_RANGE
                                             VERSION_VAR Python_VERSION
                                             REASON_FAILURE_MESSAGE "Version range specified \"${Python_FIND_VERSION_RANGE}\" does not include supported versions")
 endif()
 
-if (COMMAND __Python_add_library)
-  macro (Python_add_library)
-    __Python_add_library (Python ${ARGV})
-  endmacro()
+if (COMMAND __${_PYTHON_PREFIX}_add_library AND NOT COMMAND ${_PYTHON_PREFIX}_add_library)
+  cmake_language(EVAL CODE
+    "macro (${_PYTHON_PREFIX}_add_library)
+      __${_PYTHON_PREFIX}_add_library (${_PYTHON_PREFIX} \${ARGV})
+    endmacro()")
 endif()
 
+unset (_PYTHON_BASE)
 unset (_PYTHON_PREFIX)
 
 cmake_policy(POP)

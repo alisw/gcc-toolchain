@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -48,7 +48,7 @@ public:
   static std::shared_ptr<cmDebuggerVariables> CreateIfAny(
     std::shared_ptr<cmDebuggerVariablesManager> const& variablesManager,
     std::string const& name, bool supportsVariableType,
-    cmBTStringRange const& entries);
+    cmBTStringRange entries);
 
   static std::shared_ptr<cmDebuggerVariables> CreateIfAny(
     std::shared_ptr<cmDebuggerVariablesManager> const& variablesManager,

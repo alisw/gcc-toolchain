@@ -1,3 +1,0 @@
--- GetPrerequisites\(.*script\.sh\) : ignoring script file
--- GetPrerequisites\(.*script\.bat\) : ignoring script file
--- GetPrerequisites\(.*script\) : ignoring script file

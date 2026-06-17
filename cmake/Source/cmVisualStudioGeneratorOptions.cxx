@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <cm/iterator>
+#include <cm/optional>
 #include <cmext/string_view>
 
 #include "cmAlgorithms.h"
@@ -26,7 +27,6 @@ cmVisualStudioGeneratorOptions::cmVisualStudioGeneratorOptions(
   cmVS7FlagTable const* extraTable)
   : cmIDEOptions()
   , LocalGenerator(lg)
-  , Version(lg->GetVersion())
   , CurrentTool(tool)
 {
   // Store the given flag tables.
@@ -75,21 +75,14 @@ void cmVisualStudioGeneratorOptions::FixExceptionHandlingDefault()
   // initialization to off, but the user has the option of removing
   // the flag to disable exception handling.  When the user does
   // remove the flag we need to override the IDE default of on.
-  switch (this->Version) {
-    case cmGlobalVisualStudioGenerator::VSVersion::VS12:
-    case cmGlobalVisualStudioGenerator::VSVersion::VS14:
-    case cmGlobalVisualStudioGenerator::VSVersion::VS15:
-    case cmGlobalVisualStudioGenerator::VSVersion::VS16:
-    case cmGlobalVisualStudioGenerator::VSVersion::VS17:
-      // by default VS puts <ExceptionHandling></ExceptionHandling> empty
-      // for a project, to make our projects look the same put a new line
-      // and space over for the closing </ExceptionHandling> as the default
-      // value
-      this->FlagMap["ExceptionHandling"] = "\n      ";
-      break;
-    default:
-      this->FlagMap["ExceptionHandling"] = "0";
-      break;
+  if (!this->LocalGenerator->IsVFProj()) {
+    // by default VS puts <ExceptionHandling></ExceptionHandling> empty
+    // for a project, to make our projects look the same put a new line
+    // and space over for the closing </ExceptionHandling> as the default
+    // value
+    this->FlagMap["ExceptionHandling"] = "\n      ";
+  } else {
+    this->FlagMap["ExceptionHandling"] = "0";
   }
 }
 
@@ -100,17 +93,16 @@ void cmVisualStudioGeneratorOptions::SetVerboseMakefile(bool verbose)
   // to the generated project to disable logo suppression.  Otherwise
   // the GUI default is to enable suppression.
   //
-  // On Visual Studio 9, the value of this attribute should be
+  // In '.vfproj' files, the value of this attribute should be
   // "FALSE", instead of an empty string.
   if (verbose &&
       this->FlagMap.find("SuppressStartupBanner") == this->FlagMap.end()) {
     this->FlagMap["SuppressStartupBanner"] =
-      this->Version == cmGlobalVisualStudioGenerator::VSVersion::VS9 ? "FALSE"
-                                                                     : "";
+      !this->LocalGenerator->IsVFProj() ? "" : "FALSE";
   }
 }
 
-bool cmVisualStudioGeneratorOptions::IsDebug() const
+bool cmVisualStudioGeneratorOptions::UsingDebugInfo() const
 {
   if (this->CurrentTool != CSharpCompiler) {
     return this->FlagMap.find("DebugInformationFormat") != this->FlagMap.end();
@@ -124,6 +116,15 @@ bool cmVisualStudioGeneratorOptions::IsDebug() const
   return false;
 }
 
+cm::optional<bool> cmVisualStudioGeneratorOptions::UsingDebugRuntime() const
+{
+  cm::optional<bool> result;
+  if (char const* rtl = this->GetFlag("RuntimeLibrary")) {
+    result = strstr(rtl, "Debug") != nullptr;
+  }
+  return result;
+}
+
 bool cmVisualStudioGeneratorOptions::IsWinRt() const
 {
   return this->FlagMap.find("CompileAsWinRT") != this->FlagMap.end();
@@ -134,21 +135,18 @@ bool cmVisualStudioGeneratorOptions::IsManaged() const
   return this->FlagMap.find("CompileAsManaged") != this->FlagMap.end();
 }
 
-bool cmVisualStudioGeneratorOptions::UsingUnicode() const
+cm::optional<cmGeneratorTarget::MsvcCharSet>
+cmVisualStudioGeneratorOptions::GetCharSet() const
 {
-  // Look for a _UNICODE definition.
-  return std::any_of(
-    this->Defines.begin(), this->Defines.end(), [](std::string const& di) {
-      return di == "_UNICODE"_s || cmHasLiteralPrefix(di, "_UNICODE=");
-    });
-}
-bool cmVisualStudioGeneratorOptions::UsingSBCS() const
-{
-  // Look for a _SBCS definition.
-  return std::any_of(
-    this->Defines.begin(), this->Defines.end(), [](std::string const& di) {
-      return di == "_SBCS"_s || cmHasLiteralPrefix(di, "_SBCS=");
-    });
+  // Look for a project- or user-specified character set definition.
+  for (std::string const& define : this->Defines) {
+    cmGeneratorTarget::MsvcCharSet charSet =
+      cmGeneratorTarget::GetMsvcCharSet(define);
+    if (charSet != cmGeneratorTarget::MsvcCharSet::None) {
+      return charSet;
+    }
+  }
+  return cm::nullopt;
 }
 
 void cmVisualStudioGeneratorOptions::FixCudaCodeGeneration()
@@ -168,7 +166,7 @@ void cmVisualStudioGeneratorOptions::FixManifestUACFlags()
     return;
   }
 
-  const std::string uacFlag = GetFlag(ENABLE_UAC);
+  std::string const uacFlag = GetFlag(ENABLE_UAC);
   std::vector<std::string> subOptions;
   cmsys::SystemTools::Split(uacFlag, subOptions, ' ');
   if (subOptions.empty()) {
@@ -228,7 +226,7 @@ void cmVisualStudioGeneratorOptions::FixManifestUACFlags()
   AddFlag(ENABLE_UAC, "true");
 }
 
-void cmVisualStudioGeneratorOptions::Parse(const std::string& flags)
+void cmVisualStudioGeneratorOptions::Parse(std::string const& flags)
 {
   // Parse the input string as a windows command line since the string
   // is intended for writing directly into the build files.
@@ -342,18 +340,18 @@ cmIDEOptions::FlagValue cmVisualStudioGeneratorOptions::TakeFlag(
 }
 
 void cmVisualStudioGeneratorOptions::SetConfiguration(
-  const std::string& config)
+  std::string const& config)
 {
   this->Configuration = config;
 }
 
-const std::string& cmVisualStudioGeneratorOptions::GetConfiguration() const
+std::string const& cmVisualStudioGeneratorOptions::GetConfiguration() const
 {
   return this->Configuration;
 }
 
 void cmVisualStudioGeneratorOptions::OutputPreprocessorDefinitions(
-  std::ostream& fout, int indent, const std::string& lang)
+  std::ostream& fout, int indent, std::string const& lang)
 {
   if (this->Defines.empty()) {
     return;
@@ -364,24 +362,22 @@ void cmVisualStudioGeneratorOptions::OutputPreprocessorDefinitions(
   }
 
   std::ostringstream oss;
-  if (this->Version != cmGlobalVisualStudioGenerator::VSVersion::VS9) {
+  if (!this->LocalGenerator->IsVFProj()) {
     oss << "%(" << tag << ')';
   }
   auto de = cmRemoveDuplicates(this->Defines);
   for (std::string const& di : cmMakeRange(this->Defines.cbegin(), de)) {
-    // Escape the definition for the compiler.
     std::string define;
-    if (this->Version == cmGlobalVisualStudioGenerator::VSVersion::VS9) {
-      define = this->LocalGenerator->EscapeForShell(di, true);
-    } else {
+    if (!this->LocalGenerator->IsVFProj()) {
+      // Escape the definition for MSBuild.
       define = di;
-    }
-    // Escape this flag for the MSBuild.
-    if (this->Version != cmGlobalVisualStudioGenerator::VSVersion::VS9) {
       cmVS10EscapeForMSBuild(define);
       if (lang == "RC"_s) {
         cmSystemTools::ReplaceString(define, "\"", "\\\"");
       }
+    } else {
+      // Escape the definition for the compiler.
+      define = this->LocalGenerator->EscapeForShell(di, true);
     }
     // Store the flag in the project file.
     oss << ';' << define;
@@ -391,7 +387,7 @@ void cmVisualStudioGeneratorOptions::OutputPreprocessorDefinitions(
 }
 
 void cmVisualStudioGeneratorOptions::OutputAdditionalIncludeDirectories(
-  std::ostream& fout, int indent, const std::string& lang)
+  std::ostream& fout, int indent, std::string const& lang)
 {
   if (this->Includes.empty()) {
     return;
@@ -405,7 +401,7 @@ void cmVisualStudioGeneratorOptions::OutputAdditionalIncludeDirectories(
   }
 
   std::ostringstream oss;
-  const char* sep = "";
+  char const* sep = "";
   for (std::string include : this->Includes) {
     // first convert all of the slashes
     std::string::size_type pos = 0;
@@ -419,7 +415,7 @@ void cmVisualStudioGeneratorOptions::OutputAdditionalIncludeDirectories(
     }
 
     // Escape this include for the MSBuild.
-    if (this->Version != cmGlobalVisualStudioGenerator::VSVersion::VS9) {
+    if (!this->LocalGenerator->IsVFProj()) {
       cmVS10EscapeForMSBuild(include);
     }
     oss << sep << include;
@@ -431,7 +427,7 @@ void cmVisualStudioGeneratorOptions::OutputAdditionalIncludeDirectories(
     }
   }
 
-  if (this->Version != cmGlobalVisualStudioGenerator::VSVersion::VS9) {
+  if (!this->LocalGenerator->IsVFProj()) {
     oss << sep << "%(" << tag << ')';
   }
 
@@ -443,9 +439,9 @@ void cmVisualStudioGeneratorOptions::OutputFlagMap(std::ostream& fout,
 {
   for (auto const& m : this->FlagMap) {
     std::ostringstream oss;
-    const char* sep = "";
+    char const* sep = "";
     for (std::string i : m.second) {
-      if (this->Version != cmGlobalVisualStudioGenerator::VSVersion::VS9) {
+      if (!this->LocalGenerator->IsVFProj()) {
         cmVS10EscapeForMSBuild(i);
       }
       oss << sep << i;

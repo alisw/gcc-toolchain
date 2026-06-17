@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmSourceFile.h"
 
 #include <utility>
@@ -20,7 +20,7 @@
 #include "cmValue.h"
 #include "cmake.h"
 
-cmSourceFile::cmSourceFile(cmMakefile* mf, const std::string& name,
+cmSourceFile::cmSourceFile(cmMakefile* mf, std::string const& name,
                            bool generated, cmSourceFileLocationKind kind)
   : Location(mf, name, (!generated) ? kind : cmSourceFileLocationKind::Known)
 {
@@ -29,20 +29,35 @@ cmSourceFile::cmSourceFile(cmMakefile* mf, const std::string& name,
   }
 }
 
+void cmSourceFile::SetSpecialSourceType(cmSourceFile::SpecialSourceType type)
+{
+  this->SpecialSource = type;
+}
+
+bool cmSourceFile::IsPchHeader() const
+{
+  return this->SpecialSource == SpecialSourceType::PchHeader;
+}
+
+bool cmSourceFile::IsPchSource() const
+{
+  return this->SpecialSource == SpecialSourceType::PchSource;
+}
+
 std::string const& cmSourceFile::GetExtension() const
 {
   return this->Extension;
 }
 
-const std::string propTRUE = "1";
-const std::string propFALSE = "0";
-const std::string cmSourceFile::propLANGUAGE = "LANGUAGE";
-const std::string cmSourceFile::propLOCATION = "LOCATION";
-const std::string cmSourceFile::propGENERATED = "GENERATED";
-const std::string cmSourceFile::propCOMPILE_DEFINITIONS =
+std::string const propTRUE = "1";
+std::string const propFALSE = "0";
+std::string const cmSourceFile::propLANGUAGE = "LANGUAGE";
+std::string const cmSourceFile::propLOCATION = "LOCATION";
+std::string const cmSourceFile::propGENERATED = "GENERATED";
+std::string const cmSourceFile::propCOMPILE_DEFINITIONS =
   "COMPILE_DEFINITIONS";
-const std::string cmSourceFile::propCOMPILE_OPTIONS = "COMPILE_OPTIONS";
-const std::string cmSourceFile::propINCLUDE_DIRECTORIES =
+std::string const cmSourceFile::propCOMPILE_OPTIONS = "COMPILE_OPTIONS";
+std::string const cmSourceFile::propINCLUDE_DIRECTORIES =
   "INCLUDE_DIRECTORIES";
 
 void cmSourceFile::SetObjectLibrary(std::string const& objlib)
@@ -123,7 +138,8 @@ bool cmSourceFile::FindFullPath(std::string* error,
 {
   // If the file is generated compute the location without checking on disk.
   // Note: We also check for a locally set GENERATED property, because
-  //       it might have been set before policy CMP0118 was set to NEW.
+  //       it might have been set before policy CMP0118 (or CMP0163) was set
+  //       to NEW.
   if (this->GetIsGenerated(CheckScope::GlobalAndLocal)) {
     // The file is either already a full path or is relative to the
     // build directory for the target.
@@ -146,9 +162,12 @@ bool cmSourceFile::FindFullPath(std::string* error,
   std::vector<std::string> exts =
     makefile->GetCMakeInstance()->GetAllExtensions();
   auto cmp0115 = makefile->GetPolicyStatus(cmPolicies::CMP0115);
+  auto cmp0163 = makefile->GetPolicyStatus(cmPolicies::CMP0163);
   auto cmp0118 = makefile->GetPolicyStatus(cmPolicies::CMP0118);
+  bool const cmp0163new =
+    cmp0163 != cmPolicies::OLD && cmp0163 != cmPolicies::WARN;
   bool const cmp0118new =
-    cmp0118 != cmPolicies::OLD && cmp0118 != cmPolicies::WARN;
+    cmp0163new || (cmp0118 != cmPolicies::OLD && cmp0118 != cmPolicies::WARN);
 
   // Tries to find the file in a given directory
   auto findInDir = [this, &exts, &lPath, cmp0115, cmp0115Warning, cmp0118new,
@@ -156,6 +175,7 @@ bool cmSourceFile::FindFullPath(std::string* error,
     // Compute full path
     std::string const fullPath = cmSystemTools::CollapseFullPath(lPath, dir);
     // Try full path
+    // Is this file globally marked as generated? Then mark so locally.
     if (cmp0118new &&
         makefile->GetGlobalGenerator()->IsGeneratedFile(fullPath)) {
       this->IsGenerated = true;
@@ -172,6 +192,7 @@ bool cmSourceFile::FindFullPath(std::string* error,
       for (std::string const& ext : exts) {
         if (!ext.empty()) {
           std::string extPath = cmStrCat(fullPath, '.', ext);
+          // Is this file globally marked as generated? Then mark so locally.
           if (cmp0118new &&
               makefile->GetGlobalGenerator()->IsGeneratedFile(extPath)) {
             this->IsGenerated = true;
@@ -220,8 +241,6 @@ bool cmSourceFile::FindFullPath(std::string* error,
         err = cmStrCat(err, " .", ext);
       }
       break;
-    case cmPolicies::REQUIRED_IF_USED:
-    case cmPolicies::REQUIRED_ALWAYS:
     case cmPolicies::NEW:
       break;
   }
@@ -230,7 +249,7 @@ bool cmSourceFile::FindFullPath(std::string* error,
            "specifier or another FILE_SET within the target_sources() "
            "command.";
   }
-  if (error != nullptr) {
+  if (error) {
     *error = std::move(err);
   } else {
     makefile->IssueMessage(MessageType::FATAL_ERROR, err);
@@ -279,7 +298,7 @@ bool cmSourceFile::Matches(cmSourceFileLocation const& loc)
   return this->Location.Matches(loc);
 }
 
-void cmSourceFile::SetProperty(const std::string& prop, cmValue value)
+void cmSourceFile::SetProperty(std::string const& prop, cmValue value)
 {
   if (prop == propINCLUDE_DIRECTORIES) {
     this->IncludeDirectories.clear();
@@ -304,8 +323,8 @@ void cmSourceFile::SetProperty(const std::string& prop, cmValue value)
   }
 }
 
-void cmSourceFile::AppendProperty(const std::string& prop,
-                                  const std::string& value, bool asString)
+void cmSourceFile::AppendProperty(std::string const& prop,
+                                  std::string const& value, bool asString)
 {
   if (prop == propINCLUDE_DIRECTORIES) {
     if (!value.empty()) {
@@ -327,7 +346,7 @@ void cmSourceFile::AppendProperty(const std::string& prop,
   }
 }
 
-cmValue cmSourceFile::GetPropertyForUser(const std::string& prop)
+cmValue cmSourceFile::GetPropertyForUser(std::string const& prop)
 {
   // This method is a consequence of design history and backwards
   // compatibility.  GetProperty is (and should be) a const method.
@@ -357,14 +376,19 @@ cmValue cmSourceFile::GetPropertyForUser(const std::string& prop)
 
   // Special handling for GENERATED property.
   if (prop == propGENERATED) {
-    // We need to check policy CMP0118 in order to determine if we need to
-    // possibly consider the value of a locally set GENERATED property, too.
-    auto policyStatus =
+    // We need to check policy CMP0163 and CMP0118 in order to determine if we
+    // need to possibly consider the value of a locally set GENERATED property,
+    // too.
+    auto cmp0163 =
+      this->Location.GetMakefile()->GetPolicyStatus(cmPolicies::CMP0163);
+    auto cmp0118 =
       this->Location.GetMakefile()->GetPolicyStatus(cmPolicies::CMP0118);
-    if (this->GetIsGenerated(
-          (policyStatus == cmPolicies::WARN || policyStatus == cmPolicies::OLD)
-            ? CheckScope::GlobalAndLocal
-            : CheckScope::Global)) {
+    bool const cmp0163new =
+      cmp0163 != cmPolicies::OLD && cmp0163 != cmPolicies::WARN;
+    bool const cmp0118new = cmp0163new ||
+      (cmp0118 != cmPolicies::OLD && cmp0118 != cmPolicies::WARN);
+    if (this->GetIsGenerated((!cmp0118new) ? CheckScope::GlobalAndLocal
+                                           : CheckScope::Global)) {
       return cmValue(propTRUE);
     }
     return cmValue(propFALSE);
@@ -374,7 +398,7 @@ cmValue cmSourceFile::GetPropertyForUser(const std::string& prop)
   return this->GetProperty(prop);
 }
 
-cmValue cmSourceFile::GetProperty(const std::string& prop) const
+cmValue cmSourceFile::GetProperty(std::string const& prop) const
 {
   // Check for computed properties.
   if (prop == propLOCATION) {
@@ -418,7 +442,7 @@ cmValue cmSourceFile::GetProperty(const std::string& prop) const
   cmValue retVal = this->Properties.GetPropertyValue(prop);
   if (!retVal) {
     cmMakefile const* mf = this->Location.GetMakefile();
-    const bool chain =
+    bool const chain =
       mf->GetState()->IsPropertyChained(prop, cmProperty::SOURCE_FILE);
     if (chain) {
       return mf->GetProperty(prop, chain);
@@ -429,7 +453,7 @@ cmValue cmSourceFile::GetProperty(const std::string& prop) const
   return retVal;
 }
 
-const std::string& cmSourceFile::GetSafeProperty(const std::string& prop) const
+std::string const& cmSourceFile::GetSafeProperty(std::string const& prop) const
 {
   cmValue ret = this->GetProperty(prop);
   if (ret) {
@@ -440,15 +464,15 @@ const std::string& cmSourceFile::GetSafeProperty(const std::string& prop) const
   return s_empty;
 }
 
-bool cmSourceFile::GetPropertyAsBool(const std::string& prop) const
+bool cmSourceFile::GetPropertyAsBool(std::string const& prop) const
 {
-  return cmIsOn(this->GetProperty(prop));
+  return this->GetProperty(prop).IsOn();
 }
 
 void cmSourceFile::MarkAsGenerated()
 {
   this->IsGenerated = true;
-  const auto& mf = *this->Location.GetMakefile();
+  auto const& mf = *this->Location.GetMakefile();
   mf.GetGlobalGenerator()->MarkAsGeneratedFile(this->ResolveFullPath());
 }
 

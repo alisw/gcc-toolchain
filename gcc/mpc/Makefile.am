@@ -25,6 +25,9 @@ VERSION = @VERSION@
 
 SUBDIRS = src tests doc tools
 
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = mpc.pc
+
 EXTRA_HEADERS = src/mpc-log.h
 include_HEADERS = src/mpc.h @MPC_LOG_H@
 EXTRA_DIST = doc/fdl-1.3.texi src/mpc-log.h

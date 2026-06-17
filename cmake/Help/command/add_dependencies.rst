@@ -5,7 +5,7 @@ Add a dependency between top-level targets.
 
 .. code-block:: cmake
 
-  add_dependencies(<target> [<target-dependency>]...)
+  add_dependencies(<target> <target-dependency>...)
 
 Makes a top-level ``<target>`` depend on other top-level targets to
 ensure that they build before ``<target>`` does.  A top-level target
@@ -19,6 +19,21 @@ transitively in its place since the target itself does not build.
 
 .. versionadded:: 3.3
   Allow adding dependencies to interface libraries.
+
+.. versionadded:: 3.8
+  Dependencies will populate the :prop_tgt:`MANUALLY_ADDED_DEPENDENCIES`
+  property of ``<target>``.
+
+.. versionchanged:: 3.9
+  The :ref:`Ninja Generators` use weaker ordering than
+  other generators in order to improve available concurrency.
+  They only guarantee that the dependencies' custom commands are
+  finished before sources in ``<target>`` start compiling; this
+  ensures generated sources are available.
+
+.. versionchanged:: 4.1
+  The command may be called with no dependencies.
+  Previously, at least one dependency was required.
 
 See Also
 ^^^^^^^^

@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmMakefileExecutableTargetGenerator.h"
 
 #include <set>
@@ -12,6 +12,7 @@
 #include <cmext/algorithm>
 
 #include "cmGeneratedFileStream.h"
+#include "cmGeneratorOptions.h"
 #include "cmGeneratorTarget.h"
 #include "cmGlobalUnixMakefileGenerator3.h"
 #include "cmLinkLineComputer.h"
@@ -87,7 +88,7 @@ void cmMakefileExecutableTargetGenerator::WriteDeviceExecutableRule(
   bool relink)
 {
 #ifndef CMAKE_BOOTSTRAP
-  const bool requiresDeviceLinking = requireDeviceLinking(
+  bool const requiresDeviceLinking = requireDeviceLinking(
     *this->GeneratorTarget, *this->LocalGenerator, this->GetConfigName());
   if (!requiresDeviceLinking) {
     return;
@@ -131,9 +132,9 @@ void cmMakefileExecutableTargetGenerator::WriteDeviceExecutableRule(
 
 void cmMakefileExecutableTargetGenerator::WriteNvidiaDeviceExecutableRule(
   bool relink, std::vector<std::string>& commands,
-  const std::string& targetOutput)
+  std::string const& targetOutput)
 {
-  const std::string linkLanguage = "CUDA";
+  std::string const linkLanguage = "CUDA";
 
   // Build list of dependencies.
   std::vector<std::string> depends;
@@ -154,8 +155,8 @@ void cmMakefileExecutableTargetGenerator::WriteNvidiaDeviceExecutableRule(
   bool useLinkScript = this->GlobalGenerator->GetUseLinkScript();
 
   // Construct the main link rule.
-  const std::string linkRuleVar = "CMAKE_CUDA_DEVICE_LINK_EXECUTABLE";
-  const std::string linkRule = this->GetLinkRule(linkRuleVar);
+  std::string const linkRuleVar = "CMAKE_CUDA_DEVICE_LINK_EXECUTABLE";
+  std::string const linkRule = this->GetLinkRule(linkRuleVar);
   std::vector<std::string> commands1;
   cmList real_link_commands(linkRule);
 
@@ -203,6 +204,12 @@ void cmMakefileExecutableTargetGenerator::WriteNvidiaDeviceExecutableRule(
     objectDir = this->LocalGenerator->ConvertToOutputFormat(
       this->LocalGenerator->MaybeRelativeToCurBinDir(objectDir),
       cmOutputConverter::SHELL);
+    std::string targetSupportDir =
+      this->GeneratorTarget->GetCMFSupportDirectory();
+
+    targetSupportDir = this->LocalGenerator->ConvertToOutputFormat(
+      this->LocalGenerator->MaybeRelativeToTopBinDir(targetSupportDir),
+      cmOutputConverter::SHELL);
 
     std::string target = this->LocalGenerator->ConvertToOutputFormat(
       this->LocalGenerator->MaybeRelativeToCurBinDir(targetOutput),
@@ -218,6 +225,7 @@ void cmMakefileExecutableTargetGenerator::WriteNvidiaDeviceExecutableRule(
     vars.Objects = buildObjs.c_str();
     vars.ObjectDir = objectDir.c_str();
     vars.Target = target.c_str();
+    vars.TargetSupportDir = targetSupportDir.c_str();
     vars.LinkLibraries = linkLibs.c_str();
     vars.LanguageCompileFlags = langFlags.c_str();
     vars.LinkFlags = linkFlags.c_str();
@@ -233,7 +241,7 @@ void cmMakefileExecutableTargetGenerator::WriteNvidiaDeviceExecutableRule(
     }
 
     auto rulePlaceholderExpander =
-      this->LocalGenerator->CreateRulePlaceholderExpander();
+      this->LocalGenerator->CreateRulePlaceholderExpander(cmBuildStep::Link);
 
     // Expand placeholders in the commands.
     rulePlaceholderExpander->SetTargetImpLib(targetOutput);
@@ -251,7 +259,7 @@ void cmMakefileExecutableTargetGenerator::WriteNvidiaDeviceExecutableRule(
   // command lines in the make shell.
   if (useLinkScript) {
     // Use a link script.
-    const char* name = (relink ? "drelink.txt" : "dlink.txt");
+    char const* name = (relink ? "drelink.txt" : "dlink.txt");
     this->CreateLinkScript(name, real_link_commands, commands1, depends);
   } else {
     // No link script.  Just use the link rule directly.
@@ -369,20 +377,23 @@ void cmMakefileExecutableTargetGenerator::WriteExecutableRule(bool relink)
   std::string linkFlags;
 
   // Add flags to create an executable.
+  this->LocalGenerator->AppendTargetCreationLinkFlags(
+    linkFlags, this->GeneratorTarget, linkLanguage);
   this->LocalGenerator->AddConfigVariableFlags(
-    linkFlags, "CMAKE_EXE_LINKER_FLAGS", this->GetConfigName());
+    linkFlags, "CMAKE_EXE_LINKER_FLAGS", this->GeneratorTarget,
+    cmBuildStep::Link, linkLanguage, this->GetConfigName());
 
-  if (this->GeneratorTarget->IsWin32Executable(
-        this->Makefile->GetSafeDefinition("CMAKE_BUILD_TYPE"))) {
+  {
+    auto exeType =
+      cmStrCat("CMAKE_", linkLanguage, "_CREATE_",
+               (this->GeneratorTarget->IsWin32Executable(
+                  this->Makefile->GetDefinition("CMAKE_BUILD_TYPE"))
+                  ? "WIN32"
+                  : "CONSOLE"),
+               "_EXE");
     this->LocalGenerator->AppendFlags(
-      linkFlags,
-      this->Makefile->GetSafeDefinition(
-        cmStrCat("CMAKE_", linkLanguage, "_CREATE_WIN32_EXE")));
-  } else {
-    this->LocalGenerator->AppendFlags(
-      linkFlags,
-      this->Makefile->GetSafeDefinition(
-        cmStrCat("CMAKE_", linkLanguage, "_CREATE_CONSOLE_EXE")));
+      linkFlags, this->Makefile->GetDefinition(exeType), exeType,
+      this->GeneratorTarget, cmBuildStep::Link, linkLanguage);
   }
 
   // Add symbol export flags if necessary.
@@ -394,7 +405,7 @@ void cmMakefileExecutableTargetGenerator::WriteExecutableRule(bool relink)
   }
 
   this->LocalGenerator->AppendFlags(linkFlags,
-                                    this->LocalGenerator->GetLinkLibsCMP0065(
+                                    this->LocalGenerator->GetExeExportFlags(
                                       linkLanguage, *this->GeneratorTarget));
 
   this->UseLWYU = this->LocalGenerator->AppendLWYUFlags(
@@ -418,7 +429,7 @@ void cmMakefileExecutableTargetGenerator::WriteExecutableRule(bool relink)
 
     this->LocalGenerator->AppendModuleDefinitionFlag(
       linkFlags, this->GeneratorTarget, linkLineComputer.get(),
-      this->GetConfigName());
+      this->GetConfigName(), linkLanguage);
   }
 
   this->LocalGenerator->AppendIPOLinkerFlags(
@@ -544,11 +555,19 @@ void cmMakefileExecutableTargetGenerator::WriteExecutableRule(bool relink)
       this->LocalGenerator->MaybeRelativeToCurBinDir(objectDir),
       cmOutputConverter::SHELL);
     vars.ObjectDir = objectDir.c_str();
+    std::string targetSupportDir =
+      this->GeneratorTarget->GetCMFSupportDirectory();
+
+    targetSupportDir = this->LocalGenerator->ConvertToOutputFormat(
+      this->LocalGenerator->MaybeRelativeToTopBinDir(targetSupportDir),
+      cmOutputConverter::SHELL);
+    vars.TargetSupportDir = targetSupportDir.c_str();
     std::string target = this->LocalGenerator->ConvertToOutputFormat(
       this->LocalGenerator->MaybeRelativeToCurBinDir(targetFullPathReal),
       cmOutputConverter::SHELL, useWatcomQuote);
     vars.Target = target.c_str();
     vars.TargetPDB = targetOutPathPDB.c_str();
+    vars.Config = this->GetConfigName().c_str();
 
     // Setup the target version.
     std::string targetVersionMajor;
@@ -602,7 +621,7 @@ void cmMakefileExecutableTargetGenerator::WriteExecutableRule(bool relink)
     }
 
     auto rulePlaceholderExpander =
-      this->LocalGenerator->CreateRulePlaceholderExpander();
+      this->LocalGenerator->CreateRulePlaceholderExpander(cmBuildStep::Link);
 
     // Expand placeholders in the commands.
     rulePlaceholderExpander->SetTargetImpLib(targetOutPathImport);
@@ -620,7 +639,7 @@ void cmMakefileExecutableTargetGenerator::WriteExecutableRule(bool relink)
   // command lines in the make shell.
   if (useLinkScript) {
     // Use a link script.
-    const char* name = (relink ? "relink.txt" : "link.txt");
+    char const* name = (relink ? "relink.txt" : "link.txt");
     this->CreateLinkScript(name, real_link_commands, commands1, depends);
   } else {
     // No link script.  Just use the link rule directly.

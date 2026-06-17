@@ -39,6 +39,9 @@ The files are a JSON document with an object as the root:
 .. literalinclude:: presets/example.json
   :language: json
 
+Preset files specifying version ``10`` or above may include comments using the
+key ``$comment`` at any level within the JSON object to provide documentation.
+
 The root object recognizes the following fields:
 
 ``$schema``
@@ -77,6 +80,12 @@ The root object recognizes the following fields:
 
   ``8``
     .. versionadded:: 3.28
+
+  ``9``
+    .. versionadded:: 3.30
+
+  ``10``
+    .. versionadded:: 3.31
 
 ``cmakeMinimumRequired``
   An optional object representing the minimum version of CMake needed to
@@ -146,7 +155,10 @@ guaranteed to be provided by the project. ``CMakeUserPresets.json`` may
 include files from anywhere.
 
 Starting from version ``7``, the ``include`` field supports
-`macro expansion`_, but only ``$penv{}`` macro expansion.
+`macro expansion`_, but only ``$penv{}`` macro expansion. Starting from version
+``9``, other macro expansions are also available, except for ``$env{}`` and
+preset-specific macros, i.e., those derived from the fields inside a preset's
+definition like ``presetName``.
 
 Configure Preset
 ^^^^^^^^^^^^^^^^
@@ -255,6 +267,16 @@ that may contain the following fields:
   :variable:`CMAKE_TOOLCHAIN_FILE` value. It is allowed in preset files
   specifying version ``3`` or above.
 
+``graphviz``
+  An optional string representing the path to the graphviz input file,
+  that will contain all the library and executable dependencies
+  in the project.  See the documentation for :option:`cmake --graphviz` for
+  more details.
+
+  This field supports `macro expansion`_. If a relative path is specified,
+  it is calculated relative to the current working directory. It is allowed
+  in preset files specifying version ``10`` or above.
+
 ``binaryDir``
   An optional string representing the path to the output binary directory.
   This field supports `macro expansion`_. If a relative path is specified,
@@ -301,10 +323,14 @@ that may contain the following fields:
   (which may not be an empty string), and the value is either ``null`` or
   a string representing the value of the variable. Each variable is set
   regardless of whether or not a value was given to it by the process's
-  environment. This field supports `macro expansion`_, and environment
-  variables in this map may reference each other, and may be listed in any
-  order, as long as such references do not cause a cycle (for example,
-  if ``ENV_1`` is ``$env{ENV_2}``, ``ENV_2`` may not be ``$env{ENV_1}``.)
+  environment.
+
+  This field supports `macro expansion`_, and environment variables in this map
+  may reference each other, and may be listed in any order, as long as such
+  references do not cause a cycle (for example, if ``ENV_1`` is
+  ``$env{ENV_2}``, ``ENV_2`` may not be ``$env{ENV_1}``).  ``$penv{NAME}``
+  allows one to prepend or append values to existing environment variables by
+  accessing only values from the parent environment.
 
   Environment variables are inherited through the ``inherits`` field, and
   the preset's environment will be the union of its own ``environment`` and
@@ -486,10 +512,14 @@ that may contain the following fields:
   (which may not be an empty string), and the value is either ``null`` or
   a string representing the value of the variable. Each variable is set
   regardless of whether or not a value was given to it by the process's
-  environment. This field supports macro expansion, and environment
-  variables in this map may reference each other, and may be listed in any
-  order, as long as such references do not cause a cycle (for example, if
-  ``ENV_1`` is ``$env{ENV_2}``, ``ENV_2`` may not be ``$env{ENV_1}``.)
+  environment.
+
+  This field supports `macro expansion`_, and environment variables in this map
+  may reference each other, and may be listed in any order, as long as such
+  references do not cause a cycle (for example, if ``ENV_1`` is
+  ``$env{ENV_2}``, ``ENV_2`` may not be ``$env{ENV_1}``).  ``$penv{NAME}``
+  allows one to prepend or append values to existing environment variables by
+  accessing only values from the parent environment.
 
   Environment variables are inherited through the ``inherits`` field, and
   the preset's environment will be the union of its own ``environment``
@@ -647,10 +677,14 @@ that may contain the following fields:
   (which may not be an empty string), and the value is either ``null`` or
   a string representing the value of the variable. Each variable is set
   regardless of whether or not a value was given to it by the process's
-  environment. This field supports macro expansion, and environment
-  variables in this map may reference each other, and may be listed in any
-  order, as long as such references do not cause a cycle (for example, if
-  ``ENV_1`` is ``$env{ENV_2}``, ``ENV_2`` may not be ``$env{ENV_1}``.)
+  environment.
+
+  This field supports `macro expansion`_, and environment variables in this map
+  may reference each other, and may be listed in any order, as long as such
+  references do not cause a cycle (for example, if ``ENV_1`` is
+  ``$env{ENV_2}``, ``ENV_2`` may not be ``$env{ENV_1}``).  ``$penv{NAME}``
+  allows one to prepend or append values to existing environment variables by
+  accessing only values from the parent environment.
 
   Environment variables are inherited through the ``inherits`` field, and
   the preset's environment will be the union of its own ``environment``
@@ -988,10 +1022,14 @@ fields:
   (which may not be an empty string), and the value is either ``null`` or
   a string representing the value of the variable. Each variable is set
   regardless of whether or not a value was given to it by the process's
-  environment. This field supports macro expansion, and environment
-  variables in this map may reference each other, and may be listed in any
-  order, as long as such references do not cause a cycle (for example, if
-  ``ENV_1`` is ``$env{ENV_2}``, ``ENV_2`` may not be ``$env{ENV_1}``.)
+  environment.
+
+  This field supports `macro expansion`_, and environment variables in this map
+  may reference each other, and may be listed in any order, as long as such
+  references do not cause a cycle (for example, if ``ENV_1`` is
+  ``$env{ENV_2}``, ``ENV_2`` may not be ``$env{ENV_1}``).  ``$penv{NAME}``
+  allows one to prepend or append values to existing environment variables by
+  accessing only values from the parent environment.
 
   Environment variables are inherited through the ``inherits`` field, and
   the preset's environment will be the union of its own ``environment``
@@ -1045,8 +1083,24 @@ fields:
 ``packageName``
   An optional string representing the package name.
 
+  .. note::
+
+    Due to problems with the implementation, this field does not affect the
+    name of the final package file produced.  Other aspects of the package
+    may use the value though, leading to inconsistencies.
+    A future CMake release may address this problem, but until then, it is
+    recommended that this field not be used.
+
 ``packageVersion``
   An optional string representing the package version.
+
+  .. note::
+
+    Due to problems with the implementation, this field does not affect the
+    name of the final package file produced.  Other aspects of the package
+    may use the value though, leading to inconsistencies.
+    A future CMake release may address this problem, but until then, it is
+    recommended that this field not be used.
 
 ``packageDirectory``
   An optional string representing the directory in which to place the package.
@@ -1086,8 +1140,8 @@ fields:
 
 ``steps``
   A required array of objects describing the steps of the workflow. The first
-  step must be a configure preset, and all subsequent steps must be non-
-  configure presets whose ``configurePreset`` field matches the starting
+  step must be a configure preset, and all subsequent steps must be
+  non-configure presets whose ``configurePreset`` field matches the starting
   configure preset. Each object may contain the following fields:
 
   ``type``
@@ -1212,10 +1266,14 @@ Recognized macros include:
 ``${presetName}``
   Name specified in the preset's ``name`` field.
 
+  This is a preset-specific macro.
+
 ``${generator}``
   Generator specified in the preset's ``generator`` field. For build and
   test presets, this will evaluate to the generator specified by
   ``configurePreset``.
+
+  This is a preset-specific macro.
 
 ``${hostSystemName}``
   The name of the host operating system. Contains the same value as
@@ -1254,7 +1312,7 @@ Recognized macros include:
 ``$penv{<variable-name>}``
   Similar to ``$env{<variable-name>}``, except that the value only comes from
   the parent environment, and never from the ``environment`` field. This
-  allows you to prepend or append values to existing environment variables.
+  allows one to prepend or append values to existing environment variables.
   For example, setting ``PATH`` to ``/path/to/ninja/bin:$penv{PATH}`` will
   prepend ``/path/to/ninja/bin`` to the ``PATH`` environment variable. This
   is needed because ``$env{<variable-name>}`` does not allow circular

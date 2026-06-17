@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.1)
+cmake_minimum_required(VERSION 3.10)
 if(POLICY CMP0129)
   cmake_policy(SET CMP0129 NEW)
 endif()
@@ -37,6 +37,15 @@ if(WIN32 AND NOT CYGWIN)
   endif()
 endif()
 
+if(CMAKE_Fortran_COMPILER_ID STREQUAL "LFortran")
+  if(CMAKE_Fortran_COMPILER_VERSION VERSION_GREATER_EQUAL "0.55")
+    set(_LFORTRAN_SC_FLAG --separate-compilation)
+  else()
+    set(_LFORTRAN_SC_FLAG --generate-object-code)
+  endif()
+  add_compile_options("$<$<COMPILE_LANGUAGE:Fortran>:--implicit-interface;${_LFORTRAN_SC_FLAG}>")
+endif()
+
 add_library(hello STATIC hello.f)
 add_library(world ${_SHARED} world.f ${world_def})
 add_executable(testf testf.f)
@@ -49,7 +58,7 @@ function(test_fortran_c_interface_module)
   FortranCInterface_VERIFY()
   FortranCInterface_VERIFY(CXX)
   if(CMAKE_Fortran_COMPILER_SUPPORTS_F90)
-    if(NOT CMAKE_Fortran_COMPILER_ID MATCHES "SunPro|PathScale|Absoft|Fujitsu|LCC")
+    if(NOT CMAKE_Fortran_COMPILER_ID MATCHES "SunPro|PathScale|Absoft|Fujitsu|LCC|LFortran")
       set(module_expected 1)
     endif()
     if(FortranCInterface_MODULE_FOUND OR module_expected)
@@ -123,7 +132,7 @@ endfunction()
 # if the id's match or the compilers are compatible, then
 # call the test_fortran_c_interface_module function
 if("${CMAKE_Fortran_COMPILER_ID}:${CMAKE_C_COMPILER_ID}" MATCHES
-    "(Intel(LLVM)?:MSVC|Absoft:GNU|LLVMFlang:(GNU|Clang))"
+    "(Intel(LLVM)?:MSVC|Absoft:GNU|(LLVMFlang|LFortran):(GNU|Clang)|Cray:CrayClang)"
     OR ("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "${CMAKE_C_COMPILER_ID}" ))
   test_fortran_c_interface_module()
 else()

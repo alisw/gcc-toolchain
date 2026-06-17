@@ -1,3 +1,5 @@
+set(CMAKE_INTERMEDIATE_DIR_STRATEGY FULL CACHE STRING "" FORCE)
+
 enable_language(C)
 
 file(REMOVE "${CMAKE_BINARY_DIR}/target_files_custom.cmake")
@@ -16,11 +18,11 @@ function(create_targets prefix)
 
   get_write_file_command(cmd ${prefix}PostBuild.txt)
   add_executable(${prefix}PostBuild ${CMAKE_SOURCE_DIR}/main.c)
-  add_custom_command(TARGET ${prefix}PostBuild COMMAND ${cmd} BYPRODUCTS ${prefix}PostBuild.txt)
+  add_custom_command(TARGET ${prefix}PostBuild POST_BUILD COMMAND ${cmd} BYPRODUCTS ${prefix}PostBuild.txt)
 
   get_write_file_command(cmd ${prefix}TargetPostBuild.txt)
   add_custom_target(${prefix}TargetPostBuild)
-  add_custom_command(TARGET ${prefix}TargetPostBuild COMMAND ${cmd} BYPRODUCTS ${prefix}TargetPostBuild.txt)
+  add_custom_command(TARGET ${prefix}TargetPostBuild POST_BUILD COMMAND ${cmd} BYPRODUCTS ${prefix}TargetPostBuild.txt)
 
   file(APPEND "${CMAKE_BINARY_DIR}/target_files_custom.cmake"
 "set(TARGET_DEPENDS_${prefix}Command [==[${CMAKE_CURRENT_BINARY_DIR}/${prefix}Command.txt]==])

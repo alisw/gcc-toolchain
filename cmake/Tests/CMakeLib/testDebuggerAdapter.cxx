@@ -1,13 +1,11 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 
 #include <chrono>
 #include <cstdio>
-#include <functional>
 #include <future>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include <cm3p/cppdap/future.h>
 #include <cm3p/cppdap/io.h>
@@ -85,19 +83,16 @@ bool runTest(std::function<bool(dap::Session&)> onThreadExitedEvent)
 
   auto connection = std::make_shared<DebuggerLocalConnection>();
   std::unique_ptr<dap::Session> client = dap::Session::create();
-  client->registerHandler([&](const dap::InitializedEvent& e) {
-    (void)e;
+  client->registerHandler([&](dap::InitializedEvent /*unused*/) {
     initializedEventReceivedPromise.set_value(true);
   });
-  client->registerHandler([&](const dap::ExitedEvent& e) {
-    (void)e;
+  client->registerHandler([&](dap::ExitedEvent /*unused*/) {
     exitedEventReceivedPromise.set_value(true);
   });
-  client->registerHandler([&](const dap::TerminatedEvent& e) {
-    (void)e;
+  client->registerHandler([&](dap::TerminatedEvent const& /*unused*/) {
     terminatedEventReceivedPromise.set_value(true);
   });
-  client->registerHandler([&](const dap::ThreadEvent& e) {
+  client->registerHandler([&](dap::ThreadEvent const& e) {
     if (e.reason == "started") {
       threadStartedPromise.set_value(true);
     } else if (e.reason == "exited") {
@@ -134,6 +129,7 @@ bool runTest(std::function<bool(dap::Session&)> onThreadExitedEvent)
   ASSERT_TRUE(initializeResponse.response.supportsExceptionInfoRequest);
   ASSERT_TRUE(
     initializeResponse.response.exceptionBreakpointFilters.has_value());
+  ASSERT_TRUE(initializeResponse.response.supportsValueFormattingOptions);
 
   dap::LaunchRequest launchRequest;
   auto launchResponse = client->send(launchRequest).get();
@@ -194,8 +190,6 @@ bool testThreadsRequestAfterThreadExitedEvent()
 
 int testDebuggerAdapter(int, char*[])
 {
-  return runTests(std::vector<std::function<bool()>>{
-    testBasicProtocol,
-    testThreadsRequestAfterThreadExitedEvent,
-  });
+  return runTests(
+    { testBasicProtocol, testThreadsRequestAfterThreadExitedEvent });
 }

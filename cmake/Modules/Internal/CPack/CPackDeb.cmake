@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 # CPack script for creating Debian package
 # Author: Mathieu Malaterre
@@ -9,9 +9,6 @@
 if(CMAKE_BINARY_DIR)
   message(FATAL_ERROR "CPackDeb.cmake may only be used by CPack internally.")
 endif()
-
-cmake_policy(PUSH)
-cmake_policy(SET CMP0057 NEW) # if IN_LIST
 
 function(cpack_deb_variable_fallback OUTPUT_VAR_NAME)
   set(FALLBACK_VAR_NAMES ${ARGN})
@@ -53,6 +50,65 @@ function(extract_so_info shared_object libname version)
     endif()
   else()
     message(FATAL_ERROR "Readelf utility is not available.")
+  endif()
+endfunction()
+
+#extract RUNPATH and RPATH for given shared object or executable
+function(extract_runpath_and_rpath shared_object_or_executable runpath rpath)
+  if(CPACK_READELF_EXECUTABLE)
+    execute_process(COMMAND "${CPACK_READELF_EXECUTABLE}" -d "${shared_object_or_executable}"
+      WORKING_DIRECTORY "${CPACK_TEMPORARY_DIRECTORY}"
+      RESULT_VARIABLE result
+      OUTPUT_VARIABLE output
+      ERROR_QUIET
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if(result EQUAL 0)
+      string(REGEX MATCH "\\(?RUNPATH\\)?[^\n]*\\[([^\n]+)\\]" found_runpath "${output}")
+      string(REPLACE ":" ";" found_runpath "${CMAKE_MATCH_1}")
+      list(REMOVE_DUPLICATES found_runpath)
+      string(REGEX MATCH "\\(?RPATH\\)?[^\n]*\\[([^\n]+)\\]"   found_rpath   "${output}")
+      string(REPLACE ":" ";" found_rpath   "${CMAKE_MATCH_1}")
+      list(REMOVE_DUPLICATES found_rpath)
+      set(${runpath} "${found_runpath}" PARENT_SCOPE)
+      set(${rpath}   "${found_rpath}"   PARENT_SCOPE)
+    else()
+      message(WARNING "Error running readelf for \"${shared_object_or_executable}\"")
+    endif()
+  else()
+    message(FATAL_ERROR "Readelf utility is not available.")
+  endif()
+endfunction()
+
+#sanitizes the given directory name if required
+function(get_sanitized_dirname dirname outvar)
+  # NOTE: This pattern has to stay in sync with the 'prohibited_chars' variable
+  #       defined in the C++ function `CPackGenerator::GetSanitizedDirOrFileName`!
+  set(prohibited_chars_pattern "[<]|[>]|[\"]|[/]|[\\]|[|]|[?]|[*]|[`]")
+  if("${dirname}" MATCHES "${prohibited_chars_pattern}")
+    string(MD5 sanitized_dirname "${dirname}")
+    set(${outvar} "${sanitized_dirname}" PARENT_SCOPE)
+  else()
+    set(${outvar} "${dirname}" PARENT_SCOPE)
+  endif()
+endfunction()
+
+#retrieve packaging directories of components the current component depends on
+# Note: May only be called from within 'cpack_deb_prepare_package_var'!
+function(get_packaging_dirs_of_dependencies outvar)
+  if(CPACK_DEB_PACKAGE_COMPONENT)
+    if(NOT DEFINED WDIR OR NOT DEFINED _local_component_name)
+      message(FATAL_ERROR "CPackDeb: Function '${CMAKE_CURRENT_FUNCTION}' not called from correct function scope!")
+    endif()
+    set(result_list)
+    foreach(dependency_name IN LISTS CPACK_COMPONENT_${_local_component_name}_DEPENDS)
+      get_sanitized_dirname("${dependency_name}" dependency_name)
+      cmake_path(APPEND_STRING WDIR "/../${dependency_name}" OUTPUT_VARIABLE dependency_packaging_dir)
+      cmake_path(NORMAL_PATH dependency_packaging_dir)
+      list(APPEND result_list "${dependency_packaging_dir}")
+    endforeach()
+    set(${outvar} "${result_list}" PARENT_SCOPE)  # Set return variable.
+  else()
+    set(${outvar} "" PARENT_SCOPE)  # Clear return variable.
   endif()
 endfunction()
 
@@ -179,7 +235,7 @@ function(cpack_deb_prepare_package_vars)
     endforeach()
 
     # Only dynamically linked ELF files are included
-    # Extract only file name infront of ":"
+    # Extract only file name in front of ":"
     foreach(_FILE IN LISTS CPACK_DEB_INSTALL_FILES)
       if(_FILE MATCHES "ELF.*dynamically linked")
         string(REGEX MATCH "(^.*):" _FILE_NAME "${_FILE}")
@@ -310,16 +366,44 @@ function(cpack_deb_prepare_package_vars)
           set(IGNORE_MISSING_INFO_FLAG "--ignore-missing-info")
         endif()
 
-        if(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS)
+        # Add -l option if the tool supports it?
+        if(DEFINED SHLIBDEPS_EXECUTABLE_VERSION AND SHLIBDEPS_EXECUTABLE_VERSION VERSION_GREATER_EQUAL 1.17.0)
           unset(PRIVATE_SEARCH_DIR_OPTIONS)
-          # Add -l option if the tool supports it
-          if(DEFINED SHLIBDEPS_EXECUTABLE_VERSION AND SHLIBDEPS_EXECUTABLE_VERSION VERSION_GREATER_EQUAL 1.17.0)
-            foreach(dir IN LISTS CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS)
-              list(APPEND PRIVATE_SEARCH_DIR_OPTIONS "-l${dir}")
+
+          # Use directories provided via CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS
+          if(NOT "${CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS}" STREQUAL "")
+            foreach(path IN LISTS CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS)
+              cmake_path(NORMAL_PATH path)  # Required for dpkg-shlibdeps!
+              list(APPEND PRIVATE_SEARCH_DIR_OPTIONS "-l${path}")
             endforeach()
-          else()
-            message(WARNING "CPackDeb: dkpg-shlibdeps is too old. \"CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS\" is therefore ignored.")
           endif()
+
+          # Use directories extracted from RUNPATH/RPATH
+          get_packaging_dirs_of_dependencies(deps_packaging_dirs)
+          foreach(exe IN LISTS CPACK_DEB_BINARY_FILES)
+            cmake_path(GET exe PARENT_PATH exe_dir)
+            extract_runpath_and_rpath(${exe} runpath rpath)
+            # If RUNPATH is available, RPATH will be ignored. Therefore we have to do the same here!
+            if (NOT "${runpath}" STREQUAL "")
+              set(selected_rpath "${runpath}")
+            else()
+              set(selected_rpath "${rpath}")
+            endif()
+            foreach(search_path IN LISTS selected_rpath)
+              if ("${search_path}" MATCHES "^[$]ORIGIN" OR "${search_path}" MATCHES "^[$][{]ORIGIN[}]")
+                foreach(deps_pkgdir IN LISTS deps_packaging_dirs)
+                  string(REPLACE "\$ORIGIN" "${deps_pkgdir}/${exe_dir}" path "${search_path}")
+                  string(REPLACE "\${ORIGIN}" "${deps_pkgdir}/${exe_dir}" path "${path}")
+                  cmake_path(NORMAL_PATH path)  # Required for dpkg-shlibdeps!
+                  list(APPEND PRIVATE_SEARCH_DIR_OPTIONS "-l${path}")
+                endforeach()
+              endif()
+            endforeach()
+          endforeach()
+
+          list(REMOVE_DUPLICATES PRIVATE_SEARCH_DIR_OPTIONS)
+        elseif(NOT "${CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS}" STREQUAL "")
+          message(WARNING "CPackDeb: dkpg-shlibdeps is too old. \"CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS\" is therefore ignored.")
         endif()
 
         # Execute dpkg-shlibdeps
@@ -480,14 +564,14 @@ function(cpack_deb_prepare_package_vars)
   # if per-component variable, overrides the global CPACK_DEBIAN_PACKAGE_${variable_type_}
   # automatic dependency discovery will be performed afterwards.
   if(CPACK_DEB_PACKAGE_COMPONENT)
-    foreach(value_type_ IN ITEMS DEPENDS RECOMMENDS SUGGESTS PREDEPENDS ENHANCES BREAKS CONFLICTS PROVIDES REPLACES SOURCE SECTION PRIORITY NAME)
+    foreach(value_type_ IN ITEMS DEPENDS RECOMMENDS SUGGESTS PREDEPENDS ENHANCES BREAKS CONFLICTS PROVIDES REPLACES MULTIARCH SOURCE SECTION PRIORITY NAME)
       set(_component_var "CPACK_DEBIAN_${_local_component_name}_PACKAGE_${value_type_}")
 
       # if set, overrides the global variable
       if(DEFINED ${_component_var})
         set(CPACK_DEBIAN_PACKAGE_${value_type_} "${${_component_var}}")
         if(CPACK_DEBIAN_PACKAGE_DEBUG)
-          message("CPackDeb Debug: component '${_local_component_name}' ${value_type_} "
+          message("CPackDeb Debug: component '${CPACK_DEB_PACKAGE_COMPONENT}' ${value_type_} "
             "value set to '${CPACK_DEBIAN_PACKAGE_${value_type_}}'")
         endif()
       endif()
@@ -502,7 +586,6 @@ function(cpack_deb_prepare_package_vars)
       list(JOIN COMPONENT_DEPENDS ", " COMPONENT_DEPENDS)
       if(COMPONENT_DEPENDS)
         list(PREPEND CPACK_DEBIAN_PACKAGE_DEPENDS ${COMPONENT_DEPENDS})
-        list(JOIN CPACK_DEBIAN_PACKAGE_DEPENDS ", " CPACK_DEBIAN_PACKAGE_DEPENDS)
       endif()
     endif()
   endif()
@@ -512,9 +595,9 @@ function(cpack_deb_prepare_package_vars)
   # Append automatically discovered dependencies .
   if(CPACK_DEBIAN_PACKAGE_AUTO_DEPENDS)
     list(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_PACKAGE_AUTO_DEPENDS})
-    list(JOIN CPACK_DEBIAN_PACKAGE_DEPENDS ", " CPACK_DEBIAN_PACKAGE_DEPENDS)
   endif()
 
+  list(JOIN CPACK_DEBIAN_PACKAGE_DEPENDS ", " CPACK_DEBIAN_PACKAGE_DEPENDS)
   if(NOT CPACK_DEBIAN_PACKAGE_DEPENDS)
     message(STATUS "CPACK_DEBIAN_PACKAGE_DEPENDS not set, the package will have no dependencies.")
   endif()
@@ -775,6 +858,7 @@ function(cpack_deb_prepare_package_vars)
   set(GEN_CPACK_DEBIAN_PACKAGE_CONFLICTS "${CPACK_DEBIAN_PACKAGE_CONFLICTS}" PARENT_SCOPE)
   set(GEN_CPACK_DEBIAN_PACKAGE_PROVIDES "${CPACK_DEBIAN_PACKAGE_PROVIDES}" PARENT_SCOPE)
   set(GEN_CPACK_DEBIAN_PACKAGE_REPLACES "${CPACK_DEBIAN_PACKAGE_REPLACES}" PARENT_SCOPE)
+  set(GEN_CPACK_DEBIAN_PACKAGE_MULTIARCH "${CPACK_DEBIAN_PACKAGE_MULTIARCH}" PARENT_SCOPE)
   set(GEN_CPACK_DEBIAN_PACKAGE_SHLIBS "${CPACK_DEBIAN_PACKAGE_SHLIBS_LIST}" PARENT_SCOPE)
   set(GEN_CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA}" PARENT_SCOPE)
   set(GEN_CPACK_DEBIAN_PACKAGE_CONTROL_STRICT_PERMISSION
@@ -799,5 +883,3 @@ function(cpack_deb_prepare_package_vars)
 endfunction()
 
 cpack_deb_prepare_package_vars()
-
-cmake_policy(POP)

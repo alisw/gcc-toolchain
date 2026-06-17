@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(TestFindLTTngUST C)
 include(CTest)
 
 find_package(LTTngUST REQUIRED)
 
-add_definitions(-DCMAKE_EXPECTED_LTTNGUST_VERSION="${LTTNGUST_VERSION_STRING}")
+add_definitions(-DCMAKE_EXPECTED_LTTNGUST_VERSION="${LTTngUST_VERSION}")
 add_definitions(-DCMAKE_LTTNGUST_HAS_TRACEF="${LTTNGUST_HAS_TRACEF}")
 add_definitions(-DCMAKE_LTTNGUST_HAS_TRACELOG="${LTTNGUST_HAS_TRACELOG}")
 

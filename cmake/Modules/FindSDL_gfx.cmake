@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindSDL_gfx
@@ -7,22 +7,99 @@ FindSDL_gfx
 
 .. versionadded:: 3.25
 
-Locate SDL_gfx library
+Finds the SDL_gfx library that provides graphics support in SDL (Simple
+DirectMedia Layer) applications:
 
-This module defines:
+.. code-block:: cmake
 
-::
+  find_package(SDL_gfx [<version>] [...])
 
-  SDL::SDL_gfx, the name of the target to use with target_*() commands
-  SDL_GFX_LIBRARIES, the name of the library to link against
-  SDL_GFX_INCLUDE_DIRS, where to find the headers
-  SDL_GFX_FOUND, if false, do not try to link against
-  SDL_GFX_VERSION_STRING - human-readable string containing the
-                             version of SDL_gfx
+.. note::
 
-``$SDLDIR`` is an environment variable that would correspond to the
-``./configure --prefix=$SDLDIR`` used in building SDL.
+  This module is for SDL_gfx version 1.  For version 2 or newer usage refer to
+  the upstream documentation.
+
+Imported Targets
+^^^^^^^^^^^^^^^^
+
+This module provides the following :ref:`Imported Targets`:
+
+``SDL::SDL_gfx``
+  Target encapsulating the SDL_gfx library usage requirements, available if
+  SDL_gfx is found.
+
+Result Variables
+^^^^^^^^^^^^^^^^
+
+This module defines the following variables:
+
+``SDL_gfx_FOUND``
+  Boolean indicating whether the (requested version of) SDL_gfx library was
+  found.
+
+``SDL_gfx_VERSION``
+  .. versionadded:: 4.2
+
+  The human-readable string containing the version of SDL_gfx found.
+
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may also be set:
+
+``SDL_GFX_INCLUDE_DIRS``
+  The directory containing the headers needed to use SDL_gfx.
+
+``SDL_GFX_LIBRARIES``
+  The path to the SDL_gfx library needed to link against to use SDL_gfx.
+
+Hints
+^^^^^
+
+This module accepts the following variables:
+
+``SDLDIR``
+  Environment variable that can be set to help locate an SDL library installed
+  in a custom location.  It should point to the installation destination that
+  was used when configuring, building, and installing SDL library:
+  ``./configure --prefix=$SDLDIR``.
+
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
+
+The following variables are provided for backward compatibility:
+
+``SDL_GFX_FOUND``
+  .. deprecated:: 4.2
+    Use ``SDL_gfx_FOUND``, which has the same value.
+
+  Boolean indicating whether the (requested version of) SDL_gfx library was
+  found.
+
+``SDL_GFX_VERSION_STRING``
+  .. deprecated:: 4.2
+    Use the ``SDL_gfx_VERSION``.
+
+  The human-readable string containing the version of SDL_gfx found.
+
+Examples
+^^^^^^^^
+
+Finding SDL_gfx library and linking it to a project target:
+
+.. code-block:: cmake
+
+  find_package(SDL_gfx)
+  target_link_libraries(project_target PRIVATE SDL::SDL_gfx)
+
+See Also
+^^^^^^^^
+
+* The :module:`FindSDL` module to find the main SDL library.
 #]=======================================================================]
+
+cmake_policy(PUSH)
+cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
 find_path(SDL_GFX_INCLUDE_DIRS
   NAMES
@@ -61,7 +138,8 @@ if(SDL_GFX_INCLUDE_DIRS AND EXISTS "${SDL_GFX_INCLUDE_DIRS}/SDL_gfxPrimitives.h"
   string(REGEX REPLACE "^#define[ \t]+SDL_GFXPRIMITIVES_MAJOR[ \t]+([0-9]+)$" "\\1" SDL_GFX_VERSION_MAJOR "${SDL_GFX_VERSION_MAJOR_LINE}")
   string(REGEX REPLACE "^#define[ \t]+SDL_GFXPRIMITIVES_MINOR[ \t]+([0-9]+)$" "\\1" SDL_GFX_VERSION_MINOR "${SDL_GFX_VERSION_MINOR_LINE}")
   string(REGEX REPLACE "^#define[ \t]+SDL_GFXPRIMITIVES_MICRO[ \t]+([0-9]+)$" "\\1" SDL_GFX_VERSION_PATCH "${SDL_GFX_VERSION_PATCH_LINE}")
-  set(SDL_GFX_VERSION_STRING ${SDL_GFX_VERSION_MAJOR}.${SDL_GFX_VERSION_MINOR}.${SDL_GFX_VERSION_PATCH})
+  set(SDL_gfx_VERSION ${SDL_GFX_VERSION_MAJOR}.${SDL_GFX_VERSION_MINOR}.${SDL_GFX_VERSION_PATCH})
+  set(SDL_GFX_VERSION_STRING "${SDL_gfx_VERSION}")
   unset(SDL_GFX_VERSION_MAJOR_LINE)
   unset(SDL_GFX_VERSION_MINOR_LINE)
   unset(SDL_GFX_VERSION_PATCH_LINE)
@@ -72,9 +150,9 @@ endif()
 
 include(FindPackageHandleStandardArgs)
 
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(SDL_gfx
+find_package_handle_standard_args(SDL_gfx
                                   REQUIRED_VARS SDL_GFX_LIBRARIES SDL_GFX_INCLUDE_DIRS
-                                  VERSION_VAR SDL_GFX_VERSION_STRING)
+                                  VERSION_VAR SDL_gfx_VERSION)
 
 if(SDL_gfx_FOUND)
   if(NOT TARGET SDL::SDL_gfx)
@@ -84,3 +162,5 @@ if(SDL_gfx_FOUND)
       INTERFACE_LINK_LIBRARIES "${SDL_GFX_LIBRARIES}")
   endif()
 endif()
+
+cmake_policy(POP)

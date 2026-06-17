@@ -14,9 +14,13 @@ run_cmake(Ubuntu)
 run_cmake(CentOS6)
 run_cmake(Debian6)
 
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+  run_cmake(MacOS)
+endif()
+
 run_cmake(UserFallbackScript)
 
-if(RunCMake_GENERATOR MATCHES "^Visual Studio " AND NOT RunCMake_GENERATOR STREQUAL "Visual Studio 9 2008")
+if(RunCMake_GENERATOR MATCHES "Visual Studio")
   run_cmake(VsMSBuild)
 else()
   run_cmake(VsMSBuildMissing)

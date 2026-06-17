@@ -1,7 +1,7 @@
 CTEST_PARALLEL_LEVEL
 --------------------
 
-.. include:: ENV_VAR.txt
+.. include:: include/ENV_VAR.rst
 
 Specify the number of tests for CTest to run in parallel.
 For example, if ``CTEST_PARALLEL_LEVEL`` is set to 8, CTest will run
@@ -14,7 +14,6 @@ up to 8 tests concurrently as if ``ctest`` were invoked with the
   parallelism, or unbounded parallelism, respectively, as documented by
   the :option:`ctest --parallel` option.
 
-  On Windows, environment variables cannot be set to an empty string.
   CTest will interpret a whitespace-only string as empty.
 
   In CMake 3.28 and earlier, an empty or ``0`` value was equivalent to ``1``.

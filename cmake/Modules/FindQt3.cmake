@@ -1,38 +1,110 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindQt3
 -------
 
-Locate Qt include paths and libraries
+Finds Qt3, a cross-platform application development framework for creating
+graphical user interfaces and applications:
 
-This module defines:
+.. code-block:: cmake
 
-::
+  find_package(Qt3 [<version>] [...])
 
-  QT_INCLUDE_DIR    - where to find qt.h, etc.
-  QT_LIBRARIES      - the libraries to link against to use Qt.
-  QT_DEFINITIONS    - definitions to use when
-                      compiling code that uses Qt.
-  QT_FOUND          - If false, don't try to use Qt.
-  QT_VERSION_STRING - the version of Qt found
+.. note::
 
+  This module is for Qt version 3.  As of Qt version 5, the Qt upstream also
+  provides an exported configuration to find Qt.  New code should follow the
+  :manual:`cmake-qt(7)` instead of using this module.
 
+Result Variables
+^^^^^^^^^^^^^^^^
 
-If you need the multithreaded version of Qt, set QT_MT_REQUIRED to
-TRUE
+This module defines the following variables:
 
-Also defined, but not for general use are:
+``Qt3_FOUND``
+  .. versionadded:: 3.3
 
-::
+  Boolean indicating whether (the requested version of) Qt3 was found.
 
-  QT_MOC_EXECUTABLE, where to find the moc tool.
-  QT_UIC_EXECUTABLE, where to find the uic tool.
-  QT_QT_LIBRARY, where to find the Qt library.
-  QT_QTMAIN_LIBRARY, where to find the qtmain
-   library. This is only required by Qt3 on Windows.
+``QT_FOUND``
+  Same as ``Qt3_FOUND``.  Boolean indicating whether (the requested version
+  of) Qt3 was found.  This variable is provided for compatibility with other
+  Qt find modules.
+
+``Qt3_VERSION``
+  .. versionadded:: 4.2
+
+  The version of Qt3 that was found.
+
+``QT_LIBRARIES``
+  Libraries needed to link against for using Qt3.
+
+``QT_DEFINITIONS``
+  A list of compile definitions to use when compiling code that uses Qt3.
+
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may also be set:
+
+``QT_INCLUDE_DIR``
+  The directory containing ``qt.h`` and other Qt3 header files.
+
+The following cache variables may also be set but are not meant for general use:
+
+``QT_MOC_EXECUTABLE``
+  Path to the ``moc`` tool.
+``QT_UIC_EXECUTABLE``
+  Path to the ``uic`` tool.
+``QT_QT_LIBRARY``
+  Path to the Qt3 library.
+``QT_QTMAIN_LIBRARY``
+  Path to the ``qtmain`` library.  This is only required by Qt3 on Windows.
+
+Hints
+^^^^^
+
+``QT_MT_REQUIRED``
+  To search for the multithreaded version of Qt3, set this variable to ``TRUE``
+  before looking for Qt3.
+
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
+
+The following variables are provided for backward compatibility:
+
+``QT_VERSION_STRING``
+  .. deprecated:: 4.2
+    Use ``Qt3_VERSION``, which has the same value.
+
+  The version of Qt3 that was found.
+
+Examples
+^^^^^^^^
+
+Finding Qt3 on the system:
+
+.. code-block:: cmake
+
+  find_package(Qt3)
+  if(Qt3_FOUND)
+    target_link_libraries(foo PRIVATE ${QT_LIBRARIES})
+    target_include_directories(foo PRIVATE ${QT_INCLUDE_DIR})
+    target_compile_definitions(foo PRIVATE ${QT_DEFINITIONS})
+  endif()
+
+Looking for the multithreaded version of Qt3:
+
+.. code-block:: cmake
+
+  set(QT_MT_REQUIRED TRUE)
+  find_package(Qt3)
 #]=======================================================================]
+
+cmake_policy(PUSH)
+cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
 # These are around for backwards compatibility
 # they will be set
@@ -40,13 +112,14 @@ Also defined, but not for general use are:
 #  QT_WRAP_UI set true if QT_UIC_EXECUTABLE is found
 
 # If Qt4 has already been found, fail.
-if(QT4_FOUND)
+if(Qt4_FOUND)
   if(Qt3_FIND_REQUIRED)
     message( FATAL_ERROR "Qt3 and Qt4 cannot be used together in one project.")
   else()
     if(NOT Qt3_FIND_QUIETLY)
       message( STATUS    "Qt3 and Qt4 cannot be used together in one project.")
     endif()
+    cmake_policy(POP)
     return()
   endif()
 endif()
@@ -85,7 +158,8 @@ if(QT_INCLUDE_DIR)
   # Under windows the qt library (MSVC) has the format qt-mtXYZ where XYZ is the
   # version X.Y.Z, so we need to remove the dots from version
   string(REGEX REPLACE "\\." "" qt_version_str_lib "${qt_version_str}")
-  set(QT_VERSION_STRING "${qt_version_str}")
+  set(Qt3_VERSION "${qt_version_str}")
+  set(QT_VERSION_STRING "${Qt3_VERSION}")
 endif()
 
 file(GLOB GLOB_PATHS_LIB /usr/lib/qt-3*/lib/)
@@ -203,18 +277,18 @@ if(NOT Qt3_FIND_VERSION AND QT_MIN_VERSION)
 endif()
 
 # if the include a library are found then we have it
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
+include(FindPackageHandleStandardArgs)
 if (CMAKE_FIND_PACKAGE_NAME STREQUAL "Qt")
   # FindQt include()'s this module. It's an old pattern, but rather than trying
   # to suppress this from outside the module (which is then sensitive to the
   # contents, detect the case in this module and suppress it explicitly.
   set(FPHSA_NAME_MISMATCHED 1)
 endif ()
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(Qt3
+find_package_handle_standard_args(Qt3
                                   REQUIRED_VARS QT_QT_LIBRARY QT_INCLUDE_DIR QT_MOC_EXECUTABLE
-                                  VERSION_VAR QT_VERSION_STRING)
+                                  VERSION_VAR Qt3_VERSION)
 unset(FPHSA_NAME_MISMATCHED)
-set(QT_FOUND ${QT3_FOUND} )
+set(QT_FOUND ${Qt3_FOUND})
 
 if(QT_FOUND)
   set( QT_LIBRARIES ${QT_LIBRARIES} ${QT_QT_LIBRARY} )
@@ -304,3 +378,5 @@ mark_as_advanced(
   QT_WRAP_CPP
   QT_WRAP_UI
   )
+
+cmake_policy(POP)

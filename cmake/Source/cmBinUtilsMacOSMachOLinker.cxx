@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 
 #include "cmBinUtilsMacOSMachOLinker.h"
 
@@ -54,7 +54,7 @@ bool cmBinUtilsMacOSMachOLinker::Prepare()
 }
 
 auto cmBinUtilsMacOSMachOLinker::GetFileInfo(std::string const& file)
-  -> const FileInfo*
+  -> FileInfo const*
 {
   // Memoize processed rpaths and library dependencies to reduce the number
   // of calls to otool, especially in the case of heavily recursive libraries
@@ -86,8 +86,8 @@ bool cmBinUtilsMacOSMachOLinker::ScanDependencies(
   if (!executableFile.empty()) {
     executablePath = cmSystemTools::GetFilenamePath(executableFile);
   }
-  const FileInfo* file_info = this->GetFileInfo(file);
-  if (file_info == nullptr) {
+  FileInfo const* file_info = this->GetFileInfo(file);
+  if (!file_info) {
     return false;
   }
   return this->ScanDependencies(file, file_info->libs, file_info->rpaths,
@@ -119,17 +119,23 @@ bool cmBinUtilsMacOSMachOLinker::GetFileDependencies(
             !IsMissingSystemDylib(path)) {
           auto filename = cmSystemTools::GetFilenameName(path);
           bool unique;
-          const FileInfo* dep_file_info = this->GetFileInfo(path);
-          if (dep_file_info == nullptr) {
+          FileInfo const* dep_file_info = this->GetFileInfo(path);
+          if (!dep_file_info) {
             return false;
           }
 
           this->Archive->AddResolvedPath(filename, path, unique,
                                          dep_file_info->rpaths);
-          if (unique &&
-              !this->ScanDependencies(path, dep_file_info->libs,
-                                      dep_file_info->rpaths, executablePath)) {
-            return false;
+          if (unique) {
+            std::vector<std::string> combinedParentRpaths =
+              dep_file_info->rpaths;
+            combinedParentRpaths.insert(combinedParentRpaths.end(),
+                                        rpaths.begin(), rpaths.end());
+            if (!this->ScanDependencies(path, dep_file_info->libs,
+                                        combinedParentRpaths,
+                                        executablePath)) {
+              return false;
+            }
           }
         }
       } else {

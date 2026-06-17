@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -8,9 +8,11 @@
 #include <string>
 #include <vector>
 
-#include "cmsys/RegularExpression.hxx"
-
 #include "cmUVProcessChain.h"
+
+namespace cmsys {
+class RegularExpression;
+}
 
 class cmXMLElement;
 
@@ -24,8 +26,8 @@ public:
   cmCTestLaunchReporter();
   ~cmCTestLaunchReporter();
 
-  cmCTestLaunchReporter(const cmCTestLaunchReporter&) = delete;
-  cmCTestLaunchReporter& operator=(const cmCTestLaunchReporter&) = delete;
+  cmCTestLaunchReporter(cmCTestLaunchReporter const&) = delete;
+  cmCTestLaunchReporter& operator=(cmCTestLaunchReporter const&) = delete;
 
   // Methods to check the result of the real command.
   bool IsError() const;
@@ -34,10 +36,16 @@ public:
   std::string OptionOutput;
   std::string OptionSource;
   std::string OptionLanguage;
+  std::string OptionTargetLabels;
   std::string OptionTargetName;
   std::string OptionTargetType;
+  std::string OptionCurrentBuildDir;
   std::string OptionBuildDir;
   std::string OptionFilterPrefix;
+  std::string OptionCommandType;
+  std::string OptionRole;
+  std::string OptionConfig;
+  std::string OptionObjectDir;
 
   // The real command line appearing after launcher arguments.
   std::string CWD;
@@ -76,7 +84,7 @@ public:
   void WriteXMLCommand(cmXMLElement&);
   void WriteXMLResult(cmXMLElement&);
   void WriteXMLLabels(cmXMLElement&);
-  void DumpFileToXML(cmXMLElement&, const char* tag, std::string const& fname);
+  void DumpFileToXML(cmXMLElement&, char const* tag, std::string const& fname);
 
   // Configuration
   std::string SourceDir;

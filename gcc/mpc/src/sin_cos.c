@@ -1,6 +1,6 @@
 /* mpc_sin_cos -- combined sine and cosine of a complex number.
 
-Copyright (C) 2010, 2011, 2012, 2020 INRIA
+Copyright (C) 2010, 2011, 2012, 2020, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -381,7 +381,7 @@ mpc_sin_cos (mpc_ptr rop_sin, mpc_ptr rop_cos, mpc_srcptr op,
       mpfr_init2 (csh, 2);
 
       do {
-         loop ++;
+         MPC_LOOP_NEXT(loop, op, rop_sin); // FIXME: take into account rop_cos too
          prec += (loop <= 2) ? mpc_ceil_log2 (prec) + 5 : prec / 2;
 
          mpfr_set_prec (s, prec);

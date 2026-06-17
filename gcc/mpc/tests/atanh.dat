@@ -48,6 +48,7 @@
 # The sign of the result is checked with "+inf", "-inf", "-0", or "+0".
 
 # special values (following ISO C99 standard)
+# see https://en.cppreference.com/w/c/numeric/complex/catanh
 0 + 53   -0 53 -0x1921FB54442D18p-52    53 -inf 53 -inf N N
 0 + 53   -0 53 -0x1921FB54442D18p-52    53 -inf 53   -1 N N
 0 + 53   -0 53 -0x1921FB54442D18p-52    53 -inf 53   -0 N N
@@ -86,6 +87,9 @@
 0 - 53    0 53 +0x1921FB54442D18p-52    53  nan 53 +inf N N
 0 0 53  nan 53                   nan    53  nan 53  nan N N
 0 0 53 +inf 53                    +0    53  1   53  +0  N N
+0 0 53 +inf 53                    -0    53  1   53  -0  N N
+0 0 53 -inf 53                    +0    53  -1  53  +0  N N
+0 0 53 -inf 53                    -0    53  -1  53  -0  N N
 
 # pure real argument
 - + 53 -0x1E27076E2AF2E6p-57 53 -0x1921FB54442D18p-52    53  -17 53   -0 N N

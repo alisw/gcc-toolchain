@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 
 #include "cmDyndepCollation.h"
 
@@ -16,9 +16,11 @@
 
 #include <cm3p/json/value.h>
 
+#include "cmBuildDatabase.h"
 #include "cmExportBuildFileGenerator.h"
 #include "cmExportSet.h"
 #include "cmFileSet.h"
+#include "cmGenExContext.h"
 #include "cmGeneratedFileStream.h"
 #include "cmGeneratorExpression.h" // IWYU pragma: keep
 #include "cmGeneratorTarget.h"
@@ -39,13 +41,56 @@
 
 namespace {
 
-Json::Value CollationInformationCxxModules(
-  cmGeneratorTarget const* gt, std::string const& config,
-  cmDyndepGeneratorCallbacks const& cb)
+struct TdiSourceInfo
 {
+  Json::Value Sources;
+  Json::Value CxxModules;
+};
+
+TdiSourceInfo CollationInformationSources(cmGeneratorTarget const* gt,
+                                          std::string const& config,
+                                          cmDyndepGeneratorCallbacks const& cb)
+{
+  cm::GenEx::Context const context(gt->LocalGenerator, config);
+  TdiSourceInfo info;
   cmTarget const* tgt = gt->Target;
   auto all_file_sets = tgt->GetAllFileSetNames();
-  Json::Value tdi_cxx_module_info = Json::objectValue;
+  Json::Value& tdi_sources = info.Sources = Json::objectValue;
+  Json::Value& tdi_cxx_module_info = info.CxxModules = Json::objectValue;
+
+  enum class CompileType
+  {
+    ObjectAndBmi,
+    BmiOnly,
+  };
+  std::map<std::string, std::pair<cmSourceFile const*, CompileType>> sf_map;
+  {
+    auto fill_sf_map = [gt, tgt, &sf_map](cmSourceFile const* sf,
+                                          CompileType type) {
+      auto full_path = sf->GetFullPath();
+      if (full_path.empty()) {
+        gt->Makefile->IssueMessage(
+          MessageType::INTERNAL_ERROR,
+          cmStrCat("Target \"", tgt->GetName(),
+                   "\" has a full path-less source file."));
+        return;
+      }
+      sf_map[full_path] = std::make_pair(sf, type);
+    };
+
+    std::vector<cmSourceFile const*> objectSources;
+    gt->GetObjectSources(objectSources, config);
+    for (auto const* sf : objectSources) {
+      fill_sf_map(sf, CompileType::ObjectAndBmi);
+    }
+
+    std::vector<cmSourceFile const*> cxxModuleSources;
+    gt->GetCxxModuleSources(cxxModuleSources, config);
+    for (auto const* sf : cxxModuleSources) {
+      fill_sf_map(sf, CompileType::BmiOnly);
+    }
+  }
+
   for (auto const& file_set_name : all_file_sets) {
     auto const* file_set = tgt->GetFileSet(file_set_name);
     if (!file_set) {
@@ -65,45 +110,12 @@ Json::Value CollationInformationCxxModules(
     auto fileEntries = file_set->CompileFileEntries();
     auto directoryEntries = file_set->CompileDirectoryEntries();
 
-    auto directories = file_set->EvaluateDirectoryEntries(
-      directoryEntries, gt->LocalGenerator, config, gt);
+    auto directories =
+      file_set->EvaluateDirectoryEntries(directoryEntries, context, gt);
     std::map<std::string, std::vector<std::string>> files_per_dirs;
     for (auto const& entry : fileEntries) {
-      file_set->EvaluateFileEntry(directories, files_per_dirs, entry,
-                                  gt->LocalGenerator, config, gt);
-    }
-
-    enum class CompileType
-    {
-      ObjectAndBmi,
-      BmiOnly,
-    };
-    std::map<std::string, std::pair<cmSourceFile const*, CompileType>> sf_map;
-    {
-      auto fill_sf_map = [gt, tgt, &sf_map](cmSourceFile const* sf,
-                                            CompileType type) {
-        auto full_path = sf->GetFullPath();
-        if (full_path.empty()) {
-          gt->Makefile->IssueMessage(
-            MessageType::INTERNAL_ERROR,
-            cmStrCat("Target \"", tgt->GetName(),
-                     "\" has a full path-less source file."));
-          return;
-        }
-        sf_map[full_path] = std::make_pair(sf, type);
-      };
-
-      std::vector<cmSourceFile const*> objectSources;
-      gt->GetObjectSources(objectSources, config);
-      for (auto const* sf : objectSources) {
-        fill_sf_map(sf, CompileType::ObjectAndBmi);
-      }
-
-      std::vector<cmSourceFile const*> cxxModuleSources;
-      gt->GetCxxModuleSources(cxxModuleSources, config);
-      for (auto const* sf : cxxModuleSources) {
-        fill_sf_map(sf, CompileType::BmiOnly);
-      }
+      file_set->EvaluateFileEntry(directories, files_per_dirs, entry, context,
+                                  gt);
     }
 
     Json::Value fs_dest = Json::nullValue;
@@ -117,11 +129,23 @@ Json::Value CollationInformationCxxModules(
       }
     }
 
+    // Detect duplicate sources.
+    std::set<std::string> visited_sources;
+
     for (auto const& files_per_dir : files_per_dirs) {
       for (auto const& file : files_per_dir.second) {
         auto const full_file = cmSystemTools::CollapseFullPath(file);
         auto lookup = sf_map.find(full_file);
         if (lookup == sf_map.end()) {
+          if (visited_sources.count(full_file)) {
+            // Duplicate source; raise an author warning.
+            gt->Makefile->IssueMessage(
+              MessageType::AUTHOR_WARNING,
+              cmStrCat(
+                "Target \"", tgt->GetName(), "\" has source file\n  ", file,
+                "\nin a \"FILE_SET TYPE CXX_MODULES\" multiple times."));
+            continue;
+          }
           gt->Makefile->IssueMessage(
             MessageType::FATAL_ERROR,
             cmStrCat("Target \"", tgt->GetName(), "\" has source file\n  ",
@@ -130,9 +154,12 @@ Json::Value CollationInformationCxxModules(
                      "scheduled for compilation."));
           continue;
         }
+        visited_sources.insert(full_file);
 
         auto const* sf = lookup->second.first;
         CompileType const ct = lookup->second.second;
+
+        sf_map.erase(lookup);
 
         if (!sf) {
           gt->Makefile->IssueMessage(
@@ -160,7 +187,40 @@ Json::Value CollationInformationCxxModules(
     }
   }
 
-  return tdi_cxx_module_info;
+  for (auto const& sf_entry : sf_map) {
+    CompileType const ct = sf_entry.second.second;
+    if (ct == CompileType::BmiOnly) {
+      continue;
+    }
+
+    auto const* sf = sf_entry.second.first;
+    if (!gt->NeedDyndepForSource(sf->GetLanguage(), config, sf)) {
+      continue;
+    }
+
+    auto full_file = cmSystemTools::CollapseFullPath(sf->GetFullPath());
+    auto obj_path = cb.ObjectFilePath(sf, config);
+    Json::Value& tdi_source_info = tdi_sources[obj_path] = Json::objectValue;
+
+    tdi_source_info["source"] = full_file;
+    tdi_source_info["language"] = sf->GetLanguage();
+  }
+
+  return info;
+}
+
+Json::Value CollationInformationDatabaseInfo(cmGeneratorTarget const* gt,
+                                             std::string const& config)
+{
+  Json::Value db_info;
+
+  auto db_path = gt->BuildDatabasePath("CXX", config);
+  if (!db_path.empty()) {
+    db_info["template-path"] = cmStrCat(db_path, ".in");
+    db_info["output"] = db_path;
+  }
+
+  return db_info;
 }
 
 Json::Value CollationInformationBmiInstallation(cmGeneratorTarget const* gt,
@@ -181,7 +241,7 @@ Json::Value CollationInformationBmiInstallation(cmGeneratorTarget const* gt,
 
     tdi_bmi_info["permissions"] = bmi_gen->GetFilePermissions();
     tdi_bmi_info["destination"] = bmi_gen->GetDestination(config);
-    const char* msg_level = "";
+    char const* msg_level = "";
     switch (bmi_gen->GetMessageLevel()) {
       case cmInstallGenerator::MessageDefault:
         break;
@@ -207,6 +267,7 @@ Json::Value CollationInformationExports(cmGeneratorTarget const* gt)
 {
   Json::Value tdi_exports = Json::arrayValue;
   std::string export_name = gt->GetExportName();
+  std::string fs_export_name = gt->GetFilesystemExportName();
 
   auto const& all_install_exports = gt->GetGlobalGenerator()->GetExportSets();
   for (auto const& exp : all_install_exports) {
@@ -232,6 +293,7 @@ Json::Value CollationInformationExports(cmGeneratorTarget const* gt)
 
       tdi_export_info["namespace"] = ns;
       tdi_export_info["export-name"] = export_name;
+      tdi_export_info["filesystem-export-name"] = fs_export_name;
       tdi_export_info["destination"] = dest;
       tdi_export_info["cxx-module-info-dir"] = cxxm_dir;
       tdi_export_info["export-prefix"] = export_prefix;
@@ -241,8 +303,10 @@ Json::Value CollationInformationExports(cmGeneratorTarget const* gt)
     }
   }
 
-  auto const& all_build_exports = gt->Makefile->GetExportBuildFileGenerators();
-  for (auto const& exp : all_build_exports) {
+  auto const& all_build_exports =
+    gt->GetGlobalGenerator()->GetBuildExportSets();
+  for (auto const& exp_entry : all_build_exports) {
+    auto const* exp = exp_entry.second;
     std::vector<cmExportBuildFileGenerator::TargetExport> targets;
     exp->GetTargets(targets);
 
@@ -268,6 +332,7 @@ Json::Value CollationInformationExports(cmGeneratorTarget const* gt)
 
     tdi_export_info["namespace"] = ns;
     tdi_export_info["export-name"] = export_name;
+    tdi_export_info["filesystem-export-name"] = fs_export_name;
     tdi_export_info["destination"] = dest;
     tdi_export_info["cxx-module-info-dir"] = cxxm_dir;
     tdi_export_info["export-prefix"] = export_prefix;
@@ -284,11 +349,20 @@ void cmDyndepCollation::AddCollationInformation(
   Json::Value& tdi, cmGeneratorTarget const* gt, std::string const& config,
   cmDyndepGeneratorCallbacks const& cb)
 {
-  tdi["cxx-modules"] = CollationInformationCxxModules(gt, config, cb);
+  auto sourcesInfo = CollationInformationSources(gt, config, cb);
+  tdi["sources"] = sourcesInfo.Sources;
+  tdi["cxx-modules"] = sourcesInfo.CxxModules;
+  tdi["database-info"] = CollationInformationDatabaseInfo(gt, config);
   tdi["bmi-installation"] = CollationInformationBmiInstallation(gt, config);
   tdi["exports"] = CollationInformationExports(gt);
   tdi["config"] = config;
 }
+
+struct SourceInfo
+{
+  std::string SourcePath;
+  std::string Language;
+};
 
 struct CxxModuleFileSet
 {
@@ -299,6 +373,12 @@ struct CxxModuleFileSet
   std::string Type;
   cmFileSetVisibility Visibility = cmFileSetVisibility::Private;
   cm::optional<std::string> Destination;
+};
+
+struct CxxModuleDatabaseInfo
+{
+  std::string TemplatePath;
+  std::string Output;
 };
 
 struct CxxModuleBmiInstall
@@ -315,6 +395,7 @@ struct CxxModuleBmiInstall
 struct CxxModuleExport
 {
   std::string Name;
+  std::string FilesystemName;
   std::string Destination;
   std::string Prefix;
   std::string CxxModuleInfoDir;
@@ -324,7 +405,9 @@ struct CxxModuleExport
 
 struct cmCxxModuleExportInfo
 {
+  std::map<std::string, SourceInfo> ObjectToSource;
   std::map<std::string, CxxModuleFileSet> ObjectToFileSet;
+  cm::optional<CxxModuleDatabaseInfo> DatabaseInfo;
   cm::optional<CxxModuleBmiInstall> BmiInstallation;
   std::vector<CxxModuleExport> Exports;
   std::string Config;
@@ -352,6 +435,7 @@ cmDyndepCollation::ParseExportInfo(Json::Value const& tdi)
       CxxModuleExport exp;
       exp.Install = tdi_export["install"].asBool();
       exp.Name = tdi_export["export-name"].asString();
+      exp.FilesystemName = tdi_export["filesystem-export-name"].asString();
       exp.Destination = tdi_export["destination"].asString();
       exp.Prefix = tdi_export["export-prefix"].asString();
       exp.CxxModuleInfoDir = tdi_export["cxx-module-info-dir"].asString();
@@ -359,6 +443,15 @@ cmDyndepCollation::ParseExportInfo(Json::Value const& tdi)
 
       export_info->Exports.push_back(exp);
     }
+  }
+  auto const& database_info = tdi["database-info"];
+  if (database_info.isObject()) {
+    CxxModuleDatabaseInfo db_info;
+
+    db_info.TemplatePath = database_info["template-path"].asString();
+    db_info.Output = database_info["output"].asString();
+
+    export_info->DatabaseInfo = db_info;
   }
   auto const& bmi_installation = tdi["bmi-installation"];
   if (bmi_installation.isObject()) {
@@ -398,6 +491,15 @@ cmDyndepCollation::ParseExportInfo(Json::Value const& tdi)
       }
     }
   }
+  Json::Value const& tdi_sources = tdi["sources"];
+  if (tdi_sources.isObject()) {
+    for (auto i = tdi_sources.begin(); i != tdi_sources.end(); ++i) {
+      SourceInfo& si = export_info->ObjectToSource[i.key().asString()];
+      auto const& tdi_source = *i;
+      si.SourcePath = tdi_source["source"].asString();
+      si.Language = tdi_source["language"].asString();
+    }
+  }
 
   return export_info;
 }
@@ -426,8 +528,9 @@ bool cmDyndepCollation::WriteDyndepMetadata(
 
     std::string const export_dir =
       cmStrCat(exp.Prefix, '/', exp.CxxModuleInfoDir, '/');
-    std::string const property_file_path = cmStrCat(
-      export_dir, "target-", exp.Name, '-', export_info.Config, ".cmake");
+    std::string const property_file_path =
+      cmStrCat(export_dir, "target-", exp.FilesystemName, '-',
+               export_info.Config, ".cmake");
     properties = cm::make_unique<cmGeneratedFileStream>(property_file_path);
 
     // Set up the preamble.
@@ -436,6 +539,21 @@ bool cmDyndepCollation::WriteDyndepMetadata(
                 << "  PROPERTY IMPORTED_CXX_MODULES_" << config_upper << '\n';
 
     exports.emplace_back(std::move(properties), &exp);
+  }
+
+  std::unique_ptr<cmBuildDatabase> module_database;
+  cmBuildDatabase::LookupTable build_database_lookup;
+  if (export_info.DatabaseInfo) {
+    module_database =
+      cmBuildDatabase::Load(export_info.DatabaseInfo->TemplatePath);
+    if (module_database) {
+      build_database_lookup = module_database->GenerateLookupTable();
+    } else {
+      cmSystemTools::Error(
+        cmStrCat("Failed to read the template build database ",
+                 export_info.DatabaseInfo->TemplatePath));
+      result = false;
+    }
   }
 
   std::unique_ptr<cmGeneratedFileStream> bmi_install_script;
@@ -467,6 +585,25 @@ bool cmDyndepCollation::WriteDyndepMetadata(
 #ifdef _WIN32
     cmSystemTools::ConvertToUnixSlashes(output_path);
 #endif
+
+    auto source_info_itr = export_info.ObjectToSource.find(output_path);
+
+    // Update the module compilation database `requires` field if needed.
+    if (source_info_itr != export_info.ObjectToSource.end()) {
+      auto const& sourcePath = source_info_itr->second.SourcePath;
+      auto bdb_entry = build_database_lookup.find(sourcePath);
+      if (bdb_entry != build_database_lookup.end()) {
+        bdb_entry->second->Requires.clear();
+        for (auto const& req : object.Requires) {
+          bdb_entry->second->Requires.push_back(req.LogicalName);
+        }
+      } else if (export_info.DatabaseInfo) {
+        cmSystemTools::Error(
+          cmStrCat("Failed to find module database entry for ", sourcePath));
+        result = false;
+      }
+    }
+
     // Find the fileset for this object.
     auto fileset_info_itr = export_info.ObjectToFileSet.find(output_path);
     bool const has_provides = !object.Provides.empty();
@@ -490,6 +627,34 @@ bool cmDyndepCollation::WriteDyndepMetadata(
     }
 
     auto const& file_set = fileset_info_itr->second;
+
+    // Update the module compilation database `provides` field if needed.
+    {
+      auto bdb_entry = build_database_lookup.find(file_set.SourcePath);
+      if (bdb_entry != build_database_lookup.end()) {
+        // Clear the provides mapping; we will re-initialize it here.
+        if (!object.Provides.empty()) {
+          bdb_entry->second->Provides.clear();
+        }
+        for (auto const& prov : object.Provides) {
+          auto bmiName = cb.ModuleFile(prov.LogicalName);
+          if (bmiName) {
+            bdb_entry->second->Provides[prov.LogicalName] = *bmiName;
+          } else {
+            cmSystemTools::Error(
+              cmStrCat("Failed to find BMI location for ", prov.LogicalName));
+            result = false;
+          }
+        }
+        for (auto const& req : object.Requires) {
+          bdb_entry->second->Requires.push_back(req.LogicalName);
+        }
+      } else if (export_info.DatabaseInfo) {
+        cmSystemTools::Error(cmStrCat(
+          "Failed to find module database entry for ", file_set.SourcePath));
+        result = false;
+      }
+    }
 
     // Verify the fileset type for the object.
     if (file_set.Type == "CXX_MODULES"_s) {
@@ -649,6 +814,16 @@ bool cmDyndepCollation::WriteDyndepMetadata(
           req, "` C++ module which is provided by a private source"));
         result = false;
       }
+    }
+  }
+
+  if (module_database) {
+    if (module_database->HasPlaceholderNames()) {
+      cmSystemTools::Error(
+        "Module compilation database still contains placeholders");
+      result = false;
+    } else {
+      module_database->Write(export_info.DatabaseInfo->Output);
     }
   }
 

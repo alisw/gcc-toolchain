@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 
 /* This code was originally taken from part of the Clang-Tidy LLVM project and
  * modified for use with CMake under the following original license: */
@@ -55,10 +55,10 @@ public:
     , FID(FID)
   {
     SourceManager& SM = this->PP->getSourceManager();
-    const FileEntry* Entry = SM.getFileEntryForID(FID);
+    OptionalFileEntryRef Entry = SM.getFileEntryRefForID(FID);
     assert(Entry && "Invalid FileID given");
 
-    Lexer MyLexer(FID, SM.getMemoryBufferForFileOrFake(Entry), SM,
+    Lexer MyLexer(FID, SM.getMemoryBufferForFileOrFake(*Entry), SM,
                   this->PP->getLangOpts());
     Token Tok;
 
@@ -114,7 +114,7 @@ private:
 
     auto It = std::find_if(
       this->HashLocs.begin(), this->HashLocs.end(),
-      [&SM, &Loc](const SourceLocation& OtherLoc) -> bool {
+      [&SM, &Loc](SourceLocation const& OtherLoc) -> bool {
         return SM.getFileOffset(OtherLoc) >= SM.getFileOffset(Loc);
       });
     assert(It != this->HashLocs.begin() &&
@@ -131,7 +131,7 @@ private:
 
     auto It =
       std::find_if(this->HashLocs.rbegin(), this->HashLocs.rend(),
-                   [&SM, &Loc](const SourceLocation& OtherLoc) -> bool {
+                   [&SM, &Loc](SourceLocation const& OtherLoc) -> bool {
                      return SM.getFileOffset(OtherLoc) < SM.getFileOffset(Loc);
                    });
     assert(It != this->HashLocs.rend() &&
@@ -157,15 +157,16 @@ public:
     // guards.
     SourceManager& SM = this->PP->getSourceManager();
     if (Reason == EnterFile && FileType == SrcMgr::C_User) {
-      if (const FileEntry* FE = SM.getFileEntryForID(SM.getFileID(Loc))) {
+      if (OptionalFileEntryRef FE =
+            SM.getFileEntryRefForID(SM.getFileID(Loc))) {
         std::string FileName = cleanPath(FE->getName());
-        this->Files[FileName] = FE;
+        this->Files.try_emplace(FileName, *FE);
       }
     }
   }
 
-  void Ifndef(SourceLocation Loc, const Token& MacroNameTok,
-              const MacroDefinition& MD) override
+  void Ifndef(SourceLocation Loc, Token const& MacroNameTok,
+              MacroDefinition const& MD) override
   {
     if (MD) {
       return;
@@ -176,8 +177,8 @@ public:
       std::make_pair(Loc, MacroNameTok.getLocation());
   }
 
-  void MacroDefined(const Token& MacroNameTok,
-                    const MacroDirective* MD) override
+  void MacroDefined(Token const& MacroNameTok,
+                    MacroDirective const* MD) override
   {
     // Record all defined macros. We store the whole token to get info on the
     // name later.
@@ -195,8 +196,8 @@ public:
     // Now that we have all this information from the preprocessor, use it!
     SourceManager& SM = this->PP->getSourceManager();
 
-    for (const auto& MacroEntry : this->Macros) {
-      const MacroInfo* MI = MacroEntry.second;
+    for (auto const& MacroEntry : this->Macros) {
+      MacroInfo const* MI = MacroEntry.second;
 
       // We use clang's header guard detection. This has the advantage of also
       // emitting a warning for cases where a pseudo header guard is found but
@@ -205,9 +206,9 @@ public:
         continue;
       }
 
-      const FileEntry* FE =
-        SM.getFileEntryForID(SM.getFileID(MI->getDefinitionLoc()));
-      std::string FileName = cleanPath(FE->getName());
+      FileEntryRef FE =
+        *SM.getFileEntryRefForID(SM.getFileID(MI->getDefinitionLoc()));
+      std::string FileName = cleanPath(FE.getName());
       this->Files.erase(FileName);
 
       // Look up Locations for this guard.
@@ -255,7 +256,7 @@ public:
     // Look for header files that didn't have a header guard. Emit a warning
     // and fix-its to add the guard.
     // TODO: Insert the guard after top comments.
-    for (const auto& FE : this->Files) {
+    for (auto const& FE : this->Files) {
       StringRef FileName = FE.getKey();
       if (!Check->shouldSuggestToAddPragmaOnce(FileName)) {
         continue;
@@ -289,9 +290,9 @@ private:
     this->EndIfs.clear();
   }
 
-  std::vector<std::pair<Token, const MacroInfo*>> Macros;
-  llvm::StringMap<const FileEntry*> Files;
-  std::map<const IdentifierInfo*, std::pair<SourceLocation, SourceLocation>>
+  std::vector<std::pair<Token, MacroInfo const*>> Macros;
+  llvm::StringMap<FileEntryRef> Files;
+  std::map<IdentifierInfo const*, std::pair<SourceLocation, SourceLocation>>
     Ifndefs;
   std::map<SourceLocation, SourceLocation> EndIfs;
 
@@ -306,7 +307,7 @@ void UsePragmaOnceCheck::storeOptions(ClangTidyOptions::OptionMap& Opts)
                       RawStringHeaderFileExtensions);
 }
 
-void UsePragmaOnceCheck::registerPPCallbacks(const SourceManager& SM,
+void UsePragmaOnceCheck::registerPPCallbacks(SourceManager const& SM,
                                              Preprocessor* PP,
                                              Preprocessor* ModuleExpanderPP)
 {

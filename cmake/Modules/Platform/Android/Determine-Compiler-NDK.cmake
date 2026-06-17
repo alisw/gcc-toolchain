@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 # In Android NDK r19 and above there is a single clang toolchain.
 if(CMAKE_ANDROID_NDK_TOOLCHAIN_UNIFIED)
@@ -45,6 +45,9 @@ endif()
 #   The clang compiler to be invoked with flags:
 #     -target <triple>
 #     -gcc-toolchain <ndk>/toolchains/<triple-or-arch>-<gcc-version>
+
+cmake_policy(PUSH)
+cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
 # Glob available toolchains in the NDK, restricted by any version request.
 if(CMAKE_ANDROID_NDK_TOOLCHAIN_VERSION STREQUAL "clang")
@@ -269,3 +272,5 @@ unset(_ANDROID_TOOL_PREFIX)
 unset(_ANDROID_TOOL_CLANG_NAME)
 unset(_ANDROID_TOOL_CLANG_VERS)
 unset(_ANDROID_TOOL_LLVM_NAME)
+
+cmake_policy(POP)

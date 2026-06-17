@@ -1,6 +1,6 @@
 /* mpc_asin -- arcsine of a complex number.
 
-Copyright (C) 2009, 2010, 2011, 2012, 2013, 2014, 2020, 2022 INRIA
+Copyright (C) 2009, 2010, 2011, 2012, 2013, 2014, 2020, 2022, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -201,6 +201,113 @@ mpc_asin_series (mpc_srcptr rop, mpc_ptr s, mpc_srcptr z, mpc_rnd_t rnd)
                          (MPC_RND_IM(rnd) == MPFR_RNDN));
 }
 
+/* Try to get correct rounding for large |z| with Im(z) > 0,
+   where t is an auxiliary variable with the same precision for both parts.
+   Assume |z| >= 2 and prec(t) >= 4. */
+static int
+mpc_asin_large_pos (mpc_srcptr rop, mpc_ptr t, mpc_srcptr z, mpc_rnd_t rnd)
+{
+  /* We have asin(z) = -i*log(i*z + sqrt(1-z^2)).
+     For large |z|, we have sqrt(1-z^2) ~ i*z if Re(i*z) > 0, i.e., Im(z) < 0,
+     and sqrt(1-z^2) ~ -i*z if Re(i*z) < 0, i.e., Im(z) > 0.
+     In the first case, we have i*z + sqrt(1-z^2) ~ 2*i*z.
+     In the second case, we have a cancellation between i*z and sqrt(1-z^2).
+     More precisely, for t complex with |t| < 2^-2, we have
+     sqrt(1-t) = 1 - 1/(2t) + eps with |eps| < 1/(6|t|^2).
+     We have sqrt(1-z^2) = sqrt(-z^2 * (1 - 1/z^2))
+                         = -i*z * sqrt(1 - 1/z^2)
+                         = -i*z * [1 - 1/(2z^2) * (1 + eps)] with |eps| < 1/(6|z|^2)
+     It follows:
+     i*z + sqrt(1-z^2) = i/(2z) * (1 + eps) with |eps| < 1/(6|z|^2)
+     If we approximate i*z + sqrt(1-z^2) by i/(2z), the relative error is
+     bounded by 1/(6|z|^2).
+  */
+  mpfr_exp_t ex, ey, k;
+  mpfr_prec_t p, extra, errx, erry;
+  int ok;
+  MPC_ASSERT(mpfr_signbit (mpc_imagref (z)) == 0); // Im(z) > 0
+  ex = mpfr_get_exp (mpc_realref (z));
+  ey = mpfr_get_exp (mpc_imagref (z));
+  MPC_ASSERT(ex >= 0 || ey >= 0);
+  ex = (ex >= ey) ? ex : ey;
+  // |z| >= 2^(ex-1) thus 6*|z|^2 > 2^(2*ex)
+  p = mpfr_get_prec (mpc_realref (t)); // same precision as imaginary part
+  /* the relative error is < 1/(6|z|^2) < 2^(-2*ex),
+     and we want it to be less than 1 ulp(t), thus we want 2 * ex >= p */
+  if (p < 4 || 2 * ex < p)
+    return 0;
+  extra = 2 * ex - p;
+  /* now 2*ex >= p thus the relative error of approximating i*z + sqrt(1-z^2)
+     by i/(2z) is bounded by 2^(-p-extra). */
+  mpc_ui_div (t, 1ul, z, MPC_RNDNN); // 1/z
+  mpc_div_2ui (t, t, 1, MPC_RNDNN);   // divide by 2
+  // multiply by i
+  mpfr_swap (mpc_realref (t), mpc_imagref (t));
+  MPFR_CHANGE_SIGN (mpc_realref (t));
+  /* The rounding error for i/(2z) is bounded by 1 ulp() for each of the real
+     and imaginary parts, and the approximation error is bounded by
+     2^(-p-extra) * |t|. */
+  ex = mpfr_get_exp (mpc_realref (t));
+  ey = mpfr_get_exp (mpc_imagref (t));
+  k = (ex >= ey) ? ex - ey : ey - ex; // k = |ex-ey|
+  mpc_log (t, t, MPC_RNDNN);
+  /* We have log(x+i*y) = 1/2 log(x^2+y^2) + i*atan2(y,x).
+     We analyze separately the induced error on each part:
+     - for the real part, the rounding error < 1 ulp() on x and y
+       corresponds to a relative error < 2^(1-p), which gives a
+       relative error < (1+2^(1-p))^2-1 < 5*2^-p on x^2 and y^2,
+       and similarly on x^2+y^2.
+       The approximation error bounded by 2^(-p-extra) * |x+i*y|
+       <= 2^-p * |x+i*y| converts
+       to a relative error of (1-2^-p)^2-1 < 2.25*2^-p on x^2+y^2.
+       This gives a relative error < 2^(3-p) on x^2+y^2:
+       X' = X * (1 + eps) with |eps| < 2^(3-p),
+       where X' is the real part of t before the mpc_log call,
+       and X = is the real part of i*z + sqrt(1-z^2).
+       It follows log(X') = log(X) + log(1+eps).
+       For k >= 1, we have |log(1+/-2^-k)| < 1.4 * 2^-k, thus
+       since p >= 4 we have 3-p <= -1 thus |log(1+eps)| < 1.4 * 2^(3-p).
+       The induced error on the real part is thus < 12*2^-p.
+     - for the imaginary part, since Im(z) > 0, z is either in the 1st
+       or 2nd quadrant, and we can check that i/(2*z) lies in 1st or 4th
+       quadrant, thus atan2(y,x) lies in (-pi/2, pi/2), and in both
+       cases, atan2(y,x) = atan(y/x).
+       The rounding error < 1 ulp() on x and y corresponds to a relative error
+       < 2^(1-p), which gives a relative error < (1+2^(1-p))^2-1 < 5*2^-p on
+       y/x.
+       The approximation error bounded by 2^(-p-extra) * |x+i*y| converts
+       to a relative error < 2^(e-ex) * 2^(-p-extra) on x,
+       and < 2^(e-ey) * 2^(-p-extra) on y, where ex = EXP(x), ey = EXP(y),
+       and e = MAX(ex,ey).
+       This gives a relative error on y/x which is bounded by
+       (1+2^-p)*(1+2^|ex-ey|*2^(-p-extra))-1 < 2.1 * 2^(k-p)
+       with k = max(0,|ex-ey|-extra).
+       Thus we get a total relative error bounded by:
+       (1+5*2^-p)*(1 + 2.1*2^(k-p))-1 < 2^(k+3-p).
+       Since the derivative of atan(t) is less than 1, this corresponds
+       to an induced relative error < 2^(k+3-p) on the imaginary part.
+  */
+  k = (k >= extra) ? k - extra : 0;
+  ex = mpfr_get_exp (mpc_realref (t));
+  /* Since the induced error on the real part is < 12*2^-p,
+     it is less than 12/2^ex ulp(Re(t)). Thus the error on the real
+     part is less than (1/2 + 12/2^ex) ulp(Re(t)) < 2^(5-ex) ulp(Re(t)).
+  */
+  errx = (ex >= 5) ? 0 : 5 - ex;
+  ey = mpfr_get_exp (mpc_imagref (t));
+  /* Since the induced relative error on the imaginary part is < 2^(k+3-p),
+     it is < 2^(k+3) ulp(Im(t)), and the error on the imaginary part
+     is less than (1/2 + 2^(k+3)) ulp(Im(t)) < 2^(k+4) ulp(Im(t)). */
+  erry = k + 4;
+  /* multiply by -i */
+  mpfr_swap (mpc_realref (t), mpc_imagref (t));
+  MPFR_CHANGE_SIGN (mpc_imagref (t));
+  ok = mpfr_can_round (mpc_realref (t), p - erry, MPFR_RNDN, MPFR_RNDZ,
+                       mpfr_get_prec (mpc_realref (rop)) + (MPC_RND_RE(rnd) == MPFR_RNDN));
+  ok = ok && mpfr_can_round (mpc_imagref (t), p - errx, MPFR_RNDN, MPFR_RNDZ,
+                             mpfr_get_prec (mpc_imagref (rop)) + (MPC_RND_IM(rnd) == MPFR_RNDN));
+  return ok;
+}
 
 static int /* bool */
 asin_taylor1 (int *inex, mpc_ptr rop, mpc_srcptr z, mpc_rnd_t rnd)
@@ -293,7 +400,7 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
   mpfr_rnd_t rnd_re, rnd_im;
   mpc_t z1;
   int inex, inex_re, inex_im, loop = 0;
-  mpfr_exp_t saved_emin, saved_emax, err, olderr;
+  mpfr_exp_t saved_emin, saved_emax, err, olderr, ey0;
 
   /* special values */
   if (mpfr_nan_p (mpc_realref (op)) || mpfr_nan_p (mpc_imagref (op)))
@@ -401,8 +508,8 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
     }
 
    /* Try special code for |x| < 1/2 and |y| < 1/4. */
-   if (mpfr_get_exp (mpc_realref (op)) <= -1
-      && mpfr_get_exp (mpc_imagref (op)) <= -2) {
+   ey0 = mpfr_get_exp (mpc_imagref (op));
+   if (mpfr_get_exp (mpc_realref (op)) <= -1 && ey0 <= -2) {
       if (asin_taylor1 (&inex, rop, op, rnd))
          return inex;
    }
@@ -412,22 +519,29 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
   mpfr_set_emin (mpfr_get_emin_min ());
   mpfr_set_emax (mpfr_get_emax_max ());
 
-  /* regular complex: asin(z) = -i*log(i*z+sqrt(1-z^2)) */
-  p_re = mpfr_get_prec (mpc_realref(rop));
-  p_im = mpfr_get_prec (mpc_imagref(rop));
+  /* regular complex: asin(z) = -i*log(i*z+sqrt(1-z^2))
+     (formula 4.4.26 in Abramowitz & Stegun) */
   rnd_re = MPC_RND_RE(rnd);
   rnd_im = MPC_RND_IM(rnd);
+
+  p_re = mpfr_get_prec (mpc_realref(rop));
+  p_im = mpfr_get_prec (mpc_imagref(rop));
   p = p_re >= p_im ? p_re : p_im;
+
+  /* if Re(z)=1 and Im(z) is tiny, we have a cancellation */
+  if (mpfr_cmp_ui (mpc_realref(op), 1) == 0 && ey0 < 0)
+    p += -2 * ey0;
+
   mpc_init2 (z1, p);
   olderr = err = 0; /* number of lost bits */
   while (1)
   {
     mpfr_exp_t ex, ey;
 
-    loop ++;
+    MPC_LOOP_NEXT(loop, op, rop);
     p += err - olderr; /* add extra number of lost bits in previous loop */
     olderr = err;
-    p += (loop <= 2) ? mpc_ceil_log2 (p) + 3 : p / 2;
+    p += (loop <= 2) ? mpc_ceil_log2 (p) + 3 : p / 2; // ensures p>=4 in mpc_asin_large_pos()
     mpc_set_prec (z1, p);
 
     /* try special code for 1+i*y with tiny y */
@@ -439,6 +553,13 @@ mpc_asin (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
     if (mpfr_get_exp (mpc_realref (op)) <= -1 &&
         mpfr_get_exp (mpc_imagref (op)) <= -1 &&
         mpc_asin_series (rop, z1, op, rnd))
+      break;
+
+    /* try special code for large z and Im(z) > 0 */
+    if ((mpfr_get_exp (mpc_realref (op)) >= 2 ||
+         mpfr_get_exp (mpc_imagref (op)) >= 2) &&
+        mpfr_signbit (mpc_imagref (op)) == 0 &&
+        mpc_asin_large_pos (rop, z1, op, rnd))
       break;
 
     /* z1 <- z^2 */

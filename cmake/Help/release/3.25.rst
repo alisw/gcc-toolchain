@@ -27,9 +27,7 @@ Presets
 Languages
 ---------
 
-* The :manual:`Compile Features <cmake-compile-features(7)>` functionality
-  is now aware of C++26, and defines a ``cxx_std_26`` meta-feature.
-  C++26 compiler modes may also be specified via the :prop_tgt:`CXX_STANDARD`,
+* C++26 compiler modes may now be specified via the :prop_tgt:`CXX_STANDARD`,
   :prop_tgt:`CUDA_STANDARD`, :prop_tgt:`HIP_STANDARD`,
   or :prop_tgt:`OBJCXX_STANDARD` target properties.
 
@@ -165,8 +163,8 @@ Modules
   :command:`FetchContent_MakeAvailable`.
 
 * The :module:`FindCUDAToolkit` module now provides a target for
-  :ref:`nvtx3 <cuda_toolkit_nvtx3>` for CUDA 10.0+, which supersedes
-  :ref:`nvToolsExt <cuda_toolkit_nvToolsExt>`. A deprecation warning
+  :ref:`nvtx3 <FindCUDAToolkit_nvtx3>` for CUDA 10.0+, which supersedes
+  :ref:`nvToolsExt <FindCUDAToolkit_nvToolsExt>`. A deprecation warning
   is emitted when using ``nvToolsExt`` if the project requires CMake
   3.25 and CUDA 10.0+ is used.
 

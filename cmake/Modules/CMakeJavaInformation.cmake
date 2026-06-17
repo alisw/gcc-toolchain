@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 
 # This should be included before the _INIT variables are
@@ -47,3 +47,5 @@ if(WIN32 AND NOT CYGWIN)
 else()
   set(CMAKE_INCLUDE_FLAG_SEP_Java ":")
 endif()
+
+set(CMAKE_Java_USE_LINKER_INFORMATION FALSE)

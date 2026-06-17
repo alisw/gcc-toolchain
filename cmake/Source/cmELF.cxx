@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmELF.h"
 
 #include <cstddef>
@@ -107,10 +107,13 @@ public:
   virtual unsigned long GetDynamicEntryPosition(int j) = 0;
   virtual cmELF::DynamicEntryList GetDynamicEntries() = 0;
   virtual std::vector<char> EncodeDynamicEntries(
-    const cmELF::DynamicEntryList&) = 0;
+    cmELF::DynamicEntryList const&) = 0;
   virtual StringEntry const* GetDynamicSectionString(unsigned int tag) = 0;
   virtual bool IsMips() const = 0;
   virtual void PrintInfo(std::ostream& os) const = 0;
+
+  /** Returns true if the ELF file has a dynamic section **/
+  bool HasDynamicSection() const { return this->DynamicSectionIndex >= 0; }
 
   // Lookup the SONAME in the DYNAMIC section.
   StringEntry const* GetSOName()
@@ -161,7 +164,7 @@ protected:
   int DynamicSectionIndex;
 
   // Helper methods for subclasses.
-  void SetErrorMessage(const char* msg)
+  void SetErrorMessage(char const* msg)
   {
     this->External->ErrorMessage = msg;
     this->ELFType = cmELF::FileTypeInvalid;
@@ -179,7 +182,7 @@ struct cmELFTypes32
   using ELF_Dyn = Elf32_Dyn;
   using ELF_Half = Elf32_Half;
   using tagtype = ::uint32_t;
-  static const char* GetName() { return "32-bit"; }
+  static char const* GetName() { return "32-bit"; }
 };
 
 // Configure the implementation template for 64-bit ELF files.
@@ -190,7 +193,7 @@ struct cmELFTypes64
   using ELF_Dyn = Elf64_Dyn;
   using ELF_Half = Elf64_Half;
   using tagtype = ::uint64_t;
-  static const char* GetName() { return "64-bit"; }
+  static char const* GetName() { return "64-bit"; }
 };
 
 // Parser implementation template.
@@ -212,7 +215,8 @@ public:
   // Return the number of sections as specified by the ELF header.
   unsigned int GetNumberOfSections() const override
   {
-    return static_cast<unsigned int>(this->ELFHeader.e_shnum);
+    return static_cast<unsigned int>(this->ELFHeader.e_shnum +
+                                     this->SectionHeaders[0].sh_size);
   }
 
   // Get the file position of a dynamic section entry.
@@ -220,7 +224,7 @@ public:
 
   cmELF::DynamicEntryList GetDynamicEntries() override;
   std::vector<char> EncodeDynamicEntries(
-    const cmELF::DynamicEntryList&) override;
+    cmELF::DynamicEntryList const&) override;
 
   // Lookup a string from the dynamic section with the given tag.
   StringEntry const* GetDynamicSectionString(unsigned int tag) override;
@@ -367,7 +371,7 @@ private:
     return !this->Stream->fail();
   }
 
-  bool LoadSectionHeader(ELF_Half i)
+  bool LoadSectionHeader(unsigned int i)
   {
     // Read the section header from the file.
     this->Stream->seekg(this->ELFHeader.e_shoff +
@@ -378,7 +382,7 @@ private:
 
     // Identify some important sections.
     if (this->SectionHeaders[i].sh_type == SHT_DYNAMIC) {
-      this->DynamicSectionIndex = i;
+      this->DynamicSectionIndex = static_cast<int>(i);
     }
     return true;
   }
@@ -444,8 +448,11 @@ cmELFInternalImpl<Types>::cmELFInternalImpl(cmELF* external,
   this->Machine = this->ELFHeader.e_machine;
 
   // Load the section headers.
-  this->SectionHeaders.resize(this->ELFHeader.e_shnum);
-  for (ELF_Half i = 0; i < this->ELFHeader.e_shnum; ++i) {
+  this->SectionHeaders.resize(
+    this->ELFHeader.e_shnum == 0 ? 1 : this->ELFHeader.e_shnum);
+  this->LoadSectionHeader(0);
+  this->SectionHeaders.resize(this->GetNumberOfSections());
+  for (unsigned int i = 1; i < this->GetNumberOfSections(); ++i) {
     if (!this->LoadSectionHeader(i)) {
       this->SetErrorMessage("Failed to load section headers.");
       return;
@@ -457,7 +464,7 @@ template <class Types>
 bool cmELFInternalImpl<Types>::LoadDynamicSection()
 {
   // If there is no dynamic section we are done.
-  if (this->DynamicSectionIndex < 0) {
+  if (!this->HasDynamicSection()) {
     return false;
   }
 
@@ -502,7 +509,7 @@ unsigned long cmELFInternalImpl<Types>::GetDynamicEntryPosition(int j)
     return 0;
   }
   ELF_Shdr const& sec = this->SectionHeaders[this->DynamicSectionIndex];
-  return static_cast<unsigned long>(sec.sh_offset + sec.sh_entsize * j);
+  return sec.sh_offset + sec.sh_entsize * static_cast<unsigned long>(j);
 }
 
 template <class Types>
@@ -526,7 +533,7 @@ cmELF::DynamicEntryList cmELFInternalImpl<Types>::GetDynamicEntries()
 
 template <class Types>
 std::vector<char> cmELFInternalImpl<Types>::EncodeDynamicEntries(
-  const cmELF::DynamicEntryList& entries)
+  cmELF::DynamicEntryList const& entries)
 {
   std::vector<char> result;
   result.reserve(sizeof(ELF_Dyn) * entries.size());
@@ -617,7 +624,19 @@ cmELF::StringEntry const* cmELFInternalImpl<Types>::GetDynamicSectionString(
 
       // Make sure the whole value was read.
       if (!(*this->Stream)) {
-        this->SetErrorMessage("Dynamic section specifies unreadable RPATH.");
+        if (tag == cmELF::TagRPath) {
+          this->SetErrorMessage(
+            "Dynamic section specifies unreadable DT_RPATH");
+        } else if (tag == cmELF::TagRunPath) {
+          this->SetErrorMessage(
+            "Dynamic section specifies unreadable DT_RUNPATH");
+        } else if (tag == cmELF::TagMipsRldMapRel) {
+          this->SetErrorMessage(
+            "Dynamic section specifies unreadable DT_MIPS_RLD_MAP_REL");
+        } else {
+          this->SetErrorMessage("Dynamic section specifies unreadable value"
+                                " for unexpected attribute");
+        }
         se.Value = "";
         return nullptr;
       }
@@ -636,11 +655,11 @@ cmELF::StringEntry const* cmELFInternalImpl<Types>::GetDynamicSectionString(
 //============================================================================
 // External class implementation.
 
-const long cmELF::TagRPath = DT_RPATH;
-const long cmELF::TagRunPath = DT_RUNPATH;
-const long cmELF::TagMipsRldMapRel = DT_MIPS_RLD_MAP_REL;
+long const cmELF::TagRPath = DT_RPATH;
+long const cmELF::TagRunPath = DT_RUNPATH;
+long const cmELF::TagMipsRldMapRel = DT_MIPS_RLD_MAP_REL;
 
-cmELF::cmELF(const char* fname)
+cmELF::cmELF(char const* fname)
 {
   // Try to open the file.
   auto fin = cm::make_unique<cmsys::ifstream>(fname, std::ios::binary);
@@ -747,13 +766,18 @@ cmELF::DynamicEntryList cmELF::GetDynamicEntries() const
 }
 
 std::vector<char> cmELF::EncodeDynamicEntries(
-  const cmELF::DynamicEntryList& dentries) const
+  cmELF::DynamicEntryList const& dentries) const
 {
   if (this->Valid()) {
     return this->Internal->EncodeDynamicEntries(dentries);
   }
 
   return std::vector<char>();
+}
+
+bool cmELF::HasDynamicSection() const
+{
+  return this->Valid() && this->Internal->HasDynamicSection();
 }
 
 bool cmELF::GetSOName(std::string& soname)

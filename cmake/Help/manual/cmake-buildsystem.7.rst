@@ -37,10 +37,13 @@ is defined as an executable formed by compiling and linking ``zipapp.cpp``.
 When linking the ``zipapp`` executable, the ``archive`` static library is
 linked in.
 
-.. _`Binary Executables`:
+.. _`Executables`:
 
-Binary Executables
-------------------
+Executables
+-----------
+
+Executables are binaries created by linking object files together,
+one of which contains a program entry point, e.g., ``main``.
 
 The :command:`add_executable` command defines an executable target:
 
@@ -48,56 +51,101 @@ The :command:`add_executable` command defines an executable target:
 
   add_executable(mytool mytool.cpp)
 
+CMake generates build rules to compile the source files into object
+files and link them into an executable.
+
+Link dependencies of executables may be specified using the
+:command:`target_link_libraries` command.  Linkers start with the
+object files compiled from the executable's own source files, and
+then resolve remaining symbol dependencies by searching linked libraries.
+
 Commands such as :command:`add_custom_command`, which generates rules to be
 run at build time can transparently use an :prop_tgt:`EXECUTABLE <TYPE>`
 target as a ``COMMAND`` executable.  The buildsystem rules will ensure that
 the executable is built before attempting to run the command.
 
-Binary Library Types
---------------------
+.. _`Static Libraries`:
 
-.. _`Normal Libraries`:
+Static Libraries
+----------------
 
-Normal Libraries
-^^^^^^^^^^^^^^^^
+Static libraries are archives of object files.  They are produced by an
+archiver, not a linker.  `Executables`_, `Shared Libraries`_, and
+`Module Libraries`_ may link to static libraries as dependencies.
+Linkers select subsets of object files from static libraries as needed
+to resolve symbols and link them into consuming binaries.  Each binary
+that links to a static library gets its own copy of the symbols, and
+the static library itself is not needed at runtime.
 
-By default, the :command:`add_library` command defines a ``STATIC`` library,
-unless a type is specified.  A type may be specified when using the command:
-
-.. code-block:: cmake
-
-  add_library(archive SHARED archive.cpp zip.cpp lzma.cpp)
+The :command:`add_library` command defines a static library target
+when called with the ``STATIC`` library type:
 
 .. code-block:: cmake
 
   add_library(archive STATIC archive.cpp zip.cpp lzma.cpp)
 
-The :variable:`BUILD_SHARED_LIBS` variable may be enabled to change the
-behavior of :command:`add_library` to build shared libraries by default.
-
-In the context of the buildsystem definition as a whole, it is largely
-irrelevant whether particular libraries are ``SHARED`` or ``STATIC`` --
-the commands, dependency specifications and other APIs work similarly
-regardless of the library type.  The ``MODULE`` library type is
-dissimilar in that it is generally not linked to -- it is not used in
-the right-hand-side of the :command:`target_link_libraries` command.
-It is a type which is loaded as a plugin using runtime techniques.
-If the library does not export any unmanaged symbols (e.g. Windows
-resource DLL, C++/CLI DLL), it is required that the library not be a
-``SHARED`` library because CMake expects ``SHARED`` libraries to export
-at least one symbol.
+or, when the :variable:`BUILD_SHARED_LIBS` variable is false, with no type:
 
 .. code-block:: cmake
 
-  add_library(archive MODULE 7z.cpp)
+  add_library(archive archive.cpp zip.cpp lzma.cpp)
+
+CMake generates build rules to compile the source files into object
+files and archive them into a static library.
+
+Link dependencies of static libraries may be specified using the
+:command:`target_link_libraries` command.  Since static libraries are
+archives rather than linked binaries, object files from their link
+dependencies are not included in the libraries themselves (except for
+`Object Libraries`_ specified as *direct* link dependencies).
+Instead, CMake records static libraries' link dependencies for
+transitive use when linking consuming binaries.
+
+.. _`Shared Libraries`:
+
+Shared Libraries
+----------------
+
+Shared libraries are binaries created by linking object files together.
+`Executables`_, other shared libraries, and `Module Libraries`_ may link
+to shared libraries as dependencies.  Linkers record references to shared
+libraries in consuming binaries.  At runtime, a dynamic loader searches
+for referenced shared libraries on disk and loads their symbols.
+
+The :command:`add_library` command defines a shared library target
+when called with the ``SHARED`` library type:
+
+.. code-block:: cmake
+
+  add_library(archive SHARED archive.cpp zip.cpp lzma.cpp)
+
+or, when the :variable:`BUILD_SHARED_LIBS` variable is true, with no type:
+
+.. code-block:: cmake
+
+  add_library(archive archive.cpp zip.cpp lzma.cpp)
+
+CMake generates build rules to compile the source files into object
+files and link them into a shared library.
+
+Link dependencies of shared libraries may be specified using the
+:command:`target_link_libraries` command.  Linkers start with the
+object files compiled from the shared library's own source files, and
+then resolve remaining symbol dependencies by searching linked libraries.
+
+.. note::
+
+  CMake expects shared libraries to export at least one symbol.  If a library
+  does not export any unmanaged symbols, e.g., a Windows resource DLL or
+  C++/CLI DLL, make it a `Module Library <Module Libraries_>`_ instead.
 
 .. _`Apple Frameworks`:
 
 Apple Frameworks
-""""""""""""""""
+----------------
 
-A ``SHARED`` library may be marked with the :prop_tgt:`FRAMEWORK`
-target property to create an macOS or iOS Framework Bundle.
+`Shared Libraries`_ and `Static Libraries`_ may be marked with the
+:prop_tgt:`FRAMEWORK` target property to create a macOS or iOS Framework.
 A library with the ``FRAMEWORK`` target property should also set the
 :prop_tgt:`FRAMEWORK_VERSION` target property.  This property is typically
 set to the value of "A" by macOS conventions.
@@ -113,46 +161,80 @@ and it uniquely identifies the bundle.
     MACOSX_FRAMEWORK_IDENTIFIER org.cmake.MyFramework
   )
 
+.. _`Module Libraries`:
+
+Module Libraries
+----------------
+
+Module libraries are binaries created by linking object files together.
+Unlike `Shared Libraries`_, module libraries may not be linked by other
+binaries as dependencies -- do not name them in the right-hand side of
+the :command:`target_link_libraries` command.  Instead, module libraries
+are plugins that an application can dynamically load on-demand at runtime,
+e.g., by ``dlopen``.
+
+The :command:`add_library` command defines a module library target
+when called with the ``MODULE`` library type:
+
+.. code-block:: cmake
+
+  add_library(archivePlugin MODULE 7z.cpp)
+
+CMake generates build rules to compile the source files into object
+files and link them into a module library.
+
+Link dependencies of module libraries may be specified using the
+:command:`target_link_libraries` command.  Linkers start with the
+object files compiled from the module library's own source files, and
+then resolve remaining symbol dependencies by searching linked libraries.
+
 .. _`Object Libraries`:
 
 Object Libraries
-^^^^^^^^^^^^^^^^
+----------------
 
-The ``OBJECT`` library type defines a non-archival collection of object files
-resulting from compiling the given source files.  The object files collection
-may be used as source inputs to other targets by using the syntax
-:genex:`$<TARGET_OBJECTS:name>`.  This is a
-:manual:`generator expression <cmake-generator-expressions(7)>` that can be
-used to supply the ``OBJECT`` library content to other targets:
+Object libraries are collections of object files created by compiling
+source files without any archiving or linking.  The object files may be
+used when linking `Executables`_, `Shared Libraries`_, and
+`Module Libraries`_, or when archiving `Static Libraries`_.
 
-.. code-block:: cmake
-
-  add_library(archive OBJECT archive.cpp zip.cpp lzma.cpp)
-
-  add_library(archiveExtras STATIC $<TARGET_OBJECTS:archive> extras.cpp)
-
-  add_executable(test_exe $<TARGET_OBJECTS:archive> test.cpp)
-
-The link (or archiving) step of those other targets will use the object
-files collection in addition to those from their own sources.
-
-Alternatively, object libraries may be linked into other targets:
+The :command:`add_library` command defines an object library target
+when called with the ``OBJECT`` library type:
 
 .. code-block:: cmake
 
-  add_library(archive OBJECT archive.cpp zip.cpp lzma.cpp)
+  add_library(archiveObjs OBJECT archive.cpp zip.cpp lzma.cpp)
+
+CMake generates build rules to compile the source files into object files.
+
+Other targets may specify the object files as source inputs by using the
+:manual:`generator expression <cmake-generator-expressions(7)>` syntax
+:genex:`$<TARGET_OBJECTS:name>`:
+
+.. code-block:: cmake
+
+  add_library(archiveExtras STATIC $<TARGET_OBJECTS:archiveObjs> extras.cpp)
+
+  add_executable(test_exe $<TARGET_OBJECTS:archiveObjs> test.cpp)
+
+The consuming targets are linked (or archived) using object files
+both from their own sources and from the named object libraries.
+
+Alternatively, object libraries may be specified as link dependencies
+of other targets:
+
+.. code-block:: cmake
 
   add_library(archiveExtras STATIC extras.cpp)
-  target_link_libraries(archiveExtras PUBLIC archive)
+  target_link_libraries(archiveExtras PUBLIC archiveObjs)
 
   add_executable(test_exe test.cpp)
-  target_link_libraries(test_exe archive)
+  target_link_libraries(test_exe archiveObjs)
 
-The link (or archiving) step of those other targets will use the object
-files from ``OBJECT`` libraries that are *directly* linked.  Additionally,
-usage requirements of the ``OBJECT`` libraries will be honored when compiling
-sources in those other targets.  Furthermore, those usage requirements
-will propagate transitively to dependents of those other targets.
+The consuming targets are linked (or archived) using object files
+both from their own sources and from object libraries specified as
+*direct* link dependencies by :command:`target_link_libraries`.
+See :ref:`Linking Object Libraries`.
 
 Object libraries may not be used as the ``TARGET`` in a use of the
 :command:`add_custom_command(TARGET)` command signature.  However,
@@ -162,102 +244,285 @@ or :command:`file(GENERATE)` by using ``$<TARGET_OBJECTS:objlib>``.
 Build Specification and Usage Requirements
 ==========================================
 
-The :command:`target_include_directories`, :command:`target_compile_definitions`
-and :command:`target_compile_options` commands specify the build specifications
-and the usage requirements of binary targets.  The commands populate the
-:prop_tgt:`INCLUDE_DIRECTORIES`, :prop_tgt:`COMPILE_DEFINITIONS` and
-:prop_tgt:`COMPILE_OPTIONS` target properties respectively, and/or the
-:prop_tgt:`INTERFACE_INCLUDE_DIRECTORIES`, :prop_tgt:`INTERFACE_COMPILE_DEFINITIONS`
-and :prop_tgt:`INTERFACE_COMPILE_OPTIONS` target properties.
+Targets build according to their own
+`build specification <Target Build Specification_>`_ in combination with
+`usage requirements <Target Usage Requirements_>`_ propagated from their
+link dependencies.  Both may be specified using target-specific
+`commands <Target Commands_>`_.
 
-Each of the commands has a ``PRIVATE``, ``PUBLIC`` and ``INTERFACE`` mode.  The
-``PRIVATE`` mode populates only the non-``INTERFACE_`` variant of the target
-property and the ``INTERFACE`` mode populates only the ``INTERFACE_`` variants.
-The ``PUBLIC`` mode populates both variants of the respective target property.
-Each command may be invoked with multiple uses of each keyword:
+For example:
 
 .. code-block:: cmake
 
-  target_compile_definitions(archive
-    PRIVATE BUILDING_WITH_LZMA
-    INTERFACE USING_ARCHIVE_LIB
-  )
+  add_library(archive SHARED archive.cpp zip.cpp)
+
+  if (LZMA_FOUND)
+    # Add a source implementing support for lzma.
+    target_sources(archive PRIVATE lzma.cpp)
+
+    # Compile the 'archive' library sources with '-DBUILDING_WITH_LZMA'.
+    target_compile_definitions(archive PRIVATE BUILDING_WITH_LZMA)
+  endif()
+
+  target_compile_definitions(archive INTERFACE USING_ARCHIVE_LIB)
+
+  add_executable(consumer consumer.cpp)
+
+  # Link 'consumer' to 'archive'.  This also consumes its usage requirements,
+  # so 'consumer.cpp' is compiled with '-DUSING_ARCHIVE_LIB'.
+  target_link_libraries(consumer archive)
+
+
+Target Commands
+---------------
+
+Target-specific commands populate the
+`build specification <Target Build Specification_>`_ of `Binary Targets`_ and
+`usage requirements <Target Usage Requirements_>`_ of `Binary Targets`_,
+`Interface Libraries`_, and `Imported Targets`_.
+
+.. _`Target Command Scope`:
+
+Invocations must specify scope keywords, each affecting the visibility
+of arguments following it.  The scopes are:
+
+``PUBLIC``
+  Populates both properties for `building <Target Build Specification_>`_
+  and properties for `using <Target Usage Requirements_>`_ a target.
+
+``PRIVATE``
+  Populates only properties for `building <Target Build Specification_>`_
+  a target.
+
+``INTERFACE``
+  Populates only properties for `using <Target Usage Requirements_>`_
+  a target.
+
+The commands are:
+
+:command:`target_compile_definitions`
+  Populates the :prop_tgt:`COMPILE_DEFINITIONS` build specification and
+  :prop_tgt:`INTERFACE_COMPILE_DEFINITIONS` usage requirement properties.
+
+  For example, the call
+
+  .. code-block:: cmake
+
+    target_compile_definitions(archive
+      PRIVATE   BUILDING_WITH_LZMA
+      INTERFACE USING_ARCHIVE_LIB
+    )
+
+  appends ``BUILDING_WITH_LZMA`` to the target's ``COMPILE_DEFINITIONS``
+  property and appends ``USING_ARCHIVE_LIB`` to the target's
+  ``INTERFACE_COMPILE_DEFINITIONS`` property.
+
+:command:`target_compile_options`
+  Populates the :prop_tgt:`COMPILE_OPTIONS` build specification and
+  :prop_tgt:`INTERFACE_COMPILE_OPTIONS` usage requirement properties.
+
+:command:`target_compile_features`
+  .. versionadded:: 3.1
+
+  Populates the :prop_tgt:`COMPILE_FEATURES` build specification and
+  :prop_tgt:`INTERFACE_COMPILE_FEATURES` usage requirement properties.
+
+:command:`target_include_directories`
+  Populates the :prop_tgt:`INCLUDE_DIRECTORIES` build specification
+  and :prop_tgt:`INTERFACE_INCLUDE_DIRECTORIES` usage requirement
+  properties.  With the ``SYSTEM`` option, it also populates the
+  :prop_tgt:`INTERFACE_SYSTEM_INCLUDE_DIRECTORIES` usage requirement.
+
+  For convenience, the :variable:`CMAKE_INCLUDE_CURRENT_DIR` variable
+  may be enabled to add the source directory and corresponding build
+  directory as ``INCLUDE_DIRECTORIES`` on all targets.  Similarly,
+  the :variable:`CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE` variable may
+  be enabled to add them as ``INTERFACE_INCLUDE_DIRECTORIES`` on all
+  targets.
+
+:command:`target_sources`
+  .. versionadded:: 3.1
+
+  Populates the :prop_tgt:`SOURCES` build specification and
+  :prop_tgt:`INTERFACE_SOURCES` usage requirement properties.
+
+  It also supports specifying :ref:`File Sets`, which can add C++ module
+  sources and headers not listed in the ``SOURCES`` and ``INTERFACE_SOURCES``
+  properties.  File sets may also populate the :prop_tgt:`INCLUDE_DIRECTORIES`
+  build specification and :prop_tgt:`INTERFACE_INCLUDE_DIRECTORIES` usage
+  requirement properties with the include directories containing the headers.
+
+:command:`target_precompile_headers`
+  .. versionadded:: 3.16
+
+  Populates the :prop_tgt:`PRECOMPILE_HEADERS` build specification and
+  :prop_tgt:`INTERFACE_PRECOMPILE_HEADERS` usage requirement properties.
+
+:command:`target_link_libraries`
+  Populates the :prop_tgt:`LINK_LIBRARIES` build specification
+  and :prop_tgt:`INTERFACE_LINK_LIBRARIES` usage requirement properties.
+
+  This is the primary mechanism by which link dependencies and their
+  `usage requirements <Target Usage Requirements_>`_ are transitively
+  propagated to affect compilation and linking of a target.
+
+:command:`target_link_directories`
+  .. versionadded:: 3.13
+
+  Populates the :prop_tgt:`LINK_DIRECTORIES` build specification and
+  :prop_tgt:`INTERFACE_LINK_DIRECTORIES` usage requirement properties.
+
+:command:`target_link_options`
+  .. versionadded:: 3.13
+
+  Populates the :prop_tgt:`LINK_OPTIONS` build specification and
+  :prop_tgt:`INTERFACE_LINK_OPTIONS` usage requirement properties.
+
+.. _`Target Build Specification`:
+
+Target Build Specification
+--------------------------
+
+The build specification of `Binary Targets`_ is represented by target
+properties.  For each of the following `compile <Target Compile Properties_>`_
+and `link <Target Link Properties_>`_ properties, compilation and linking
+of the target is affected both by its own value and by the corresponding
+`usage requirement <Target Usage Requirements_>`_ property, named with
+an ``INTERFACE_`` prefix, collected from the transitive closure of link
+dependencies.
+
+.. _`Target Compile Properties`:
+
+Target Compile Properties
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+These represent the `build specification <Target Build Specification_>`_
+for compiling a target.
+
+:prop_tgt:`COMPILE_DEFINITIONS`
+  List of compile definitions for compiling sources in the target.
+  These are passed to the compiler with ``-D`` flags, or equivalent,
+  in an unspecified order.
+
+  The :prop_tgt:`DEFINE_SYMBOL` target property is also used
+  as a compile definition as a special convenience case for
+  ``SHARED`` and ``MODULE`` library targets.
+
+:prop_tgt:`COMPILE_OPTIONS`
+  List of compile options for compiling sources in the target.
+  These are passed to the compiler as flags, in the order of appearance.
+
+  Compile options are automatically escaped for the shell.
+
+  Some compile options are best specified via dedicated settings,
+  such as the :prop_tgt:`POSITION_INDEPENDENT_CODE` target property.
+
+:prop_tgt:`COMPILE_FEATURES`
+  .. versionadded:: 3.1
+
+  List of :manual:`compile features <cmake-compile-features(7)>` needed
+  for compiling sources in the target.  Typically these ensure the
+  target's sources are compiled using a sufficient language standard level.
+
+:prop_tgt:`INCLUDE_DIRECTORIES`
+  List of include directories for compiling sources in the target.
+  These are passed to the compiler with ``-I`` or ``-isystem`` flags,
+  or equivalent, in the order of appearance.
+
+  For convenience, the :variable:`CMAKE_INCLUDE_CURRENT_DIR` variable
+  may be enabled to add the source directory and corresponding build
+  directory as ``INCLUDE_DIRECTORIES`` on all targets.
+
+:prop_tgt:`SOURCES`
+  List of source files associated with the target.  This includes sources
+  specified when the target was created by the :command:`add_executable`,
+  :command:`add_library`, or :command:`add_custom_target` command.
+  It also includes sources added by the :command:`target_sources` command,
+  but does not include :ref:`File Sets`.
+
+:prop_tgt:`PRECOMPILE_HEADERS`
+  .. versionadded:: 3.16
+
+  List of header files to precompile and include when compiling
+  sources in the target.
+
+:prop_tgt:`AUTOMOC_MACRO_NAMES`
+  .. versionadded:: 3.10
+
+  List of macro names used by :prop_tgt:`AUTOMOC` to determine if a
+  C++ source in the target needs to be processed by ``moc``.
+
+:prop_tgt:`AUTOUIC_OPTIONS`
+  .. versionadded:: 3.0
+
+  List of options used by :prop_tgt:`AUTOUIC` when invoking ``uic``
+  for the target.
+
+.. _`Target Link Properties`:
+
+Target Link Properties
+^^^^^^^^^^^^^^^^^^^^^^
+
+These represent the `build specification <Target Build Specification_>`_
+for linking a target.
+
+:prop_tgt:`LINK_LIBRARIES`
+  List of link libraries for linking the target, if it is an executable,
+  shared library, or module library.  Entries for `Static Libraries`_
+  and `Shared Libraries`_ are passed to the linker either via paths to
+  their link artifacts, or with ``-l`` flags or equivalent.  Entries for
+  `Object Libraries`_ are passed to the linker via paths to their object
+  files.
+
+  Additionally, for compiling and linking the target itself,
+  `usage requirements <Target Usage Requirements_>`_ are propagated from
+  ``LINK_LIBRARIES`` entries naming `Static Libraries`_, `Shared Libraries`_,
+  `Interface Libraries`_, `Object Libraries`_, and `Imported Targets`_,
+  collected over the transitive closure of their
+  :prop_tgt:`INTERFACE_LINK_LIBRARIES` properties.
+
+:prop_tgt:`LINK_DIRECTORIES`
+  .. versionadded:: 3.13
+
+  List of link directories for linking the target, if it is an executable,
+  shared library, or module library.  The directories are passed to the
+  linker with ``-L`` flags, or equivalent.
+
+:prop_tgt:`LINK_OPTIONS`
+  .. versionadded:: 3.13
+
+  List of link options for linking the target, if it is an executable,
+  shared library, or module library.  The options are passed to the
+  linker as flags, in the order of appearance.
+
+  Link options are automatically escaped for the shell.
+
+:prop_tgt:`LINK_DEPENDS`
+  List of files on which linking the target depends, if it is an executable,
+  shared library, or module library.  For example, linker scripts specified
+  via :prop_tgt:`LINK_OPTIONS` may be listed here such that changing them
+  causes binaries to be linked again.
+
+.. _`Target Usage Requirements`:
+
+Target Usage Requirements
+-------------------------
+
+The *usage requirements* of a target are settings that propagate to consumers,
+which link to the target via :command:`target_link_libraries`, in order to
+correctly compile and link with it.  They are represented by transitive
+`compile <Transitive Compile Properties_>`_ and
+`link <Transitive Link Properties_>`_ properties.
 
 Note that usage requirements are not designed as a way to make downstreams
-use particular :prop_tgt:`COMPILE_OPTIONS` or
-:prop_tgt:`COMPILE_DEFINITIONS` etc for convenience only.  The contents of
-the properties must be **requirements**, not merely recommendations or
-convenience.
+use particular :prop_tgt:`COMPILE_OPTIONS`, :prop_tgt:`COMPILE_DEFINITIONS`,
+etc. for convenience only.  The contents of the properties must be
+**requirements**, not merely recommendations.
 
 See the :ref:`Creating Relocatable Packages` section of the
 :manual:`cmake-packages(7)` manual for discussion of additional care
 that must be taken when specifying usage requirements while creating
 packages for redistribution.
-
-Target Properties
------------------
-
-The contents of the :prop_tgt:`INCLUDE_DIRECTORIES`,
-:prop_tgt:`COMPILE_DEFINITIONS` and :prop_tgt:`COMPILE_OPTIONS` target
-properties are used appropriately when compiling the source files of a
-binary target.
-
-Entries in the :prop_tgt:`INCLUDE_DIRECTORIES` are added to the compile line
-with ``-I`` or ``-isystem`` prefixes and in the order of appearance in the
-property value.
-
-Entries in the :prop_tgt:`COMPILE_DEFINITIONS` are prefixed with ``-D`` or
-``/D`` and added to the compile line in an unspecified order.  The
-:prop_tgt:`DEFINE_SYMBOL` target property is also added as a compile
-definition as a special convenience case for ``SHARED`` and ``MODULE``
-library targets.
-
-Entries in the :prop_tgt:`COMPILE_OPTIONS` are escaped for the shell and added
-in the order of appearance in the property value.  Several compile options have
-special separate handling, such as :prop_tgt:`POSITION_INDEPENDENT_CODE`.
-
-The contents of the :prop_tgt:`INTERFACE_INCLUDE_DIRECTORIES`,
-:prop_tgt:`INTERFACE_COMPILE_DEFINITIONS` and
-:prop_tgt:`INTERFACE_COMPILE_OPTIONS` target properties are
-*Usage Requirements* -- they specify content which consumers
-must use to correctly compile and link with the target they appear on.
-For any binary target, the contents of each ``INTERFACE_`` property on
-each target specified in a :command:`target_link_libraries` command is
-consumed:
-
-.. code-block:: cmake
-
-  set(srcs archive.cpp zip.cpp)
-  if (LZMA_FOUND)
-    list(APPEND srcs lzma.cpp)
-  endif()
-  add_library(archive SHARED ${srcs})
-  if (LZMA_FOUND)
-    # The archive library sources are compiled with -DBUILDING_WITH_LZMA
-    target_compile_definitions(archive PRIVATE BUILDING_WITH_LZMA)
-  endif()
-  target_compile_definitions(archive INTERFACE USING_ARCHIVE_LIB)
-
-  add_executable(consumer)
-  # Link consumer to archive and consume its usage requirements. The consumer
-  # executable sources are compiled with -DUSING_ARCHIVE_LIB.
-  target_link_libraries(consumer archive)
-
-Because it is common to require that the source directory and corresponding
-build directory are added to the :prop_tgt:`INCLUDE_DIRECTORIES`, the
-:variable:`CMAKE_INCLUDE_CURRENT_DIR` variable can be enabled to conveniently
-add the corresponding directories to the :prop_tgt:`INCLUDE_DIRECTORIES` of
-all targets.  The variable :variable:`CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE`
-can be enabled to add the corresponding directories to the
-:prop_tgt:`INTERFACE_INCLUDE_DIRECTORIES` of all targets.  This makes use of
-targets in multiple different directories convenient through use of the
-:command:`target_link_libraries` command.
-
-
-.. _`Target Usage Requirements`:
-
-Transitive Usage Requirements
------------------------------
 
 The usage requirements of a target can transitively propagate to the dependents.
 The :command:`target_link_libraries` command has ``PRIVATE``,
@@ -328,6 +593,156 @@ be specified in the order ``lib3`` ``lib1`` ``lib2``:
 Note that care must be taken when specifying usage requirements for targets
 which will be exported for installation using the :command:`install(EXPORT)`
 command.  See :ref:`Creating Packages` for more.
+
+.. _`Transitive Compile Properties`:
+
+Transitive Compile Properties
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+These represent `usage requirements <Target Usage Requirements_>`_ for
+compiling consumers.
+
+:prop_tgt:`INTERFACE_COMPILE_DEFINITIONS`
+  List of compile definitions for compiling sources in the target's consumers.
+  Typically these are used by the target's header files.
+
+:prop_tgt:`INTERFACE_COMPILE_OPTIONS`
+  List of compile options for compiling sources in the target's consumers.
+
+:prop_tgt:`INTERFACE_COMPILE_FEATURES`
+  .. versionadded:: 3.1
+
+  List of :manual:`compile features <cmake-compile-features(7)>` needed
+  for compiling sources in the target's consumers.  Typically these
+  ensure the target's header files are processed when compiling consumers
+  using a sufficient language standard level.
+
+:prop_tgt:`INTERFACE_INCLUDE_DIRECTORIES`
+  List of include directories for compiling sources in the target's consumers.
+  Typically these are the locations of the target's header files.
+
+:prop_tgt:`INTERFACE_SYSTEM_INCLUDE_DIRECTORIES`
+  List of directories that, when specified as include directories, e.g., by
+  :prop_tgt:`INCLUDE_DIRECTORIES` or :prop_tgt:`INTERFACE_INCLUDE_DIRECTORIES`,
+  should be treated as "system" include directories when compiling sources
+  in the target's consumers.
+
+:prop_tgt:`INTERFACE_SOURCES`
+  List of source files to associate with the target's consumers.
+
+:prop_tgt:`INTERFACE_PRECOMPILE_HEADERS`
+  .. versionadded:: 3.16
+
+  List of header files to precompile and include when compiling
+  sources in the target's consumers.
+
+:prop_tgt:`INTERFACE_AUTOMOC_MACRO_NAMES`
+  .. versionadded:: 3.27
+
+  List of macro names used by :prop_tgt:`AUTOMOC` to determine if a
+  C++ source in the target's consumers needs to be processed by ``moc``.
+
+:prop_tgt:`INTERFACE_AUTOUIC_OPTIONS`
+  .. versionadded:: 3.0
+
+  List of options used by :prop_tgt:`AUTOUIC` when invoking ``uic``
+  for the target's consumers.
+
+.. _`Transitive Link Properties`:
+
+Transitive Link Properties
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+These represent `usage requirements <Target Usage Requirements_>`_ for
+linking consumers.
+
+:prop_tgt:`INTERFACE_LINK_LIBRARIES`
+  List of link libraries for linking the target's consumers, for
+  those that are executables, shared libraries, or module libraries.
+  These are the transitive dependencies of the target.
+
+  Additionally, for compiling and linking the target's consumers,
+  `usage requirements <Target Usage Requirements_>`_ are collected from
+  the transitive closure of ``INTERFACE_LINK_LIBRARIES`` entries naming
+  `Static Libraries`_, `Shared Libraries`_, `Interface Libraries`_,
+  `Object Libraries`_, and `Imported Targets`_,
+
+:prop_tgt:`INTERFACE_LINK_DIRECTORIES`
+  .. versionadded:: 3.13
+
+  List of link directories for linking the target's consumers, for
+  those that are executables, shared libraries, or module libraries.
+
+:prop_tgt:`INTERFACE_LINK_OPTIONS`
+  .. versionadded:: 3.13
+
+  List of link options for linking the target's consumers, for
+  those that are executables, shared libraries, or module libraries.
+
+:prop_tgt:`INTERFACE_LINK_DEPENDS`
+  .. versionadded:: 3.13
+
+  List of files on which linking the target's consumers depends, for
+  those that are executables, shared libraries, or module libraries.
+
+.. _`Custom Transitive Properties`:
+
+Custom Transitive Properties
+----------------------------
+
+.. versionadded:: 3.30
+
+The :genex:`TARGET_PROPERTY` generator expression evaluates the above
+`build specification <Target Build Specification_>`_ and
+`usage requirement <Target Usage Requirements_>`_ properties
+as builtin transitive properties.  It also supports custom transitive
+properties defined by the :prop_tgt:`TRANSITIVE_COMPILE_PROPERTIES`
+and :prop_tgt:`TRANSITIVE_LINK_PROPERTIES` properties on the target
+and its link dependencies.
+
+For example:
+
+.. code-block:: cmake
+
+  add_library(example INTERFACE)
+  set_target_properties(example PROPERTIES
+    TRANSITIVE_COMPILE_PROPERTIES "CUSTOM_C"
+    TRANSITIVE_LINK_PROPERTIES    "CUSTOM_L"
+
+    INTERFACE_CUSTOM_C "EXAMPLE_CUSTOM_C"
+    INTERFACE_CUSTOM_L "EXAMPLE_CUSTOM_L"
+    )
+
+  add_library(mylib STATIC mylib.c)
+  target_link_libraries(mylib PRIVATE example)
+  set_target_properties(mylib PROPERTIES
+    CUSTOM_C           "MYLIB_PRIVATE_CUSTOM_C"
+    CUSTOM_L           "MYLIB_PRIVATE_CUSTOM_L"
+    INTERFACE_CUSTOM_C "MYLIB_IFACE_CUSTOM_C"
+    INTERFACE_CUSTOM_L "MYLIB_IFACE_CUSTOM_L"
+    )
+
+  add_executable(myexe myexe.c)
+  target_link_libraries(myexe PRIVATE mylib)
+  set_target_properties(myexe PROPERTIES
+    CUSTOM_C "MYEXE_CUSTOM_C"
+    CUSTOM_L "MYEXE_CUSTOM_L"
+    )
+
+  add_custom_target(print ALL VERBATIM
+    COMMAND ${CMAKE_COMMAND} -E echo
+      # Prints "MYLIB_PRIVATE_CUSTOM_C;EXAMPLE_CUSTOM_C"
+      "$<TARGET_PROPERTY:mylib,CUSTOM_C>"
+
+      # Prints "MYLIB_PRIVATE_CUSTOM_L;EXAMPLE_CUSTOM_L"
+      "$<TARGET_PROPERTY:mylib,CUSTOM_L>"
+
+      # Prints "MYEXE_CUSTOM_C"
+      "$<TARGET_PROPERTY:myexe,CUSTOM_C>"
+
+      # Prints "MYEXE_CUSTOM_L;MYLIB_IFACE_CUSTOM_L;EXAMPLE_CUSTOM_L"
+      "$<TARGET_PROPERTY:myexe,CUSTOM_L>"
+    )
 
 .. _`Compatible Interface Properties`:
 
@@ -545,20 +960,20 @@ on the consumer:
   target_compile_definitions(lib1 INTERFACE
     $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:LIB1_WITH_EXE>
     $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:LIB1_WITH_SHARED_LIB>
-    $<$<TARGET_POLICY:CMP0041>:CONSUMER_CMP0041_NEW>
+    $<$<TARGET_POLICY:CMP0182>:CONSUMER_CMP0182_NEW>
   )
 
   add_executable(exe1 exe1.cpp)
   target_link_libraries(exe1 lib1)
 
-  cmake_policy(SET CMP0041 NEW)
+  cmake_policy(SET CMP0182 NEW)
 
   add_library(shared_lib shared_lib.cpp)
   target_link_libraries(shared_lib lib1)
 
 The ``exe1`` executable will be compiled with ``-DLIB1_WITH_EXE``, while the
 ``shared_lib`` shared library will be compiled with ``-DLIB1_WITH_SHARED_LIB``
-and ``-DCONSUMER_CMP0041_NEW``, because policy :policy:`CMP0041` is
+and ``-DCONSUMER_CMP0182_NEW``, because policy :policy:`CMP0182` is
 ``NEW`` at the point where the ``shared_lib`` target is created.
 
 The ``BUILD_INTERFACE`` expression wraps requirements which are only used when
@@ -1028,13 +1443,9 @@ Interface Libraries
 An ``INTERFACE`` library target does not compile sources and does not
 produce a library artifact on disk, so it has no :prop_tgt:`LOCATION`.
 
-It may specify usage requirements such as
-:prop_tgt:`INTERFACE_INCLUDE_DIRECTORIES`,
-:prop_tgt:`INTERFACE_COMPILE_DEFINITIONS`,
-:prop_tgt:`INTERFACE_COMPILE_OPTIONS`,
-:prop_tgt:`INTERFACE_LINK_LIBRARIES`,
-:prop_tgt:`INTERFACE_SOURCES`,
-and :prop_tgt:`INTERFACE_POSITION_INDEPENDENT_CODE`.
+It may specify `usage requirements <Target Usage Requirements_>`_,
+`compatible interface properties <Compatible Interface Properties_>`_, and
+`custom transitive properties <Custom Transitive Properties_>`_.
 Only the ``INTERFACE`` modes of the :command:`target_include_directories`,
 :command:`target_compile_definitions`, :command:`target_compile_options`,
 :command:`target_sources`, and :command:`target_link_libraries` commands
@@ -1098,7 +1509,7 @@ default header set along with the target:
 
   add_library(Eigen INTERFACE)
 
-  target_sources(Eigen INTERFACE
+  target_sources(Eigen PUBLIC
     FILE_SET HEADERS
       BASE_DIRS src
       FILES src/eigen.h src/vector.h src/matrix.h
@@ -1113,3 +1524,27 @@ default header set along with the target:
 Here, the headers defined in the header set are installed to ``include/Eigen``.
 The install destination automatically becomes an include directory that is a
 usage requirement for consumers.
+
+Properties Allowed on Interface Libraries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Since CMake 3.19, interface libraries allow setting or reading target
+properties with any name, just like other target kinds always have.
+
+Prior to CMake 3.19, interface libraries only allowed setting or reading
+target properties with a limited set of names:
+
+* Properties named with an ``INTERFACE_`` prefix, either builtin
+  `usage requirements <Target Usage Requirements_>`_, or custom names.
+
+* Built-in properties named with a ``COMPATIBLE_INTERFACE_`` prefix
+  (`compatible interface properties <Compatible Interface Properties_>`_).
+
+* Built-in properties :prop_tgt:`NAME`, :prop_tgt:`EXPORT_NAME`,
+  :prop_tgt:`EXPORT_PROPERTIES`, :prop_tgt:`MANUALLY_ADDED_DEPENDENCIES`,
+  :prop_tgt:`IMPORTED`, :prop_tgt:`IMPORTED_LIBNAME_<CONFIG>`, and
+  :prop_tgt:`MAP_IMPORTED_CONFIG_<CONFIG>`.
+
+* .. versionadded:: 3.11
+    Properties named with a leading underscore (``_``)
+    or lowercase ASCII character.

@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 Use_wxWindows
@@ -7,39 +7,67 @@ Use_wxWindows
 
 .. deprecated:: 2.8.10
 
-  Use ``find_package(wxWidgets)`` and ``include(${wxWidgets_USE_FILE})`` instead.
+  This module should no longer be used.  Use :module:`find_package(wxWidgets)
+  <FindwxWidgets>` instead.
 
-This convenience include finds if wxWindows is installed and set the
-appropriate libs, incdirs, flags etc.  author Jan Woetzel <jw -at-
-mip.informatik.uni-kiel.de> (07/2003)
+This module serves as a convenience wrapper for finding the wxWidgets library
+(formerly known as wxWindows) and propagates its usage requirements, such as
+libraries, include directories, and compiler flags, into the current directory
+scope for use by targets.
 
-USAGE:
+Load this module in a CMake project with:
 
-::
+.. code-block:: cmake
 
-   just include Use_wxWindows.cmake
-   in your projects CMakeLists.txt
+  include(Use_wxWindows)
 
-include( ${CMAKE_MODULE_PATH}/Use_wxWindows.cmake)
+Examples
+^^^^^^^^
 
-::
+In earlier versions of CMake, wxWidgets (wxWindows) could be found and used in
+the current directory like this:
 
-   if you are sure you need GL then
+.. code-block:: cmake
+  :caption: ``CMakeLists.txt``
 
-set(WXWINDOWS_USE_GL 1)
+  include(Use_wxWindows)
 
-::
+To request OpenGL support, the ``WXWINDOWS_USE_GL`` variable could be set before
+including this module:
 
-   *before* you include this file.
+.. code-block:: cmake
+  :caption: ``CMakeLists.txt``
+
+  set(WXWINDOWS_USE_GL ON)
+  include(Use_wxWindows)
+
+  add_library(example example.cxx)
+
+Starting with CMake 3.0, wxWidgets can be found using the
+:module:`FindwxWidgets` module, which provides the wxWidgets usage requirements
+either using result variables or imported target as of CMake 3.27:
+
+.. code-block:: cmake
+  :caption: ``CMakeLists.txt``
+
+  find_package(wxWidgets)
+
+  add_library(example example.cxx)
+
+  target_link_libraries(example PRIVATE wxWidgets::wxWidgets)
 #]=======================================================================]
+
+# Author: Jan Woetzel <jw -at- mip.informatik.uni-kiel.de> (07/2003)
 
 # -----------------------------------------------------
 # 16.Feb.2004: changed INCLUDE to FIND_PACKAGE to read from users own non-system CMAKE_MODULE_PATH (Jan Woetzel JW)
 # 07/2006: rewrite as FindwxWidgets.cmake, kept for backward compatibility JW
 
-message(STATUS "Use_wxWindows.cmake is DEPRECATED. \n"
-"Please use find_package(wxWidgets) and include(${wxWidgets_USE_FILE}) instead. (JW)")
-
+message(
+  DEPRECATION
+  "Use_wxWindows module is DEPRECATED.\n"
+  "Please use find_package(wxWidgets) instead. (JW)"
+)
 
 # ------------------------
 

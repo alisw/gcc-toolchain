@@ -1,62 +1,118 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindLibLZMA
 -----------
 
-Find LZMA compression algorithm headers and library.
+Finds the liblzma, a data compression library that implements the LZMA
+(Lempel–Ziv–Markov chain algorithm):
 
+.. code-block:: cmake
+
+  find_package(LibLZMA [<version>] [...])
 
 Imported Targets
 ^^^^^^^^^^^^^^^^
 
-.. versionadded:: 3.14
+This module provides the following :ref:`Imported Targets`:
 
-This module defines :prop_tgt:`IMPORTED` target ``LibLZMA::LibLZMA``, if
-liblzma has been found.
+``LibLZMA::LibLZMA``
+  .. versionadded:: 3.14
 
-Result variables
+  Target encapsulating the liblzma library usage requirements, available only if
+  liblzma is found.
+
+Result Variables
 ^^^^^^^^^^^^^^^^
 
-This module will set the following variables in your project:
+This module defines the following variables:
 
-``LIBLZMA_FOUND``
-  True if liblzma headers and library were found.
+``LibLZMA_FOUND``
+  .. versionadded:: 3.3
+
+  Boolean indicating whether (the requested version of) liblzma was found.
+
+``LibLZMA_VERSION``
+  .. versionadded:: 4.2
+
+  The version of liblzma found (available as a string, for example, ``5.0.3``).
+
 ``LIBLZMA_INCLUDE_DIRS``
-  Directory where liblzma headers are located.
+  Include directories containing headers needed to use liblzma.
+
 ``LIBLZMA_LIBRARIES``
-  Lzma libraries to link against.
+  Libraries needed to link against to use liblzma.
+
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may also be set:
+
 ``LIBLZMA_HAS_AUTO_DECODER``
-  True if lzma_auto_decoder() is found (required).
+  Boolean sanity check result indicating whether the ``lzma_auto_decoder()``
+  function (automatic decoder functionality) is found in liblzma (required).
+
 ``LIBLZMA_HAS_EASY_ENCODER``
-  True if lzma_easy_encoder() is found (required).
+  Boolean sanity check result indicating whether the ``lzma_easy_encoder()``
+  function (basic encoder API) is found in liblzma (required).
+
 ``LIBLZMA_HAS_LZMA_PRESET``
-  True if lzma_lzma_preset() is found (required).
-``LIBLZMA_VERSION``
-  .. versionadded:: 3.26
-    the version of LZMA found.
+  Boolean sanity check result indicating whether the ``lzma_lzma_preset()``
+  function (preset compression configuration) is found in liblzma (required).
 
-  See also legacy variable ``LIBLZMA_VERSION_STRING``.
-
-Legacy Variables
-^^^^^^^^^^^^^^^^
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
 
 The following variables are provided for backward compatibility:
 
-``LIBLZMA_VERSION_MAJOR``
-  The major version of lzma
-``LIBLZMA_VERSION_MINOR``
-  The minor version of lzma
-``LIBLZMA_VERSION_PATCH``
-  The patch version of lzma
+``LIBLZMA_FOUND``
+  .. deprecated:: 4.2
+    Use ``LibLZMA_FOUND``, which has the same value.
+
+  Boolean indicating whether (the requested version of) liblzma was found.
+
+``LIBLZMA_VERSION``
+  .. versionadded:: 3.26
+  .. deprecated:: 4.2
+    Superseded by the ``LibLZMA_VERSION``.
+
+  The version of liblzma found.
+
 ``LIBLZMA_VERSION_STRING``
-  version number as a string (ex: "5.0.3")
+  .. deprecated:: 3.26
+    Superseded by the ``LIBLZMA_VERSION`` (and ``LibLZMA_VERSION``).
 
-  .. versionchanged:: 3.26
-    Superseded by ``LIBLZMA_VERSION``.
+  The version of liblzma found.
 
+``LIBLZMA_VERSION_MAJOR``
+  .. deprecated:: 3.26
+
+  The major version of liblzma found.
+
+``LIBLZMA_VERSION_MINOR``
+  .. deprecated:: 3.26
+
+  The minor version of liblzma found.
+
+``LIBLZMA_VERSION_PATCH``
+  .. deprecated:: 3.26
+
+  The patch version of liblzma found.
+
+Examples
+^^^^^^^^
+
+Finding the liblzma library and linking it to a project target:
+
+.. code-block:: cmake
+
+  find_package(LibLZMA)
+  target_link_libraries(project_target PRIVATE LibLZMA::LibLZMA)
 #]=======================================================================]
+
+cmake_policy(PUSH)
+cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
 find_path(LIBLZMA_INCLUDE_DIR lzma.h )
 if(NOT LIBLZMA_LIBRARY)
@@ -75,8 +131,9 @@ if(LIBLZMA_INCLUDE_DIR AND EXISTS "${LIBLZMA_INCLUDE_DIR}/lzma/version.h")
     string(REGEX REPLACE ".*#define LZMA_VERSION_MINOR ([0-9]+).*" "\\1" LIBLZMA_VERSION_MINOR "${LIBLZMA_HEADER_CONTENTS}")
     string(REGEX REPLACE ".*#define LZMA_VERSION_PATCH ([0-9]+).*" "\\1" LIBLZMA_VERSION_PATCH "${LIBLZMA_HEADER_CONTENTS}")
 
-    set(LIBLZMA_VERSION_STRING "${LIBLZMA_VERSION_MAJOR}.${LIBLZMA_VERSION_MINOR}.${LIBLZMA_VERSION_PATCH}")
-    set(LIBLZMA_VERSION ${LIBLZMA_VERSION_STRING})
+    set(LibLZMA_VERSION "${LIBLZMA_VERSION_MAJOR}.${LIBLZMA_VERSION_MINOR}.${LIBLZMA_VERSION_PATCH}")
+    set(LIBLZMA_VERSION "${LibLZMA_VERSION}")
+    set(LIBLZMA_VERSION_STRING "${LibLZMA_VERSION}")
     unset(LIBLZMA_HEADER_CONTENTS)
 endif()
 
@@ -94,24 +151,24 @@ if (LIBLZMA_LIBRARY)
   elseif(LIBLZMA_LIBRARY_DEBUG)
     set(LIBLZMA_LIBRARY_check ${LIBLZMA_LIBRARY_DEBUG})
   endif()
-  CHECK_LIBRARY_EXISTS(${LIBLZMA_LIBRARY_check} lzma_auto_decoder "" LIBLZMA_HAS_AUTO_DECODER)
-  CHECK_LIBRARY_EXISTS(${LIBLZMA_LIBRARY_check} lzma_easy_encoder "" LIBLZMA_HAS_EASY_ENCODER)
-  CHECK_LIBRARY_EXISTS(${LIBLZMA_LIBRARY_check} lzma_lzma_preset "" LIBLZMA_HAS_LZMA_PRESET)
+  check_library_exists(${LIBLZMA_LIBRARY_check} lzma_auto_decoder "" LIBLZMA_HAS_AUTO_DECODER)
+  check_library_exists(${LIBLZMA_LIBRARY_check} lzma_easy_encoder "" LIBLZMA_HAS_EASY_ENCODER)
+  check_library_exists(${LIBLZMA_LIBRARY_check} lzma_lzma_preset "" LIBLZMA_HAS_LZMA_PRESET)
   unset(LIBLZMA_LIBRARY_check)
   set(CMAKE_REQUIRED_QUIET ${CMAKE_REQUIRED_QUIET_SAVE})
 endif ()
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
+include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(LibLZMA  REQUIRED_VARS  LIBLZMA_LIBRARY
                                                           LIBLZMA_INCLUDE_DIR
                                                           LIBLZMA_HAS_AUTO_DECODER
                                                           LIBLZMA_HAS_EASY_ENCODER
                                                           LIBLZMA_HAS_LZMA_PRESET
-                                           VERSION_VAR    LIBLZMA_VERSION
+                                           VERSION_VAR    LibLZMA_VERSION
                                  )
 mark_as_advanced( LIBLZMA_INCLUDE_DIR LIBLZMA_LIBRARY )
 
-if (LIBLZMA_FOUND)
+if (LibLZMA_FOUND)
     set(LIBLZMA_LIBRARIES ${LIBLZMA_LIBRARY})
     set(LIBLZMA_INCLUDE_DIRS ${LIBLZMA_INCLUDE_DIR})
     if(NOT TARGET LibLZMA::LibLZMA)
@@ -140,3 +197,5 @@ if (LIBLZMA_FOUND)
         endif()
     endif()
 endif ()
+
+cmake_policy(POP)

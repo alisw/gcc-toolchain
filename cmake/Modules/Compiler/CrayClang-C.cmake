@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 include(Compiler/CrayClang)
 __compiler_cray_clang(C)
@@ -26,5 +26,7 @@ set(CMAKE_C17_EXTENSION_COMPILE_OPTION -std=gnu17)
 
 set(CMAKE_C23_STANDARD_COMPILE_OPTION  -std=c2x)
 set(CMAKE_C23_EXTENSION_COMPILE_OPTION -std=gnu2x)
+
+set(CMAKE_C_STANDARD_LATEST 23)
 
 __compiler_check_default_language_standard(C 15.0.0 17)

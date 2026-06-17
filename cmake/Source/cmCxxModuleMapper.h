@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -83,6 +83,14 @@ struct CxxModuleUsage
                     LookupMethod method);
 };
 
+enum class CxxModuleMapMode
+{
+  Text,
+  Binary,
+
+  Default = Text,
+};
+
 // Return the extension to use for a given modulemap format.
 cm::static_string_view CxxModuleMapExtension(
   cm::optional<CxxModuleMapFormat> format);
@@ -101,3 +109,6 @@ std::string CxxModuleMapContent(CxxModuleMapFormat format,
                                 CxxModuleLocations const& loc,
                                 cmScanDepInfo const& obj,
                                 CxxModuleUsage const& usages);
+
+// Return the open mode required for the modmap file format.
+CxxModuleMapMode CxxModuleMapOpenMode(CxxModuleMapFormat format);

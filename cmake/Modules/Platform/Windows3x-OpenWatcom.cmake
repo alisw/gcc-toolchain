@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 # This module is shared by multiple languages; use include blocker.
 include_guard()
@@ -8,8 +8,8 @@ set(CMAKE_BUILD_TYPE_INIT Debug)
 
 if(DEFINED CMAKE_SYSTEM_PROCESSOR AND CMAKE_SYSTEM_PROCESSOR STREQUAL "I86")
   string(APPEND CMAKE_EXE_LINKER_FLAGS_INIT " system windows")
-  string(APPEND CMAKE_SHARED_LINKER_FLAGS_INIT " system windows")
-  string(APPEND CMAKE_MODULE_LINKER_FLAGS_INIT " system windows")
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS_INIT " system windows_dll")
+  string(APPEND CMAKE_MODULE_LINKER_FLAGS_INIT " system windows_dll")
 else()
   string(APPEND CMAKE_EXE_LINKER_FLAGS_INIT " system win386")
   string(APPEND CMAKE_SHARED_LINKER_FLAGS_INIT " system win386")

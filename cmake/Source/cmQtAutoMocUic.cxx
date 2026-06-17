@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmQtAutoMocUic.h"
 
 #include <algorithm>
@@ -7,7 +7,6 @@
 #include <cstddef>
 #include <limits>
 #include <map>
-#include <mutex>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -384,7 +383,7 @@ public:
                     std::set<std::string> const& source,
                     std::size_t basePrefixLength);
     void MocMacro();
-    void MocDependecies();
+    void MocDependencies();
     void MocIncludes();
     void UicIncludes();
 
@@ -559,7 +558,6 @@ public:
   std::string AbsoluteIncludePath(cm::string_view relativePath) const;
   template <class JOBTYPE>
   void CreateParseJobs(SourceFileMapT const& sourceMap);
-  std::string CollapseFullPathTS(std::string const& path) const;
 
 private:
   // -- Abstract processing interface
@@ -577,7 +575,7 @@ private:
   // -- Generation
   bool CreateDirectories();
   // -- Support for depfiles
-  std::vector<std::string> dependenciesFromDepFile(const char* filePath);
+  std::vector<std::string> dependenciesFromDepFile(char const* filePath);
 
   // -- Settings
   BaseSettingsT BaseConst_;
@@ -593,8 +591,6 @@ private:
   // -- Worker thread pool
   std::atomic<bool> JobError_{ false };
   cmWorkerPool WorkerPool_;
-  // -- Concurrent processing
-  mutable std::mutex CMakeLibMutex_;
 };
 
 cmQtAutoMocUicT::IncludeKeyT::IncludeKeyT(std::string const& key,
@@ -755,9 +751,9 @@ bool cmQtAutoMocUicT::MocSettingsT::skipped(std::string const& fileName) const
 std::string cmQtAutoMocUicT::MocSettingsT::MacrosString() const
 {
   std::string res;
-  const auto itB = this->MacroFilters.cbegin();
-  const auto itE = this->MacroFilters.cend();
-  const auto itL = itE - 1;
+  auto const itB = this->MacroFilters.cbegin();
+  auto const itE = this->MacroFilters.cend();
+  auto const itL = itE - 1;
   auto itC = itB;
   for (; itC != itE; ++itC) {
     // Separator
@@ -856,7 +852,7 @@ bool cmQtAutoMocUicT::JobT::RunProcess(GenT genType,
   // Log command
   if (this->Log().Verbose()) {
     cm::string_view info;
-    if (infoMessage != nullptr) {
+    if (infoMessage) {
       info = *infoMessage;
     }
     this->Log().Info(
@@ -891,6 +887,7 @@ void cmQtAutoMocUicT::JobMocPredefsT::Process()
       cm::append(cmd, this->MocConst().OptionsIncludes);
       // Check if response file is necessary
       MaybeWriteResponseFile(this->MocConst().PredefsFileAbs, cmd);
+
       // Execute command
       if (!this->RunProcess(GenT::MOC, result, cmd, reason.get())) {
         this->LogCommandError(GenT::MOC,
@@ -938,7 +935,7 @@ bool cmQtAutoMocUicT::JobMocPredefsT::Update(std::string* reason) const
 {
   // Test if the file exists
   if (!this->MocEval().PredefsTime.Load(this->MocConst().PredefsFileAbs)) {
-    if (reason != nullptr) {
+    if (reason) {
       *reason = cmStrCat("Generating ",
                          this->MessagePath(this->MocConst().PredefsFileAbs),
                          ", because it doesn't exist.");
@@ -948,7 +945,7 @@ bool cmQtAutoMocUicT::JobMocPredefsT::Update(std::string* reason) const
 
   // Test if the settings changed
   if (this->MocConst().SettingsChanged) {
-    if (reason != nullptr) {
+    if (reason) {
       *reason = cmStrCat("Generating ",
                          this->MessagePath(this->MocConst().PredefsFileAbs),
                          ", because the moc settings changed.");
@@ -962,7 +959,7 @@ bool cmQtAutoMocUicT::JobMocPredefsT::Update(std::string* reason) const
     cmFileTime execTime;
     if (execTime.Load(exec)) {
       if (this->MocEval().PredefsTime.Older(execTime)) {
-        if (reason != nullptr) {
+        if (reason) {
           *reason = cmStrCat(
             "Generating ", this->MessagePath(this->MocConst().PredefsFileAbs),
             " because it is older than ", this->MessagePath(exec), '.');
@@ -1034,7 +1031,7 @@ void cmQtAutoMocUicT::JobParseT::MocMacro()
   }
 }
 
-void cmQtAutoMocUicT::JobParseT::MocDependecies()
+void cmQtAutoMocUicT::JobParseT::MocDependencies()
 {
   if (this->MocConst().DependFilters.empty() ||
       this->MocConst().CanOutputDependencies) {
@@ -1049,7 +1046,7 @@ void cmQtAutoMocUicT::JobParseT::MocDependecies()
       continue;
     }
     // Run the expensive regular expression check loop
-    const char* contentChars = this->Content.c_str();
+    char const* contentChars = this->Content.c_str();
     cmsys::RegularExpressionMatch match;
     while (filter.Exp.find(contentChars, match)) {
       {
@@ -1085,7 +1082,7 @@ void cmQtAutoMocUicT::JobParseT::MocIncludes()
   std::set<std::string> underscore;
   std::set<std::string> dot;
   {
-    const char* contentChars = this->Content.c_str();
+    char const* contentChars = this->Content.c_str();
     cmsys::RegularExpression const& regExp = this->MocConst().RegExpInclude;
     cmsys::RegularExpressionMatch match;
     while (regExp.find(contentChars, match)) {
@@ -1117,7 +1114,7 @@ void cmQtAutoMocUicT::JobParseT::UicIncludes()
 
   std::set<std::string> includes;
   {
-    const char* contentChars = this->Content.c_str();
+    char const* contentChars = this->Content.c_str();
     cmsys::RegularExpression const& regExp = this->UicConst().RegExpInclude;
     cmsys::RegularExpressionMatch match;
     while (regExp.find(contentChars, match)) {
@@ -1138,7 +1135,7 @@ void cmQtAutoMocUicT::JobParseHeaderT::Process()
   // Moc parsing
   if (this->FileHandle->Moc) {
     this->MocMacro();
-    this->MocDependecies();
+    this->MocDependencies();
   }
   // Uic parsing
   if (this->FileHandle->Uic) {
@@ -1154,7 +1151,7 @@ void cmQtAutoMocUicT::JobParseSourceT::Process()
   // Moc parsing
   if (this->FileHandle->Moc) {
     this->MocMacro();
-    this->MocDependecies();
+    this->MocDependencies();
     this->MocIncludes();
   }
   // Uic parsing
@@ -1305,7 +1302,7 @@ bool cmQtAutoMocUicT::JobEvalCacheMocT::EvalSource(
                  ".\nRunning moc on the source\n  ",
                  this->MessagePath(sourceFile.FileName), "!\nBetter include ",
                  this->MessagePath(sourceBase + ".moc"),
-                 " for compatibility with regular mode.\n",
+                 " for compatibility with regular mode.\n"
                  "This is a CMAKE_AUTOMOC_RELAXED_MODE warning.\n"));
 
       // Create mapping
@@ -1373,7 +1370,7 @@ bool cmQtAutoMocUicT::JobEvalCacheMocT::EvalSource(
             " macro.\nRunning moc on the header\n  ",
             this->MessagePath(headerHandle->FileName), "!\nBetter include ",
             this->MessagePath("moc_" + incKey.Base + ".cpp"),
-            " for a compatibility with regular mode.\n",
+            " for a compatibility with regular mode.\n"
             "This is a CMAKE_AUTOMOC_RELAXED_MODE warning.\n"));
       } else {
         this->Log().Warning(
@@ -1385,7 +1382,7 @@ bool cmQtAutoMocUicT::JobEvalCacheMocT::EvalSource(
             ".\nRunning moc on the header\n  ",
             this->MessagePath(headerHandle->FileName), "!\nBetter include ",
             this->MessagePath("moc_" + incKey.Base + ".cpp"),
-            " for compatibility with regular mode.\n",
+            " for compatibility with regular mode.\n"
             "This is a CMAKE_AUTOMOC_RELAXED_MODE warning.\n"));
       }
       // Create mapping
@@ -1441,8 +1438,9 @@ bool cmQtAutoMocUicT::JobEvalCacheMocT::FindIncludedHeader(
                      &headerHandle](std::string const& basePath) -> bool {
     bool found = false;
     for (std::string const& ext : this->BaseConst().HeaderExtensions) {
-      std::string const testPath =
-        this->Gen()->CollapseFullPathTS(cmStrCat(basePath, '.', ext));
+      std::string const testPath = cmSystemTools::CollapseFullPath(
+        cmStrCat(basePath, '.', ext),
+        this->Gen()->ProjectDirs().CurrentSource);
       cmFileTime fileTime;
       if (!fileTime.Load(testPath)) {
         // File not found
@@ -1629,7 +1627,8 @@ bool cmQtAutoMocUicT::JobEvalCacheUicT::FindIncludedUi(
   this->SearchLocations.clear();
 
   auto findUi = [this](std::string const& testPath) -> bool {
-    std::string const fullPath = this->Gen()->CollapseFullPathTS(testPath);
+    std::string const fullPath = cmSystemTools::CollapseFullPath(
+      testPath, this->Gen()->ProjectDirs().CurrentSource);
     cmFileTime fileTime;
     if (!fileTime.Load(fullPath)) {
       this->SearchLocations.emplace_back(cmQtAutoGen::ParentDir(fullPath));
@@ -1800,7 +1799,7 @@ bool cmQtAutoMocUicT::JobProbeDepsMocT::Probe(MappingT const& mapping,
   // Test if the output file exists
   cmFileTime outputFileTime;
   if (!outputFileTime.Load(outputFile)) {
-    if (reason != nullptr) {
+    if (reason) {
       *reason = cmStrCat("Generating ", this->MessagePath(outputFile),
                          ", because it doesn't exist, from ",
                          this->MessagePath(sourceFile));
@@ -1810,7 +1809,7 @@ bool cmQtAutoMocUicT::JobProbeDepsMocT::Probe(MappingT const& mapping,
 
   // Test if any setting changed
   if (this->MocConst().SettingsChanged) {
-    if (reason != nullptr) {
+    if (reason) {
       *reason = cmStrCat("Generating ", this->MessagePath(outputFile),
                          ", because the moc settings changed, from ",
                          this->MessagePath(sourceFile));
@@ -1820,7 +1819,7 @@ bool cmQtAutoMocUicT::JobProbeDepsMocT::Probe(MappingT const& mapping,
 
   // Test if the source file is newer
   if (outputFileTime.Older(mapping.SourceFile->FileTime)) {
-    if (reason != nullptr) {
+    if (reason) {
       *reason = cmStrCat("Generating ", this->MessagePath(outputFile),
                          ", because it's older than its source file, from ",
                          this->MessagePath(sourceFile));
@@ -1831,7 +1830,7 @@ bool cmQtAutoMocUicT::JobProbeDepsMocT::Probe(MappingT const& mapping,
   // Test if the moc_predefs file is newer
   if (!this->MocConst().PredefsFileAbs.empty()) {
     if (outputFileTime.Older(this->MocEval().PredefsTime)) {
-      if (reason != nullptr) {
+      if (reason) {
         *reason = cmStrCat("Generating ", this->MessagePath(outputFile),
                            ", because it's older than ",
                            this->MessagePath(this->MocConst().PredefsFileAbs),
@@ -1843,7 +1842,7 @@ bool cmQtAutoMocUicT::JobProbeDepsMocT::Probe(MappingT const& mapping,
 
   // Test if the moc executable is newer
   if (outputFileTime.Older(this->MocConst().ExecutableTime)) {
-    if (reason != nullptr) {
+    if (reason) {
       *reason = cmStrCat("Generating ", this->MessagePath(outputFile),
                          ", because it's older than the moc executable, from ",
                          this->MessagePath(sourceFile));
@@ -1862,7 +1861,7 @@ bool cmQtAutoMocUicT::JobProbeDepsMocT::Probe(MappingT const& mapping,
       // Find dependency file
       auto const depMatch = this->FindDependency(sourceDir, dep);
       if (depMatch.first.empty()) {
-        if (reason != nullptr) {
+        if (reason) {
           *reason = cmStrCat("Generating ", this->MessagePath(outputFile),
                              " from ", this->MessagePath(sourceFile),
                              ", because its dependency ",
@@ -1875,7 +1874,7 @@ bool cmQtAutoMocUicT::JobProbeDepsMocT::Probe(MappingT const& mapping,
 
       // Test if dependency file is older
       if (outputFileTime.Older(depMatch.second)) {
-        if (reason != nullptr) {
+        if (reason) {
           *reason = cmStrCat("Generating ", this->MessagePath(outputFile),
                              ", because it's older than its dependency file ",
                              this->MessagePath(depMatch.first), ", from ",
@@ -1950,7 +1949,7 @@ bool cmQtAutoMocUicT::JobProbeDepsUicT::Probe(MappingT const& mapping,
   // Test if the build file exists
   cmFileTime outputFileTime;
   if (!outputFileTime.Load(outputFile)) {
-    if (reason != nullptr) {
+    if (reason) {
       *reason = cmStrCat("Generating ", this->MessagePath(outputFile),
                          ", because it doesn't exist, from ",
                          this->MessagePath(sourceFile));
@@ -1960,7 +1959,7 @@ bool cmQtAutoMocUicT::JobProbeDepsUicT::Probe(MappingT const& mapping,
 
   // Test if the uic settings changed
   if (this->UicConst().SettingsChanged) {
-    if (reason != nullptr) {
+    if (reason) {
       *reason = cmStrCat("Generating ", this->MessagePath(outputFile),
                          ", because the uic settings changed, from ",
                          this->MessagePath(sourceFile));
@@ -1970,7 +1969,7 @@ bool cmQtAutoMocUicT::JobProbeDepsUicT::Probe(MappingT const& mapping,
 
   // Test if the source file is newer
   if (outputFileTime.Older(mapping.SourceFile->FileTime)) {
-    if (reason != nullptr) {
+    if (reason) {
       *reason = cmStrCat("Generating ", this->MessagePath(outputFile),
                          " because it's older than the source file ",
                          this->MessagePath(sourceFile));
@@ -1980,7 +1979,7 @@ bool cmQtAutoMocUicT::JobProbeDepsUicT::Probe(MappingT const& mapping,
 
   // Test if the uic executable is newer
   if (outputFileTime.Older(this->UicConst().ExecutableTime)) {
-    if (reason != nullptr) {
+    if (reason) {
       *reason = cmStrCat("Generating ", this->MessagePath(outputFile),
                          ", because it's older than the uic executable, from ",
                          this->MessagePath(sourceFile));
@@ -2119,7 +2118,7 @@ void cmQtAutoMocUicT::JobCompileMocT::Process()
 
   // Extract dependencies from the dep file moc generated for us
   if (this->MocConst().CanOutputDependencies) {
-    const std::string depfile = outputFile + ".d";
+    std::string const depfile = outputFile + ".d";
     if (this->Log().Verbose()) {
       this->Log().Info(
         GenT::MOC, "Reading dependencies from " + this->MessagePath(depfile));
@@ -2194,7 +2193,7 @@ void cmQtAutoMocUicT::JobMocsCompilationT::Process()
                "enum some_compilers { need_more_than_nothing };\n";
   } else {
     // Valid content
-    const bool mc = this->BaseConst().MultiConfig;
+    bool const mc = this->BaseConst().MultiConfig;
     cm::string_view const wrapFront = mc ? "#include <" : "#include \"";
     cm::string_view const wrapBack = mc ? ">\n" : "\"\n";
     content += cmWrap(wrapFront, this->MocEval().CompFiles, wrapBack, "");
@@ -2233,7 +2232,7 @@ std::string escapeDependencyPath(cm::string_view path)
 {
   std::string escapedPath;
   escapedPath.reserve(path.size());
-  const size_t s = path.size();
+  size_t const s = path.size();
   int backslashCount = 0;
   for (size_t i = 0; i < s; ++i) {
     if (path[i] == '\\') {
@@ -2270,7 +2269,7 @@ cmQtAutoMocUicT::JobDepFilesMergeT::initialDependencies() const
                        this->BaseEval().Sources.size());
   cm::append(dependencies, this->BaseConst().ListFiles);
   auto append_file_path =
-    [&dependencies](const SourceFileMapT::value_type& p) {
+    [&dependencies](SourceFileMapT::value_type const& p) {
       dependencies.push_back(p.first);
     };
   std::for_each(this->BaseEval().Headers.begin(),
@@ -2288,7 +2287,7 @@ void cmQtAutoMocUicT::JobDepFilesMergeT::Process()
                               this->MessagePath(this->BaseConst().DepFile)));
   }
   auto processDepFile =
-    [this](const std::string& mocOutputFile) -> std::vector<std::string> {
+    [this](std::string const& mocOutputFile) -> std::vector<std::string> {
     std::string f = mocOutputFile + ".d";
     if (!cmSystemTools::FileExists(f)) {
       return {};
@@ -2298,7 +2297,7 @@ void cmQtAutoMocUicT::JobDepFilesMergeT::Process()
 
   std::vector<std::string> dependencies = this->initialDependencies();
   ParseCacheT& parseCache = this->BaseEval().ParseCache;
-  auto processMappingEntry = [&](const MappingMapT::value_type& m) {
+  auto processMappingEntry = [&](MappingMapT::value_type const& m) {
     auto cacheEntry = parseCache.GetOrInsert(m.first);
     if (cacheEntry.first->Moc.Depends.empty()) {
       cacheEntry.first->Moc.Depends = processDepFile(m.second->OutputFile);
@@ -2317,7 +2316,7 @@ void cmQtAutoMocUicT::JobDepFilesMergeT::Process()
   // Also remove AUTOUIC header files to avoid cyclic dependency.
   dependencies.erase(
     std::remove_if(dependencies.begin(), dependencies.end(),
-                   [this](const std::string& dep) {
+                   [this](std::string const& dep) {
                      return this->MocConst().skipped(dep) ||
                        std::any_of(
                               this->UicEval().Includes.begin(),
@@ -2334,7 +2333,7 @@ void cmQtAutoMocUicT::JobDepFilesMergeT::Process()
                      dependencies.end());
 
   // Add form files
-  for (const auto& uif : this->UicEval().UiFiles) {
+  for (auto const& uif : this->UicEval().UiFiles) {
     dependencies.push_back(uif.first);
   }
 
@@ -2350,7 +2349,7 @@ void cmQtAutoMocUicT::JobDepFilesMergeT::Process()
     return;
   }
   ofs << this->BaseConst().DepFileRuleName << ": \\\n";
-  for (const std::string& file : dependencies) {
+  for (std::string const& file : dependencies) {
     ofs << '\t' << escapeDependencyPath(file) << " \\\n";
     if (!ofs.good()) {
       this->LogError(GenT::GEN,
@@ -2817,7 +2816,7 @@ void cmQtAutoMocUicT::CreateParseJobs(SourceFileMapT const& sourceMap)
 {
   cmFileTime const parseCacheTime = this->BaseEval().ParseCacheTime;
   ParseCacheT& parseCache = this->BaseEval().ParseCache;
-  for (const auto& src : sourceMap) {
+  for (auto const& src : sourceMap) {
     // Get or create the file parse data reference
     ParseCacheT::GetOrInsertT cacheEntry = parseCache.GetOrInsert(src.first);
     src.second->ParseData = std::move(cacheEntry.first);
@@ -2827,17 +2826,6 @@ void cmQtAutoMocUicT::CreateParseJobs(SourceFileMapT const& sourceMap)
       this->WorkerPool().EmplaceJob<JOBTYPE>(src.second);
     }
   }
-}
-
-/** Concurrently callable implementation of cmSystemTools::CollapseFullPath */
-std::string cmQtAutoMocUicT::CollapseFullPathTS(std::string const& path) const
-{
-  std::lock_guard<std::mutex> guard(this->CMakeLibMutex_);
-#if defined(__NVCOMPILER) || defined(__LCC__)
-  static_cast<void>(guard); // convince compiler var is used
-#endif
-  return cmSystemTools::CollapseFullPath(path,
-                                         this->ProjectDirs().CurrentSource);
 }
 
 void cmQtAutoMocUicT::InitJobs()
@@ -2929,7 +2917,7 @@ void cmQtAutoMocUicT::SettingsFileRead()
       cha(this->UicConst().Executable);
       std::for_each(this->UicConst().Options.begin(),
                     this->UicConst().Options.end(), cha);
-      for (const auto& item : this->UicConst().UiFiles) {
+      for (auto const& item : this->UicConst().UiFiles) {
         cha(item.first);
         auto const& opts = item.second.Options;
         std::for_each(opts.begin(), opts.end(), cha);
@@ -3072,12 +3060,8 @@ bool cmQtAutoMocUicT::CreateDirectories()
 }
 
 std::vector<std::string> cmQtAutoMocUicT::dependenciesFromDepFile(
-  const char* filePath)
+  char const* filePath)
 {
-  std::lock_guard<std::mutex> guard(this->CMakeLibMutex_);
-#if defined(__NVCOMPILER) || defined(__LCC__)
-  static_cast<void>(guard); // convince compiler var is used
-#endif
   auto const content = cmReadGccDepfile(filePath);
   if (!content || content->empty()) {
     return {};

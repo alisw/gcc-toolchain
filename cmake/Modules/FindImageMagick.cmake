@@ -1,21 +1,27 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindImageMagick
 ---------------
 
-Find ImageMagick, software suite for displaying, converting and
-manipulating raster images.
+Finds ImageMagick, a software suite for displaying, converting, and manipulating
+raster images:
 
+.. code-block:: cmake
+
+  find_package(ImageMagick [<version>] [COMPONENTS <components>...] [...])
 
 .. versionadded:: 3.9
-  Added support for ImageMagick 7.
+  Support for ImageMagick 7.
 
-This module will search for a set of ImageMagick tools specified as
-components in the :command:`find_package` call.  Typical components include,
-but are not limited to (future versions of ImageMagick might have
-additional components not listed here):
+Components
+^^^^^^^^^^
+
+This module supports components and searches for a set of ImageMagick tools.
+Typical components include the names of ImageMagick executables, but are not
+limited to the following (future versions of ImageMagick may provide additional
+components not listed here):
 
 * ``animate``
 * ``compare``
@@ -29,81 +35,132 @@ additional components not listed here):
 * ``montage``
 * ``stream``
 
-If no component is specified in the :command:`find_package` call, then it only
-searches for the ImageMagick executable directory.
-
 There are also components for the following ImageMagick APIs:
 
-* ``Magick++``: ImageMagick C++ API, if found.
-* ``MagickWand``: ImageMagick MagickWand C API, if found.
-* ``MagickCore``: ImageMagick MagickCore low-level C API, if found.
+``Magick++``
+  Finds the ImageMagick C++ API.
+``MagickWand``
+  Finds the ImageMagick MagickWand C API.
+``MagickCore``
+  Finds the ImageMagick MagickCore low-level C API.
 
+Components can be specified using the :command:`find_package` command:
 
-Imported targets
+.. code-block:: cmake
+
+  find_package(ImageMagick [COMPONENTS <components>...])
+
+If no components are specified, the module only searches for the ImageMagick
+executable directory.
+
+Imported Targets
 ^^^^^^^^^^^^^^^^
 
-.. versionadded:: 3.26
-
-This module defines the following :prop_tgt:`IMPORTED` targets:
+This module provides the following :ref:`Imported Targets`:
 
 ``ImageMagick::Magick++``
-  ImageMagick C++ API, if found.
+  .. versionadded:: 3.26
+
+  Target encapsulating the ImageMagick C++ API usage requirements, available if
+  ImageMagick C++ is found.
 
 ``ImageMagick::MagickWand``
-  ImageMagick MagickWand C API, if found.
+  .. versionadded:: 3.26
+
+  Target encapsulating the ImageMagick MagickWand C API usage requirements,
+  available if MagickWand is found.
 
 ``ImageMagick::MagickCore``
-  ImageMagick MagickCore low-level C API, if found.
+  .. versionadded:: 3.26
 
+  Target encapsulating the ImageMagick MagickCore low-level C API usage
+  requirements, available if MagickCore is found.
 
 Result Variables
 ^^^^^^^^^^^^^^^^
 
-``ImageMagick_FOUND``
-  TRUE if all components are found.
+This module defines the following variables:
 
-``ImageMagick_EXECUTABLE_DIR``
-  Full path to executables directory.
+``ImageMagick_FOUND``
+  Boolean indicating whether (the requested version of) ImageMagick and all
+  its requested components were found.
+
+``ImageMagick_VERSION``
+  .. versionadded:: 4.2
+
+  The version of ImageMagick found in form of
+  ``<major>.<minor>.<patch>-<addendum>`` (e.g., ``6.9.12-98``, where ``98``
+  is the addendum release number).
+
+  .. note::
+
+    Version detection is available only for ImageMagick 6 and later.
 
 ``ImageMagick_INCLUDE_DIRS``
-  Full paths to all include dirs.
+  All include directories needed to use ImageMagick.
 
 ``ImageMagick_LIBRARIES``
-  Full paths to all libraries.
+  Libraries needed to link against to use ImageMagick.
 
 ``ImageMagick_COMPILE_OPTIONS``
+  .. versionadded:: 3.26
+
   Compile options of all libraries.
 
-``ImageMagick_VERSION_STRING``
-  The version of ImageMagick found (since CMake 2.8.8).
-  Will not work for old versions like 5.2.3.
-
 ``ImageMagick_<component>_FOUND``
-  TRUE if <component> is found.
+  Boolean indicating whether the ImageMagick ``<component>`` is found.
 
 ``ImageMagick_<component>_EXECUTABLE``
-  Full path to <component> executable.
+  The full path to ``<component>`` executable.
 
 ``ImageMagick_<component>_INCLUDE_DIRS``
-  Full path to <component> include dirs.
+  Include directories containing headers needed to use the ImageMagick
+  ``<component>``.
 
 ``ImageMagick_<component>_COMPILE_OPTIONS``
   .. versionadded:: 3.26
 
-  Compile options of <component>.
+  Compile options of the ImageMagick ``<component>``.
 
 ``ImageMagick_<component>_LIBRARIES``
-  Full path to <component> libraries.
+  .. versionadded:: 3.31
 
+  Libraries needed to link against to use the ImageMagick ``<component>``.
 
-Example Usage
-^^^^^^^^^^^^^
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may also be set:
+
+``ImageMagick_EXECUTABLE_DIR``
+  The full path to directory containing ImageMagick executables.
+
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
+
+The following variables are provided for backward compatibility:
+
+``ImageMagick_VERSION_STRING``
+  .. deprecated:: 4.2
+    Use ``ImageMagick_VERSION``, which has the same value.
+
+  The version of ImageMagick found.
+
+Examples
+^^^^^^^^
+
+Finding ImageMagick with its component ``Magick++``  and linking it to a project
+target:
 
 .. code-block:: cmake
 
   find_package(ImageMagick COMPONENTS Magick++)
   target_link_libraries(example PRIVATE ImageMagick::Magick++)
 #]=======================================================================]
+
+cmake_policy(PUSH)
+cmake_policy(SET CMP0140 NEW)
+cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
 find_package(PkgConfig QUIET)
 
@@ -113,7 +170,9 @@ find_package(PkgConfig QUIET)
 function(FIND_IMAGEMAGICK_API component header)
   set(ImageMagick_${component}_FOUND FALSE PARENT_SCOPE)
 
-  pkg_check_modules(PC_${component} QUIET ${component})
+  if(PkgConfig_FOUND)
+    pkg_check_modules(PC_${component} QUIET ${component})
+  endif()
 
   find_path(ImageMagick_${component}_INCLUDE_DIR
     NAMES ${header}
@@ -129,7 +188,9 @@ function(FIND_IMAGEMAGICK_API component header)
     NO_DEFAULT_PATH
     )
   find_path(ImageMagick_${component}_ARCH_INCLUDE_DIR
-    NAMES magick/magick-baseconfig.h
+    NAMES
+      magick/magick-baseconfig.h
+      MagickCore/magick-baseconfig.h
     HINTS
       ${PC_${component}_INCLUDEDIR}
       ${PC_${component}_INCLUDE_DIRS}
@@ -168,6 +229,12 @@ function(FIND_IMAGEMAGICK_API component header)
     set(ImageMagick_${component}_INCLUDE_DIRS
       ${ImageMagick_${component}_INCLUDE_DIRS} PARENT_SCOPE)
 
+    set(ImageMagick_${component}_LIBRARIES
+      ${ImageMagick_${component}_LIBRARY}
+      )
+    set(ImageMagick_${component}_LIBRARIES
+      ${ImageMagick_${component}_LIBRARIES} PARENT_SCOPE)
+
     set(ImageMagick_${component}_COMPILE_OPTIONS ${PC_${component}_CFLAGS_OTHER})
 
     # Add the per-component include directories to the full include dirs.
@@ -185,11 +252,13 @@ function(FIND_IMAGEMAGICK_API component header)
       )
     set(ImageMagick_COMPILE_OPTIONS ${ImageMagick_COMPILE_OPTIONS} PARENT_SCOPE)
 
-    add_library(ImageMagick::${component} UNKNOWN IMPORTED)
-    set_target_properties(ImageMagick::${component} PROPERTIES
-      INTERFACE_INCLUDE_DIRECTORIES "${ImageMagick_${component}_INCLUDE_DIRS}"
-      INTERFACE_COMPILE_OPTIONS "${ImageMagick_${component}_COMPILE_OPTIONS}"
-      IMPORTED_LOCATION "${ImageMagick_${component}_LIBRARY}")
+    if(NOT TARGET ImageMagick::${component})
+      add_library(ImageMagick::${component} UNKNOWN IMPORTED)
+      set_target_properties(ImageMagick::${component} PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${ImageMagick_${component}_INCLUDE_DIRS}"
+        INTERFACE_COMPILE_OPTIONS "${ImageMagick_${component}_COMPILE_OPTIONS}"
+        IMPORTED_LOCATION "${ImageMagick_${component}_LIBRARY}")
+    endif()
   endif()
 endfunction()
 
@@ -205,6 +274,66 @@ function(FIND_IMAGEMAGICK_EXE component)
   else()
     set(ImageMagick_${component}_FOUND FALSE PARENT_SCOPE)
   endif()
+endfunction()
+
+function(_ImageMagick_GetVersion)
+  unset(version)
+
+  if(ImageMagick_mogrify_EXECUTABLE)
+    execute_process(
+      COMMAND ${ImageMagick_mogrify_EXECUTABLE} -version
+      OUTPUT_VARIABLE version
+      ERROR_QUIET
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+    if(version MATCHES "^Version: ImageMagick ([-0-9.]+)")
+      set(version "${CMAKE_MATCH_1}")
+    endif()
+  elseif(ImageMagick_INCLUDE_DIRS)
+    # MagickLibSubversion was used in ImageMagick <= 6.5.
+    set(
+      regex
+      "^[\t ]*#[\t ]*define[\t ]+(MagickLibVersionText|MagickLibAddendum|MagickLibSubversion)[\t ]+\"([-0-9.]+)\""
+    )
+
+    foreach(dir IN LISTS ImageMagick_INCLUDE_DIRS)
+      foreach(subdir IN ITEMS MagickCore magick)
+        if(EXISTS ${dir}/${subdir}/version.h)
+          file(STRINGS "${dir}/${subdir}/version.h" results REGEX "${regex}")
+
+          foreach(line ${results})
+            if(line MATCHES "${regex}")
+              if(DEFINED version)
+                string(APPEND version "${CMAKE_MATCH_2}")
+              else()
+                set(version "${CMAKE_MATCH_2}")
+              endif()
+
+              if(CMAKE_MATCH_1 STREQUAL "MagickLibAddendum")
+                break()
+              endif()
+            endif()
+          endforeach()
+        endif()
+
+        if(DEFINED version)
+          break()
+        endif()
+      endforeach()
+
+      if(DEFINED version)
+        break()
+      endif()
+    endforeach()
+  endif()
+
+  if(DEFINED version)
+    set(ImageMagick_VERSION "${version}")
+    set(ImageMagick_VERSION_STRING "${ImageMagick_VERSION}")
+  endif()
+
+  return(PROPAGATE ImageMagick_VERSION ImageMagick_VERSION_STRING)
 endfunction()
 
 #---------------------------------------------------------------------
@@ -294,27 +423,16 @@ endif()
 set(ImageMagick_INCLUDE_DIRS ${ImageMagick_INCLUDE_DIRS})
 set(ImageMagick_LIBRARIES ${ImageMagick_LIBRARIES})
 
-if(ImageMagick_mogrify_EXECUTABLE)
-  execute_process(COMMAND ${ImageMagick_mogrify_EXECUTABLE} -version
-                  OUTPUT_VARIABLE imagemagick_version
-                  ERROR_QUIET
-                  OUTPUT_STRIP_TRAILING_WHITESPACE)
-  if(imagemagick_version MATCHES "^Version: ImageMagick ([-0-9\\.]+)")
-    set(ImageMagick_VERSION_STRING "${CMAKE_MATCH_1}")
-  endif()
-  unset(imagemagick_version)
-endif()
+_ImageMagick_GetVersion()
 
 #---------------------------------------------------------------------
 # Standard Package Output
 #---------------------------------------------------------------------
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(ImageMagick
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(ImageMagick
                                   REQUIRED_VARS ${ImageMagick_REQUIRED_VARS}
-                                  VERSION_VAR ImageMagick_VERSION_STRING
+                                  VERSION_VAR ImageMagick_VERSION
   )
-# Maintain consistency with all other variables.
-set(ImageMagick_FOUND ${IMAGEMAGICK_FOUND})
 
 #---------------------------------------------------------------------
 # DEPRECATED: Setting variables for backward compatibility.
@@ -339,3 +457,5 @@ mark_as_advanced(
   IMAGEMAGICK_MONTAGE_EXECUTABLE
   IMAGEMAGICK_COMPOSITE_EXECUTABLE
   )
+
+cmake_policy(POP)

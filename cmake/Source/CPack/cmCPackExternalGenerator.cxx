@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmCPackExternalGenerator.h"
 
 #include <map>
@@ -15,6 +15,7 @@
 
 #include "cmCPackComponentGroup.h"
 #include "cmCPackLog.h"
+#include "cmGeneratedFileStream.h"
 #include "cmList.h"
 #include "cmMakefile.h"
 #include "cmSystemTools.h"
@@ -48,17 +49,19 @@ int cmCPackExternalGenerator::PackageFiles()
     filename = this->packageFileNames[0];
   }
 
-  cmsys::ofstream fout(filename.c_str());
-  std::unique_ptr<Json::StreamWriter> jout(builder.newStreamWriter());
+  {
+    cmGeneratedFileStream fout(filename);
+    std::unique_ptr<Json::StreamWriter> jout(builder.newStreamWriter());
 
-  Json::Value root(Json::objectValue);
+    Json::Value root(Json::objectValue);
 
-  if (!this->Generator->WriteToJSON(root)) {
-    return 0;
-  }
+    if (!this->Generator->WriteToJSON(root)) {
+      return 0;
+    }
 
-  if (jout->write(root, &fout)) {
-    return 0;
+    if (jout->write(root, &fout)) {
+      return 0;
+    }
   }
 
   cmValue packageScript = this->GetOption("CPACK_EXTERNAL_PACKAGE_SCRIPT");
@@ -92,7 +95,7 @@ bool cmCPackExternalGenerator::SupportsComponentInstallation() const
 }
 
 int cmCPackExternalGenerator::InstallProjectViaInstallCommands(
-  bool setDestDir, const std::string& tempInstallDirectory)
+  bool setDestDir, std::string const& tempInstallDirectory)
 {
   if (this->StagingEnabled()) {
     return this->cmCPackGenerator::InstallProjectViaInstallCommands(
@@ -103,7 +106,7 @@ int cmCPackExternalGenerator::InstallProjectViaInstallCommands(
 }
 
 int cmCPackExternalGenerator::InstallProjectViaInstallScript(
-  bool setDestDir, const std::string& tempInstallDirectory)
+  bool setDestDir, std::string const& tempInstallDirectory)
 {
   if (this->StagingEnabled()) {
     return this->cmCPackGenerator::InstallProjectViaInstallScript(
@@ -114,8 +117,8 @@ int cmCPackExternalGenerator::InstallProjectViaInstallScript(
 }
 
 int cmCPackExternalGenerator::InstallProjectViaInstalledDirectories(
-  bool setDestDir, const std::string& tempInstallDirectory,
-  const mode_t* default_dir_mode)
+  bool setDestDir, std::string const& tempInstallDirectory,
+  mode_t const* default_dir_mode)
 {
   if (this->StagingEnabled()) {
     return this->cmCPackGenerator::InstallProjectViaInstalledDirectories(
@@ -126,8 +129,8 @@ int cmCPackExternalGenerator::InstallProjectViaInstalledDirectories(
 }
 
 int cmCPackExternalGenerator::RunPreinstallTarget(
-  const std::string& installProjectName, const std::string& installDirectory,
-  cmGlobalGenerator* globalGenerator, const std::string& buildConfig)
+  std::string const& installProjectName, std::string const& installDirectory,
+  cmGlobalGenerator* globalGenerator, std::string const& buildConfig)
 {
   if (this->StagingEnabled()) {
     return this->cmCPackGenerator::RunPreinstallTarget(
@@ -138,10 +141,10 @@ int cmCPackExternalGenerator::RunPreinstallTarget(
 }
 
 int cmCPackExternalGenerator::InstallCMakeProject(
-  bool setDestDir, const std::string& installDirectory,
-  const std::string& baseTempInstallDirectory, const mode_t* default_dir_mode,
-  const std::string& component, bool componentInstall,
-  const std::string& installSubDirectory, const std::string& buildConfig,
+  bool setDestDir, std::string const& installDirectory,
+  std::string const& baseTempInstallDirectory, mode_t const* default_dir_mode,
+  std::string const& component, bool componentInstall,
+  std::string const& installSubDirectory, std::string const& buildConfig,
   std::string& absoluteDestFiles)
 {
   if (this->StagingEnabled()) {
@@ -156,7 +159,7 @@ int cmCPackExternalGenerator::InstallCMakeProject(
 
 bool cmCPackExternalGenerator::StagingEnabled() const
 {
-  return !cmIsOff(this->GetOption("CPACK_EXTERNAL_ENABLE_STAGING"));
+  return !this->GetOption("CPACK_EXTERNAL_ENABLE_STAGING").IsOff();
 }
 
 cmCPackExternalGenerator::cmCPackExternalVersionGenerator::
@@ -221,7 +224,7 @@ int cmCPackExternalGenerator::cmCPackExternalVersionGenerator::WriteToJSON(
     root["setDestdir"] = false;
   }
 
-  root["stripFiles"] = !cmIsOff(this->Parent->GetOption("CPACK_STRIP_FILES"));
+  root["stripFiles"] = !this->Parent->GetOption("CPACK_STRIP_FILES").IsOff();
   root["warnOnAbsoluteInstallDestination"] =
     this->Parent->IsOn("CPACK_WARN_ON_ABSOLUTE_INSTALL_DESTINATION");
   root["errorOnAbsoluteInstallDestination"] =

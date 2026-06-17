@@ -1,6 +1,6 @@
 /* tradius -- test file for arithmetic of complex ball radii.
 
-Copyright (C) 2022 INRIA
+Copyright (C) 2022, 2023 INRIA
 
 This file is part of GNU MPC.
 
@@ -46,6 +46,12 @@ test_sqrt (void)
 int
 main (void)
 {
-   return test_sqrt ();
+  int ret;
+
+  test_start ();
+  ret = test_sqrt ();
+  test_end ();
+
+  return ret;
 }
 

@@ -1,6 +1,6 @@
 /* eta -- Functions for computing the Dedekind eta function
 
-Copyright (C) 2022 INRIA
+Copyright (C) 2022, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -18,7 +18,6 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program. If not, see http://www.gnu.org/licenses/ .
 */
 
-#include <math.h>
 #include <limits.h> /* for CHAR_BIT */
 #include "mpc-impl.h"
 
@@ -93,7 +92,7 @@ mpcb_eta_q24 (mpcb_ptr eta, mpcb_srcptr q24)
 {
    mpcb_t q;
    mpfr_exp_t expq;
-   int N;
+   int N, target;
 
    mpcb_init (q);
 
@@ -117,7 +116,8 @@ mpcb_eta_q24 (mpcb_ptr eta, mpcb_srcptr q24)
       else {
          /* Compute an approximate N such that
             (3*N+1)*N/2 * |expq| > prec. */
-         N = (int) sqrt (2 * mpcb_get_prec (q24) / 3.0 / (-expq)) + 1;
+         target = (2 * mpcb_get_prec (q24)) / (3 * (-expq)) + 1;
+         for (N = 2; N * N <= target; N += N / 2);
          eta_series (eta, q, expq, N);
          mpcb_mul (eta, eta, q24);
       }

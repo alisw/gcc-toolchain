@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #define cmUVHandlePtr_cxx
 #include "cmUVHandlePtr.h"
 
@@ -13,9 +13,6 @@
 #include <cm3p/uv.h>
 
 namespace cm {
-
-template <typename T>
-struct uv_handle_deleter;
 
 struct uv_loop_deleter
 {
@@ -243,9 +240,13 @@ int uv_timer_ptr::init(uv_loop_t& loop, void* data)
   return uv_timer_init(&loop, *this);
 }
 
-int uv_timer_ptr::start(uv_timer_cb cb, uint64_t timeout, uint64_t repeat)
+int uv_timer_ptr::start(uv_timer_cb cb, uint64_t timeout, uint64_t repeat,
+                        uv_update_time update_time)
 {
   assert(this->handle);
+  if (update_time == uv_update_time::yes) {
+    ::uv_update_time(this->handle->loop);
+  }
   return uv_timer_start(*this, cb, timeout, repeat);
 }
 
@@ -332,7 +333,7 @@ void write_req_cb(uv_write_t* req, int status)
 }
 }
 
-int uv_write(uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs,
+int uv_write(uv_stream_t* handle, uv_buf_t const bufs[], unsigned int nbufs,
              std::weak_ptr<std::function<void(int)>> cb)
 {
   auto req = cm::make_unique<write_req>(std::move(cb));

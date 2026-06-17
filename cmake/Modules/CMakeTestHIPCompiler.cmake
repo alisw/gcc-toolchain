@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 
 if(CMAKE_HIP_COMPILER_FORCED)
@@ -83,8 +83,8 @@ unset(__CMAKE_HIP_FLAGS)
 
 
 # Try to identify the compiler features
-include(${CMAKE_ROOT}/Modules/CMakeDetermineCompileFeatures.cmake)
-CMAKE_DETERMINE_COMPILE_FEATURES(HIP)
+include(${CMAKE_ROOT}/Modules/CMakeDetermineCompilerSupport.cmake)
+CMAKE_DETERMINE_COMPILER_SUPPORT(HIP)
 
 if(CMAKE_HIP_COMPILER_ID STREQUAL "NVIDIA")
   include(Internal/CMakeNVCCFilterImplicitInfo)

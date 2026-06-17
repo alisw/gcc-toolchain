@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmTargetPropCommandBase.h"
 
 #include "cmExecutionStatus.h"
@@ -8,7 +8,6 @@
 #include "cmStateTypes.h"
 #include "cmTarget.h"
 #include "cmValue.h"
-#include "cmake.h"
 
 cmTargetPropCommandBase::cmTargetPropCommandBase(cmExecutionStatus& status)
   : Makefile(&status.GetMakefile())
@@ -22,7 +21,7 @@ void cmTargetPropCommandBase::SetError(std::string const& e)
 }
 
 bool cmTargetPropCommandBase::HandleArguments(
-  std::vector<std::string> const& args, const std::string& prop,
+  std::vector<std::string> const& args, std::string const& prop,
   unsigned int flags)
 {
   if (args.size() < 2) {
@@ -35,9 +34,7 @@ bool cmTargetPropCommandBase::HandleArguments(
     return false;
   }
   // Lookup the target for which property-values are specified.
-  this->Target =
-    this->Makefile->GetCMakeInstance()->GetGlobalGenerator()->FindTarget(
-      args[0]);
+  this->Target = this->Makefile->GetGlobalGenerator()->FindTarget(args[0]);
   if (!this->Target) {
     this->Target = this->Makefile->FindTargetToUse(args[0]);
   }
@@ -45,7 +42,11 @@ bool cmTargetPropCommandBase::HandleArguments(
     this->HandleMissingTarget(args[0]);
     return false;
   }
-  const bool isRegularTarget =
+  if (this->Target->IsSymbolic()) {
+    this->SetError("can not be used on a SYMBOLIC target.");
+    return false;
+  }
+  bool const isRegularTarget =
     (this->Target->GetType() == cmStateEnums::EXECUTABLE) ||
     (this->Target->GetType() == cmStateEnums::STATIC_LIBRARY) ||
     (this->Target->GetType() == cmStateEnums::SHARED_LIBRARY) ||
@@ -53,7 +54,7 @@ bool cmTargetPropCommandBase::HandleArguments(
     (this->Target->GetType() == cmStateEnums::OBJECT_LIBRARY) ||
     (this->Target->GetType() == cmStateEnums::INTERFACE_LIBRARY) ||
     (this->Target->GetType() == cmStateEnums::UNKNOWN_LIBRARY);
-  const bool isCustomTarget = this->Target->GetType() == cmStateEnums::UTILITY;
+  bool const isCustomTarget = this->Target->GetType() == cmStateEnums::UTILITY;
 
   if (prop == "SOURCES") {
     if (!isRegularTarget && !isCustomTarget) {
@@ -159,7 +160,7 @@ bool cmTargetPropCommandBase::ProcessContentArgs(
 }
 
 bool cmTargetPropCommandBase::PopulateTargetProperties(
-  const std::string& scope, const std::vector<std::string>& content,
+  std::string const& scope, std::vector<std::string> const& content,
   bool prepend, bool system)
 {
   if (content.empty()) {
@@ -177,12 +178,12 @@ bool cmTargetPropCommandBase::PopulateTargetProperties(
 }
 
 void cmTargetPropCommandBase::HandleInterfaceContent(
-  cmTarget* tgt, const std::vector<std::string>& content, bool prepend, bool)
+  cmTarget* tgt, std::vector<std::string> const& content, bool prepend, bool)
 {
   if (prepend) {
-    const std::string propName = std::string("INTERFACE_") + this->Property;
+    std::string const propName = std::string("INTERFACE_") + this->Property;
     cmValue propValue = tgt->GetProperty(propName);
-    const std::string totalContent =
+    std::string const totalContent =
       this->Join(content) + (propValue ? (";" + *propValue) : std::string());
     tgt->SetProperty(propName, totalContent);
   } else {

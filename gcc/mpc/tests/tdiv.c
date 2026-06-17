@@ -18,6 +18,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program. If not, see http://www.gnu.org/licenses/ .
 */
 
+#include <math.h>
 #include <stdlib.h>
 #include "mpc-tests.h"
 
@@ -68,12 +69,97 @@ bug20200206 (void)
   mpfr_set_emax (emax);
 }
 
+#define mpc_any_regular_p(z) (mpfr_regular_p (mpc_realref (z)) \
+                              || mpfr_regular_p (mpc_imagref (z)))
+#define mpc_any_zero_p(z) (mpfr_zero_p (mpc_realref (z)) \
+                           || mpfr_zero_p (mpc_imagref (z)))
+#define mpc_any_nan_p(z) (mpfr_nan_p (mpc_realref (z)) \
+                          || mpfr_nan_p (mpc_imagref (z)))
+
+static void
+check_divby0_exc (void)
+{
+  mpc_t z, n;
+  struct double2 {
+    double re, im;
+  } denom[] = {{+0.0, +0.0},
+               {+0.0, -0.0},
+               {-0.0, +0.0},
+               {-0.0, -0.0}},
+    numer[] = {{0.0, NAN},
+               {1.0, NAN},
+               {0.0, INFINITY},
+               {0.0, 1.0},
+               {1.0, 1.0},
+               {1.0, NAN},
+               {1.0, 0.0},
+               {1.0, INFINITY},
+               {NAN, 0.0},
+               {NAN, 1.0},
+               {NAN, INFINITY},
+               {NAN, NAN},
+               {INFINITY, 0.0},
+               {INFINITY, 1.0},
+               {INFINITY, NAN},
+               {INFINITY, INFINITY}};
+
+  mpc_init2 (z, 53);
+  mpc_init2 (n, 53);
+  for (size_t i = 0; i < sizeof(denom)/sizeof(struct double2); i++) {
+    for (size_t j = 0; j < sizeof(numer)/sizeof(struct double2); j++) {
+      mpc_set_d_d (n, numer[j].re, numer[j].im, MPC_RNDNN);
+      mpc_set_d_d (z, denom[i].re, denom[i].im, MPC_RNDNN);
+      mpfr_clear_flags ();
+      mpc_div (z, n, z, MPC_RNDNN);
+      if (mpc_any_regular_p (n)) {
+        if (!mpfr_divby0_p ()) {
+          printf ("Missing division-by-zero exception for (%la,%la) "
+                  "and (%la,%la)\n", numer[j].re, numer[j].im,
+                  denom[i].re, denom[i].im);
+          exit (1);
+        }
+      }
+      else {
+        /* No regular components. */
+        if (mpfr_divby0_p ()) {
+          printf ("division-by-zero exception for (%la,%la) "
+                  "and (%la,%la)\n", numer[j].re, numer[j].im,
+                  denom[i].re, denom[i].im);
+          exit (1);
+        }
+        if ((mpc_nan_p (n) || !mpc_inf_p (n))) {
+          if (!mpfr_nanflag_p ()) {
+            printf ("Missing nanflag exception for (%la,%la) "
+                    "and (%la,%la)\n", numer[j].re, numer[j].im,
+                    denom[i].re, denom[i].im);
+            exit (1);
+          }
+        }
+        if (mpc_inf_p (n) && !mpc_any_nan_p (n) && !mpc_any_zero_p (n)) {
+           if (mpfr_nanflag_p ()) {
+              printf ("nanflag exception for (%la,%la) "
+                      "and (%la,%la)\n", numer[j].re, numer[j].im,
+                      denom[i].re, denom[i].im);
+              exit (1);
+          }
+        }
+      }
+    }
+  }
+  mpfr_clear_flags ();
+  mpc_clear (z);
+  mpc_clear (n);
+}
+
 int
 main (void)
 {
   test_start ();
 
   bug20200206 ();
+
+  check_divby0_exc ();
+
   data_check_template ("div.dsc", "div.dat");
 
   tgeneric_template ("div.dsc", 2, 1024, 7, 4096);

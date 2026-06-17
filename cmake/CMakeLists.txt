@@ -1,7 +1,7 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
-cmake_minimum_required(VERSION 3.13...3.27 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.13...4.0 FATAL_ERROR)
 set(CMAKE_USER_MAKE_RULES_OVERRIDE_C ${CMAKE_CURRENT_SOURCE_DIR}/Source/Modules/OverrideC.cmake)
 set(CMAKE_USER_MAKE_RULES_OVERRIDE_CXX ${CMAKE_CURRENT_SOURCE_DIR}/Source/Modules/OverrideCXX.cmake)
 
@@ -44,6 +44,81 @@ if(NOT CMake_TEST_EXTERNAL_CMAKE)
   endif()
 
   set(CMake_BIN_DIR ${CMake_BINARY_DIR}/bin)
+
+  include(CMakeDependentOption)
+
+  # Allow the user to enable/disable all system utility library options by
+  # defining CMAKE_USE_SYSTEM_LIBRARIES or CMAKE_USE_SYSTEM_LIBRARY_${util}.
+  set(UTILITIES BZIP2 CPPDAP CURL EXPAT FORM JSONCPP LIBARCHIVE LIBLZMA LIBRHASH LIBUV NGHTTP2 ZLIB ZSTD)
+  foreach(util IN LISTS UTILITIES)
+    if(NOT DEFINED CMAKE_USE_SYSTEM_LIBRARY_${util}
+        AND DEFINED CMAKE_USE_SYSTEM_LIBRARIES)
+      set(CMAKE_USE_SYSTEM_LIBRARY_${util} "${CMAKE_USE_SYSTEM_LIBRARIES}")
+    endif()
+    if(DEFINED CMAKE_USE_SYSTEM_LIBRARY_${util})
+      if(CMAKE_USE_SYSTEM_LIBRARY_${util})
+        set(CMAKE_USE_SYSTEM_LIBRARY_${util} ON)
+      else()
+        set(CMAKE_USE_SYSTEM_LIBRARY_${util} OFF)
+      endif()
+      if(CMAKE_BOOTSTRAP)
+        unset(CMAKE_USE_SYSTEM_LIBRARY_${util} CACHE)
+      endif()
+      string(TOLOWER "${util}" lutil)
+      set(CMAKE_USE_SYSTEM_${util} "${CMAKE_USE_SYSTEM_LIBRARY_${util}}"
+        CACHE BOOL "Use system-installed ${lutil}" FORCE)
+    elseif(util STREQUAL "CURL" AND APPLE)
+      # macOS provides a curl with backends configured by Apple.
+      set(CMAKE_USE_SYSTEM_LIBRARY_${util} ON)
+    else()
+      set(CMAKE_USE_SYSTEM_LIBRARY_${util} OFF)
+    endif()
+  endforeach()
+  if(CMAKE_BOOTSTRAP)
+    unset(CMAKE_USE_SYSTEM_LIBRARIES CACHE)
+  endif()
+
+  # Optionally use system utility libraries.
+  option(CMAKE_USE_SYSTEM_LIBARCHIVE "Use system-installed libarchive" "${CMAKE_USE_SYSTEM_LIBRARY_LIBARCHIVE}")
+  if(CMake_ENABLE_DEBUGGER)
+    option(CMAKE_USE_SYSTEM_CPPDAP "Use system-installed cppdap" "${CMAKE_USE_SYSTEM_LIBRARY_CPPDAP}")
+  endif()
+  option(CMAKE_USE_SYSTEM_CURL "Use system-installed curl" "${CMAKE_USE_SYSTEM_LIBRARY_CURL}")
+  option(CMAKE_USE_SYSTEM_EXPAT "Use system-installed expat" "${CMAKE_USE_SYSTEM_LIBRARY_EXPAT}")
+  cmake_dependent_option(CMAKE_USE_SYSTEM_ZLIB "Use system-installed zlib"
+    "${CMAKE_USE_SYSTEM_LIBRARY_ZLIB}" "NOT CMAKE_USE_SYSTEM_LIBARCHIVE;NOT CMAKE_USE_SYSTEM_CURL" ON)
+  cmake_dependent_option(CMAKE_USE_SYSTEM_BZIP2 "Use system-installed bzip2"
+    "${CMAKE_USE_SYSTEM_LIBRARY_BZIP2}" "NOT CMAKE_USE_SYSTEM_LIBARCHIVE" ON)
+  cmake_dependent_option(CMAKE_USE_SYSTEM_ZSTD "Use system-installed zstd"
+    "${CMAKE_USE_SYSTEM_LIBRARY_ZSTD}" "NOT CMAKE_USE_SYSTEM_LIBARCHIVE" ON)
+  cmake_dependent_option(CMAKE_USE_SYSTEM_LIBLZMA "Use system-installed liblzma"
+    "${CMAKE_USE_SYSTEM_LIBRARY_LIBLZMA}" "NOT CMAKE_USE_SYSTEM_LIBARCHIVE" ON)
+  cmake_dependent_option(CMAKE_USE_SYSTEM_NGHTTP2 "Use system-installed nghttp2"
+    "${CMAKE_USE_SYSTEM_LIBRARY_NGHTTP2}" "NOT CMAKE_USE_SYSTEM_CURL" ON)
+  option(CMAKE_USE_SYSTEM_FORM "Use system-installed libform" "${CMAKE_USE_SYSTEM_LIBRARY_FORM}")
+  cmake_dependent_option(CMAKE_USE_SYSTEM_JSONCPP "Use system-installed jsoncpp"
+    "${CMAKE_USE_SYSTEM_LIBRARY_JSONCPP}" "NOT CMAKE_USE_SYSTEM_CPPDAP" ON)
+  option(CMAKE_USE_SYSTEM_LIBRHASH "Use system-installed librhash" "${CMAKE_USE_SYSTEM_LIBRARY_LIBRHASH}")
+  option(CMAKE_USE_SYSTEM_LIBUV "Use system-installed libuv" "${CMAKE_USE_SYSTEM_LIBRARY_LIBUV}")
+
+  # For now use system KWIML only if explicitly requested rather
+  # than activating via the general system libs options.
+  option(CMAKE_USE_SYSTEM_KWIML "Use system-installed KWIML" OFF)
+  mark_as_advanced(CMAKE_USE_SYSTEM_KWIML)
+
+  # Mention to the user what system libraries are being used.
+  if(CMAKE_USE_SYSTEM_CURL)
+    # Avoid messaging about curl-only dependencies.
+    list(REMOVE_ITEM UTILITIES NGHTTP2)
+  endif()
+  foreach(util IN LISTS UTILITIES ITEMS KWIML)
+    if(CMAKE_USE_SYSTEM_${util})
+      message(STATUS "Using system-installed ${util}")
+    endif()
+  endforeach()
+
+  # Inform utility library header wrappers whether to use system versions.
+  configure_file(Utilities/cmThirdParty.h.in Utilities/cmThirdParty.h @ONLY)
 endif()
 
 if(CMake_GUI_DISTRIBUTE_WITH_Qt_LGPL)
@@ -100,6 +175,9 @@ configure_file(Utilities/std/cmSTL.hxx.in Utilities/cmSTL.hxx @ONLY)
 # set the internal encoding of CMake to UTF-8
 set(KWSYS_ENCODING_DEFAULT_CODEPAGE CP_UTF8)
 
+# enable parallel install
+set_property(GLOBAL PROPERTY INSTALL_PARALLEL ON)
+
 # option to use COMPONENT with install command
 option(CMake_INSTALL_COMPONENTS "Using components when installing" OFF)
 mark_as_advanced(CMake_INSTALL_COMPONENTS)
@@ -152,81 +230,6 @@ else()
 endif()
 
 #-----------------------------------------------------------------------
-# a macro to deal with system libraries, implemented as a macro
-# simply to improve readability of the main script
-#-----------------------------------------------------------------------
-macro(CMAKE_HANDLE_SYSTEM_LIBRARIES)
-  include(CMakeDependentOption)
-
-  # Allow the user to enable/disable all system utility library options by
-  # defining CMAKE_USE_SYSTEM_LIBRARIES or CMAKE_USE_SYSTEM_LIBRARY_${util}.
-  set(UTILITIES BZIP2 CPPDAP CURL EXPAT FORM JSONCPP LIBARCHIVE LIBLZMA LIBRHASH LIBUV NGHTTP2 ZLIB ZSTD)
-  foreach(util IN LISTS UTILITIES)
-    if(NOT DEFINED CMAKE_USE_SYSTEM_LIBRARY_${util}
-        AND DEFINED CMAKE_USE_SYSTEM_LIBRARIES)
-      set(CMAKE_USE_SYSTEM_LIBRARY_${util} "${CMAKE_USE_SYSTEM_LIBRARIES}")
-    endif()
-    if(DEFINED CMAKE_USE_SYSTEM_LIBRARY_${util})
-      if(CMAKE_USE_SYSTEM_LIBRARY_${util})
-        set(CMAKE_USE_SYSTEM_LIBRARY_${util} ON)
-      else()
-        set(CMAKE_USE_SYSTEM_LIBRARY_${util} OFF)
-      endif()
-      if(CMAKE_BOOTSTRAP)
-        unset(CMAKE_USE_SYSTEM_LIBRARY_${util} CACHE)
-      endif()
-      string(TOLOWER "${util}" lutil)
-      set(CMAKE_USE_SYSTEM_${util} "${CMAKE_USE_SYSTEM_LIBRARY_${util}}"
-        CACHE BOOL "Use system-installed ${lutil}" FORCE)
-    else()
-      set(CMAKE_USE_SYSTEM_LIBRARY_${util} OFF)
-    endif()
-  endforeach()
-  if(CMAKE_BOOTSTRAP)
-    unset(CMAKE_USE_SYSTEM_LIBRARIES CACHE)
-  endif()
-
-  # Optionally use system utility libraries.
-  option(CMAKE_USE_SYSTEM_LIBARCHIVE "Use system-installed libarchive" "${CMAKE_USE_SYSTEM_LIBRARY_LIBARCHIVE}")
-  if(CMake_ENABLE_DEBUGGER)
-    option(CMAKE_USE_SYSTEM_CPPDAP "Use system-installed cppdap" "${CMAKE_USE_SYSTEM_LIBRARY_CPPDAP}")
-  endif()
-  option(CMAKE_USE_SYSTEM_CURL "Use system-installed curl" "${CMAKE_USE_SYSTEM_LIBRARY_CURL}")
-  option(CMAKE_USE_SYSTEM_EXPAT "Use system-installed expat" "${CMAKE_USE_SYSTEM_LIBRARY_EXPAT}")
-  CMAKE_DEPENDENT_OPTION(CMAKE_USE_SYSTEM_ZLIB "Use system-installed zlib"
-    "${CMAKE_USE_SYSTEM_LIBRARY_ZLIB}" "NOT CMAKE_USE_SYSTEM_LIBARCHIVE;NOT CMAKE_USE_SYSTEM_CURL" ON)
-  CMAKE_DEPENDENT_OPTION(CMAKE_USE_SYSTEM_BZIP2 "Use system-installed bzip2"
-    "${CMAKE_USE_SYSTEM_LIBRARY_BZIP2}" "NOT CMAKE_USE_SYSTEM_LIBARCHIVE" ON)
-  CMAKE_DEPENDENT_OPTION(CMAKE_USE_SYSTEM_ZSTD "Use system-installed zstd"
-    "${CMAKE_USE_SYSTEM_LIBRARY_ZSTD}" "NOT CMAKE_USE_SYSTEM_LIBARCHIVE" ON)
-  CMAKE_DEPENDENT_OPTION(CMAKE_USE_SYSTEM_LIBLZMA "Use system-installed liblzma"
-    "${CMAKE_USE_SYSTEM_LIBRARY_LIBLZMA}" "NOT CMAKE_USE_SYSTEM_LIBARCHIVE" ON)
-  CMAKE_DEPENDENT_OPTION(CMAKE_USE_SYSTEM_NGHTTP2 "Use system-installed nghttp2"
-    "${CMAKE_USE_SYSTEM_LIBRARY_NGHTTP2}" "NOT CMAKE_USE_SYSTEM_CURL" ON)
-  option(CMAKE_USE_SYSTEM_FORM "Use system-installed libform" "${CMAKE_USE_SYSTEM_LIBRARY_FORM}")
-  CMAKE_DEPENDENT_OPTION(CMAKE_USE_SYSTEM_JSONCPP "Use system-installed jsoncpp"
-    "${CMAKE_USE_SYSTEM_LIBRARY_JSONCPP}" "NOT CMAKE_USE_SYSTEM_CPPDAP" ON)
-  option(CMAKE_USE_SYSTEM_LIBRHASH "Use system-installed librhash" "${CMAKE_USE_SYSTEM_LIBRARY_LIBRHASH}")
-  option(CMAKE_USE_SYSTEM_LIBUV "Use system-installed libuv" "${CMAKE_USE_SYSTEM_LIBRARY_LIBUV}")
-
-  # For now use system KWIML only if explicitly requested rather
-  # than activating via the general system libs options.
-  option(CMAKE_USE_SYSTEM_KWIML "Use system-installed KWIML" OFF)
-  mark_as_advanced(CMAKE_USE_SYSTEM_KWIML)
-
-  # Mention to the user what system libraries are being used.
-  foreach(util IN LISTS UTILITIES ITEMS KWIML)
-    if(CMAKE_USE_SYSTEM_${util})
-      message(STATUS "Using system-installed ${util}")
-    endif()
-  endforeach()
-
-  # Inform utility library header wrappers whether to use system versions.
-  configure_file(Utilities/cmThirdParty.h.in Utilities/cmThirdParty.h @ONLY)
-
-endmacro()
-
-#-----------------------------------------------------------------------
 # a macro to determine the generator and ctest executable to use
 # for testing. Simply to improve readability of the main script.
 #-----------------------------------------------------------------------
@@ -260,9 +263,7 @@ macro(CMAKE_SETUP_TESTING)
   endif()
 
   # configure some files for testing
-  configure_file(Templates/CTestScript.cmake.in CTestScript.cmake @ONLY)
   configure_file(Tests/.NoDartCoverage Tests/.NoDartCoverage)
-  configure_file(Tests/.NoDartCoverage Modules/.NoDartCoverage)
   configure_file(CTestCustom.cmake.in CTestCustom.cmake @ONLY)
 endmacro()
 
@@ -320,8 +321,8 @@ if(CMake_RUN_CLANG_TIDY)
     unset(clang_tidy_module_sha1)
   endif()
 
+  configure_file(.clang-tidy .clang-tidy COPYONLY)
 endif()
-configure_file(.clang-tidy .clang-tidy COPYONLY)
 
 
 option(CMake_RUN_IWYU "Run include-what-you-use with the compiler." OFF)
@@ -381,13 +382,14 @@ endif()
 # The main section of the CMakeLists file
 #
 #-----------------------------------------------------------------------
+include(Source/CMakeCopyright.cmake)
 include(Source/CMakeVersion.cmake)
 
 include(CTest)
 
 # Set up test-time configuration.
-set_directory_properties(PROPERTIES
-  TEST_INCLUDE_FILE "${CMake_BINARY_DIR}/Tests/EnforceConfig.cmake")
+set_property(DIRECTORY APPEND PROPERTY
+  TEST_INCLUDE_FILES "${CMake_BINARY_DIR}/Tests/EnforceConfig.cmake")
 
 if(NOT CMake_TEST_EXTERNAL_CMAKE)
   # where to write the resulting executables and libraries
@@ -409,8 +411,8 @@ if(NOT CMake_TEST_EXTERNAL_CMAKE)
     set(HAVE_ENVIRON_NOT_REQUIRE_PROTOTYPE 1)
   else()
     include(CheckSymbolExists)
-    CHECK_SYMBOL_EXISTS(unsetenv "stdlib.h" HAVE_UNSETENV)
-    CHECK_SYMBOL_EXISTS(environ "stdlib.h" HAVE_ENVIRON_NOT_REQUIRE_PROTOTYPE)
+    check_symbol_exists(unsetenv "stdlib.h" HAVE_UNSETENV)
+    check_symbol_exists(environ "stdlib.h" HAVE_ENVIRON_NOT_REQUIRE_PROTOTYPE)
   endif()
 endif()
 
@@ -483,13 +485,21 @@ if(NOT CMake_TEST_EXTERNAL_CMAKE)
         NOT "x${CMAKE_C_SIMULATE_ID}" STREQUAL "xMSVC") OR
        CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR
        CMAKE_C_COMPILER_ID STREQUAL "LCC")
-      set(C_FLAGS_LIST -Wcast-align -Werror-implicit-function-declaration -Wchar-subscripts
+      set(C_FLAGS_LIST -Wcast-align -Wchar-subscripts
                        -Wall -W -Wpointer-arith -Wwrite-strings -Wformat-security
                        -Wmissing-format-attribute -fno-common -Wundef
+                       -Werror=implicit-function-declaration
+                       -Wstrict-prototypes
       )
       set(CXX_FLAGS_LIST -Wnon-virtual-dtor -Wcast-align -Wchar-subscripts -Wall -W
                          -Wshadow -Wpointer-arith -Wformat-security -Wundef
       )
+      if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND
+          NOT (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 11))
+        list(APPEND CXX_FLAGS_LIST
+          -Wundefined-func-template
+        )
+      endif()
 
       foreach(FLAG_LANG IN ITEMS C CXX)
         foreach(FLAG IN LISTS ${FLAG_LANG}_FLAGS_LIST)
@@ -528,7 +538,10 @@ endif()
 
 if(NOT CMake_TEST_EXTERNAL_CMAKE)
   # Install license file as it requires.
-  install(FILES Copyright.txt DESTINATION ${CMAKE_DOC_DIR})
+  install(FILES
+    "${CMake_LICENSE_FILE}"
+    "${CMake_SOURCE_DIR}/CONTRIBUTORS.rst"
+    DESTINATION ${CMAKE_DOC_DIR})
 
   # Install script directories.
   install(

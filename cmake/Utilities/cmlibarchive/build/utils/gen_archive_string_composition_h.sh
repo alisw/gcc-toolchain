@@ -1,4 +1,12 @@
 #!/bin/sh
+set -eu
+
+if [ $# != 1 ]
+then
+	echo "Usage: $0 path/to/UnicodeData.txt"
+	exit 1
+fi
+
 #
 # This needs http://unicode.org/Public/6.0.0/ucd/UnicodeData.txt
 #
@@ -39,9 +47,6 @@ cat > ${outfile} <<CR_END
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * \$FreeBSD\$
- *
  */
 
 /*

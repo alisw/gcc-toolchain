@@ -1,6 +1,14 @@
 Visual Studio 14 2015
 ---------------------
 
+.. deprecated:: 4.2
+
+  This generator is deprecated and will be removed in a future version
+  of CMake.  It will still be possible to build with VS 14 2015 tools
+  using the :generator:`Visual Studio 15 2017` (or above) generator
+  with :variable:`CMAKE_GENERATOR_TOOLSET` set to ``v140``, or by
+  using the :generator:`NMake Makefiles` generator.
+
 .. versionadded:: 3.1
 
 Generates Visual Studio 14 (VS 2015) project files.
@@ -25,15 +33,18 @@ name (architecture).  For example:
 * ``cmake -G "Visual Studio 14 2015" -A x64``
 * ``cmake -G "Visual Studio 14 2015" -A ARM``
 
-For compatibility with CMake versions prior to 3.1, one may specify
-a target platform name optionally at the end of the generator name.
-This is supported only for:
+.. versionchanged:: 4.0
 
-``Visual Studio 14 2015 Win64``
-  Specify target platform ``x64``.
+  Previously, for compatibility with CMake versions prior to 3.1,
+  one could specify a target platform name optionally at the
+  end of the generator name.  This has been removed.
+  This was supported only for:
 
-``Visual Studio 14 2015 ARM``
-  Specify target platform ``ARM``.
+  ``Visual Studio 14 2015 Win64``
+    Specify target platform ``x64``.
+
+  ``Visual Studio 14 2015 ARM``
+    Specify target platform ``ARM``.
 
 Toolset Selection
 ^^^^^^^^^^^^^^^^^
@@ -45,7 +56,7 @@ via the :option:`cmake -T` option, to specify another toolset.
 .. |VS_TOOLSET_HOST_ARCH_DEFAULT| replace::
    By default this generator uses the 32-bit variant even on a 64-bit host.
 
-.. include:: VS_TOOLSET_HOST_ARCH_LEGACY.txt
+.. include:: include/VS_TOOLSET_HOST_ARCH_LEGACY.rst
 
 .. _`Windows 10 SDK Maximum Version for VS 2015`:
 

@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 include(Compiler/MSVC)
 __compiler_msvc(CXX)
@@ -30,14 +30,22 @@ if ((CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.0.24215.1 AND
     set(CMAKE_CXX17_EXTENSION_COMPILE_OPTION "-std:c++latest")
   endif()
 
+  set(CMAKE_CXX_STANDARD_LATEST 17)
+
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.29.30129)
     set(CMAKE_CXX20_STANDARD_COMPILE_OPTION "-std:c++20")
     set(CMAKE_CXX20_EXTENSION_COMPILE_OPTION "-std:c++20")
-    set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++latest")
-    set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++latest")
+    set(CMAKE_CXX_STANDARD_LATEST 20)
   elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.12.25835)
     set(CMAKE_CXX20_STANDARD_COMPILE_OPTION "-std:c++latest")
     set(CMAKE_CXX20_EXTENSION_COMPILE_OPTION "-std:c++latest")
+    set(CMAKE_CXX_STANDARD_LATEST 20)
+  endif()
+
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.29.30129)
+    set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++latest")
+    set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++latest")
+    set(CMAKE_CXX_STANDARD_LATEST 23)
   endif()
 
   __compiler_check_default_language_standard(CXX 19.0 14)
@@ -56,6 +64,14 @@ elseif (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16.0)
   set(CMAKE_CXX17_EXTENSION_COMPILE_OPTION "")
   set(CMAKE_CXX20_STANDARD_COMPILE_OPTION "")
   set(CMAKE_CXX20_EXTENSION_COMPILE_OPTION "")
+
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.0)
+    set(CMAKE_CXX_STANDARD_LATEST 17)
+  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 18.0)
+    set(CMAKE_CXX_STANDARD_LATEST 14)
+  else()
+    set(CMAKE_CXX_STANDARD_LATEST 11)
+  endif()
 
   # There is no meaningful default for this
   set(CMAKE_CXX_STANDARD_DEFAULT "")

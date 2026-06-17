@@ -1,11 +1,6 @@
 include(Compiler/Clang)
 __compiler_clang(C)
 
-cmake_policy(GET CMP0025 appleClangPolicy)
-if(APPLE AND NOT appleClangPolicy STREQUAL NEW)
-  return()
-endif()
-
 if("x${CMAKE_C_COMPILER_FRONTEND_VARIANT}" STREQUAL "xMSVC")
   set(CMAKE_C_COMPILE_OPTIONS_EXPLICIT_LANGUAGE -TC)
   set(CMAKE_C_CLANG_TIDY_DRIVER_MODE "cl")
@@ -33,27 +28,34 @@ if("x${CMAKE_C_COMPILER_FRONTEND_VARIANT}" STREQUAL "xGNU")
 
     set(CMAKE_C99_STANDARD_COMPILE_OPTION "-std=c99")
     set(CMAKE_C99_EXTENSION_COMPILE_OPTION "-std=gnu99")
+
+    set(CMAKE_C_STANDARD_LATEST 99)
   endif()
 
   if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 3.1)
     set(CMAKE_C11_STANDARD_COMPILE_OPTION "-std=c11")
     set(CMAKE_C11_EXTENSION_COMPILE_OPTION "-std=gnu11")
+    set(CMAKE_C_STANDARD_LATEST 11)
   elseif(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 3.0)
     set(CMAKE_C11_STANDARD_COMPILE_OPTION "-std=c1x")
     set(CMAKE_C11_EXTENSION_COMPILE_OPTION "-std=gnu1x")
+    set(CMAKE_C_STANDARD_LATEST 11)
   endif()
 
   if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 6.0)
     set(CMAKE_C17_STANDARD_COMPILE_OPTION "-std=c17")
     set(CMAKE_C17_EXTENSION_COMPILE_OPTION "-std=gnu17")
+    set(CMAKE_C_STANDARD_LATEST 17)
   endif()
 
   if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 18.0)
     set(CMAKE_C23_STANDARD_COMPILE_OPTION "-std=c23")
     set(CMAKE_C23_EXTENSION_COMPILE_OPTION "-std=gnu23")
+    set(CMAKE_C_STANDARD_LATEST 23)
   elseif(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 9.0)
     set(CMAKE_C23_STANDARD_COMPILE_OPTION "-std=c2x")
     set(CMAKE_C23_EXTENSION_COMPILE_OPTION "-std=gnu2x")
+    set(CMAKE_C_STANDARD_LATEST 23)
   endif()
 else()
   set(CMAKE_C90_STANDARD_COMPILE_OPTION "")
@@ -73,6 +75,20 @@ else()
 
     set(CMAKE_C17_STANDARD_COMPILE_OPTION "")
     set(CMAKE_C17_EXTENSION_COMPILE_OPTION "")
+  endif()
+
+  set(CMAKE_C_STANDARD_LATEST 17)
+
+  if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 18.0)
+    # This version of clang-cl does not have a -std:c23 flag.
+    # Pass the standard through to the underlying clang directly.
+    # Note that cmVisualStudio10TargetGenerator::ComputeClOptions
+    # has a special case to map this back to -std:clatest in .vcxproj
+    # files that also have CXX sources.
+    set(CMAKE_C23_STANDARD_COMPILE_OPTION "-clang:-std=c23")
+    set(CMAKE_C23_EXTENSION_COMPILE_OPTION "-clang:-std=c23")
+
+    set(CMAKE_C_STANDARD_LATEST 23)
   endif()
 endif()
 

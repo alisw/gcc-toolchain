@@ -1,6 +1,4 @@
-cmake_minimum_required (VERSION 2.8)
-
-cmake_policy(SET CMP0022 NEW)
+cmake_minimum_required(VERSION 3.10)
 
 project(InterfaceLinkLibraries)
 

@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 include(Compiler/MSVC)
 __compiler_msvc(C)
@@ -14,12 +14,15 @@ if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 19.27)
   set(CMAKE_C11_STANDARD_COMPILE_OPTION "-std:c11")
   set(CMAKE_C11_EXTENSION_COMPILE_OPTION "-std:c11")
 
+  set(CMAKE_C_STANDARD_LATEST 11)
+
   if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 19.28)
     set(CMAKE_C90_STANDARD__HAS_FULL_SUPPORT ON)
     set(CMAKE_C99_STANDARD__HAS_FULL_SUPPORT ON)
     set(CMAKE_C11_STANDARD__HAS_FULL_SUPPORT ON)
     set(CMAKE_C17_STANDARD_COMPILE_OPTION "-std:c17")
     set(CMAKE_C17_EXTENSION_COMPILE_OPTION "-std:c17")
+    set(CMAKE_C_STANDARD_LATEST 17)
   else()
     # Special case for 19.27 (VS 16.7): C11 has partial support.
     macro(cmake_record_c_compile_features)
@@ -28,6 +31,16 @@ if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 19.27)
       list(APPEND CMAKE_C11_COMPILE_FEATURES c_std_11)
       set(_result 0) # expected by cmake_determine_compile_features
     endmacro()
+  endif()
+
+  if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 19.39)
+    # VS 17.10 did not have a "stdclatest" value for LanguageStandard_C.
+    if(NOT CMAKE_GENERATOR MATCHES "Visual Studio"
+        OR CMAKE_VS_VERSION_BUILD_NUMBER VERSION_GREATER_EQUAL 17.11)
+      set(CMAKE_C23_STANDARD_COMPILE_OPTION "-std:clatest")
+      set(CMAKE_C23_EXTENSION_COMPILE_OPTION "-std:clatest")
+      set(CMAKE_C_STANDARD_LATEST 23)
+    endif()
   endif()
 
   __compiler_check_default_language_standard(C 19.27 99)
@@ -41,6 +54,7 @@ else()
   set(CMAKE_C99_EXTENSION_COMPILE_OPTION "")
   set(CMAKE_C11_STANDARD_COMPILE_OPTION "")
   set(CMAKE_C11_EXTENSION_COMPILE_OPTION "")
+  set(CMAKE_C_STANDARD_LATEST 11)
 
   # There is no meaningful default for this
   set(CMAKE_C_STANDARD_DEFAULT "")

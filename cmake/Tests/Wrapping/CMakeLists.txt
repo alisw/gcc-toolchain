@@ -1,7 +1,7 @@
 #
 # Wrapping
 #
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required(VERSION 3.10)
 project (Wrapping)
 
 # Disable cleaning of custom command outputs to preserve the hacks
@@ -96,13 +96,3 @@ fltk_wrap_ui (wrapFLTK fltk2.fl)
 add_executable(wrapFLTK wrapFLTK.cxx ${wrapFLTK_FLTK_UI_SRCS})
 target_link_libraries(wrapFLTK wraplibFLTK)
 add_dependencies(wrapFLTK fakefluid)
-
-#
-# Mangled Mesa
-#
-configure_file(
-  ${Wrapping_SOURCE_DIR}/dummy
-  ${Wrapping_BINARY_DIR}/gl.h
-  COPYONLY)
-use_mangled_mesa (${Wrapping_BINARY_DIR} ${Wrapping_BINARY_DIR}/mangled_mesa)
-

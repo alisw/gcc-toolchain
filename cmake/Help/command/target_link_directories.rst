@@ -21,7 +21,7 @@ The named ``<target>`` must have been created by a command such as
 :ref:`ALIAS target <Alias Targets>`.
 
 The ``INTERFACE``, ``PUBLIC`` and ``PRIVATE`` keywords are required to
-specify the :ref:`scope <Target Usage Requirements>` of the items that follow
+specify the :ref:`scope <Target Command Scope>` of the items that follow
 them. ``PRIVATE`` and ``PUBLIC`` items will populate the
 :prop_tgt:`LINK_DIRECTORIES` property of ``<target>``.  ``PUBLIC`` and
 ``INTERFACE`` items will populate the :prop_tgt:`INTERFACE_LINK_DIRECTORIES`
@@ -35,7 +35,7 @@ If ``BEFORE`` is specified, the content will be prepended to the relevant
 property instead of being appended.
 
 .. |command_name| replace:: ``target_link_directories``
-.. include:: GENEX_NOTE.txt
+.. include:: include/GENEX_NOTE.rst
 
 .. note::
 
@@ -46,8 +46,8 @@ property instead of being appended.
   generally be used directly in calls to :command:`target_link_libraries`.
   Situations where a library search path may be needed include:
 
-  - Project generators like Xcode where the user can switch target
-    architecture at build time, but a full path to a library cannot
+  - Project generators like :generator:`Xcode` where the user can switch
+    target architecture at build time, but a full path to a library cannot
     be used because it only provides one architecture (i.e. it is not
     a universal binary).
   - Libraries may themselves have other private library dependencies

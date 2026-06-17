@@ -1,6 +1,6 @@
 /* mpc_tan -- tangent of a complex number.
 
-Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013, 2015, 2020, 2022 INRIA
+Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013, 2015, 2020, 2022, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -56,32 +56,62 @@ tan_im_cmp_one (mpc_srcptr op)
   return ret;
 }
 
-/* special case where the real part of tan(op) underflows to 0:
-   return 1 if 0 < Re(tan(op)) < 2^(emin-2),
-   -1 if -2^(emin-2) < Re(tan(op))| < 0, and 0 if we can't decide.
+/* Special case where the real part of tan(op) underflows to 0:
+   return non-zero if we can round the returned value of xout to
+   get the correct rounding, 0 if we can't decide.
    The real part is sin(2*x)/(cos(2*x) + cosh(2*y)) where op = (x,y),
    thus has the sign of sin(2*x).
 */
 static int
-tan_re_cmp_zero (mpc_srcptr op, mpfr_exp_t emin)
+tan_re_cmp_zero (mpc_srcptr op, mpfr_exp_t emin, mpfr_ptr xout, mpfr_prec_t px,
+                 mpfr_rnd_t rndx)
 {
-  mpfr_t x, s, c;
+  mpfr_t t, s, c;
   int ret = 0;
+  mpfr_exp_t k, u;
+  mpfr_prec_t p = mpfr_get_prec (xout);
 
-  mpfr_init2 (x, mpfr_get_prec (mpc_realref (op)));
-  mpfr_mul_2exp (x, mpc_realref (op), 1, MPFR_RNDN);
-  mpfr_init2 (s, 32);
-  mpfr_init2 (c, 32);
-  mpfr_sin (s, x, MPFR_RNDA);
-  mpfr_mul_2exp (x, mpc_imagref (op), 1, MPFR_RNDN);
-  mpfr_cosh (c, x, MPFR_RNDZ);
-  mpfr_sub_ui (c, c, 1, MPFR_RNDZ);
-  mpfr_div (s, s, c, MPFR_RNDA);
-  if (mpfr_zero_p (s) || mpfr_get_exp (s) <= emin - 2)
-    ret = mpfr_sgn (s);
+  mpfr_init2 (t, mpfr_get_prec (mpc_realref (op))); // ensures 2*Re(op) is exact
+  mpfr_mul_2exp (t, mpc_realref (op), 1, MPFR_RNDN);
+  mpfr_init2 (s, p);
+  mpfr_init2 (c, p);
+  mpfr_sin (s, t, MPFR_RNDA); // use MPFR_RNDA to upper bound |sin(2x)|
+  // s = sin(2x)*(1+theta1) with |theta1| < 2^(1-p)
+  mpfr_set_prec (t, mpfr_get_prec (mpc_imagref (op))); // ensures 2*Im(op) is exact
+  mpfr_mul_2exp (t, mpc_imagref (op), 1, MPFR_RNDN);
+  mpfr_cosh (c, t, MPFR_RNDZ); // use MPFR_RNDZ to lower bound cosh(2y)
+  // c = cosh(2y)*(1+theta2) with |theta2| < 2^(1-p)
+  k = mpfr_get_exp (c) - 1; // cosh(2y) >= 2^k
+  mpfr_sub_ui (c, c, 1, MPFR_RNDZ); // subtract 1 to lower bound cosh(2y) + cos(2x)
+  /* c = cosh(2y)*(1+theta2) + cos(2x) + eps2 with |eps2| <= 2
+     which we can rewrite:
+     c = [cosh(2y) + cos(2x)] * (1 + theta3)
+     with theta3 = (theta2 cosh(2y) + eps3) / (cosh(2y) + cos(2x))
+                 = (theta2 + eps3/cosh(2y)) / (1 + cos(2x)/cosh(2y))
+     Since cosh(2y) >= 2^k, then:
+     |theta3| <= (2^(1-p) + 2^(1-k)) / (1 - 2^-k) <= 2^(2-p) + 2^(2-k) for k >= 1.
+              <= 2^(2-min(p,k))
+  */
+  u = (p <= k) ? p : k; // u = min(p,k)
+  mpfr_div (xout, s, c, MPFR_RNDA); // upper bound the ratio
+  /* xout = sin(2x)/(cosh(2y)+cos(2x)) * (1+theta1)/(1+theta3)*(1+theta4)
+     with |theta4| < 2^(1-p), thus |theta1|, |theta4| < 2^(1-u) and |theta3| < 2^(2-u).
+     For u >= 4, we can check that (1+theta1)/(1+theta3)*(1+theta4) = 1 + theta5 with
+     |theta5| < 11*2^-u < 2^(4-u). */
+  if (mpfr_zero_p (xout) || mpfr_get_exp (xout) <= emin - 2)
+  {
+    ret = 1;
+    // in case of underflow, we add/subtract one ulp to get the correct ternary value
+    if (mpfr_sgn (xout) > 0)
+      MPFR_ADD_ONE_ULP (xout);
+    else
+      MPFR_SUB_ONE_ULP (xout);
+  }
+  else
+    ret = mpfr_can_round (xout, u - 4, MPFR_RNDN, MPFR_RNDZ, px + (rndx == MPFR_RNDN));
   mpfr_clear (s);
   mpfr_clear (c);
-  mpfr_clear (x);
+  mpfr_clear (t);
   return ret;
 }
 
@@ -89,7 +119,7 @@ int
 mpc_tan (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
 {
   mpc_t x, y;
-  mpfr_prec_t prec;
+  mpfr_prec_t prec, py;
   mpfr_exp_t err;
   int ok;
   int inex, inex_re, inex_im;
@@ -261,6 +291,7 @@ mpc_tan (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
             Im(op) was large, in which case the result is
             sign(tan(Re(op)))*0 + sign(Im(op))*I,
             where sign(tan(Re(op))) = sign(Re(x))*sign(Re(y)). */
+      large_im:
           mpfr_set_ui (mpc_realref (rop), 0, MPFR_RNDN);
           if (mpfr_sgn (mpc_realref (x)) * mpfr_sgn (mpc_realref (y)) < 0)
             {
@@ -299,6 +330,9 @@ mpc_tan (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
 
       /* some parts of the quotient may be exact */
       inex = mpc_div (x, x, y, MPC_RNDZZ);
+      /* If the imaginary part of x is Inf, we are in the same case as above. */
+      if (mpfr_inf_p (mpc_imagref (x)))
+        goto large_im;
       /* OP is no pure real nor pure imaginary, so in theory the real and
          imaginary parts of its tangent cannot be null. However due to
          rounding errors this might happen. Consider for example
@@ -306,15 +340,9 @@ mpc_tan (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
          cos(op) differ only by a factor I, thus after mpc_div x = I and
          its real part is zero. */
       if (mpfr_zero_p (mpc_realref (x)))
-        {
-          /* since we use an extended exponent range, if real(x) is zero,
-             this means the real part underflows, and we assume we can round */
-          ok = tan_re_cmp_zero (op, saved_emin);
-          if (ok > 0)
-            MPFR_ADD_ONE_ULP (mpc_realref (x));
-          else
-            MPFR_SUB_ONE_ULP (mpc_realref (x));
-        }
+        /* since we use an extended exponent range, if real(x) is zero,
+           this means the real part underflows, and we assume we can round */
+        ok = tan_re_cmp_zero (op, saved_emin, mpc_realref (x), MPC_PREC_RE(rop), MPC_RND_RE(rnd));
       else
         {
           if (MPC_INEX_RE (inex))
@@ -355,12 +383,11 @@ mpc_tan (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
              Since |tanh(2y)| = (1-exp(-4|y|))/(1+exp(-4|y|)),
              we have 1-|tanh(2y)| < 2*exp(-4|y|).
              Thus |im(z)-1| < 2/exp|2y| + 2/exp|4y| < 4/exp|2y| < 4/2^|2y|.
-             If 2^EXP(y) >= p+2, then im(z) rounds to -1 or 1. */
+             If |2y| >= p+3, then im(z) rounds to -1 or 1. */
+          py = mpfr_get_prec (mpc_imagref (rop));
           if (ok == 0 && (mpfr_cmp_ui (mpc_imagref(x), 1) == 0 ||
                           mpfr_cmp_si (mpc_imagref(x), -1) == 0) &&
-              mpfr_get_exp (mpc_imagref(op)) >= 0 &&
-              ((size_t) mpfr_get_exp (mpc_imagref(op)) >= 8 * sizeof (mpfr_prec_t) ||
-               ((mpfr_prec_t) 1) << mpfr_get_exp (mpc_imagref(op)) >= mpfr_get_prec (mpc_imagref (rop)) + 2))
+              mpfr_cmpabs_ui (mpc_imagref (op), py / 2 + 2) >= 0)
             {
               /* subtract one ulp, so that we get the correct inexact flag */
               ok = tan_im_cmp_one (op);

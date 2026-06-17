@@ -1,19 +1,57 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindHTMLHelp
 ------------
 
-This module looks for Microsoft HTML Help Compiler
+Finds the Microsoft HTML Help Compiler and its API which is part of the HTML
+Help Workshop:
 
-It defines:
+.. code-block:: cmake
 
-::
+  find_package(HTMLHelp [...])
 
-   HTML_HELP_COMPILER     : full path to the Compiler (hhc.exe)
-   HTML_HELP_INCLUDE_PATH : include path to the API (htmlhelp.h)
-   HTML_HELP_LIBRARY      : full path to the library (htmlhelp.lib)
+.. note::
+
+  HTML Help Workshop is in maintenance mode only and is considered deprecated.
+  For modern documentation, consider alternatives such as Microsoft Help Viewer
+  for producing ``.mshc`` files or web-based documentation tools.
+
+Result Variables
+^^^^^^^^^^^^^^^^
+
+This module defines the following variables:
+
+``HTMLHelp_FOUND``
+  .. versionadded:: 4.2
+
+  Boolean indicating whether HTML Help was found.
+
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may also be set:
+
+``HTML_HELP_COMPILER``
+  Full path to the HTML Help Compiler (``hhc.exe``), used to compile ``.chm``
+  files.
+``HTML_HELP_INCLUDE_PATH``
+  Directory containing ``htmlhelp.h``, required for applications integrating the
+  HTML Help API.
+``HTML_HELP_LIBRARY``
+  Full path to ``htmlhelp.lib`` library, required for linking applications that
+  use the HTML Help API.
+
+Examples
+^^^^^^^^
+
+Finding HTML Help Compiler:
+
+.. code-block:: cmake
+
+  find_package(HTMLHelp)
+  message(STATUS "HTML Help Compiler found at: ${HTML_HELP_COMPILER}")
 #]=======================================================================]
 
 if(WIN32)
@@ -49,4 +87,10 @@ if(WIN32)
     HTML_HELP_LIBRARY
     )
 
+endif()
+
+if(HTML_HELP_COMPILER AND HTML_HELP_INCLUDE_PATH AND HTML_HELP_LIBRARY)
+  set(HTMLHelp_FOUND TRUE)
+else()
+  set(HTMLHelp_FOUND FALSE)
 endif()

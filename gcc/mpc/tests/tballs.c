@@ -1,6 +1,6 @@
 /* tballs -- test file for complex ball arithmetic.
 
-Copyright (C) 2018, 2020, 2021, 2022 INRIA
+Copyright (C) 2018, 2020, 2021, 2022, 2023, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -104,7 +104,7 @@ mpc_mpcb_agm (mpc_ptr rop, mpc_srcptr opa, mpc_srcptr opb, mpc_rnd_t rnd)
          mpcb_sqrt (bnp1, bnp1);
             /* Be aware of the branch cut! The current function does
                what is needed here. */
-         equal = mpc_cmp (an->c, bn->c) == 0
+         equal = mpc_cmp (anp1->c, bnp1->c) == 0
                  || (   mpc_cmp (an->c, anp1->c) == 0
                      && mpc_cmp (bn->c, bnp1->c) == 0);
          mpcb_set (an, anp1);
@@ -116,19 +116,11 @@ mpc_mpcb_agm (mpc_ptr rop, mpc_srcptr opa, mpc_srcptr opb, mpc_rnd_t rnd)
       if (mpcr_inf_p (anp1->r))
          ok = 0;
       else {
-         mpc_init2 (diff, prec);
-         mpc_sub (diff, an->c, bn->c, MPC_RNDZZ);
-            /* FIXME: We would need to round away, but this is not yet
-               implemented. */
-         re_zero = mpfr_zero_p (mpc_realref (diff));
-         if (!re_zero)
-            MPFR_ADD_ONE_ULP (mpc_realref (diff));
-         im_zero = mpfr_zero_p (mpc_imagref (diff));
-         if (!im_zero)
-            MPFR_ADD_ONE_ULP (mpc_imagref (diff));
-
          mpcb_set (res, anp1);
-
+         mpc_init2 (diff, prec);
+         mpc_sub (diff, an->c, bn->c, MPC_RNDAA);
+         re_zero = mpfr_zero_p (mpc_realref (diff));
+         im_zero = mpfr_zero_p (mpc_imagref (diff));
          if (re_zero && im_zero)
             mpcr_set_zero (rab);
          else {
@@ -183,21 +175,36 @@ test_agm (void)
    mpfr_prec_t prec;
    mpc_t a, b, agm1, agm2;
    mpc_rnd_t rnd = MPC_RNDDU;
-   int inex, inexb, ok;
+   long int ar, ai, br, bi;
+   int inex1, inex2, ok;
 
    prec = 1000;
 
-   mpc_init2 (a, prec);
-   mpc_init2 (b, prec);
-   mpc_set_si_si (a, 100, 0, MPC_RNDNN);
-   mpc_set_si_si (b, 0, 100, MPC_RNDNN);
-   mpc_init2 (agm1, prec);
-   mpc_init2 (agm2, prec);
+   mpc_init2 (a, 32);
+   mpc_init2 (b, 32);
+   mpc_init2 (agm1, 3200);
+   mpc_init2 (agm2, 3200);
 
-   inex = mpc_agm (agm1, a, b, rnd);
-   inexb = mpc_mpcb_agm (agm2, a, b, rnd);
+   ok = 1;
+   for (prec = 100; prec <= 3200; prec *= 2) {
+      mpc_set_prec (agm1, prec);
+      mpc_set_prec (agm2, prec);
 
-   ok = (inex == inexb) && (mpc_cmp (agm1, agm2) == 0);
+      /* Use a loop that avoids 0 as one of the arguments. */
+      for (ar = -100; ar <= 100; ar += 50)
+         for (ai = -99; ai <= 101; ai += 50)
+            for (br = -99; br <= 101; br += 50)
+               for (bi = -100; bi <= 100; bi += 50) {
+                  if (ok) {
+                     mpc_set_si_si (a, ar, ai, MPC_RNDNN);
+                     mpc_set_si_si (b, br, bi, MPC_RNDNN);
+                     inex1 = mpc_agm (agm1, a, b, rnd);
+                     inex2 = mpc_mpcb_agm (agm2, a, b, rnd);
+                     ok = ok &&
+                          (inex1 == inex2) && (mpc_cmp (agm1, agm2) == 0);
+                  }
+               }
+   }
 
    mpc_clear (a);
    mpc_clear (b);
@@ -211,6 +218,12 @@ test_agm (void)
 int
 main (void)
 {
-   return test_agm ();
+  int ret;
+
+  test_start ();
+  ret = test_agm ();
+  test_end ();
+
+  return ret;
 }
 

@@ -1,8 +1,7 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 
 #include <cstdint>
-#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -204,11 +203,7 @@ static bool testNoSupportsVariableType()
 
 int testDebuggerVariables(int, char*[])
 {
-  return runTests(std::vector<std::function<bool()>>{
-    testUniqueIds,
-    testConstructors,
-    testIgnoreEmptyStringEntries,
-    testSortTheResult,
-    testNoSupportsVariableType,
-  });
+  return runTests({ testUniqueIds, testConstructors,
+                    testIgnoreEmptyStringEntries, testSortTheResult,
+                    testNoSupportsVariableType });
 }

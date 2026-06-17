@@ -1,17 +1,20 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmFileSet.h"
 
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include <cm/optional>
 #include <cmext/algorithm>
 #include <cmext/string_view>
 
 #include "cmsys/RegularExpression.hxx"
 
+#include "cmGenExContext.h"
 #include "cmGeneratorExpression.h"
 #include "cmList.h"
 #include "cmListFileCache.h"
@@ -153,26 +156,49 @@ cmFileSet::CompileDirectoryEntries() const
 }
 
 std::vector<std::string> cmFileSet::EvaluateDirectoryEntries(
-  const std::vector<std::unique_ptr<cmCompiledGeneratorExpression>>& cges,
-  cmLocalGenerator* lg, const std::string& config,
-  const cmGeneratorTarget* target,
+  std::vector<std::unique_ptr<cmCompiledGeneratorExpression>> const& cges,
+  cm::GenEx::Context const& context, cmGeneratorTarget const* target,
   cmGeneratorExpressionDAGChecker* dagChecker) const
 {
+  struct DirCacheEntry
+  {
+    std::string collapsedDir;
+    cm::optional<cmSystemTools::FileId> fileId;
+  };
+
+  std::unordered_map<std::string, DirCacheEntry> dirCache;
   std::vector<std::string> result;
   for (auto const& cge : cges) {
-    auto entry = cge->Evaluate(lg, config, target, dagChecker);
+    auto entry = cge->Evaluate(context, dagChecker, target);
     cmList dirs{ entry };
     for (std::string dir : dirs) {
       if (!cmSystemTools::FileIsFullPath(dir)) {
-        dir = cmStrCat(lg->GetCurrentSourceDirectory(), '/', dir);
+        dir = cmStrCat(context.LG->GetCurrentSourceDirectory(), '/', dir);
       }
-      auto collapsedDir = cmSystemTools::CollapseFullPath(dir);
+
+      auto dirCacheResult = dirCache.emplace(dir, DirCacheEntry());
+      auto& dirCacheEntry = dirCacheResult.first->second;
+      auto const isNewCacheEntry = dirCacheResult.second;
+
+      if (isNewCacheEntry) {
+        cmSystemTools::FileId fileId;
+        auto isFileIdValid = cmSystemTools::GetFileId(dir, fileId);
+        dirCacheEntry.collapsedDir = cmSystemTools::CollapseFullPath(dir);
+        dirCacheEntry.fileId =
+          isFileIdValid ? cm::optional<decltype(fileId)>(fileId) : cm::nullopt;
+      }
+
       for (auto const& priorDir : result) {
-        auto collapsedPriorDir = cmSystemTools::CollapseFullPath(priorDir);
-        if (!cmSystemTools::SameFile(collapsedDir, collapsedPriorDir) &&
-            (cmSystemTools::IsSubDirectory(collapsedDir, collapsedPriorDir) ||
-             cmSystemTools::IsSubDirectory(collapsedPriorDir, collapsedDir))) {
-          lg->GetCMakeInstance()->IssueMessage(
+        auto priorDirCacheEntry = dirCache.at(priorDir);
+        bool sameFile = dirCacheEntry.fileId.has_value() &&
+          priorDirCacheEntry.fileId.has_value() &&
+          (*dirCacheEntry.fileId == *priorDirCacheEntry.fileId);
+        if (!sameFile &&
+            (cmSystemTools::IsSubDirectory(dirCacheEntry.collapsedDir,
+                                           priorDirCacheEntry.collapsedDir) ||
+             cmSystemTools::IsSubDirectory(priorDirCacheEntry.collapsedDir,
+                                           dirCacheEntry.collapsedDir))) {
+          context.LG->GetCMakeInstance()->IssueMessage(
             MessageType::FATAL_ERROR,
             cmStrCat(
               "Base directories in file set cannot be subdirectories of each "
@@ -189,17 +215,16 @@ std::vector<std::string> cmFileSet::EvaluateDirectoryEntries(
 }
 
 void cmFileSet::EvaluateFileEntry(
-  const std::vector<std::string>& dirs,
+  std::vector<std::string> const& dirs,
   std::map<std::string, std::vector<std::string>>& filesPerDir,
-  const std::unique_ptr<cmCompiledGeneratorExpression>& cge,
-  cmLocalGenerator* lg, const std::string& config,
-  const cmGeneratorTarget* target,
+  std::unique_ptr<cmCompiledGeneratorExpression> const& cge,
+  cm::GenEx::Context const& context, cmGeneratorTarget const* target,
   cmGeneratorExpressionDAGChecker* dagChecker) const
 {
-  auto files = cge->Evaluate(lg, config, target, dagChecker);
+  auto files = cge->Evaluate(context, dagChecker, target);
   for (std::string file : cmList{ files }) {
     if (!cmSystemTools::FileIsFullPath(file)) {
-      file = cmStrCat(lg->GetCurrentSourceDirectory(), '/', file);
+      file = cmStrCat(context.LG->GetCurrentSourceDirectory(), '/', file);
     }
     auto collapsedFile = cmSystemTools::CollapseFullPath(file);
     bool found = false;
@@ -220,8 +245,8 @@ void cmFileSet::EvaluateFileEntry(
       for (auto const& dir : dirs) {
         e << "\n  " << dir;
       }
-      lg->GetCMakeInstance()->IssueMessage(MessageType::FATAL_ERROR, e.str(),
-                                           cge->GetBacktrace());
+      context.LG->GetCMakeInstance()->IssueMessage(
+        MessageType::FATAL_ERROR, e.str(), cge->GetBacktrace());
       return;
     }
 
@@ -229,9 +254,9 @@ void cmFileSet::EvaluateFileEntry(
   }
 }
 
-bool cmFileSet::IsValidName(const std::string& name)
+bool cmFileSet::IsValidName(std::string const& name)
 {
-  static const cmsys::RegularExpression regex("^[a-z0-9][a-zA-Z0-9_]*$");
+  static cmsys::RegularExpression const regex("^[a-z0-9][a-zA-Z0-9_]*$");
 
   cmsys::RegularExpressionMatch match;
   return regex.find(name.c_str(), match);

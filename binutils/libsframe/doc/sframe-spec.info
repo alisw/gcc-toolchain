@@ -1,4 +1,4 @@
-This is sframe-spec.info, produced by makeinfo version 7.2 from
+This is sframe-spec.info, produced by makeinfo version 7.3 from
 sframe-spec.texi.
 
 Copyright © 2021-2026 Free Software Foundation, Inc.
@@ -20,7 +20,7 @@ File: sframe-spec.info,  Node: Top,  Next: Introduction,  Up: (dir)
 The SFrame format
 *****************
 
-                           February 10, 2026
+                             June 8, 2026
 
    This manual describes Version 3 of the SFrame file format.  SFrame
 stands for Simple Frame.  The SFrame format keeps track of the minimal
@@ -1414,34 +1414,34 @@ Index
 
 Tag Table:
 Node: Top563
-Node: Introduction1287
-Node: Overview1513
-Node: Changes from Version 2 to Version 33161
-Node: Changes from Version 1 to Version 26049
-Node: SFrame Section9570
-Node: SFrame Preamble10070
-Node: SFrame Magic Number and Endianness11669
-Node: SFrame Version12205
-Node: SFrame Flags12844
-Node: SFrame Header14571
-Node: SFrame ABI/arch Identifier20181
-Node: SFrame Function Descriptor Entries21328
-Node: The SFrame FDE Index22036
-Node: The SFrame FDE Attribute25106
-Node: The SFrame FDE Info Bytes27891
-Node: The SFrame FDE PC Types30434
-Node: The SFrame FDE Types32266
-Node: The SFrame FRE Types35079
-Node: SFrame Frame Row Entries36580
-Node: The SFrame FRE Info Word40204
-Node: Interpretation of SFrame FREs42630
-Node: Default FDE Type Interpretation43213
-Node: AMD6443778
-Node: AArch6444909
-Node: s390x46155
-Node: Flexible FDE Type Interpretation49736
-Node: Generating Stack Traces using SFrame54747
-Node: Index61672
+Node: Introduction1284
+Node: Overview1510
+Node: Changes from Version 2 to Version 33158
+Node: Changes from Version 1 to Version 26046
+Node: SFrame Section9567
+Node: SFrame Preamble10067
+Node: SFrame Magic Number and Endianness11666
+Node: SFrame Version12202
+Node: SFrame Flags12841
+Node: SFrame Header14568
+Node: SFrame ABI/arch Identifier20178
+Node: SFrame Function Descriptor Entries21325
+Node: The SFrame FDE Index22033
+Node: The SFrame FDE Attribute25103
+Node: The SFrame FDE Info Bytes27888
+Node: The SFrame FDE PC Types30431
+Node: The SFrame FDE Types32263
+Node: The SFrame FRE Types35076
+Node: SFrame Frame Row Entries36577
+Node: The SFrame FRE Info Word40201
+Node: Interpretation of SFrame FREs42627
+Node: Default FDE Type Interpretation43210
+Node: AMD6443775
+Node: AArch6444906
+Node: s390x46152
+Node: Flexible FDE Type Interpretation49733
+Node: Generating Stack Traces using SFrame54744
+Node: Index61669
 
 End Tag Table
 

@@ -1,6 +1,6 @@
 /* mpc_atan -- arctangent of a complex number.
 
-Copyright (C) 2009, 2010, 2011, 2012, 2013, 2017, 2020, 2022 INRIA
+Copyright (C) 2009, 2010, 2011, 2012, 2013, 2017, 2020, 2022, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -135,6 +135,7 @@ mpc_atan (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
              atan(+/-0 -i) = +/-0 -i*inf */
           mpfr_set_zero (mpc_realref (rop), s_re ? -1 : +1);
           mpfr_set_inf  (mpc_imagref (rop), s_im ? -1 : +1);
+          mpfr_set_divby0 (); /* per the ISO C99 (G.6.2.3, The catanh functions) */
         }
       else
         {
@@ -223,6 +224,7 @@ mpc_atan (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
     mpfr_t a, b, x, y;
     mpfr_prec_t prec, p;
     mpfr_exp_t err, expo;
+    int loop;
     int ok = 0;
     mpfr_t minus_op_re;
     mpfr_exp_t op_re_exp, op_im_exp;
@@ -260,9 +262,11 @@ mpc_atan (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
     rnd1 = mpfr_sgn (mpc_realref (op)) > 0 ? MPFR_RNDD : MPFR_RNDU;
     rnd2 = mpfr_sgn (mpc_realref (op)) < 0 ? MPFR_RNDU : MPFR_RNDD;
 
+    loop = 0;
     do
       {
-        p += mpc_ceil_log2 (p) + 2;
+        MPC_LOOP_NEXT(loop, op, rop);
+        p += (loop <= 2) ? mpc_ceil_log2 (p) + 2 : p / 2;
         mpfr_set_prec (a, p);
         mpfr_set_prec (b, p);
         mpfr_set_prec (x, p);

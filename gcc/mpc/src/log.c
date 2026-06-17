@@ -1,6 +1,6 @@
 /* mpc_log -- Take the logarithm of a complex number.
 
-Copyright (C) 2008, 2009, 2010, 2011, 2012 INRIA
+Copyright (C) 2008, 2009, 2010, 2011, 2012, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -27,7 +27,7 @@ mpc_log (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd){
    mpfr_srcptr x, y;
    mpfr_t v, w;
    mpfr_prec_t prec;
-   int loops;
+   int loop;
    int re_cmp, im_cmp;
    int inex_re, inex_im;
    int err;
@@ -68,6 +68,7 @@ mpc_log (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd){
          inex_im = mpfr_atan2 (mpc_imagref (rop), mpc_imagref (op), mpc_realref (op),
                                MPC_RND_IM (rnd));
          mpfr_set_inf (mpc_realref (rop), -1);
+         mpfr_set_divby0(); /* per the ISO C99 (G.6.3.2, The clog functions) */
          inex_re = 0; /* -Inf is exact */
       }
       else if (re_cmp > 0) {
@@ -117,11 +118,24 @@ mpc_log (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd){
 
    prec = MPC_PREC_RE(rop);
    mpfr_init2 (w, 2);
-   /* let op = x + iy; log = 1/2 log (x^2 + y^2) + i atan2 (y, x)   */
-   /* loop for the real part: 1/2 log (x^2 + y^2), fast, but unsafe */
-   /* implementation                                                */
+   /* Let op = x + iy; log = 1/2 log (x^2 + y^2) + i atan2 (y, x)
+      Loop for the real part: 1/2 log (x^2 + y^2).
+      At precision p, this has a complexity of M(p)log(p) + O (M(p))
+      since it requires only one real logarithm, while the following,
+      alternative implementation uses two real logarithms with a complexity
+      of 2*M(p)log(p) + O (M(p)).
+      On the other hand, the computation of x^2 + y^2 may cause a spurious
+      overflow although the logarithm is always representable; this
+      explains the need for the later implementation.
+      Timings on a laptop yield the following time in s for the full
+      mpc_log function with x=\pi and y=e:
+               first     second implementation
+      p=10^3  0.000240   0.000211
+        10^4  0.002226   0.002451
+        10^5  0.074965   0.090478
+        10^6  2.000513   2.470727 */
    ok = 0;
-   for (loops = 1; !ok && loops <= 2; loops++) {
+   for (loop = 1; !ok && loop <= 2; loop++) {
       prec += mpc_ceil_log2 (prec) + 4;
       mpfr_set_prec (w, prec);
 
@@ -159,8 +173,10 @@ mpc_log (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd){
          y = mpc_realref (op);
       }
 
+      loop = 0;
       do {
-         prec += mpc_ceil_log2 (prec) + 4;
+         MPC_LOOP_NEXT(loop, op, rop);
+         prec += (loop <= 2) ? mpc_ceil_log2 (prec) + 4 : prec / 2;
          mpfr_set_prec (v, prec);
          mpfr_set_prec (w, prec);
 

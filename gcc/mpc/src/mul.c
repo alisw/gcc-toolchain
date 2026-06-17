@@ -460,7 +460,8 @@ mpc_mul (mpc_ptr a, mpc_srcptr b, mpc_srcptr c, mpc_rnd_t rnd)
 {
    /* Conforming to ISO C99 standard (G.5.1 multiplicative operators),
       infinities are treated specially if both parts are NaN when computed
-      naively. */
+      naively. See also
+      https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1399.htm */
    if (mpc_inf_p (b))
       return mul_infinite (a, b, c);
    if (mpc_inf_p (c))

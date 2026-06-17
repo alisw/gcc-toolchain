@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 
 # This file sets the basic flags for the Objective-C language in CMake.
@@ -27,7 +27,7 @@ endif()
 
 set(CMAKE_BASE_NAME)
 get_filename_component(CMAKE_BASE_NAME "${CMAKE_OBJC_COMPILER}" NAME_WE)
-if(CMAKE_COMPILER_IS_GNUOBJC)
+if(CMAKE_OBJC_COMPILER_ID STREQUAL "GNU")
   set(CMAKE_BASE_NAME gcc)
 endif()
 
@@ -91,24 +91,6 @@ if(CMAKE_USER_MAKE_RULES_OVERRIDE_OBJC)
   set(CMAKE_USER_MAKE_RULES_OVERRIDE_OBJC "${_override}")
 endif()
 
-if(CMAKE_EXECUTABLE_FORMAT STREQUAL "ELF")
-  if(NOT DEFINED CMAKE_OBJC_LINK_WHAT_YOU_USE_FLAG)
-    set(CMAKE_OBJC_LINK_WHAT_YOU_USE_FLAG "LINKER:--no-as-needed")
-  endif()
-  if(NOT DEFINED CMAKE_LINK_WHAT_YOU_USE_CHECK)
-    set(CMAKE_LINK_WHAT_YOU_USE_CHECK ldd -u -r)
-  endif()
-endif()
-
-
-# for most systems a module is the same as a shared library
-# so unless the variable CMAKE_MODULE_EXISTS is set just
-# copy the values from the LIBRARY variables
-if(NOT CMAKE_MODULE_EXISTS)
-  set(CMAKE_SHARED_MODULE_OBJC_FLAGS ${CMAKE_SHARED_LIBRARY_OBJC_FLAGS})
-  set(CMAKE_SHARED_MODULE_CREATE_OBJC_FLAGS ${CMAKE_SHARED_LIBRARY_CREATE_OBJC_FLAGS})
-endif()
-
 set(CMAKE_OBJC_FLAGS_INIT "$ENV{OBJCFLAGS} ${CMAKE_OBJC_FLAGS_INIT}")
 
 cmake_initialize_per_config_variable(CMAKE_OBJC_FLAGS "Flags used by the Objective-C compiler")
@@ -130,6 +112,7 @@ if(NOT CMAKE_OBJC_LINKER_LAUNCHER AND DEFINED ENV{CMAKE_OBJC_LINKER_LAUNCHER})
 endif()
 
 include(CMakeCommonLanguageInclude)
+_cmake_common_language_platform_flags(OBJC)
 
 # now define the following rule variables
 
@@ -149,9 +132,6 @@ include(CMakeCommonLanguageInclude)
 
 # Objective-C compiler information
 # <CMAKE_OBJC_COMPILER>
-# <CMAKE_SHARED_LIBRARY_CREATE_OBJC_FLAGS>
-# <CMAKE_SHARED_MODULE_CREATE_OBJC_FLAGS>
-# <CMAKE_OBJC_LINK_FLAGS>
 
 # Static library tools
 # <CMAKE_AR>
@@ -161,7 +141,7 @@ include(CMakeCommonLanguageInclude)
 # create an Objective-C shared library
 if(NOT CMAKE_OBJC_CREATE_SHARED_LIBRARY)
   set(CMAKE_OBJC_CREATE_SHARED_LIBRARY
-      "<CMAKE_OBJC_COMPILER> <CMAKE_SHARED_LIBRARY_OBJC_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> <CMAKE_SHARED_LIBRARY_CREATE_OBJC_FLAGS> <SONAME_FLAG><TARGET_SONAME> -o <TARGET> <OBJECTS> <LINK_LIBRARIES>")
+      "<CMAKE_OBJC_COMPILER> <CMAKE_SHARED_LIBRARY_OBJC_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> <SONAME_FLAG><TARGET_SONAME> -o <TARGET> <OBJECTS> <LINK_LIBRARIES>")
 endif()
 
 # create an Objective-C shared module just copy the shared library rule
@@ -189,7 +169,7 @@ endif()
 
 if(NOT CMAKE_OBJC_LINK_EXECUTABLE)
   set(CMAKE_OBJC_LINK_EXECUTABLE
-    "<CMAKE_OBJC_COMPILER> <FLAGS> <CMAKE_OBJC_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
+    "<CMAKE_OBJC_COMPILER> <FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
 endif()
 
 if(NOT CMAKE_EXECUTABLE_RUNTIME_OBJC_FLAG)
@@ -203,5 +183,7 @@ endif()
 if(NOT CMAKE_EXECUTABLE_RPATH_LINK_OBJC_FLAG)
   set(CMAKE_EXECUTABLE_RPATH_LINK_OBJC_FLAG ${CMAKE_SHARED_LIBRARY_RPATH_LINK_OBJC_FLAG})
 endif()
+
+set(CMAKE_OBJC_USE_LINKER_INFORMATION TRUE)
 
 set(CMAKE_OBJC_INFORMATION_LOADED 1)

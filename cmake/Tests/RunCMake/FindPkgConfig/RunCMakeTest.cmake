@@ -28,7 +28,7 @@ endif()
 
 # We need a real pkg-config to run the test for get_variable.
 find_package(PkgConfig)
-if (PKG_CONFIG_FOUND)
+if (PkgConfig_FOUND)
   string(FIND "${CMAKE_CURRENT_BINARY_DIR}" " " IS_SPACES_IN_PATH)
   if(IS_SPACES_IN_PATH GREATER -1)
     string(REPLACE " " "\\ " ESCAPED_ROOT "${CMAKE_CURRENT_BINARY_DIR}")
@@ -54,6 +54,7 @@ Libs: -L\${libdir}
   run_cmake(FindPkgConfig_GET_VARIABLE_DEFINE_VARIABLES)
   run_cmake(FindPkgConfig_GET_VARIABLE_PREFIX_PATH)
   run_cmake(FindPkgConfig_GET_VARIABLE_PKGCONFIG_PATH)
+  run_cmake(FindPkgConfig_GET_VARIABLE_MULTIPLE_VALUES)
   run_cmake(FindPkgConfig_cache_variables)
   run_cmake(FindPkgConfig_IMPORTED_TARGET)
   run_cmake(FindPkgConfig_VERSION_OPERATORS)

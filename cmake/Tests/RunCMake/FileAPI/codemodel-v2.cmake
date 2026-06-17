@@ -1,10 +1,18 @@
+set(CMAKE_INTERMEDIATE_DIR_STRATEGY FULL CACHE STRING "" FORCE)
+
 enable_language(C)
+
+cmake_policy(SET CMP0203 NEW)
+cmake_policy(SET CMP0204 NEW)
+
+set(CMAKE_AIX_SHARED_LIBRARY_ARCHIVE 0)
 
 include("${CMAKE_CURRENT_LIST_DIR}/include_test.cmake")
 
 add_library(c_lib empty.c)
 add_executable(c_exe empty.c)
 target_link_libraries(c_exe PRIVATE c_lib)
+set_property(TARGET c_exe PROPERTY DEBUGGER_WORKING_DIRECTORY "/test/debugger/workingDirectory")
 
 add_library(c_shared_lib SHARED empty.c)
 add_executable(c_shared_exe empty.c)
@@ -27,6 +35,7 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../FileAPIExternalSource" "${CMAKE
 add_subdirectory(dir)
 add_subdirectory(fileset)
 add_subdirectory(framework)
+add_subdirectory(direct)
 
 set_property(TARGET c_shared_lib PROPERTY LIBRARY_OUTPUT_DIRECTORY lib)
 set_property(TARGET c_shared_lib PROPERTY RUNTIME_OUTPUT_DIRECTORY lib)
@@ -57,3 +66,7 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/dir
 install(EXPORT FooTargets DESTINATION lib/cmake/foo)
 install(SCRIPT InstallScript.cmake)
 install(CODE "message(foo)" ALL_COMPONENTS)
+
+if(FAIL)
+  message(FATAL_ERROR "Intentionally fail to configure")
+endif()

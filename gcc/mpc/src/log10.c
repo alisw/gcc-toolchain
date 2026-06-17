@@ -1,6 +1,6 @@
 /* mpc_log10 -- Take the base-10 logarithm of a complex number.
 
-Copyright (C) 2012, 2020 INRIA
+Copyright (C) 2012, 2020, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -32,7 +32,7 @@ mpfr_const_log10 (mpfr_ptr log10)
 int
 mpc_log10 (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
 {
-   int ok = 0, loops = 0, check_exact = 0, special_re, special_im,
+   int ok = 0, loop = 0, check_exact = 0, special_re, special_im,
        inex, inex_re, inex_im;
    mpfr_prec_t prec;
    mpfr_t log10;
@@ -49,8 +49,8 @@ mpc_log10 (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
    prec = MPC_MAX_PREC (rop);
    /* compute log(op)/log(10) */
    while (ok == 0) {
-      loops ++;
-      prec += (loops <= 2) ? mpc_ceil_log2 (prec) + 4 : prec / 2;
+      MPC_LOOP_NEXT(loop, op, rop);
+      prec += (loop <= 2) ? mpc_ceil_log2 (prec) + 4 : prec / 2;
       mpfr_set_prec (log10, prec);
       mpc_set_prec (log, prec);
 

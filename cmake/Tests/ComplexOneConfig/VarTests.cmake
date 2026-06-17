@@ -17,12 +17,6 @@ set(ONE_VAR2 1)
 set(STRING_VAR "CMake is great" CACHE STRING "test a cache variable")
 
 #
-# Test VARIABLE_REQUIRES
-#
-variable_requires(ONE_VAR
-                  ONE_VAR_IS_DEFINED ONE_VAR)
-
-#
 # Test various IF/ELSE combinations
 #
 if(NOT ZERO_VAR)

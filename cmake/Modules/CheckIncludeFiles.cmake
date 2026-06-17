@@ -1,46 +1,108 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 CheckIncludeFiles
 -----------------
 
-Provides a macro to check if a list of one or more header files can
-be included together.
+This module provides a command to check one or more C/C++ header files.
 
-.. command:: CHECK_INCLUDE_FILES
+Load this module in a CMake project with:
+
+.. code-block:: cmake
+
+  include(CheckIncludeFiles)
+
+Commands
+^^^^^^^^
+
+This module provides the following command:
+
+.. command:: check_include_files
+
+  Checks once whether one or more header files exist and can be included
+  together in C or C++ code:
 
   .. code-block:: cmake
 
-    CHECK_INCLUDE_FILES("<includes>" <variable> [LANGUAGE <language>])
+    check_include_files(<includes> <variable> [LANGUAGE <language>])
 
-  Check if the given ``<includes>`` list may be included together
-  in a source file and store the result in an internal cache
-  entry named ``<variable>``.  Specify the ``<includes>`` argument
-  as a :ref:`;-list <CMake Language Lists>` of header file names.
+  .. rubric:: The arguments are:
 
-  If ``LANGUAGE`` is set, the specified compiler will be used to perform the
-  check. Acceptable values are ``C`` and ``CXX``. If not set, the C compiler
-  will be used if enabled. If the C compiler is not enabled, the C++
-  compiler will be used if enabled.
+  ``<includes>``
+    A :ref:`semicolon-separated list <CMake Language Lists>` of header
+    files to be checked.
 
-The following variables may be set before calling this macro to modify
-the way the check is run:
+  ``<variable>``
+    The name of the variable to store the result of the check.  This
+    variable will be created as an internal cache variable.
 
-.. include:: /module/CMAKE_REQUIRED_FLAGS.txt
+  ``LANGUAGE <language>``
+    .. versionadded:: 3.11
 
-.. include:: /module/CMAKE_REQUIRED_DEFINITIONS.txt
+    If set, the specified ``<language>`` compiler will be used to perform
+    the check.  Acceptable values are ``C`` and ``CXX``.  If this option is
+    not given, the C compiler will be used if enabled.  If the C compiler
+    is not enabled, the C++ compiler will be used if enabled.
 
-.. include:: /module/CMAKE_REQUIRED_INCLUDES.txt
+  .. rubric:: Variables Affecting the Check
 
-.. include:: /module/CMAKE_REQUIRED_LINK_OPTIONS.txt
+  The following variables may be set before calling this command to modify
+  the way the check is run:
 
-.. include:: /module/CMAKE_REQUIRED_LIBRARIES.txt
+  .. include:: /module/include/CMAKE_REQUIRED_FLAGS.rst
 
-.. include:: /module/CMAKE_REQUIRED_QUIET.txt
+  .. include:: /module/include/CMAKE_REQUIRED_DEFINITIONS.rst
 
-See modules :module:`CheckIncludeFile` and :module:`CheckIncludeFileCXX`
-to check for a single header file in ``C`` or ``CXX`` languages.
+  .. include:: /module/include/CMAKE_REQUIRED_INCLUDES.rst
+
+  .. include:: /module/include/CMAKE_REQUIRED_LINK_OPTIONS.rst
+
+  .. include:: /module/include/CMAKE_REQUIRED_LIBRARIES.rst
+
+  .. include:: /module/include/CMAKE_REQUIRED_LINK_DIRECTORIES.rst
+
+  .. include:: /module/include/CMAKE_REQUIRED_QUIET.rst
+
+  .. versionadded:: 3.12
+    The ``CMAKE_REQUIRED_LIBRARIES`` variable, if policy :policy:`CMP0075` is
+    set to ``NEW``.
+
+Examples
+^^^^^^^^
+
+Checking one or more C headers and storing the check result in cache
+variables:
+
+.. code-block:: cmake
+
+  include(CheckIncludeFiles)
+
+  check_include_files(sys/socket.h HAVE_SYS_SOCKET_H)
+
+  if(HAVE_SYS_SOCKET_H)
+    # The <net/if.h> header on Darwin and BSD-like systems is not self-contained
+    # and also requires <sys/socket.h>
+    check_include_files("sys/socket.h;net/if.h" HAVE_NET_IF_H)
+  else()
+    check_include_files(net/if.h HAVE_NET_IF_H)
+  endif()
+
+The ``LANGUAGE`` option can be used to specify which compiler to use.  For
+example, checking multiple ``C++`` headers, when both ``C`` and ``CXX``
+languages are enabled in the project:
+
+.. code-block:: cmake
+
+  include(CheckIncludeFiles)
+
+  check_include_files("header_1.hpp;header_2.hpp" HAVE_HEADERS LANGUAGE CXX)
+
+See Also
+^^^^^^^^
+
+* The :module:`CheckIncludeFile` module to check for a single C header.
+* The :module:`CheckIncludeFileCXX` module to check for a single C++ header.
 #]=======================================================================]
 
 include_guard(GLOBAL)
@@ -126,6 +188,13 @@ macro(CHECK_INCLUDE_FILES INCLUDE VARIABLE)
       unset(_CIF_CMP0075)
     endif()
 
+    if(CMAKE_REQUIRED_LINK_DIRECTORIES)
+      set(_CIF_LINK_DIRECTORIES
+        "-DLINK_DIRECTORIES:STRING=${CMAKE_REQUIRED_LINK_DIRECTORIES}")
+    else()
+      set(_CIF_LINK_DIRECTORIES)
+    endif()
+
     if(NOT CMAKE_REQUIRED_QUIET)
       message(CHECK_START "Looking for ${_description}")
     endif()
@@ -137,9 +206,11 @@ macro(CHECK_INCLUDE_FILES INCLUDE VARIABLE)
       CMAKE_FLAGS
       -DCOMPILE_DEFINITIONS:STRING=${MACRO_CHECK_INCLUDE_FILES_FLAGS}
       "${CHECK_INCLUDE_FILES_INCLUDE_DIRS}"
+      "${_CIF_LINK_DIRECTORIES}"
       )
     unset(_CIF_LINK_OPTIONS)
     unset(_CIF_LINK_LIBRARIES)
+    unset(_CIF_LINK_DIRECTORIES)
     if(${VARIABLE})
       if(NOT CMAKE_REQUIRED_QUIET)
         message(CHECK_PASS "found")

@@ -7,7 +7,6 @@ macro(AddCMakeTest TestName PreArgs)
   add_test(NAME CMake.${TestName}
     COMMAND ${CMAKE_EXECUTABLE} ${PreArgs}
     -P "${CMAKE_CURRENT_BINARY_DIR}/${TestName}Test.cmake" ${ARGN})
-  set_tests_properties("CMake.${TestName}" PROPERTIES LABELS "CMake;command")
 endmacro()
 
 
@@ -40,12 +39,3 @@ set(EndStuff_PreArgs
 AddCMakeTest(EndStuff "${EndStuff_PreArgs}")
 
 AddCMakeTest(GetPrerequisites "-DConfiguration:STRING=$<CONFIGURATION>")
-
-if(GIT_EXECUTABLE)
-  set(PolicyCheck_PreArgs
-    "-DCMake_BINARY_DIR:PATH=${CMake_BINARY_DIR}"
-    "-DCMake_SOURCE_DIR:PATH=${CMake_SOURCE_DIR}"
-    "-DGIT_EXECUTABLE:STRING=${GIT_EXECUTABLE}"
-    )
-  AddCMakeTest(PolicyCheck "${PolicyCheck_PreArgs}")
-endif()

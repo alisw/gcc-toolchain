@@ -1,3 +1,6 @@
+From Paul Zimmermann on 9 September 2024:
+Implement mpc_cbrt.
+
 From Thomas Henlich on 20 February 2020:
 Implement the cotangent function.
 
@@ -72,6 +75,14 @@ sage: %timeit acosh(MPComplexField()(1,1))
 10000 loops, best of 3: 92 us per loop
 sage: %timeit acosh(MPComplexField()(1,1e-1000))
 1 loops, best of 3: 2.28 s per loop
+
+From Andreas Enge and Sergey B Kirpichev 1 March 2026:
+The current implementation of mpc_fr_div differs from mpc_div in essentially
+one line - the multiplication b*conj(c) needs to call a function that depends
+on the type of b.  It is annoying to have to copy rather complex code with
+overflow handling and so on instead of just being able to call the already
+existing function.
+https://sympa.inria.fr/sympa/arc/mpc-discuss/2026-02/msg00031.html
 
 Bench:
 - from Andreas Enge 9 June 2009:

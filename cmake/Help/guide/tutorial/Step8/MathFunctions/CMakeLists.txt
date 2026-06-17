@@ -1,59 +1,54 @@
-add_library(MathFunctions MathFunctions.cxx)
+add_library(MathFunctions)
 
-# should we use our own math functions
-option(USE_MYMATH "Use tutorial provided math implementation" ON)
-if (USE_MYMATH)
-  target_compile_definitions(MathFunctions PRIVATE "USE_MYMATH")
+target_sources(MathFunctions
+  PRIVATE
+    MathFunctions.cxx
 
-  # library that just does sqrt
-  add_library(SqrtLibrary STATIC
-              mysqrt.cxx
-              )
+  PUBLIC
+    FILE_SET HEADERS
+    FILES
+      MathFunctions.h
+)
 
-  # link SqrtLibrary to tutorial_compiler_flags
-  target_link_libraries(SqrtLibrary PUBLIC tutorial_compiler_flags)
+target_link_libraries(MathFunctions
+  PRIVATE
+    MathLogger
+    SqrtTable
 
-  # does this system provide the log and exp functions?
-  include(CheckCXXSourceCompiles)
-  check_cxx_source_compiles("
-    #include <cmath>
-    int main() {
-      std::log(1.0);
-      return 0;
-    }
-  " HAVE_LOG)
-  check_cxx_source_compiles("
-    #include <cmath>
-    int main() {
-      std::exp(1.0);
-      return 0;
-    }
-  " HAVE_EXP)
+  PUBLIC
+    OpAdd
+    OpMul
+    OpSub
+)
 
-  # add compile definitions
-  if(HAVE_LOG AND HAVE_EXP)
-    target_compile_definitions(SqrtLibrary
-                               PRIVATE "HAVE_LOG" "HAVE_EXP"
-                               )
-  endif()
+target_compile_features(MathFunctions PRIVATE cxx_std_20)
 
-  target_link_libraries(MathFunctions PRIVATE SqrtLibrary)
+if(TUTORIAL_USE_STD_SQRT)
+  target_compile_definitions(MathFunctions PRIVATE TUTORIAL_USE_STD_SQRT)
 endif()
 
-# state that anybody linking to us needs to include the current source dir
-# to find MathFunctions.h, while we don't.
-target_include_directories(MathFunctions
-                           INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
-                           )
+include(CheckIncludeFiles)
+check_include_files(emmintrin.h HAS_EMMINTRIN LANGUAGE CXX)
 
-# link MathFunctions to tutorial_compiler_flags
-target_link_libraries(MathFunctions PUBLIC tutorial_compiler_flags)
-
-# install libs
-set(installable_libs MathFunctions tutorial_compiler_flags)
-if(TARGET SqrtLibrary)
-  list(APPEND installable_libs SqrtLibrary)
+if(HAS_EMMINTRIN)
+  target_compile_definitions(MathFunctions PRIVATE TUTORIAL_USE_SSE2)
 endif()
-install(TARGETS ${installable_libs} DESTINATION lib)
-# install include headers
-install(FILES MathFunctions.h DESTINATION include)
+
+include(CheckSourceCompiles)
+check_source_compiles(CXX
+  [=[
+    typedef double v2df __attribute__((vector_size(16)));
+    int main() {
+      __builtin_ia32_sqrtsd(v2df{});
+    }
+  ]=]
+  HAS_GNU_BUILTIN
+)
+
+if(HAS_GNU_BUILTIN)
+  target_compile_definitions(MathFunctions PRIVATE TUTORIAL_USE_GNU_BUILTIN)
+endif()
+
+add_subdirectory(MathLogger)
+add_subdirectory(MathExtensions)
+add_subdirectory(MakeTable)

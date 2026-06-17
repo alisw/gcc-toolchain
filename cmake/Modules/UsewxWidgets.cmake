@@ -1,42 +1,72 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 UsewxWidgets
 ------------
 
-Convenience include for using wxWidgets library.
+This module serves as a convenience wrapper for using the wxWidgets
+library (formerly known as wxWindows) and propagates its usage requirements,
+such as library directories, include directories, and compiler flags, into
+the current directory scope for use by targets.
 
-Determines if wxWidgets was FOUND and sets the appropriate libs,
-incdirs, flags, etc.  INCLUDE_DIRECTORIES and LINK_DIRECTORIES are
-called.
+Load this module in a CMake project with:
 
-USAGE
+.. code-block:: cmake
 
-::
+  include(UsewxWidgets)
 
-  # Note that for MinGW users the order of libs is important!
-  find_package(wxWidgets REQUIRED net gl core base)
-  include(${wxWidgets_USE_FILE})
-  # and for each of your dependent executable/library targets:
-  target_link_libraries(<YourTarget> ${wxWidgets_LIBRARIES})
+This module calls :command:`include_directories` and
+:command:`link_directories`, sets compile definitions for the current
+directory and appends some compile flags to use wxWidgets library after
+calling the :module:`find_package(wxWidgets) <FindwxWidgets>`.
 
+Examples
+^^^^^^^^
 
+Include this module in a project after finding wxWidgets to configure its
+usage requirements:
 
-DEPRECATED
+.. code-block:: cmake
+  :caption: ``CMakeLists.txt``
 
-::
+  # Note that for MinGW users the order of libraries is important.
+  find_package(wxWidgets COMPONENTS net gl core base)
 
-  LINK_LIBRARIES is not called in favor of adding dependencies per target.
+  add_library(example example.cxx)
 
+  if(wxWidgets_FOUND)
+    include(UsewxWidgets)
 
+    # Link wxWidgets libraries for each dependent executable/library target.
+    target_link_libraries(example PRIVATE ${wxWidgets_LIBRARIES})
+  endif()
 
-AUTHOR
+As of CMake 3.27, a better approach is to link only the
+:module:`wxWidgets::wxWidgets <FindwxWidgets>` imported target to specific
+targets that require it, rather than including this module.  Imported
+targets provide better control of the package usage properties, such as
+include directories and compile flags, by applying them only to the targets
+they are linked to, avoiding unnecessary propagation to all targets in the
+current directory.
 
-::
+.. code-block:: cmake
+  :caption: ``CMakeLists.txt``
 
-  Jan Woetzel <jw -at- mip.informatik.uni-kiel.de>
+  find_package(wxWidgets COMPONENTS net gl core base)
+
+  add_library(example example.cxx)
+
+  # Link the imported target for each dependent executable/library target.
+  target_link_libraries(example PRIVATE wxWidgets::wxWidgets)
+
+See Also
+^^^^^^^^
+
+* The :module:`FindwxWidgets` module to find wxWidgets.
 #]=======================================================================]
+
+# Author: Jan Woetzel <jw -at- mip.informatik.uni-kiel.de>
 
 if   (wxWidgets_FOUND)
   if   (wxWidgets_INCLUDE_DIRS)

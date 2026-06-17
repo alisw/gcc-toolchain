@@ -1,37 +1,101 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindGnuTLS
 ----------
 
-Find the GNU Transport Layer Security library (gnutls)
+Finds the GNU Transport Layer Security library (GnuTLS):
 
-IMPORTED Targets
+.. code-block:: cmake
+
+  find_package(GnuTLS [<version>] [...])
+
+The GnuTLS package includes the main libraries (libgnutls and libdane), as
+well as the optional gnutls-openssl compatibility extra library.  They are
+all distributed as part of the same release.  This module checks for the
+presence of the main libgnutls library and provides usage requirements for
+integrating GnuTLS into CMake projects.
+
+Imported Targets
 ^^^^^^^^^^^^^^^^
 
-.. versionadded:: 3.16
+This module provides the following :ref:`Imported Targets`:
 
-This module defines :prop_tgt:`IMPORTED` target ``GnuTLS::GnuTLS``, if
-gnutls has been found.
+``GnuTLS::GnuTLS``
+  .. versionadded:: 3.16
+
+  Target encapsulating the GnuTLS usage requirements, available if GnuTLS is
+  found.
 
 Result Variables
 ^^^^^^^^^^^^^^^^
 
-``GNUTLS_FOUND``
-  System has gnutls
-``GNUTLS_INCLUDE_DIR``
-  The gnutls include directory
+This module defines the following variables:
+
+``GnuTLS_FOUND``
+  .. versionadded:: 3.3
+
+  Boolean indicating whether (the requested version of) GnuTLS was found.
+
+``GnuTLS_VERSION``
+  .. versionadded:: 4.2
+
+  The version of GnuTLS found.
+
+``GNUTLS_INCLUDE_DIRS``
+  Include directories needed to use GnuTLS.
+
 ``GNUTLS_LIBRARIES``
-  The libraries needed to use gnutls
+  Libraries needed to link against to use GnuTLS.
+
 ``GNUTLS_DEFINITIONS``
-  Compiler switches required for using gnutls
+  Compiler options required for using GnuTLS.
+
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may also be set:
+
+``GNUTLS_INCLUDE_DIR``
+  The directory containing the ``gnutls/gnutls.h`` header file.
+
+``GNUTLS_LIBRARY``
+  The path to the GnuTLS library.
+
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
+
+The following variables are provided for backward compatibility:
+
+``GNUTLS_FOUND``
+  .. deprecated:: 4.2
+    Use ``GnuTLS_FOUND``, which has the same value.
+
+  Boolean indicating whether (the requested version of) GnuTLS was found.
+
+``GNUTLS_VERSION_STRING``
+  .. deprecated:: 3.16
+    Use the ``GnuTLS_VERSION``, which has the same value.
+
 ``GNUTLS_VERSION``
-  version of gnutls.
+  .. versionadded:: 3.16
+  .. deprecated:: 4.2
+    Use the ``GnuTLS_VERSION``, which has the same value.
+
+Examples
+^^^^^^^^
+
+Finding GnuTLS and linking it to a project target:
+
+.. code-block:: cmake
+
+  find_package(GnuTLS)
+  target_link_libraries(project_target PRIVATE GnuTLS::GnuTLS)
 #]=======================================================================]
 
-# Note that this doesn't try to find the gnutls-extra package.
-
+cmake_policy(PUSH)
+cmake_policy(SET CMP0159 NEW) # file(STRINGS) with REGEX updates CMAKE_MATCH_<n>
 
 if (GNUTLS_INCLUDE_DIR AND GNUTLS_LIBRARY)
   # in cache already
@@ -43,11 +107,10 @@ if (NOT WIN32)
   # in the find_path() and find_library() calls
   # also fills in GNUTLS_DEFINITIONS, although that isn't normally useful
   find_package(PkgConfig QUIET)
-  PKG_CHECK_MODULES(PC_GNUTLS QUIET gnutls)
+  if(PkgConfig_FOUND)
+    pkg_check_modules(PC_GNUTLS QUIET gnutls)
+  endif()
   set(GNUTLS_DEFINITIONS ${PC_GNUTLS_CFLAGS_OTHER})
-  set(GNUTLS_VERSION ${PC_GNUTLS_VERSION})
-  # keep for backward compatibility
-  set(GNUTLS_VERSION_STRING ${PC_GNUTLS_VERSION})
 endif ()
 
 find_path(GNUTLS_INCLUDE_DIR gnutls/gnutls.h
@@ -64,12 +127,45 @@ find_library(GNUTLS_LIBRARY NAMES gnutls libgnutls
 
 mark_as_advanced(GNUTLS_INCLUDE_DIR GNUTLS_LIBRARY)
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(GnuTLS
-                                  REQUIRED_VARS GNUTLS_LIBRARY GNUTLS_INCLUDE_DIR
-                                  VERSION_VAR GNUTLS_VERSION_STRING)
+if(GNUTLS_INCLUDE_DIR AND EXISTS "${GNUTLS_INCLUDE_DIR}/gnutls/gnutls.h")
+  file(
+    STRINGS
+    "${GNUTLS_INCLUDE_DIR}/gnutls/gnutls.h"
+    gnutls_version
+    # GnuTLS versions prior to 2.7.2 defined LIBGNUTLS_VERSION instead of the
+    # current GNUTLS_VERSION.
+    REGEX "^#define[\t ]+(LIB)?GNUTLS_VERSION[\t ]+\".*\""
+  )
 
-if(GNUTLS_FOUND)
+  string(
+    REGEX REPLACE
+    "^.*GNUTLS_VERSION[\t ]+\"([^\"]*)\".*$"
+    "\\1"
+    GnuTLS_VERSION
+    "${gnutls_version}"
+  )
+  unset(gnutls_version)
+
+  # Fallback to version defined by pkg-config if not successful.
+  if(
+    NOT GnuTLS_VERSION
+    AND PC_GNUTLS_VERSION
+    AND GNUTLS_INCLUDE_DIR IN_LIST PC_GNUTLS_INCLUDE_DIRS
+  )
+    set(GnuTLS_VERSION "${PC_GNUTLS_VERSION}")
+  endif()
+
+  # For backward compatibility.
+  set(GNUTLS_VERSION "${GnuTLS_VERSION}")
+  set(GNUTLS_VERSION_STRING "${GnuTLS_VERSION}")
+endif()
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(GnuTLS
+                                  REQUIRED_VARS GNUTLS_LIBRARY GNUTLS_INCLUDE_DIR
+                                  VERSION_VAR GnuTLS_VERSION)
+
+if(GnuTLS_FOUND)
   set(GNUTLS_LIBRARIES    ${GNUTLS_LIBRARY})
   set(GNUTLS_INCLUDE_DIRS ${GNUTLS_INCLUDE_DIR})
 
@@ -82,3 +178,5 @@ if(GNUTLS_FOUND)
       IMPORTED_LOCATION "${GNUTLS_LIBRARIES}")
   endif()
 endif()
+
+cmake_policy(POP)

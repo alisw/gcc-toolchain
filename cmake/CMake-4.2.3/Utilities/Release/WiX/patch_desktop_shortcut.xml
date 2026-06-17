@@ -1,3 +1,0 @@
-<CPackWiXPatch>
-  <CPackWiXFragment Id="CM_SHORTCUT_DESKTOP" Condition="DESKTOP_SHORTCUT_REQUESTED" />
-</CPackWiXPatch>

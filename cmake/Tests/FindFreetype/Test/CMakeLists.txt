@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.10)
 project(TestFindFreetype C)
 include(CTest)
 
 find_package(Freetype REQUIRED)
 
-add_definitions(-DCMAKE_EXPECTED_FREETYPE_VERSION="${FREETYPE_VERSION_STRING}")
+add_definitions(-DCMAKE_EXPECTED_FREETYPE_VERSION="${Freetype_VERSION}")
 
 add_executable(testfreetype_tgt main.c)
 target_link_libraries(testfreetype_tgt Freetype::Freetype)

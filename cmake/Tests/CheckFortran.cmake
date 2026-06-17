@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 
 if(NOT DEFINED CMAKE_Fortran_COMPILER)
@@ -7,7 +7,7 @@ if(NOT DEFINED CMAKE_Fortran_COMPILER)
   message(STATUS ${_desc})
   file(REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/CheckFortran)
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/CheckFortran/CMakeLists.txt"
-    "cmake_minimum_required(VERSION 3.5)
+    "cmake_minimum_required(VERSION 3.10)
 project(CheckFortran Fortran)
 file(WRITE \"\${CMAKE_CURRENT_BINARY_DIR}/result.cmake\"
   \"set(CMAKE_Fortran_COMPILER \\\"\${CMAKE_Fortran_COMPILER}\\\")\\n\"

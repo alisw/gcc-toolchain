@@ -1,7 +1,7 @@
 /* copy_parameter.c -- Copy of an input parameter into a parameter reused for
    output.
 
-Copyright (C) 2012, 2013, 2014 INRIA
+Copyright (C) 2012, 2013, 2014, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -57,7 +57,7 @@ copy_parameter (mpc_fun_param_t *params, int index_dest, int index_src)
 
     case NATIVE_DC:
     case NATIVE_LDC:
-#ifdef _Complex_I
+#ifdef _MPC_HAVE_COMPLEX_H
       /* TODO */
       fprintf (stderr, "copy_parameter: type not implemented.\n");
       exit (1);

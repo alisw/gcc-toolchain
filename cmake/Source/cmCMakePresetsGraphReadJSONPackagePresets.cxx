@@ -1,6 +1,7 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include <cstddef>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -15,7 +16,7 @@
 #include "cmCMakePresetsGraph.h"
 #include "cmCMakePresetsGraphInternal.h"
 #include "cmJSONHelpers.h"
-class cmJSONState;
+#include "cmJSONState.h"
 
 namespace {
 using PackagePreset = cmCMakePresetsGraph::PackagePreset;
@@ -81,7 +82,7 @@ auto const PackagePresetHelper =
 
 namespace cmCMakePresetsGraphInternal {
 bool PackagePresetsHelper(std::vector<cmCMakePresetsGraph::PackagePreset>& out,
-                          const Json::Value* value, cmJSONState* state)
+                          Json::Value const* value, cmJSONState* state)
 {
   static auto const helper = cmJSONHelperBuilder::Vector<PackagePreset>(
     cmCMakePresetsErrors::INVALID_PRESETS, PackagePresetHelper);

@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(TestFindBZip2 C)
 include(CTest)
 
 find_package(BZip2 REQUIRED)
 
-add_definitions(-DCMAKE_EXPECTED_BZip2_VERSION="${BZip2_VERSION_STRING}")
+add_definitions(-DCMAKE_EXPECTED_BZip2_VERSION="${BZip2_VERSION}")
 
 add_executable(test_tgt main.c)
 target_link_libraries(test_tgt BZip2::BZip2)

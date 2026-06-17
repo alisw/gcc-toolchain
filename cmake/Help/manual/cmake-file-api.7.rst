@@ -41,14 +41,26 @@ It has the following subdirectories:
   `v1 Client Stateless Query Files`_, or `v1 Client Stateful Query Files`_.
 
 ``reply/``
-  Holds reply files written by CMake whenever it runs to generate a build
-  system.  These are indexed by a `v1 Reply Index File`_ file that may
-  reference additional `v1 Reply Files`_.  CMake owns all reply files.
-  Clients must never remove them.
+  Holds reply files written by CMake when it runs to generate a build system.
+  Clients may read reply files only when referenced by a reply index:
 
-  Clients may look for and read a reply index file at any time.
+  ``index-*.json``
+    A `v1 Reply Index File`_ written when CMake generates a build system.
+
+  ``error-*.json``
+    .. versionadded:: 4.1
+
+    A `v1 Reply Error Index`_ written when CMake fails to generate a build
+    system due to an error.
+
+  Clients may look for and read a reply index at any time.
   Clients may optionally create the ``reply/`` directory at any time
-  and monitor it for the appearance of a new reply index file.
+  and monitor it for the appearance of a new reply index.
+  CMake owns all reply files.  Clients must never remove them.
+
+.. versionadded:: 3.31
+  Users can add query files to ``api/v1/query`` inside the
+  :envvar:`CMAKE_CONFIG_DIR` to create user-wide queries for all CMake projects.
 
 v1 Shared Stateless Query Files
 -------------------------------
@@ -113,6 +125,10 @@ query it writes to build trees to request newer object versions.
 This can be used to avoid asking CMake to generate multiple object
 versions unnecessarily.
 
+.. versionadded:: 4.1
+  The ``query.json`` file is described in machine-readable form by
+  :download:`this JSON schema </manual/file_api/schema_stateful_query.json>`.
+
 A ``query.json`` file must contain a JSON object:
 
 .. code-block:: json
@@ -175,7 +191,7 @@ v1 Reply Index File
 -------------------
 
 CMake writes an ``index-*.json`` file to the ``v1/reply/`` directory
-whenever it runs to generate a build system.  Clients must read the
+when it successfully generates a build system.  Clients must read the
 reply index file first and may read other `v1 Reply Files`_ only by
 following references.  The form of the reply index file name is::
 
@@ -187,6 +203,10 @@ is given a new name and any old one is deleted.  During the short
 time between these steps there may be multiple index files present;
 the one with the largest name in lexicographic order is the current
 index file.
+
+.. versionadded:: 4.1
+  The reply index file is described in machine-readable form by
+  :download:`this JSON schema </manual/file_api/schema_index.json>`.
 
 The reply index file contains a JSON object:
 
@@ -296,8 +316,12 @@ The members are:
     A member of this form appears for each of the
     `v1 Shared Stateless Query Files`_ that CMake recognized as a
     request for object kind ``<kind>`` with major version ``<major>``.
-    The value is a `v1 Reply File Reference`_ to the corresponding
-    reply file for that object kind and version.
+    The value is
+
+    * a `v1 Reply File Reference`_ to the corresponding reply file for
+      that object kind and version, or
+    * in a `v1 Reply Error Index`_, a JSON object with a single ``error``
+      member containing a string with an error message.
 
   ``<unknown>``
     A member of this form appears for each of the
@@ -316,8 +340,12 @@ The members are:
       A member of this form appears for each of the
       `v1 Client Stateless Query Files`_ that CMake recognized as a
       request for object kind ``<kind>`` with major version ``<major>``.
-      The value is a `v1 Reply File Reference`_ to the corresponding
-      reply file for that object kind and version.
+      The value is
+
+      * a `v1 Reply File Reference`_ to the corresponding reply file for
+        that object kind and version, or
+      * in a `v1 Reply Error Index`_, a JSON object with a single ``error``
+        member containing a string with an error message.
 
     ``<unknown>``
       A member of this form appears for each of the
@@ -348,10 +376,10 @@ The members are:
         contains a JSON array with a response for each entry of the
         ``requests`` array, in the same order.  Each response is
 
-        * a JSON object with a single ``error`` member containing a string
-          with an error message, or
         * a `v1 Reply File Reference`_ to the corresponding reply file for
-          the requested object kind and selected version.
+          the requested object kind and selected version, or
+        * a JSON object with a single ``error`` member containing a string
+          with an error message.
 
 After reading the reply index file, clients may read the other
 `v1 Reply Files`_ it references.
@@ -370,6 +398,35 @@ using a JSON object with members:
 ``jsonFile``
   A JSON string specifying a path relative to the reply index file
   to another JSON file containing the object.
+
+.. _`file-api reply error index`:
+
+v1 Reply Error Index
+^^^^^^^^^^^^^^^^^^^^
+
+.. versionadded:: 4.1
+
+CMake writes an ``error-*.json`` file to the ``v1/reply/`` directory
+when it fails to generate a build system.  This reply error index
+follows the same naming pattern, syntax, and semantics of a
+`v1 Reply Index File`_, with the following exceptions:
+
+* The ``index-`` prefix is replaced by an ``error-`` prefix.
+
+* When a new error index is generated, old index files are *not*
+  deleted.  If a `v1 Reply Index File`_ exists, it indexes replies
+  from the most recent successful run.  If multiple ``index-*.json``
+  and/or ``error-*.json`` files are present, the one with the largest
+  name in lexicographic order, excluding the ``index-`` or ``error-``
+  prefix, is the current index.
+
+* Only a subset of `Object Kinds`_ are provided:
+
+  `configureLog <file-api configureLog_>`_
+    .. versionadded:: 4.1
+
+  Index entries for other object kinds contain an ``error`` message
+  instead of a `v1 Reply File Reference`_.
 
 v1 Reply Files
 --------------
@@ -422,6 +479,10 @@ There is only one ``codemodel`` object major version, version 2.
 Version 1 does not exist to avoid confusion with that from
 :manual:`cmake-server(7)` mode.
 
+.. versionadded:: 4.1
+  The ``codemodel`` object kind reply is described in machine-readable form
+  by :download:`this JSON schema </manual/file_api/schema_codemodel.json>`.
+
 "codemodel" version 2
 ^^^^^^^^^^^^^^^^^^^^^
 
@@ -431,7 +492,7 @@ Version 1 does not exist to avoid confusion with that from
 
   {
     "kind": "codemodel",
-    "version": { "major": 2, "minor": 7 },
+    "version": { "major": 2, "minor": 8 },
     "paths": {
       "source": "/path/to/top-level-source-dir",
       "build": "/path/to/top-level-build-dir"
@@ -446,6 +507,7 @@ Version 1 does not exist to avoid confusion with that from
             "childIndexes": [ 1 ],
             "projectIndex": 0,
             "targetIndexes": [ 0 ],
+            "abstractTargetIndexes": [ 1 ],
             "hasInstallRule": true,
             "minimumCMakeVersion": {
               "string": "3.14"
@@ -458,6 +520,7 @@ Version 1 does not exist to avoid confusion with that from
             "parentIndex": 0,
             "projectIndex": 0,
             "targetIndexes": [ 1 ],
+            "abstractTargetIndexes": [ 0 ],
             "minimumCMakeVersion": {
               "string": "3.14"
             },
@@ -468,7 +531,8 @@ Version 1 does not exist to avoid confusion with that from
           {
             "name": "MyProject",
             "directoryIndexes": [ 0, 1 ],
-            "targetIndexes": [ 0, 1 ]
+            "targetIndexes": [ 0, 1 ],
+            "abstractTargetIndexes": [ 0, 1 ],
           }
         ],
         "targets": [
@@ -481,6 +545,20 @@ Version 1 does not exist to avoid confusion with that from
           {
             "name": "MyLibrary",
             "directoryIndex": 1,
+            "projectIndex": 0,
+            "jsonFile": "<file>"
+          }
+        ]
+        "abstractTargets": [
+          {
+            "name": "MyImportedExecutable",
+            "directoryIndex": 1,
+            "projectIndex": 0,
+            "jsonFile": "<file>"
+          },
+          {
+            "name": "MyPureInterfaceLibrary",
+            "directoryIndex": 0,
             "projectIndex": 0,
             "jsonFile": "<file>"
           }
@@ -551,10 +629,20 @@ The members specific to ``codemodel`` objects are:
       indicating the build system project to which the this directory belongs.
 
     ``targetIndexes``
-      Optional member that is present when the directory itself has targets,
-      excluding those belonging to subdirectories.  The value is a JSON
-      array of entries corresponding to the targets.  Each entry is an
-      unsigned integer 0-based index into the main ``targets`` array.
+      Optional member that is present when the directory itself has
+      build system targets, excluding those belonging to subdirectories.
+      The value is a JSON array of entries corresponding to the build system
+      targets.  Each entry is an unsigned integer 0-based index into the main
+      ``targets`` array.
+
+    ``abstractTargetIndexes``
+      Optional member that is present when the directory itself has abstract
+      targets, excluding those belonging to subdirectories.
+      The value is a JSON array of entries corresponding to the abstract
+      targets.  Each entry is an unsigned integer 0-based index into the main
+      ``abstractTargets`` array.
+
+      This field was added in codemodel version 2.9.
 
     ``minimumCMakeVersion``
       Optional member present when a minimum required version of CMake is
@@ -616,17 +704,27 @@ The members specific to ``codemodel`` objects are:
       integer 0-based index into the main ``directories`` array.
 
     ``targetIndexes``
-      Optional member that is present when the project itself has targets,
-      excluding those belonging to sub-projects.  The value is a JSON
-      array of entries corresponding to the targets.  Each entry is an
-      unsigned integer 0-based index into the main ``targets`` array.
+      Optional member that is present when the project itself has
+      build system targets, excluding those belonging to sub-projects.
+      The value is a JSON array of entries corresponding to the build system
+      targets.  Each entry is an unsigned integer 0-based index into the main
+      ``targets`` array.
+
+    ``abstractTargetIndexes``
+      Optional member that is present when the project itself has
+      abstract targets, excluding those belonging to sub-projects.
+      The value is a JSON array of entries corresponding to the abstract
+      targets.  Each entry is an unsigned integer 0-based index into the main
+      ``abstractTargets`` array.
+
+      This field was added in codemodel version 2.9.
 
   ``targets``
     A JSON array of entries corresponding to the build system targets.
     Such targets are created by calls to :command:`add_executable`,
     :command:`add_library`, and :command:`add_custom_target`, excluding
-    imported targets and interface libraries (which do not generate any
-    build rules).  Each entry is a JSON object containing members:
+    imported targets and interface libraries that do not generate any
+    build rules.  Each entry is a JSON object containing members:
 
     ``name``
       A string specifying the target name.
@@ -648,12 +746,62 @@ The members specific to ``codemodel`` objects are:
       to another JSON file containing a
       `"codemodel" version 2 "target" object`_.
 
+  ``abstractTargets``
+    A JSON array of entries corresponding to targets that are not present
+    in the build system.  These are imported targets or interface libraries
+    created by calls to :command:`add_executable` or :command:`add_library`.
+    In the case of interface libraries, only those that are not part of the
+    build system are included in this array.  Interface libraries that do
+    participate in the build system will be included in the ``targets``
+    array instead.
+
+    Each entry is a JSON object containing members:
+
+    ``name``
+      A string specifying the target name.
+
+    ``id``
+      A string uniquely identifying the target.  This matches the ``id``
+      field in the file referenced by ``jsonFile``.
+
+    ``directoryIndex``
+      An unsigned integer 0-based index into the main ``directories`` array
+      indicating the build system directory in which the target is defined.
+
+    ``projectIndex``
+      An unsigned integer 0-based index into the main ``projects`` array
+      indicating the build system project in which the target is defined.
+
+    ``jsonFile``
+      A JSON string specifying a path relative to the codemodel file
+      to another JSON file containing a
+      `"codemodel" version 2 "target" object`_.
+
+    This field was added in codemodel version 2.9.
+
 "codemodel" version 2 "directory" object
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. versionadded:: 4.1
+  The ``directory`` object reply is described in machine-readable form by
+  :download:`this JSON schema </manual/file_api/schema_directory.json>`.
 
 A codemodel "directory" object is referenced by a `"codemodel" version 2`_
 object's ``directories`` array.  Each "directory" object is a JSON object
 with members:
+
+``codemodelVersion``
+  This specifies the codemodel version this file is part of.  It will match
+  the ``version`` field of the codemodel object kind that references this file.
+  It is a JSON object with the following members:
+
+  ``major``
+    The codemodel major version.
+
+  ``minor``
+    The codemodel minor version.
+
+  This field was added in codemodel version 2.9.
 
 ``paths``
   A JSON object containing members:
@@ -773,6 +921,13 @@ with members:
 
       This type was added in codemodel version 2.4.
 
+    ``cxxModuleBmi``
+      An :command:`install(TARGETS)` call with ``CXX_MODULES_BMI``.
+      The ``destination`` member is populated and the ``isOptional`` member
+      may exist.  This type has an additional ``cxxModuleBmiTarget`` member.
+
+      This type was added in codemodel version 2.5.
+
   ``isExcludeFromAll``
     Optional member that is present with boolean value ``true`` when
     :command:`install` is called with the ``EXCLUDE_FROM_ALL`` option.
@@ -885,6 +1040,21 @@ with members:
 
     This field was added in codemodel version 2.4.
 
+  ``cxxModuleBmiTarget``
+    Optional member that is present when ``type`` is ``cxxModuleBmi``.
+    The value is a JSON object with members:
+
+    ``id``
+      A string uniquely identifying the target.  This matches
+      the ``id`` member of the target in the main "codemodel"
+      object's ``targets`` array.
+
+    ``index``
+      An unsigned integer 0-based index into the main "codemodel"
+      object's ``targets`` array for the target.
+
+    This field was added in codemodel version 2.5.
+
   ``scriptFile``
     Optional member that is present when ``type`` is ``script``.
     The value is a string specifying the path to the script file on disk,
@@ -905,9 +1075,26 @@ with members:
 "codemodel" version 2 "target" object
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. versionadded:: 4.1
+  The ``target`` object reply is described in machine-readable form by
+  :download:`this JSON schema </manual/file_api/schema_target.json>`.
+
 A codemodel "target" object is referenced by a `"codemodel" version 2`_
 object's ``targets`` array.  Each "target" object is a JSON object
 with members:
+
+``codemodelVersion``
+  This specifies the codemodel version this file is part of.  It will match
+  the ``version`` field of the codemodel object kind that references this file.
+  It is a JSON object with the following members:
+
+  ``major``
+    The codemodel major version.
+
+  ``minor``
+    The codemodel minor version.
+
+  This field was added in codemodel version 2.9.
 
 ``name``
   A string specifying the logical name of the target.
@@ -921,6 +1108,40 @@ with members:
   ``EXECUTABLE``, ``STATIC_LIBRARY``, ``SHARED_LIBRARY``,
   ``MODULE_LIBRARY``, ``OBJECT_LIBRARY``, ``INTERFACE_LIBRARY``,
   or ``UTILITY``.
+
+``imported``
+  Optional member that is present with boolean value ``true`` if the
+  target is an imported target.
+
+  This field was added in codemodel version 2.9.
+
+``local``
+  Optional member that is present with boolean value ``true`` if the
+  target is only defined with local scope rather than being a global target.
+  Currently, only imported targets will potentially have this field.
+
+  This field was added in codemodel version 2.9.
+
+``abstract``
+  Optional member that is present with boolean value ``true`` if the
+  target is an abstract target.  Abstract targets are not part of the build
+  system, they only exist to describe dependencies or to provide usage
+  requirements to targets that link to them.  Examples include imported targets
+  and interface libraries that have no generated sources.  Abstract targets
+  cannot be built, so they should not be presented to the user as a buildable
+  target.
+
+  This field was added in codemodel version 2.9.  Abstract targets were not
+  included in codemodel version 2.8 and earlier.
+
+``symbolic``
+  Optional member that is present with boolean value ``true`` if the target
+  is :prop_tgt:`SYMBOLIC`.  Symbolic targets are created by calls to
+  :command:`add_library(INTERFACE SYMBOLIC) <add_library(INTERFACE-SYMBOLIC)>`,
+  and are also abstract targets that are not part of the build system.
+
+  This field was added in codemodel version 2.9.  Symbolic targets were not
+  included in codemodel version 2.8 and earlier.
 
 ``backtrace``
   Optional member that is present when a CMake language backtrace to
@@ -1029,8 +1250,8 @@ with members:
   This field was added in codemodel version 2.7.
 
 ``link``
-  Optional member that is present for executables and shared library
-  targets that link into a runtime binary.  The value is a JSON object
+  Optional member that is present for non-imported executables and shared
+  library targets that link into a runtime binary.  The value is a JSON object
   with members describing the link step:
 
   ``language``
@@ -1054,6 +1275,13 @@ with members:
       * ``libraryPath``: library search path flags.
       * ``frameworkPath``: macOS framework search path flags.
 
+    ``backtrace``
+      Optional member that is present when a CMake language backtrace to
+      the :command:`target_link_libraries`, :command:`target_link_options`,
+      or other command invocation that added this link fragment is available.
+      The value is an unsigned integer 0-based index into the ``backtraceGraph``
+      member's ``nodes`` array.
+
   ``lto``
     Optional member that is present with boolean value ``true``
     when link-time optimization (a.k.a. interprocedural optimization
@@ -1069,8 +1297,8 @@ with members:
       with forward slashes.
 
 ``archive``
-  Optional member that is present for static library targets.  The value
-  is a JSON object with members describing the archive step:
+  Optional member that is present for non-imported static library targets.
+  The value is a JSON object with members describing the archive step:
 
   ``commandFragments``
     Optional member that is present when fragments of the archiver command
@@ -1091,9 +1319,37 @@ with members:
     when link-time optimization (a.k.a. interprocedural optimization
     or link-time code generation) is enabled.
 
+``debugger``
+  Optional member that is present when the target has one of the
+  following fields set.
+  The value is a JSON object of entries corresponding to
+  debugger specific values set.
+
+  This field was added in codemodel version 2.8.
+
+  ``workingDirectory``
+    Optional member that is present when the
+    :prop_tgt:`DEBUGGER_WORKING_DIRECTORY` target property is set.
+    The member will also be present in :ref:`Visual Studio Generators`
+    when :prop_tgt:`VS_DEBUGGER_WORKING_DIRECTORY` is set.
+
+    This field was added in codemodel version 2.8.
+
 ``dependencies``
   Optional member that is present when the target depends on other targets.
-  The value is a JSON array of entries corresponding to the dependencies.
+  It is only present if the target is part of the build system.
+  Imported targets are not part of the build system.  Interface libraries
+  are only part of the build system if they have sources or file sets.
+
+  The value is a JSON array of entries corresponding to the build dependencies.
+  The array includes not just direct dependencies, but also transitive
+  dependencies.  All listed targets will build before this one.
+
+  The list of dependencies reflects the *build graph* dependencies, not
+  necessarily the link dependencies.  If there are cycles in the link
+  dependencies of static libraries, not all link dependencies will be
+  reflected in this list of build graph dependencies.
+
   Each entry is a JSON object with members:
 
   ``id``
@@ -1107,9 +1363,220 @@ with members:
     available.  The value is an unsigned integer 0-based index into
     the ``backtraceGraph`` member's ``nodes`` array.
 
+``linkLibraries``
+  Optional member that may be present when the target links directly to one or
+  more other targets or libraries.  It contains items that are used when
+  linking this target.  These come from the target's
+  :prop_tgt:`LINK_LIBRARIES` property (evaluated non-transitively), or the
+  :prop_tgt:`INTERFACE_LINK_LIBRARIES_DIRECT` property of another target it
+  links to directly or transitively.
+
+  Items that are only applied as usage requirements (such as being wrapped in a
+  :genex:`$<COMPILE_ONLY:...>` expression) will not be present in this member.
+
+  The value is a JSON array of entries.  Each entry is a JSON object with
+  members:
+
+  ``id``
+    Optional member that is present when the library to be linked is a target.
+    It uniquely identifies the target on which this one has a direct link
+    relationship.  This matches the main ``id`` member of that other target.
+
+    The target this ``id`` identifies is not necessarily part of the build
+    system.  It may be an imported target or an interface library with no
+    sources or file sets.
+
+    Exactly one of ``id`` or ``fragment`` will always be present.
+
+  ``fragment``
+    Optional member that is present when the library to be linked is not a
+    target.  It is a string containing the raw linker command line arguments
+    that capture the relationship.  These will typically be linking to
+    libraries or frameworks by name rather than as a target.
+
+    Exactly one of ``id`` or ``fragment`` will always be present.
+
+  ``backtrace``
+    Optional member that is present when a CMake language backtrace to
+    the command invocation that created this relationship is available.
+    The value is an unsigned integer 0-based index into the
+    ``backtraceGraph`` member's ``nodes`` array.
+
+  ``fromDependency``
+    Optional member that is only present when the relationship is the result of
+    an :prop_tgt:`INTERFACE_LINK_LIBRARIES_DIRECT` target property on one of
+    this target's directly or transitively linked libraries.  It is a JSON
+    object with one member:
+
+    ``id``
+      A string uniquely identifying the target whose
+      :prop_tgt:`INTERFACE_LINK_LIBRARIES_DIRECT` property created the
+      relationship.  The value matches the main ``id`` member of that target.
+
+  This field was added in codemodel version 2.9.
+
+``interfaceLinkLibraries``
+  Optional member that may be present when the target has one or more interface
+  link libraries.  It contains items that are used when linking consumers of
+  this target.  These come from the target's
+  :prop_tgt:`INTERFACE_LINK_LIBRARIES` property.
+
+  Items that are only applied as usage requirements (such as being wrapped in a
+  :genex:`$<COMPILE_ONLY:...>` expression) will not be present in this member.
+
+  The value is a JSON array of entries.  Each entry is a JSON object with
+  members:
+
+  ``id``
+    Optional member that is present when the interface link library is for a
+    target.  It uniquely identifies that target, with the value matching the
+    main ``id`` member of that target.
+
+    The target this ``id`` identifies is not necessarily part of the build
+    system.  It may be an imported target or an interface library with no
+    sources or file sets.
+
+    Exactly one of ``id`` or ``fragment`` will always be present.
+
+  ``fragment``
+    Optional member that is present when the interface link library is not for
+    a target.  It is a string containing the raw linker command line arguments
+    to be applied to consumers of this target's interface link libraries.
+    These will typically be linker arguments for linking to libraries or
+    frameworks by name rather than as a target.
+
+    Exactly one of ``id`` or ``fragment`` will always be present.
+
+  ``backtrace``
+    Optional member that is present when a CMake language backtrace to the
+    command invocation that created this interface relationship is available.
+    The value is an unsigned integer 0-based index into the
+    ``backtraceGraph`` member's ``nodes`` array.
+
+  This field was added in codemodel version 2.9.
+
+``compileDependencies``
+  Optional member that may be present when the target links directly to one or
+  more other targets that may provide usage requirements to this one.  They
+  affect how this target's sources are compiled.  These relationships are
+  defined by the target's :prop_tgt:`LINK_LIBRARIES` property (evaluated
+  non-transitively) and the :prop_tgt:`INTERFACE_LINK_LIBRARIES_DIRECT`
+  property of other targets it links to directly or transitively.
+
+  Relationships that only apply linking requirements (such as being wrapped
+  in a :genex:`$<LINK_ONLY:...>` expression) will not be present in this
+  member.
+
+  The value is a JSON array of entries.  Each entry is a JSON object with
+  members:
+
+  ``id``
+    A string uniquely identifying the target on which this target directly
+    depends.  This matches the main ``id`` member of the other target.
+
+    The target this ``id`` identifies is not necessarily part of the build
+    system.  It may be an imported target or an interface library with no
+    sources or file sets.
+
+  ``backtrace``
+    Optional member that is present when a CMake language backtrace to
+    the command invocation that created this relationship is available.
+    The value is an unsigned integer 0-based index into the
+    ``backtraceGraph`` member's ``nodes`` array.
+
+  ``fromDependency``
+    Optional member that is only present when the relationship is the result of
+    an :prop_tgt:`INTERFACE_LINK_LIBRARIES_DIRECT` target property on one of
+    this target's directly or transitively linked libraries.  It is a JSON
+    object with one member:
+
+    ``id``
+      A string uniquely identifying the target whose
+      :prop_tgt:`INTERFACE_LINK_LIBRARIES_DIRECT` property created the
+      relationship.  The value matches the main ``id`` member of that target.
+
+  This field was added in codemodel version 2.9.
+
+``interfaceCompileDependencies``
+  Optional member that may be present when the target has one or more interface
+  linking relationships to other targets.  It contains items that affect how
+  consumers' sources are compiled.  These relationships are defined by the
+  target's :prop_tgt:`INTERFACE_LINK_LIBRARIES` property.
+
+  Relationships that only apply linking requirements (such as being wrapped
+  in a :genex:`$<LINK_ONLY:...>` expression) will not be present in this
+  member.
+
+  The value is a JSON array of entries.  Each entry is a JSON object with
+  members:
+
+  ``id``
+    A string uniquely identifying the target on which this target specifies
+    an interface relationship.  This matches the main ``id`` member of the
+    other target.
+
+    The target this ``id`` identifies is not necessarily part of the build
+    system.  It may be an imported target or an interface library with no
+    sources or file sets.
+
+  ``backtrace``
+    Optional member that is present when a CMake language backtrace to
+    the command invocation that created this relationship is available.
+    The value is an unsigned integer 0-based index into the
+    ``backtraceGraph`` member's ``nodes`` array.
+
+  This field was added in codemodel version 2.9.
+
+``objectDependencies``
+  Optional member that is present when the target has one or more entries in
+  its :prop_tgt:`SOURCES` property where the entry is specified using
+  :genex:`$<TARGET_OBJECTS:...>`, and where no other generator expression is
+  used within the :genex:`$<TARGET_OBJECTS:...>` expression.
+
+  The value is a JSON array of entries.  Each entry is a JSON object with
+  members:
+
+  ``id``
+    A string uniquely identifying the target whose objects are referred to in
+    the :genex:`$<TARGET_OBJECTS:...>` expression.  This matches the main
+    ``id`` member of that other target.
+
+  ``backtrace``
+    Optional member that is present when a CMake language backtrace to
+    the command invocation that created this dependency is available.
+    The value is an unsigned integer 0-based index into the
+    ``backtraceGraph`` member's ``nodes`` array.
+
+  This field was added in codemodel version 2.9.
+
+``orderDependencies``
+  Optional member that is present when the target has one or more direct order
+  dependencies on other targets.  Such dependencies may arise from calls to
+  :command:`add_dependencies` or from internal CMake processing.
+  Unlike the ``dependencies`` array, the ``ZERO_CHECK`` target will not be
+  included in ``orderDependencies`` (this is only relevant for
+  :generator:`Xcode` and :ref:`Visual Studio <Visual Studio Generators>`
+  generators).
+
+  The value is a JSON array of entries.  Each entry is a JSON object with
+  members:
+
+  ``id``
+    A string uniquely identifying the target on which this target depends.
+    This matches the main ``id`` member of the other target.
+
+  ``backtrace``
+    Optional member that is present when a CMake language backtrace to
+    the command invocation that created this dependency is available.
+    The value is an unsigned integer 0-based index into the
+    ``backtraceGraph`` member's ``nodes`` array.
+
+  This field was added in codemodel version 2.9.
+
 ``fileSets``
-  A JSON array of entries corresponding to the target's file sets. Each entry
-  is a JSON object with members:
+  An optional member that is present when a target defines one or more
+  file sets.  The value is a JSON array of entries corresponding to the
+  target's file sets.  Each entry is a JSON object with members:
 
   ``name``
     A string specifying the name of the file set.
@@ -1228,6 +1695,12 @@ with members:
     ``fragment``
       A string specifying a fragment of the compile command line invocation.
       The value is encoded in the build system's native shell format.
+
+    ``backtrace``
+      Optional member that is present when a CMake language backtrace to
+      the command invocation that added this fragment is available.
+      The value is an unsigned integer 0-based index into the
+      ``backtraceGraph`` member's ``nodes`` array.
 
   ``includes``
     Optional member that is present when there are include directories.
@@ -1363,10 +1836,16 @@ elsewhere in the containing object.  The backtrace graph object members are:
 Object Kind "configureLog"
 --------------------------
 
+.. versionadded:: 3.26
+
 The ``configureLog`` object kind describes the location and contents of
 a :manual:`cmake-configure-log(7)` file.
 
 There is only one ``configureLog`` object major version, version 1.
+
+.. versionadded:: 4.1
+  The ``configureLog`` object kind reply is described in machine-readable form
+  by :download:`this JSON schema </manual/file_api/schema_configureLog.json>`.
 
 "configureLog" version 1
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1407,6 +1886,10 @@ The ``cache`` object kind lists cache entries.  These are the
 There is only one ``cache`` object major version, version 2.
 Version 1 does not exist to avoid confusion with that from
 :manual:`cmake-server(7)` mode.
+
+.. versionadded:: 4.1
+  The ``cache`` object kind reply is described in machine-readable form by
+  :download:`this JSON schema </manual/file_api/schema_cache.json>`.
 
 "cache" version 2
 ^^^^^^^^^^^^^^^^^
@@ -1480,6 +1963,10 @@ configuring and generating the build system.  These include the
 
 There is only one ``cmakeFiles`` object major version, version 1.
 
+.. versionadded:: 4.1
+  The ``cmakeFiles`` object kind reply is described in machine-readable form
+  by :download:`this JSON schema </manual/file_api/schema_cmakeFiles.json>`.
+
 "cmakeFiles" version 1
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1489,7 +1976,7 @@ There is only one ``cmakeFiles`` object major version, version 1.
 
   {
     "kind": "cmakeFiles",
-    "version": { "major": 1, "minor": 0 },
+    "version": { "major": 1, "minor": 1 },
     "paths": {
       "build": "/path/to/top-level-build-dir",
       "source": "/path/to/top-level-source-dir"
@@ -1510,6 +1997,16 @@ There is only one ``cmakeFiles`` object major version, version 1.
         "isCMake": true,
         "isExternal": true,
         "path": "/path/to/cmake/Modules/CMakeGenericSystem.cmake"
+      }
+    ],
+    "globsDependent": [
+      {
+        "expression": "src/*.cxx",
+        "recurse": true,
+        "files": [
+          "src/foo.cxx",
+          "src/bar.cxx"
+        ]
       }
     ]
   }
@@ -1553,6 +2050,44 @@ The members specific to ``cmakeFiles`` objects are:
     Optional member that is present with boolean value ``true``
     if the path specifies a file in the CMake installation.
 
+``globsDependent``
+  Optional member that is present when the project calls :command:`file(GLOB)`
+  or :command:`file(GLOB_RECURSE)` with the ``CONFIGURE_DEPENDS`` option.
+  The value is a JSON array of JSON objects, each specifying a globbing
+  expression and the list of paths it matched.  If the globbing expression
+  no longer matches the same list of paths, CMake considers the build system
+  to be out of date.
+
+  This field was added in ``cmakeFiles`` version 1.1.
+
+  The members of each entry are:
+
+  ``expression``
+    A string specifying the globbing expression.
+
+  ``recurse``
+    Optional member that is present with boolean value ``true``
+    if the entry corresponds to a :command:`file(GLOB_RECURSE)` call.
+    Otherwise the entry corresponds to a :command:`file(GLOB)` call.
+
+  ``listDirectories``
+    Optional member that is present with boolean value ``true`` if
+    :command:`file(GLOB)` was called without ``LIST_DIRECTORIES false`` or
+    :command:`file(GLOB_RECURSE)` was called with ``LIST_DIRECTORIES true``.
+
+  ``followSymlinks``
+    Optional member that is present with boolean value ``true`` if
+    :command:`file(GLOB)` was called with the ``FOLLOW_SYMLINKS`` option.
+
+  ``relative``
+    Optional member that is present if :command:`file(GLOB)` was called
+    with the ``RELATIVE <path>`` option.  The value is a string containing
+    the ``<path>`` given.
+
+  ``paths``
+    A JSON array of strings specifying the paths matched by the call
+    to :command:`file(GLOB)` or :command:`file(GLOB_RECURSE)`.
+
 Object Kind "toolchains"
 ------------------------
 
@@ -1560,6 +2095,10 @@ The ``toolchains`` object kind lists properties of the toolchains used during
 the build.  These include the language, compiler path, ID, and version.
 
 There is only one ``toolchains`` object major version, version 1.
+
+.. versionadded:: 4.1
+  The ``toolchains`` object kind reply is described in machine-readable form
+  by :download:`this JSON schema </manual/file_api/schema_toolchains.json>`.
 
 "toolchains" version 1
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -1706,6 +2245,6 @@ The members specific to ``toolchains`` objects are:
   ``sourceFileExtensions``
     Optional member that is present when the
     :variable:`CMAKE_<LANG>_SOURCE_FILE_EXTENSIONS` variable is defined for
-    the current language. Its value is a JSON array of JSON strings where each
+    the current language. Its value is a JSON array of JSON strings where
     each string holds a file extension (without the leading dot) for the
     language.

@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 
 #include "cmDebuggerVariables.h"
 
@@ -15,11 +15,11 @@
 namespace cmDebugger {
 
 namespace {
-const dap::VariablePresentationHint PrivatePropertyHint = { {},
+dap::VariablePresentationHint const PrivatePropertyHint = { {},
                                                             "property",
                                                             {},
                                                             "private" };
-const dap::VariablePresentationHint PrivateDataHint = { {},
+dap::VariablePresentationHint const PrivateDataHint = { {},
                                                         "data",
                                                         {},
                                                         "private" };
@@ -62,7 +62,7 @@ cmDebuggerVariables::cmDebuggerVariables(
 void cmDebuggerVariables::AddSubVariables(
   std::shared_ptr<cmDebuggerVariables> const& variables)
 {
-  if (variables != nullptr) {
+  if (variables) {
     SubVariables.emplace_back(variables);
   }
 }
@@ -71,7 +71,7 @@ dap::array<dap::Variable> cmDebuggerVariables::HandleVariablesRequest()
 {
   dap::array<dap::Variable> variables;
 
-  if (GetKeyValuesFunction != nullptr) {
+  if (GetKeyValuesFunction) {
     auto values = GetKeyValuesFunction();
     for (auto const& entry : values) {
       if (IgnoreEmptyStringEntries && entry.Type == "string" &&

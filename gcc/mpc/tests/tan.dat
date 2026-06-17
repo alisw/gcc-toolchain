@@ -1,6 +1,6 @@
 # Data test file for mpc_tan.
 #
-# Copyright (C) 2008, 2010, 2011 INRIA
+# Copyright (C) 2008, 2010, 2011, 2024 INRIA
 #
 # This file is part of GNU MPC.
 #
@@ -136,3 +136,15 @@
 
 # bug reported by Joseph Myers (07 Apr 2015)
 - - 2 0 2 0.75 2 0x1p-10 2 0x1p1000 Z Z
+
+# the following inputs are slow in MPC 1.3.1
+# (missing return and ternary values have to be computed)
+- + 24 0xd.d9be7p-418493112 24 0x1p+0 24 0x1.f0afa6p-104 24 0x1.14a3a4p+27 N N
++ + 24 -0x2.06619cp-8561088 24 -0x1p+0 24 0x1.1643e6p+4 24 -0x1.6a3032p+21 N N
++ + 24 0x9.9be8cp-8572004 24 0x1p+0 24 0x1.620458p-7 24 0x1.6aa65cp+21 N N
++ - 24 -0x7.b66c9p-33391980 24 -0x1p+0 24 -0x1.e9956p-4 24 -0x1.612c52p+23 N N
++ - 24 -0x4.f20ebp-374976548 24 -0x1p+0 24 -0x1.eae722p+50 24 -0x1.efbf1ap+26 N N
++ + 24 0xb.51234p-265969608 24 0x1p+0 24 0x1.d6425ap-5 24 0x1.5fa19ep+26 N N
++ + 24 -0xa.15bd1p-22703900 24 0x1p+0 24 -0x1.a7d67ap-7 24 0x1.e04266p+22 N N
++ + 24 -0x1.ac13a2p-10422968 24 0x1p+0 24 -0x1.5e41b2p+121 24 0x1.b8f52ap+21 N N
+- + 24 0x0p+0 24 0x1p+0 24 0x1.870846p-1 24 0x1.386458p+61 N N

@@ -1,6 +1,6 @@
 /* print_parameter.c -- Helper function for parameter printing.
 
-Copyright (C) 2012, 2013, 2014 INRIA
+Copyright (C) 2012, 2013, 2014, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -91,8 +91,7 @@ print_parameter (mpc_fun_param_t* params, int index)
     case MPFR:
       printf ("[%lu]=",
               (unsigned long int) mpfr_get_prec (params->P[index].mpfr));
-      mpfr_out_str (stdout, 2, 0, params->P[index].mpfr, GMP_RNDN);
-      printf ("\n");
+      mpfr_printf ("%Ra\n", params->P[index].mpfr);
       break;
 
     case MPC_INEX:
@@ -108,8 +107,7 @@ print_parameter (mpc_fun_param_t* params, int index)
       printf ("[%lu,%lu]=",
               (unsigned long int) MPC_PREC_RE (params->P[index].mpc),
               (unsigned long int) MPC_PREC_IM (params->P[index].mpc));
-      mpc_out_str (stdout, 2, 0, params->P[index].mpc, MPC_RNDNN);
-      printf ("\n");
+      mpfr_printf ("(%Ra,%Ra)\n", mpc_realref (params->P[index].mpc), mpc_imagref (params->P[index].mpc));
       break;
 
     case MPFR_RND:

@@ -8,4 +8,6 @@ set(expect
   )
 check_api("^${expect}$")
 
-check_python(cache-v2)
+check_stateful_queries(foo)
+
+check_python(cache-v2 index)

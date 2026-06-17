@@ -156,3 +156,27 @@ run_cmake_command(
     -DCMAKE_MESSAGE_LOG_LEVEL=TRACE
     -P ${RunCMake_SOURCE_DIR}/get_message_log_level.cmake
   )
+
+run_cmake(Experimental/CxxImportStd-set)
+run_cmake(Experimental/CxxImportStd-unset)
+run_cmake(Experimental/CxxImportStd-wrong)
+run_cmake(Experimental/ExportPackageDependencies-set)
+run_cmake(Experimental/ExportPackageDependencies-unset)
+run_cmake(Experimental/ExportPackageDependencies-wrong)
+run_cmake(Experimental/Unknown)
+
+run_cmake(trace)
+run_cmake(trace_seq)
+run_cmake(trace_expand)
+run_cmake(trace_nested)
+run_cmake(trace_unballanced)
+run_cmake(trace_invalid_arg)
+run_cmake(trace_too_few_args)
+run_cmake(trace_ON_too_many_args)
+run_cmake(trace_OFF_too_many_args)
+block()
+  set(RunCMake_TEST_OPTIONS --trace --trace-source=trace_cli_wins.cmake)
+  run_cmake(trace_cli_wins)
+  set(RunCMake_TEST_OPTIONS --trace-expand --trace-source=trace_expand_cli_wins.cmake)
+  run_cmake(trace_expand_cli_wins)
+endblock()

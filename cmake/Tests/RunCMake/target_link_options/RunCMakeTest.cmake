@@ -32,6 +32,18 @@ if (NOT CMAKE_C_COMPILER_ID STREQUAL "Intel")
   run_cmake_target(LINK_OPTIONS exe LinkOptions_exe --config Release)
   run_cmake_target(LINK_OPTIONS dollar-option LinkOptions_dollar_exe --config Release)
 
+  if(CMAKE_SYSTEM_NAME MATCHES "(Linux|Darwin)" AND
+      RunCMake_GENERATOR MATCHES "(Ninja|Makefiles)")
+
+    run_cmake(position_LINK_OPTIONS)
+
+    run_cmake_target(position_LINK_OPTIONS shared LinkOptions_shared ${VERBOSE})
+    run_cmake_target(position_LINK_OPTIONS module LinkOptions_module ${VERBOSE})
+    if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+      run_cmake_target(position_LINK_OPTIONS framework LinkOptions_framework ${VERBOSE})
+    endif()
+  endif()
+
   run_cmake(genex_LINK_LANGUAGE)
 
   run_cmake_target(genex_LINK_LANGUAGE interface LinkOptions_shared_interface --config Release)
@@ -76,6 +88,8 @@ if(RunCMake_GENERATOR MATCHES "(Ninja|Makefile)")
 
   run_cmake_target(LINKER_expansion LINKER linker)
   run_cmake_target(LINKER_expansion LINKER_SHELL linker_shell)
+  run_cmake_target(LINKER_expansion LINKER_NESTED linker_nested)
+  run_cmake_target(LINKER_expansion LINKER_NESTED_SHELL linker_nested_shell)
 endif()
 
 run_cmake(empty_keyword_args)

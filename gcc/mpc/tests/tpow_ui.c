@@ -22,6 +22,31 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 #include "mpc-tests.h"
 
 static void
+check_divby0_exc (void)
+{
+  mpc_t z;
+  struct {
+    double re, im;
+  } data[] = {{+0.0, +0.0},
+              {+0.0, -0.0},
+              {-0.0, +0.0},
+              {-0.0, -0.0}};
+
+  mpc_init2 (z, 53);
+  for (size_t i = 0; i < 4; i++) {
+    mpc_set_d_d (z, data[i].re, data[i].im, MPC_RNDNN);
+    mpfr_clear_flags ();
+    mpc_pow_ui (z, z, 2, MPC_RNDNN);
+    if (!mpfr_divby0_p ()) {
+      printf ("Missing division-by-zero exception\n");
+      exit (1);
+    }
+  }
+  mpfr_clear_flags ();
+  mpc_clear (z);
+}
+
+static void
 compare_mpc_pow (mpfr_prec_t pmax, int iter, unsigned long nbits)
 {
   mpfr_prec_t p;
@@ -115,6 +140,8 @@ main (int argc, char *argv[])
     }
 
   test_start ();
+
+  check_divby0_exc ();
 
   data_check_template ("pow_ui.dsc", "pow_ui.dat");
 

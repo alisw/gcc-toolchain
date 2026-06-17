@@ -1,5 +1,5 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 
 # This module is shared by multiple languages; use include blocker.
@@ -64,31 +64,6 @@ if("${_help}" MATCHES "GNU ld .* 2\\.1[1-6]")
 endif()
 
 
-# Features for LINK_LIBRARY generator expression
-## check linker capabilities
-if(NOT DEFINED _CMAKE_LINKER_PUSHPOP_STATE_SUPPORTED)
-  execute_process(COMMAND "${CMAKE_LINKER}" --help
-                  OUTPUT_VARIABLE __linker_help
-                  ERROR_VARIABLE __linker_help)
-  if(__linker_help MATCHES "--push-state" AND __linker_help MATCHES "--pop-state")
-    set(_CMAKE_LINKER_PUSHPOP_STATE_SUPPORTED TRUE CACHE INTERNAL "linker supports push/pop state")
-  else()
-    set(_CMAKE_LINKER_PUSHPOP_STATE_SUPPORTED FALSE CACHE INTERNAL "linker supports push/pop state")
-  endif()
-  unset(__linker_help)
-endif()
-## WHOLE_ARCHIVE: Force loading all members of an archive
-if(_CMAKE_LINKER_PUSHPOP_STATE_SUPPORTED)
-  set(CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE "LINKER:--push-state,--whole-archive"
-                                             "<LINK_ITEM>"
-                                             "LINKER:--pop-state")
-else()
-  set(CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE "LINKER:--whole-archive"
-                                             "<LINK_ITEM>"
-                                             "LINKER:--no-whole-archive")
-endif()
-set(CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE_SUPPORTED TRUE)
-
 # Features for LINK_GROUP generator expression
 ## RESCAN: request the linker to rescan static libraries until there is
 ## no pending undefined symbols
@@ -152,13 +127,15 @@ macro(__windows_compiler_gnu lang)
     set(CMAKE_${lang}_RESPONSE_FILE_LINK_FLAG "@")
   endif()
 
+  set(CMAKE_${lang}_LINK_DEF_FILE_FLAG "") # Empty string: passing the file is enough
+
   # Binary link rules.
   set(CMAKE_${lang}_CREATE_SHARED_MODULE
-    "<CMAKE_${lang}_COMPILER> <CMAKE_SHARED_MODULE_${lang}_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> <CMAKE_SHARED_MODULE_CREATE_${lang}_FLAGS> -o <TARGET> ${CMAKE_GNULD_IMAGE_VERSION} <OBJECTS> <LINK_LIBRARIES>")
+    "<CMAKE_${lang}_COMPILER> <CMAKE_SHARED_MODULE_${lang}_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> -o <TARGET> ${CMAKE_GNULD_IMAGE_VERSION} <OBJECTS> <LINK_LIBRARIES>")
   set(CMAKE_${lang}_CREATE_SHARED_LIBRARY
-    "<CMAKE_${lang}_COMPILER> <CMAKE_SHARED_LIBRARY_${lang}_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> <CMAKE_SHARED_LIBRARY_CREATE_${lang}_FLAGS> -o <TARGET> -Wl,--out-implib,<TARGET_IMPLIB> ${CMAKE_GNULD_IMAGE_VERSION} <OBJECTS> <LINK_LIBRARIES>")
+    "<CMAKE_${lang}_COMPILER> <CMAKE_SHARED_LIBRARY_${lang}_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> -o <TARGET> -Wl,--out-implib,<TARGET_IMPLIB> ${CMAKE_GNULD_IMAGE_VERSION} <OBJECTS> <LINK_LIBRARIES>")
   set(CMAKE_${lang}_LINK_EXECUTABLE
-    "<CMAKE_${lang}_COMPILER> <FLAGS> <CMAKE_${lang}_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> -Wl,--out-implib,<TARGET_IMPLIB> ${CMAKE_GNULD_IMAGE_VERSION} <LINK_LIBRARIES>")
+    "<CMAKE_${lang}_COMPILER> <FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> -Wl,--out-implib,<TARGET_IMPLIB> ${CMAKE_GNULD_IMAGE_VERSION} <LINK_LIBRARIES>")
   set(CMAKE_${lang}_CREATE_WIN32_EXE "-mwindows")
 
   list(APPEND CMAKE_${lang}_ABI_FILES "Platform/Windows-GNU-${lang}-ABI")
@@ -204,12 +181,12 @@ macro(__windows_compiler_gnu_abi lang)
 
     # Query the VS Installer tool for locations of VS 2017 and above.
     set(_vs_installer_paths "")
-    foreach(vs RANGE 17 15 -1) # change the first number to the largest supported version
+    foreach(vs RANGE 18 15 -1) # change the first number to the largest supported version
       cmake_host_system_information(RESULT _vs_dir QUERY VS_${vs}_DIR)
       if(_vs_dir)
         list(APPEND _vs_installer_paths "${_vs_dir}/VC/Auxiliary/Build")
       endif()
-    endforeach(vs)
+    endforeach()
 
     if("${CMAKE_SIZEOF_VOID_P}" EQUAL 4)
       find_program(CMAKE_GNUtoMS_VCVARS NAMES vcvars32.bat

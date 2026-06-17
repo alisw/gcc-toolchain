@@ -25,6 +25,8 @@ main (void)
 {
    mpc_t x, y, x2, y2;
 
+   test_start ();
+
    mpc_init2 (x, 50);
    mpc_init2 (x2, 50);
    mpc_init2 (y, 100);
@@ -49,6 +51,8 @@ main (void)
    mpc_clear (x2);
    mpc_clear (y);
    mpc_clear (y2);
+
+   test_end ();
 
    return 0;
 }

@@ -1,23 +1,78 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindAVIFile
 -----------
 
-Locate AVIFILE library and include paths
+Finds `AVIFile <https://avifile.sourceforge.net/>`_ library and include paths:
 
-AVIFILE (https://avifile.sourceforge.net/) is a set of libraries for
-i386 machines to use various AVI codecs.  Support is limited beyond
-Linux.  Windows provides native AVI support, and so doesn't need this
-library.  This module defines
+.. code-block:: cmake
 
-::
+  find_package(AVIFile [...])
 
-  AVIFILE_INCLUDE_DIR, where to find avifile.h , etc.
-  AVIFILE_LIBRARIES, the libraries to link against
-  AVIFILE_DEFINITIONS, definitions to use when compiling
-  AVIFILE_FOUND, If false, don't try to use AVIFILE
+AVIFile is a set of libraries for i386 machines to use various AVI codecs.
+Support is limited beyond Linux.  Windows provides native AVI support, and so
+doesn't need this library.
+
+Result Variables
+^^^^^^^^^^^^^^^^
+
+This module defines the following variables:
+
+``AVIFile_FOUND``
+  .. versionadded:: 3.3
+
+  Boolean indicating whether AVIFile was found.
+
+``AVIFILE_LIBRARIES``
+  The libraries to link against.
+
+``AVIFILE_DEFINITIONS``
+  Definitions to use when compiling.
+
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may also be set:
+
+``AVIFILE_INCLUDE_DIR``
+  Directory containing ``avifile.h`` and other AVIFile headers.
+
+Deprecated Variables
+^^^^^^^^^^^^^^^^^^^^
+
+The following variables are provided for backward compatibility:
+
+``AVIFILE_FOUND``
+  .. deprecated:: 4.2
+    Use ``AVIFile_FOUND``, which has the same value.
+
+  Boolean indicating whether AVIFile was found.
+
+Examples
+^^^^^^^^
+
+Finding AVIFile and conditionally creating an interface :ref:`Imported Target
+<Imported Targets>` that encapsulates its usage requirements for linking to a
+project target:
+
+.. code-block:: cmake
+
+  find_package(AVIFile)
+
+  if(AVIFile_FOUND AND NOT TARGET AVIFile::AVIFile)
+    add_library(AVIFile::AVIFile INTERFACE IMPORTED)
+    set_target_properties(
+      AVIFile::AVIFile
+      PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${AVIFILE_INCLUDE_DIR}"
+        INTERFACE_LINK_LIBRARIES "${AVIFILE_LIBRARIES}"
+        INTERFACE_COMPILE_DEFINITIONS "${AVIFILE_DEFINITIONS}"
+    )
+  endif()
+
+  target_link_libraries(example PRIVATE AVIFile::AVIFile)
 #]=======================================================================]
 
 if (UNIX)
@@ -27,10 +82,13 @@ if (UNIX)
 
 endif ()
 
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(AVIFile DEFAULT_MSG AVIFILE_INCLUDE_DIR AVIFILE_AVIPLAY_LIBRARY)
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(
+  AVIFile
+  REQUIRED_VARS AVIFILE_AVIPLAY_LIBRARY AVIFILE_INCLUDE_DIR
+)
 
-if (AVIFILE_FOUND)
+if (AVIFile_FOUND)
     set(AVIFILE_LIBRARIES ${AVIFILE_AVIPLAY_LIBRARY})
     set(AVIFILE_DEFINITIONS "")
 endif()

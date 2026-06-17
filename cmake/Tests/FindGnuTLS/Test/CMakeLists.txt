@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(TestFindGnuTLS C)
 include(CTest)
 
 find_package(GnuTLS REQUIRED)
 
-add_definitions(-DCMAKE_EXPECTED_GNUTLS_VERSION="${GNUTLS_VERSION}")
+add_definitions(-DCMAKE_EXPECTED_GNUTLS_VERSION="${GnuTLS_VERSION}")
 
 add_executable(test_tgt main.c)
 target_link_libraries(test_tgt GnuTLS::GnuTLS)

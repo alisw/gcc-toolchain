@@ -1,18 +1,51 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-# file Copyright.txt or https://cmake.org/licensing for details.
+# file LICENSE.rst or https://cmake.org/licensing for details.
 
 #[=======================================================================[.rst:
 FindLAPACK
 ----------
 
-Find Linear Algebra PACKage (LAPACK) library
+Finds the installed Linear Algebra PACKage (LAPACK) Fortran library that
+implements the `LAPACK linear-algebra interface`_:
 
-This module finds an installed Fortran library that implements the
-`LAPACK linear-algebra interface`_.
+.. code-block:: cmake
+
+  find_package(LAPACK [...])
 
 At least one of the ``C``, ``CXX``, or ``Fortran`` languages must be enabled.
 
 .. _`LAPACK linear-algebra interface`: https://netlib.org/lapack/
+
+Imported Targets
+^^^^^^^^^^^^^^^^
+
+This module provides the following :ref:`Imported Targets`:
+
+``LAPACK::LAPACK``
+  .. versionadded:: 3.18
+
+  Target encapsulating the LAPACK usage requirements, available only if
+  LAPACK is found.
+
+Result Variables
+^^^^^^^^^^^^^^^^
+
+This module defines the following variables:
+
+``LAPACK_FOUND``
+  Boolean indicating whether the library implementing the LAPACK interface
+  was found.
+``LAPACK_LINKER_FLAGS``
+  Uncached list of required linker flags (excluding ``-l`` and ``-L``).
+``LAPACK_LIBRARIES``
+  Uncached list of libraries (using full path name) to link against to use
+  LAPACK.
+``LAPACK95_LIBRARIES``
+  Uncached list of libraries (using full path name) to link against to use
+  LAPACK95.
+``LAPACK95_FOUND``
+  Boolean indicating whether the library implementing the LAPACK95 interface
+  was found.
 
 Input Variables
 ^^^^^^^^^^^^^^^
@@ -20,27 +53,26 @@ Input Variables
 The following variables may be set to influence this module's behavior:
 
 ``BLA_STATIC``
-  if ``ON`` use static linkage
+  If ``ON``, the static linkage will be used.
 
 ``BLA_VENDOR``
   Set to one of the :ref:`BLAS/LAPACK Vendors` to search for BLAS only
   from the specified vendor.  If not set, all vendors are considered.
 
 ``BLA_F95``
-  if ``ON`` tries to find the BLAS95/LAPACK95 interfaces
+  If ``ON``, the module tries to find the BLAS95/LAPACK95 interfaces.
 
 ``BLA_PREFER_PKGCONFIG``
   .. versionadded:: 3.20
 
-  if set ``pkg-config`` will be used to search for a LAPACK library first
-  and if one is found that is preferred
+  If set, ``pkg-config`` will be used to search for a LAPACK library first
+  and if one is found that is preferred.
 
 ``BLA_PKGCONFIG_LAPACK``
   .. versionadded:: 3.25
 
   If set, the ``pkg-config`` method will look for this module name instead of
   just ``lapack``.
-
 
 ``BLA_SIZEOF_INTEGER``
   .. versionadded:: 3.22
@@ -55,33 +87,20 @@ The following variables may be set to influence this module's behavior:
     Search for any BLAS/LAPACK.
     Most likely, a BLAS/LAPACK with 32-bit integer interfaces will be found.
 
-Imported targets
-^^^^^^^^^^^^^^^^
+``BLA_THREAD``
+  .. versionadded:: 4.1
 
-This module defines the following :prop_tgt:`IMPORTED` targets:
+  Specify the BLAS/LAPACK threading model:
 
-``LAPACK::LAPACK``
-  .. versionadded:: 3.18
+  ``SEQ``
+    Sequential model
+  ``OMP``
+    OpenMP model
+  ``ANY``
+    Search for any BLAS/LAPACK, if both are available most likely ``OMP`` will
+    be found.
 
-  The libraries to use for LAPACK, if found.
-
-Result Variables
-^^^^^^^^^^^^^^^^
-
-This module defines the following variables:
-
-``LAPACK_FOUND``
-  library implementing the LAPACK interface is found
-``LAPACK_LINKER_FLAGS``
-  uncached list of required linker flags (excluding ``-l`` and ``-L``).
-``LAPACK_LIBRARIES``
-  uncached list of libraries (using full path name) to link against
-  to use LAPACK
-``LAPACK95_LIBRARIES``
-  uncached list of libraries (using full path name) to link against
-  to use LAPACK95
-``LAPACK95_FOUND``
-  library implementing the LAPACK95 interface is found
+  This is currently only supported by NVIDIA NVPL.
 
 Intel MKL
 ^^^^^^^^^
@@ -100,6 +119,15 @@ In order to build a project using Intel MKL, and end user must first
 establish an Intel MKL environment.  See the :module:`FindBLAS` module
 section on :ref:`Intel MKL` for details.
 
+Examples
+^^^^^^^^
+
+Finding LAPACK and linking it to a project target:
+
+.. code-block:: cmake
+
+  find_package(LAPACK)
+  target_link_libraries(project_target PRIVATE LAPACK::LAPACK)
 #]=======================================================================]
 
 # The approach follows that of the ``autoconf`` macro file, ``acx_lapack.m4``
@@ -110,7 +138,7 @@ if(CMAKE_Fortran_COMPILER_LOADED)
 else()
   include(${CMAKE_CURRENT_LIST_DIR}/CheckFunctionExists.cmake)
 endif()
-include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
+include(FindPackageHandleStandardArgs)
 
 function(_add_lapack_target)
   if(LAPACK_FOUND AND NOT TARGET LAPACK::LAPACK)
@@ -278,6 +306,16 @@ else()
   message(FATAL_ERROR "BLA_SIZEOF_INTEGER can have only <no value>, ANY, 4, or 8 values")
 endif()
 
+if(NOT BLA_THREAD)
+  set(_lapack_thread "ANY")
+elseif((BLA_THREAD STREQUAL "ANY") OR
+       (BLA_THREAD STREQUAL "SEQ") OR
+       (BLA_THREAD STREQUAL "OMP"))
+  set(_lapack_thread ${BLA_THREAD})
+else()
+  message(FATAL_ERROR "BLA_THREAD can have only <no value>, ANY, SEQ, or OMP values")
+endif()
+
 # Load BLAS
 if(NOT LAPACK_NOT_FOUND_MESSAGE)
   _lapack_find_dependency(BLAS)
@@ -289,15 +327,17 @@ if(BLA_PREFER_PKGCONFIG)
     set(BLA_PKGCONFIG_LAPACK "lapack")
   endif()
   find_package(PkgConfig QUIET)
-  pkg_check_modules(PKGC_LAPACK QUIET ${BLA_PKGCONFIG_LAPACK})
-  if(PKGC_LAPACK_FOUND)
-    set(LAPACK_FOUND TRUE)
-    set(LAPACK_LIBRARIES "${PKGC_LAPACK_LINK_LIBRARIES}")
-    if (BLAS_LIBRARIES)
-      list(APPEND LAPACK_LIBRARIES "${BLAS_LIBRARIES}")
+  if(PkgConfig_FOUND)
+    pkg_check_modules(PKGC_LAPACK QUIET ${BLA_PKGCONFIG_LAPACK})
+    if(PKGC_LAPACK_FOUND)
+      set(LAPACK_FOUND TRUE)
+      set(LAPACK_LIBRARIES "${PKGC_LAPACK_LINK_LIBRARIES}")
+      if (BLAS_LIBRARIES)
+        list(APPEND LAPACK_LIBRARIES "${BLAS_LIBRARIES}")
+      endif()
+      _add_lapack_target()
+      return()
     endif()
-    _add_lapack_target()
-    return()
   endif()
 endif()
 
@@ -691,6 +731,51 @@ if(NOT LAPACK_NOT_FOUND_MESSAGE)
     endif()
   endif()
 
+  # nVidia NVPL? (https://developer.nvidia.com/nvpl)
+  if(NOT LAPACK_LIBRARIES
+      AND (BLA_VENDOR MATCHES "NVPL" OR BLA_VENDOR STREQUAL "All"))
+    # Prefer lp64 unless ilp64 is requested.
+    if((_lapack_sizeof_integer EQUAL 4) OR (_lapack_sizeof_integer STREQUAL "ANY"))
+      list(APPEND _lapack_nvpl_ints "_lp64")
+    endif()
+    if((_lapack_sizeof_integer EQUAL 8) OR (_lapack_sizeof_integer STREQUAL "ANY"))
+      list(APPEND _lapack_nvpl_ints "_ilp64")
+    endif()
+
+    # Prefer OMP if available
+    if((_lapack_thread STREQUAL "OMP") OR (_lapack_thread STREQUAL "ANY"))
+      list(APPEND _lapack_nvpl_threads "_omp")
+    endif()
+    if((_lapack_thread STREQUAL "SEQ") OR (_lapack_thread STREQUAL "ANY"))
+      list(APPEND _lapack_nvpl_threads "_seq")
+    endif()
+
+    find_package(nvpl QUIET)
+    if(nvpl_FOUND)
+      foreach(_nvpl_thread IN LISTS _lapack_nvpl_threads)
+        foreach(_nvpl_int IN LISTS _lapack_nvpl_ints)
+
+          set(_lapack_lib "nvpl::lapack${_nvpl_int}${_nvpl_thread}")
+
+          if(TARGET ${_lapack_lib})
+            set(LAPACK_LIBRARIES ${_lapack_lib})
+            break()
+          endif()
+
+        endforeach()
+
+        if(LAPACK_LIBRARIES)
+          break()
+        endif()
+
+      endforeach()
+    endif()
+
+    unset(_lapack_lib)
+    unset(_lapack_nvpl_ints)
+    unset(_lapack_nvpl_threads)
+  endif()
+
   # NVHPC Library?
 
   if(NOT LAPACK_LIBRARIES
@@ -740,6 +825,14 @@ if(NOT LAPACK_NOT_FOUND_MESSAGE)
 
     unset(_lapack_nvhpc_lib)
     unset(_lapack_nvhpc_flags)
+  endif()
+
+  # libblastrampoline? (https://github.com/JuliaLinearAlgebra/libblastrampoline/tree/main)
+  if(NOT LAPACK_LIBRARIES
+      AND (BLA_VENDOR STREQUAL "libblastrampoline" OR BLA_VENDOR STREQUAL "All"))
+    if(BLAS_LIBRARIES MATCHES "blastrampoline.+")
+      set(LAPACK_LIBRARIES ${BLAS_LIBRARIES})
+    endif()
   endif()
 
   # Generic LAPACK library?

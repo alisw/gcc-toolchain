@@ -31,7 +31,7 @@ Synopsis
   cmake --find-package [<options>]
 
  `Run a Workflow Preset`_
-  cmake --workflow [<options>]
+  cmake --workflow <options>
 
  `View Help`_
   cmake --help[-<topic>]
@@ -167,12 +167,12 @@ the current working directory (cwd) is used for the other.  For example:
 ============================== ============ ===========
  Command Line                   Source Dir   Build Dir
 ============================== ============ ===========
- ``cmake -B build``             `cwd`        ``build``
+ ``cmake -B build``             *cwd*        ``build``
  ``cmake -B build src``         ``src``      ``build``
  ``cmake -B build -S src``      ``src``      ``build``
- ``cmake src``                  ``src``      `cwd`
- ``cmake build`` (existing)     `loaded`     ``build``
- ``cmake -S src``               ``src``      `cwd`
+ ``cmake src``                  ``src``      *cwd*
+ ``cmake build`` (existing)     *loaded*     ``build``
+ ``cmake -S src``               ``src``      *cwd*
  ``cmake -S src build``         ``src``      ``build``
  ``cmake -S src -B build``      ``src``      ``build``
 ============================== ============ ===========
@@ -203,7 +203,7 @@ Options
 
 .. program:: cmake
 
-.. include:: OPTIONS_BUILD.txt
+.. include:: include/OPTIONS_BUILD.rst
 
 .. option:: --fresh
 
@@ -212,6 +212,13 @@ Options
  Perform a fresh configuration of the build tree.
  This removes any existing ``CMakeCache.txt`` file and associated
  ``CMakeFiles/`` directory, and recreates them from scratch.
+
+ .. versionchanged:: 3.30
+
+   For dependencies previously populated by :module:`FetchContent` with the
+   ``NEW`` setting for policy :policy:`CMP0168`, their stamp and script files
+   from any previous run will be removed. The download, update, and patch
+   steps will therefore be forced to re-execute.
 
 .. option:: -L[A][H]
 
@@ -225,6 +232,17 @@ Options
  will display also advanced variables.  If ``H`` is specified, it will also
  display help for each variable.
 
+.. option:: -LR[A][H] <regex>
+
+ .. versionadded:: 3.31
+
+ Show specific non-advanced cached variables
+
+ Show non-``INTERNAL`` nor :prop_cache:`ADVANCED` variables from the CMake
+ ``CACHE`` that match the given regex. If ``A`` is specified, then it
+ will also show advanced variables.  If ``H`` is specified, it will also
+ display help for each variable.
+
 .. option:: -N
 
  View mode only.
@@ -234,11 +252,145 @@ Options
 
 .. option:: --graphviz=<file>
 
- Generate graphviz of dependencies, see :module:`CMakeGraphVizOptions` for more.
+  Generate `Graphviz <https://www.graphviz.org/>`_ of dependencies
 
- Generate a graphviz input file that will contain all the library and
- executable dependencies in the project.  See the documentation for
- :module:`CMakeGraphVizOptions` for more details.
+  This option generates a graphviz input file that will contain all the
+  library and executable dependencies in the project showing the
+  dependencies between the targets in a project, as well as external libraries
+  which are linked against.
+
+  When running CMake with the ``--graphviz=foo.dot`` option, it produces:
+
+  * a ``foo.dot`` file, showing all dependencies in the project
+  * a ``foo.dot.<target>`` file for each target, showing on which other targets
+    it depends
+  * a ``foo.dot.<target>.dependers`` file for each target, showing which other
+    targets depend on it
+
+  Those .dot files can be converted to images using the *dot* command from the
+  Graphviz package:
+
+  .. code-block:: shell
+
+    dot -Tpng -o foo.png foo.dot
+
+  .. versionadded:: 3.10
+    The different dependency types ``PUBLIC``, ``INTERFACE`` and ``PRIVATE``
+    are represented as solid, dashed and dotted edges.
+
+  .. rubric:: Variables specific to the Graphviz support
+
+  The resulting graphs can be huge.  The look and content of the generated graphs
+  can be controlled using the file ``CMakeGraphVizOptions.cmake``.  This file is
+  first searched in :variable:`CMAKE_BINARY_DIR`, and then in
+  :variable:`CMAKE_SOURCE_DIR`.  If found, the variables set in it are used to
+  adjust options for the generated Graphviz files.
+
+  .. variable:: GRAPHVIZ_GRAPH_NAME
+
+    The graph name.
+
+    * Mandatory: NO
+    * Default: value of :variable:`CMAKE_PROJECT_NAME`
+
+  .. variable:: GRAPHVIZ_GRAPH_HEADER
+
+    The header written at the top of the Graphviz files.
+
+    * Mandatory: NO
+    * Default: "node [ fontsize = "12" ];"
+
+  .. variable:: GRAPHVIZ_NODE_PREFIX
+
+    The prefix for each node in the Graphviz files.
+
+    * Mandatory: NO
+    * Default: "node"
+
+  .. variable:: GRAPHVIZ_EXECUTABLES
+
+    Set to FALSE to exclude executables from the generated graphs.
+
+    * Mandatory: NO
+    * Default: TRUE
+
+  .. variable:: GRAPHVIZ_STATIC_LIBS
+
+    Set to FALSE to exclude static libraries from the generated graphs.
+
+    * Mandatory: NO
+    * Default: TRUE
+
+  .. variable:: GRAPHVIZ_SHARED_LIBS
+
+    Set to FALSE to exclude shared libraries from the generated graphs.
+
+    * Mandatory: NO
+    * Default: TRUE
+
+  .. variable:: GRAPHVIZ_MODULE_LIBS
+
+    Set to FALSE to exclude module libraries from the generated graphs.
+
+    * Mandatory: NO
+    * Default: TRUE
+
+  .. variable:: GRAPHVIZ_INTERFACE_LIBS
+
+    Set to FALSE to exclude interface libraries from the generated graphs.
+
+    * Mandatory: NO
+    * Default: TRUE
+
+  .. variable:: GRAPHVIZ_OBJECT_LIBS
+
+    Set to FALSE to exclude object libraries from the generated graphs.
+
+    * Mandatory: NO
+    * Default: TRUE
+
+  .. variable:: GRAPHVIZ_UNKNOWN_LIBS
+
+    Set to FALSE to exclude unknown libraries from the generated graphs.
+
+    * Mandatory: NO
+    * Default: TRUE
+
+  .. variable:: GRAPHVIZ_EXTERNAL_LIBS
+
+    Set to FALSE to exclude external libraries from the generated graphs.
+
+    * Mandatory: NO
+    * Default: TRUE
+
+  .. variable:: GRAPHVIZ_CUSTOM_TARGETS
+
+    Set to TRUE to include custom targets in the generated graphs.
+
+    * Mandatory: NO
+    * Default: FALSE
+
+  .. variable:: GRAPHVIZ_IGNORE_TARGETS
+
+    A list of regular expressions for names of targets to exclude from the
+    generated graphs.
+
+    * Mandatory: NO
+    * Default: empty
+
+  .. variable:: GRAPHVIZ_GENERATE_PER_TARGET
+
+    Set to FALSE to not generate per-target graphs ``foo.dot.<target>``.
+
+    * Mandatory: NO
+    * Default: TRUE
+
+  .. variable:: GRAPHVIZ_GENERATE_DEPENDERS
+
+    Set to FALSE to not generate depender graphs ``foo.dot.<target>.dependers``.
+
+    * Mandatory: NO
+    * Default: TRUE
 
 .. option:: --system-information [file]
 
@@ -248,7 +400,17 @@ Options
  from the top of a binary tree for a CMake project it will dump
  additional information such as the cache, log files etc.
 
+.. option:: --print-config-dir
+
+ .. versionadded:: 3.31
+
+ Print CMake config directory for user-wide FileAPI queries.
+
+ See :envvar:`CMAKE_CONFIG_DIR` for more details.
+
 .. option:: --log-level=<level>
+
+ .. versionadded:: 3.16
 
  Set the log ``<level>``.
 
@@ -278,6 +440,16 @@ Options
  :variable:`CMAKE_MESSAGE_CONTEXT_SHOW` as a cache variable instead.
  When this command line option is given, :variable:`CMAKE_MESSAGE_CONTEXT_SHOW`
  is ignored.
+
+.. option:: --sarif-output=<path>
+
+ .. versionadded:: 4.0
+
+ Enable logging of diagnostic messages produced by CMake in the SARIF format.
+
+ Write diagnostic messages to a SARIF file at the path specified. Projects can
+ also set :variable:`CMAKE_EXPORT_SARIF` to ``ON`` to enable this feature for a
+ build tree.
 
 .. option:: --debug-trycompile
 
@@ -367,7 +539,7 @@ Options
 
    ``json-v1``
      Prints each line as a separate JSON document. Each document is
-     separated by a newline ( ``\n`` ). It is guaranteed that no
+     separated by a newline (``\n``). It is guaranteed that no
      newline characters will be present inside a JSON document.
 
      .. code-block:: json
@@ -485,6 +657,14 @@ Options
  :variable:`CMAKE_COMPILE_WARNING_AS_ERROR`, preventing warnings from being
  treated as errors on compile.
 
+.. option:: --link-no-warning-as-error
+
+ .. versionadded:: 4.0
+
+ Ignore target property :prop_tgt:`LINK_WARNING_AS_ERROR` and variable
+ :variable:`CMAKE_LINK_WARNING_AS_ERROR`, preventing warnings from being
+ treated as errors on link.
+
 .. option:: --profiling-output=<path>
 
  .. versionadded:: 3.18
@@ -507,27 +687,33 @@ Options
 
 .. option:: --preset <preset>, --preset=<preset>
 
- Reads a :manual:`preset <cmake-presets(7)>` from
- ``<path-to-source>/CMakePresets.json`` and
- ``<path-to-source>/CMakeUserPresets.json``. The preset may specify the
- generator and the build directory, and a list of variables and other
- arguments to pass to CMake. The current working directory must contain
- CMake preset files. The :manual:`CMake GUI <cmake-gui(1)>` can
- also recognize ``CMakePresets.json`` and ``CMakeUserPresets.json`` files. For
- full details on these files, see :manual:`cmake-presets(7)`.
+ Reads a :manual:`preset <cmake-presets(7)>` from ``CMakePresets.json`` and
+ ``CMakeUserPresets.json`` files, which must be located in the same directory
+ as the top level ``CMakeLists.txt`` file. The preset may specify the
+ generator, the build directory, a list of variables, and other arguments to
+ pass to CMake. At least one of ``CMakePresets.json`` or
+ ``CMakeUserPresets.json`` must be present.
+ The :manual:`CMake GUI <cmake-gui(1)>` also recognizes and supports
+ ``CMakePresets.json`` and ``CMakeUserPresets.json`` files. For full details
+ on these files, see :manual:`cmake-presets(7)`.
 
- The presets are read before all other command line options. The options
- specified by the preset (variables, generator, etc.) can all be overridden by
- manually specifying them on the command line. For example, if the preset sets
- a variable called ``MYVAR`` to ``1``, but the user sets it to ``2`` with a
- ``-D`` argument, the value ``2`` is preferred.
+ The presets are read before all other command line options, although the
+ :option:`-S <cmake -S>` option can be used to specify the source directory
+ containing the ``CMakePresets.json`` and ``CMakeUserPresets.json`` files.
+ If :option:`-S <cmake -S>` is not given, the current directory is assumed to
+ be the top level source directory and must contain the presets files. The
+ options specified by the chosen preset (variables, generator, etc.) can all
+ be overridden by manually specifying them on the command line. For example,
+ if the preset sets a variable called ``MYVAR`` to ``1``, but the user sets
+ it to ``2`` with a ``-D`` argument, the value ``2`` is preferred.
 
 .. option:: --list-presets[=<type>]
 
  Lists the available presets of the specified ``<type>``.  Valid values for
  ``<type>`` are ``configure``, ``build``, ``test``, ``package``, or ``all``.
  If ``<type>`` is omitted, ``configure`` is assumed.  The current working
- directory must contain CMake preset files.
+ directory must contain CMake preset files unless the :option:`-S <cmake -S>`
+ option is used to specify a different top level source directory.
 
 .. option:: --debugger
 
@@ -660,7 +846,7 @@ following options:
   specific cache variable will be evaluated to decide, if package restoration
   should be performed.
 
-  When using the Visual Studio generator, package references are defined
+  When using :ref:`Visual Studio Generators`, package references are defined
   using the :prop_tgt:`VS_PACKAGE_REFERENCES` property. Package references
   are restored using NuGet. It can be disabled by setting the
   ``CMAKE_VS_NUGET_PACKAGE_RESTORE`` variable to ``OFF``.
@@ -683,6 +869,19 @@ following options:
   Pass remaining options to the native tool.
 
 Run :option:`cmake --build` with no options for quick help.
+
+Generator-Specific Build Tool Behavior
+--------------------------------------
+
+``cmake --build`` has special behavior with some generators:
+
+:generator:`Xcode`
+
+  .. versionadded:: 4.1
+
+    If a third-party tool has written a ``.xcworkspace`` next to
+    the CMake-generated ``.xcodeproj``, ``cmake --build`` drives
+    the build through the workspace instead.
 
 Install a Project
 =================
@@ -731,6 +930,15 @@ The options are:
   Enable verbose output.
 
   This option can be omitted if :envvar:`VERBOSE` environment variable is set.
+
+.. option:: -j <jobs>, --parallel <jobs>
+
+  .. versionadded:: 3.31
+
+  Install in parallel using the given number of jobs. Only available if
+  :prop_gbl:`INSTALL_PARALLEL` is enabled. The
+  :envvar:`CMAKE_INSTALL_PARALLEL_LEVEL` environment variable specifies a
+  default parallel level when this option is not provided.
 
 Run :option:`cmake --install` with no options for quick help.
 
@@ -955,6 +1163,19 @@ Available commands are:
   ``copy_directory_if_different`` does follow symlinks.
   The command fails when the source directory does not exist.
 
+.. option:: copy_directory_if_newer <dir>... <destination>
+
+  .. versionadded:: 4.2
+
+  Copy content of ``<dir>...`` directories to ``<destination>`` directory
+  if source files are newer than destination files (based on file timestamps).
+  If ``<destination>`` directory does not exist it will be created.
+
+  ``copy_directory_if_newer`` does follow symlinks.
+  The command fails when the source directory does not exist.
+  This is faster than ``copy_directory_if_different`` as it only compares
+  file timestamps instead of file contents.
+
 .. option:: copy_if_different <file>... <destination>
 
   Copy files to ``<destination>`` (either file or directory) if
@@ -965,6 +1186,18 @@ Available commands are:
 
   .. versionadded:: 3.5
     Support for multiple input files.
+
+.. option:: copy_if_newer <file>... <destination>
+
+  .. versionadded:: 4.2
+
+  Copy files to ``<destination>`` (either file or directory) if
+  source files are newer than destination files (based on file timestamps).
+  If multiple files are specified, the ``<destination>`` must be
+  directory and it must exist.
+  ``copy_if_newer`` does follow symlinks.
+  This is faster than ``copy_if_different`` as it only compares
+  file timestamps instead of file contents.
 
 .. option:: create_symlink <old> <new>
 
@@ -1328,14 +1561,51 @@ CMake provides a pkg-config like helper for Makefile-based projects:
 
   cmake --find-package [<options>]
 
-It searches a package using :command:`find_package()` and prints the
-resulting flags to stdout.  This can be used instead of pkg-config
-to find installed libraries in plain Makefile-based projects or in
-autoconf-based projects (via ``share/aclocal/cmake.m4``).
-
 .. note::
   This mode is not well-supported due to some technical limitations.
   It is kept for compatibility but should not be used in new projects.
+
+.. option:: --find-package
+
+  It searches a package using the :command:`find_package` command and prints the
+  resulting flags to stdout.  This can be used instead of pkg-config to find
+  installed libraries in plain Makefile-based projects or in Autoconf-based
+  projects, using auxiliary macros installed in ``share/aclocal/cmake.m4`` on
+  the system.
+
+  When using this option, the following variables are expected:
+
+  ``NAME``
+    Name of the package as called in ``find_package(<PackageName>)``.
+
+  ``COMPILER_ID``
+    :variable:`Compiler ID <CMAKE_<LANG>_COMPILER_ID>` used for searching the
+    package, i.e. GNU/Intel/Clang/MSVC, etc.
+
+  ``LANGUAGE``
+    Language used for searching the package, i.e. C/CXX/Fortran/ASM, etc.
+
+  ``MODE``
+    The package search mode.  Value can be one of:
+
+    ``EXIST``
+      Only checks for existence of the given package.
+
+    ``COMPILE``
+      Prints the flags needed for compiling an object file which uses the given
+      package.
+
+    ``LINK``
+      Prints the flags needed for linking when using the given package.
+
+  ``SILENT``
+    (Optional) If TRUE, find result message is not printed.
+
+  For example:
+
+  .. code-block:: shell
+
+    cmake --find-package -DNAME=CURL -DCOMPILER_ID=GNU -DLANGUAGE=C -DMODE=LINK
 
 .. _`Workflow Mode`:
 
@@ -1351,7 +1621,7 @@ build steps in order:
 
 .. code-block:: shell
 
-  cmake --workflow [<options>]
+  cmake --workflow <options>
 
 The options are:
 
@@ -1368,6 +1638,15 @@ The options are:
   must contain CMake preset files.
   See :manual:`preset <cmake-presets(7)>` for more details.
 
+  .. versionchanged:: 3.31
+    When following immediately after the ``--workflow`` option,
+    the ``--preset`` argument can be omitted and just the ``<preset>``
+    name can be given.  This means the following syntax is valid:
+
+    .. code-block:: console
+
+      $ cmake --workflow my-preset
+
 .. option:: --list-presets
 
   Lists the available workflow presets. The current working directory must
@@ -1375,9 +1654,8 @@ The options are:
 
 .. option:: --fresh
 
-  Perform a fresh configuration of the build tree.
-  This removes any existing ``CMakeCache.txt`` file and associated
-  ``CMakeFiles/`` directory, and recreates them from scratch.
+  Perform a fresh configuration of the build tree, which has the same effect
+  as :option:`cmake --fresh`.
 
 View Help
 =========
@@ -1392,7 +1670,7 @@ To print selected pages from the CMake documentation, use
 
 with one of the following options:
 
-.. include:: OPTIONS_HELP.txt
+.. include:: include/OPTIONS_HELP.rst
 
 To view the presets available for a project, use
 
@@ -1415,4 +1693,4 @@ or another error condition, then a non-zero exit code is returned.
 See Also
 ========
 
-.. include:: LINKS.txt
+.. include:: include/LINKS.rst

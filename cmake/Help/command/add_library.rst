@@ -20,14 +20,17 @@ Normal Libraries
   The optional ``<type>`` specifies the type of library to be created:
 
   ``STATIC``
-    An archive of object files for use when linking other targets.
+    A :ref:`Static Library <Static Libraries>`:
+    an archive of object files for use when linking other targets.
 
   ``SHARED``
-    A dynamic library that may be linked by other targets and loaded
+    A :ref:`Shared Library <Shared Libraries>`:
+    a dynamic library that may be linked by other targets and loaded
     at runtime.
 
   ``MODULE``
-    A plugin that may not be linked by other targets, but may be
+    A :ref:`Module Library <Module Libraries>`:
+    a plugin that may not be linked by other targets, but may be
     dynamically loaded at runtime using dlopen-like functionality.
 
   If no ``<type>`` is given the default is ``STATIC`` or ``SHARED``
@@ -84,6 +87,13 @@ See also :prop_sf:`HEADER_FILE_ONLY` on what to do if some sources are
 pre-processed, and you want to have the original sources reachable from
 within IDE.
 
+.. versionchanged:: 3.30
+
+  On platforms that do not support shared libraries, ``add_library``
+  now fails on calls creating ``SHARED`` libraries instead of
+  automatically converting them to ``STATIC`` libraries as before.
+  See policy :policy:`CMP0164`.
+
 Object Libraries
 ^^^^^^^^^^^^^^^^
 
@@ -110,9 +120,9 @@ may contain only sources that compile, header files, and other files
 that would not affect linking of a normal library (e.g. ``.txt``).
 They may contain custom commands generating such sources, but not
 ``PRE_BUILD``, ``PRE_LINK``, or ``POST_BUILD`` commands.  Some native build
-systems (such as Xcode) may not like targets that have only object files, so
-consider adding at least one real source file to any target that references
-:genex:`$\<TARGET_OBJECTS:objlib\> <TARGET_OBJECTS>`.
+systems (such as :generator:`Xcode`) may not like targets that have only
+object files, so consider adding at least one real source file to any target
+that references :genex:`$\<TARGET_OBJECTS:objlib\> <TARGET_OBJECTS>`.
 
 .. versionadded:: 3.12
   Object libraries can be linked to with :command:`target_link_libraries`.
@@ -185,6 +195,30 @@ Interface Libraries
     to the library type only.  Sources listed after it in the ``add_library``
     call are ``PRIVATE`` to the interface library and do not appear in its
     :prop_tgt:`INTERFACE_SOURCES` target property.
+
+.. signature::
+  add_library(<name> INTERFACE SYMBOLIC)
+  :target: INTERFACE-SYMBOLIC
+
+  .. versionadded:: 4.2
+
+  Add a symbolic :ref:`Interface Library <Interface Libraries>` target.
+  Symbolic interface libraries are useful for representing optional components
+  or features in a package.  They have no usage requirements, do not compile
+  sources, and do not produce a library artifact on disk, but they may be
+  exported and installed.  They can also be tested for existence with the
+  regular :command:`if(TARGET)` subcommand.
+
+  A symbolic interface library may be used as a linkable target to enforce the
+  presence of optional components in a dependency.  For example, if a library
+  ``libgui`` may or may not provide a feature ``widget``, a consumer package
+  can link against ``widget`` to express that it requires this component to be
+  available.  This allows :command:`find_package` calls that declare required
+  components to be validated by linking against the corresponding symbolic
+  targets.
+
+  A symbolic interface library has the :prop_tgt:`SYMBOLIC` target property
+  set to true.
 
 .. _`add_library imported libraries`:
 

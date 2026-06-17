@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #include "cmFileAPICache.h"
 
 #include <algorithm>
@@ -19,7 +19,7 @@ namespace {
 class Cache
 {
   cmFileAPI& FileAPI;
-  unsigned long Version;
+  unsigned int Version;
   cmState* State;
 
   Json::Value DumpEntries();
@@ -29,11 +29,11 @@ class Cache
                                 std::string const& prop);
 
 public:
-  Cache(cmFileAPI& fileAPI, unsigned long version);
+  Cache(cmFileAPI& fileAPI, unsigned int version);
   Json::Value Dump();
 };
 
-Cache::Cache(cmFileAPI& fileAPI, unsigned long version)
+Cache::Cache(cmFileAPI& fileAPI, unsigned int version)
   : FileAPI(fileAPI)
   , Version(version)
   , State(this->FileAPI.GetCMakeInstance()->GetState())
@@ -101,7 +101,7 @@ Json::Value Cache::DumpEntryProperty(std::string const& name,
 }
 }
 
-Json::Value cmFileAPICacheDump(cmFileAPI& fileAPI, unsigned long version)
+Json::Value cmFileAPICacheDump(cmFileAPI& fileAPI, unsigned int version)
 {
   Cache cache(fileAPI, version);
   return cache.Dump();

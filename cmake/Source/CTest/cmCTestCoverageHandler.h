@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -15,8 +15,8 @@
 #include "cmCTestGenericHandler.h"
 
 class cmGeneratedFileStream;
-class cmMakefile;
 class cmXMLWriter;
+class cmCTest;
 
 class cmCTestCoverageHandlerContainer
 {
@@ -44,9 +44,7 @@ public:
    */
   int ProcessHandler() override;
 
-  cmCTestCoverageHandler();
-
-  void Initialize() override;
+  cmCTestCoverageHandler(cmCTest* ctest);
 
   /**
    * This method is called when reading CTest custom file
@@ -101,7 +99,7 @@ private:
                                 std::vector<std::string>& filesFullPath);
 
   int RunBullseyeCommand(cmCTestCoverageHandlerContainer* cont,
-                         const char* cmd, const char* arg,
+                         char const* cmd, char const* arg,
                          std::string& outputFile);
   bool ParseBullsEyeCovsrcLine(std::string const& inputLine,
                                std::string& sourceFile, int& functionsCalled,
@@ -140,7 +138,7 @@ private:
 
   // Label reading and writing methods.
   void LoadLabels();
-  void LoadLabels(const char* dir);
+  void LoadLabels(char const* dir);
   void WriteXMLLabels(cmXMLWriter& xml, std::string const& source);
 
   // Label-based filtering.

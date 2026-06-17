@@ -1,5 +1,5 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
-   file Copyright.txt or https://cmake.org/licensing for details.  */
+   file LICENSE.rst or https://cmake.org/licensing for details.  */
 #pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
@@ -29,26 +29,26 @@ public:
   ~cmTest();
 
   //! Set the test name
-  void SetName(const std::string& name);
+  void SetName(std::string const& name);
   std::string GetName() const { return this->Name; }
 
   void SetCommand(std::vector<std::string> const& command);
   std::vector<std::string> const& GetCommand() const { return this->Command; }
 
   //! Set/Get a property of this source file
-  void SetProperty(const std::string& prop, cmValue value);
-  void SetProperty(const std::string& prop, std::nullptr_t)
+  void SetProperty(std::string const& prop, cmValue value);
+  void SetProperty(std::string const& prop, std::nullptr_t)
   {
     this->SetProperty(prop, cmValue{ nullptr });
   }
-  void SetProperty(const std::string& prop, const std::string& value)
+  void SetProperty(std::string const& prop, std::string const& value)
   {
     this->SetProperty(prop, cmValue(value));
   }
-  void AppendProperty(const std::string& prop, const std::string& value,
+  void AppendProperty(std::string const& prop, std::string const& value,
                       bool asString = false);
-  cmValue GetProperty(const std::string& prop) const;
-  bool GetPropertyAsBool(const std::string& prop) const;
+  cmValue GetProperty(std::string const& prop) const;
+  bool GetPropertyAsBool(std::string const& prop) const;
   cmPropertyMap& GetProperties() { return this->Properties; }
 
   /** Get the cmMakefile instance that owns this test.  */
@@ -61,10 +61,20 @@ public:
   bool GetOldStyle() const { return this->OldStyle; }
   void SetOldStyle(bool b) { this->OldStyle = b; }
 
-  /** Get/Set if CMP0158 policy is NEW */
+  /** Get if CMP0158 policy is NEW */
   bool GetCMP0158IsNew() const
   {
     return this->PolicyStatusCMP0158 == cmPolicies::NEW;
+  }
+
+  /** Get/Set the CMP0178 policy setting */
+  cmPolicies::PolicyStatus GetCMP0178() const
+  {
+    return this->PolicyStatusCMP0178;
+  }
+  void SetCMP0178(cmPolicies::PolicyStatus p)
+  {
+    this->PolicyStatusCMP0178 = p;
   }
 
   /** Set/Get whether lists in command lines should be expanded. */
@@ -82,4 +92,5 @@ private:
   cmMakefile* Makefile;
   cmListFileBacktrace Backtrace;
   cmPolicies::PolicyStatus PolicyStatusCMP0158;
+  cmPolicies::PolicyStatus PolicyStatusCMP0178;
 };

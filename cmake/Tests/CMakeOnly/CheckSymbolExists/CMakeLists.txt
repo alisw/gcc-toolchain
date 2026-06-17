@@ -7,9 +7,8 @@
 # If you change this test do not forget to change the CheckCXXSymbolExists
 # test, too.
 
+cmake_minimum_required(VERSION 3.10)
 project(CheckSymbolExists C)
-
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
 set(CMAKE_REQUIRED_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -38,7 +37,7 @@ else ()
   message(STATUS "errno found as expected")
 endif ()
 
-if (CMAKE_COMPILER_IS_GNUCC)
+if (CMAKE_C_COMPILER_ID MATCHES "^(GNU|LCC)$")
   string(APPEND CMAKE_C_FLAGS " -O3")
   unset(CSE_RESULT_O3 CACHE)
   message(STATUS "Testing with optimization -O3")
